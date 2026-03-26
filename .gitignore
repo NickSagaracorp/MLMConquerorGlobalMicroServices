@@ -103,3 +103,8 @@ desktop.ini
 # ── Logs ──────────────────────────────────────────────────────────────────────
 *.log
 logs/
+
+# ── Large / binary assets (use Git LFS or external storage) ───────────────────
+*.zip
+*.rar
+*.7z
