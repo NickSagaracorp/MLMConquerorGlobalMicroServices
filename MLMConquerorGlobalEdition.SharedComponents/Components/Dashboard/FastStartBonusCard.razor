@@ -1,0 +1,61 @@
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Dashboard
+
+<div class="card fsb-card h-100 @StatusClass">
+    <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <span class="badge rounded-pill bg-@BadgeColor">Window @Window.WindowNumber</span>
+            <StatusBadge Status="@Window.Status" />
+        </div>
+
+        @if (Window.StartDate.HasValue && Window.EndDate.HasValue && Window.Status == "Active")
+        {
+            <div class="fsb-timer text-center mb-3">
+                <div class="display-6 fw-bold text-@BadgeColor">@_timeRemaining</div>
+                <div class="text-muted small">remaining</div>
+            </div>
+        }
+
+        <div class="d-flex justify-content-between align-items-center">
+            <span class="text-muted small">Earned</span>
+            <span class="fw-semibold fs-5">@Window.Earned.ToString("C")</span>
+        </div>
+
+        @if (Window.StartDate.HasValue)
+        {
+            <div class="text-muted small mt-1">
+                @Window.StartDate.Value.ToString("MMM dd") — @Window.EndDate?.ToString("MMM dd, yyyy")
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public DashboardPage.FsbWindowDto Window { get; set; } = default!;
+
+    private string _timeRemaining = "—";
+
+    private string BadgeColor => Window.Status switch
+    {
+        "Active"   => "primary",
+        "Complete" => "success",
+        _          => "secondary"
+    };
+
+    private string StatusClass => Window.Status switch
+    {
+        "Active"   => "border-primary",
+        "Complete" => "border-success",
+        _          => string.Empty
+    };
+
+    protected override void OnParametersSet()
+    {
+        if (Window.EndDate.HasValue && Window.Status == "Active")
+        {
+            var remaining = Window.EndDate.Value - DateTime.UtcNow;
+            _timeRemaining = remaining.TotalSeconds > 0
+                ? $"{(int)remaining.TotalDays}d {remaining.Hours:D2}h {remaining.Minutes:D2}m"
+                : "Expired";
+        }
+    }
+}

@@ -1,0 +1,93 @@
+@typeparam TItem
+
+<div class="card">
+    @if (!string.IsNullOrEmpty(Title))
+    {
+        <div class="card-header d-flex align-items-center justify-content-between py-3">
+            <h6 class="card-title mb-0 fw-semibold">@Title</h6>
+            @if (HeaderActions != null)
+            {
+                <div>@HeaderActions</div>
+            }
+        </div>
+    }
+    <div class="card-body p-0">
+        <LoadingSpinner IsLoading="IsLoading" />
+
+        @if (!IsLoading)
+        {
+            @if (Items == null || !Items.Any())
+            {
+                <EmptyState Title="No records found" Message="There are no items matching your search." />
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>@HeaderTemplate</tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Items)
+                            {
+                                @RowTemplate(item)
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                @if (TotalPages > 1)
+                {
+                    <div class="d-flex align-items-center justify-content-between px-4 py-3 border-top">
+                        <small class="text-muted">
+                            Showing @((CurrentPage - 1) * PageSize + 1)&ndash;@(Math.Min(CurrentPage * PageSize, TotalCount)) of @TotalCount records
+                        </small>
+                        <nav>
+                            <ul class="pagination pagination-sm mb-0 gap-1">
+                                <li class="page-item @(CurrentPage == 1 ? "disabled" : "")">
+                                    <button class="page-link" @onclick="() => GoToPage(CurrentPage - 1)">
+                                        <i class="ri-arrow-left-s-line"></i>
+                                    </button>
+                                </li>
+                                @for (int p = Math.Max(1, CurrentPage - 2); p <= Math.Min(TotalPages, CurrentPage + 2); p++)
+                                {
+                                    var page = p;
+                                    <li class="page-item @(page == CurrentPage ? "active" : "")">
+                                        <button class="page-link" @onclick="() => GoToPage(page)">@(page)</button>
+                                    </li>
+                                }
+                                <li class="page-item @(CurrentPage == TotalPages ? "disabled" : "")">
+                                    <button class="page-link" @onclick="() => GoToPage(CurrentPage + 1)">
+                                        <i class="ri-arrow-right-s-line"></i>
+                                    </button>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                }
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? Title                       { get; set; }
+    [Parameter] public IEnumerable<TItem>? Items           { get; set; }
+    [Parameter] public int TotalCount                      { get; set; }
+    [Parameter] public int PageSize                        { get; set; } = 20;
+    [Parameter] public int CurrentPage                     { get; set; } = 1;
+    [Parameter] public bool IsLoading                      { get; set; }
+    [Parameter] public RenderFragment? HeaderTemplate      { get; set; }
+    [Parameter] public RenderFragment<TItem>? RowTemplate  { get; set; }
+    [Parameter] public RenderFragment? HeaderActions       { get; set; }
+    [Parameter] public EventCallback<int> OnPageChange     { get; set; }
+
+    private int TotalPages => PageSize > 0 ? (int)Math.Ceiling(TotalCount / (double)PageSize) : 1;
+
+    private async Task GoToPage(int page)
+    {
+        if (page < 1 || page > TotalPages) return;
+        await OnPageChange.InvokeAsync(page);
+    }
+}

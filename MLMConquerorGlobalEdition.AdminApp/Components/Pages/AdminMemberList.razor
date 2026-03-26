@@ -1,0 +1,155 @@
+@page "/admin/members"
+@attribute [Authorize(Roles = "SuperAdmin,Admin,SupportManager,SupportLevel1,SupportLevel2,SupportLevel3,IT")]
+@inject AdminApiClient Api
+@inject AdminViewContextInitializer ViewContextInit
+@inject NavigationManager Navigation
+@inject IViewContextService ViewContext
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4>Member Management</h4>
+        <div class="d-flex gap-2">
+            <input class="form-control" style="width:280px" placeholder="Search by name, email, or ID…"
+                   @bind="_searchQuery" @bind:after="SearchAsync" />
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body p-0">
+            <LoadingSpinner IsLoading="@_loading" />
+            @if (!_loading)
+            {
+                <SfGrid TValue="MemberListItem" DataSource="@_members" AllowPaging="true" AllowSorting="true">
+                    <GridPageSettings PageSize="@PageSize" TotalItemsCount="@_totalCount" CurrentPage="@_page">
+                    </GridPageSettings>
+                    <GridEvents TValue="MemberListItem" OnActionBegin="HandleActionBegin"></GridEvents>
+                    <GridColumns>
+                        <GridColumn HeaderText="Member ID" Width="130">
+                            <Template>
+                                @{ var m = (MemberListItem)context; }
+                                <code>@m.MemberId</code>
+                            </Template>
+                        </GridColumn>
+                        <GridColumn Field="@nameof(MemberListItem.FullName)" HeaderText="Name"></GridColumn>
+                        <GridColumn Field="@nameof(MemberListItem.Email)" HeaderText="Email"></GridColumn>
+                        <GridColumn HeaderText="Type" Width="130">
+                            <Template>
+                                @{ var m = (MemberListItem)context; }
+                                <StatusBadge Status="@m.MemberType" />
+                            </Template>
+                        </GridColumn>
+                        <GridColumn HeaderText="Status" Width="110">
+                            <Template>
+                                @{ var m = (MemberListItem)context; }
+                                <StatusBadge Status="@m.Status" />
+                            </Template>
+                        </GridColumn>
+                        <GridColumn HeaderText="Joined" Width="140">
+                            <Template>
+                                @{ var m = (MemberListItem)context; }
+                                @m.JoinedAt.ToString("MMM dd, yyyy")
+                            </Template>
+                        </GridColumn>
+                        <GridColumn HeaderText="Actions" Width="180">
+                            <Template>
+                                @{ var m = (MemberListItem)context; }
+                                <div class="d-flex gap-1">
+                                    <button class="btn btn-sm btn-outline-primary"
+                                            @onclick="() => ViewMemberAsync(m)">
+                                        View
+                                    </button>
+                                    @if (ViewContext.HasPermission(Permissions.Member.Impersonate))
+                                    {
+                                        <button class="btn btn-sm btn-warning"
+                                                disabled="@(_impersonatingId == m.MemberId)"
+                                                @onclick="() => ImpersonateAsync(m)">
+                                            @if (_impersonatingId == m.MemberId)
+                                            {
+                                                <span class="spinner-border spinner-border-sm"></span>
+                                            }
+                                            else
+                                            {
+                                                <span>Impersonate</span>
+                                            }
+                                        </button>
+                                    }
+                                </div>
+                            </Template>
+                        </GridColumn>
+                    </GridColumns>
+                </SfGrid>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<MemberListItem> _members = new();
+    private bool    _loading = true;
+    private string  _searchQuery   = string.Empty;
+    private string? _impersonatingId;
+    private int     _page       = 1;
+    private int     _totalCount;
+    private const int PageSize  = 20;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+        // TODO: GET /api/v1/admin/members?search={_searchQuery}&page={_page}&pageSize={PageSize}
+        await Task.Delay(50);
+        _members    = GenerateMockData();
+        _totalCount = 142;
+        _loading    = false;
+    }
+
+    private async Task HandleActionBegin(ActionEventArgs<MemberListItem> args)
+    {
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Paging)
+        {
+            args.Cancel = true;
+            _page = args.CurrentPage;
+            await LoadAsync();
+        }
+    }
+
+    private async Task SearchAsync() { _page = 1; await LoadAsync(); }
+
+    private void ViewMemberAsync(MemberListItem m)
+        => Navigation.NavigateTo($"/admin/members/{m.MemberId}");
+
+    private async Task ImpersonateAsync(MemberListItem m)
+    {
+        _impersonatingId = m.MemberId;
+        try
+        {
+            var result = await Api.StartImpersonationAsync(m.MemberId);
+            if (result != null)
+            {
+                await ViewContextInit.SetImpersonationAsync(result.AccessToken, result.MemberId);
+                Navigation.NavigateTo($"/admin/members/{m.MemberId}/view");
+            }
+        }
+        finally
+        {
+            _impersonatingId = null;
+        }
+    }
+
+    private static List<MemberListItem> GenerateMockData() =>
+    [
+        new("AMB-001", "John Smith",  "john@example.com", "Ambassador", "Active", DateTime.Today.AddDays(-120)),
+        new("AMB-002", "Jane Doe",    "jane@example.com", "Ambassador", "Active", DateTime.Today.AddDays(-90)),
+        new("MEM-003", "Bob Johnson", "bob@example.com",  "Member",     "Active", DateTime.Today.AddDays(-45)),
+    ];
+
+    private record MemberListItem(
+        string   MemberId,
+        string   FullName,
+        string   Email,
+        string   MemberType,
+        string   Status,
+        DateTime JoinedAt);
+}

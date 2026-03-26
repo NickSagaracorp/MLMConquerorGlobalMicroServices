@@ -1,0 +1,61 @@
+@inject HttpClient Http
+@inject IViewContextService ViewContext
+
+<div class="card h-100">
+    <div class="card-header d-flex align-items-center justify-content-between py-3">
+        <h6 class="card-title mb-0 fw-semibold">Token Balance</h6>
+        <AdminOnlyWrapper Permission="@Permissions.Tokens.AdminGrant">
+            <button class="btn btn-sm btn-outline-primary" @onclick="() => _showGrantModal = true">
+                <i class="ri-add-line me-1"></i>Grant Tokens
+            </button>
+        </AdminOnlyWrapper>
+    </div>
+    <div class="card-body">
+        <LoadingSpinner IsLoading="@_isLoading" />
+        @if (!_isLoading)
+        {
+            @foreach (var b in _balances)
+            {
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="small text-muted">@b.TokenTypeName</span>
+                    <span class="fw-semibold">@b.Balance</span>
+                </div>
+            }
+            @if (!_balances.Any())
+            {
+                <EmptyState Icon="ri-copper-coin-line" Title="No tokens" Message="Token balances will appear here." />
+            }
+        }
+    </div>
+</div>
+
+@if (_showGrantModal)
+{
+    <ConfirmModal IsVisible="true"
+                  Title="Grant Tokens"
+                  Message="Admin token grant modal — to be implemented."
+                  ConfirmLabel="Grant"
+                  ConfirmColor="primary"
+                  OnConfirm="@(() => _showGrantModal = false)"
+                  OnCancel="@(() => _showGrantModal = false)" />
+}
+
+@code {
+    [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+
+    private bool _isLoading   = true;
+    private bool _showGrantModal;
+    private List<TokenBalanceItem> _balances = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(MemberProfileId)) return;
+        _isLoading = true;
+        StateHasChanged();
+        // TODO: load from API  GET /api/v1/bizcenter/tokens
+        await Task.Delay(50);
+        _isLoading = false;
+    }
+
+    private record TokenBalanceItem(string TokenTypeName, int Balance);
+}

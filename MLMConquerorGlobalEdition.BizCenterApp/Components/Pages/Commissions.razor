@@ -1,0 +1,5 @@
+@page "/commissions"
+@attribute [Authorize(Roles = "Ambassador")]
+@inject IViewContextService ViewContext
+
+<CommissionsDashboard MemberProfileId="@ViewContext.ViewingMemberId" />

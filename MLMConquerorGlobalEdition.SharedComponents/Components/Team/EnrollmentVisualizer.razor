@@ -1,0 +1,42 @@
+@inject HttpClient Http
+
+<BreadcrumbNav Items="@_breadcrumb" />
+
+<div class="card">
+    <div class="card-header py-3">
+        <h6 class="card-title mb-0 fw-semibold">Enrollment Tree Visualizer</h6>
+    </div>
+    <div class="card-body">
+        <LoadingSpinner IsLoading="@_isLoading" />
+        @if (!_isLoading)
+        {
+            <div class="tree-visualizer text-center py-5 border rounded bg-light">
+                <i class="ri-organization-chart display-4 text-muted opacity-50"></i>
+                <p class="text-muted mt-2">Genealogy tree visualizer — rendered via JS interop</p>
+                <small class="text-muted">@_nodes.Count nodes loaded for MemberId: @MemberProfileId</small>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+
+    private bool _isLoading = true;
+    private List<object> _nodes = new();
+
+    private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
+    {
+        new("Dashboard", "/dashboard"),
+        new("Enrollment Visualizer")
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(MemberProfileId)) return;
+        _isLoading = true; StateHasChanged();
+        // TODO: GET /api/v1/bizcenter/team/enrollment?memberId={MemberProfileId}&all=true
+        await Task.Delay(50);
+        _isLoading = false;
+    }
+}

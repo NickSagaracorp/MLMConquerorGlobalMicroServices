@@ -1,0 +1,258 @@
+@page "/admin/ghost-points"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+
+<PageTitle>Ghost Points — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Ghost Points") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="alert alert-info d-flex align-items-center mb-3" role="alert">
+    <i class="ri-information-line me-2 fs-5"></i>
+    <div>
+        <strong>Ghost Points are write-only at the admin level.</strong> Points added here are visible only in the affected ambassador's upline stats. To view a member's ghost points, use the member detail view.
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header py-3">
+                <h6 class="card-title mb-0 fw-semibold">
+                    <i class="ri-ghost-line me-2 text-primary"></i>Add Ghost Points
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Ambassador Member ID <span class="text-danger">*</span></label>
+                    <MemberPicker Value="@_form.MemberId" ValueChanged="@OnAmbassadorSelected" />
+                    <div class="form-text">The ambassador whose upline will see these points.</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Leg Member ID <span class="text-danger">*</span></label>
+                    @if (_loadingLegs)
+                    {
+                        <div class="d-flex align-items-center gap-2 mt-1">
+                            <div class="spinner-border spinner-border-sm text-primary"></div>
+                            <small class="text-muted">Loading legs...</small>
+                        </div>
+                    }
+                    else if (_legOptions.Count > 0)
+                    {
+                        <select class="form-select" @bind="_form.LegMemberId">
+                            <option value="">— Select leg —</option>
+                            @foreach (var leg in _legOptions)
+                            {
+                                <option value="@leg.MemberId">@leg.Side — @leg.MemberId (@leg.FullName)</option>
+                            }
+                        </select>
+                    }
+                    else if (!string.IsNullOrWhiteSpace(_form.MemberId))
+                    {
+                        <div class="alert alert-warning py-2 mb-0 small">No binary tree legs found for this ambassador.</div>
+                    }
+                    else
+                    {
+                        <input class="form-control" disabled placeholder="Select ambassador first" />
+                    }
+                    <div class="form-text">Direct left/right child in the ambassador's binary tree.</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Points <span class="text-danger">*</span></label>
+                    <input type="number" step="0.01" class="form-control" @bind="_form.Points" placeholder="0.00" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Notes</label>
+                    <textarea class="form-control" rows="3" @bind="_form.Notes" placeholder="Optional admin notes..."></textarea>
+                </div>
+                <button class="btn btn-primary w-100" @onclick="SubmitGhostPoint" disabled="@_saving">
+                    @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                    <i class="ri-add-line me-1"></i>Add Ghost Points
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header py-3 d-flex align-items-center gap-2">
+                <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+                    <i class="ri-list-check-3 me-2 text-primary"></i>Session Ghost Points
+                </h6>
+                <span class="badge bg-secondary">@_sessionPoints.Count added this session</span>
+            </div>
+            <div class="card-body p-0">
+                @if (_sessionPoints.Count == 0)
+                {
+                    <div class="text-center py-5 text-muted">
+                        <i class="ri-ghost-line fs-1 d-block mb-2"></i>
+                        <p class="mb-0">No ghost points added in this session yet.</p>
+                    </div>
+                }
+                else
+                {
+                    <SfGrid TValue="GhostPointDto" DataSource="@_sessionPoints"
+                            AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                        <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250,500,1000})" />
+                        <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                        <GridColumns>
+                            <GridColumn HeaderText="Member ID" Width="140">
+                                <Template><code class="small">@(((GhostPointDto)context).MemberId)</code></Template>
+                            </GridColumn>
+                            <GridColumn HeaderText="Leg Member ID" Width="140">
+                                <Template><code class="small">@(((GhostPointDto)context).LegMemberId)</code></Template>
+                            </GridColumn>
+                            <GridColumn HeaderText="Points" Width="100" TextAlign="TextAlign.Right">
+                                <Template><span class="fw-semibold">@(((GhostPointDto)context).Points.ToString("F2"))</span></Template>
+                            </GridColumn>
+                            <GridColumn HeaderText="Side" Width="90" TextAlign="TextAlign.Center">
+                                <Template>
+                                    <span class="badge @SideBadge(((GhostPointDto)context).Side)">@(((GhostPointDto)context).Side)</span>
+                                </Template>
+                            </GridColumn>
+                            <GridColumn HeaderText="Notes" Width="180">
+                                <Template><span class="small text-muted">@(((GhostPointDto)context).Notes ?? "—")</span></Template>
+                            </GridColumn>
+                            <GridColumn HeaderText="Status" Width="100" TextAlign="TextAlign.Center">
+                                <Template>
+                                    <span class="badge @(((GhostPointDto)context).IsActive ? "bg-success" : "bg-secondary")">
+                                        @(((GhostPointDto)context).IsActive ? "Active" : "Inactive")
+                                    </span>
+                                </Template>
+                            </GridColumn>
+                            <GridColumn HeaderText="Created" Width="120">
+                                <Template><span class="small text-muted">@(((GhostPointDto)context).CreationDate.ToString("yyyy-MM-dd HH:mm"))</span></Template>
+                            </GridColumn>
+                            <GridColumn HeaderText="Actions" Width="110" TextAlign="TextAlign.Center">
+                                <Template>
+                                    @if (((GhostPointDto)context).IsActive)
+                                    {
+                                        <text>
+                                            <button class="btn btn-sm btn-outline-danger py-0"
+                                                    @onclick="() => DeactivateGhostPoint((GhostPointDto)context)">
+                                                Deactivate
+                                            </button>
+                                        </text>
+                                    }
+                                </Template>
+                            </GridColumn>
+                        </GridColumns>
+                    </SfGrid>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<GhostPointDto> _sessionPoints = new();
+    private List<LegOption> _legOptions = new();
+    private bool _saving;
+    private bool _loadingLegs;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private GhostPointFormModel _form = new();
+
+    private async Task OnAmbassadorSelected(string memberId)
+    {
+        _form.MemberId = memberId;
+        _form.LegMemberId = string.Empty;
+        _legOptions = new();
+        if (string.IsNullOrWhiteSpace(memberId)) return;
+
+        _loadingLegs = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<BinaryNodeDto>>($"api/v1/admin/network/binary-tree?memberId={memberId}&depth=1");
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                if (resp.Data.Left is not null)
+                    _legOptions.Add(new LegOption(resp.Data.Left.MemberId, resp.Data.Left.FullName, "Left"));
+                if (resp.Data.Right is not null)
+                    _legOptions.Add(new LegOption(resp.Data.Right.MemberId, resp.Data.Right.FullName, "Right"));
+            }
+        }
+        catch { /* non-critical */ }
+        finally { _loadingLegs = false; }
+    }
+
+    private async Task SubmitGhostPoint()
+    {
+        if (string.IsNullOrWhiteSpace(_form.MemberId) || string.IsNullOrWhiteSpace(_form.LegMemberId) || _form.Points <= 0)
+        { _alertMsg = "Member ID, Leg Member ID, and Points are required."; _alertIsError = true; return; }
+        _saving = true;
+        try
+        {
+            var payload = new
+            {
+                MemberId = _form.MemberId,
+                LegMemberId = _form.LegMemberId,
+                Points = _form.Points,
+                Notes = _form.Notes
+            };
+            var response = await Http.PostAsJsonAsync("api/v1/admin/ghost-points", payload);
+            if (response.IsSuccessStatusCode)
+            {
+                var created = new GhostPointDto(
+                    Id: Guid.NewGuid().ToString(),
+                    MemberId: _form.MemberId,
+                    LegMemberId: _form.LegMemberId,
+                    Points: _form.Points,
+                    Side: "—",
+                    Notes: _form.Notes,
+                    IsActive: true,
+                    CreationDate: DateTime.UtcNow
+                );
+                _sessionPoints.Insert(0, created);
+                _alertMsg = $"Ghost points added successfully for member {_form.MemberId}.";
+                _alertIsError = false;
+                _form = new();
+            }
+            else { _alertMsg = $"Failed to add ghost points ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private async Task DeactivateGhostPoint(GhostPointDto dto)
+    {
+        _saving = true;
+        try
+        {
+            var response = await Http.DeleteAsync($"api/v1/admin/ghost-points/{dto.Id}");
+            if (response.IsSuccessStatusCode)
+            {
+                var idx = _sessionPoints.FindIndex(x => x.Id == dto.Id);
+                if (idx >= 0)
+                    _sessionPoints[idx] = dto with { IsActive = false };
+                _alertMsg = "Ghost point deactivated.";
+                _alertIsError = false;
+            }
+            else { _alertMsg = $"Deactivate failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private static string SideBadge(string side) => side == "Left" ? "bg-primary" : "bg-info text-dark";
+
+    private class GhostPointFormModel
+    {
+        public string MemberId { get; set; } = string.Empty;
+        public string LegMemberId { get; set; } = string.Empty;
+        public decimal Points { get; set; }
+        public string? Notes { get; set; }
+    }
+
+    private record GhostPointDto(string Id, string MemberId, string LegMemberId, decimal Points, string Side, string? Notes, bool IsActive, DateTime CreationDate);
+    private record LegOption(string MemberId, string FullName, string Side);
+    private record BinaryNodeDto(string MemberId, string FullName, string? RankName, decimal LeftPoints, decimal RightPoints, int LeftCount, int RightCount, BinaryNodeDto? Left, BinaryNodeDto? Right);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+}

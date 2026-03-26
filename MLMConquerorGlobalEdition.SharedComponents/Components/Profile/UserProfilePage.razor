@@ -1,0 +1,192 @@
+@inject IViewContextService ViewContext
+@inject HttpClient Http
+
+<BreadcrumbNav Items="@_breadcrumb" />
+
+<LoadingSpinner IsLoading="@_isLoading" />
+
+@if (!_isLoading && _profile is not null)
+{
+    <div class="row g-3">
+        <!-- Left: Avatar + Quick Info -->
+        <div class="col-12 col-lg-4">
+            <div class="card text-center mb-3">
+                <div class="card-body">
+                    <div class="avatar-xl rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mx-auto mb-3"
+                         style="width:88px;height:88px;font-size:2rem;">
+                        @(_profile.FirstName.Length > 0 ? _profile.FirstName[0] : '?')
+                    </div>
+                    <h5 class="mb-1 fw-semibold">@_profile.FirstName @_profile.LastName</h5>
+                    <p class="text-muted small mb-2">@_profile.MemberId</p>
+                    <StatusBadge Status="@_profile.Status" />
+
+                    <!-- Admin: change status -->
+                    <AdminOnlyWrapper Permission="@Permissions.Member.ChangeStatus">
+                        <div class="mt-3">
+                            <button class="btn btn-sm btn-outline-warning" @onclick="() => _showStatusModal = true">
+                                <i class="ri-user-settings-line me-1"></i>Change Status
+                            </button>
+                        </div>
+                    </AdminOnlyWrapper>
+                </div>
+            </div>
+
+            <!-- Membership card -->
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="fw-semibold mb-3">Membership</h6>
+                    <div class="d-flex justify-content-between small mb-2">
+                        <span class="text-muted">Level</span>
+                        <span class="fw-medium">@_profile.MembershipLevel</span>
+                    </div>
+                    <div class="d-flex justify-content-between small mb-2">
+                        <span class="text-muted">Status</span>
+                        <StatusBadge Status="@_profile.MembershipStatus" />
+                    </div>
+                    <div class="d-flex justify-content-between small">
+                        <span class="text-muted">Enrolled</span>
+                        <span>@_profile.EnrollDate.ToString("MMM dd, yyyy")</span>
+                    </div>
+
+                    <AdminOnlyWrapper Permission="@Permissions.Member.OverrideMembership">
+                        <div class="mt-3 d-grid">
+                            <button class="btn btn-sm btn-outline-primary">Override Membership</button>
+                        </div>
+                    </AdminOnlyWrapper>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Tab sections -->
+        <div class="col-12 col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <ul class="nav nav-tabs card-header-tabs" id="profileTabs">
+                        <li class="nav-item">
+                            <button class="nav-link @(_tab == "info" ? "active" : "")" @onclick='() => _tab = "info"'>
+                                Personal Info
+                            </button>
+                        </li>
+                        @if (ViewContext.ViewingMemberId == ViewContext.ViewerUserId || ViewContext.IsAdminContext)
+                        {
+                            <li class="nav-item">
+                                <button class="nav-link @(_tab == "credentials" ? "active" : "")" @onclick='() => _tab = "credentials"'>
+                                    Credentials
+                                </button>
+                            </li>
+                        }
+                        <li class="nav-item">
+                            <button class="nav-link @(_tab == "security" ? "active" : "")" @onclick='() => _tab = "security"'>
+                                Security Log
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link @(_tab == "wallet" ? "active" : "")" @onclick='() => _tab = "wallet"'>
+                                Wallet
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body">
+                    @if (_tab == "info")
+                    {
+                        <PersonalInfoForm Profile="@_profile" IsReadOnly="@(!ViewContext.IsAdminContext && ViewContext.ViewingMemberId != ViewContext.ViewerUserId)" />
+                    }
+                    else if (_tab == "credentials")
+                    {
+                        <CredentialsForm MemberProfileId="@MemberProfileId" />
+                    }
+                    else if (_tab == "security")
+                    {
+                        <SecurityLogTable MemberProfileId="@MemberProfileId" />
+                    }
+                    else if (_tab == "wallet")
+                    {
+                        <WalletPanel MemberProfileId="@MemberProfileId" />
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(_error))
+{
+    <ApiErrorAlert ErrorMessage="@_error" />
+}
+
+@if (_showStatusModal)
+{
+    <ConfirmModal IsVisible="true"
+                  Title="Change Member Status"
+                  Message="This will change the member's account status. Continue?"
+                  ConfirmLabel="Change Status"
+                  ConfirmColor="warning"
+                  OnConfirm="ChangeStatusAsync"
+                  OnCancel="@(() => _showStatusModal = false)" />
+}
+
+@code {
+    [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+
+    private bool    _isLoading       = true;
+    private string  _tab             = "info";
+    private string? _error;
+    private bool    _showStatusModal;
+    private MemberProfileDto? _profile;
+
+    private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
+    {
+        new("Dashboard", "/dashboard"),
+        new("Profile")
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(MemberProfileId)) return;
+        await LoadProfileAsync();
+    }
+
+    private async Task LoadProfileAsync()
+    {
+        _isLoading = true;
+        _error     = null;
+        StateHasChanged();
+
+        try
+        {
+            // TODO: GET /api/v1/bizcenter/profile?memberId={MemberProfileId}
+            await Task.Delay(50);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ChangeStatusAsync()
+    {
+        _showStatusModal = false;
+        // TODO: PUT /api/v1/admin/members/{MemberProfileId}/status
+        await Task.CompletedTask;
+    }
+
+    public class MemberProfileDto
+    {
+        public string MemberId        { get; set; } = string.Empty;
+        public string FirstName       { get; set; } = string.Empty;
+        public string LastName        { get; set; } = string.Empty;
+        public string Email           { get; set; } = string.Empty;
+        public string Status          { get; set; } = string.Empty;
+        public string MembershipLevel { get; set; } = string.Empty;
+        public string MembershipStatus{ get; set; } = string.Empty;
+        public DateTime EnrollDate    { get; set; }
+        public string? Phone          { get; set; }
+        public string? Country        { get; set; }
+        public string? City           { get; set; }
+    }
+}

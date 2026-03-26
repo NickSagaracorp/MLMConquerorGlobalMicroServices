@@ -1,0 +1,45 @@
+@page "/admin/login"
+@layout MLMConquerorGlobalEdition.SharedComponents.Components.Layout.BlankLayout
+
+<div class="login-wrapper-admin">
+    <div class="login-card-admin">
+        <div class="login-logo">
+            <h2 class="text-white">MLM Conqueror</h2>
+            <p class="text-muted">Administration Portal</p>
+        </div>
+
+        @if (Error == "invalid")
+        {
+            <div class="alert alert-danger">Invalid credentials or insufficient permissions.</div>
+        }
+        else if (Error == "access_denied")
+        {
+            <div class="alert alert-warning">Access denied. Admin privileges required.</div>
+        }
+
+        <form method="post" action="/account/login">
+            <div class="mb-3">
+                <label class="form-label text-light">Email</label>
+                <input name="Email" type="email" class="form-control" required autocomplete="username" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label text-light">Password</label>
+                <input name="Password" type="password" class="form-control" required autocomplete="current-password" />
+            </div>
+            <button type="submit" class="btn btn-warning w-100 fw-semibold">
+                Sign In to Admin
+            </button>
+        </form>
+    </div>
+</div>
+
+<style>
+.login-wrapper-admin { display:flex; justify-content:center; align-items:center; min-height:100vh; background:#1a1d2e; }
+.login-card-admin { background:#252838; padding:2rem; border-radius:12px; box-shadow:0 4px 32px rgba(0,0,0,.4); width:100%; max-width:420px; border:1px solid #3a3d52; }
+.login-logo { text-align:center; margin-bottom:1.5rem; }
+</style>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+}

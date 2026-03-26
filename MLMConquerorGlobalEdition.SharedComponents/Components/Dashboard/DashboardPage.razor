@@ -1,0 +1,105 @@
+@inject IViewContextService ViewContext
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Dashboard") })" />
+
+@if (_isLoading)
+{
+    <LoadingSpinner IsLoading="true" />
+}
+else
+{
+    <!-- KPI Stats Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-sm-6 col-xl-3">
+            <StatCard Title="Total Earnings" Value="@_totalEarnings" Icon="ri-money-dollar-circle-line" Color="primary" Trend="@_earningsTrend" TrendUp="@_earningsTrendUp" />
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <StatCard Title="Team Size" Value="@_teamSize" Icon="ri-group-line" Color="success" />
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <StatCard Title="Token Balance" Value="@_tokenBalance" Icon="ri-copper-coin-line" Color="warning" />
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <StatCard Title="Current Rank" Value="@_currentRank" Icon="ri-medal-line" Color="info" />
+        </div>
+    </div>
+
+    <!-- Fast Start Bonus Cards — Ambassador only -->
+    @if (ViewContext.IsInAnyRole(AppRoles.Ambassador) || ViewContext.IsAdminContext)
+    {
+        <div class="mb-4">
+            <h6 class="fw-semibold mb-3">Fast Start Bonus Windows</h6>
+            <div class="row g-3">
+                @foreach (var fsb in _fsbWindows)
+                {
+                    <div class="col-12 col-md-4">
+                        <FastStartBonusCard Window="@fsb" />
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- Activity Feed -->
+    <div class="row g-3">
+        <div class="col-12 col-lg-8">
+            <ActivityFeed MemberProfileId="@MemberProfileId" />
+        </div>
+        <div class="col-12 col-lg-4">
+            <TokenBalanceWidget MemberProfileId="@MemberProfileId" />
+        </div>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(_error))
+{
+    <ApiErrorAlert ErrorMessage="@_error" />
+}
+
+@code {
+    [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+
+    private bool    _isLoading      = true;
+    private string  _totalEarnings  = "$0.00";
+    private string  _teamSize       = "0";
+    private string  _tokenBalance   = "0";
+    private string  _currentRank    = "—";
+    private string? _earningsTrend;
+    private bool    _earningsTrendUp = true;
+    private string? _error;
+
+    private List<FsbWindowDto> _fsbWindows = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(MemberProfileId)) return;
+        await LoadDashboardAsync();
+    }
+
+    private async Task LoadDashboardAsync()
+    {
+        _isLoading = true;
+        _error     = null;
+        StateHasChanged();
+
+        try
+        {
+            // TODO: replace with actual API calls when BizCenter API endpoints are wired
+            // var stats = await Http.GetFromJsonAsync<ApiResponse<DashboardStatsDto>>(
+            //     $"api/v1/bizcenter/dashboard?memberId={MemberProfileId}");
+            await Task.Delay(50); // placeholder
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    public record FsbWindowDto(int WindowNumber, DateTime? StartDate, DateTime? EndDate, decimal Earned, string Status);
+}

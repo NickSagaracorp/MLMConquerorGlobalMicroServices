@@ -1,0 +1,101 @@
+@page "/admin/login"
+@layout MLMConquerorGlobalEdition.SharedComponents.Components.Layout.BlankLayout
+@inject AdminJwtAuthStateProvider AuthProvider
+@inject AdminApiClient Api
+@inject NavigationManager Navigation
+@inject AdminViewContextInitializer ViewContextInitializer
+
+<div class="login-wrapper">
+    <div class="login-card">
+        <div class="login-logo">
+            <h2>MLM Conqueror</h2>
+            <p class="text-muted text-danger fw-semibold">Admin Portal</p>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="alert alert-danger">@_error</div>
+        }
+
+        <EditForm Model="_model" OnValidSubmit="HandleLogin">
+            <DataAnnotationsValidator />
+            <div class="mb-3">
+                <label class="form-label">Email</label>
+                <InputText class="form-control" @bind-Value="_model.Email" type="email" placeholder="admin@company.com" />
+                <ValidationMessage For="() => _model.Email" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Password</label>
+                <InputText class="form-control" @bind-Value="_model.Password" type="password" placeholder="••••••••" />
+                <ValidationMessage For="() => _model.Password" />
+            </div>
+            <button type="submit" class="btn btn-danger w-100" disabled="@_busy">
+                @if (_busy) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                Sign In to Admin
+            </button>
+        </EditForm>
+    </div>
+</div>
+
+<style>
+    .login-wrapper { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #1a1a2e; }
+    .login-card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 32px rgba(0,0,0,.3); width: 100%; max-width: 420px; }
+    .login-logo { text-align: center; margin-bottom: 1.5rem; }
+</style>
+
+@code {
+    private LoginModel _model = new();
+    private bool _busy;
+    private string _error = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthProvider.GetAuthenticationStateAsync();
+        if (state.User.Identity?.IsAuthenticated == true)
+            Navigation.NavigateTo("/admin");
+    }
+
+    private async Task HandleLogin()
+    {
+        _busy  = true;
+        _error = string.Empty;
+        try
+        {
+            // Reuse the same auth endpoint — admin roles are embedded in the JWT
+            var response = await Api.PostAsync<AuthResponse>(
+                "api/v1/auth/login",
+                new { _model.Email, _model.Password });
+
+            if (response?.Success == true && response.Data != null)
+            {
+                await AuthProvider.NotifyLoginAsync(response.Data.AccessToken, response.Data.RefreshToken);
+                await ViewContextInitializer.InitializeAsync();
+                Navigation.NavigateTo("/admin");
+            }
+            else
+            {
+                _error = response?.Message ?? response?.Errors?.FirstOrDefault() ?? "Login failed.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Unable to connect to AdminAPI: {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private class LoginModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Password { get; set; } = string.Empty;
+    }
+
+    private record AuthResponse(string AccessToken, string RefreshToken, DateTime TokenExpiry);
+}

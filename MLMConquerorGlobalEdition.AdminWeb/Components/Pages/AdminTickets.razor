@@ -1,0 +1,312 @@
+@page "/admin/tickets"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+<PageTitle>Tickets — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Support Tickets") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+@if (_stats is not null)
+{
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3 p-3">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center bg-warning bg-opacity-10 text-warning" style="width:44px;height:44px;flex-shrink:0;">
+                        <i class="ri-inbox-line fs-5"></i>
+                    </div>
+                    <div>
+                        <div class="fs-4 fw-bold lh-1">@_stats.Open</div>
+                        <small class="text-muted">Open</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3 p-3">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center bg-info bg-opacity-10 text-info" style="width:44px;height:44px;flex-shrink:0;">
+                        <i class="ri-loader-line fs-5"></i>
+                    </div>
+                    <div>
+                        <div class="fs-4 fw-bold lh-1">@_stats.InProgress</div>
+                        <small class="text-muted">In Progress</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3 p-3">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary" style="width:44px;height:44px;flex-shrink:0;">
+                        <i class="ri-time-line fs-5"></i>
+                    </div>
+                    <div>
+                        <div class="fs-4 fw-bold lh-1">@_stats.NewLast48Hours</div>
+                        <small class="text-muted">New (48h)</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3 p-3">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center bg-success bg-opacity-10 text-success" style="width:44px;height:44px;flex-shrink:0;">
+                        <i class="ri-check-double-line fs-5"></i>
+                    </div>
+                    <div>
+                        <div class="fs-4 fw-bold lh-1">@_stats.Closed</div>
+                        <small class="text-muted">Closed</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-3 flex-wrap">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-customer-service-2-line me-2 text-primary"></i>Support Tickets
+        </h6>
+        <select class="form-select form-select-sm w-auto" style="min-width:140px"
+                @bind="_statusFilter" @bind:after="() => { _page = 1; _ = LoadAsync(); }">
+            <option value="">All Statuses</option>
+            <option value="Open">Open</option>
+            <option value="InProgress">In Progress</option>
+            <option value="Resolved">Resolved</option>
+            <option value="Closed">Closed</option>
+        </select>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+        <button class="btn btn-primary btn-sm" @onclick="OpenCreate">
+            <i class="ri-add-line me-1"></i>New Ticket
+        </button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="TicketDto" DataSource="@_items"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250,500,1000})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn HeaderText="#" Width="110">
+                        <Template><code class="text-primary small">@(((TicketDto)context).Id[..Math.Min(8, ((TicketDto)context).Id.Length)])…</code></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Subject" Width="220">
+                        <Template><span class="fw-semibold">@(((TicketDto)context).Subject)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Member" Width="130">
+                        <Template><code>@(((TicketDto)context).MemberId)</code></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Category" Width="130">
+                        <Template><span class="text-muted small">@(((TicketDto)context).CategoryName ?? "—")</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Priority" Width="110">
+                        <Template>
+                            <span class="badge @PriorityBadge(((TicketDto)context).Priority)">@(((TicketDto)context).Priority)</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Status" Width="120">
+                        <Template>
+                            <span class="badge @StatusBadge(((TicketDto)context).Status)">@(((TicketDto)context).Status)</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(TicketDto.CommentCount)" HeaderText="Comments" Width="100" TextAlign="TextAlign.Center" />
+                    <GridColumn Field="@nameof(TicketDto.CreationDate)" HeaderText="Created" Width="120" Format="yyyy-MM-dd" Type="ColumnType.Date" />
+                    <GridColumn HeaderText="Actions" Width="90" TextAlign="TextAlign.Center">
+                        <Template>
+                            <a href="/admin/tickets/@(((TicketDto)context).Id)" class="btn btn-sm btn-outline-primary py-0 px-2">
+                                <i class="ri-eye-line"></i>
+                            </a>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+
+            @if (_totalPages > 1)
+            {
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
+                    <small class="text-muted">@_totalCount tickets — Page @_page of @_totalPages</small>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>
+                            @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
+                            { var pg = i; <li class="page-item @(_page == pg ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(pg)">@pg</button></li> }
+                            <li class="page-item @(_page == _totalPages ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page + 1)">›</button></li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@if (_showForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold">New Ticket</h5>
+                    <button type="button" class="btn-close" @onclick="CloseForm"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Member ID <span class="text-danger">*</span></label>
+                            <MemberPicker Value="@_form.MemberId" ValueChanged="@(v => _form.MemberId = v)" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Category</label>
+                            <select class="form-select" @bind="_form.CategoryId">
+                                <option value="">— Select Category —</option>
+                                @foreach (var cat in _categories)
+                                {
+                                    <option value="@cat.Id">@cat.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Subject <span class="text-danger">*</span></label>
+                            <input class="form-control" @bind="_form.Subject" placeholder="Brief summary of the issue" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Body</label>
+                            <textarea class="form-control" rows="4" @bind="_form.Body" placeholder="Detailed description..."></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Priority</label>
+                            <select class="form-select" @bind="_form.Priority">
+                                <option value="0">Low</option>
+                                <option value="1">Normal</option>
+                                <option value="2">High</option>
+                                <option value="3">Critical</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SaveTicket" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Create Ticket
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<TicketDto> _items = new();
+    private List<TicketCategoryItem> _categories = new();
+    private TicketStatsDto? _stats;
+    private bool _loading = true;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private int _page = 1;
+    private const int PageSize = 20;
+    private int _totalCount;
+    private int _totalPages = 1;
+    private string _statusFilter = string.Empty;
+    private bool _showForm;
+    private TicketFormModel _form = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(LoadCategories(), LoadStats(), LoadAsync());
+    }
+
+    private async Task LoadCategories()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<IEnumerable<TicketCategoryItem>>>("api/v1/admin/ticket-categories");
+            if (resp?.Success == true && resp.Data is not null)
+                _categories = resp.Data.ToList();
+        }
+        catch { /* non-critical */ }
+    }
+
+    private async Task LoadStats()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<TicketStatsDto>>("api/v1/admin/tickets/stats");
+            if (resp?.Success == true) _stats = resp.Data;
+        }
+        catch { /* non-critical */ }
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var url = $"api/v1/admin/tickets?page={_page}&pageSize={PageSize}";
+            if (!string.IsNullOrWhiteSpace(_statusFilter)) url += $"&status={_statusFilter}";
+            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<TicketDto>>>(url);
+            if (resp?.Success == true && resp.Data is not null) { _items = resp.Data.Items.ToList(); _totalCount = resp.Data.TotalCount; _totalPages = resp.Data.TotalPages; }
+            else { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load tickets."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private async Task ChangePage(int p) { if (p < 1 || p > _totalPages) return; _page = p; await LoadAsync(); }
+
+    private void OpenCreate() { _form = new(); _showForm = true; }
+    private void CloseForm() { _showForm = false; }
+
+    private async Task SaveTicket()
+    {
+        if (string.IsNullOrWhiteSpace(_form.MemberId) || string.IsNullOrWhiteSpace(_form.Subject))
+        { _alertMsg = "Member ID and Subject are required."; _alertIsError = true; return; }
+        _saving = true;
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/v1/admin/tickets", _form);
+            if (response.IsSuccessStatusCode) { _alertMsg = "Ticket created."; _alertIsError = false; CloseForm(); await LoadAsync(); await LoadStats(); }
+            else { _alertMsg = $"Create failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private static string StatusBadge(string s) => s switch
+    { "Open" => "bg-warning text-dark", "InProgress" => "bg-info text-dark", "Resolved" => "bg-success", "Closed" => "bg-secondary", _ => "bg-secondary" };
+
+    private static string PriorityBadge(string p) => p switch
+    { "Critical" => "bg-danger", "High" => "bg-warning text-dark", "Medium" => "bg-info text-dark", _ => "bg-secondary" };
+
+    private class TicketFormModel
+    {
+        public string MemberId { get; set; } = string.Empty;
+        public string Subject { get; set; } = string.Empty;
+        public string? Body { get; set; }
+        public int Priority { get; set; } = 1;
+        public int? CategoryId { get; set; }
+    }
+
+    private record TicketDto(string Id, string Subject, string MemberId, string Status, string Priority,
+        string? CategoryName, string? AssignedToUserId, DateTime CreationDate, int CommentCount);
+    private record TicketCategoryItem(int Id, string Name);
+    private record TicketStatsDto(int Open, int InProgress, int Resolved, int Closed, int NewLast48Hours, int Total);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+}

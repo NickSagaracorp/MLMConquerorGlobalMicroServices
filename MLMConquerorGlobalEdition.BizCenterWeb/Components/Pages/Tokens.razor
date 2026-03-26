@@ -1,0 +1,8 @@
+@page "/tokens"
+@rendermode InteractiveAuto
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Ambassador")]
+@inject IViewContextService ViewContext
+
+<PageTitle>Tokens &amp; Guest Passes</PageTitle>
+
+<TokensPage MemberProfileId="@ViewContext.ViewingMemberId" />

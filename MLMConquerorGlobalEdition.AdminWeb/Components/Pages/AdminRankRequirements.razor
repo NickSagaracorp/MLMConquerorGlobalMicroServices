@@ -1,0 +1,372 @@
+@page "/admin/config/ranks/{RankId:int}/requirements"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+<PageTitle>Rank Requirements — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Rank Definitions", "/admin/config/ranks"), new("Rank Requirements") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-list-check me-2 text-primary"></i>Rank Requirements
+            @if (!string.IsNullOrWhiteSpace(_rankName))
+            {
+                <span class="text-muted fw-normal ms-1">— @_rankName</span>
+            }
+        </h6>
+        <button class="btn btn-outline-secondary btn-sm" @onclick='() => Nav.NavigateTo("/admin/config/ranks")'>
+            <i class="ri-arrow-left-line me-1"></i>Back
+        </button>
+        <button class="btn btn-primary btn-sm" @onclick="OpenCreate">
+            <i class="ri-add-line me-1"></i>New Requirement
+        </button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="RankRequirementDto" DataSource="@_items"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn Field="@nameof(RankRequirementDto.Id)" HeaderText="ID" Width="65" TextAlign="TextAlign.Center" />
+                    <GridColumn Field="@nameof(RankRequirementDto.LevelNo)" HeaderText="Level" Width="75" TextAlign="TextAlign.Center" />
+                    <GridColumn Field="@nameof(RankRequirementDto.PersonalPoints)" HeaderText="Pers.Pts" Width="95" TextAlign="TextAlign.Right" />
+                    <GridColumn Field="@nameof(RankRequirementDto.TeamPoints)" HeaderText="Team Pts" Width="95" TextAlign="TextAlign.Right" />
+                    <GridColumn HeaderText="Max Branch%" Width="115" TextAlign="TextAlign.Right">
+                        <Template>@(((RankRequirementDto)context).MaxTeamPointsPerBranch.ToString("P0"))</Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(RankRequirementDto.EnrollmentTeam)" HeaderText="Enroll.Team" Width="110" TextAlign="TextAlign.Right" />
+                    <GridColumn HeaderText="MaxEnroll%" Width="110" TextAlign="TextAlign.Right">
+                        <Template>@(((RankRequirementDto)context).MaxEnrollmentTeamPointsPerBranch.ToString("P0"))</Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(RankRequirementDto.SponsoredMembers)" HeaderText="Sponsored" Width="100" TextAlign="TextAlign.Center" />
+                    <GridColumn HeaderText="Daily Bonus" Width="110" TextAlign="TextAlign.Right">
+                        <Template>$@(((RankRequirementDto)context).DailyBonus.ToString("F2"))</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Rank Bonus" Width="110" TextAlign="TextAlign.Right">
+                        <Template>$@(((RankRequirementDto)context).RankBonus.ToString("F2"))</Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(RankRequirementDto.LifetimeHoldingDuration)" HeaderText="Hold Days" Width="100" TextAlign="TextAlign.Center" />
+                    <GridColumn HeaderText="Actions" Width="100" TextAlign="TextAlign.Center">
+                        <Template>
+                            <button class="btn btn-sm btn-outline-primary py-0 me-1" @onclick="() => OpenEdit((RankRequirementDto)context)"><i class="ri-edit-line"></i></button>
+                            <button class="btn btn-sm btn-outline-danger py-0" @onclick="() => ConfirmDelete((RankRequirementDto)context)"><i class="ri-delete-bin-line"></i></button>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+@if (_showForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold">@(_editId is null ? "New Requirement" : "Edit Requirement")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseForm"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+
+                        @* ── Qualification Thresholds ── *@
+                        <div class="col-12"><p class="fw-semibold text-primary border-bottom pb-1 mb-0"><i class="ri-bar-chart-line me-2"></i>Qualification Thresholds</p></div>
+
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold">Level No <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" @bind="_form.LevelNo" />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold">Personal Points</label>
+                            <input type="number" class="form-control" @bind="_form.PersonalPoints" />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold">Team Points</label>
+                            <input type="number" class="form-control" @bind="_form.TeamPoints" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Max Branch % (Dual Team)</label>
+                            <input type="number" step="0.01" min="0" max="1" class="form-control" @bind="_form.MaxTeamPointsPerBranch" placeholder="e.g. 0.6 = 60%" />
+                            <div class="form-text">Max pts per leg allowed for rank calculation.</div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Max Branch % (Enrollment)</label>
+                            <input type="number" step="0.01" min="0" max="1" class="form-control" @bind="_form.MaxEnrollmentTeamPointsPerBranch" placeholder="e.g. 0.6 = 60%" />
+                            <div class="form-text">Max enrollment team pts per branch.</div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Enrollment Team</label>
+                            <input type="number" class="form-control" @bind="_form.EnrollmentTeam" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Sponsored Members</label>
+                            <input type="number" class="form-control" @bind="_form.SponsoredMembers" />
+                            <div class="form-text">Active members directly sponsored by ambassador.</div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Placement Qualified Members</label>
+                            <input type="number" class="form-control" @bind="_form.PlacementQualifiedTeamMembers" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Enrollment Qualified Members</label>
+                            <input type="number" class="form-control" @bind="_form.EnrollmentQualifiedTeamMembers" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">External Members</label>
+                            <input type="number" class="form-control" @bind="_form.ExternalMembers" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Sales Volume ($)</label>
+                            <input type="number" step="0.01" class="form-control" @bind="_form.SalesVolume" />
+                        </div>
+
+                        @* ── Bonuses ── *@
+                        <div class="col-12"><p class="fw-semibold text-primary border-bottom pb-1 mb-0 mt-2"><i class="ri-money-dollar-circle-line me-2"></i>Bonuses</p></div>
+
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Rank Bonus ($)</label>
+                            <input type="number" step="0.01" class="form-control" @bind="_form.RankBonus" />
+                            <div class="form-text">One-time bonus on rank achievement.</div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Daily Bonus ($)</label>
+                            <input type="number" step="0.01" class="form-control" @bind="_form.DailyBonus" />
+                            <div class="form-text">Daily residual bonus for maintaining this rank.</div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Lifetime Holding Duration (days)</label>
+                            <input type="number" class="form-control" @bind="_form.LifetimeHoldingDuration" />
+                            <div class="form-text">Consecutive days at rank required to qualify for rank achievement bonus.</div>
+                        </div>
+
+                        @* ── Display / Messaging ── *@
+                        <div class="col-12"><p class="fw-semibold text-primary border-bottom pb-1 mb-0 mt-2"><i class="ri-megaphone-line me-2"></i>Display &amp; Messaging</p></div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Rank Description</label>
+                            <textarea class="form-control" rows="2" @bind="_form.RankDescription" placeholder="Shown on rank badge/card"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Current Rank Description</label>
+                            <textarea class="form-control" rows="2" @bind="_form.CurrentRankDescription" placeholder="Shown while holding this rank"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Achievement Message</label>
+                            <input class="form-control" @bind="_form.AchievementMessage" placeholder="Congratulatory message shown on achievement" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Certificate URL</label>
+                            <input class="form-control" @bind="_form.CertificateUrl" placeholder="https://..." />
+                        </div>
+
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                    <button class="btn btn-primary" @onclick="Save" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        @(_editId is null ? "Create" : "Save Changes")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showDeleteConfirm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold text-danger">Delete Requirement</h5>
+                    <button type="button" class="btn-close" @onclick="() => { _showDeleteConfirm = false; _deleteItem = null; }"></button>
+                </div>
+                <div class="modal-body">Delete requirement for Level <strong>@_deleteItem?.LevelNo</strong>?</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => { _showDeleteConfirm = false; _deleteItem = null; }">Cancel</button>
+                    <button class="btn btn-danger" @onclick="DeleteItem" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int RankId { get; set; }
+
+    private List<RankRequirementDto> _items = new();
+    private bool _loading = true;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private bool _showForm;
+    private bool _showDeleteConfirm;
+    private int? _editId;
+    private RankRequirementFormModel _form = new();
+    private RankRequirementDto? _deleteItem;
+    private string? _rankName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRankName();
+        await LoadAsync();
+    }
+
+    private async Task LoadRankName()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<IEnumerable<RankDto>>>("api/v1/admin/rank-definitions");
+            if (resp?.Success == true && resp.Data is not null)
+                _rankName = resp.Data.FirstOrDefault(x => x.Id == RankId)?.Name;
+        }
+        catch { /* non-critical */ }
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<IEnumerable<RankRequirementDto>>>($"api/v1/admin/rank-definitions/{RankId}/requirements");
+            if (resp?.Success == true && resp.Data is not null)
+                _items = resp.Data.ToList();
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private void OpenCreate() { _editId = null; _form = new() { MaxTeamPointsPerBranch = 0.5, MaxEnrollmentTeamPointsPerBranch = 0.5, ExternalMembers = 1, SponsoredMembers = 1 }; _showForm = true; }
+
+    private void OpenEdit(RankRequirementDto item)
+    {
+        _editId = item.Id;
+        _form = new RankRequirementFormModel
+        {
+            LevelNo = item.LevelNo,
+            PersonalPoints = item.PersonalPoints,
+            TeamPoints = item.TeamPoints,
+            MaxTeamPointsPerBranch = item.MaxTeamPointsPerBranch,
+            MaxEnrollmentTeamPointsPerBranch = item.MaxEnrollmentTeamPointsPerBranch,
+            EnrollmentTeam = item.EnrollmentTeam,
+            SponsoredMembers = item.SponsoredMembers,
+            PlacementQualifiedTeamMembers = item.PlacementQualifiedTeamMembers,
+            EnrollmentQualifiedTeamMembers = item.EnrollmentQualifiedTeamMembers,
+            ExternalMembers = item.ExternalMembers,
+            SalesVolume = item.SalesVolume,
+            RankBonus = item.RankBonus,
+            DailyBonus = item.DailyBonus,
+            LifetimeHoldingDuration = item.LifetimeHoldingDuration,
+            RankDescription = item.RankDescription,
+            CurrentRankDescription = item.CurrentRankDescription,
+            AchievementMessage = item.AchievementMessage,
+            CertificateUrl = item.CertificateUrl
+        };
+        _showForm = true;
+    }
+
+    private void CloseForm() { _showForm = false; _editId = null; }
+
+    private async Task Save()
+    {
+        _saving = true;
+        try
+        {
+            var payload = new
+            {
+                RankDefinitionId = RankId,
+                _form.LevelNo, _form.PersonalPoints, _form.TeamPoints,
+                _form.MaxTeamPointsPerBranch, _form.MaxEnrollmentTeamPointsPerBranch,
+                _form.EnrollmentTeam, _form.SponsoredMembers,
+                _form.PlacementQualifiedTeamMembers, _form.EnrollmentQualifiedTeamMembers,
+                _form.ExternalMembers, _form.SalesVolume,
+                _form.RankBonus, _form.DailyBonus, MonthlyBonus = 0m,
+                _form.LifetimeHoldingDuration,
+                _form.RankDescription, _form.CurrentRankDescription,
+                _form.AchievementMessage, _form.CertificateUrl
+            };
+            var response = _editId is null
+                ? await Http.PostAsJsonAsync($"api/v1/admin/rank-definitions/{RankId}/requirements", payload)
+                : await Http.PutAsJsonAsync($"api/v1/admin/rank-definitions/{RankId}/requirements/{_editId}", payload);
+            if (response.IsSuccessStatusCode) { _alertMsg = _editId is null ? "Created." : "Updated."; _alertIsError = false; CloseForm(); await LoadAsync(); }
+            else { _alertMsg = $"Save failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private void ConfirmDelete(RankRequirementDto item) { _deleteItem = item; _showDeleteConfirm = true; }
+
+    private async Task DeleteItem()
+    {
+        if (_deleteItem is null) return;
+        _saving = true;
+        try
+        {
+            var response = await Http.DeleteAsync($"api/v1/admin/rank-definitions/{RankId}/requirements/{_deleteItem.Id}");
+            if (response.IsSuccessStatusCode) { _alertMsg = "Deleted."; _alertIsError = false; _showDeleteConfirm = false; _deleteItem = null; await LoadAsync(); }
+            else { _alertMsg = $"Failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private record RankRequirementDto(
+        int Id, int RankDefinitionId, int LevelNo,
+        int PersonalPoints, int TeamPoints,
+        double MaxTeamPointsPerBranch, int EnrollmentTeam,
+        int PlacementQualifiedTeamMembers, int EnrollmentQualifiedTeamMembers,
+        double MaxEnrollmentTeamPointsPerBranch,
+        int ExternalMembers, int SponsoredMembers,
+        decimal SalesVolume, decimal RankBonus, decimal DailyBonus, decimal MonthlyBonus,
+        int LifetimeHoldingDuration,
+        string RankDescription, string CurrentRankDescription,
+        string? AchievementMessage, string? CertificateUrl);
+
+    private record RankDto(int Id, string Name);
+
+    private class RankRequirementFormModel
+    {
+        public int LevelNo { get; set; }
+        public int PersonalPoints { get; set; }
+        public int TeamPoints { get; set; }
+        public double MaxTeamPointsPerBranch { get; set; } = 0.5;
+        public double MaxEnrollmentTeamPointsPerBranch { get; set; } = 0.5;
+        public int EnrollmentTeam { get; set; }
+        public int SponsoredMembers { get; set; } = 1;
+        public int PlacementQualifiedTeamMembers { get; set; }
+        public int EnrollmentQualifiedTeamMembers { get; set; }
+        public int ExternalMembers { get; set; } = 1;
+        public decimal SalesVolume { get; set; }
+        public decimal RankBonus { get; set; }
+        public decimal DailyBonus { get; set; }
+        public int LifetimeHoldingDuration { get; set; }
+        public string RankDescription { get; set; } = string.Empty;
+        public string CurrentRankDescription { get; set; } = string.Empty;
+        public string? AchievementMessage { get; set; }
+        public string? CertificateUrl { get; set; }
+    }
+
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+}

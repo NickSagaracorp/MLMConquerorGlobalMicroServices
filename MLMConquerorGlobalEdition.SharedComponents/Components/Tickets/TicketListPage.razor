@@ -1,0 +1,192 @@
+@inject IViewContextService ViewContext
+@inject NavigationManager Nav
+
+@using MLMConquerorGlobalEdition.SharedComponents.Constants
+
+<BreadcrumbNav Items="@_breadcrumb" />
+
+<!-- Filter bar -->
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-sm-auto">
+                <label class="form-label small mb-1">Status</label>
+                <select class="form-select form-select-sm" style="min-width:140px;"
+                        @bind="_statusFilter" @bind:after="ApplyFiltersAsync">
+                    <option value="">All Statuses</option>
+                    <option value="Open">Open</option>
+                    <option value="InProgress">In Progress</option>
+                    <option value="Escalated">Escalated</option>
+                    <option value="Resolved">Resolved</option>
+                    <option value="Closed">Closed</option>
+                </select>
+            </div>
+            <div class="col-12 col-sm-auto">
+                <label class="form-label small mb-1">Priority</label>
+                <select class="form-select form-select-sm" style="min-width:130px;"
+                        @bind="_priorityFilter" @bind:after="ApplyFiltersAsync">
+                    <option value="">All Priorities</option>
+                    <option value="Low">Low</option>
+                    <option value="Normal">Normal</option>
+                    <option value="High">High</option>
+                    <option value="Urgent">Urgent</option>
+                </select>
+            </div>
+            <div class="col-12 col-sm-auto ms-sm-auto">
+                <button class="btn btn-primary btn-sm" @onclick="@(() => _showCreateModal = true)">
+                    <i class="ri-add-line me-1"></i>Create New Ticket
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header py-3">
+        <h6 class="card-title mb-0 fw-semibold">
+            @(ViewContext.HasPermission(Permissions.Ticket.ViewAll) ? "All Tickets" : "My Tickets")
+        </h6>
+    </div>
+    <div class="card-body p-0">
+        <LoadingSpinner IsLoading="@_isLoading" />
+        @if (!_isLoading)
+        {
+            <div class="table-responsive">
+                <table class="table table-hover table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Ticket #</th>
+                            <th>Subject</th>
+                            <th>Category</th>
+                            <th>Priority</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!_items.Any())
+                        {
+                            <tr><td colspan="7" class="text-center text-muted py-4">No data available.</td></tr>
+                        }
+                        @foreach (var t in _items)
+                        {
+                            <tr>
+                                <td><span class="fw-medium">@t.TicketNumber</span></td>
+                                <td>@t.Subject</td>
+                                <td>@t.Category</td>
+                                <td><StatusBadge Status="@t.Priority" /></td>
+                                <td><StatusBadge Status="@t.Status" /></td>
+                                <td>@t.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                <td>
+                                    <div class="d-flex gap-1 flex-wrap">
+                                        <button class="btn btn-xs btn-outline-primary"
+                                                @onclick="@(() => Nav.NavigateTo($"/tickets/{t.TicketId}"))">
+                                            <i class="ri-eye-line me-1"></i>View
+                                        </button>
+                                        <AdminOnlyWrapper Permission="@Permissions.Ticket.Assign">
+                                            <button class="btn btn-xs btn-outline-secondary">
+                                                <i class="ri-user-add-line me-1"></i>Assign
+                                            </button>
+                                        </AdminOnlyWrapper>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (_total > _pageSize)
+            {
+                var totalPages = (int)Math.Ceiling((double)_total / _pageSize);
+                <div class="d-flex justify-content-center py-3">
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(_page <= 1 ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => ChangePage(_page - 1)">&#x2039;</button>
+                            </li>
+                            @for (var pg = 1; pg <= totalPages; pg++)
+                            {
+                                var p = pg;
+                                <li class="page-item @(p == _page ? "active" : "")">
+                                    <button class="page-link" @onclick="() => ChangePage(p)">@p</button>
+                                </li>
+                            }
+                            <li class="page-item @(_page >= totalPages ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => ChangePage(_page + 1)">&#x203A;</button>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@if (_showCreateModal)
+{
+    <CreateTicketModal @ref="_createModal"
+                       MemberProfileId="@MemberProfileId"
+                       OnTicketCreated="@HandleTicketCreatedAsync" />
+}
+
+@code {
+    [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+
+    private bool   _isLoading     = true;
+    private int    _page = 1, _pageSize = 10, _total;
+    private bool   _showCreateModal;
+    private string _statusFilter   = string.Empty;
+    private string _priorityFilter = string.Empty;
+
+    private List<TicketListItem> _items = new();
+    private CreateTicketModal?   _createModal;
+
+    private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
+    {
+        new("Home",    "/dashboard"),
+        new("Tickets")
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(MemberProfileId)) return;
+        await LoadPageAsync(1);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _showCreateModal && _createModal is not null)
+            _createModal.Show();
+    }
+
+    private async Task ApplyFiltersAsync() => await LoadPageAsync(1);
+
+    private async Task ChangePage(int page) => await LoadPageAsync(page);
+
+    private async Task LoadPageAsync(int page)
+    {
+        _page = page;
+        _isLoading = true;
+        StateHasChanged();
+        // TODO: ViewAll → GET /api/v1/admin/tickets?status={_statusFilter}&priority={_priorityFilter}&page={page}&pageSize={_pageSize}
+        //       member  → GET /api/v1/bizcenter/tickets?status={_statusFilter}&priority={_priorityFilter}&page={page}&pageSize={_pageSize}
+        await Task.Delay(50);
+        _isLoading = false;
+    }
+
+    private async Task HandleTicketCreatedAsync()
+    {
+        _showCreateModal = false;
+        await LoadPageAsync(1);
+    }
+
+    private record TicketListItem(
+        string   TicketId,
+        string   TicketNumber,
+        string   Subject,
+        string   Category,
+        string   Priority,
+        string   Status,
+        DateTime CreatedAt);
+}

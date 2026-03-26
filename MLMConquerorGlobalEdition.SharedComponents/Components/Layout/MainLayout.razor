@@ -1,0 +1,33 @@
+@inherits LayoutComponentBase
+@inject IThemeService Theme
+@inject IViewContextService ViewContext
+
+<div class="@(Theme.IsDarkMode ? "dark-mode" : "") wrapper">
+    <ImpersonationBanner />
+
+    <SidebarMenu />
+
+    <div class="main-content-wrapper">
+        <HeaderArea />
+
+        <main class="main-content">
+            <div class="container-fluid py-3">
+                @Body
+            </div>
+        </main>
+
+        <FooterArea />
+    </div>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Theme.OnThemeChanged += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        Theme.OnThemeChanged -= StateHasChanged;
+    }
+}

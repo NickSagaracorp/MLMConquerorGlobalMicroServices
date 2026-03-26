@@ -1,0 +1,243 @@
+@page "/admin/events/promos"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+<PageTitle>Corporate Promos — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Corporate Promos") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-price-tag-3-line me-2 text-primary"></i>Corporate Promos
+        </h6>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+        <button class="btn btn-primary btn-sm" @onclick="OpenCreate">
+            <i class="ri-add-line me-1"></i>New Promo
+        </button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="CorporatePromoDto" DataSource="@_items"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250,500,1000})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn HeaderText="Title" Width="220">
+                        <Template>
+                            <span class="fw-semibold">@(((CorporatePromoDto)context).Title)</span>
+                            @if (!string.IsNullOrWhiteSpace(((CorporatePromoDto)context).Description))
+                            {<text><br/><small class="text-muted">@(((CorporatePromoDto)context).Description!.Length > 80 ? ((CorporatePromoDto)context).Description![..80] + "…" : ((CorporatePromoDto)context).Description!)</small></text>}
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Start Date" Width="130">
+                        <Template><span class="small">@(((CorporatePromoDto)context).StartDate.ToString("yyyy-MM-dd"))</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="End Date" Width="130">
+                        <Template><span class="small">@(((CorporatePromoDto)context).EndDate.ToString("yyyy-MM-dd"))</span></Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(CorporatePromoDto.MemberCount)" HeaderText="Signups" Width="100" TextAlign="TextAlign.Center" />
+                    <GridColumn HeaderText="Status" Width="110">
+                        <Template>
+                            <span class="badge @BoolBadge(((CorporatePromoDto)context).IsActive)">
+                                @(((CorporatePromoDto)context).IsActive ? "Active" : "Inactive")
+                            </span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="200" TextAlign="TextAlign.Center">
+                        <Template>
+                            <button class="btn btn-sm btn-outline-info py-0 me-1" title="Commissions" @onclick='() => Nav.NavigateTo($"/admin/events/promos/{((CorporatePromoDto)context).Id}/commissions")'><i class="ri-percent-line"></i></button>
+                            <button class="btn btn-sm btn-outline-secondary py-0 me-1" title="Members" @onclick='() => Nav.NavigateTo($"/admin/events/promos/{((CorporatePromoDto)context).Id}/members")'><i class="ri-team-line"></i></button>
+                            <button class="btn btn-sm btn-outline-success py-0 me-1" title="Dashboard" @onclick='() => Nav.NavigateTo($"/admin/events/promos/{((CorporatePromoDto)context).Id}/dashboard")'><i class="ri-dashboard-line"></i></button>
+                            <button class="btn btn-sm btn-outline-primary py-0 me-1" @onclick="() => OpenEdit((CorporatePromoDto)context)"><i class="ri-edit-line"></i></button>
+                            <button class="btn btn-sm btn-outline-danger py-0" @onclick="() => ConfirmDelete((CorporatePromoDto)context)"><i class="ri-delete-bin-line"></i></button>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+@if (_showForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold">@(_editId is null ? "New Promo" : "Edit Promo")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseForm"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Title <span class="text-danger">*</span></label>
+                            <input class="form-control" @bind="_form.Title" placeholder="Promo title" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Description</label>
+                            <textarea class="form-control" rows="3" @bind="_form.Description"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Start Date <span class="text-danger">*</span></label>
+                            <input type="datetime-local" class="form-control" @bind="_form.StartDate" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">End Date <span class="text-danger">*</span></label>
+                            <input type="datetime-local" class="form-control" @bind="_form.EndDate" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Banner URL (optional)</label>
+                            <input class="form-control" @bind="_form.BannerUrl" placeholder="https://..." />
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="promoIsActive" @bind="_form.IsActive" />
+                                <label class="form-check-label" for="promoIsActive">Active</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                    <button class="btn btn-primary" @onclick="Save" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        @(_editId is null ? "Create Promo" : "Save Changes")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showDeleteConfirm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold text-danger">Delete Promo</h5>
+                    <button type="button" class="btn-close" @onclick="() => { _showDeleteConfirm = false; _deleteItem = null; }"></button>
+                </div>
+                <div class="modal-body">Delete promo <strong>@_deleteItem?.Title</strong>? This cannot be undone.</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => { _showDeleteConfirm = false; _deleteItem = null; }">Cancel</button>
+                    <button class="btn btn-danger" @onclick="DeleteItem" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<CorporatePromoDto> _items = new();
+    private bool _loading = true;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private bool _showForm;
+    private bool _showDeleteConfirm;
+    private string? _editId;
+    private CorporatePromoFormModel _form = new();
+    private CorporatePromoDto? _deleteItem;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<CorporatePromoDto>>>("api/v1/admin/corporate-promos?page=1&pageSize=100");
+            if (resp?.Success == true && resp.Data is not null)
+                _items = resp.Data.Items.ToList();
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private void OpenCreate() { _editId = null; _form = new CorporatePromoFormModel { StartDate = DateTime.Now, EndDate = DateTime.Now.AddDays(30), IsActive = true }; _showForm = true; }
+
+    private void OpenEdit(CorporatePromoDto p)
+    {
+        _editId = p.Id;
+        _form = new CorporatePromoFormModel
+        {
+            Title = p.Title,
+            Description = p.Description,
+            StartDate = p.StartDate,
+            EndDate = p.EndDate,
+            BannerUrl = p.BannerUrl,
+            IsActive = p.IsActive
+        };
+        _showForm = true;
+    }
+
+    private void CloseForm() { _showForm = false; _editId = null; }
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(_form.Title)) { _alertMsg = "Title is required."; _alertIsError = true; return; }
+        _saving = true;
+        try
+        {
+            var response = _editId is null
+                ? await Http.PostAsJsonAsync("api/v1/admin/corporate-promos", _form)
+                : await Http.PutAsJsonAsync($"api/v1/admin/corporate-promos/{_editId}", _form);
+            if (response.IsSuccessStatusCode) { _alertMsg = _editId is null ? "Promo created." : "Promo updated."; _alertIsError = false; CloseForm(); await LoadAsync(); }
+            else { _alertMsg = $"Save failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private void ConfirmDelete(CorporatePromoDto p) { _deleteItem = p; _showDeleteConfirm = true; }
+
+    private async Task DeleteItem()
+    {
+        if (_deleteItem is null) return;
+        _saving = true;
+        try
+        {
+            var response = await Http.DeleteAsync($"api/v1/admin/corporate-promos/{_deleteItem.Id}");
+            if (response.IsSuccessStatusCode) { _alertMsg = "Promo deleted."; _alertIsError = false; _showDeleteConfirm = false; _deleteItem = null; await LoadAsync(); }
+            else { _alertMsg = $"Failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private static string BoolBadge(bool val) => val ? "bg-success" : "bg-secondary";
+
+    private record CorporatePromoDto(string Id, string Title, string? Description, DateTime StartDate, DateTime EndDate, string? BannerUrl, bool IsActive, int MemberCount);
+
+    private class CorporatePromoFormModel
+    {
+        public string Title { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public DateTime StartDate { get; set; } = DateTime.Now;
+        public DateTime EndDate { get; set; } = DateTime.Now.AddDays(30);
+        public string? BannerUrl { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
+
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+}

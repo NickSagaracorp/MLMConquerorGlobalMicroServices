@@ -1,0 +1,265 @@
+@page "/admin/system-users"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+
+<PageTitle>System Users — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("System Users") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-shield-user-line me-2 text-primary"></i>System Users
+        </h6>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+        <button class="btn btn-primary btn-sm" @onclick="OpenCreate">
+            <i class="ri-add-line me-1"></i>New User
+        </button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="SystemUserDto" DataSource="@_items"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn HeaderText="Email / Username" Width="240">
+                        <Template><span class="fw-semibold">@(((SystemUserDto)context).Email)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Role" Width="170">
+                        <Template><span class="badge bg-primary bg-opacity-10 text-primary fw-semibold">@(((SystemUserDto)context).Role)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Status" Width="110">
+                        <Template>
+                            <span class="badge @(((SystemUserDto)context).IsActive ? "bg-success" : "bg-secondary")">
+                                @(((SystemUserDto)context).IsActive ? "Active" : "Inactive")
+                            </span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Last Login" Width="150">
+                        <Template>
+                            @if (((SystemUserDto)context).LastLoginAt.HasValue)
+                            { <span class="small text-muted">@(((SystemUserDto)context).LastLoginAt!.Value.ToString("yyyy-MM-dd HH:mm"))</span> }
+                            else { <span class="text-muted small">Never</span> }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Created" Width="130">
+                        <Template><span class="small text-muted">@(((SystemUserDto)context).CreationDate.ToString("yyyy-MM-dd"))</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="100" TextAlign="TextAlign.Center">
+                        <Template>
+                            <button class="btn btn-sm btn-outline-primary py-0 me-1" @onclick="() => OpenEdit((SystemUserDto)context)"><i class="ri-edit-line"></i></button>
+                            <button class="btn btn-sm btn-outline-danger py-0" @onclick="() => ConfirmDeactivate((SystemUserDto)context)" disabled="@(!((SystemUserDto)context).IsActive)"><i class="ri-user-unfollow-line"></i></button>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+@if (_showForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold">@(_editId is null ? "New System User" : "Edit System User")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseForm"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" @bind="_form.Email" placeholder="admin@example.com" readonly="@(_editId is not null)" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Role <span class="text-danger">*</span></label>
+                            <select class="form-select" @bind="_form.Role">
+                                <option value="">— Select Role —</option>
+                                @foreach (var r in _availableRoles)
+                                {
+                                    <option value="@r">@r</option>
+                                }
+                            </select>
+                        </div>
+                        @if (_editId is null)
+                        {
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Password <span class="text-danger">*</span></label>
+                                <input type="password" class="form-control" @bind="_form.Password" placeholder="Temporary password" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Confirm Password <span class="text-danger">*</span></label>
+                                <input type="password" class="form-control" @bind="_form.ConfirmPassword" placeholder="Confirm password" />
+                            </div>
+                        }
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="suActive" @bind="_form.IsActive" />
+                                <label class="form-check-label" for="suActive">Active</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                    <button class="btn btn-primary" @onclick="Save" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        @(_editId is null ? "Create User" : "Save Changes")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showDeactivateConfirm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header"><h5 class="modal-title fw-bold text-danger">Deactivate User</h5><button type="button" class="btn-close" @onclick="() => { _showDeactivateConfirm = false; _deactivateItem = null; }"></button></div>
+                <div class="modal-body">Deactivate <strong>@_deactivateItem?.Email</strong>? They will no longer be able to log in.</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => { _showDeactivateConfirm = false; _deactivateItem = null; }">Cancel</button>
+                    <button class="btn btn-danger" @onclick="DeactivateUser" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Deactivate
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<SystemUserDto> _items = new();
+    private bool _loading = true;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private bool _showForm;
+    private bool _showDeactivateConfirm;
+    private string? _editId;
+    private SystemUserFormModel _form = new();
+    private SystemUserDto? _deactivateItem;
+
+    private static readonly string[] _availableRoles =
+    [
+        "SuperAdmin", "Admin", "CommissionManager",
+        "SupportManager", "SupportLevel1", "SupportLevel2", "SupportLevel3", "IT"
+    ];
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<SystemUserDto>>>("api/v1/admin/system-users?page=1&pageSize=200");
+            if (resp?.Success == true && resp.Data is not null)
+                _items = resp.Data.Items.ToList();
+            else
+                _items = new();
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private void OpenCreate() { _editId = null; _form = new() { IsActive = true }; _showForm = true; }
+
+    private void OpenEdit(SystemUserDto u)
+    {
+        _editId = u.Id;
+        _form = new SystemUserFormModel { Email = u.Email, Role = u.Role, IsActive = u.IsActive };
+        _showForm = true;
+    }
+
+    private void CloseForm() { _showForm = false; _editId = null; }
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(_form.Email) || string.IsNullOrWhiteSpace(_form.Role))
+        { _alertMsg = "Email and role are required."; _alertIsError = true; return; }
+
+        if (_editId is null && string.IsNullOrWhiteSpace(_form.Password))
+        { _alertMsg = "Password is required for new users."; _alertIsError = true; return; }
+
+        if (_editId is null && _form.Password != _form.ConfirmPassword)
+        { _alertMsg = "Passwords do not match."; _alertIsError = true; return; }
+
+        _saving = true;
+        try
+        {
+            HttpResponseMessage response;
+            if (_editId is null)
+            {
+                response = await Http.PostAsJsonAsync("api/v1/admin/system-users",
+                    new { _form.Email, Password = _form.Password!, _form.Role, _form.IsActive });
+            }
+            else
+            {
+                response = await Http.PutAsJsonAsync($"api/v1/admin/system-users/{_editId}",
+                    new { _form.Email, _form.Role, _form.IsActive });
+            }
+
+            if (response.IsSuccessStatusCode)
+            { _alertMsg = _editId is null ? "User created." : "User updated."; _alertIsError = false; CloseForm(); await LoadAsync(); }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                _alertMsg = $"Save failed ({response.StatusCode}).";
+                _alertIsError = true;
+                _ = body;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private void ConfirmDeactivate(SystemUserDto u) { _deactivateItem = u; _showDeactivateConfirm = true; }
+
+    private async Task DeactivateUser()
+    {
+        if (_deactivateItem is null) return;
+        _saving = true;
+        try
+        {
+            var response = await Http.DeleteAsync($"api/v1/admin/system-users/{_deactivateItem.Id}");
+            if (response.IsSuccessStatusCode) { _alertMsg = "User deactivated."; _alertIsError = false; _showDeactivateConfirm = false; _deactivateItem = null; await LoadAsync(); }
+            else { _alertMsg = $"Failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private record SystemUserDto(string Id, string UserName, string Email, string Role,
+        bool IsActive, DateTime? LastLoginAt, DateTime CreationDate);
+
+    private class SystemUserFormModel
+    {
+        public string Email { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
+        public string? Password { get; set; }
+        public string? ConfirmPassword { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
+
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+}

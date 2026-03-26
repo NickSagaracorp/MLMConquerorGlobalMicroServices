@@ -1,0 +1,84 @@
+@inject IViewContextService ViewContext
+@inject HttpClient Http
+
+@using MLMConquerorGlobalEdition.SharedComponents.Constants
+
+@if (!ViewContext.IsInAnyRole(AppRoles.Ambassador) && !ViewContext.IsAdminContext)
+{
+    <div class="alert alert-warning">Dual Team Tree is only available for Ambassadors.</div>
+    return;
+}
+
+<BreadcrumbNav Items="@_breadcrumb" />
+
+<div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between py-3">
+        <h6 class="card-title mb-0 fw-semibold">Dual Team Binary Tree</h6>
+        <AdminOnlyWrapper Permission="@Permissions.GhostPoints.Add">
+            <button class="btn btn-sm btn-outline-secondary" @onclick="() => _showGhostPointModal = true">
+                <i class="ri-ghost-line me-1"></i>Add Ghost Points
+            </button>
+        </AdminOnlyWrapper>
+    </div>
+    <div class="card-body">
+        <LoadingSpinner IsLoading="@_isLoading" />
+
+        @if (!_isLoading)
+        {
+            <div class="tree-stats row g-3 mb-4">
+                <div class="col-12 col-sm-6">
+                    <StatCard Title="Left Leg Points" Value="@_leftPoints.ToString("N0")" Icon="ri-arrow-left-circle-line" Color="primary" />
+                </div>
+                <div class="col-12 col-sm-6">
+                    <StatCard Title="Right Leg Points" Value="@_rightPoints.ToString("N0")" Icon="ri-arrow-right-circle-line" Color="info" />
+                </div>
+            </div>
+
+            <!-- Tree visualization placeholder -->
+            <div class="tree-container text-center py-5 border rounded bg-light">
+                <i class="ri-node-tree display-4 text-muted opacity-50"></i>
+                <p class="text-muted mt-2">Binary tree visualization — rendered via JS interop (ApexCharts tree / custom SVG)</p>
+                <small class="text-muted">Nodes: @_treeNodes.Count loaded</small>
+            </div>
+        }
+    </div>
+</div>
+
+@if (_showGhostPointModal)
+{
+    <ConfirmModal IsVisible="true"
+                  Title="Add Ghost Points"
+                  Message="Ghost point entry form — to be expanded with a full form component."
+                  ConfirmLabel="Add"
+                  ConfirmColor="secondary"
+                  OnConfirm="@(() => _showGhostPointModal = false)"
+                  OnCancel="@(() => _showGhostPointModal = false)" />
+}
+
+@code {
+    [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+
+    private bool    _isLoading  = true;
+    private decimal _leftPoints;
+    private decimal _rightPoints;
+    private bool    _showGhostPointModal;
+    private List<DualTeamNodeDto> _treeNodes = new();
+
+    private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
+    {
+        new("Dashboard", "/dashboard"),
+        new("Dual Team Tree")
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(MemberProfileId)) return;
+        _isLoading = true;
+        StateHasChanged();
+        // TODO: GET /api/v1/bizcenter/team/dual-tree?memberId={MemberProfileId}
+        await Task.Delay(50);
+        _isLoading = false;
+    }
+
+    public record DualTeamNodeDto(string MemberId, string? ParentMemberId, string Side, decimal Points);
+}

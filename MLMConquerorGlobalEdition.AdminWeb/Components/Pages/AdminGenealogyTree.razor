@@ -1,0 +1,137 @@
+@page "/admin/network/genealogy"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+<PageTitle>Genealogy Tree — Admin</PageTitle>
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <h4 class="fw-bold mb-0"><i class="ri-node-tree me-2 text-primary"></i>Genealogy Tree</h4>
+</div>
+
+<div class="card border-0 rounded-3 mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Root Member ID</label>
+                <input class="form-control" @bind="_rootMemberId" placeholder="e.g. MBR001234" />
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-primary w-100" @onclick="LoadTree" disabled="@_loading">
+                    @if (_loading) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                    Load Tree
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+@if (_rootMember is not null)
+{
+    <div class="card border-0 rounded-3 mb-3 border-start border-4 border-primary">
+        <div class="card-body py-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style="width:42px;height:42px;font-size:1.1rem;">
+                    @(_rootMember.FirstName?.Length > 0 ? _rootMember.FirstName[0] : '?')
+                </div>
+                <div>
+                    <div class="fw-bold">@_rootMember.FirstName @_rootMember.LastName</div>
+                    <div class="text-muted small">@_rootMember.MemberId &nbsp;&middot;&nbsp; @_rootMember.MemberType &nbsp;&middot;&nbsp; Enrolled @_rootMember.EnrollDate.ToString("yyyy-MM-dd")</div>
+                </div>
+                <span class="badge ms-auto @(_rootMember.Status == "Active" ? "bg-success" : "bg-secondary")">@_rootMember.Status</span>
+            </div>
+        </div>
+    </div>
+
+    @if (_directDownline.Count > 0)
+    {
+        <div class="card border-0 rounded-3">
+            <div class="card-header bg-transparent fw-semibold border-bottom">
+                Direct Downline (@_directDownline.Count members)
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Member ID</th>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Country</th>
+                            <th>Status</th>
+                            <th>Enrolled</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var m in _directDownline)
+                        {
+                            <tr>
+                                <td><code class="text-primary">@m.MemberId</code></td>
+                                <td>@m.FirstName @m.LastName</td>
+                                <td><span class="badge bg-secondary">@m.MemberType</span></td>
+                                <td>@m.Country</td>
+                                <td><span class="badge @(m.Status == "Active" ? "bg-success" : "bg-secondary")">@m.Status</span></td>
+                                <td>@m.EnrollDate.ToString("yyyy-MM-dd")</td>
+                                <td><button class="btn btn-sm btn-outline-primary py-0" @onclick="() => LoadTreeFor(m.MemberId)"><i class="ri-node-tree me-1"></i>Drill Down</button></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+    else if (!_loading)
+    {
+        <div class="alert alert-info"><i class="ri-information-line me-2"></i>No direct downline found for <strong>@_rootMember.MemberId</strong>.</div>
+    }
+}
+
+@code {
+    private string _rootMemberId = string.Empty;
+    private bool _loading;
+    private string? _error;
+    private MemberDto? _rootMember;
+    private List<MemberDto> _directDownline = new();
+
+    private async Task LoadTree()
+    {
+        if (string.IsNullOrWhiteSpace(_rootMemberId)) return;
+        _loading = true; _error = null; _rootMember = null; _directDownline.Clear();
+        try
+        {
+            var root = await Http.GetFromJsonAsync<ApiResp<MemberDto>>($"api/v1/admin/members/{_rootMemberId}");
+            if (root?.Success == true && root.Data is not null)
+            {
+                _rootMember = root.Data;
+                var downline = await Http.GetFromJsonAsync<ApiResp<Paged<MemberDto>>>(
+                    $"api/v1/admin/members?sponsorId={_rootMemberId}&pageSize=50");
+                if (downline?.Success == true && downline.Data is not null)
+                    _directDownline = downline.Data.Items.ToList();
+            }
+            else
+            {
+                _error = $"Member '{_rootMemberId}' not found.";
+            }
+        }
+        catch (Exception ex) { _error = $"Error: {ex.Message}"; }
+        finally { _loading = false; }
+    }
+
+    private async Task LoadTreeFor(string memberId)
+    {
+        _rootMemberId = memberId;
+        await LoadTree();
+    }
+
+    private record MemberDto(string MemberId, string FirstName, string LastName, string? Phone,
+        string Country, string Status, string MemberType, DateTime EnrollDate,
+        string? SponsorMemberId, DateTime CreationDate);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+}

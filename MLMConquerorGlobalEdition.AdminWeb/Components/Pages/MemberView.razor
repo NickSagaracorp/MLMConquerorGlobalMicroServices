@@ -1,0 +1,14 @@
+@page "/admin/members/{MemberId}/view"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject IViewContextService ViewContext
+
+<PageTitle>Member View — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Members", "/admin/members"), new(@MemberId) })" />
+
+<DashboardPage MemberProfileId="@MemberId" />
+
+@code {
+    [Parameter] public string MemberId { get; set; } = string.Empty;
+}

@@ -1,0 +1,325 @@
+@page "/admin/members/{MemberId}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+<PageTitle>Member Profile — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Members", "/admin/members"), new(@MemberId) })" />
+
+@if (_loading)
+{
+    <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else if (_member is null)
+{
+    <div class="alert alert-danger">Member not found.</div>
+}
+else
+{
+    <!-- Profile banner -->
+    <div class="position-relative mb-0">
+        <div class="rounded-top-3 bg-primary" style="height:140px; background: linear-gradient(135deg,#605DFF,#4A47CC) !important;"></div>
+    </div>
+
+    <div class="card bg-white border-0 rounded-3 mb-4 rounded-top-0">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between flex-wrap gap-3">
+                <div class="d-flex align-items-end">
+                    <div class="flex-shrink-0 position-relative" style="margin-top:-80px;">
+                        <div class="rounded-circle border border-3 border-white d-flex align-items-center justify-content-center bg-primary text-white fw-bold"
+                             style="width:120px;height:120px;font-size:2rem;">
+                            @(_member.FirstName.Length > 0 ? _member.FirstName[0] : '?')
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h4 class="fs-22 mb-1 fw-bold">@_member.FirstName @_member.LastName</h4>
+                        <span class="badge bg-secondary">@_member.MemberType</span>
+                        <span class="badge @StatusBadge(_member.Status) ms-1">@_member.Status</span>
+                    </div>
+                </div>
+                <div class="d-flex align-items-start gap-2 flex-wrap">
+                    <a href="/admin/network/binary-tree?memberId=@MemberId" class="btn btn-outline-primary btn-sm">
+                        <i class="ri-share-circle-line me-1"></i>Binary Tree
+                    </a>
+                    <a href="/admin/network/genealogy?memberId=@MemberId" class="btn btn-outline-primary btn-sm">
+                        <i class="ri-node-tree me-1"></i>Genealogy
+                    </a>
+                    <button class="btn btn-outline-danger btn-sm" @onclick="ToggleImpersonate">
+                        <i class="ri-spy-line me-1"></i>Impersonate
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Horizontal tab nav -->
+    <div class="d-flex flex-wrap gap-2 mb-4">
+        @foreach (var tab in _tabs)
+        {
+            <button class="btn @(_activeTab == tab.Key ? "btn-primary" : "btn-outline-primary") py-2 px-3 fw-medium"
+                    @onclick="() => _activeTab = tab.Key">
+                <i class="@tab.Icon me-1"></i>@tab.Label
+            </button>
+        }
+    </div>
+
+    <!-- Tab content -->
+    @if (_activeTab == "profile")
+    {
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <h5 class="fw-semibold border-bottom pb-3 mb-3">Member Info</h5>
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4 text-muted">Member ID</dt>
+                            <dd class="col-sm-8"><code>@_member.MemberId</code></dd>
+                            <dt class="col-sm-4 text-muted">Full Name</dt>
+                            <dd class="col-sm-8">@_member.FirstName @_member.LastName</dd>
+                            <dt class="col-sm-4 text-muted">Phone</dt>
+                            <dd class="col-sm-8">@(_member.Phone ?? "—")</dd>
+                            <dt class="col-sm-4 text-muted">Country</dt>
+                            <dd class="col-sm-8">@_member.Country</dd>
+                            <dt class="col-sm-4 text-muted">Member Type</dt>
+                            <dd class="col-sm-8"><span class="badge bg-secondary">@_member.MemberType</span></dd>
+                            <dt class="col-sm-4 text-muted">Status</dt>
+                            <dd class="col-sm-8"><span class="badge @StatusBadge(_member.Status)">@_member.Status</span></dd>
+                            <dt class="col-sm-4 text-muted">Enroll Date</dt>
+                            <dd class="col-sm-8">@_member.EnrollDate.ToString("yyyy-MM-dd")</dd>
+                            <dt class="col-sm-4 text-muted">Sponsor ID</dt>
+                            <dd class="col-sm-8">
+                                @if (!string.IsNullOrWhiteSpace(_member.SponsorMemberId))
+                                {
+                                    <a href="/admin/members/@_member.SponsorMemberId" class="text-primary">@_member.SponsorMemberId</a>
+                                }
+                                else { <span class="text-muted">—</span> }
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-body p-4">
+                        <h5 class="fw-semibold border-bottom pb-3 mb-3">Network Stats</h5>
+                        <dl class="row mb-0">
+                            <dt class="col-7 text-muted">Dual Team Pts</dt>
+                            <dd class="col-5 fw-semibold">@_member.DualTeamPoints</dd>
+                            <dt class="col-7 text-muted">Dual Team Size</dt>
+                            <dd class="col-5 fw-semibold">@_member.DualTeamSize</dd>
+                            <dt class="col-7 text-muted">Enroll Pts</dt>
+                            <dd class="col-5 fw-semibold">@_member.EnrollmentPoints</dd>
+                            <dt class="col-7 text-muted">Enroll Team Size</dt>
+                            <dd class="col-5 fw-semibold">@_member.EnrollmentTeamSize</dd>
+                        </dl>
+                    </div>
+                </div>
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <h5 class="fw-semibold border-bottom pb-3 mb-3">Income</h5>
+                        <dl class="row mb-0">
+                            <dt class="col-7 text-muted">Current Month</dt>
+                            <dd class="col-5 fw-semibold text-success">$@_member.CurrentMonthIncome.ToString("F2")</dd>
+                            <dt class="col-7 text-muted">Current Year</dt>
+                            <dd class="col-5 fw-semibold text-success">$@_member.CurrentYearIncome.ToString("F2")</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else if (_activeTab == "status")
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h5 class="fw-semibold border-bottom pb-3 mb-4">Change Member Status</h5>
+                <div class="row g-3" style="max-width:400px;">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">New Status</label>
+                        <select class="form-select" @bind="_newStatus">
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                            <option value="Suspended">Suspended</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Reason</label>
+                        <input class="form-control" @bind="_statusReason" placeholder="Reason for status change" />
+                    </div>
+                    <div class="col-12">
+                        <button class="btn btn-primary" @onclick="SaveStatus" disabled="@_savingStatus">
+                            @if (_savingStatus) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                            Update Status
+                        </button>
+                        @if (_statusMsg is not null)
+                        {
+                            <span class="ms-3 @(_statusError ? "text-danger" : "text-success") small">@_statusMsg</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else if (_activeTab == "commissions")
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4 text-center py-5">
+                <i class="ri-money-dollar-circle-line fs-2 text-primary d-block mb-3"></i>
+                <p class="text-muted mb-3">View commission earnings for this member.</p>
+                <a href="/admin/commissions?memberId=@MemberId" class="btn btn-primary btn-sm">
+                    <i class="ri-external-link-line me-1"></i>View Commissions
+                </a>
+            </div>
+        </div>
+    }
+    else if (_activeTab == "ranks")
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4 text-center py-5">
+                <i class="ri-award-line fs-2 text-primary d-block mb-3"></i>
+                <p class="text-muted mb-3">View rank history and progress for this member.</p>
+                <a href="/admin/config/ranks/dashboard?memberId=@MemberId" class="btn btn-primary btn-sm">
+                    <i class="ri-external-link-line me-1"></i>View Rank Dashboard
+                </a>
+            </div>
+        </div>
+    }
+    else if (_activeTab == "network")
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h5 class="fw-semibold border-bottom pb-3 mb-4">Network Links</h5>
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="/admin/network/binary-tree?memberId=@MemberId" class="card border-0 shadow-sm p-3 text-center text-decoration-none" style="min-width:160px;">
+                        <i class="ri-share-circle-line fs-3 text-primary mb-2 d-block"></i>
+                        <span class="fw-medium">Binary Tree</span>
+                        <small class="text-muted d-block">View dual team</small>
+                    </a>
+                    <a href="/admin/network/genealogy?memberId=@MemberId" class="card border-0 shadow-sm p-3 text-center text-decoration-none" style="min-width:160px;">
+                        <i class="ri-node-tree fs-3 text-primary mb-2 d-block"></i>
+                        <span class="fw-medium">Genealogy Tree</span>
+                        <small class="text-muted d-block">View enrollment tree</small>
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+    else if (_activeTab == "orders")
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4 text-center py-5">
+                <i class="ri-shopping-bag-line fs-2 text-primary d-block mb-3"></i>
+                <p class="text-muted mb-3">View order history for this member.</p>
+                <a href="/admin/billing/payments?memberId=@MemberId" class="btn btn-primary btn-sm">
+                    <i class="ri-external-link-line me-1"></i>View Payment History
+                </a>
+            </div>
+        </div>
+    }
+    else if (_activeTab == "tokens")
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4 text-center py-5">
+                <i class="ri-token-swap-line fs-2 text-primary d-block mb-3"></i>
+                <p class="text-muted mb-3">View token balance and history for this member.</p>
+                <a href="/admin/tokens/distribute?memberId=@MemberId" class="btn btn-primary btn-sm">
+                    <i class="ri-external-link-line me-1"></i>Distribute Tokens
+                </a>
+            </div>
+        </div>
+    }
+    else if (_activeTab == "tickets")
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4 text-center py-5">
+                <i class="ri-customer-service-2-line fs-2 text-primary d-block mb-3"></i>
+                <p class="text-muted mb-3">View support tickets for this member.</p>
+                <a href="/admin/tickets?memberId=@MemberId" class="btn btn-primary btn-sm">
+                    <i class="ri-external-link-line me-1"></i>View Tickets
+                </a>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public string MemberId { get; set; } = string.Empty;
+
+    private MemberDetailDto? _member;
+    private bool _loading = true;
+    private string _activeTab = "profile";
+    private string _newStatus = "Active";
+    private string? _statusReason;
+    private bool _savingStatus;
+    private string? _statusMsg;
+    private bool _statusError;
+
+    private record TabItem(string Key, string Label, string Icon);
+
+    private readonly List<TabItem> _tabs = new()
+    {
+        new("profile",    "Profile",     "ri-user-line"),
+        new("status",     "Status",      "ri-toggle-line"),
+        new("network",    "Network",     "ri-node-tree"),
+        new("commissions","Commissions", "ri-money-dollar-circle-line"),
+        new("ranks",      "Ranks",       "ri-award-line"),
+        new("orders",     "Orders",      "ri-shopping-bag-line"),
+        new("tokens",     "Tokens",      "ri-token-swap-line"),
+        new("tickets",    "Tickets",     "ri-customer-service-2-line"),
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<MemberDetailDto>>($"api/v1/admin/members/{MemberId}");
+            if (resp?.Success == true)
+            {
+                _member = resp.Data;
+                _newStatus = _member?.Status ?? "Active";
+            }
+        }
+        catch { }
+        finally { _loading = false; }
+    }
+
+    private async Task SaveStatus()
+    {
+        _savingStatus = true; _statusMsg = null;
+        try
+        {
+            var response = await Http.PutAsJsonAsync($"api/v1/admin/members/{MemberId}/status", new { Status = _newStatus, Reason = _statusReason });
+            if (response.IsSuccessStatusCode)
+            {
+                _statusMsg = "Status updated."; _statusError = false;
+                if (_member is not null)
+                    _member = _member with { Status = _newStatus };
+            }
+            else { _statusMsg = $"Failed ({response.StatusCode})."; _statusError = true; }
+        }
+        catch (Exception ex) { _statusMsg = ex.Message; _statusError = true; }
+        finally { _savingStatus = false; }
+    }
+
+    private void ToggleImpersonate()
+        => Nav.NavigateTo($"/admin/impersonate/{MemberId}");
+
+    private static string StatusBadge(string status) => status switch
+    {
+        "Active"    => "bg-success",
+        "Suspended" => "bg-warning text-dark",
+        _           => "bg-secondary"
+    };
+
+    private record MemberDetailDto(
+        string MemberId, string FirstName, string LastName,
+        string? Phone, string Country, string Status, string MemberType,
+        DateTime EnrollDate, string? SponsorMemberId, DateTime CreationDate,
+        int DualTeamPoints, int EnrollmentPoints, int DualTeamSize, int EnrollmentTeamSize,
+        decimal CurrentMonthIncome, decimal CurrentYearIncome);
+
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+}

@@ -1,0 +1,6 @@
+@MLMConquerorGlobalEdition.TicketManagementSystem_HostAddress = http://localhost:5045
+
+GET {{MLMConquerorGlobalEdition.TicketManagementSystem_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

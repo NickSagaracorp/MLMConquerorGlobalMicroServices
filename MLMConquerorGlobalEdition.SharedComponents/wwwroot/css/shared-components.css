@@ -1,0 +1,133 @@
+/* ============================================================
+   MLMConquerorGlobalEdition.SharedComponents — base styles
+   Imports the compiled template styles via Bootstrap 5 utility
+   ============================================================ */
+
+/* Sidebar layout */
+.wrapper {
+    display: flex;
+    min-height: 100vh;
+}
+
+.main-content-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.main-content {
+    flex: 1;
+    padding: 0;
+}
+
+/* Header */
+.header-area {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 64px;
+    background: #fff;
+    border-bottom: 1px solid #e9ecef;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.dark-mode .header-area {
+    background: #0C1427;
+    border-color: #172036;
+}
+
+/* Sidebar */
+.layout-menu {
+    width: 260px;
+    min-height: 100vh;
+    background: #fff;
+    border-right: 1px solid #e9ecef;
+    display: flex;
+    flex-direction: column;
+    transition: width 0.3s;
+    overflow-y: auto;
+}
+
+.dark-mode .layout-menu {
+    background: #0C1427;
+    border-color: #172036;
+}
+
+.app-brand {
+    padding: 18px 20px 12px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.menu-inner {
+    list-style: none;
+    padding: 8px 0;
+    margin: 0;
+}
+
+.menu-header {
+    padding: 12px 20px 4px;
+    color: #adb5bd;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.menu-item .menu-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 20px;
+    color: #495057;
+    text-decoration: none;
+    border-radius: 6px;
+    margin: 1px 8px;
+    transition: background 0.15s, color 0.15s;
+}
+
+.menu-item .menu-link:hover,
+.menu-item.active .menu-link {
+    background: rgba(96,93,255,0.08);
+    color: #605DFF;
+}
+
+.menu-icon {
+    font-size: 1.1rem;
+    width: 20px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+/* Spinner overlay */
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(255,255,255,0.75);
+    z-index: 9999;
+}
+
+/* Dark mode base */
+.dark-mode {
+    background: #0A0E19;
+    color: #e9ecef;
+}
+
+.dark-mode .card {
+    background: #0C1427;
+    border-color: #172036;
+    color: #e9ecef;
+}
+
+.dark-mode .table {
+    --bs-table-color: #e9ecef;
+    --bs-table-bg: transparent;
+    --bs-table-border-color: #172036;
+}
+
+.dark-mode .menu-item .menu-link {
+    color: #adb5bd;
+}

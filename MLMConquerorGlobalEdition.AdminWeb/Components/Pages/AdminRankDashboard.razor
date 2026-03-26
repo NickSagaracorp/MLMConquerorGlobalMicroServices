@@ -1,0 +1,136 @@
+@page "/admin/config/ranks/dashboard"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+
+<PageTitle>Rank Dashboard — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Ranks", "/admin/config/ranks"), new("Rank Dashboard") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert alert-danger alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+@if (_loading)
+{
+    <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else
+{
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="fs-3 fw-bold text-primary">@_stats?.TotalMembers.ToString("N0")</div>
+                    <div class="text-muted small">Total Ranked Members</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="fs-3 fw-bold text-success">@_stats?.TotalRanks</div>
+                    <div class="text-muted small">Active Ranks</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="fs-3 fw-bold text-info">@(_stats?.HighestRankName ?? "—")</div>
+                    <div class="text-muted small">Most Members At</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="fs-3 fw-bold text-warning">@(_stats?.UnrankedCount.ToString("N0") ?? "—")</div>
+                    <div class="text-muted small">Unranked Members</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header py-3 d-flex align-items-center">
+            <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+                <i class="ri-bar-chart-2-line me-2 text-primary"></i>Members per Rank
+            </h6>
+            <button class="btn btn-sm btn-outline-secondary" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Rank</th>
+                        <th class="text-end">Members</th>
+                        <th style="width:40%">Distribution</th>
+                        <th class="text-end">%</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (_rankRows.Count == 0)
+                    {
+                        <tr><td colspan="4" class="text-center py-4 text-muted">No rank data available.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var r in _rankRows)
+                        {
+                            <tr>
+                                <td>
+                                    <span class="fw-semibold">@r.RankName</span>
+                                    @if (!string.IsNullOrWhiteSpace(r.RankCode))
+                                    {<text> <span class="badge bg-light text-dark border">@r.RankCode</span></text>}
+                                </td>
+                                <td class="text-end fw-bold">@r.MemberCount.ToString("N0")</td>
+                                <td>
+                                    <div class="progress" style="height:12px;">
+                                        <div class="progress-bar @BarColor(r.Percentage)" style="width:@r.Percentage.ToString("F1")%"></div>
+                                    </div>
+                                </td>
+                                <td class="text-end">@r.Percentage.ToString("F1")%</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private string? _alertMsg;
+    private RankDashboardStatsDto? _stats;
+    private List<RankRowDto> _rankRows = new();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<RankDashboardDto>>("api/v1/admin/rank-definitions/dashboard");
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _stats = resp.Data.Stats;
+                _rankRows = resp.Data.Rows.OrderByDescending(r => r.MemberCount).ToList();
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; }
+        finally { _loading = false; }
+    }
+
+    private static string BarColor(decimal pct) => pct >= 20 ? "bg-primary" : pct >= 10 ? "bg-success" : pct >= 5 ? "bg-info" : "bg-secondary";
+
+    private record RankDashboardDto(RankDashboardStatsDto Stats, List<RankRowDto> Rows);
+    private record RankDashboardStatsDto(int TotalMembers, int TotalRanks, string? HighestRankName, int UnrankedCount);
+    private record RankRowDto(int RankId, string RankName, string? RankCode, int MemberCount, decimal Percentage);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+}

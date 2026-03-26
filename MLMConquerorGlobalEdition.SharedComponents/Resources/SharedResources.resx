@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+
+  <!-- Navigation -->
+  <data name="Nav.Dashboard" xml:space="preserve"><value>Dashboard</value></data>
+  <data name="Nav.Members" xml:space="preserve"><value>Members</value></data>
+  <data name="Nav.Network" xml:space="preserve"><value>Network</value></data>
+  <data name="Nav.BinaryTree" xml:space="preserve"><value>Binary Tree</value></data>
+  <data name="Nav.GenealogyTree" xml:space="preserve"><value>Genealogy Tree</value></data>
+  <data name="Nav.Commissions" xml:space="preserve"><value>Commissions</value></data>
+  <data name="Nav.CommissionTypes" xml:space="preserve"><value>Commission Types</value></data>
+  <data name="Nav.CommissionCategories" xml:space="preserve"><value>Categories</value></data>
+  <data name="Nav.Tickets" xml:space="preserve"><value>Tickets</value></data>
+  <data name="Nav.AllTickets" xml:space="preserve"><value>All Tickets</value></data>
+  <data name="Nav.TicketCategories" xml:space="preserve"><value>Categories</value></data>
+  <data name="Nav.Tokens" xml:space="preserve"><value>Tokens</value></data>
+  <data name="Nav.TokenTypes" xml:space="preserve"><value>Token Types</value></data>
+  <data name="Nav.GhostPoints" xml:space="preserve"><value>Ghost Points</value></data>
+  <data name="Nav.Business" xml:space="preserve"><value>Business</value></data>
+  <data name="Nav.Events" xml:space="preserve"><value>Corporate Events</value></data>
+  <data name="Nav.Promos" xml:space="preserve"><value>Promotions</value></data>
+  <data name="Nav.Configuration" xml:space="preserve"><value>Configuration</value></data>
+  <data name="Nav.Ranks" xml:space="preserve"><value>Ranks</value></data>
+  <data name="Nav.RankRequirements" xml:space="preserve"><value>Rank Requirements</value></data>
+  <data name="Nav.Products" xml:space="preserve"><value>Products</value></data>
+  <data name="Nav.ProductCommissions" xml:space="preserve"><value>Product Commissions</value></data>
+  <data name="Nav.TokenCommissions" xml:space="preserve"><value>Token Commissions</value></data>
+  <data name="Nav.LoyaltyPoints" xml:space="preserve"><value>Loyalty Points</value></data>
+  <data name="Nav.Security" xml:space="preserve"><value>Security</value></data>
+  <data name="Nav.AccessAudit" xml:space="preserve"><value>Access Audit</value></data>
+  <data name="Nav.AccountChanges" xml:space="preserve"><value>Account Changes</value></data>
+  <data name="Nav.SystemUsers" xml:space="preserve"><value>System Users</value></data>
+  <data name="Nav.PaymentHistory" xml:space="preserve"><value>Payment History</value></data>
+  <data name="Nav.Subscriptions" xml:space="preserve"><value>Subscriptions</value></data>
+
+  <!-- Common Actions -->
+  <data name="Common.Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Common.Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Common.Create" xml:space="preserve"><value>Create</value></data>
+  <data name="Common.Edit" xml:space="preserve"><value>Edit</value></data>
+  <data name="Common.Delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="Common.Deactivate" xml:space="preserve"><value>Deactivate</value></data>
+  <data name="Common.Activate" xml:space="preserve"><value>Activate</value></data>
+  <data name="Common.Refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="Common.Search" xml:space="preserve"><value>Search</value></data>
+  <data name="Common.Loading" xml:space="preserve"><value>Loading...</value></data>
+  <data name="Common.Submit" xml:space="preserve"><value>Submit</value></data>
+  <data name="Common.Close" xml:space="preserve"><value>Close</value></data>
+  <data name="Common.Confirm" xml:space="preserve"><value>Confirm</value></data>
+  <data name="Common.Add" xml:space="preserve"><value>Add</value></data>
+  <data name="Common.Update" xml:space="preserve"><value>Update</value></data>
+  <data name="Common.View" xml:space="preserve"><value>View</value></data>
+  <data name="Common.Download" xml:space="preserve"><value>Download</value></data>
+  <data name="Common.Import" xml:space="preserve"><value>Import</value></data>
+  <data name="Common.Export" xml:space="preserve"><value>Export</value></data>
+
+  <!-- Common Labels -->
+  <data name="Common.Actions" xml:space="preserve"><value>Actions</value></data>
+  <data name="Common.Status" xml:space="preserve"><value>Status</value></data>
+  <data name="Common.Date" xml:space="preserve"><value>Date</value></data>
+  <data name="Common.Active" xml:space="preserve"><value>Active</value></data>
+  <data name="Common.Inactive" xml:space="preserve"><value>Inactive</value></data>
+  <data name="Common.Yes" xml:space="preserve"><value>Yes</value></data>
+  <data name="Common.No" xml:space="preserve"><value>No</value></data>
+  <data name="Common.Name" xml:space="preserve"><value>Name</value></data>
+  <data name="Common.Description" xml:space="preserve"><value>Description</value></data>
+  <data name="Common.Notes" xml:space="preserve"><value>Notes</value></data>
+  <data name="Common.CreatedBy" xml:space="preserve"><value>Created By</value></data>
+  <data name="Common.CreatedDate" xml:space="preserve"><value>Created Date</value></data>
+  <data name="Common.Total" xml:space="preserve"><value>Total</value></data>
+  <data name="Common.Page" xml:space="preserve"><value>Page</value></data>
+  <data name="Common.Of" xml:space="preserve"><value>of</value></data>
+  <data name="Common.Records" xml:space="preserve"><value>records</value></data>
+  <data name="Common.NoData" xml:space="preserve"><value>No data found.</value></data>
+  <data name="Common.Required" xml:space="preserve"><value>Required</value></data>
+  <data name="Common.Optional" xml:space="preserve"><value>Optional</value></data>
+  <data name="Common.Error" xml:space="preserve"><value>Error</value></data>
+  <data name="Common.Success" xml:space="preserve"><value>Success</value></data>
+  <data name="Common.Warning" xml:space="preserve"><value>Warning</value></data>
+  <data name="Common.MemberId" xml:space="preserve"><value>Member ID</value></data>
+  <data name="Common.Email" xml:space="preserve"><value>Email</value></data>
+  <data name="Common.Role" xml:space="preserve"><value>Role</value></data>
+  <data name="Common.Amount" xml:space="preserve"><value>Amount</value></data>
+  <data name="Common.Points" xml:space="preserve"><value>Points</value></data>
+
+  <!-- Header -->
+  <data name="Header.SearchPlaceholder" xml:space="preserve"><value>Search here...</value></data>
+  <data name="Header.Notifications" xml:space="preserve"><value>Notifications</value></data>
+  <data name="Header.NoNotifications" xml:space="preserve"><value>No new notifications.</value></data>
+  <data name="Header.Profile" xml:space="preserve"><value>Profile</value></data>
+  <data name="Header.Logout" xml:space="preserve"><value>Logout</value></data>
+  <data name="Header.ToggleDarkMode" xml:space="preserve"><value>Toggle dark mode</value></data>
+  <data name="Header.ChangeLanguage" xml:space="preserve"><value>Change language</value></data>
+
+  <!-- Language Names -->
+  <data name="Lang.en" xml:space="preserve"><value>English</value></data>
+  <data name="Lang.es" xml:space="preserve"><value>Español</value></data>
+  <data name="Lang.pt" xml:space="preserve"><value>Português</value></data>
+  <data name="Lang.fr" xml:space="preserve"><value>Français</value></data>
+  <data name="Lang.it" xml:space="preserve"><value>Italiano</value></data>
+  <data name="Lang.ko" xml:space="preserve"><value>한국어</value></data>
+  <data name="Lang.de" xml:space="preserve"><value>Deutsch</value></data>
+  <data name="Lang.ru" xml:space="preserve"><value>Русский</value></data>
+</root>

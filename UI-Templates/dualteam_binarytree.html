@@ -1,0 +1,1791 @@
+<!DOCTYPE html>
+<html lang="zxx">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Links Of CSS File -->
+    <link rel="stylesheet" href="assets/css/sidebar-menu.css">
+    <link rel="stylesheet" href="assets/css/simplebar.css">
+    <link rel="stylesheet" href="assets/css/apexcharts.css">
+    <link rel="stylesheet" href="assets/css/prism.css">
+    <link rel="stylesheet" href="assets/css/rangeslider.css">
+    <link rel="stylesheet" href="assets/css/quill.snow.css">
+    <link rel="stylesheet" href="assets/css/google-icon.css">
+    <link rel="stylesheet" href="assets/css/remixicon.css">
+    <link rel="stylesheet" href="assets/css/swiper-bundle.min.css">
+    <link rel="stylesheet" href="assets/css/fullcalendar.main.css">
+    <link rel="stylesheet" href="assets/css/jsvectormap.min.css">
+    <link rel="stylesheet" href="assets/css/lightpick.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/line-awesome/1.3.0/line-awesome/css/line-awesome.min.css">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico">
+    <!-- Title -->
+    <title>MWRLife - BizCenter Dashboard - Dual Team - Visualizer</title>
+
+    <style>
+        /* ===== Scrollbars ===== */
+        .genealogy-scroll::-webkit-scrollbar {
+            width: 5px;
+            height: 8px
+        }
+
+        .genealogy-scroll::-webkit-scrollbar-track {
+            border-radius: 10px;
+            background: #f0f0f0
+        }
+
+        .genealogy-scroll::-webkit-scrollbar-thumb {
+            background: #999;
+            border-radius: 10px;
+            transition: .3s
+        }
+
+            .genealogy-scroll::-webkit-scrollbar-thumb:hover {
+                background: #555
+            }
+
+        /* ===== Área da árvore + Zoom wrapper ===== */
+        .genealogy-body {
+            white-space: nowrap;
+            overflow: hidden;
+            position: relative;
+            width: 100%;
+            height: 78vh;
+            text-align: center;
+            background: linear-gradient(180deg,#f8f9fb,#eef1f4);
+            border-radius: 10px;
+            padding: 12px;
+        }
+
+        .tree-zoom-container {
+            transform-origin: 0 0;
+            transition: transform .15s ease-out;
+            display: inline-block
+        }
+
+        /* ===== Estrutura da árvore ===== */
+        .genealogy-tree ul {
+            padding-top: 16px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            flex-wrap: nowrap;
+            gap: 24px;
+        }
+
+        .genealogy-tree li {
+            list-style: none;
+            text-align: center;
+            position: relative;
+            padding: 16px 8px 0 8px
+        }
+
+            /* Linhas */
+            .genealogy-tree li::before, .genealogy-tree li::after {
+                content: '';
+                position: absolute;
+                top: 0;
+                border-top: 2px dashed #c9c9c9;
+                width: 50%;
+                height: 16px
+            }
+
+            .genealogy-tree li::before {
+                right: 50%
+            }
+
+            .genealogy-tree li::after {
+                left: 50%;
+                border-left: 2px dashed #c9c9c9
+            }
+
+            .genealogy-tree li:only-child::after, .genealogy-tree li:only-child::before {
+                display: none
+            }
+
+            .genealogy-tree li:only-child {
+                padding-top: 0
+            }
+
+        .genealogy-tree ul ul::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            border-left: 2px dashed #c9c9c9;
+            width: 0;
+            height: 16px
+        }
+
+        /* ===== Cartão compacto ===== */
+        .member-view-box {
+            display: inline-block;
+            text-align: center;
+            border-radius: 10px;
+            background: #fff;
+            box-shadow: 0 6px 18px rgba(0,0,0,.07);
+            padding: 8px 10px;
+            width: 140px;
+            transition: transform .18s ease, box-shadow .18s ease;
+            user-select: none;
+        }
+
+            .member-view-box:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 10px 22px rgba(0,0,0,.12)
+            }
+
+        .member-header {
+            font-weight: 600;
+            color: #fff;
+            border-radius: 8px 8px 0 0;
+            padding: 5px 8px;
+            font-size: 12px;
+            line-height: 1.1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 24px;
+        }
+
+        /* Cores do header por estado */
+        .member-view-box.status-qualified .member-header {
+            background: #2ecc71
+        }
+        /* active + qualified (verde) */
+        .member-view-box.status-unqualified .member-header {
+            background: #7d2a3b
+        }
+        /* active + unqualified (bordeaux) */
+        .member-view-box.status-cancelled .member-header {
+            background: #9aa0a6
+        }
+        /* cancelled (cinza) */
+
+        /* Avatar */
+        .member-image {
+            position: relative;
+            margin-top: 6px
+        }
+
+            .member-image img {
+                width: 66px;
+                height: 66px;
+                object-fit: cover;
+                border-radius: 50%;
+                border: 3px solid #fff;
+                box-shadow: 0 2px 6px rgba(0,0,0,.15);
+                display: block;
+                margin: 0 auto;
+            }
+
+        /* Footer: pontos */
+        .member-footer {
+            margin-top: 6px
+        }
+
+            .member-footer .points {
+                font-weight: 700;
+                font-size: 13px;
+                color: #222;
+            }
+
+        /* Botão Revert Placement (apenas folhas) */
+        .revert-btn {
+            margin-top: 6px;
+            font-size: 11px;
+            line-height: 1;
+            border: 1px solid #ffb4b4;
+            color: #b42318;
+            background: #fff4f4;
+            padding: 6px 10px;
+            border-radius: 8px;
+            transition: .15s;
+            display: inline-block;
+        }
+
+            .revert-btn:hover {
+                background: #ffe5e5
+            }
+
+        /* Slots vazios com "+" */
+        .placeholder-node {
+            width: 66px;
+            height: 66px;
+            border: 2px dashed #cfd6df;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            font-size: 22px;
+            color: #7b8794;
+            background: #fafbff;
+            margin: 0 auto;
+            transition: .15s;
+        }
+
+            .placeholder-node:hover {
+                transform: translateY(-1px);
+                border-color: #94a3b8;
+                color: #111;
+                cursor: pointer
+            }
+
+        /* Desativado quando pai não está posicionado */
+        .locked .placeholder-node {
+            opacity: .45;
+            pointer-events: none
+        }
+
+        /* Responsivo extra pequeno */
+        @media (max-width:480px) {
+            .member-view-box {
+                width: 126px;
+                padding: 7px 8px
+            }
+
+            .member-image img {
+                width: 60px;
+                height: 60px
+            }
+
+            .placeholder-node {
+                width: 60px;
+                height: 60px
+            }
+        }
+    </style>
+
+
+</head>
+<body class="boxed-size">
+    <!-- Start Preloader Area -->
+    <!--<div class="preloader" id="preloader">
+        <div class="preloader">
+            <div class="waviy position-relative">
+                <img src="assets/images/logo.svg" style="width: 100%; height: auto;" />-->
+    <!--<span class="d-inline-block">M</span>
+    <span class="d-inline-block">W</span>
+    <span class="d-inline-block">R</span>
+    <span class="d-inline-block"></span>
+    <span class="d-inline-block">L</span>
+    <span class="d-inline-block">I</span>
+    <span class="d-inline-block">F</span>
+    <span class="d-inline-block">E</span>-->
+    <!--</div>
+        </div>
+    </div>-->
+    <div id="preloader">
+        <div class="preloader">
+            <div class="waviy">
+                <img src="assets/images/logo.svg" alt="logo">
+            </div>
+        </div>
+    </div>
+    <!-- End Preloader Area -->
+    <!-- Start Sidebar Area -->
+    <div class="sidebar-area" id="sidebar-area">
+        <div class="logo position-relative">
+            <a href="index.html" class="d-block text-decoration-none position-relative">
+                <img src="assets/images/logo.svg" alt="logo-icon">
+                <!--<span class="logo-text fw-bold text-dark">MWRLife</span>-->
+            </a>
+            <button class="sidebar-burger-menu bg-transparent p-0 border-0 opacity-0 z-n1 position-absolute top-50 end-0 translate-middle-y" id="sidebar-burger-menu">
+                <i data-feather="x"></i>
+            </button>
+        </div>
+
+        <aside id="layout-menu" class="layout-menu menu-vertical menu active" data-simplebar>
+            <ul class="menu-inner">
+                <li class="menu-title small text-uppercase">
+                    <span class="menu-title-text">MENU</span>
+                </li>
+
+                <li class="menu-item">
+                    <a href="index.html" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">home</span>
+                        <span class="title">Home</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="https://www.mwrlife.com/nunocacao" class="menu-link" target="_blank">
+                        <span class="material-symbols-outlined menu-icon">browse_activity</span>
+                        <span class="title">My Website</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <span class="material-symbols-outlined menu-icon">group</span>
+                        <span class="title">Enrollment Team</span>
+                        <span class="count">4</span>
+                    </a>
+                    <ul class="menu-sub">
+                        <li class="menu-item">
+                            <a href="enrollmentteam_myteam.html" class="menu-link">
+                                My Team
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="enrollmentteam_visualizer.html" class="menu-link">
+                                Visualizer
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="enrollmentteam_branches.html" class="menu-link">
+                                Branches
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="enrollmentteam_customers.html" class="menu-link">
+                                Customers
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <li class="menu-item active open">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle active">
+                        <span class="material-symbols-outlined menu-icon">share</span>
+                        <span class="title">Dual Team</span>
+                        <span class="count">3</span>
+                    </a>
+                    <ul class="menu-sub">
+                        <li class="menu-item">
+                            <a href="dualteam_myteam.html" class="menu-link">
+                                My Dual Team
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="javascript:void(0);" class="menu-link active">
+                                Visualizer
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="dualteam_residuals.html" class="menu-link">
+                                Residuals
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <li class="menu-item">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <span class="material-symbols-outlined menu-icon">paid</span>
+                        <span class="title">Commissions</span>
+                        <span class="count">5</span>
+                    </a>
+                    <ul class="menu-sub">
+                        <li class="menu-item">
+                            <a href="commissions.html" class="menu-link">
+                                Commissions
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="presidentialbonus.html" class="menu-link">
+                                Presidential Bonus
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="carbonus.html" class="menu-link">
+                                Car Bonus
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="faststartbonus.html" class="menu-link">
+                                Fast Start Bonus
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="boostbonus.html" class="menu-link">
+                                Boost Bonus
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <li class="menu-item">
+                    <a href="tokens.html" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">content_paste</span>
+                        <span class="title">Tokens</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="events.html" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">event</span>
+                        <span class="title">Events</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="https://mwracademy.com/webservices/user_login?api_key=yDEOcDTM4RAm1AeczHJY&session_id=amxzxx7chrqgasjnmrvf" class="menu-link" target="_blank">
+                        <span class="material-symbols-outlined menu-icon">location_away</span>
+                        <span class="title">MWR Academy</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="javascript:void(0);" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">hotel</span>
+                        <span class="title">Travel Advantage</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="javascript:void(0);" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">settings</span>
+                        <span class="title">Tools</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="javascript:void(0);" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">support</span>
+                        <span class="title">Support</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="login.html" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">logout</span>
+                        <span class="title">Logout</span>
+                    </a>
+                </li>
+            </ul>
+        </aside>
+    </div>
+    <!-- End Sidebar Area -->
+    <!-- Start Main Content Area -->
+    <div class="container-fluid">
+        <div class="main-content d-flex flex-column">
+            <!-- Start Header Area -->
+            <header class="header-area bg-white mb-4 rounded-bottom-15" id="header-area">
+                <div class="row align-items-center">
+                    <div class="col-lg-4 col-sm-6">
+                        <div class="left-header-content">
+                            <ul class="d-flex align-items-center ps-0 mb-0 list-unstyled justify-content-center justify-content-sm-start">
+                                <li>
+                                    <button class="header-burger-menu bg-transparent p-0 border-0" id="header-burger-menu">
+                                        <span class="material-symbols-outlined">menu</span>
+                                    </button>
+                                </li>
+                                <li>
+                                    <form class="src-form position-relative">
+                                        <input type="text" class="form-control" placeholder="Search here.....">
+                                        <button type="submit" class="src-btn position-absolute top-50 end-0 translate-middle-y bg-transparent p-0 border-0">
+                                            <span class="material-symbols-outlined">search</span>
+                                        </button>
+                                    </form>
+                                </li>
+                                <!--<li>
+                                    <div class="dropdown notifications apps">
+                                        <button class="btn btn-secondary border-0 p-0 position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <span class="material-symbols-outlined">apps</span>
+                                        </button>
+                                        <div class="dropdown-menu dropdown-lg p-0 border-0 py-4 px-3 max-h-312" data-simplebar>
+                                            <div class="notification-menu d-flex flex-wrap justify-content-between gap-4">
+                                                <a href="https://www.figma.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/figma.svg" class="wh-25" alt="united-states">
+                                                    <span>Figma</span>
+                                                </a>
+                                                <a href="https://www.dribbble.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/dribbble.svg" class="wh-25" alt="united-states">
+                                                    <span>Dribbble</span>
+                                                </a>
+                                                <a href="https://www.spotify.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/spotify.svg" class="wh-25" alt="united-states">
+                                                    <span>Spotify</span>
+                                                </a>
+                                                <a href="https://www.github.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/github.svg" class="wh-25" alt="united-states">
+                                                    <span>Github</span>
+                                                </a>
+                                                <a href="https://www.google.com/drive/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/gdrive.svg" class="wh-25" alt="united-states">
+                                                    <span>GDrive</span>
+                                                </a>
+                                                <a href="https://www.trello.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/trello.svg" class="wh-25" alt="united-states">
+                                                    <span>Trello</span>
+                                                </a>
+                                                <a href="https://www.slak.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/slak.svg" class="wh-25" alt="united-states">
+                                                    <span>Slak</span>
+                                                </a>
+                                                <a href="https://www.pinterest.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/pinterest.svg" class="wh-25" alt="united-states">
+                                                    <span>Pinterest</span>
+                                                </a>
+                                                <a href="https://www.facebook.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/facebook.svg" class="wh-25" alt="united-states">
+                                                    <span>Facebook</span>
+                                                </a>
+                                                <a href="https://www.linkedin.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/linkedin.svg" class="wh-25" alt="united-states">
+                                                    <span>Linkedin</span>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>-->
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-8 col-sm-6">
+                        <div class="right-header-content mt-2 mt-sm-0">
+                            <ul class="d-flex align-items-center justify-content-center justify-content-sm-end ps-0 mb-0 list-unstyled">
+                                <li class="header-right-item">
+                                    <div class="light-dark">
+                                        <button class="switch-toggle settings-btn dark-btn p-0 bg-transparent border-0" id="switch-toggle">
+                                            <span class="dark"><i class="material-symbols-outlined">light_mode</i></span>
+                                            <span class="light"><i class="material-symbols-outlined">dark_mode</i></span>
+                                        </button>
+                                    </div>
+                                </li>
+                                <li class="header-right-item">
+                                    <div class="dropdown notifications language">
+                                        <button class="btn btn-secondary dropdown-toggle border-0 p-0 position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <span class="material-symbols-outlined">translate</span>
+                                        </button>
+                                        <div class="dropdown-menu dropdown-lg p-0 border-0 dropdown-menu-end">
+                                            <span class="fw-semibold fs-15 text-secondary title">Choose Language</span>
+                                            <div class="max-h-275" data-simplebar>
+                                                <div class="notification-menu">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/usa.svg" class="wh-30 rounded-circle" alt="united-states">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">English</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/france.svg" class="wh-30 rounded-circle" alt="france">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">French</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/portugal.svg" class="wh-30 rounded-circle" alt="portugal">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">Portuguese</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu mb-0">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/spain.svg" class="wh-30 rounded-circle" alt="spain">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">Spanish</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/italia.svg" class="wh-30 rounded-circle" alt="italia">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">Italian</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu mb-0">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/south_korea.svg" class="wh-30 rounded-circle" alt="south korea">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">Korean</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/japan.svg" class="wh-30 rounded-circle" alt="japan">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">Japanese</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li class="header-right-item">
+                                    <button class="fullscreen-btn bg-transparent p-0 border-0" id="fullscreen-button">
+                                        <i class="material-symbols-outlined text-body">fullscreen</i>
+                                    </button>
+                                </li>
+                                <li class="header-right-item">
+                                    <div class="dropdown notifications noti">
+                                        <button class="btn btn-secondary border-0 p-0 position-relative badge" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <span class="material-symbols-outlined">notifications</span>
+                                        </button>
+                                        <div class="dropdown-menu dropdown-lg p-0 border-0 p-0 dropdown-menu-end">
+                                            <div class="d-flex justify-content-between align-items-center title">
+                                                <span class="fw-semibold fs-15 text-secondary">Notifications <span class="fw-normal text-body fs-14">(03)</span></span>
+                                                <button class="p-0 m-0 bg-transparent border-0 fs-14 text-primary">Clear All</button>
+                                            </div>
+
+                                            <div class="max-h-217" data-simplebar>
+                                                <div class="notification-menu">
+                                                    <a href="notification.html" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <i class="material-symbols-outlined text-primary">sms</i>
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p>Your renewal fee will be charge on <span class="fw-semibold">September 2nd.</span></p>
+                                                                <span class="fs-13">2 hrs ago</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu unseen">
+                                                    <a href="notification.html" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <i class="material-symbols-outlined text-info">person</i>
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p><span class="fw-semibold">André Lourenço</span> enrolled your team, sponsored by <span class="fw-semibold">Yoni Ashurov</span>.</p>
+                                                                <span class="fs-13">3 hrs ago</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <!--<div class="notification-menu">
+                                                    <a href="notification.html" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <i class="material-symbols-outlined text-success">mark_email_unread</i>
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p>You have requested to <span class="fw-semibold">withdrawal</span></p>
+                                                                <span class="fs-13">1 day ago</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu">
+                                                    <a href="notification.html" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <i class="material-symbols-outlined text-primary">sms</i>
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p>You have requested to <span class="fw-semibold">withdrawal</span></p>
+                                                                <span class="fs-13">2 hrs ago</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu unseen">
+                                                    <a href="notification.html" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <i class="material-symbols-outlined text-info">person</i>
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p>A new user added in Trezo</p>
+                                                                <span class="fs-13">3 hrs ago</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu">
+                                                    <a href="notification.html" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <i class="material-symbols-outlined text-success">mark_email_unread</i>
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p>You have requested to <span class="fw-semibold">withdrawal</span></p>
+                                                                <span class="fs-13">1 day ago</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>-->
+                                            </div>
+
+                                            <a href="notification.html" class="dropdown-item text-center text-primary d-block view-all fw-medium rounded-bottom-3">
+                                                <span>See All Notifications </span>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li class="header-right-item">
+                                    <div class="dropdown admin-profile">
+                                        <div class="d-xxl-flex align-items-center bg-transparent border-0 text-start p-0 cursor dropdown-toggle" data-bs-toggle="dropdown">
+                                            <div class="flex-shrink-0">
+                                                <img class="rounded-circle wh-40 administrator" src="assets/images/administrator.jpg" alt="admin">
+                                            </div>
+                                            <div class="flex-grow-1 ms-2">
+                                                <div class="d-flex align-items-center justify-content-between">
+                                                    <div class="d-none d-xxl-block">
+                                                        <div class="d-flex align-content-center">
+                                                            <h3>Nuno Cação</h3>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="dropdown-menu border-0 bg-white dropdown-menu-end">
+                                            <div class="d-flex align-items-center info">
+                                                <div class="flex-shrink-0">
+                                                    <img class="rounded-circle wh-30 administrator" src="assets/images/administrator.jpg" alt="admin">
+                                                </div>
+                                                <div class="flex-grow-1 ms-2">
+                                                    <h3 class="fw-medium">Nuno Cação</h3>
+                                                    <span class="fs-12">Jade Ambassador</span>
+                                                </div>
+                                            </div>
+                                            <ul class="admin-link ps-0 mb-0 list-unstyled">
+                                                <li>
+                                                    <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="user-profile.html">
+                                                        <i class="material-symbols-outlined">account_circle</i>
+                                                        <span class="ms-2">My Profile</span>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="#">
+                                                        <i class="material-symbols-outlined">chat</i>
+                                                        <span class="ms-2">Messages</span>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="guestpasses.html">
+                                                        <i class="material-symbols-outlined">confirmation_number</i>
+                                                        <span class="ms-2">Guest Passes</span>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="marketing.html">
+                                                        <i class="material-symbols-outlined">format_list_bulleted</i>
+                                                        <span class="ms-2">Marketing</span>
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                            <ul class="admin-link ps-0 mb-0 list-unstyled">
+                                                <li>
+                                                    <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="#">
+                                                        <i class="material-symbols-outlined">support</i>
+                                                        <span class="ms-2">Support</span>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="login.html">
+                                                        <i class="material-symbols-outlined">logout</i>
+                                                        <span class="ms-2">Logout</span>
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li class="header-right-item">
+                                    <button class="theme-settings-btn p-0 border-0 bg-transparent" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasScrolling" aria-controls="offcanvasScrolling">
+                                        <i class="material-symbols-outlined" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Click On Theme Settings">settings</i>
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            <!-- End Header Area -->
+
+            <div class="main-content-container overflow-hidden">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+                    <h3 class="mb-0">Dual Team - Visualizer</h3>
+
+                    <nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+                        <ol class="breadcrumb align-items-center mb-0 lh-1">
+                            <li class="breadcrumb-item">
+                                <a href="index.html" class="d-flex align-items-center text-decoration-none">
+                                    <i class="ri-home-4-line fs-18 text-primary me-1"></i>
+                                    <span class="text-secondary fw-medium hover">Main Menu</span>
+                                </a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page">
+                                <span class="fw-medium">Dual Team</span>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page">
+                                <span class="fw-medium">Visualizer</span>
+                            </li>
+                        </ol>
+                    </nav>
+                </div>
+
+                <div class="card bg-white border-0 rounded-3 mb-4">
+                    <div class="card-body p-0">
+                        <div class="body genealogy-body genealogy-scroll">
+                            <div class="genealogy-tree">
+                                <ul>
+                                    <li>
+                                        <a href="javascript:void(0);">
+                                            <div class="member-view-box">
+                                                <div class="member-header">
+                                                    <span>Nuno Cação</span>
+                                                </div>
+                                                <div class="member-image">
+                                                    <img class="rounded-circle administrator" src="assets/images/administrator.jpg" alt="Nuno Cação">
+                                                    <!--<img src="https://cdn-icons-png.flaticon.com/512/1077/1077114.png" alt="Member">-->
+                                                </div>
+                                                <div class="member-footer">
+                                                    <div class="name"><span>8129</span></div>
+                                                    <!--<div class="downline"><span>2 | 3</span></div>-->
+                                                </div>
+                                            </div>
+                                        </a>
+                                        <ul class="active">
+                                            <li>
+                                                <a href="javascript:void(0);">
+                                                    <div class="member-view-box">
+                                                        <div class="member-header">
+                                                            <span>Nomad</span>
+                                                        </div>
+                                                        <div class="member-image">
+                                                            <img src="https://cdn-icons-png.flaticon.com/512/1077/1077114.png" alt="Member">
+                                                        </div>
+                                                        <div class="member-footer">
+                                                            <div class="name"><span>Name</span></div>
+                                                            <div class="downline"><span>2 | 3</span></div>
+                                                        </div>
+                                                    </div>
+                                                </a>
+                                                <ul>
+                                                    <li>
+                                                        <a href="javascript:void(0);">
+                                                            <div class="member-view-box">
+                                                                <div class="member-header">
+                                                                    <span>Frederic Edouard</span>
+                                                                </div>
+                                                                <div class="member-image">
+                                                                    <img src="https://cdn-icons-png.flaticon.com/512/1077/1077114.png" alt="Member">
+                                                                </div>
+                                                                <div class="member-footer">
+                                                                    <div class="name"><span>Name</span></div>
+                                                                    <div class="downline"><span>2 | 3</span></div>
+                                                                </div>
+                                                            </div>
+                                                        </a>
+                                                        <ul>
+                                                            <li>
+                                                                <a href="javascript:void(0);">
+                                                                    <div class="member-view-box">
+                                                                        <div class="member-header">
+                                                                            <span>Leader</span>
+                                                                        </div>
+                                                                        <div class="member-image">
+                                                                            <img src="https://cdn-icons-png.flaticon.com/512/1077/1077114.png" alt="Member">
+                                                                        </div>
+                                                                        <div class="member-footer">
+                                                                            <div class="name"><span>Name</span></div>
+                                                                            <div class="downline"><span>2 | 3</span></div>
+                                                                        </div>
+                                                                    </div>
+                                                                </a>
+                                                            </li>
+                                                            <li>
+                                                                <a href="javascript:void(0);">
+                                                                    <div class="member-view-box">
+                                                                        <div class="member-header">
+                                                                            <span>Leader</span>
+                                                                        </div>
+                                                                        <div class="member-image">
+                                                                            <img src="https://cdn-icons-png.flaticon.com/512/1077/1077114.png" alt="Member">
+                                                                        </div>
+                                                                        <div class="member-footer">
+                                                                            <div class="name"><span>Name</span></div>
+                                                                            <div class="downline"><span>2 | 3</span></div>
+                                                                        </div>
+                                                                    </div>
+                                                                </a>
+                                                            </li>
+                                                        </ul>
+                                                    </li>
+                                                    <li>
+                                                        <a href="javascript:void(0);">
+                                                            <div class="member-view-box">
+                                                                <div class="member-header">
+                                                                    <span>Leader</span>
+                                                                </div>
+                                                                <div class="member-image">
+                                                                    <img src="https://cdn-icons-png.flaticon.com/512/1077/1077114.png" alt="Member">
+                                                                </div>
+                                                                <div class="member-footer">
+                                                                    <div class="name"><span>Name</span></div>
+                                                                    <div class="downline"><span>2 | 3</span></div>
+                                                                </div>
+                                                            </div>
+                                                        </a>
+                                                        <ul>
+                                                            <li>
+                                                                <a href="javascript:void(0);">
+                                                                    <div class="member-view-box">
+                                                                        <div class="member-header">
+                                                                            <span>Leader</span>
+                                                                        </div>
+                                                                        <div class="member-image">
+                                                                            <img src="https://cdn-icons-png.flaticon.com/512/1077/1077114.png" alt="Member">
+                                                                        </div>
+                                                                        <div class="member-footer">
+                                                                            <div class="name"><span>Name</span></div>
+                                                                            <div class="downline"><span>2 | 3</span></div>
+                                                                        </div>
+                                                                    </div>
+                                                                </a>
+                                                            </li>
+                                                            <li>
+                                                                <a href="javascript:void(0);">
+                                                                    <div class="member-view-box">
+                                                                        <div class="member-header">
+                                                                            <span>Leader</span>
+                                                                        </div>
+                                                                        <div class="member-image">
+                                                                            <img src="https://cdn-icons-png.flaticon.com/512/1077/1077114.png" alt="Member">
+                                                                        </div>
+                                                                        <div class="member-footer">
+                                                                            <div class="name"><span>Name</span></div>
+                                                                            <div class="downline"><span>2 | 3</span></div>
+                                                                        </div>
+                                                                    </div>
+                                                                </a>
+                                                            </li>
+                                                        </ul>
+                                                    </li>
+                                                </ul>
+                                            </li>
+                                            <li>
+                                                <a href="javascript:void(0);">
+                                                    <div class="member-view-box">
+                                                        <div class="member-header">
+                                                            <span>Leader</span>
+                                                        </div>
+                                                        <div class="member-image">
+                                                            <img src="https://cdn-icons-png.flaticon.com/512/1077/1077114.png" alt="Member">
+                                                        </div>
+                                                        <div class="member-footer">
+                                                            <div class="name"><span>Name</span></div>
+                                                            <div class="downline"><span>2 | 3</span></div>
+                                                        </div>
+                                                    </div>
+                                                </a>
+                                                <ul>
+                                                    <li>
+                                                        <a href="javascript:void(0);">
+                                                            <div class="member-view-box">
+                                                                <div class="member-header">
+                                                                    <span>Leader</span>
+                                                                </div>
+                                                                <div class="member-image">
+                                                                    <img src="https://cdn-icons-png.flaticon.com/512/1077/1077114.png" alt="Member">
+                                                                </div>
+                                                                <div class="member-footer">
+                                                                    <div class="name"><span>Name</span></div>
+                                                                    <div class="downline"><span>2 | 3</span></div>
+                                                                </div>
+                                                            </div>
+                                                        </a>
+                                                        <ul>
+                                                            <li>
+                                                                <a href="javascript:void(0);">
+                                                                    <div class="member-view-box">
+                                                                        <div class="member-header">
+                                                                            <span>Leader</span>
+                                                                        </div>
+                                                                        <div class="member-image">
+                                                                            <img src="https://cdn-icons-png.flaticon.com/512/1077/1077114.png" alt="Member">
+                                                                        </div>
+                                                                        <div class="member-footer">
+                                                                            <div class="name"><span>Name</span></div>
+                                                                            <div class="downline"><span>2 | 3</span></div>
+                                                                        </div>
+                                                                    </div>
+                                                                </a>
+                                                            </li>
+                                                            <li>
+                                                                <a href="javascript:void(0);">
+                                                                    <div class="member-view-box">
+                                                                        <div class="member-header">
+                                                                            <span>Leader</span>
+                                                                        </div>
+                                                                        <div class="member-image">
+                                                                            <img src="https://cdn-icons-png.flaticon.com/512/1077/1077114.png" alt="Member">
+                                                                        </div>
+                                                                        <div class="member-footer">
+                                                                            <div class="name"><span>Name</span></div>
+                                                                            <div class="downline"><span>2 | 3</span></div>
+                                                                        </div>
+                                                                    </div>
+                                                                </a>
+                                                            </li>
+                                                        </ul>
+                                                    </li>
+                                                    <li>
+                                                        <a href="javascript:void(0);">
+                                                            <div class="member-view-box">
+                                                                <div class="member-header">
+                                                                    <span>Leader</span>
+                                                                </div>
+                                                                <div class="member-image">
+                                                                    <img src="https://cdn-icons-png.flaticon.com/512/1077/1077114.png" alt="Member">
+                                                                </div>
+                                                                <div class="member-footer">
+                                                                    <div class="name"><span>Name</span></div>
+                                                                    <div class="downline"><span>2 | 3</span></div>
+                                                                </div>
+                                                            </div>
+                                                        </a>
+                                                        <ul>
+                                                            <li>
+                                                                <a href="javascript:void(0);">
+                                                                    <div class="member-view-box">
+                                                                        <div class="member-header">
+                                                                            <span>Leader</span>
+                                                                        </div>
+                                                                        <div class="member-image">
+                                                                            <img src="https://cdn-icons-png.flaticon.com/512/1077/1077114.png" alt="Member">
+                                                                        </div>
+                                                                        <div class="member-footer">
+                                                                            <div class="name"><span>Name</span></div>
+                                                                            <div class="downline"><span>2 | 3</span></div>
+                                                                        </div>
+                                                                    </div>
+                                                                </a>
+                                                            </li>
+                                                            <li>
+                                                                <a href="javascript:void(0);">
+                                                                    <div class="member-view-box">
+                                                                        <div class="member-header">
+                                                                            <span>Leader</span>
+                                                                        </div>
+                                                                        <div class="member-image">
+                                                                            <img src="https://cdn-icons-png.flaticon.com/512/1077/1077114.png" alt="Member">
+                                                                        </div>
+                                                                        <div class="member-footer">
+                                                                            <div class="name"><span>Name</span></div>
+                                                                            <div class="downline"><span>2 | 3</span></div>
+                                                                        </div>
+                                                                    </div>
+                                                                </a>
+                                                            </li>
+                                                        </ul>
+                                                    </li>
+                                                </ul>
+                                            </li>
+                                        </ul>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-grow-1"></div>
+
+            <!-- Start Footer Area -->
+            <footer class="footer-area bg-white text-center rounded-top-7">
+                <p class="fs-14">© <span class="text-primary-div">Trezo</span> is Proudly Owned by <a href="https://envytheme.com/" target="_blank" class="text-decoration-none text-primary">EnvyTheme</a></p>
+            </footer>
+            <!-- End Footer Area -->
+        </div>
+    </div>
+    <!-- Start Main Content Area -->
+    <!-- Modal: Adicionar membro -->
+    <div class="modal fade" id="placeModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title">Choose member to place</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="pickList" class="list-group"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Detalhes do membro -->
+    <div class="modal fade" id="memberModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title" id="mm-name">Member</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body d-flex align-items-start gap-3">
+                    <img id="mm-avatar" src="" class="rounded-circle" width="64" height="64" alt="">
+                    <div class="flex-grow-1">
+                        <div class="mb-1"><strong>Status:</strong> <span id="mm-status">—</span></div>
+                        <div class="mb-1"><strong>Qualified:</strong> <span id="mm-qualified">—</span></div>
+                        <div class="mb-1"><strong>Points (sum):</strong> <span id="mm-points">—</span></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start Theme Setting Area -->
+    <div class="offcanvas offcanvas-end bg-white" data-bs-scroll="true" data-bs-backdrop="true" tabindex="-1" id="offcanvasScrolling" aria-labelledby="offcanvasScrollingLabel" style="box-shadow: rgba(100, 100, 111, 0.2) 0px 7px 29px 0px;">
+        <div class="offcanvas-header bg-primary py-3 px-4">
+            <h5 class="offcanvas-title fs-18 text-white" id="offcanvasScrollingLabel">Theme Settings</h5>
+            <button type="button" class="btn-close text-white" data-bs-dismiss="offcanvas" aria-label="Close" style="filter: invert(1); opacity: 1;"></button>
+        </div>
+        <div class="offcanvas-body p-4">
+            <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">RTL / LTR</h4>
+
+                <div class="d-flex align-items-center position-relative settings-box-wrap for-rtl-mode" style="gap: 25px;">
+                    <div class="cursor position-relative active-wrap2">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">LTR</span>
+                        </div>
+                    </div>
+                    <div class="cursor position-relative active-wrap1">
+                        <div class="settings-box for-rtl">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">RTL</span>
+                        </div>
+                    </div>
+                    <label id="switch" class="switch-for-rtl">
+                        <input type="checkbox" class="position-absolute top-0 bottom-0 start-0 end-0 opacity-0 cursor" onchange="toggleTheme()" id="slider">
+                        <span class="sliders round"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Container Style Fluid / Boxed</h4>
+                <button class="boxed-style settings-btn fluid-boxed-btn" id="boxed-style">
+                    Click To <span class="fluid">Fluid</span> <span class="boxed">Boxed</span>
+                </button>
+            </div> -->
+
+            <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Only Sidebar Light / Dark</h4>
+
+                <div class="d-flex align-items-center position-relative settings-box-wrap for-sidebar-dark" style="gap: 25px;">
+                    <div class="cursor position-relative active-wrap2">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Light</span>
+                        </div>
+                    </div>
+                    <div class="cursor position-relative active-wrap1">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Dark</span>
+                        </div>
+                    </div>
+                    <button class="sidebar-light-dark settings-btn" id="sidebar-light-dark"></button>
+                </div>
+            </div>
+
+            <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Only Header Light / Dark</h4>
+
+                <div class="d-flex align-items-center position-relative settings-box-wrap for-header-dark" style="gap: 25px;">
+                    <div class="cursor position-relative active-wrap2">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Light</span>
+                        </div>
+                    </div>
+                    <div class="cursor position-relative active-wrap1">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Dark</span>
+                        </div>
+                    </div>
+                    <button class="header-light-dark settings-btn" id="header-light-dark"></button>
+                </div>
+            </div>
+
+            <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Only Footer Light / Dark</h4>
+
+                <div class="d-flex align-items-center position-relative settings-box-wrap for-footer-dark" style="gap: 25px;">
+                    <div class="cursor position-relative active-wrap2">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Light</span>
+                        </div>
+                    </div>
+                    <div class="cursor position-relative active-wrap1">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Dark</span>
+                        </div>
+                    </div>
+                    <button class="footer-light-dark settings-btn" id="footer-light-dark"></button>
+                </div>
+            </div>
+
+            <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Card Style Radius / Square</h4>
+
+                <div class="d-flex align-items-center position-relative settings-box-wrap for-card-radius" style="gap: 25px;">
+                    <div class="cursor position-relative active-wrap2">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Radius</span>
+                        </div>
+                    </div>
+                    <div class="cursor position-relative active-wrap1">
+                        <div class="settings-box rounded-0">
+                            <span class="rounded-0"></span>
+                            <span class="rounded-0"></span>
+                            <span class="rounded-0"></span>
+                            <span class="rounded-0"></span>
+                            <span class="rounded-0"></span>
+                            <span class="rounded-0"></span>
+                            <span class="rounded-0"></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Square</span>
+                        </div>
+                    </div>
+                    <button class="card-radius-square settings-btn" id="card-radius-square"></button>
+                </div>
+            </div>
+
+            <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Card Style BG White / Gray</h4>
+
+                <div class="d-flex align-items-center position-relative settings-box-wrap for-card-bg-gray" style="gap: 25px;">
+                    <div class="cursor position-relative active-wrap2">
+                        <div class="settings-box bg-light-40">
+                            <span class="bg-white"></span>
+                            <span class="bg-white"></span>
+                            <span class="bg-white"></span>
+                            <span class="bg-white"></span>
+                            <span class="bg-white"></span>
+                            <span class="bg-white"></span>
+                            <span class="bg-white"></span>
+                            <span class="rounded-3 bg-white"></span>
+                            <span class="rounded-3 bg-white"></span>
+                            <span class="rounded-3 bg-white"></span>
+                            <span class="rounded-3 bg-white"></span>
+                            <span class="rounded-3 bg-white"></span>
+                            <span class="rounded-3 bg-white"></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">White</span>
+                        </div>
+                    </div>
+                    <div class="cursor position-relative active-wrap1">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Gray</span>
+                        </div>
+                    </div>
+                    <button class="card-bg settings-btn" id="card-bg"></button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- End Theme Setting Area -->
+    <!-- Link Of JS File -->
+    <script src="assets/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/sidebar-menu.js"></script>
+    <script src="assets/js/dragdrop.js"></script>
+    <script src="assets/js/rangeslider.min.js"></script>
+    <script src="assets/js/quill.min.js"></script>
+    <script src="assets/js/data-table.js"></script>
+    <script src="assets/js/prism.js"></script>
+    <script src="assets/js/clipboard.min.js"></script>
+    <script src="assets/js/feather.min.js"></script>
+    <script src="assets/js/simplebar.min.js"></script>
+    <script src="assets/js/apexcharts.min.js"></script>
+    <script src="assets/js/echarts.min.js"></script>
+    <script src="assets/js/swiper-bundle.min.js"></script>
+    <script src="assets/js/fullcalendar.main.js"></script>
+    <script src="assets/js/jsvectormap.min.js"></script>
+    <script src="assets/js/world-merc.js"></script>
+    <script src="assets/js/moment.min.js"></script>
+    <script src="assets/js/lightpick.js"></script>
+    <script src="assets/js/custom/apexcharts.js"></script>
+    <script src="assets/js/custom/echarts.js"></script>
+    <script src="assets/js/custom/custom.js"></script>
+
+    <script>
+        (() => {
+            const container = document.querySelector('.genealogy-body');
+            const tree = document.querySelector('.genealogy-tree');
+            if (!container || !tree) return;
+
+            /* ========= Zoom/Pan wrapper ========= */
+            const zoomLayer = document.createElement('div');
+            zoomLayer.className = 'tree-zoom-container';
+            tree.parentNode.insertBefore(zoomLayer, tree);
+            zoomLayer.appendChild(tree);
+
+            let scale = 1, tx = 0, ty = 0, dragging = false, sx = 0, sy = 0;
+            const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const delta = Math.sign(e.deltaY);
+                scale = clamp(scale - delta * 0.1, 0.35, 2.0);
+                applyTransform();
+            }, { passive: false });
+
+            container.addEventListener('mousedown', (e) => { dragging = true; sx = e.clientX - tx; sy = e.clientY - ty; });
+            container.addEventListener('mouseup', () => { dragging = false; });
+            container.addEventListener('mouseleave', () => { dragging = false; });
+            container.addEventListener('mousemove', (e) => {
+                if (!dragging) return;
+                tx = e.clientX - sx; ty = e.clientY - sy; applyTransform();
+            });
+
+            function applyTransform() { zoomLayer.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`; }
+
+            /* ========= Demo pool de utilizadores ========= */
+            const unplaced = [
+                { id: 201, name: 'Bruno Marques', avatar: 'assets/images/user-16.jpg' },
+                { id: 202, name: 'Cátia Grilo', avatar: 'assets/images/user-17.jpg' },
+                { id: 203, name: 'Joana Silva', avatar: 'assets/images/user-18.jpg' },
+                { id: 204, name: 'Rui Santos', avatar: 'assets/images/user-16.jpg' },
+                { id: 205, name: 'Marta Azevedo', avatar: 'assets/images/user-17.jpg' },
+                { id: 206, name: 'Diogo Faria', avatar: 'assets/images/user-18.jpg' }
+            ];
+
+            /* ========= Helpers ========= */
+            const q = (sel, root = document) => root.querySelector(sel);
+            const qa = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+            /* ========= Inicialização ========= */
+            seedRandomNamesAndPhotos();
+            decorateAll();
+            ensureAllTwoChildren();
+            updateAllLocks();
+            recalcFromRoots();
+
+            /* ========= Expand/Collapse só com dblclick no CARD ========= */
+            let clickTimer = null;
+            tree.addEventListener('click', (e) => {
+                const card = e.target.closest('.member-view-box');
+                if (!card) return;
+                // Se clicou no revert, ignorar
+                if (e.target.closest('.revert-btn')) return;
+                // single-click abre modal de detalhes, mas espera um bocadinho para ver se vem dblclick
+                clearTimeout(clickTimer);
+                clickTimer = setTimeout(() => openDetails(card), 220);
+            });
+
+            tree.addEventListener('dblclick', (e) => {
+                const card = e.target.closest('.member-view-box');
+                if (!card) return;
+                clearTimeout(clickTimer); // cancela o single-click
+                const li = card.closest('li');
+                const childUl = q(':scope > ul', li);
+                if (!childUl) return;
+                const isHidden = childUl.style.display === 'none';
+                childUl.style.display = isHidden ? 'flex' : 'none';
+                e.stopPropagation();
+            }, true);
+
+            /* ========= Funções ========= */
+
+            function seedRandomNamesAndPhotos() {
+                const poolNames = ['Nomad', 'Leader', 'Explorer', 'Builder', 'Connector', 'Achiever', 'Innovator', 'Strategist'];
+                const poolPhotos = ['assets/images/user-16.jpg', 'assets/images/user-17.jpg', 'assets/images/user-18.jpg'];
+
+                qa('.member-view-box').forEach((box, idx) => {
+                    const header = q('.member-header span', box) || q('.member-header', box);
+                    if (header && (!header.textContent || /^(leader|nomad|name)$/i.test(header.textContent.trim()))) {
+                        const name = poolNames[(idx + 3) % poolNames.length];
+                        if (header.tagName === 'SPAN') header.textContent = name; else header.innerHTML = `<span>${name}</span>`;
+                    }
+                    const img = q('.member-image img', box);
+                    if (img && /1077\/1077114\.png/.test(img.src)) img.src = poolPhotos[idx % poolPhotos.length];
+                    if (!box.dataset.status) box.dataset.status = 'active';
+                    if (!box.dataset.qualified) box.dataset.qualified = (idx % 3 ? 'true' : 'false');
+                    if (!box.dataset.points) box.dataset.points = '6';
+                });
+            }
+
+            function decorateAll() { qa('.member-view-box').forEach(decorateBox); }
+
+            function decorateBox(box) {
+                if (box.dataset._decorated) return;
+                box.dataset._decorated = '1';
+                applyHeaderStateClass(box);
+                let footer = q('.member-footer', box);
+                if (!footer) { footer = document.createElement('div'); footer.className = 'member-footer'; box.appendChild(footer); }
+                footer.innerHTML = `<div class="points">0 pts</div>`;
+            }
+
+            function applyHeaderStateClass(box) {
+                const status = (box.dataset.status || 'active').toLowerCase(); // active | cancelled
+                const qualified = (box.dataset.qualified || 'true') === 'true';
+                box.classList.remove('status-qualified', 'status-unqualified', 'status-cancelled');
+                if (status === 'cancelled') box.classList.add('status-cancelled');
+                else if (qualified) box.classList.add('status-qualified');
+                else box.classList.add('status-unqualified');
+            }
+
+            function ensureAllTwoChildren() { qa('.genealogy-tree li').forEach(ensureTwoChildrenSlots); }
+
+            function ensureTwoChildrenSlots(li) {
+                let ul = q(':scope > ul', li);
+                if (!ul) { ul = document.createElement('ul'); li.appendChild(ul); }
+                let children = qa(':scope > li', ul);
+                while (children.length < 2) {
+                    ul.appendChild(buildSlot());
+                    children = qa(':scope > li', ul);
+                }
+            }
+
+            function buildSlot() {
+                const li = document.createElement('li');
+                li.className = 'slot';
+                li.innerHTML = `
+          <a href="javascript:void(0);">
+            <div class="member-view-box">
+              <div class="member-image">
+                <div class="placeholder-node" title="Add member">+</div>
+              </div>
+              <div class="member-footer"><div class="points">&nbsp;</div></div>
+            </div>
+          </a>
+        `;
+                q('.placeholder-node', li).addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openPicker(li);
+                });
+                const ul = document.createElement('ul'); // filhos “fantasma” para manter linhas
+                ul.appendChild(document.createElement('li'));
+                ul.appendChild(document.createElement('li'));
+                li.appendChild(ul);
+                return li;
+            }
+
+            function isLeaf(li) {
+                const ul = q(':scope > ul', li);
+                if (!ul) return true;
+                const kids = qa(':scope > li', ul);
+                return kids.every(k => k.classList.contains('slot') || !q('.member-view-box', k));
+            }
+
+            function isPositioned(li) {
+                return !!q(':scope > a > .member-view-box', li) && !li.classList.contains('slot');
+            }
+
+            // DESATIVA “+” quando o nível acima não tem membro
+            function updateLocksFor(parentLi) {
+                const ul = q(':scope > ul', parentLi);
+                if (!ul) return;
+                const parentReady = isPositioned(parentLi);
+                qa(':scope > li', ul).forEach(ch => {
+                    if (parentReady) ch.classList.remove('locked');
+                    else ch.classList.add('locked'); // isto afeta só o "+" (via CSS .locked .placeholder-node)
+                });
+            }
+            function updateAllLocks() { qa('.genealogy-tree li').forEach(updateLocksFor); }
+
+            function insertRevertIfLeaf(li) {
+                const box = q('.member-view-box', li);
+                if (!box) return;
+                const old = q('.revert-btn', box);
+                if (old) old.remove();
+                if (isLeaf(li) && !li.classList.contains('slot')) {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'revert-btn';
+                    btn.textContent = 'Revert Placement';
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const parentUL = li.parentElement;
+                        li.replaceWith(buildSlot());
+                        updateAllLocks();
+                        recalcUp(parentUL.closest('li'));
+                    });
+                    q('.member-footer', box)?.appendChild(btn);
+                }
+            }
+
+            /* ========= Pontos ========= */
+            function ownPoints(li) {
+                const box = q('.member-view-box', li);
+                if (!box) return 0;
+                const raw = parseInt(box.dataset.points || '6', 10);
+                return Number.isFinite(raw) ? raw : 6;
+            }
+
+            function recalcNode(li) {
+                if (li.classList.contains('slot')) return 0;
+                let total = ownPoints(li);
+                const ul = q(':scope > ul', li);
+                if (ul) { qa(':scope > li', ul).forEach(ch => total += recalcNode(ch)); }
+                const box = q('.member-view-box', li);
+                if (box) {
+                    const pts = q('.points', box);
+                    if (pts) pts.textContent = `${total} pts`;
+                    insertRevertIfLeaf(li);
+                }
+                // atualizar locks dos filhos (dependem do pai ter membro)
+                updateLocksFor(li);
+                return total;
+            }
+
+            function recalcUp(fromLi) {
+                let cur = fromLi;
+                while (cur) {
+                    recalcNode(cur);
+                    cur = cur?.parentElement?.closest('li');
+                }
+            }
+
+            function recalcFromRoots() { qa('.genealogy-tree > ul > li').forEach(root => recalcNode(root)); }
+
+            /* ========= Modal: adicionar membro ========= */
+            function openPicker(slotLi) {
+                const list = q('#pickList');
+                if (!list) return console.warn('pickList not found');
+                list.innerHTML = '';
+                unplaced.forEach((p, i) => {
+                    if (!p) return;
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'list-group-item list-group-item-action d-flex align-items-center gap-2';
+                    btn.innerHTML = `<img src="${p.avatar}" class="rounded-circle" width="28" height="28" alt=""> <span>${p.name}</span>`;
+                    btn.addEventListener('click', () => placePerson(slotLi, p, i));
+                    list.appendChild(btn);
+                });
+                new bootstrap.Modal('#placeModal').show();
+            }
+
+            function placePerson(slotLi, person, poolIdx) {
+                const li = document.createElement('li');
+                li.innerHTML = `
+          <a href="javascript:void(0);">
+            <div class="member-view-box" data-status="active" data-qualified="true" data-points="6">
+              <div class="member-header"><span>${person.name}</span></div>
+              <div class="member-image">
+                <img src="${person.avatar}" alt="${person.name}">
+              </div>
+              <div class="member-footer">
+                <div class="points">6 pts</div>
+              </div>
+            </div>
+          </a>
+        `;
+                const card = q('.member-view-box', li);
+                decorateBox(card);
+                ensureTwoChildrenSlots(li);
+
+                slotLi.replaceWith(li);
+                unplaced[poolIdx] = null;
+
+                updateAllLocks();
+                recalcUp(li.closest('li')?.parentElement?.closest('li'));
+
+                const m = bootstrap.Modal.getInstance(q('#placeModal')); if (m) m.hide();
+            }
+
+            /* ========= Modal: detalhes do membro (single click) ========= */
+            function openDetails(card) {
+                const li = card.closest('li');
+                if (!li || li.classList.contains('slot')) return;
+                const name = (q('.member-header span', card)?.textContent || 'Member').trim();
+                const avatar = q('.member-image img', card)?.src || '';
+                const sumPts = q('.points', card)?.textContent || '';
+                const status = (card.dataset.status || 'active').toLowerCase();
+                const qualified = (card.dataset.qualified === 'true');
+
+                q('#mm-name').textContent = name;
+                q('#mm-avatar').src = avatar;
+                q('#mm-points').textContent = sumPts;
+                q('#mm-status').textContent = status === 'cancelled' ? 'Cancelled' : 'Active';
+                q('#mm-qualified').textContent = qualified ? 'Yes' : 'No';
+
+                new bootstrap.Modal('#memberModal').show();
+            }
+
+            /* ========= Fade-in inicial ========= */
+            zoomLayer.style.opacity = 0;
+            requestAnimationFrame(() => {
+                zoomLayer.style.transition = 'opacity .5s ease';
+                zoomLayer.style.opacity = 1;
+            });
+        })();
+    </script>
+
+</body>
+</html>

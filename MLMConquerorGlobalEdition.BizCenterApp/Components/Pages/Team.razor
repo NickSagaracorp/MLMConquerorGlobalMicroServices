@@ -1,0 +1,5 @@
+@page "/team"
+@attribute [Authorize(Roles = "Ambassador")]
+@inject IViewContextService ViewContext
+
+<DualTeamMyTeam MemberProfileId="@ViewContext.ViewingMemberId" />

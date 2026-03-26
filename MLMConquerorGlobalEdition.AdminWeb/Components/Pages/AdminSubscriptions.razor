@@ -1,0 +1,179 @@
+@page "/admin/billing/subscriptions"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+
+<PageTitle>Membership Subscriptions — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Subscriptions") })" />
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center py-3">
+            <div class="card-body">
+                <i class="ri-vip-crown-line fs-2 text-primary d-block mb-2"></i>
+                <p class="fw-semibold text-muted small text-uppercase mb-1">Active</p>
+                <h3 class="fw-bold text-primary mb-0">@_activeCount</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center py-3">
+            <div class="card-body">
+                <i class="ri-time-line fs-2 text-warning d-block mb-2"></i>
+                <p class="fw-semibold text-muted small text-uppercase mb-1">Expiring ≤ 7 days</p>
+                <h3 class="fw-bold text-warning mb-0">@_expiringCount</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center py-3">
+            <div class="card-body">
+                <i class="ri-close-circle-line fs-2 text-danger d-block mb-2"></i>
+                <p class="fw-semibold text-muted small text-uppercase mb-1">Cancelled</p>
+                <h3 class="fw-bold text-danger mb-0">@_cancelledCount</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center py-3">
+            <div class="card-body">
+                <i class="ri-refresh-line fs-2 text-success d-block mb-2"></i>
+                <p class="fw-semibold text-muted small text-uppercase mb-1">Auto-Renew</p>
+                <h3 class="fw-bold text-success mb-0">@_autoRenewCount</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-3 flex-wrap">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-vip-diamond-line me-2 text-primary"></i>Subscriptions
+        </h6>
+        <select class="form-select form-select-sm w-auto" style="min-width:140px"
+                @bind="_statusFilter" @bind:after="() => { _page = 1; _ = LoadAsync(); }">
+            <option value="">All Statuses</option>
+            <option value="Active">Active</option>
+            <option value="Expired">Expired</option>
+            <option value="Cancelled">Cancelled</option>
+        </select>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="SubscriptionDto" DataSource="@_items"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250,500,1000})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn HeaderText="Member ID" Width="130">
+                        <Template>
+                            <a href="/admin/members/@(((SubscriptionDto)context).MemberId)" target="_blank" class="text-primary fw-semibold"><code>@(((SubscriptionDto)context).MemberId)</code></a>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(SubscriptionDto.MembershipLevelName)" HeaderText="Level" Width="160" />
+                    <GridColumn HeaderText="Status" Width="120">
+                        <Template>
+                            <span class="badge @StatusBadge(((SubscriptionDto)context).Status)">@(((SubscriptionDto)context).Status)</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(SubscriptionDto.StartDate)" HeaderText="Start" Width="120" Format="yyyy-MM-dd" Type="ColumnType.Date" />
+                    <GridColumn Field="@nameof(SubscriptionDto.ExpirationDate)" HeaderText="Expires" Width="120" Format="yyyy-MM-dd" Type="ColumnType.Date" />
+                    <GridColumn HeaderText="Auto-Renew" Width="110" TextAlign="TextAlign.Center">
+                        <Template>
+                            <span class="badge @BoolBadge(((SubscriptionDto)context).IsAutoRenew)">
+                                @(((SubscriptionDto)context).IsAutoRenew ? "Yes" : "No")
+                            </span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Reason" Width="130">
+                        <Template>
+                            <span class="text-muted small">@(((SubscriptionDto)context).ChangeReason)</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(SubscriptionDto.CreationDate)" HeaderText="Created" Width="120" Format="yyyy-MM-dd" Type="ColumnType.Date" />
+                </GridColumns>
+            </SfGrid>
+
+            @if (_totalPages > 1)
+            {
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
+                    <small class="text-muted">@_totalCount subscriptions — Page @_page of @_totalPages</small>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(_page == 1 ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button>
+                            </li>
+                            @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
+                            { var p = i; <li class="page-item @(_page == p ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(p)">@p</button></li> }
+                            <li class="page-item @(_page == _totalPages ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => ChangePage(_page + 1)">›</button>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private List<SubscriptionDto> _items = new();
+    private bool _loading = true;
+    private int _page = 1;
+    private const int PageSize = 25;
+    private int _totalCount;
+    private int _totalPages = 1;
+    private string _statusFilter = string.Empty;
+
+    private int _activeCount;
+    private int _expiringCount;
+    private int _cancelledCount;
+    private int _autoRenewCount;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var url = $"api/v1/admin/subscriptions?page={_page}&pageSize={PageSize}";
+            if (!string.IsNullOrWhiteSpace(_statusFilter)) url += $"&status={_statusFilter}";
+            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<SubscriptionDto>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _items      = resp.Data.Items.ToList();
+                _totalCount = resp.Data.TotalCount;
+                _totalPages = resp.Data.TotalPages;
+
+                _activeCount    = _items.Count(s => s.Status == "Active");
+                _cancelledCount = _items.Count(s => s.Status == "Cancelled");
+                _autoRenewCount = _items.Count(s => s.IsAutoRenew);
+                _expiringCount  = _items.Count(s => s.Status == "Active" &&
+                    s.ExpirationDate.HasValue && (s.ExpirationDate.Value - DateTime.UtcNow).TotalDays <= 7);
+            }
+        }
+        catch { }
+        finally { _loading = false; }
+    }
+
+    private async Task ChangePage(int p) { if (p < 1 || p > _totalPages) return; _page = p; await LoadAsync(); }
+
+    private static string BoolBadge(bool val) => val ? "bg-success" : "bg-secondary";
+
+    private static string StatusBadge(string s) => s switch
+    { "Active" => "bg-success", "Expired" => "bg-warning text-dark", "Cancelled" => "bg-danger", _ => "bg-secondary" };
+
+    private record SubscriptionDto(string Id, string MemberId, int MembershipLevelId, string MembershipLevelName,
+        string Status, string ChangeReason, DateTime StartDate, DateTime? ExpirationDate,
+        bool IsAutoRenew, bool IsFree, DateTime CreationDate);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+}

@@ -1,0 +1,44 @@
+@inject IViewContextService ViewContext
+@inject HttpClient Http
+
+@if (!ViewContext.IsInAnyRole(AppRoles.Ambassador) && !ViewContext.IsAdminContext)
+{
+    <div class="alert alert-warning">Commissions are only available for Ambassadors.</div>
+    return;
+}
+
+<BreadcrumbNav Items="@_breadcrumb" />
+
+<!-- KPI Row -->
+<div class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-xl-3">
+        <StatCard Title="Total Earned" Value="@_totalEarned" Icon="ri-money-dollar-circle-line" Color="primary" />
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+        <StatCard Title="Pending Payout" Value="@_pendingPayout" Icon="ri-time-line" Color="warning" />
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+        <StatCard Title="Paid This Month" Value="@_paidThisMonth" Icon="ri-check-double-line" Color="success" />
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+        <StatCard Title="Cancelled" Value="@_cancelled" Icon="ri-close-circle-line" Color="danger" />
+    </div>
+</div>
+
+<!-- Earnings Table -->
+<CommissionEarningsTable MemberProfileId="@MemberProfileId" />
+
+@code {
+    [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+
+    private string _totalEarned   = "$0.00";
+    private string _pendingPayout = "$0.00";
+    private string _paidThisMonth = "$0.00";
+    private string _cancelled     = "$0.00";
+
+    private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
+    {
+        new("Dashboard", "/dashboard"),
+        new("Commissions")
+    };
+}

@@ -1,0 +1,8 @@
+@page "/admin/tickets/{TicketId}"
+@attribute [Authorize(Roles = "SuperAdmin,Admin,SupportManager,SupportLevel1,SupportLevel2,SupportLevel3,IT")]
+
+<TicketDetailPage TicketId="@TicketId" MemberProfileId="" />
+
+@code {
+    [Parameter] public string TicketId { get; set; } = string.Empty;
+}

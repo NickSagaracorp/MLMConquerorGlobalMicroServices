@@ -1,0 +1,272 @@
+@page "/admin/config/membership"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+
+<PageTitle>Membership Levels — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Configuration"), new("Membership Levels") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-vip-crown-line me-2 text-primary"></i>Membership Levels
+        </h6>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+        <button class="btn btn-primary btn-sm" @onclick="OpenCreate">
+            <i class="ri-add-line me-1"></i>New Level
+        </button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="MembershipLevelDto" DataSource="@_items"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true"
+                    GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="25" PageSizes="@(new int[]{25,50,100})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn Field="@nameof(MembershipLevelDto.SortOrder)" HeaderText="#" Width="60" TextAlign="TextAlign.Center" />
+                    <GridColumn HeaderText="Name" Width="200">
+                        <Template>
+                            @{ var row = (MembershipLevelDto)context; }
+                            <span class="fw-semibold">@row.Name</span>
+                            @if (!string.IsNullOrWhiteSpace(row.Description))
+                            {
+                                <br /><small class="text-muted">@row.Description</small>
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Price" Width="120" TextAlign="TextAlign.Right">
+                        <Template>
+                            @{ var row = (MembershipLevelDto)context; }
+                            @if (row.IsFree)
+                            {
+                                <span class="badge bg-success">Free</span>
+                            }
+                            else
+                            {
+                                <span class="fw-semibold">$@row.Price.ToString("N2")</span>
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Renewal" Width="120" TextAlign="TextAlign.Right">
+                        <Template>
+                            @{ var row = (MembershipLevelDto)context; }
+                            <span class="text-muted small">$@row.RenewalPrice.ToString("N2")</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Auto-Renew" Width="110" TextAlign="TextAlign.Center">
+                        <Template>
+                            @{ var row = (MembershipLevelDto)context; }
+                            @if (row.IsAutoRenew)
+                            {
+                                <span class="badge bg-info text-dark">Auto</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">—</span>
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Status" Width="100" TextAlign="TextAlign.Center">
+                        <Template>
+                            @{ var row = (MembershipLevelDto)context; }
+                            <span class="badge @(row.IsActive ? "bg-success" : "bg-secondary")">
+                                @(row.IsActive ? "Active" : "Inactive")
+                            </span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="100" TextAlign="TextAlign.Center">
+                        <Template>
+                            @{ var row = (MembershipLevelDto)context; }
+                            <button class="btn btn-sm btn-outline-primary py-0 me-1" @onclick="() => OpenEdit(row)"><i class="ri-edit-line"></i></button>
+                            <button class="btn btn-sm btn-outline-danger py-0" @onclick="() => ConfirmDelete(row)"><i class="ri-delete-bin-line"></i></button>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+@if (_showForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold">@(_editId is null ? "New Membership Level" : "Edit Membership Level")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseForm"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+                            <input class="form-control" @bind="_form.Name" placeholder="e.g. Gold, Platinum" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Sort Order</label>
+                            <input type="number" class="form-control" @bind="_form.SortOrder" min="0" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Description</label>
+                            <textarea class="form-control" rows="2" @bind="_form.Description" placeholder="Optional description"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Price (USD)</label>
+                            <input type="number" class="form-control" @bind="_form.Price" min="0" step="0.01" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Renewal Price (USD)</label>
+                            <input type="number" class="form-control" @bind="_form.RenewalPrice" min="0" step="0.01" />
+                        </div>
+                        <div class="col-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="mlFree" @bind="_form.IsFree" />
+                                <label class="form-check-label" for="mlFree">Free membership</label>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="mlAutoRenew" @bind="_form.IsAutoRenew" />
+                                <label class="form-check-label" for="mlAutoRenew">Auto-renew</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                    <button class="btn btn-primary" @onclick="Save" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        @(_editId is null ? "Create" : "Save Changes")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showDeleteConfirm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header"><h5 class="modal-title fw-bold text-danger">Deactivate Level</h5><button type="button" class="btn-close" @onclick="() => { _showDeleteConfirm = false; _deleteItem = null; }"></button></div>
+                <div class="modal-body">Deactivate membership level <strong>@_deleteItem?.Name</strong>? Members with this level will not be affected immediately.</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => { _showDeleteConfirm = false; _deleteItem = null; }">Cancel</button>
+                    <button class="btn btn-danger" @onclick="DeleteItem" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Deactivate
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<MembershipLevelDto> _items = new();
+    private bool _loading = true;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private bool _showForm;
+    private bool _showDeleteConfirm;
+    private int? _editId;
+    private LevelFormModel _form = new();
+    private MembershipLevelDto? _deleteItem;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<IEnumerable<MembershipLevelDto>>>("api/v1/admin/membership-levels");
+            if (resp?.Success == true && resp.Data is not null)
+                _items = resp.Data.ToList();
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private void OpenCreate() { _editId = null; _form = new() { IsAutoRenew = true }; _showForm = true; }
+
+    private void OpenEdit(MembershipLevelDto m)
+    {
+        _editId = m.Id;
+        _form = new LevelFormModel
+        {
+            Name = m.Name,
+            Description = m.Description,
+            Price = m.Price,
+            RenewalPrice = m.RenewalPrice,
+            SortOrder = m.SortOrder,
+            IsFree = m.IsFree,
+            IsAutoRenew = m.IsAutoRenew
+        };
+        _showForm = true;
+    }
+
+    private void CloseForm() { _showForm = false; _editId = null; }
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(_form.Name)) { _alertMsg = "Name is required."; _alertIsError = true; return; }
+        _saving = true;
+        try
+        {
+            var payload = new { _form.Name, _form.Description, _form.Price, _form.RenewalPrice, _form.SortOrder, _form.IsFree, _form.IsAutoRenew };
+            var response = _editId is null
+                ? await Http.PostAsJsonAsync("api/v1/admin/membership-levels", payload)
+                : await Http.PutAsJsonAsync($"api/v1/admin/membership-levels/{_editId}", payload);
+            if (response.IsSuccessStatusCode) { _alertMsg = _editId is null ? "Created." : "Updated."; _alertIsError = false; CloseForm(); await LoadAsync(); }
+            else { _alertMsg = $"Save failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private void ConfirmDelete(MembershipLevelDto m) { _deleteItem = m; _showDeleteConfirm = true; }
+
+    private async Task DeleteItem()
+    {
+        if (_deleteItem is null) return;
+        _saving = true;
+        try
+        {
+            var response = await Http.DeleteAsync($"api/v1/admin/membership-levels/{_deleteItem.Id}");
+            if (response.IsSuccessStatusCode) { _alertMsg = "Deactivated."; _alertIsError = false; _showDeleteConfirm = false; _deleteItem = null; await LoadAsync(); }
+            else { _alertMsg = $"Failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private record MembershipLevelDto(int Id, string Name, string? Description, decimal Price, decimal RenewalPrice, int SortOrder, bool IsFree, bool IsAutoRenew, bool IsActive);
+    private class LevelFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public decimal Price { get; set; }
+        public decimal RenewalPrice { get; set; }
+        public int SortOrder { get; set; }
+        public bool IsFree { get; set; }
+        public bool IsAutoRenew { get; set; }
+    }
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+}

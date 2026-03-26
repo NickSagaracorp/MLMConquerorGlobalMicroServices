@@ -1,0 +1,12 @@
+@page "/admin/tickets/{TicketId}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject IViewContextService ViewContext
+
+<PageTitle>Ticket Detail — Admin</PageTitle>
+
+<TicketDetailPage TicketId="@TicketId" MemberProfileId="@ViewContext.ViewingMemberId" />
+
+@code {
+    [Parameter] public string TicketId { get; set; } = string.Empty;
+}

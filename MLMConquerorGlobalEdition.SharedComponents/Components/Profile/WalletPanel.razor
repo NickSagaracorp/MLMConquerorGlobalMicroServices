@@ -1,0 +1,159 @@
+@inject HttpClient Http
+@inject IViewContextService ViewContext
+
+<LoadingSpinner IsLoading="@_isLoading" />
+
+@if (!_isLoading)
+{
+    <div class="row g-3">
+        <div class="col-12 col-md-6">
+            <div class="card border-primary">
+                <div class="card-body">
+                    <h6 class="fw-semibold mb-3">Active Wallet</h6>
+                    @if (_wallet is not null)
+                    {
+                        <div class="d-flex justify-content-between small mb-2">
+                            <span class="text-muted">Type</span>
+                            <span class="fw-medium">@_wallet.WalletType</span>
+                        </div>
+                        <div class="d-flex justify-content-between small mb-2">
+                            <span class="text-muted">Status</span>
+                            <StatusBadge Status="@_wallet.Status" />
+                        </div>
+                        <div class="d-flex justify-content-between small">
+                            <span class="text-muted">Added</span>
+                            <span>@_wallet.CreatedAt.ToString("MMM dd, yyyy")</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <EmptyState Icon="ri-wallet-line" Title="No wallet" Message="No active wallet configured." />
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="fw-semibold mb-3">Credit Cards</h6>
+                    @foreach (var card in _creditCards)
+                    {
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="small"><i class="ri-bank-card-line me-1"></i>@card.MaskedNumber</span>
+                            <span class="small text-muted">@card.Brand · @card.ExpiryMonth/@card.ExpiryYear</span>
+                        </div>
+                    }
+                    @if (!_creditCards.Any())
+                    {
+                        <p class="text-muted small">No credit cards on file.</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Full wallet history — admin/billing only -->
+        <AdminOnlyWrapper Permission="@Permissions.Wallet.ViewFullHistory">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header py-3">
+                        <h6 class="card-title mb-0 fw-semibold">Wallet History</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <LoadingSpinner IsLoading="@_historyLoading" />
+                        @if (!_historyLoading)
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-hover table-sm mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Action</th>
+                                            <th>By</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if (!_history.Any())
+                                        {
+                                            <tr><td colspan="3" class="text-center text-muted py-4">No data available.</td></tr>
+                                        }
+                                        @foreach (var h in _history)
+                                        {
+                                            <tr>
+                                                <td>@h.OccurredAt.ToString("MMM dd, yyyy HH:mm")</td>
+                                                <td>@h.Action</td>
+                                                <td>@h.ChangedBy</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                            @if (_historyTotal > 20)
+                            {
+                                var totalPages = (int)Math.Ceiling((double)_historyTotal / 20);
+                                <div class="d-flex justify-content-center py-3">
+                                    <nav>
+                                        <ul class="pagination pagination-sm mb-0">
+                                            <li class="page-item @(_historyPage <= 1 ? "disabled" : "")">
+                                                <button class="page-link" @onclick="() => ChangeHistoryPage(_historyPage - 1)">&#x2039;</button>
+                                            </li>
+                                            @for (var pg = 1; pg <= totalPages; pg++)
+                                            {
+                                                var p = pg;
+                                                <li class="page-item @(p == _historyPage ? "active" : "")">
+                                                    <button class="page-link" @onclick="() => ChangeHistoryPage(p)">@p</button>
+                                                </li>
+                                            }
+                                            <li class="page-item @(_historyPage >= totalPages ? "disabled" : "")">
+                                                <button class="page-link" @onclick="() => ChangeHistoryPage(_historyPage + 1)">&#x203A;</button>
+                                            </li>
+                                        </ul>
+                                    </nav>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+        </AdminOnlyWrapper>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+
+    private bool _isLoading     = true;
+    private bool _historyLoading;
+    private int  _historyPage   = 1;
+    private int  _historyTotal;
+
+    private WalletDto? _wallet;
+    private List<CreditCardDto>      _creditCards = new();
+    private List<WalletHistoryItem>  _history     = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(MemberProfileId)) return;
+        _isLoading = true;
+        StateHasChanged();
+        // TODO: GET /api/v1/bizcenter/wallet and /api/v1/bizcenter/billing/credit-cards
+        await Task.Delay(50);
+        _isLoading = false;
+    }
+
+    private async Task ChangeHistoryPage(int page) => await LoadHistoryAsync(page);
+
+    private async Task LoadHistoryAsync(int page)
+    {
+        _historyPage    = page;
+        _historyLoading = true;
+        StateHasChanged();
+        // TODO: GET /api/v1/admin/members/{MemberProfileId}/wallet/history?page={page}
+        await Task.Delay(50);
+        _historyLoading = false;
+    }
+
+    public record WalletDto(string WalletType, string Status, DateTime CreatedAt);
+    public record CreditCardDto(string MaskedNumber, string Brand, int ExpiryMonth, int ExpiryYear);
+    public record WalletHistoryItem(DateTime OccurredAt, string Action, string ChangedBy);
+}

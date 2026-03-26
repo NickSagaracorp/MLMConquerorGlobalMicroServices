@@ -1,0 +1,255 @@
+@inject NavigationManager Nav
+
+<div class="logo position-relative">
+    <a href="/admin/dashboard" class="d-block text-decoration-none">
+        <img src="/assets/images/LogoMLMConqueror.png" alt="MLM Conqueror" style="height:40px;width:auto;" />
+    </a>
+</div>
+
+<aside id="layout-menu" class="layout-menu menu-vertical menu"
+       style="overflow-y:auto;overflow-x:hidden;height:calc(100vh - 64px);">
+    <ul class="menu-inner" style="padding-bottom:2rem;">
+
+        <li class="menu-item @IsActive("/admin/dashboard")">
+            <a href="/admin/dashboard" class="menu-link @IsActive("/admin/dashboard")">
+                <i class="ri-dashboard-line menu-icon"></i>
+                <span class="title">Dashboard</span>
+            </a>
+        </li>
+
+        @* ── Members ── *@
+        <li class="menu-item open @(IsSection("/admin/members","/admin/billing/subscriptions") ? "active" : "")">
+            <a href="javascript:void(0);" class="menu-link menu-toggle">
+                <i class="ri-group-line menu-icon"></i>
+                <span class="title">Members</span>
+            </a>
+            <ul class="menu-sub">
+                <li class="menu-item @IsActive("/admin/members")">
+                    <a href="/admin/members" class="menu-link @IsActive("/admin/members")">
+                        <span class="title">All Members</span>
+                    </a>
+                </li>
+                <li class="menu-item @IsActive("/admin/billing/subscriptions")">
+                    <a href="/admin/billing/subscriptions" class="menu-link @IsActive("/admin/billing/subscriptions")">
+                        <span class="title">Subscriptions</span>
+                    </a>
+                </li>
+            </ul>
+        </li>
+
+        <AuthorizeView Roles="SuperAdmin,Admin">
+            <Authorized>
+                @* ── Network ── *@
+                <li class="menu-item open @(IsSection("/admin/network/") ? "active" : "")">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="ri-node-tree menu-icon"></i>
+                        <span class="title">Network</span>
+                    </a>
+                    <ul class="menu-sub">
+                        <li class="menu-item @IsActive("/admin/network/genealogy")">
+                            <a href="/admin/network/genealogy" class="menu-link @IsActive("/admin/network/genealogy")">
+                                <span class="title">Genealogy Tree</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/network/binary-tree")">
+                            <a href="/admin/network/binary-tree" class="menu-link @IsActive("/admin/network/binary-tree")">
+                                <span class="title">Binary Tree</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="SuperAdmin,Admin,CommissionManager">
+            <Authorized>
+                @* ── Commissions ── *@
+                <li class="menu-item open @(IsSection("/admin/commissions","/admin/ghost-points") ? "active" : "")">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="ri-money-dollar-circle-line menu-icon"></i>
+                        <span class="title">Commissions</span>
+                    </a>
+                    <ul class="menu-sub">
+                        <li class="menu-item @IsActive("/admin/commissions")">
+                            <a href="/admin/commissions" class="menu-link @IsActive("/admin/commissions")">
+                                <span class="title">Commission List</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/ghost-points")">
+                            <a href="/admin/ghost-points" class="menu-link @IsActive("/admin/ghost-points")">
+                                <span class="title">Ghost Points</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="SuperAdmin,Admin,SupportManager,SupportLevel1,SupportLevel2,SupportLevel3,IT">
+            <Authorized>
+                <li class="menu-item open @(IsSection("/admin/tickets") ? "active" : "")">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="ri-customer-service-2-line menu-icon"></i>
+                        <span class="title">Tickets</span>
+                    </a>
+                    <ul class="menu-sub">
+                        <li class="menu-item @IsActive("/admin/tickets")">
+                            <a href="/admin/tickets" class="menu-link @IsActive("/admin/tickets")">
+                                <span class="title">All Tickets</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/config/ticket-categories")">
+                            <a href="/admin/config/ticket-categories" class="menu-link @IsActive("/admin/config/ticket-categories")">
+                                <span class="title">Ticket Categories</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="SuperAdmin,Admin">
+            <Authorized>
+                @* ── Tokens ── *@
+                <li class="menu-item open @(IsSection("/admin/tokens/") ? "active" : "")">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="ri-token-swap-line menu-icon"></i>
+                        <span class="title">Tokens</span>
+                    </a>
+                    <ul class="menu-sub">
+                        <li class="menu-item @IsActive("/admin/tokens/types")">
+                            <a href="/admin/tokens/types" class="menu-link @IsActive("/admin/tokens/types")">
+                                <span class="title">Token Types</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/tokens/distribute")">
+                            <a href="/admin/tokens/distribute" class="menu-link @IsActive("/admin/tokens/distribute")">
+                                <span class="title">Distribute Tokens</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/tokens/codes")">
+                            <a href="/admin/tokens/codes" class="menu-link @IsActive("/admin/tokens/codes")">
+                                <span class="title">Token Codes</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                @* ── Business ── *@
+                <li class="menu-item open @(IsSection("/admin/billing/payments","/admin/events") ? "active" : "")">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="ri-briefcase-line menu-icon"></i>
+                        <span class="title">Business</span>
+                    </a>
+                    <ul class="menu-sub">
+                        <li class="menu-item @IsActive("/admin/billing/payments")">
+                            <a href="/admin/billing/payments" class="menu-link @IsActive("/admin/billing/payments")">
+                                <span class="title">Payment History</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/events/promos")">
+                            <a href="/admin/events/promos" class="menu-link @IsActive("/admin/events/promos")">
+                                <span class="title">Corporate Promos</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/events")">
+                            <a href="/admin/events" class="menu-link @IsActive("/admin/events")">
+                                <span class="title">Corporate Events</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="SuperAdmin,Admin,IT">
+            <Authorized>
+                @* ── Configuration ── *@
+                <li class="menu-item open @(IsSection("/admin/config/") ? "active" : "")">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="ri-settings-2-line menu-icon"></i>
+                        <span class="title">Configuration</span>
+                    </a>
+                    <ul class="menu-sub">
+                        <li class="menu-item @IsActive("/admin/config/products")">
+                            <a href="/admin/config/products" class="menu-link @IsActive("/admin/config/products")">
+                                <span class="title">Products</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/config/membership")">
+                            <a href="/admin/config/membership" class="menu-link @IsActive("/admin/config/membership")">
+                                <span class="title">Membership Levels</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/config/ranks")">
+                            <a href="/admin/config/ranks" class="menu-link @IsActive("/admin/config/ranks")">
+                                <span class="title">Rank Definitions</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/config/commission-types")">
+                            <a href="/admin/config/commission-types" class="menu-link @IsActive("/admin/config/commission-types")">
+                                <span class="title">Commission Types</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/config/commission-categories")">
+                            <a href="/admin/config/commission-categories" class="menu-link @IsActive("/admin/config/commission-categories")">
+                                <span class="title">Commission Categories</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="SuperAdmin">
+            <Authorized>
+                @* ── Security ── *@
+                <li class="menu-item open @(IsSection("/admin/system-users","/admin/security/") ? "active" : "")">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="ri-shield-check-line menu-icon"></i>
+                        <span class="title">Security</span>
+                    </a>
+                    <ul class="menu-sub">
+                        <li class="menu-item @IsActive("/admin/system-users")">
+                            <a href="/admin/system-users" class="menu-link @IsActive("/admin/system-users")">
+                                <span class="title">System Users</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/security/audit")">
+                            <a href="/admin/security/audit" class="menu-link @IsActive("/admin/security/audit")">
+                                <span class="title">Access Audit</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="SuperAdmin,Admin,IT">
+            <Authorized>
+                <li class="menu-item @IsActive("/admin/hangfire")">
+                    <a href="/admin/hangfire" class="menu-link @IsActive("/admin/hangfire")">
+                        <i class="ri-timer-line menu-icon"></i>
+                        <span class="title">HangFire Jobs</span>
+                    </a>
+                </li>
+            </Authorized>
+        </AuthorizeView>
+
+        <li class="menu-item">
+            <a href="/account/logout" class="menu-link">
+                <i class="ri-logout-box-line menu-icon"></i>
+                <span class="title">Logout</span>
+            </a>
+        </li>
+
+    </ul>
+</aside>
+
+@code {
+    private string IsActive(string href)
+        => Nav.Uri.Contains(href, StringComparison.OrdinalIgnoreCase) ? "active" : string.Empty;
+
+    private bool IsSection(params string[] segments)
+        => segments.Any(s => Nav.Uri.Contains(s, StringComparison.OrdinalIgnoreCase));
+}

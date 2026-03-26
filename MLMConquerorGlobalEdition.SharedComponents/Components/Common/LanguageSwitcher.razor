@@ -1,0 +1,55 @@
+@inject NavigationManager Nav
+@inject IStringLocalizer<SharedResources> L
+
+<div class="dropdown language-switcher">
+    <button class="bg-transparent p-0 border-0 d-flex align-items-center"
+            type="button" data-bs-toggle="dropdown" aria-expanded="false"
+            title="@L["Header.ChangeLanguage"]">
+        <i class="ri-global-line fs-5"></i>
+        <span class="ms-1 d-none d-lg-inline small fw-medium">@_currentLabel</span>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end border-0 shadow" style="min-width:160px;">
+        @foreach (var lang in _languages)
+        {
+            <li>
+                <button class="dropdown-item d-flex align-items-center gap-2 @(_currentCulture == lang.Code ? "active" : "")"
+                        type="button" @onclick="() => SetLanguage(lang.Code)">
+                    <span>@lang.Flag</span>
+                    <span>@lang.NativeName</span>
+                </button>
+            </li>
+        }
+    </ul>
+</div>
+
+@code {
+    private string _currentCulture = "en";
+    private string _currentLabel = "EN";
+
+    private static readonly List<LangOption> _languages =
+    [
+        new("en", "English",    "🇺🇸"),
+        new("es", "Español",    "🇪🇸"),
+        new("pt", "Português",  "🇧🇷"),
+        new("fr", "Français",   "🇫🇷"),
+        new("it", "Italiano",   "🇮🇹"),
+        new("ko", "한국어",      "🇰🇷"),
+        new("de", "Deutsch",    "🇩🇪"),
+        new("ru", "Русский",    "🇷🇺"),
+    ];
+
+    protected override void OnInitialized()
+    {
+        _currentCulture = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+        _currentLabel = _currentCulture.ToUpperInvariant();
+    }
+
+    private void SetLanguage(string code)
+    {
+        // Nav.Uri is absolute (http://localhost:5250/admin); extract only path+query for LocalRedirect
+        var localPath = new Uri(Nav.Uri).PathAndQuery;
+        Nav.NavigateTo($"/culture?culture={code}&redirectUri={Uri.EscapeDataString(localPath)}", forceLoad: true);
+    }
+
+    private record LangOption(string Code, string NativeName, string Flag);
+}

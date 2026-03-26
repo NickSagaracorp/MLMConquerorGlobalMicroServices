@@ -1,0 +1,151 @@
+@page "/admin/members"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Members — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Members") })" />
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-3 flex-wrap">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-group-line me-2 text-primary"></i>Member Management
+        </h6>
+        <input class="form-control form-control-sm" style="min-width:220px"
+               placeholder="Search by name, ID..."
+               @bind="_search" @bind:event="oninput" @onkeyup="OnSearchKey" />
+        <select class="form-select form-select-sm w-auto" style="min-width:140px"
+                @bind="_statusFilter" @bind:after="() => { _page = 1; _ = LoadAsync(); }">
+            <option value="">All Statuses</option>
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+            <option value="Suspended">Suspended</option>
+        </select>
+        <button class="btn btn-primary btn-sm" @onclick="() => { _page = 1; _ = LoadAsync(); }">
+            <i class="ri-search-line me-1"></i>Search
+        </button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else if (_error is not null)
+        {
+            <div class="alert alert-danger m-3">@_error</div>
+        }
+        else
+        {
+            <SfGrid TValue="AdminMemberDto" DataSource="@_members"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250,500,1000})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn HeaderText="Member ID" Width="130">
+                        <Template>
+                            <code class="text-primary">@(((AdminMemberDto)context).MemberId)</code>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Name" Width="180">
+                        <Template>
+                            @(((AdminMemberDto)context).FirstName) @(((AdminMemberDto)context).LastName)
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Phone" Width="130">
+                        <Template>
+                            @(((AdminMemberDto)context).Phone ?? "—")
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(AdminMemberDto.Country)" HeaderText="Country" Width="110" />
+                    <GridColumn HeaderText="Type" Width="120">
+                        <Template>
+                            <span class="badge bg-secondary">@(((AdminMemberDto)context).MemberType)</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Status" Width="110">
+                        <Template>
+                            <span class="badge @StatusBadge(((AdminMemberDto)context).Status)">@(((AdminMemberDto)context).Status)</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(AdminMemberDto.EnrollDate)" HeaderText="Enrolled" Width="130" Format="yyyy-MM-dd" Type="ColumnType.Date" />
+                    <GridColumn HeaderText="Actions" Width="90" TextAlign="TextAlign.Center">
+                        <Template>
+                            <a href="/admin/members/@(((AdminMemberDto)context).MemberId)" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2">
+                                <i class="ri-eye-line"></i>
+                            </a>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+
+            @if (_totalPages > 1)
+            {
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
+                    <small class="text-muted">@_totalCount members — Page @_page of @_totalPages</small>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(_page == 1 ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button>
+                            </li>
+                            @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
+                            { var pg = i; <li class="page-item @(_page == pg ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(pg)">@pg</button></li> }
+                            <li class="page-item @(_page == _totalPages ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => ChangePage(_page + 1)">›</button>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private List<AdminMemberDto> _members = new();
+    private bool    _loading      = true;
+    private string? _error;
+    private int     _page         = 1;
+    private const int PageSize    = 20;
+    private int     _totalCount;
+    private int     _totalPages   = 1;
+    private string  _search       = string.Empty;
+    private string  _statusFilter = string.Empty;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; _error = null; StateHasChanged();
+        try
+        {
+            var url = $"api/v1/admin/members?page={_page}&pageSize={PageSize}";
+            if (!string.IsNullOrWhiteSpace(_statusFilter)) url += $"&status={_statusFilter}";
+            if (!string.IsNullOrWhiteSpace(_search))       url += $"&search={Uri.EscapeDataString(_search)}";
+            var resp = await Http.GetFromJsonAsync<ApiResponse<PagedResult<AdminMemberDto>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _members    = resp.Data.Items.ToList();
+                _totalCount = resp.Data.TotalCount;
+                _totalPages = resp.Data.TotalPages;
+            }
+            else { _error = resp?.Errors?.FirstOrDefault() ?? "Failed to load members."; }
+        }
+        catch (Exception ex) { _error = $"API error: {ex.Message}"; }
+        finally { _loading = false; }
+    }
+
+    private async Task ChangePage(int p) { if (p < 1 || p > _totalPages) return; _page = p; await LoadAsync(); }
+
+    private async Task OnSearchKey(KeyboardEventArgs e) { if (e.Key == "Enter") { _page = 1; await LoadAsync(); } }
+
+    private static string StatusBadge(string status) => status switch
+    { "Active" => "bg-success", "Inactive" => "bg-secondary", "Suspended" => "bg-danger", _ => "bg-secondary" };
+
+    private record AdminMemberDto(string MemberId, string FirstName, string LastName,
+        string? Phone, string Country, string Status, string MemberType, DateTime EnrollDate,
+        string? SponsorMemberId, DateTime CreationDate);
+    private record PagedResult<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+    private record ApiResponse<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+}

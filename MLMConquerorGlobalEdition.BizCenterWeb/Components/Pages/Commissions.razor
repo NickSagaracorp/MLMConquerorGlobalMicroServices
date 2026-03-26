@@ -1,0 +1,8 @@
+@page "/commissions"
+@rendermode InteractiveAuto
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Ambassador")]
+@inject IViewContextService ViewContext
+
+<PageTitle>Commissions</PageTitle>
+
+<CommissionsDashboard MemberProfileId="@ViewContext.ViewingMemberId" />

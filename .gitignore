@@ -1,0 +1,105 @@
+# ── Claude memory & config ─────────────────────────────────────────────────────
+.claude/
+
+# ── Markdown — exclude all .md except README.md ────────────────────────────────
+*.md
+!README.md
+
+# ── Visual Studio ─────────────────────────────────────────────────────────────
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.opensdf
+*.sdf
+*.cachefile
+*.VC.db
+*.VC.VC.opendb
+
+# Visual Studio Code
+.vscode/
+
+# Rider
+.idea/
+*.sln.iml
+
+# ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# NCrunch
+*.ncrunch*
+.*crunch*.local.xml
+nCrunchTemp_*
+
+# ── .NET / C# ──────────────────────────────────────────────────────────────────
+bin/
+obj/
+*.nupkg
+*.snupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+ScaffoldingReadMe.txt
+
+# MSTest
+TestResults/
+[Tt]est[Rr]esult*/
+*.trx
+
+# Coverage
+coverage/
+*.coveragexml
+*.coverage
+*.coveragesettings
+CoverageReport/
+
+# Publish
+publish/
+PublishProfiles/
+**/Properties/PublishProfiles/
+
+# NuGet
+*.nuget.props
+*.nuget.targets
+packages/
+!**/packages/build/
+nuget.config
+
+# Entity Framework migrations snapshot (keep .cs, exclude designer cache)
+*.edmx.diagram
+
+# Blazor / MAUI
+*.maui-*
+
+# Windows App packaging
+AppPackages/
+BundleArtifacts/
+Package.StoreAssociation.xml
+_pkginfo.txt
+*.appx
+*.appxbundle
+*.appxupload
+
+# ── Secrets & environment ──────────────────────────────────────────────────────
+appsettings.*.json
+!appsettings.json
+*.pfx
+*.p12
+secrets.json
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+logs/

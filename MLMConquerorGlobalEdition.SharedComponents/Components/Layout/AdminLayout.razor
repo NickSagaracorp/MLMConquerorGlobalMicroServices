@@ -1,0 +1,49 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject IThemeService Theme
+@inject IViewContextService ViewContext
+
+<div class="@(Theme.IsDarkMode ? "dark-mode" : "")">
+    <ImpersonationBanner />
+
+    <!-- Sidebar fixed left — matches template sidebar-area pattern -->
+    <div class="sidebar-area" id="sidebar-area">
+        <AdminSidebarMenu />
+    </div>
+
+    <!-- Main content offset by sidebar (padding-left: 273px from style.css) -->
+    <div class="container-fluid">
+        <div class="main-content d-flex flex-column">
+
+            <HeaderArea />
+
+            <div class="inner-main-content">
+                <ErrorBoundary>
+                    <ChildContent>@Body</ChildContent>
+                    <ErrorContent Context="ex">
+                        <div class="alert alert-danger m-3">
+                            <h5 class="alert-heading"><i class="ri-error-warning-line me-2"></i>An error occurred</h5>
+                            <p class="mb-1">@ex.Message</p>
+                            <pre class="small text-muted mt-2" style="white-space:pre-wrap;">@ex.ToString()</pre>
+                            <button class="btn btn-sm btn-outline-danger mt-2" onclick="window.location.reload()">Reload Page</button>
+                        </div>
+                    </ErrorContent>
+                </ErrorBoundary>
+            </div>
+
+            <FooterArea />
+        </div>
+    </div>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Theme.OnThemeChanged += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        Theme.OnThemeChanged -= StateHasChanged;
+    }
+}

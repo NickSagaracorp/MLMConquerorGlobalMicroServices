@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+
+  <!-- Navigation -->
+  <data name="Nav.Dashboard" xml:space="preserve"><value>Панель управления</value></data>
+  <data name="Nav.Members" xml:space="preserve"><value>Участники</value></data>
+  <data name="Nav.Network" xml:space="preserve"><value>Сеть</value></data>
+  <data name="Nav.BinaryTree" xml:space="preserve"><value>Бинарное дерево</value></data>
+  <data name="Nav.GenealogyTree" xml:space="preserve"><value>Генеалогическое дерево</value></data>
+  <data name="Nav.Commissions" xml:space="preserve"><value>Комиссии</value></data>
+  <data name="Nav.CommissionTypes" xml:space="preserve"><value>Типы комиссий</value></data>
+  <data name="Nav.CommissionCategories" xml:space="preserve"><value>Категории</value></data>
+  <data name="Nav.Tickets" xml:space="preserve"><value>Заявки</value></data>
+  <data name="Nav.AllTickets" xml:space="preserve"><value>Все заявки</value></data>
+  <data name="Nav.TicketCategories" xml:space="preserve"><value>Категории</value></data>
+  <data name="Nav.Tokens" xml:space="preserve"><value>Токены</value></data>
+  <data name="Nav.TokenTypes" xml:space="preserve"><value>Типы токенов</value></data>
+  <data name="Nav.GhostPoints" xml:space="preserve"><value>Призрачные очки</value></data>
+  <data name="Nav.Business" xml:space="preserve"><value>Бизнес</value></data>
+  <data name="Nav.Events" xml:space="preserve"><value>Корпоративные события</value></data>
+  <data name="Nav.Promos" xml:space="preserve"><value>Акции</value></data>
+  <data name="Nav.Configuration" xml:space="preserve"><value>Конфигурация</value></data>
+  <data name="Nav.Ranks" xml:space="preserve"><value>Ранги</value></data>
+  <data name="Nav.RankRequirements" xml:space="preserve"><value>Требования к рангу</value></data>
+  <data name="Nav.Products" xml:space="preserve"><value>Продукты</value></data>
+  <data name="Nav.ProductCommissions" xml:space="preserve"><value>Комиссии по продуктам</value></data>
+  <data name="Nav.TokenCommissions" xml:space="preserve"><value>Комиссии по токенам</value></data>
+  <data name="Nav.LoyaltyPoints" xml:space="preserve"><value>Бонусные баллы</value></data>
+  <data name="Nav.Security" xml:space="preserve"><value>Безопасность</value></data>
+  <data name="Nav.AccessAudit" xml:space="preserve"><value>Журнал доступа</value></data>
+  <data name="Nav.AccountChanges" xml:space="preserve"><value>Изменения аккаунта</value></data>
+  <data name="Nav.SystemUsers" xml:space="preserve"><value>Пользователи системы</value></data>
+  <data name="Nav.PaymentHistory" xml:space="preserve"><value>История платежей</value></data>
+  <data name="Nav.Subscriptions" xml:space="preserve"><value>Подписки</value></data>
+
+  <!-- Common Actions -->
+  <data name="Common.Save" xml:space="preserve"><value>Сохранить</value></data>
+  <data name="Common.Cancel" xml:space="preserve"><value>Отмена</value></data>
+  <data name="Common.Create" xml:space="preserve"><value>Создать</value></data>
+  <data name="Common.Edit" xml:space="preserve"><value>Редактировать</value></data>
+  <data name="Common.Delete" xml:space="preserve"><value>Удалить</value></data>
+  <data name="Common.Deactivate" xml:space="preserve"><value>Деактивировать</value></data>
+  <data name="Common.Activate" xml:space="preserve"><value>Активировать</value></data>
+  <data name="Common.Refresh" xml:space="preserve"><value>Обновить</value></data>
+  <data name="Common.Search" xml:space="preserve"><value>Поиск</value></data>
+  <data name="Common.Loading" xml:space="preserve"><value>Загрузка...</value></data>
+  <data name="Common.Submit" xml:space="preserve"><value>Отправить</value></data>
+  <data name="Common.Close" xml:space="preserve"><value>Закрыть</value></data>
+  <data name="Common.Confirm" xml:space="preserve"><value>Подтвердить</value></data>
+  <data name="Common.Add" xml:space="preserve"><value>Добавить</value></data>
+  <data name="Common.Update" xml:space="preserve"><value>Обновить</value></data>
+  <data name="Common.View" xml:space="preserve"><value>Просмотр</value></data>
+  <data name="Common.Download" xml:space="preserve"><value>Скачать</value></data>
+  <data name="Common.Import" xml:space="preserve"><value>Импорт</value></data>
+  <data name="Common.Export" xml:space="preserve"><value>Экспорт</value></data>
+
+  <!-- Common Labels -->
+  <data name="Common.Actions" xml:space="preserve"><value>Действия</value></data>
+  <data name="Common.Status" xml:space="preserve"><value>Статус</value></data>
+  <data name="Common.Date" xml:space="preserve"><value>Дата</value></data>
+  <data name="Common.Active" xml:space="preserve"><value>Активный</value></data>
+  <data name="Common.Inactive" xml:space="preserve"><value>Неактивный</value></data>
+  <data name="Common.Yes" xml:space="preserve"><value>Да</value></data>
+  <data name="Common.No" xml:space="preserve"><value>Нет</value></data>
+  <data name="Common.Name" xml:space="preserve"><value>Имя</value></data>
+  <data name="Common.Description" xml:space="preserve"><value>Описание</value></data>
+  <data name="Common.Notes" xml:space="preserve"><value>Заметки</value></data>
+  <data name="Common.CreatedBy" xml:space="preserve"><value>Создал</value></data>
+  <data name="Common.CreatedDate" xml:space="preserve"><value>Дата создания</value></data>
+  <data name="Common.Total" xml:space="preserve"><value>Итого</value></data>
+  <data name="Common.Page" xml:space="preserve"><value>Страница</value></data>
+  <data name="Common.Of" xml:space="preserve"><value>из</value></data>
+  <data name="Common.Records" xml:space="preserve"><value>записей</value></data>
+  <data name="Common.NoData" xml:space="preserve"><value>Данные не найдены.</value></data>
+  <data name="Common.Required" xml:space="preserve"><value>Обязательно</value></data>
+  <data name="Common.Optional" xml:space="preserve"><value>Необязательно</value></data>
+  <data name="Common.Error" xml:space="preserve"><value>Ошибка</value></data>
+  <data name="Common.Success" xml:space="preserve"><value>Успех</value></data>
+  <data name="Common.Warning" xml:space="preserve"><value>Предупреждение</value></data>
+  <data name="Common.MemberId" xml:space="preserve"><value>ID участника</value></data>
+  <data name="Common.Email" xml:space="preserve"><value>Эл. почта</value></data>
+  <data name="Common.Role" xml:space="preserve"><value>Роль</value></data>
+  <data name="Common.Amount" xml:space="preserve"><value>Сумма</value></data>
+  <data name="Common.Points" xml:space="preserve"><value>Очки</value></data>
+
+  <!-- Header -->
+  <data name="Header.SearchPlaceholder" xml:space="preserve"><value>Поиск здесь...</value></data>
+  <data name="Header.Notifications" xml:space="preserve"><value>Уведомления</value></data>
+  <data name="Header.NoNotifications" xml:space="preserve"><value>Нет новых уведомлений.</value></data>
+  <data name="Header.Profile" xml:space="preserve"><value>Профиль</value></data>
+  <data name="Header.Logout" xml:space="preserve"><value>Выйти</value></data>
+  <data name="Header.ToggleDarkMode" xml:space="preserve"><value>Тёмный режим</value></data>
+  <data name="Header.ChangeLanguage" xml:space="preserve"><value>Изменить язык</value></data>
+
+  <!-- Language Names -->
+  <data name="Lang.en" xml:space="preserve"><value>English</value></data>
+  <data name="Lang.es" xml:space="preserve"><value>Español</value></data>
+  <data name="Lang.pt" xml:space="preserve"><value>Português</value></data>
+  <data name="Lang.fr" xml:space="preserve"><value>Français</value></data>
+  <data name="Lang.it" xml:space="preserve"><value>Italiano</value></data>
+  <data name="Lang.ko" xml:space="preserve"><value>한국어</value></data>
+  <data name="Lang.de" xml:space="preserve"><value>Deutsch</value></data>
+  <data name="Lang.ru" xml:space="preserve"><value>Русский</value></data>
+</root>

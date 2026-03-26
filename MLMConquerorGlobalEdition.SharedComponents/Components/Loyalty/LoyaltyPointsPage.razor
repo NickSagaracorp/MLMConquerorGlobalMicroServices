@@ -1,0 +1,138 @@
+@inject IViewContextService ViewContext
+@inject HttpClient Http
+
+@using MLMConquerorGlobalEdition.SharedComponents.Constants
+
+<BreadcrumbNav Items="@_breadcrumb" />
+
+<div class="row g-3 mb-4">
+    <div class="col-12 col-sm-4">
+        <StatCard Title="Total Points" Value="@_totalPoints.ToString("N0")" Icon="ri-heart-line" Color="danger" />
+    </div>
+    <div class="col-12 col-sm-4">
+        <StatCard Title="Unlocked Points" Value="@_unlockedPoints.ToString("N0")" Icon="ri-lock-unlock-line" Color="success" />
+    </div>
+    <div class="col-12 col-sm-4">
+        <StatCard Title="Locked Points" Value="@_lockedPoints.ToString("N0")" Icon="ri-lock-line" Color="warning" />
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header py-3">
+        <h6 class="card-title mb-0 fw-semibold">Loyalty Points History</h6>
+    </div>
+    <div class="card-body p-0">
+        <LoadingSpinner IsLoading="@_isLoading" />
+        @if (!_isLoading)
+        {
+            <div class="table-responsive">
+                <table class="table table-hover table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>Points</th>
+                            <th>Locked</th>
+                            <th>Missed Payment</th>
+                            <th>Status</th>
+                            @if (ViewContext.HasPermission(Permissions.Loyalty.ManualUnlock))
+                            {
+                                <th class="text-center">Admin</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!_items.Any())
+                        {
+                            <tr><td colspan="6" class="text-center text-muted py-4">No data available.</td></tr>
+                        }
+                        @foreach (var lp in _items)
+                        {
+                            <tr>
+                                <td>@lp.MonthLabel</td>
+                                <td>@lp.Points</td>
+                                <td>@(lp.IsLocked ? "Yes" : "No")</td>
+                                <td>@(lp.MissedPayment ? "⚠ Yes" : "No")</td>
+                                <td><StatusBadge Status="@(lp.IsLocked ? "Locked" : "Unlocked")" /></td>
+                                @if (ViewContext.HasPermission(Permissions.Loyalty.ManualUnlock))
+                                {
+                                    <td class="text-center">
+                                        @if (lp.IsLocked)
+                                        {
+                                            <button class="btn btn-xs btn-outline-success"
+                                                    @onclick="() => ManualUnlock(lp.Id)"
+                                                    title="Manual Unlock">
+                                                <i class="ri-lock-unlock-line"></i>
+                                            </button>
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (_total > _pageSize)
+            {
+                var totalPages = (int)Math.Ceiling((double)_total / _pageSize);
+                <div class="d-flex justify-content-center py-3">
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(_page <= 1 ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => ChangePage(_page - 1)">&#x2039;</button>
+                            </li>
+                            @for (var pg = 1; pg <= totalPages; pg++)
+                            {
+                                var p = pg;
+                                <li class="page-item @(p == _page ? "active" : "")">
+                                    <button class="page-link" @onclick="() => ChangePage(p)">@p</button>
+                                </li>
+                            }
+                            <li class="page-item @(_page >= totalPages ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => ChangePage(_page + 1)">&#x203A;</button>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+
+    private bool    _isLoading     = true;
+    private int     _page = 1, _pageSize = 20, _total;
+    private decimal _totalPoints, _unlockedPoints, _lockedPoints;
+    private List<LoyaltyPointDto> _items = new();
+
+    private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
+    {
+        new("Dashboard", "/dashboard"),
+        new("Loyalty Points")
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(MemberProfileId)) return;
+        await LoadPageAsync(1);
+    }
+
+    private async Task ChangePage(int page) => await LoadPageAsync(page);
+
+    private async Task LoadPageAsync(int page)
+    {
+        _page = page; _isLoading = true; StateHasChanged();
+        // TODO: GET /api/v1/bizcenter/loyalty?memberId={MemberProfileId}&page={page}&pageSize={_pageSize}
+        await Task.Delay(50);
+        _isLoading = false;
+    }
+
+    private async Task ManualUnlock(string id)
+    {
+        // TODO: POST /api/v1/admin/loyalty/{id}/unlock
+        await Task.CompletedTask;
+    }
+
+    public record LoyaltyPointDto(string Id, string MonthLabel, int Points, bool IsLocked, bool MissedPayment);
+}

@@ -1,0 +1,5 @@
+@page "/tokens/guest-passes"
+@attribute [Authorize(Roles = "Ambassador")]
+@inject IViewContextService ViewContext
+
+<GuestPassesPage MemberProfileId="@ViewContext.ViewingMemberId" />

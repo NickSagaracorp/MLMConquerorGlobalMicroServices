@@ -1,0 +1,1407 @@
+<!DOCTYPE html>
+<html lang="zxx">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Links Of CSS File -->
+    <link rel="stylesheet" href="assets/css/sidebar-menu.css">
+    <link rel="stylesheet" href="assets/css/simplebar.css">
+    <link rel="stylesheet" href="assets/css/apexcharts.css">
+    <link rel="stylesheet" href="assets/css/prism.css">
+    <link rel="stylesheet" href="assets/css/rangeslider.css">
+    <link rel="stylesheet" href="assets/css/quill.snow.css">
+    <link rel="stylesheet" href="assets/css/google-icon.css">
+    <link rel="stylesheet" href="assets/css/remixicon.css">
+    <link rel="stylesheet" href="assets/css/swiper-bundle.min.css">
+    <link rel="stylesheet" href="assets/css/fullcalendar.main.css">
+    <link rel="stylesheet" href="assets/css/jsvectormap.min.css">
+    <link rel="stylesheet" href="assets/css/lightpick.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/joinpage.css">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico">
+    <!-- Title -->
+    <title>MWRLife - Join</title>
+</head>
+<body class="boxed-size bg-white">
+    <!-- Start Preloader Area -->
+    <!--<div class="preloader" id="preloader">
+        <div class="preloader">
+            <div class="waviy position-relative">
+                <img src="assets/images/logo.svg" style="width: 100%; height: auto;" />-->
+    <!--<span class="d-inline-block">M</span>
+    <span class="d-inline-block">W</span>
+    <span class="d-inline-block">R</span>
+    <span class="d-inline-block"></span>
+    <span class="d-inline-block">L</span>
+    <span class="d-inline-block">I</span>
+    <span class="d-inline-block">F</span>
+    <span class="d-inline-block">E</span>-->
+    <!--</div>
+        </div>
+    </div>-->
+    <div id="preloader">
+        <div class="preloader">
+            <div class="waviy">
+                <img src="assets/images/logo.svg" alt="logo">
+            </div>
+        </div>
+    </div>
+    <!-- End Preloader Area -->
+    <!-- Start Main Content Area -->
+    <header class="enroll-header py-3">
+        <div class="container d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <!-- Logotipo -->
+            <div class="d-flex align-items-center gap-2">
+                <img src="assets/images/logo.svg" class="rounded-3 for-light-logo enroll-logo" alt="MWR Life">
+                <img src="assets/images/white-logo.svg" class="rounded-3 for-dark-logo enroll-logo" alt="MWR Life">
+            </div>
+
+            <!-- Secure Enrollment -->
+            <div class="d-flex align-items-center gap-1 text-muted small fw-semibold">
+                <span>Secure Enrollment</span>
+                <i class="ri-lock-2-line text-warning fs-5"></i>
+            </div>
+        </div>
+
+        <!-- Título principal -->
+        <div class="text-center mt-3">
+            <h1 class="fw-bold text-primary mb-1">MWR Life Enrollment</h1>
+            <p class="text-muted mb-0">
+                Your Sponsor is <span class="fw-semibold text-dark" id="sponsorName">Nuno Cacao</span>
+            </p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="main-content d-flex flex-column p-0">
+            <div class="m-auto m-1230">
+                <!-- ENROLLMENT -->
+                <section class="section-card mb-5 mt-9" id="enrollment">
+                    <div class="section-head">
+                        <div class="section-icon"><i class="ri-award-line"></i></div>
+                        <div>
+                            <h4 class="mb-0">Enrollment</h4>
+                            <p class="text-muted mb-0">You are enrolling as a Lifestyle Ambassador.</p>
+                        </div>
+                    </div>
+
+                    <div class="section-body">
+                        <label class="plan-card" for="enrollAmbassador">
+                            <input type="checkbox" id="enrollAmbassador" class="plan-card__radio" checked disabled>
+                            <div class="plan-card__body">
+                                <div class="plan-card__title">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <h5 class="mb-0">Lifestyle Ambassador</h5>
+                                        <span class="plan-selected-chip">
+                                            <i class="ri-check-fill"></i> Included
+                                        </span>
+                                    </div>
+                                    <small class="text-muted d-block">One-time enrollment</small>
+                                </div>
+
+                                <div class="row g-3 align-items-center mt-1">
+                                    <div class="col-lg-9">
+                                        <p class="text-muted mb-0 small">
+                                            You are enrolling as a Lifestyle Ambassador for $99. This allows you to promote MWR Life memberships, earn
+                                            commissions from sales, and access the Biz Center with training, tools, and reports. Renewal of $99 applies annually.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <span class="price-chip">$99.00</span>
+                            </div>
+                        </label>
+                    </div>
+                </section>
+
+                <!-- SELECT YOUR MEMBERSHIP -->
+                <section class="section-card mb-5" id="membership">
+                    <div class="section-head">
+                        <div class="section-icon"><i class="ri-vip-crown-line"></i></div>
+                        <div>
+                            <h4 class="mb-0">Select your membership</h4>
+                            <p class="text-muted mb-0">Choose the plan to access Travel Advantage™ benefits.</p>
+                        </div>
+                    </div>
+
+                    <div class="section-body">
+                        <label class="plan-card" for="planEliteChk">
+                            <!-- Agora é checkbox -->
+                            <input type="checkbox"
+                                   id="planEliteChk"
+                                   class="plan-card__radio" />
+
+                            <div class="plan-card__body">
+                                <div class="plan-card__title">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <h5 class="mb-0">Elite Travel Advantage™</h5>
+                                        <span class="plan-selected-chip">
+                                            <i class="ri-check-fill"></i> Selected
+                                        </span>
+                                    </div>
+                                    <small class="text-muted d-block">
+                                        One-time $120 activation + $119.97 monthly
+                                    </small>
+                                </div>
+
+                                <div class="row g-3 align-items-center mt-1">
+                                    <div class="col-lg-9">
+                                        <ul class="feature-list mb-0">
+                                            <li>Access to nearly <strong>2,000,000 travel deals</strong> worldwide</li>
+                                            <li><strong>Unlimited access</strong> to the Travel Advantage™ Portal and Lifestyle Mall</li>
+                                            <li><strong>120 Loyalty Points</strong> per month</li>
+                                            <li><strong>50 Guest Passes</strong> on enrollment and <strong>20 FREE Guest Passes</strong> per month</li>
+                                        </ul>
+                                    </div>
+                                    <div class="col-lg-3 text-lg-end">
+                                        <img src="https://join.traveladvantage.com/assets/new/assets/img/content/modules/join/membership-details/card-img-3.webp"
+                                             class="img-fluid rounded-3 shadow-sm"
+                                             alt="Elite Travel Advantage™ card"
+                                             onerror="this.style.display='none'" />
+                                    </div>
+                                </div>
+
+                                <div class="row g-3 align-items-left mt-5">
+                                    <div class="col-lg-12 text-lg-start">
+                                        <span class="price-chip">$239.97</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+
+                </section>
+
+                <!-- TURBO ADD-ON -->
+                <section class="section-card mb-5" id="turbo-section">
+                    <div class="section-head">
+                        <div class="section-icon"><i class="ri-flashlight-line"></i></div>
+                        <div>
+                            <h4 class="mb-0">Turbo Add-On</h4>
+                            <p class="text-muted mb-0">Boost your benefits with the TURBO upgrade.</p>
+                        </div>
+                    </div>
+
+                    <div class="section-body">
+                        <label class="plan-card" for="turboAddOn">
+                            <input type="checkbox" id="turboAddOn" class="plan-card__radio">
+
+                            <div class="plan-card__body">
+                                <div class="plan-card__title">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <h5 class="mb-0">Turbo Add-On</h5>
+                                        <span class="plan-selected-chip">
+                                            <i class="ri-check-fill"></i> Selected
+                                        </span>
+                                    </div>
+                                    <small class="text-muted d-block">
+                                        One-time $249.97 upgrade (optional add-on for Elite members)
+                                    </small>
+                                </div>
+
+                                <div class="row g-3 align-items-center mt-1">
+                                    <div class="col-lg-9">
+                                        <ul class="feature-list mb-0">
+                                            <li><strong>Double Loyalty Points</strong> monthly</li>
+                                            <li>Instantly earn an additional <strong>250 Loyalty Points</strong></li>
+                                            <li>Add <strong>1,500 Guest Passes</strong> to your account</li>
+                                            <li>Access <strong>exclusive Turbo member hotel deals</strong></li>
+                                            <li>Apply up to <strong>100 Loyalty Points</strong> for a second guest on Life Experience® bookings</li>
+                                            <li>Enjoy <strong>Flex Traveller</strong> option every 6 months</li>
+                                        </ul>
+                                    </div>
+                                    <div class="col-lg-3 text-lg-end">
+                                        <img src="https://www.mwrlife.com/images/img-6.png"
+                                             class="img-fluid rounded-3 shadow-sm"
+                                             alt="Turbo Add-On card"
+                                             onerror="this.style.display='none'">
+                                    </div>
+                                </div>
+
+                                <div class="row g-3 align-items-left mt-5">
+                                    <div class="col-lg-12 text-lg-start">
+                                        <span class="price-chip">$249.97</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                </section>
+
+
+
+                <!-- PERSONAL / BUSINESS INFO -->
+                <section class="section-card mb-5">
+                    <div class="section-head">
+                        <div class="section-icon">
+                            <i class="ri-user-3-line"></i>
+                        </div>
+                        <div>
+                            <h4 class="mb-0">Personal / Business Info</h4>
+                            <p class="text-muted mb-0">Tell us a bit about yourself. These details stay private.</p>
+                        </div>
+                    </div>
+
+                    <div class="section-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="firstName" placeholder="First Name" required>
+                                    <label for="firstName">First Name *</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="lastName" placeholder="Last Name" required>
+                                    <label for="lastName">Last Name *</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <!-- VISÍVEL para o utilizador -->
+                                    <input type="text"
+                                           class="form-control"
+                                           id="dobDisplay"
+                                           placeholder="DD/MM/YYYY"
+                                           autocomplete="bday"
+                                           inputmode="numeric">
+                                    <label for="dobDisplay">Date of Birth</label>
+                                    <div class="invalid-feedback">You must be at least 18 years old.</div>
+
+                                    <!-- OCULTO, valor em ISO para submissão -->
+                                    <input type="hidden" id="dob" name="dob">
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="ssn" placeholder="SSN">
+                                    <label for="ssn">SSN</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                            <div>
+                                <p class="mb-0 fw-semibold">Enrolling as a business?</p>
+                                <small class="text-muted">Toggle to add company details.</small>
+                            </div>
+                            <!-- Toggle -->
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" id="enrollBusiness">
+                                <label class="form-check-label" for="enrollBusiness">Yes</label>
+                            </div>
+                        </div>
+
+                        <!-- Conditional Fields -->
+                        <div id="businessFields" class="row g-3 mt-2 d-none">
+                            <div class="col-md-8">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="businessName" placeholder="Business Name">
+                                    <label for="businessName">Business Name</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="ein" placeholder="EIN">
+                                    <label for="ein">EIN</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- CONTACT INFO -->
+                <section class="section-card mb-5" id="contact-info">
+                    <div class="section-head">
+                        <div class="section-icon">
+                            <i class="ri-contacts-book-2-line"></i>
+                        </div>
+                        <div>
+                            <h4 class="mb-0">Contact Info</h4>
+                            <p class="text-muted mb-0">How can we reach you? Use a valid email and phone.</p>
+                        </div>
+                    </div>
+
+                    <div class="section-body">
+                        <div class="row g-3">
+                            <!-- WhatsApp -->
+                            <div class="col-md-6">
+                                <label class="form-label text-secondary">WhatsApp</label>
+                                <div class="input-group country-line">
+                                    <select class="form-select country-code" id="waCountry" aria-label="Country code for WhatsApp">
+                                        <option value="+351" selected>🇵🇹 +351</option>
+                                        <option value="+34">🇪🇸 +34</option>
+                                        <option value="+33">🇫🇷 +33</option>
+                                        <option value="+44">🇬🇧 +44</option>
+                                        <option value="+1">🇺🇸 +1</option>
+                                        <option value="+55">🇧🇷 +55</option>
+                                    </select>
+                                    <input type="tel" class="form-control" id="whatsApp" placeholder="9XXXXXXXX" inputmode="tel">
+                                </div>
+                                <small class="text-muted">Inclua apenas os dígitos (o indicativo é escolhido no seletor).</small>
+                            </div>
+
+                            <!-- Cell Phone -->
+                            <div class="col-md-6">
+                                <label class="form-label text-secondary">Cell Phone</label>
+                                <div class="input-group country-line">
+                                    <select class="form-select country-code" id="cellCountry" aria-label="Country code for Cell Phone">
+                                        <option value="+351" selected>🇵🇹 +351</option>
+                                        <option value="+34">🇪🇸 +34</option>
+                                        <option value="+33">🇫🇷 +33</option>
+                                        <option value="+44">🇬🇧 +44</option>
+                                        <option value="+1">🇺🇸 +1</option>
+                                        <option value="+55">🇧🇷 +55</option>
+                                    </select>
+                                    <input type="tel" class="form-control" id="cellPhone" placeholder="9XXXXXXXX" inputmode="tel">
+                                </div>
+                            </div>
+
+                            <!-- Email + Confirm -->
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="email" class="form-control" id="email" placeholder="name@example.com" required>
+                                    <label for="email">Email *</label>
+                                    <div class="invalid-feedback">Please enter a valid email.</div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="email" class="form-control" id="email2" placeholder="Repeat email" required>
+                                    <label for="email2">Verify Email *</label>
+                                    <div class="invalid-feedback">Emails do not match.</div>
+                                </div>
+                            </div>
+
+                            <!-- Address -->
+                            <div class="col-md-8">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="address" placeholder="Address line">
+                                    <label for="address">Address</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="city" placeholder="City">
+                                    <label for="city">City</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <select class="form-select" id="country">
+                                        <option value="" selected>— Select —</option>
+                                        <option value="PT">Portugal</option>
+                                        <option value="ES">Spain</option>
+                                        <option value="FR">France</option>
+                                        <option value="GB">United Kingdom</option>
+                                        <option value="US">United States</option>
+                                        <option value="CA">Canada</option>
+                                        <option value="BR">Brazil</option>
+                                    </select>
+                                    <label for="country">Country</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="postalCode" placeholder="Postal Code">
+                                    <label for="postalCode">Postal Code</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <div class="form-floating">
+                                    <select class="form-select" id="province">
+                                        <option value="">— Select —</option>
+                                    </select>
+                                    <label for="province">Province / State</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <!-- Billing same? -->
+                        <div class="row g-3 align-items-center">
+                            <div class="col-lg-6">
+                                <p class="mb-0 fw-semibold">Is your billing address the same as this Contact Info?</p>
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="d-flex align-items-center gap-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="billingSame" id="billYes" value="yes" checked>
+                                        <label class="form-check-label" for="billYes">Yes</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="billingSame" id="billNo" value="no">
+                                        <label class="form-check-label" for="billNo">No</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Billing fields (conditional) -->
+                        <div id="billingFields" class="row g-3 mt-2 d-none">
+                            <div class="col-12 d-flex justify-content-end">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="copyContactToBilling">
+                                    Copy from contact
+                                </button>
+                            </div>
+
+                            <div class="col-md-8">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="billAddress" placeholder="Billing Address">
+                                    <label for="billAddress">Billing Address</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="billCity" placeholder="City">
+                                    <label for="billCity">City</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <select class="form-select" id="billCountry">
+                                        <option value="" selected>— Select —</option>
+                                        <option value="PT">Portugal</option>
+                                        <option value="ES">Spain</option>
+                                        <option value="FR">France</option>
+                                        <option value="GB">United Kingdom</option>
+                                        <option value="US">United States</option>
+                                        <option value="CA">Canada</option>
+                                        <option value="BR">Brazil</option>
+                                    </select>
+                                    <label for="billCountry">Country</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="billPostal" placeholder="Postal Code">
+                                    <label for="billPostal">Postal Code</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <div class="form-floating">
+                                    <select class="form-select" id="billProvince">
+                                        <option value="">— Select —</option>
+                                    </select>
+                                    <label for="billProvince">Province / State</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- WEBSITE NAME & PASSWORD -->
+                <section class="section-card mb-5" id="website-pass">
+                    <div class="section-head">
+                        <div class="section-icon">
+                            <i class="ri-lock-2-line"></i>
+                        </div>
+                        <div>
+                            <h4 class="mb-0">Website Name and Password</h4>
+                            <p class="text-muted mb-0">
+                                Choose the name that comes after <strong>www.mwrlife.com/</strong> and set a secure password.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="section-body">
+                        <!-- Website name -->
+                        <div class="mb-2">
+                            <small class="text-muted">
+                                Your Website Name can use letters or numbers only (no spaces). Example: <code>nuno</code>, <code>myshop23</code>.
+                            </small>
+                        </div>
+
+                        <div class="row g-3 align-items-start">
+                            <div class="col-12">
+                                <label class="form-label text-secondary">Website URL</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light">www.mwrlife.com/</span>
+                                    <input type="text" class="form-control" id="siteHandle" placeholder="yourname" maxlength="30" autocomplete="off">
+                                </div>
+                                <div class="d-flex gap-3 mt-2 align-items-center">
+                                    <small id="handleHint" class="text-muted">Only letters and numbers. We’ll lowercase automatically.</small>
+                                    <small id="handleStatus" class="fw-semibold"></small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <!-- Password -->
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label text-secondary">Password</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="pwd" placeholder="Create a password" aria-describedby="pwdToggle">
+                                    <button class="btn btn-outline-secondary" type="button" id="pwdToggle" title="Show/Hide">
+                                        <i class="ri-eye-line" id="pwdEye"></i>
+                                    </button>
+                                </div>
+
+                                <!-- Strength meter -->
+                                <div class="mt-2">
+                                    <div class="progress" style="height: 8px;">
+                                        <div class="progress-bar" id="pwdStrengthBar" role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                    <small id="pwdStrengthText" class="text-muted">Strength: —</small>
+                                </div>
+
+                                <ul class="mt-2 mb-0 small text-muted" style="line-height:1.3">
+                                    <li>Min. 8 characters</li>
+                                    <li>Use upper & lower case</li>
+                                    <li>Add numbers and a symbol</li>
+                                </ul>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label text-secondary">Confirm Password</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="pwd2" placeholder="Repeat password" aria-describedby="pwd2Toggle">
+                                    <button class="btn btn-outline-secondary" type="button" id="pwd2Toggle" title="Show/Hide">
+                                        <i class="ri-eye-line" id="pwd2Eye"></i>
+                                    </button>
+                                </div>
+                                <div class="invalid-feedback">Passwords do not match.</div>
+
+                                <div class="d-flex gap-2 mt-3">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="genPwd">
+                                        Generate strong password
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="copyPwd">
+                                        Copy password
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+
+                <!-- PAYMENT INFO -->
+                <section class="section-card mb-5" id="payment-info">
+                    <div class="section-head">
+                        <div class="section-icon">
+                            <i class="ri-bank-card-line"></i>
+                        </div>
+                        <div>
+                            <h4 class="mb-0">Payment Info</h4>
+                            <p class="text-muted mb-0">Choose a payment method and complete your enrollment.</p>
+                        </div>
+                    </div>
+
+                    <div class="section-body">
+                        <!-- Coupon -->
+                        <div class="row g-3 align-items-end mb-2">
+                            <div class="col-md-6">
+                                <label class="form-label text-secondary" for="couponCode">Coupon Code</label>
+                                <input type="text" class="form-control" id="couponCode" placeholder="Enter coupon">
+                            </div>
+                            <div class="col-md-3">
+                                <button type="button" id="applyCoupon" class="btn btn-outline-secondary w-100">
+                                    Apply
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <div id="couponMsg" class="small"></div>
+                            </div>
+                        </div>
+
+                        <!-- Tabs -->
+                        <ul class="nav nav-pills pay-tabs mb-3" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" data-target="#tabCard" type="button" role="tab">
+                                    <i class="ri-bank-card-2-line me-1"></i> Credit Card
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-target="#tabToken" type="button" role="tab">
+                                    <i class="ri-key-line me-1"></i> Token
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-target="#tabCrypto" type="button" role="tab">
+                                    <i class="ri-bit-coin-line me-1"></i> Crypto
+                                </button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content">
+                            <!-- CREDIT CARD -->
+                            <div class="tab-pane fade show active" id="tabCard" role="tabpanel">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="form-floating">
+                                            <input type="text" class="form-control" id="ccFirst" placeholder="First Name">
+                                            <label for="ccFirst">First Name</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-floating">
+                                            <input type="text" class="form-control" id="ccLast" placeholder="Last Name">
+                                            <label for="ccLast">Last Name</label>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-lg-8">
+                                        <label class="form-label text-secondary">Card Number</label>
+                                        <div class="input-group">
+                                            <input type="password" class="form-control" id="ccNumber" inputmode="numeric" autocomplete="cc-number"
+                                                   placeholder="1234 5678 9012 3456" aria-describedby="ccBrand ccNumToggle">
+                                            <span class="input-group-text bg-light" id="ccBrand">•••</span>
+                                            <button class="btn btn-outline-secondary" type="button" id="ccNumToggle" title="Show/Hide">
+                                                <i class="ri-eye-line" id="ccNumEye"></i>
+                                            </button>
+                                        </div>
+                                        <small id="ccNumberHelp" class="text-muted"></small>
+                                    </div>
+
+                                    <div class="col-lg-4">
+                                        <label class="form-label text-secondary">CCV / CVV</label>
+                                        <div class="input-group">
+                                            <input type="password" class="form-control" id="ccCvv" inputmode="numeric" placeholder="123" aria-describedby="ccCvvToggle">
+                                            <button class="btn btn-outline-secondary" type="button" id="ccCvvToggle" title="Show/Hide">
+                                                <i class="ri-eye-line" id="ccCvvEye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label text-secondary">Expiration</label>
+                                        <div class="row g-2">
+                                            <div class="col-6">
+                                                <select id="ccExpMonth" class="form-select" autocomplete="cc-exp-month"></select>
+                                            </div>
+                                            <div class="col-6">
+                                                <select id="ccExpYear" class="form-select" autocomplete="cc-exp-year"></select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- TOKEN -->
+                            <div class="tab-pane fade" id="tabToken" role="tabpanel">
+                                <p class="text-muted mb-2">
+                                    Enter the <strong>7 character token</strong> provided by your sponsor. Note: tokens are non-refundable.
+                                </p>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="form-floating">
+                                            <input type="text" class="form-control" id="payToken" placeholder="TOKEN7" maxlength="7">
+                                            <label for="payToken">Token</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- CRYPTO -->
+                            <div class="tab-pane fade" id="tabCrypto" role="tabpanel">
+                                <div class="p-4 text-center text-muted">
+                                    <img src="https://nowpayments.io/images/logo.svg" alt="NOWPayments" style="height:26px; opacity:.8;">
+                                    <p class="mt-2 mb-0">You’ll be redirected to our crypto gateway after clicking “Join Now”.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Amount / Recaptcha / Agree -->
+                        <div class="text-center my-4">
+                            <p class="fw-semibold" id="amountLine">
+                                The amount charged today will be <span id="amountNow">$588.94</span>,
+                                with regular monthly payments of <span id="amountMonthly">$119.97</span>.
+                            </p>
+                        </div>
+
+                        <div class="d-flex justify-content-center my-3">
+                            <!-- reCAPTCHA placeholder: substitui pelo widget real -->
+                            <div id="recaptcha-placeholder" class="border rounded p-3 text-muted">
+                                reCAPTCHA here
+                            </div>
+                        </div>
+
+                        <div class="form-check my-3">
+                            <input class="form-check-input" type="checkbox" id="agreeTerms">
+                            <label class="form-check-label" for="agreeTerms">
+                                I AGREE: I have read and agree to the
+                                <a href="#" target="_blank" rel="noopener">Independent Lifestyle Ambassador Agreement</a>,
+                                <a href="#" target="_blank" rel="noopener">Policies &amp; Procedures</a>, and
+                                <a href="#" target="_blank" rel="noopener">Compensation Plan</a>. I confirm I am at least 18.
+                            </label>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="button" class="btn btn-primary btn-lg" id="joinBtn">
+                                Join Now
+                            </button>
+                        </div>
+
+                        <div class="text-center mt-3">
+                            <img src="https://www.sectigo.com/images/seal/sectigo_trust_seal_lg_2x.png"
+                                 alt="Secured by Sectigo" style="height:28px; opacity:.9;">
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+    <!-- Start Main Content Area -->
+
+    <button class="theme-settings-btn p-0 border-0 bg-transparent" style="right: 30px; bottom: 30px;" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasScrolling" aria-controls="offcanvasScrolling">
+        <i class="material-symbols-outlined bg-primary wh-35 lh-35 text-white rounded-1" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Choose your country">settings</i>
+    </button>
+
+    <!-- Start Theme Setting Area -->
+    <div class="offcanvas offcanvas-end bg-white" data-bs-scroll="true" data-bs-backdrop="true" tabindex="-1" id="offcanvasScrolling" aria-labelledby="offcanvasScrollingLabel" style="box-shadow: rgba(100, 100, 111, 0.2) 0px 7px 29px 0px;">
+        <div class="offcanvas-header bg-primary py-3 px-4">
+            <h5 class="offcanvas-title fs-18 text-white" id="offcanvasScrollingLabel">Choose your country</h5>
+            <button type="button" class="btn-close text-white" data-bs-dismiss="offcanvas" aria-label="Close" style="filter: invert(1); opacity: 1;"></button>
+        </div>
+        <div class="offcanvas-body p-4">
+            <div class="mb-4 pb-2">
+
+                <!-- Search bar -->
+                <div class="mb-3">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="ri-search-line"></i></span>
+                        <input type="text"
+                               id="countrySearch"
+                               class="form-control"
+                               placeholder="Search country or dial code…"
+                               autocomplete="off">
+                    </div>
+                </div>
+
+                <!-- Country picker -->
+                <div id="country-picker" class="flag-grid" role="listbox" aria-label="Choose your country"></div>
+
+                <small class="text-muted d-block mt-2">
+                    This will set your Country and phone codes on the form.
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <footer class="mwrlife-footer">
+        <div class="container">
+            <div class="mwrlife-footer__grid">
+                <!-- Brand + Social -->
+                <div class="mwrlife-footer__brand">
+                    <img src="assets/images/logo.svg" alt="MWR Life" class="mwrlife-footer__logo">
+                    <p class="mwrlife-footer__follow">FOLLOW&nbsp;US</p>
+                    <div class="mwrlife-footer__social">
+                        <a href="#" aria-label="Facebook"><i class="ri-facebook-fill"></i></a>
+                        <a href="#" aria-label="Instagram"><i class="ri-instagram-line"></i></a>
+                        <a href="#" aria-label="YouTube"><i class="ri-youtube-fill"></i></a>
+                        <a href="#" aria-label="Twitter"><i class="ri-twitter-x-fill"></i></a>
+                        <a href="#" aria-label="LinkedIn"><i class="ri-linkedin-fill"></i></a>
+                    </div>
+
+                    <!-- (Opcional) selo ETOA -->
+                    <!-- <img src="assets/images/etoa-badge.svg" alt="ETOA Member" class="mwrlife-footer__badge"> -->
+                </div>
+
+                <!-- Locations -->
+                <div class="mwrlife-footer__col">
+                    <h6><i class="ri-map-pin-2-fill"></i> Hong Kong</h6>
+                    <address>
+                        Suite C, Level 7, World Trust Tower<br>
+                        50 Stanley Street, Central<br>
+                        MWR Life Limited
+                    </address>
+
+                    <h6 class="mt-4"><i class="ri-map-pin-2-fill"></i> United States</h6>
+                    <address>
+                        300 SE 2nd Street, Suite 600<br>
+                        Fort Lauderdale, FL 33301<br>
+                        MWR Life, LLC
+                    </address>
+                </div>
+
+                <div class="mwrlife-footer__col">
+                    <h6><i class="ri-map-pin-2-fill"></i> DUBAI</h6>
+                    <address>
+                        2001 - 36 Prime Tower, 20th Floor<br>
+                        Burj Khalifa Street, Business Bay<br>
+                        MWR Life Travel Advantage L.L.C-FZ
+                    </address>
+
+                    <h6 class="mt-4"><i class="ri-map-pin-2-fill"></i> United Kingdom</h6>
+                    <address>
+                        637 Oxford Road<br>
+                        Reading, Berkshire, UK RG30 1HP<br>
+                        MWR Life Limited
+                    </address>
+                </div>
+
+                <div class="mwrlife-footer__col">
+                    <h6><i class="ri-map-pin-2-fill"></i> France</h6>
+                    <address>
+                        46 bis Av. du Maine<br>
+                        Paris, 75015<br>
+                        MWR Life, LLC
+                    </address>
+
+                    <h6 class="mt-4"><i class="ri-customer-service-2-fill"></i> Support</h6>
+                    <p class="mb-1"><i class="ri-phone-line"></i> <a href="tel:+19543618134">+1 954-361-8134</a></p>
+                    <p><i class="ri-mail-line"></i> <a href="mailto:support@mwrlife.com">support@mwrlife.com</a></p>
+                </div>
+            </div>
+
+            <!-- Trustpilot + legal -->
+            <div class="mwrlife-footer__meta">
+                <p class="mwrlife-footer__trust">
+                    See our <strong>1,273</strong> reviews on
+                    <a href="#" class="mwrlife-footer__trust-link"><i class="ri-star-fill"></i> Trustpilot</a>
+                </p>
+                <p class="mwrlife-footer__copy">
+                    ©2013–2025 MWR Life. All rights reserved.
+                </p>
+                <ul class="mwrlife-footer__links">
+                    <li><a href="#">Terms of Use</a></li>
+                    <li><a href="#">Cookie Settings</a></li>
+                    <li><a href="#">Income Disclosure</a></li>
+                </ul>
+            </div>
+        </div>
+    </footer>
+
+    <!-- End Theme Setting Area -->
+
+    <button class="switch-toggle settings-btn dark-btn p-0 bg-transparent position-absolute top-0 d-none" id="switch-toggle">
+        <span class="dark"><i class="material-symbols-outlined">light_mode</i></span>
+        <span class="light"><i class="material-symbols-outlined">dark_mode</i></span>
+    </button>
+
+    <!-- Link Of JS File -->
+    <script src="assets/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/sidebar-menu.js"></script>
+    <script src="assets/js/dragdrop.js"></script>
+    <script src="assets/js/rangeslider.min.js"></script>
+    <script src="assets/js/quill.min.js"></script>
+    <script src="assets/js/data-table.js"></script>
+    <script src="assets/js/prism.js"></script>
+    <script src="assets/js/clipboard.min.js"></script>
+    <script src="assets/js/feather.min.js"></script>
+    <script src="assets/js/simplebar.min.js"></script>
+    <script src="assets/js/apexcharts.min.js"></script>
+    <script src="assets/js/echarts.min.js"></script>
+    <script src="assets/js/swiper-bundle.min.js"></script>
+    <script src="assets/js/fullcalendar.main.js"></script>
+    <script src="assets/js/jsvectormap.min.js"></script>
+    <script src="assets/js/world-merc.js"></script>
+    <script src="assets/js/moment.min.js"></script>
+    <script src="assets/js/lightpick.js"></script>
+    <script src="assets/js/custom/apexcharts.js"></script>
+    <script src="assets/js/custom/echarts.js"></script>
+    <script src="assets/js/custom/custom.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            /* ---------------------------------
+               Header padding under sticky header
+            ----------------------------------*/
+            (function () {
+                const header = document.querySelector('.enroll-header');
+                function applyTopPadding() {
+                    if (!header) return;
+                    document.body.style.paddingTop = (header.offsetHeight + 8) + 'px';
+                }
+                window.addEventListener('load', applyTopPadding, { once: true });
+                window.addEventListener('resize', applyTopPadding);
+            })();
+
+            /* ---------------------------------
+               Card "checked" visual sync (fallback to :has)
+            ----------------------------------*/
+            (function () {
+                function syncCardClasses() {
+                    document.querySelectorAll('.plan-card').forEach(card => {
+                        const input = card.querySelector('.plan-card__radio');
+                        if (!input) return;
+                        card.classList.toggle('is-checked', !!input.checked);
+                    });
+                }
+                document.querySelectorAll('.plan-card__radio').forEach(inp => {
+                    inp.addEventListener('change', syncCardClasses);
+                });
+                syncCardClasses();
+            })();
+
+            /* ---------------------------------
+               PERSONAL/BUSINESS (toggle block)
+            ----------------------------------*/
+            (function () {
+                const toggle = document.getElementById('enrollBusiness');
+                const block = document.getElementById('businessFields');
+                if (!toggle || !block) return;
+                const set = () => block.classList.toggle('d-none', !toggle.checked);
+                toggle.addEventListener('change', set);
+                set();
+            })();
+
+            /* ---------------------------------
+               DOB datepicker (Lightpick) + 18+ validation
+            ----------------------------------*/
+            (function () {
+                const display = document.getElementById('dobDisplay');
+                const hidden = document.getElementById('dob');
+                if (!display || !hidden || !window.Lightpick || !window.moment) return;
+
+                const max = moment().subtract(18, 'years');
+                const min = moment().subtract(100, 'years');
+
+                const picker = new Lightpick({
+                    field: display,
+                    format: 'DD/MM/YYYY',
+                    firstDay: 1,
+                    lang: 'en',
+                    dropdowns: { years: { min: min.year(), max: max.year() }, months: true },
+                    minDate: min.toDate(),
+                    maxDate: max.toDate(),
+                    numberOfMonths: 1,
+                    repick: false,
+                    onSelect: (date) => {
+                        hidden.value = date ? date.format('YYYY-MM-DD') : '';
+                        validateAge();
+                    }
+                });
+
+                if (hidden.value) {
+                    const d = moment(hidden.value, 'YYYY-MM-DD', true);
+                    if (d.isValid()) {
+                        display.value = d.format('DD/MM/YYYY');
+                        picker.setDate(d.toDate());
+                    }
+                }
+
+                function validateAge() {
+                    const underage = !display.value || moment(display.value, 'DD/MM/YYYY', true).isAfter(max);
+                    display.classList.toggle('is-invalid', underage);
+                    return !underage;
+                }
+
+                display.addEventListener('blur', () => {
+                    const d = moment(display.value, 'DD/MM/YYYY', true);
+                    if (d.isValid() && d.isBetween(min, max, 'day', '[]')) {
+                        hidden.value = d.format('YYYY-MM-DD');
+                    } else {
+                        hidden.value = '';
+                    }
+                    validateAge();
+                });
+            })();
+
+            /* ---------------------------------
+               CONTACT INFO helpers
+            ----------------------------------*/
+            (function () {
+                // Email match
+                const email = document.getElementById('email');
+                const email2 = document.getElementById('email2');
+                function checkEmails() {
+                    const ok = email?.value.trim() !== '' &&
+                        email2?.value.trim() !== '' &&
+                        email?.value.trim().toLowerCase() === email2?.value.trim().toLowerCase();
+                    email2?.classList.toggle('is-invalid', !ok);
+                }
+                email?.addEventListener('input', checkEmails);
+                email2?.addEventListener('input', checkEmails);
+
+                // Billing visibility
+                const billYes = document.getElementById('billYes');
+                const billNo = document.getElementById('billNo');
+                const billBlk = document.getElementById('billingFields');
+                function syncBillingVisibility() { billBlk?.classList.toggle('d-none', billYes?.checked); }
+                billYes?.addEventListener('change', syncBillingVisibility);
+                billNo?.addEventListener('change', syncBillingVisibility);
+                syncBillingVisibility();
+
+                // Provinces
+                const PROVINCES = {
+                    PT: ['Aveiro', 'Beja', 'Braga', 'Bragança', 'Castelo Branco', 'Coimbra', 'Évora', 'Faro', 'Guarda', 'Leiria', 'Lisboa', 'Portalegre', 'Porto', 'Santarém', 'Setúbal', 'Viana do Castelo', 'Vila Real', 'Viseu', 'Ilha da Madeira', 'Porto Santo', 'Açores'],
+                    ES: ['Andalucía', 'Aragón', 'Asturias', 'Baleares', 'Canarias', 'Cantabria', 'Castilla-La Mancha', 'Castilla y León', 'Cataluña', 'Comunidad Valenciana', 'Extremadura', 'Galicia', 'La Rioja', 'Madrid', 'Murcia', 'Navarra', 'País Vasco'],
+                    FR: ['Île-de-France', 'Bretagne', 'Normandie', 'Nouvelle-Aquitaine', 'Occitanie', 'Provence-Alpes-Côte d’Azur'],
+                    GB: ['England', 'Scotland', 'Wales', 'Northern Ireland'],
+                    US: ['California', 'Florida', 'New York', 'Texas', 'Washington'],
+                    CA: ['Ontario', 'Quebec', 'British Columbia'],
+                    BR: ['SP', 'RJ', 'MG', 'RS', 'BA', 'PR', 'SC']
+                };
+                function fillProvinces(countrySel, provSel) {
+                    const list = PROVINCES[countrySel?.value] || [];
+                    if (!provSel) return;
+                    provSel.innerHTML = '<option value="">— Select —</option>' + list.map(v => `<option>${v}</option>`).join('');
+                }
+                const country = document.getElementById('country');
+                const province = document.getElementById('province');
+                country?.addEventListener('change', () => fillProvinces(country, province));
+                if (country && province) fillProvinces(country, province);
+
+                const billCountry = document.getElementById('billCountry');
+                const billProvince = document.getElementById('billProvince');
+                billCountry?.addEventListener('change', () => fillProvinces(billCountry, billProvince));
+                if (billCountry && billProvince) fillProvinces(billCountry, billProvince);
+
+                // Copy contact -> billing
+                document.getElementById('copyContactToBilling')?.addEventListener('click', () => {
+                    document.getElementById('billAddress').value = document.getElementById('address').value;
+                    document.getElementById('billCity').value = document.getElementById('city').value;
+                    document.getElementById('billPostal').value = document.getElementById('postalCode').value;
+                    document.getElementById('billCountry').value = document.getElementById('country').value;
+                    fillProvinces(billCountry, billProvince);
+                    document.getElementById('billProvince').value = document.getElementById('province').value;
+                });
+            })();
+
+            /* ---------------------------------
+               WEBSITE HANDLE + PASSWORD helpers
+            ----------------------------------*/
+            (function () {
+                // Handle (website slug)
+                const handle = document.getElementById('siteHandle');
+                const status = document.getElementById('handleStatus');
+                const VALID = /^[a-z0-9]+$/;
+                let debounceId;
+
+                function setHandleStatus(ok, msg) { if (!status) return; status.className = ok ? 'ok' : 'err'; status.textContent = msg || ''; }
+                async function checkAvailability(h) {
+                    const taken = ['admin', 'test', 'demo', 'mwr', 'user'];
+                    await new Promise(r => setTimeout(r, 300));
+                    return !taken.includes(h);
+                }
+                async function onHandleInput() {
+                    let v = handle.value.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+                    handle.value = v;
+                    if (!v) { setHandleStatus(false, ''); return; }
+                    if (!VALID.test(v)) { setHandleStatus(false, 'Only letters and numbers.'); return; }
+                    clearTimeout(debounceId);
+                    debounceId = setTimeout(async () => {
+                        setHandleStatus(true, 'Checking…');
+                        try {
+                            const ok = await checkAvailability(v);
+                            setHandleStatus(ok, ok ? 'Available ✓' : 'Unavailable — try another');
+                        } catch {
+                            setHandleStatus(false, 'Could not verify now');
+                        }
+                    }, 250);
+                }
+                handle?.addEventListener('input', onHandleInput);
+
+                // Passwords (strength, match, show/hide, generate, copy)
+                const pwd = document.getElementById('pwd');
+                const pwd2 = document.getElementById('pwd2');
+                const bar = document.getElementById('pwdStrengthBar');
+                const label = document.getElementById('pwdStrengthText');
+                const eyeBtn = document.getElementById('pwdToggle');
+                const eyeIc = document.getElementById('pwdEye');
+                const pwd2Btn = document.getElementById('pwd2Toggle');
+                const pwd2Ic = document.getElementById('pwd2Eye');
+                const gen = document.getElementById('genPwd');
+                const copy = document.getElementById('copyPwd');
+
+                function scorePassword(p) {
+                    if (!p) return 0;
+                    let s = 0;
+                    if (p.length >= 8) s += 25;
+                    if (p.length >= 12) s += 10;
+                    const hits = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].reduce((n, r) => n + (r.test(p) ? 1 : 0), 0);
+                    s += hits * 15;
+                    if (hits >= 3 && p.length >= 10) s += 10;
+                    return Math.min(100, s);
+                }
+                function labelFor(sc) {
+                    return sc < 30 ? ['Weak', 'bg-danger']
+                        : sc < 60 ? ['Fair', 'bg-warning']
+                            : sc < 80 ? ['Good', 'bg-info']
+                                : ['Strong', 'bg-success'];
+                }
+                function refreshStrength() {
+                    if (!bar || !label) return;
+                    const sc = scorePassword(pwd?.value || '');
+                    const [txt, cls] = labelFor(sc);
+                    bar.style.width = sc + '%';
+                    bar.className = 'progress-bar ' + cls;
+                    label.textContent = 'Strength: ' + txt;
+                    if (pwd2) pwd2.classList.toggle('is-invalid', !!pwd2.value && pwd2.value !== (pwd?.value || ''));
+                }
+                pwd?.addEventListener('input', refreshStrength);
+                pwd2?.addEventListener('input', refreshStrength);
+
+                // Show/Hide toggles
+                eyeBtn?.addEventListener('click', () => {
+                    if (!pwd || !eyeIc) return;
+                    const t = pwd.getAttribute('type') === 'password' ? 'text' : 'password';
+                    pwd.setAttribute('type', t);
+                    eyeIc.className = t === 'password' ? 'ri-eye-line' : 'ri-eye-off-line';
+                });
+                pwd2Btn?.addEventListener('click', () => {
+                    if (!pwd2 || !pwd2Ic) return;
+                    const t = pwd2.getAttribute('type') === 'password' ? 'text' : 'password';
+                    pwd2.setAttribute('type', t);
+                    pwd2Ic.className = t === 'password' ? 'ri-eye-line' : 'ri-eye-off-line';
+                });
+
+                // Generator & Copy
+                function genPassword() {
+                    const pools = ['abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', '0123456789', '!@#$%^&*()_+-=[]{}|;:,.<>?'];
+                    let out = pools.map(p => p[Math.floor(Math.random() * p.length)]).join('');
+                    while (out.length < 14) {
+                        const p = pools[Math.floor(Math.random() * pools.length)];
+                        out += p[Math.floor(Math.random() * p.length)];
+                    }
+                    return out.split('').sort(() => Math.random() - 0.5).join('');
+                }
+                gen?.addEventListener('click', () => {
+                    const p = genPassword();
+                    if (pwd) pwd.value = p;
+                    if (pwd2) pwd2.value = p;
+                    refreshStrength();
+                });
+                copy?.addEventListener('click', async () => {
+                    try {
+                        await navigator.clipboard.writeText(pwd?.value || '');
+                        copy.textContent = 'Copied!';
+                        setTimeout(() => copy.textContent = 'Copy password', 1200);
+                    } catch { }
+                });
+
+                refreshStrength();
+            })();
+
+            /* ---------------------------------
+               PAYMENT INFO (simple: only agrees)
+            ----------------------------------*/
+            (function () {
+                const agree = document.getElementById('agreeTerms');
+                const joinBtn = document.getElementById('joinBtn');
+                function updateJoinState() {
+                    if (joinBtn && agree) joinBtn.disabled = !agree.checked;
+                }
+                agree?.addEventListener('change', updateJoinState);
+                updateJoinState();
+            })();
+
+            /* ---------------------------------
+               Amounts + Coupon (dynamic)
+            ----------------------------------*/
+            (function () {
+                let couponPct = 0;
+                const amountNowEl = document.getElementById('amountNow');
+                const amountMonthlyEl = document.getElementById('amountMonthly');
+                const enrollAmb = document.getElementById('enrollAmbassador');
+                const eliteChk = document.getElementById('planEliteChk');
+                const turboChk = document.getElementById('turboAddOn');
+
+                function baseUpfront() {
+                    let upfront = 0;
+                    if (enrollAmb?.checked) upfront += 99.00;
+                    if (eliteChk?.checked) {
+                        upfront += 120.00;
+                        upfront += 119.97;
+                    }
+                    if (turboChk?.checked) upfront += 249.97;
+                    return upfront;
+                }
+                function monthlyRecurring() {
+                    return (eliteChk?.checked) ? 119.97 : 0.00;
+                }
+                function renderTotals() {
+                    let upfront = baseUpfront();
+                    if (couponPct > 0) upfront = +(upfront * (1 - couponPct / 100)).toFixed(2);
+                    const monthly = monthlyRecurring();
+                    if (amountNowEl) amountNowEl.textContent = `$${upfront.toFixed(2)}`;
+                    if (amountMonthlyEl) amountMonthlyEl.textContent = `$${monthly.toFixed(2)}`;
+                }
+
+                document.getElementById('applyCoupon')?.addEventListener('click', async () => {
+                    const code = (document.getElementById('couponCode').value || '').trim().toUpperCase();
+                    const msg = document.getElementById('couponMsg'); msg.className = 'small';
+                    await new Promise(r => setTimeout(r, 250));
+                    if (!code) { couponPct = 0; msg.textContent = ''; renderTotals(); return; }
+                    if (code === 'WELCOME10') {
+                        couponPct = 10; msg.classList.add('ok'); msg.textContent = 'Coupon applied: 10% off';
+                    } else {
+                        couponPct = 0; msg.classList.add('err'); msg.textContent = 'Invalid coupon';
+                    }
+                    renderTotals();
+                });
+
+                [enrollAmb, eliteChk, turboChk].forEach(el => el?.addEventListener('change', renderTotals));
+                renderTotals();
+                window.renderTotals = renderTotals;
+            })();
+
+            /* ---------------------------------
+               MEMBERSHIP → show/hide TURBO
+            ----------------------------------*/
+            (function () {
+                const eliteChk = document.getElementById('planEliteChk');
+                const turboSection = document.getElementById('turbo-section');
+                const turboChk = document.getElementById('turboAddOn');
+
+                if (!eliteChk || !turboSection) return;
+
+                function syncCardClasses() {
+                    document.querySelectorAll('.plan-card').forEach(card => {
+                        const input = card.querySelector('.plan-card__radio');
+                        if (!input) return;
+                        card.classList.toggle('is-checked', !!input.checked);
+                    });
+                }
+
+                function showTurbo(show) {
+                    turboSection.classList.toggle('d-none', !show);
+                    if (!show && turboChk) turboChk.checked = false;
+                    if (typeof window.renderTotals === 'function') window.renderTotals();
+                    syncCardClasses();
+                }
+
+                function sync() { showTurbo(!!eliteChk.checked); }
+
+                eliteChk.addEventListener('change', sync);
+                eliteChk.addEventListener('input', sync);
+                eliteChk.closest('label')?.addEventListener('click', () => setTimeout(sync, 0));
+
+                turboChk?.addEventListener('change', () => {
+                    if (typeof window.renderTotals === 'function') window.renderTotals();
+                    syncCardClasses();
+                });
+
+                sync();
+            })();
+
+            /* ---------------------------------
+               Country picker (flags) + SEARCH
+            ----------------------------------*/
+            (function () {
+                const COUNTRIES = [
+                    { code: 'PT', name: 'Portugal', dial: '+351' },
+                    { code: 'ES', name: 'Spain', dial: '+34' },
+                    { code: 'FR', name: 'France', dial: '+33' },
+                    { code: 'GB', name: 'United Kingdom', dial: '+44' },
+                    { code: 'US', name: 'United States', dial: '+1' },
+                    { code: 'CA', name: 'Canada', dial: '+1' },
+                    { code: 'BR', name: 'Brazil', dial: '+55' }
+                ];
+
+                const grid = document.getElementById('country-picker');
+                const search = document.getElementById('countrySearch');
+                if (!grid) return;
+
+                let activeCode = (document.getElementById('country')?.value || '').toUpperCase() || null;
+
+                function flagEmoji(cc) {
+                    return String.fromCodePoint(...cc.toUpperCase().split('').map(c => 0x1F1E6 + (c.charCodeAt(0) - 65)));
+                }
+
+                function render(list) {
+                    grid.innerHTML = list.map(c => `
+                <button type="button"
+                        class="flag-item${c.code === activeCode ? ' active' : ''}"
+                        data-code="${c.code}" data-dial="${c.dial}">
+                  <span class="flag">${flagEmoji(c.code)}</span>
+                  <span class="label">${c.name}</span>
+                  <span class="dial small text-muted ms-2">${c.dial}</span>
+                </button>
+              `).join('') || '<p class="text-muted small mt-2">No results found.</p>';
+                }
+
+                function norm(s) {
+                    return (s || '')
+                        .toLowerCase()
+                        .normalize('NFD')
+                        .replace(/\p{Diacritic}/gu, '');
+                }
+
+                function applySelectionToForm(code, dial) {
+                    const countrySel = document.getElementById('country');
+                    const provinceSel = document.getElementById('province');
+                    const billCountry = document.getElementById('billCountry');
+                    const wa = document.getElementById('waCountry');
+                    const cell = document.getElementById('cellCountry');
+
+                    if (countrySel) {
+                        countrySel.value = code;
+                        countrySel.dispatchEvent(new Event('change'));
+                    }
+                    if (billCountry) {
+                        billCountry.value = code;
+                        billCountry.dispatchEvent(new Event('change'));
+                    }
+                    if (wa) wa.value = dial;
+                    if (cell) cell.value = dial;
+                }
+
+                grid.addEventListener('click', (e) => {
+                    const btn = e.target.closest('.flag-item');
+                    if (!btn) return;
+
+                    activeCode = btn.dataset.code;
+                    const dial = btn.dataset.dial;
+
+                    grid.querySelectorAll('.flag-item').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+
+                    applySelectionToForm(activeCode, dial);
+                });
+
+                function filterCountries(q) {
+                    if (!q) return COUNTRIES;
+                    const nq = norm(q).replace(/^\+/, '');
+                    return COUNTRIES.filter(c =>
+                        norm(c.name).includes(nq) ||
+                        c.code.toLowerCase().includes(nq) ||
+                        c.dial.replace('+', '').includes(nq)
+                    );
+                }
+
+                let t;
+                function onSearch() {
+                    clearTimeout(t);
+                    t = setTimeout(() => {
+                        const q = search?.value || '';
+                        render(filterCountries(q));
+                    }, 120);
+                }
+                search?.addEventListener('input', onSearch);
+
+                render(COUNTRIES);
+            })();
+
+            /* ---------------------------------
+               Sponsor name via ?sponsor=
+            ----------------------------------*/
+            (function () {
+                const urlParams = new URLSearchParams(window.location.search);
+                const sponsor = urlParams.get('sponsor');
+                if (sponsor) {
+                    const el = document.getElementById('sponsorName');
+                    if (el) el.textContent = sponsor;
+                }
+            })();
+
+        });
+    </script>
+
+
+</body>
+</html>

@@ -1,0 +1,81 @@
+@inject IThemeService Theme
+@inject IViewContextService ViewContext
+@inject IStringLocalizer<SharedResources> L
+
+<header class="header-area bg-white mb-4 rounded-bottom-15" id="header-area">
+    <div class="row align-items-center">
+        <div class="col-lg-4 col-sm-6">
+            <div class="left-header-content">
+                <ul class="d-flex align-items-center ps-0 mb-0 list-unstyled">
+                    <li>
+                        <button class="header-burger-menu bg-transparent p-0 border-0 me-3"
+                                id="header-burger-menu">
+                            <i class="ri-menu-2-line fs-5"></i>
+                        </button>
+                    </li>
+                    <li>
+                        <form class="src-form position-relative">
+                            <input type="text" class="form-control" placeholder="@L["Header.SearchPlaceholder"]" />
+                            <button type="submit"
+                                    class="src-btn position-absolute top-50 end-0 translate-middle-y bg-transparent p-0 border-0 pe-2">
+                                <i class="ri-search-line"></i>
+                            </button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="col-lg-8 col-sm-6">
+            <div class="right-header-content d-flex align-items-center justify-content-end gap-3">
+
+                <!-- Language switcher -->
+                <LanguageSwitcher />
+
+                <!-- Dark mode toggle (handled by sidebar-menu.js via data attribute) -->
+                <button class="bg-transparent p-0 border-0" id="theme-toggle-btn" title="@L["Header.ToggleDarkMode"]">
+                    <i class="ri-moon-line fs-5"></i>
+                </button>
+
+                <!-- Notifications -->
+                <div class="dropdown notifications">
+                    <button class="btn btn-secondary border-0 p-0 position-relative"
+                            type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="ri-notification-3-line fs-5"></i>
+                        <span class="badge bg-danger rounded-circle position-absolute top-0 end-0"
+                              style="width:8px;height:8px;padding:0;"></span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end p-3 border-0 shadow" style="min-width:300px;">
+                        <h6 class="fw-semibold mb-2">@L["Header.Notifications"]</h6>
+                        <p class="text-muted small mb-0">@L["Header.NoNotifications"]</p>
+                    </div>
+                </div>
+
+                <!-- User menu -->
+                <div class="dropdown profile-nav">
+                    <button class="btn p-0 d-flex align-items-center gap-2 dropdown-toggle border-0"
+                            type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <div class="d-flex align-items-center justify-content-center rounded-circle bg-primary text-white fw-bold"
+                             style="width:36px;height:36px;font-size:.9rem;">
+                            <i class="ri-user-line"></i>
+                        </div>
+                        <span class="d-none d-lg-block fw-medium small">Admin</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow">
+                        <li>
+                            <a class="dropdown-item" href="/admin/system-users">
+                                <i class="ri-user-settings-line me-2"></i>@L["Header.Profile"]
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider" /></li>
+                        <li>
+                            <a class="dropdown-item text-danger" href="/account/logout">
+                                <i class="ri-logout-box-line me-2"></i>@L["Header.Logout"]
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>

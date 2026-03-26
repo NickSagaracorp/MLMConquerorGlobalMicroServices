@@ -1,0 +1,5 @@
+@page "/team/dual-tree"
+@attribute [Authorize(Roles = "Ambassador")]
+@inject IViewContextService ViewContext
+
+<DualTeamBinaryTree MemberProfileId="@ViewContext.ViewingMemberId" />

@@ -1,0 +1,5 @@
+@page "/ranks"
+@attribute [Authorize(Roles = "Ambassador")]
+@inject IViewContextService ViewContext
+
+<RankDashboard MemberProfileId="@ViewContext.ViewingMemberId" />

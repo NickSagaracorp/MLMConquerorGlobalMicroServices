@@ -1,0 +1,2496 @@
+<!DOCTYPE html>
+<html lang="zxx">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Links Of CSS File -->
+    <link rel="stylesheet" href="assets/css/sidebar-menu.css">
+    <link rel="stylesheet" href="assets/css/simplebar.css">
+    <link rel="stylesheet" href="assets/css/apexcharts.css">
+    <link rel="stylesheet" href="assets/css/prism.css">
+    <link rel="stylesheet" href="assets/css/rangeslider.css">
+    <link rel="stylesheet" href="assets/css/quill.snow.css">
+    <link rel="stylesheet" href="assets/css/google-icon.css">
+    <link rel="stylesheet" href="assets/css/remixicon.css">
+    <link rel="stylesheet" href="assets/css/swiper-bundle.min.css">
+    <link rel="stylesheet" href="assets/css/fullcalendar.main.css">
+    <link rel="stylesheet" href="assets/css/jsvectormap.min.css">
+    <link rel="stylesheet" href="assets/css/lightpick.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico">
+
+    <!-- Title -->
+    <title>MWRLife - BizCenter Dashboard - My Profile</title>
+
+    <style>
+        /* --- Inputs com botão de mostrar/esconder --- */
+        .input-with-icon {
+            position: relative;
+        }
+
+            .input-with-icon input {
+                padding-right: 44px;
+            }
+
+            .input-with-icon .toggle-visibility {
+                position: absolute;
+                right: 10px;
+                top: 50%;
+                transform: translateY(-50%);
+                background: transparent;
+                border: 0;
+                cursor: pointer;
+                padding: 0 4px;
+                line-height: 1;
+            }
+
+                .input-with-icon .toggle-visibility i {
+                    font-size: 20px;
+                }
+
+        /* ======= Fancy Month/Year Picker ======= */
+        .my-monthyear-wrapper {
+            position: relative;
+        }
+
+        #expiryDisplay {
+            cursor: pointer;
+            background: #fff;
+        }
+
+        /* popover */
+        .my-picker {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            width: 320px;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            box-shadow: 0 24px 60px rgba(2,6,23,0.18), 0 2px 10px rgba(2,6,23,0.06);
+            padding: 12px;
+            z-index: 1200;
+            display: none;
+            animation: myFadeIn .14s ease-out both;
+        }
+
+        @keyframes myFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-4px) scale(.98);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .my-picker-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 6px 10px 6px;
+        }
+
+        .my-year {
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: .02em;
+        }
+
+        .my-nav {
+            border: 0;
+            background: #f3f4f6;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all .15s ease;
+        }
+
+            .my-nav:hover {
+                background: #e5e7eb;
+            }
+
+        .my-month-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .my-month-btn {
+            border: 1px solid #e5e7eb;
+            background: #f9fafb;
+            border-radius: 10px;
+            padding: 10px 8px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all .15s ease;
+            user-select: none;
+        }
+
+            .my-month-btn:hover {
+                background: #eef2ff;
+                border-color: #c7d2fe;
+            }
+
+            .my-month-btn.active {
+                background: #4f46e5;
+                border-color: #4f46e5;
+                color: #fff;
+                box-shadow: 0 10px 22px rgba(79,70,229,.25);
+            }
+
+        /* estado visível */
+        .my-picker.show {
+            display: block;
+        }
+
+        /* Responsivo dentro do modal */
+        @media (max-width: 420px) {
+            .my-picker {
+                width: 100%;
+            }
+        }
+
+        /* === DOB Datepicker (Personal Info Modal) === */
+        .dob-wrapper {
+            position: relative;
+        }
+
+        .dob-input {
+            padding-right: 44px; /* espaço para o ícone */
+            cursor: pointer;
+            background-color: #fff;
+        }
+
+            .dob-input:focus {
+                box-shadow: 0 0 0 3px rgba(96,93,255,0.15);
+                border-color: #605DFF;
+            }
+
+        .dob-icon {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 20px;
+            pointer-events: none;
+            color: #94a3b8;
+        }
+
+        .dob-picker {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            width: 320px;
+            background: #fff;
+            border: 1px solid rgba(15,23,42,.08);
+            border-radius: 12px;
+            box-shadow: 0 18px 45px rgba(2,6,23,.15);
+            padding: 12px;
+            z-index: 1056; /* acima do modal content */
+            display: none;
+            animation: dobFade .18s ease-out;
+        }
+
+            .dob-picker[aria-hidden="false"] {
+                display: block;
+            }
+
+        @keyframes dobFade {
+            from {
+                opacity: 0;
+                transform: translateY(-4px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .dob-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .dob-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            justify-content: center;
+        }
+
+        .dob-select {
+            appearance: none;
+            -webkit-appearance: none;
+            background: #f8fafc;
+            border: 1px solid rgba(15,23,42,.08);
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 14px;
+            color: #0f172a;
+        }
+
+            .dob-select:focus {
+                outline: none;
+                border-color: #605DFF;
+                box-shadow: 0 0 0 3px rgba(96,93,255,0.15);
+            }
+
+        .dob-nav {
+            border: 0;
+            background: #f1f5f9;
+            color: #0f172a;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+            .dob-nav:hover {
+                background: #e2e8f0;
+            }
+
+        .dob-weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+            font-size: 12px;
+            color: #64748b;
+            margin: 6px 0 8px;
+            text-align: center;
+            user-select: none;
+        }
+
+        .dob-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+        }
+
+        .dob-day {
+            height: 38px;
+            border-radius: 10px;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            background: #fff;
+            border: 1px solid rgba(15,23,42,.06);
+            color: #0f172a;
+        }
+
+            .dob-day:hover {
+                border-color: #605DFF;
+                box-shadow: 0 0 0 3px rgba(96,93,255,0.1) inset;
+            }
+
+            .dob-day.other-month {
+                color: #94a3b8;
+                background: #fafafa;
+            }
+
+            .dob-day.disabled {
+                color: #cbd5e1;
+                cursor: not-allowed;
+                background: #f8fafc;
+                border-style: dashed;
+            }
+
+            .dob-day.today {
+                outline: 2px solid #e2e8f0;
+                outline-offset: -2px;
+            }
+
+            .dob-day.selected {
+                background: #605DFF;
+                color: #fff;
+                border-color: transparent;
+                box-shadow: 0 8px 22px rgba(96,93,255,.35);
+            }
+
+        /* Responsivo */
+        @media (max-width: 420px) {
+            .dob-picker {
+                width: 100%;
+            }
+        }
+
+        /* Radio pill look */
+        .form-check-inline .form-check-input {
+            display: none;
+        }
+
+        .form-check-inline .form-check-label {
+            border: 1px solid rgba(15,23,42,.12);
+            padding: 8px 14px;
+            border-radius: 999px;
+            cursor: pointer;
+            user-select: none;
+            transition: all .15s ease;
+            background: #fff;
+        }
+
+            .form-check-inline .form-check-label:hover {
+                border-color: #605DFF;
+            }
+
+        .form-check-inline .form-check-input:checked + .form-check-label {
+            background: #605DFF;
+            color: #fff;
+            border-color: #605DFF;
+            box-shadow: 0 6px 18px rgba(96,93,255,.28);
+        }
+
+        /* 
+            tabs
+        */
+        .tab-section {
+            animation: fadeIn .3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+    <body class="boxed-size">
+        <!-- Start Preloader Area -->
+        <!--<div class="preloader" id="preloader">
+        <div class="preloader">
+            <div class="waviy position-relative">
+                <img src="assets/images/logo.svg" style="width: 100%; height: auto;" />-->
+        <!--<span class="d-inline-block">M</span>
+    <span class="d-inline-block">W</span>
+    <span class="d-inline-block">R</span>
+    <span class="d-inline-block"></span>
+    <span class="d-inline-block">L</span>
+    <span class="d-inline-block">I</span>
+    <span class="d-inline-block">F</span>
+    <span class="d-inline-block">E</span>-->
+        <!--</div>
+        </div>
+    </div>-->
+        <div id="preloader">
+            <div class="preloader">
+                <div class="waviy">
+                    <img src="assets/images/logo.svg" alt="logo">
+                </div>
+            </div>
+        </div>
+        <!-- End Preloader Area -->
+        <!-- Start Sidebar Area -->
+        <div class="sidebar-area" id="sidebar-area">
+            <div class="logo position-relative">
+                <a href="index.html" class="d-block text-decoration-none position-relative">
+                    <img src="assets/images/logo-icon.png" alt="logo-icon">
+                    <span class="logo-text fw-bold text-dark">Trezo</span>
+                </a>
+                <button class="sidebar-burger-menu bg-transparent p-0 border-0 opacity-0 z-n1 position-absolute top-50 end-0 translate-middle-y" id="sidebar-burger-menu">
+                    <i data-feather="x"></i>
+                </button>
+            </div>
+
+            <aside id="layout-menu" class="layout-menu menu-vertical menu active" data-simplebar>
+                <ul class="menu-inner">
+                    <li class="menu-title small text-uppercase">
+                        <span class="menu-title-text">MENU</span>
+                    </li>
+
+                    <li class="menu-item">
+                        <a href="index.html" class="menu-link">
+                            <span class="material-symbols-outlined menu-icon">home</span>
+                            <span class="title">Home</span>
+                            <!--<span class="count">10</span>-->
+                        </a>
+                    </li>
+
+                    <li class="menu-item">
+                        <a href="https://www.mwrlife.com/nunocacao" class="menu-link" target="_blank">
+                            <span class="material-symbols-outlined menu-icon">browse_activity</span>
+                            <span class="title">My Website</span>
+                            <!--<span class="count">10</span>-->
+                        </a>
+                    </li>
+
+                    <li class="menu-item">
+                        <a href="javascript:void(0);" class="menu-link menu-toggle">
+                            <span class="material-symbols-outlined menu-icon">group</span>
+                            <span class="title">Enrollment Team</span>
+                            <span class="count">4</span>
+                        </a>
+                        <ul class="menu-sub">
+                            <li class="menu-item">
+                                <a href="enrollmentteam_myteam.html" class="menu-link">
+                                    My Team
+                                </a>
+                            </li>
+                            <li class="menu-item">
+                                <a href="enrollmentteam_visualizer.html" class="menu-link">
+                                    Visualizer
+                                </a>
+                            </li>
+                            <li class="menu-item">
+                                <a href="enrollmentteam_branches.html" class="menu-link">
+                                    Branches
+                                </a>
+                            </li>
+                            <li class="menu-item">
+                                <a href="enrollmentteam_customers.html" class="menu-link">
+                                    Customers
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <li class="menu-item">
+                        <a href="javascript:void(0);" class="menu-link menu-toggle">
+                            <span class="material-symbols-outlined menu-icon">share</span>
+                            <span class="title">Dual Team</span>
+                            <span class="count">3</span>
+                        </a>
+                        <ul class="menu-sub">
+                            <li class="menu-item">
+                                <a href="dualteam_myteam.html" class="menu-link">
+                                    My Dual Team
+                                </a>
+                            </li>
+                            <li class="menu-item">
+                                <a href="dualteam_binarytree.html" class="menu-link">
+                                    Visualizer
+                                </a>
+                            </li>
+                            <li class="menu-item">
+                                <a href="dualteam_residuals.html" class="menu-link">
+                                    Residuals
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <li class="menu-item">
+                        <a href="javascript:void(0);" class="menu-link menu-toggle">
+                            <span class="material-symbols-outlined menu-icon">paid</span>
+                            <span class="title">Commissions</span>
+                            <span class="count">5</span>
+                        </a>
+                        <ul class="menu-sub">
+                            <li class="menu-item">
+                                <a href="commissions.html" class="menu-link">
+                                    Commissions
+                                </a>
+                            </li>
+                            <li class="menu-item">
+                                <a href="presidentialbonus.html" class="menu-link">
+                                    Presidential Bonus
+                                </a>
+                            </li>
+                            <li class="menu-item">
+                                <a href="carbonus.html" class="menu-link">
+                                    Car Bonus
+                                </a>
+                            </li>
+                            <li class="menu-item">
+                                <a href="faststartbonus.html" class="menu-link">
+                                    Fast Start Bonus
+                                </a>
+                            </li>
+                            <li class="menu-item">
+                                <a href="boostbonus.html" class="menu-link">
+                                    Boost Bonus
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <li class="menu-item">
+                        <a href="tokens.html" class="menu-link">
+                            <span class="material-symbols-outlined menu-icon">content_paste</span>
+                            <span class="title">Tokens</span>
+                            <!--<span class="count">10</span>-->
+                        </a>
+                    </li>
+
+                    <li class="menu-item">
+                        <a href="events.html" class="menu-link">
+                            <span class="material-symbols-outlined menu-icon">event</span>
+                            <span class="title">Events</span>
+                            <!--<span class="count">10</span>-->
+                        </a>
+                    </li>
+
+                    <li class="menu-item">
+                        <a href="https://mwracademy.com/webservices/user_login?api_key=yDEOcDTM4RAm1AeczHJY&session_id=amxzxx7chrqgasjnmrvf" class="menu-link" target="_blank">
+                            <span class="material-symbols-outlined menu-icon">location_away</span>
+                            <span class="title">MWR Academy</span>
+                            <!--<span class="count">10</span>-->
+                        </a>
+                    </li>
+
+                    <li class="menu-item">
+                        <a href="javascript:void(0);" class="menu-link">
+                            <span class="material-symbols-outlined menu-icon">hotel</span>
+                            <span class="title">Travel Advantage</span>
+                            <!--<span class="count">10</span>-->
+                        </a>
+                    </li>
+
+                    <li class="menu-item">
+                        <a href="javascript:void(0);" class="menu-link">
+                            <span class="material-symbols-outlined menu-icon">settings</span>
+                            <span class="title">Tools</span>
+                            <!--<span class="count">10</span>-->
+                        </a>
+                    </li>
+
+                    <li class="menu-item">
+                        <a href="javascript:void(0);" class="menu-link">
+                            <span class="material-symbols-outlined menu-icon">support</span>
+                            <span class="title">Support</span>
+                            <!--<span class="count">10</span>-->
+                        </a>
+                    </li>
+
+                    <li class="menu-item">
+                        <a href="login.html" class="menu-link">
+                            <span class="material-symbols-outlined menu-icon">logout</span>
+                            <span class="title">Logout</span>
+                        </a>
+                    </li>
+                </ul>
+            </aside>
+        </div>
+        <!-- End Sidebar Area -->
+        <!-- Start Main Content Area -->
+        <div class="container-fluid">
+            <div class="main-content d-flex flex-column">
+                <!-- Start Header Area -->
+                <header class="header-area bg-white mb-4 rounded-bottom-15" id="header-area">
+                    <div class="row align-items-center">
+                        <div class="col-lg-4 col-sm-6">
+                            <div class="left-header-content">
+                                <ul class="d-flex align-items-center ps-0 mb-0 list-unstyled justify-content-center justify-content-sm-start">
+                                    <li>
+                                        <button class="header-burger-menu bg-transparent p-0 border-0" id="header-burger-menu">
+                                            <span class="material-symbols-outlined">menu</span>
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <form class="src-form position-relative">
+                                            <input type="text" class="form-control" placeholder="Search here.....">
+                                            <button type="submit" class="src-btn position-absolute top-50 end-0 translate-middle-y bg-transparent p-0 border-0">
+                                                <span class="material-symbols-outlined">search</span>
+                                            </button>
+                                        </form>
+                                    </li>
+                                    <!--<li>
+                            <div class="dropdown notifications apps">
+                                <button class="btn btn-secondary border-0 p-0 position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <span class="material-symbols-outlined">apps</span>
+                                </button>
+                                <div class="dropdown-menu dropdown-lg p-0 border-0 py-4 px-3 max-h-312" data-simplebar>
+                                    <div class="notification-menu d-flex flex-wrap justify-content-between gap-4">
+                                        <a href="https://www.figma.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                            <img src="assets/images/figma.svg" class="wh-25" alt="united-states">
+                                            <span>Figma</span>
+                                        </a>
+                                        <a href="https://www.dribbble.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                            <img src="assets/images/dribbble.svg" class="wh-25" alt="united-states">
+                                            <span>Dribbble</span>
+                                        </a>
+                                        <a href="https://www.spotify.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                            <img src="assets/images/spotify.svg" class="wh-25" alt="united-states">
+                                            <span>Spotify</span>
+                                        </a>
+                                        <a href="https://www.github.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                            <img src="assets/images/github.svg" class="wh-25" alt="united-states">
+                                            <span>Github</span>
+                                        </a>
+                                        <a href="https://www.google.com/drive/" target="_blank" class="dropdown-item p-0 text-center">
+                                            <img src="assets/images/gdrive.svg" class="wh-25" alt="united-states">
+                                            <span>GDrive</span>
+                                        </a>
+                                        <a href="https://www.trello.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                            <img src="assets/images/trello.svg" class="wh-25" alt="united-states">
+                                            <span>Trello</span>
+                                        </a>
+                                        <a href="https://www.slak.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                            <img src="assets/images/slak.svg" class="wh-25" alt="united-states">
+                                            <span>Slak</span>
+                                        </a>
+                                        <a href="https://www.pinterest.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                            <img src="assets/images/pinterest.svg" class="wh-25" alt="united-states">
+                                            <span>Pinterest</span>
+                                        </a>
+                                        <a href="https://www.facebook.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                            <img src="assets/images/facebook.svg" class="wh-25" alt="united-states">
+                                            <span>Facebook</span>
+                                        </a>
+                                        <a href="https://www.linkedin.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                            <img src="assets/images/linkedin.svg" class="wh-25" alt="united-states">
+                                            <span>Linkedin</span>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>-->
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-8 col-sm-6">
+                            <div class="right-header-content mt-2 mt-sm-0">
+                                <ul class="d-flex align-items-center justify-content-center justify-content-sm-end ps-0 mb-0 list-unstyled">
+                                    <li class="header-right-item">
+                                        <div class="light-dark">
+                                            <button class="switch-toggle settings-btn dark-btn p-0 bg-transparent border-0" id="switch-toggle">
+                                                <span class="dark"><i class="material-symbols-outlined">light_mode</i></span>
+                                                <span class="light"><i class="material-symbols-outlined">dark_mode</i></span>
+                                            </button>
+                                        </div>
+                                    </li>
+                                    <li class="header-right-item">
+                                        <div class="dropdown notifications language">
+                                            <button class="btn btn-secondary dropdown-toggle border-0 p-0 position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <span class="material-symbols-outlined">translate</span>
+                                            </button>
+                                            <div class="dropdown-menu dropdown-lg p-0 border-0 dropdown-menu-end">
+                                                <span class="fw-semibold fs-15 text-secondary title">Choose Language</span>
+                                                <div class="max-h-275" data-simplebar>
+                                                    <div class="notification-menu">
+                                                        <a href="javascript:void(0);" class="dropdown-item">
+                                                            <div class="d-flex align-items-center">
+                                                                <div class="flex-shrink-0">
+                                                                    <img src="assets/images/usa.svg" class="wh-30 rounded-circle" alt="united-states">
+                                                                </div>
+                                                                <div class="flex-grow-1 ms-2">
+                                                                    <span class="text-secondary fw-medium fs-14">English</span>
+                                                                </div>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="notification-menu">
+                                                        <a href="javascript:void(0);" class="dropdown-item">
+                                                            <div class="d-flex align-items-center">
+                                                                <div class="flex-shrink-0">
+                                                                    <img src="assets/images/france.svg" class="wh-30 rounded-circle" alt="france">
+                                                                </div>
+                                                                <div class="flex-grow-1 ms-2">
+                                                                    <span class="text-secondary fw-medium fs-14">French</span>
+                                                                </div>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="notification-menu">
+                                                        <a href="javascript:void(0);" class="dropdown-item">
+                                                            <div class="d-flex align-items-center">
+                                                                <div class="flex-shrink-0">
+                                                                    <img src="assets/images/portugal.svg" class="wh-30 rounded-circle" alt="portugal">
+                                                                </div>
+                                                                <div class="flex-grow-1 ms-2">
+                                                                    <span class="text-secondary fw-medium fs-14">Portuguese</span>
+                                                                </div>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="notification-menu mb-0">
+                                                        <a href="javascript:void(0);" class="dropdown-item">
+                                                            <div class="d-flex align-items-center">
+                                                                <div class="flex-shrink-0">
+                                                                    <img src="assets/images/spain.svg" class="wh-30 rounded-circle" alt="spain">
+                                                                </div>
+                                                                <div class="flex-grow-1 ms-2">
+                                                                    <span class="text-secondary fw-medium fs-14">Spanish</span>
+                                                                </div>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="notification-menu">
+                                                        <a href="javascript:void(0);" class="dropdown-item">
+                                                            <div class="d-flex align-items-center">
+                                                                <div class="flex-shrink-0">
+                                                                    <img src="assets/images/italia.svg" class="wh-30 rounded-circle" alt="italia">
+                                                                </div>
+                                                                <div class="flex-grow-1 ms-2">
+                                                                    <span class="text-secondary fw-medium fs-14">Italian</span>
+                                                                </div>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="notification-menu mb-0">
+                                                        <a href="javascript:void(0);" class="dropdown-item">
+                                                            <div class="d-flex align-items-center">
+                                                                <div class="flex-shrink-0">
+                                                                    <img src="assets/images/south_korea.svg" class="wh-30 rounded-circle" alt="south korea">
+                                                                </div>
+                                                                <div class="flex-grow-1 ms-2">
+                                                                    <span class="text-secondary fw-medium fs-14">Korean</span>
+                                                                </div>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="notification-menu">
+                                                        <a href="javascript:void(0);" class="dropdown-item">
+                                                            <div class="d-flex align-items-center">
+                                                                <div class="flex-shrink-0">
+                                                                    <img src="assets/images/japan.svg" class="wh-30 rounded-circle" alt="japan">
+                                                                </div>
+                                                                <div class="flex-grow-1 ms-2">
+                                                                    <span class="text-secondary fw-medium fs-14">Japanese</span>
+                                                                </div>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li class="header-right-item">
+                                        <button class="fullscreen-btn bg-transparent p-0 border-0" id="fullscreen-button">
+                                            <i class="material-symbols-outlined text-body">fullscreen</i>
+                                        </button>
+                                    </li>
+                                    <li class="header-right-item">
+                                        <div class="dropdown notifications noti">
+                                            <button class="btn btn-secondary border-0 p-0 position-relative badge" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <span class="material-symbols-outlined">notifications</span>
+                                            </button>
+                                            <div class="dropdown-menu dropdown-lg p-0 border-0 p-0 dropdown-menu-end">
+                                                <div class="d-flex justify-content-between align-items-center title">
+                                                    <span class="fw-semibold fs-15 text-secondary">Notifications <span class="fw-normal text-body fs-14">(03)</span></span>
+                                                    <button class="p-0 m-0 bg-transparent border-0 fs-14 text-primary">Clear All</button>
+                                                </div>
+
+                                                <div class="max-h-217" data-simplebar>
+                                                    <div class="notification-menu">
+                                                        <a href="notification.html" class="dropdown-item">
+                                                            <div class="d-flex align-items-center">
+                                                                <div class="flex-shrink-0">
+                                                                    <i class="material-symbols-outlined text-primary">sms</i>
+                                                                </div>
+                                                                <div class="flex-grow-1 ms-3">
+                                                                    <p>Your renewal fee will be charge on <span class="fw-semibold">September 2nd.</span></p>
+                                                                    <span class="fs-13">2 hrs ago</span>
+                                                                </div>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <div class="notification-menu unseen">
+                                                        <a href="notification.html" class="dropdown-item">
+                                                            <div class="d-flex align-items-center">
+                                                                <div class="flex-shrink-0">
+                                                                    <i class="material-symbols-outlined text-info">person</i>
+                                                                </div>
+                                                                <div class="flex-grow-1 ms-3">
+                                                                    <p><span class="fw-semibold">André Lourenço</span> enrolled your team, sponsored by <span class="fw-semibold">Yoni Ashurov</span>.</p>
+                                                                    <span class="fs-13">3 hrs ago</span>
+                                                                </div>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                    <!--<div class="notification-menu">
+                                            <a href="notification.html" class="dropdown-item">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="flex-shrink-0">
+                                                        <i class="material-symbols-outlined text-success">mark_email_unread</i>
+                                                    </div>
+                                                    <div class="flex-grow-1 ms-3">
+                                                        <p>You have requested to <span class="fw-semibold">withdrawal</span></p>
+                                                        <span class="fs-13">1 day ago</span>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                        <div class="notification-menu">
+                                            <a href="notification.html" class="dropdown-item">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="flex-shrink-0">
+                                                        <i class="material-symbols-outlined text-primary">sms</i>
+                                                    </div>
+                                                    <div class="flex-grow-1 ms-3">
+                                                        <p>You have requested to <span class="fw-semibold">withdrawal</span></p>
+                                                        <span class="fs-13">2 hrs ago</span>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                        <div class="notification-menu unseen">
+                                            <a href="notification.html" class="dropdown-item">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="flex-shrink-0">
+                                                        <i class="material-symbols-outlined text-info">person</i>
+                                                    </div>
+                                                    <div class="flex-grow-1 ms-3">
+                                                        <p>A new user added in Trezo</p>
+                                                        <span class="fs-13">3 hrs ago</span>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                        <div class="notification-menu">
+                                            <a href="notification.html" class="dropdown-item">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="flex-shrink-0">
+                                                        <i class="material-symbols-outlined text-success">mark_email_unread</i>
+                                                    </div>
+                                                    <div class="flex-grow-1 ms-3">
+                                                        <p>You have requested to <span class="fw-semibold">withdrawal</span></p>
+                                                        <span class="fs-13">1 day ago</span>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        </div>-->
+                                                </div>
+
+                                                <a href="notification.html" class="dropdown-item text-center text-primary d-block view-all fw-medium rounded-bottom-3">
+                                                    <span>See All Notifications </span>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li class="header-right-item">
+                                        <div class="dropdown admin-profile">
+                                            <div class="d-xxl-flex align-items-center bg-transparent border-0 text-start p-0 cursor dropdown-toggle" data-bs-toggle="dropdown">
+                                                <div class="flex-shrink-0">
+                                                    <img class="rounded-circle wh-40 administrator" src="assets/images/administrator.jpg" alt="admin">
+                                                </div>
+                                                <div class="flex-grow-1 ms-2">
+                                                    <div class="d-flex align-items-center justify-content-between">
+                                                        <div class="d-none d-xxl-block">
+                                                            <div class="d-flex align-content-center">
+                                                                <h3>Nuno Cação</h3>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="dropdown-menu border-0 bg-white dropdown-menu-end">
+                                                <div class="d-flex align-items-center info">
+                                                    <div class="flex-shrink-0">
+                                                        <img class="rounded-circle wh-30 administrator" src="assets/images/administrator.jpg" alt="admin">
+                                                    </div>
+                                                    <div class="flex-grow-1 ms-2">
+                                                        <h3 class="fw-medium">Nuno Cação</h3>
+                                                        <span class="fs-12">Jade Ambassador</span>
+                                                    </div>
+                                                </div>
+                                                <ul class="admin-link ps-0 mb-0 list-unstyled">
+                                                    <li>
+                                                        <a class="dropdown-item admin-item-link d-flex align-items-center text-body active" href="javascript:void(0);">
+                                                            <i class="material-symbols-outlined">account_circle</i>
+                                                            <span class="ms-2">My Profile</span>
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="#">
+                                                            <i class="material-symbols-outlined">chat</i>
+                                                            <span class="ms-2">Messages</span>
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="guestpasses.html">
+                                                            <i class="material-symbols-outlined">confirmation_number</i>
+                                                            <span class="ms-2">Guest Passes</span>
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="marketing.html">
+                                                            <i class="material-symbols-outlined">format_list_bulleted </i>
+                                                            <span class="ms-2">Marketing</span>
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                                <ul class="admin-link ps-0 mb-0 list-unstyled">
+                                                    <li>
+                                                        <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="#">
+                                                            <i class="material-symbols-outlined">support</i>
+                                                            <span class="ms-2">Support</span>
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="login.html">
+                                                            <i class="material-symbols-outlined">logout</i>
+                                                            <span class="ms-2">Logout</span>
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li class="header-right-item">
+                                        <button class="theme-settings-btn p-0 border-0 bg-transparent" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasScrolling" aria-controls="offcanvasScrolling">
+                                            <i class="material-symbols-outlined" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Click On Theme Settings">settings</i>
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+                <!-- End Header Area -->
+
+                <div class="main-content-container overflow-hidden">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+                        <h3 class="mb-0">My Profile</h3>
+
+                        <nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+                            <ol class="breadcrumb align-items-center mb-0 lh-1">
+                                <li class="breadcrumb-item">
+                                    <a href="#" class="d-flex align-items-center text-decoration-none">
+                                        <i class="ri-home-4-line fs-18 text-primary me-1"></i>
+                                        <span class="text-secondary fw-medium hover">Dashboard</span>
+                                    </a>
+                                </li>
+                                <li class="breadcrumb-item active" aria-current="page">
+                                    <span class="fw-medium">My Profile</span>
+                                </li>
+                            </ol>
+                        </nav>
+                    </div>
+
+                    <div class="position-relative">
+                        <img src="assets/images/profile-bg.jpg" class="rounded-top-3" alt="profile-bg">
+                        <!--<div class="position-absolute for-rtl-position" style="bottom: 25px; right: 25px;">
+            <a href="#" class="btn btn-outline-light text-white hover rounded-2">
+                Update Cover Photo
+            </a>
+        </div>-->
+                    </div>
+                    <div class="card bg-white border-0 rounded-3 mb-4 rounded-top-0">
+                        <div class="card-body p-4">
+                            <div class="d-flex justify-content-between flex-wrap gap-3">
+                                <div class="d-flex align-items-end">
+                                    <div class="flex-shrink-0 position-relative mt-minus-110">
+                                        <img src="assets/images/administrator.jpg" class="rounded-circle border border-2 wh-160" alt="user">
+                                        <img src="assets/images/check.svg" class="position-absolute bottom-0 end-0" alt="check">
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h4 class="fs-24 mb-1">Nuno Cação</h4>
+                                        <span class="fs-15 fw-medium">Jade Ambassador</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-center flex-wrap gap-2 mb-4" id="customTabs">
+                        <button class="btn btn-primary py-2 px-3 fw-medium active" data-target="#tabProfile">Profile</button>
+                        <button class="btn btn-outline-primary py-2 px-3 fw-medium" data-target="#tabAccount">Account</button>
+                        <button class="btn btn-outline-primary py-2 px-3 fw-medium" data-target="#tabBilling">Billing and Commissions</button>
+                    </div>
+
+                    <div id="tabProfile" class="row justify-content-center tab-section active">
+                        <div class="col-lg-8 col-md-7">
+                            <div class="card bg-white border-0 rounded-3 mb-4">
+                                <div class="card-body p-4">
+                                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom pb-4 mb-4">
+                                        <h4 class="fs-18 mb-0">About Me</h4>
+
+                                        <button class="btn btn-outline-primary d-flex align-items-center gap-1 hover-bg" data-bs-toggle="modal" data-bs-target="#personalInfoModal">
+                                            <i class="ri-edit-line fw-medium fs-18 me-1"></i>
+                                            <span>Edit Personal Info</span>
+                                        </button>
+                                    </div>
+
+                                    <h4 class="fs-16 fw-medium mb-2">Profile</h4>
+                                    <p class="mb-4" style="max-width: 691px;"><strong>Name: </strong>Nuno Cação<br /><strong>Date of Birth: </strong>06/18/1986</p>
+
+                                    <h4 class="fs-16 fw-medium mb-2">Business Info</h4>
+                                    <p class="mb-4" style="max-width: 691px;">
+                                        <strong>Business Name: </strong>Nuno Cação<br />
+                                        <strong>SSN: </strong>123-45-6789<br />
+                                        <strong>EIN: </strong>12-3456789<br />
+                                    </p>
+
+                                    <h4 class="fs-16 fw-medium mb-2">Website Info</h4>
+                                    <a href="https://www.mwrlife.com/nunocacao" target="_blank"><p class="mb-4" style="max-width: 691px;">https://www.mwrlife.com/nunocacao</p></a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4 col-md-5">
+                            <div class="card bg-white border-0 rounded-3 mb-4">
+                                <div class="card-body p-4">
+                                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom pb-4 mb-4">
+                                        <h4 class="fs-18 mb-0">Contact Info</h4>
+                                        <img src="assets/images/portugal.svg" class="rounded-circle wh-40" alt="country">
+                                    </div>
+
+                                    <h4 class="fs-16 fw-medium mb-2">Phone</h4>
+                                    <p class="mb-4" style="max-width: 691px;"><strong>WhatsApp: </strong>(+351) 914 055 324<br /><strong>Cell Phone: </strong>(+351) 914 055 324</p>
+
+                                    <h4 class="fs-16 fw-medium mb-2">Location</h4>
+                                    <p class="mb-4" style="max-width: 691px;">
+                                        <strong>Address: </strong>Rua dos Arneiros, 45<br />
+                                        <strong>ZIP / Postal Code: </strong>2040-031<br />
+                                        <strong>City: </strong>Arrouquelas<br />
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="tabAccount" class="row justify-content-center tab-section d-none">
+                        <div class="col-lg-12 col-md-12">
+                            <div class="card bg-white border-0 rounded-3 mb-4">
+                                <div class="card-body p-4">
+                                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom pb-4 mb-4">
+                                        <h4 class="fs-18 mb-0">Account</h4>
+
+                                        <button class="btn btn-outline-primary d-flex align-items-center gap-1 hover-bg" data-bs-toggle="modal" data-bs-target="#accountInfoModal">
+                                            <i class="ri-edit-line fw-medium fs-18 me-1"></i>
+                                            <span>Edit Account Info</span>
+                                        </button>
+                                    </div>
+
+                                    <h4 class="fs-16 fw-medium mb-2">Email</h4>
+                                    <p class="mb-4" style="max-width: 691px;">nunonec@hotmail.com</p>
+
+                                    <h4 class="fs-16 fw-medium mb-2">Password</h4>
+                                    <p class="mb-4" style="max-width: 691px;">XXXXXXXXXXX</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="tabBilling" class="row justify-content-center tab-section d-none">
+                        <div class="col-lg-8 col-md-8">
+                            <div class="card bg-white border-0 rounded-3 mb-4">
+                                <div class="card-body p-4">
+                                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom pb-4 mb-4">
+                                        <h4 class="fs-18 mb-0">Billing Info</h4>
+
+                                        <button class="btn btn-outline-primary d-flex align-items-center gap-1 hover-bg" data-bs-toggle="modal" data-bs-target="#billingInfoModal">
+                                            <i class="ri-edit-line fw-medium fs-18 me-1"></i>
+                                            <span>Edit Billing Info</span>
+                                        </button>
+                                    </div>
+
+                                    <div class="row g-4">
+                                        <div class="col-lg-6 col-md-6">
+                                            <div class="bg-img p-4 rounded-3" style="background-image: url(assets/images/debit-card-2.jpg);">
+                                                <div class="d-flex align-content-center justify-content-between">
+                                                    <div>
+                                                        <span class="text-white fs-12 fw-medium d-block mb-12">Credit Card</span>
+                                                        <img src="assets/images/board-1.png" alt="board">
+                                                    </div>
+                                                    <i class="ri-visa-fill fs-35 text-white lh-1"></i>
+                                                </div>
+
+                                                <h3 class="fw-semibold text-white mb-12 d-flex gap-1 lh-1" style="margin-top: 40px;">
+                                                    <span>****</span><span>****</span><span>****</span><span>6886</span>
+                                                </h3>
+                                                <div class="d-flex align-content-center justify-content-between">
+                                                    <span class="text-white">Nuno Cacao</span>
+                                                    <span class="text-white fs-12">EXP : 12/2030</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-6 col-md-6">
+                                            <h4 class="fs-16 fw-medium mb-2">Billing Address</h4>
+                                            <p class="mb-4" style="max-width: 691px;">
+                                                <strong>Address: </strong>Rua dos Arneiros, 45<br />
+                                                <strong>ZIP / Postal Code: </strong>2040-031<br />
+                                                <strong>City: </strong>Arrouquelas<br />
+                                                <strong>State / Province: </strong>Rio Maior<br />
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4 col-md-4">
+                            <div class="card bg-white border-0 rounded-3 mb-4">
+                                <div class="card-body p-4">
+                                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom pb-4 mb-4">
+                                        <h4 class="fs-18 mb-0">Commissions</h4>
+
+                                        <button class="btn btn-outline-primary d-flex align-items-center gap-1 hover-bg" data-bs-toggle="modal" data-bs-target="#commissionsInfoModal">
+                                            <i class="ri-edit-line fw-medium fs-18 me-1"></i>
+                                            <span>Edit Commissions Info</span>
+                                        </button>
+                                    </div>
+
+                                    <h4 class="fs-16 fw-medium mb-2">Payment Frequency</h4>
+                                    <p class="mb-4" style="max-width: 691px;">Daily</p>
+
+                                    <h4 class="fs-16 fw-medium mb-2">Payment Method</h4>
+                                    <p class="mb-4" style="max-width: 691px;">I-Payout</p>
+
+                                    <h4 class="fs-16 fw-medium mb-2">I-Payout Account</h4>
+                                    <p class="mb-4" style="max-width: 691px;"><strong>Your I-Payout Account: </strong> 31598<br /><a href="https://www.mwrlife.com/bizcenter/ssoipayout" target="_blank">Click HERE for immediate access!</a></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-12 col-md-12">
+                            <div class="card bg-white border-0 rounded-3 mb-4">
+                                <div class="card-body p-0">
+                                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
+                                        <h3 class="mb-0">Recent Transactions</h3>
+                                        <div class="position-relative">
+                                            <input type="text" class="form-control" id="range_datepicker" style="width: 230px; height: 36px; padding-left: 35px;" placeholder="01/10/2025 - 31/10/2025" />
+                                            <i class="ri-calendar-line position-absolute top-50 start-0 translate-middle-y ps-3"></i>
+                                        </div>
+                                    </div>
+
+                                    <div class="default-table-area style-two recent-transactions py-19">
+                                        <div class="table-responsive">
+                                            <table class="table align-middle">
+                                                <thead>
+                                                    <tr>
+                                                        <th scope="col" class="text-secondary">Transaction ID</th>
+                                                        <th scope="col" class="text-secondary">Date</th>
+                                                        <th scope="col" class="text-secondary">Description</th>
+                                                        <th scope="col" class="text-secondary">Amount ($)</th>
+                                                        <th scope="col" class="text-secondary">Status</th>
+                                                        <th scope="col" class="text-secondary">Source</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td class="text-body">20217962</td>
+                                                        <td class="text-body">11/1/2025 5:16:57 PM</td>
+                                                        <td class="text-body">Travel Credits</td>
+                                                        <td class="text-body">$500,000</td>
+                                                        <td>
+                                                            <span class="d-inline-block bg-success-60 bg-opacity-10 border-success-60 border rounded-pill text-success-60 fs-12 fw-medium" style="padding: 1px 10px;">Completed</span>
+                                                        </td>
+                                                        <td class="text-body">Credit Card</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="text-body">20217961</td>
+                                                        <td class="text-body">11/1/2025 5:16:45 PM</td>
+                                                        <td class="text-body">Travel Credits</td>
+                                                        <td class="text-body">$500,000</td>
+                                                        <td>
+                                                            <span class="d-inline-block bg-danger-50 bg-opacity-10 border-danger-50 border rounded-pill text-danger-50 fs-12 fw-medium" style="padding: 1px 10px;">Failed</span>
+                                                        </td>
+                                                        <td class="text-body">Credit Card</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap p-4 pt-3">
+                                            <span class="fs-13">Showing 6 of 36 Results</span>
+
+                                            <nav aria-label="Page navigation example">
+                                                <ul class="pagination mb-0 justify-content-center">
+                                                    <li class="page-item">
+                                                        <button class="page-link icon hover-bg" aria-label="Previous">
+                                                            <i class="material-symbols-outlined">keyboard_arrow_left</i>
+                                                        </button>
+                                                    </li>
+                                                    <li class="page-item">
+                                                        <button class="page-link active">1</button>
+                                                    </li>
+                                                    <li class="page-item">
+                                                        <button class="page-link">2</button>
+                                                    </li>
+                                                    <li class="page-item">
+                                                        <button class="page-link">3</button>
+                                                    </li>
+                                                    <li class="page-item">
+                                                        <button class="page-link">4</button>
+                                                    </li>
+                                                    <li class="page-item">
+                                                        <button class="page-link icon hover-bg" aria-label="Next">
+                                                            <i class="material-symbols-outlined">keyboard_arrow_right</i>
+                                                        </button>
+                                                    </li>
+                                                </ul>
+                                            </nav>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Card Add -->
+                <div class="modal fade" id="billingInfoModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered" style="max-width: 75%;">
+                        <div class="modal-content p-4 p-md-5">
+                            <div class="modal-header p-0 border-0">
+                                <h3 class="mb-0">Billing Info</h3>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+
+                            <div class="modal-body p-0 pt-4">
+                                <form>
+                                    <div class="row">
+                                        <div class="col-sm-6">
+                                            <div class="mb-4">
+                                                <label class="label text-secondary">First Name</label>
+                                                <input type="text" class="form-control h-55" placeholder="First Name" value="Nuno">
+                                            </div>
+                                        </div>
+
+                                        <div class="col-sm-6">
+                                            <div class="mb-4">
+                                                <label class="label text-secondary">Last Name</label>
+                                                <input type="text" class="form-control h-55" placeholder="Last Name" value="Cacao">
+                                            </div>
+                                        </div>
+
+                                        <!-- CARD NUMBER com mostrar/esconder -->
+                                        <div class="col-sm-6">
+                                            <div class="mb-4">
+                                                <label class="label text-secondary">Card Number</label>
+                                                <div class="input-with-icon">
+                                                    <input type="password"
+                                                           id="cardNumber"
+                                                           class="form-control h-55"
+                                                           inputmode="numeric"
+                                                           autocomplete="cc-number"
+                                                           placeholder="•••• •••• •••• ••••"
+                                                           value="1111111111116886">
+                                                    <button type="button" class="toggle-visibility" aria-label="Show card number" data-target="cardNumber">
+                                                        <i class="ri-eye-off-line"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-sm-6">
+                                            <div class="mb-4">
+                                                <label class="label text-secondary">Card Type</label>
+                                                <select class="form-control h-55">
+                                                    <option>Visa</option>
+                                                    <option>Master Card</option>
+                                                    <option>American Express</option>
+                                                    <option>JCB</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <!-- EXPIRY: só MÊS/ANO -->
+                                        <div class="col-sm-6">
+                                            <div class="mb-4">
+                                                <label class="label text-secondary">Expiry (MM/YYYY)</label>
+
+                                                <!-- Wrapper obrigatório (position: relative) -->
+                                                <div class="my-monthyear-wrapper">
+                                                    <input id="expiryDisplay" type="text" class="form-control h-55"
+                                                           placeholder="MM/YYYY" readonly aria-haspopup="dialog" value="12/2030" />
+
+                                                    <!-- popover do picker (inicialmente oculto) -->
+                                                    <div id="myMonthYearPicker" class="my-picker" role="dialog" aria-modal="false" aria-hidden="true">
+                                                        <div class="my-picker-header">
+                                                            <button type="button" class="my-nav" id="myPrevYear" aria-label="Previous year">
+                                                                <i class="ri-arrow-left-s-line"></i>
+                                                            </button>
+                                                            <div class="my-year" id="myYearLabel">2025</div>
+                                                            <button type="button" class="my-nav" id="myNextYear" aria-label="Next year">
+                                                                <i class="ri-arrow-right-s-line"></i>
+                                                            </button>
+                                                        </div>
+                                                        <div class="my-month-grid" id="myMonthGrid">
+                                                            <!-- JS injeta os 12 meses -->
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- valor “real” para submit, se precisares -->
+                                                    <input type="hidden" id="expiryHidden" name="expiry" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- CVV com mostrar/esconder -->
+                                        <div class="col-sm-6">
+                                            <div class="mb-4">
+                                                <label class="label text-secondary">CVV</label>
+                                                <div class="input-with-icon">
+                                                    <input type="password"
+                                                           id="cardCVV"
+                                                           class="form-control h-55"
+                                                           inputmode="numeric"
+                                                           autocomplete="cc-csc"
+                                                           placeholder="•••"
+                                                           value="999">
+                                                    <button type="button" class="toggle-visibility" aria-label="Show CVV" data-target="cardCVV">
+                                                        <i class="ri-eye-off-line"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-sm-6">
+                                            <div class="mb-4">
+                                                <label class="label text-secondary">Billing Address</label>
+                                                <input type="text" class="form-control h-55" placeholder="Billing Address" value="Rua dos Arneiros, 45">
+                                            </div>
+                                        </div>
+
+                                        <div class="col-sm-6">
+                                            <div class="mb-4">
+                                                <label class="label text-secondary">Billing City</label>
+                                                <input type="text" class="form-control h-55" placeholder="Billing City" value="Arrouquelas">
+                                            </div>
+                                        </div>
+
+                                        <div class="col-sm-6">
+                                            <div class="mb-4">
+                                                <label class="label text-secondary">Billing ZIP / Postal Code</label>
+                                                <input type="text" class="form-control h-55" placeholder="Billing ZIP / Postal Code" value="2040-031">
+                                            </div>
+                                        </div>
+
+                                        <div class="col-sm-6">
+                                            <div class="mb-4">
+                                                <label class="label text-secondary">Billing State / Province</label>
+                                                <input type="text" class="form-control h-55" placeholder="Billing State / Province" value="Rio Maior">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div class="modal-footer border-0 p-0">
+                                <button type="button" class="btn btn-danger text-white px-3" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-primary hover-bg px-3">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Card Personal -->
+                <div class="modal fade" id="personalInfoModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered" style="max-width: 75%;">
+                        <div class="modal-content p-4 p-md-5">
+                            <div class="modal-header p-0 border-0">
+                                <h3 class="mb-0">Personal Info</h3>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+
+                            <div class="modal-body p-0 pt-4">
+                                <form>
+                                    <div class="row">
+                                        <div class="col-sm-6">
+                                            <div class="mb-4">
+                                                <label class="label text-secondary">First Name</label>
+                                                <input type="text" class="form-control h-55" placeholder="First Name" value="Nuno">
+                                            </div>
+                                        </div>
+
+                                        <div class="col-sm-6">
+                                            <div class="mb-4">
+                                                <label class="label text-secondary">Last Name</label>
+                                                <input type="text" class="form-control h-55" placeholder="Last Name" value="Cação">
+                                            </div>
+                                        </div>
+
+                                        <!-- Date of Birth -->
+                                        <div class="col-sm-6">
+                                            <div class="mb-4">
+                                                <label class="label text-secondary">Date of Birth (DD/MM/YYYY)</label>
+
+                                                <div class="dob-wrapper">
+                                                    <input id="dobDisplay" type="text" class="form-control h-55 dob-input"
+                                                           placeholder="DD/MM/YYYY" readonly aria-haspopup="dialog" />
+
+                                                    <!-- Ícone calendário (decorativo) -->
+                                                    <i class="ri-calendar-line dob-icon" aria-hidden="true"></i>
+
+                                                    <!-- Picker -->
+                                                    <div id="dobPicker" class="dob-picker" role="dialog" aria-modal="false" aria-hidden="true">
+                                                        <div class="dob-header">
+                                                            <button type="button" class="dob-nav" id="dobPrev" aria-label="Previous month">
+                                                                <i class="ri-arrow-left-s-line"></i>
+                                                            </button>
+
+                                                            <div class="dob-controls">
+                                                                <select id="dobMonthSelect" class="dob-select" aria-label="Select month">
+                                                                    <option value="0">Jan</option>
+                                                                    <option value="1">Feb</option>
+                                                                    <option value="2">Mar</option>
+                                                                    <option value="3">Apr</option>
+                                                                    <option value="4">May</option>
+                                                                    <option value="5">Jun</option>
+                                                                    <option value="6">Jul</option>
+                                                                    <option value="7">Aug</option>
+                                                                    <option value="8">Sep</option>
+                                                                    <option value="9">Oct</option>
+                                                                    <option value="10">Nov</option>
+                                                                    <option value="11">Dec</option>
+                                                                </select>
+
+                                                                <select id="dobYearSelect" class="dob-select" aria-label="Select year"></select>
+                                                            </div>
+
+                                                            <button type="button" class="dob-nav" id="dobNext" aria-label="Next month">
+                                                                <i class="ri-arrow-right-s-line"></i>
+                                                            </button>
+                                                        </div>
+
+                                                        <div class="dob-weekdays" aria-hidden="true">
+                                                            <span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span>
+                                                        </div>
+
+                                                        <div id="dobGrid" class="dob-grid" role="grid" aria-label="Calendar grid"></div>
+                                                    </div>
+
+                                                    <!-- Valor real para submit (YYYY-MM-DD) -->
+                                                    <input type="hidden" id="dobHidden" name="date_of_birth" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-sm-6">
+                                            <div class="mb-4">
+                                                <label class="label text-secondary">Website Name</label>
+                                                <input type="text" class="form-control h-55" placeholder="Website Name" value="nunocacao">
+                                            </div>
+                                        </div>
+
+                                        <div class="col-sm-12">
+                                            <div class="mb-4">
+                                                <label class="label text-secondary">Business Name</label>
+                                                <input type="text" class="form-control h-55" placeholder="Business Name" value="Nuno Cação">
+                                            </div>
+                                        </div>
+
+                                        <div class="col-sm-6">
+                                            <div class="mb-4">
+                                                <label class="label text-secondary">SSN</label>
+                                                <input type="text" class="form-control h-55" placeholder="SSN" value="123-45-6789">
+                                            </div>
+                                        </div>
+
+                                        <div class="col-sm-6">
+                                            <div class="mb-4">
+                                                <label class="label text-secondary">EIN</label>
+                                                <input type="text" class="form-control h-55" placeholder="EIN" value="12-3456789">
+                                            </div>
+                                        </div>
+
+                                        <div class="col-sm-6">
+                                            <div class="mb-4">
+                                                <label class="label text-secondary">WhatsApp</label>
+                                                <input type="text" class="form-control h-55" placeholder="WhatsApp" value="(+351) 914 055 324">
+                                            </div>
+                                        </div>
+
+                                        <div class="col-sm-6">
+                                            <div class="mb-4">
+                                                <label class="label text-secondary">Cell Phone</label>
+                                                <input type="text" class="form-control h-55" placeholder="Cell Phone" value="(+351) 914 055 324">
+                                            </div>
+                                        </div>
+
+                                        <div class="col-sm-12">
+                                            <div class="mb-4">
+                                                <label class="label text-secondary">Address</label>
+                                                <input type="text" class="form-control h-55" placeholder="Address" value="Rua dos Arneiros, 45">
+                                            </div>
+                                        </div>
+
+                                        <div class="col-sm-6">
+                                            <div class="mb-4">
+                                                <label class="label text-secondary">ZIP / Postal Code</label>
+                                                <input type="text" class="form-control h-55" placeholder="ZIP / Postal Code" value="2040-031">
+                                            </div>
+                                        </div>
+
+                                        <div class="col-sm-6">
+                                            <div class="mb-4">
+                                                <label class="label text-secondary">City</label>
+                                                <input type="text" class="form-control h-55" placeholder="City" value="Arrouquelas">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div class="modal-footer border-0 p-0">
+                                <button type="button" class="btn btn-danger text-white px-3" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-primary hover-bg px-3">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Commissions -->
+                <div class="modal fade" id="commissionsInfoModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered" style="max-width: 75%;">
+                        <div class="modal-content p-4 p-md-5">
+                            <div class="modal-header p-0 border-0">
+                                <h3 class="mb-0">Commissions</h3>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+
+                            <div class="modal-body p-0 pt-4">
+                                <form id="commissionsForm">
+                                    <!-- Payment Frequency -->
+                                    <fieldset class="mb-4">
+                                        <legend class="label text-secondary mb-2">Payment Frequency</legend>
+                                        <div class="d-flex flex-wrap gap-3">
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="payFrequency" id="pfDaily" value="daily" checked>
+                                                <label class="form-check-label" for="pfDaily">Daily</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="payFrequency" id="pfWeekly" value="weekly">
+                                                <label class="form-check-label" for="pfWeekly">Weekly</label>
+                                            </div>
+                                        </div>
+                                    </fieldset>
+
+                                    <!-- Payment Method -->
+                                    <fieldset class="mb-2">
+                                        <legend class="label text-secondary mb-2">Payment Method</legend>
+                                        <div class="d-flex flex-wrap gap-3">
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="payMethod" id="pmIPayout" value="ipayout" checked>
+                                                <label class="form-check-label" for="pmIPayout">I-Payout</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="payMethod" id="pmVolet" value="volet">
+                                                <label class="form-check-label" for="pmVolet">Volet</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="payMethod" id="pmUSDC" value="usdc">
+                                                <label class="form-check-label" for="pmUSDC">USDC (ERC20)</label>
+                                            </div>
+                                        </div>
+                                    </fieldset>
+
+                                    <!-- Hidden inputs para submit -->
+                                    <input type="hidden" id="payFrequencyHidden" name="pay_frequency" value="daily">
+                                    <input type="hidden" id="payMethodHidden" name="pay_method" value="ipayout">
+                                </form>
+                            </div>
+
+                            <div class="modal-footer border-0 p-0">
+                                <button type="button" class="btn btn-danger text-white px-3" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-primary hover-bg px-3" id="saveCommissionsBtn">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Change Password -->
+                <div class="modal fade" id="accountInfoModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered" style="max-width: 75%;">
+                        <div class="modal-content p-4 p-md-5">
+                            <form>
+                                <div class="modal-header p-0 border-0">
+                                    <h3 class="mb-0">Change Password</h3>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+
+                                <div class="modal-body p-0 pt-4">
+                                    <div class="row">
+                                        <div class="col-lg-6">
+                                            <div class="form-group mb-4">
+                                                <label class="label text-secondary">Old Password</label>
+                                                <div class="form-group">
+                                                    <div class="password-wrapper position-relative">
+                                                        <input type="password" id="oldpassword" class="form-control h-55 text-dark" value="@password#">
+                                                        <i style="color: #A9A9C8; font-size: 16px; right: 15px;" class="ri-eye-off-line password-toggle-icon translate-middle-y top-50 position-absolute cursor" aria-hidden="true"></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-6">
+                                            <div class="form-group mb-4">
+                                                <label class="label text-secondary">New Password</label>
+                                                <div class="form-group">
+                                                    <div class="password-wrapper position-relative">
+                                                        <input type="password" id="newpassword" class="form-control h-55 text-dark" value="@password#">
+                                                        <i style="color: #A9A9C8; font-size: 16px; right: 15px;" class="ri-eye-off-line password-toggle-icon translate-middle-y top-50 position-absolute cursor" aria-hidden="true"></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-12">
+                                            <div class="form-group mb-4">
+                                                <label class="label text-secondary">Confirm Password</label>
+                                                <div class="form-group">
+                                                    <div class="password-wrapper position-relative">
+                                                        <input type="password" id="confirmpassword" class="form-control h-55 text-dark" value="@password#">
+                                                        <i style="color: #A9A9C8; font-size: 16px; right: 15px;" class="ri-eye-off-line password-toggle-icon translate-middle-y top-50 position-absolute cursor" aria-hidden="true"></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                                <div class="modal-footer border-0 p-0">
+                                    <button type="button" class="btn btn-danger text-white px-3" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="button" class="btn btn-primary hover-bg px-3" id="savePasswordBtn">Save</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex-grow-1"></div>
+
+                <!-- Start Footer Area -->
+                <footer class="footer-area bg-white text-center rounded-top-7">
+                    <p class="fs-14">© <span class="text-primary-div">Trezo</span> is Proudly Owned by <a href="https://envytheme.com/" target="_blank" class="text-decoration-none text-primary">EnvyTheme</a></p>
+                </footer>
+                <!-- End Footer Area -->
+            </div>
+        </div>
+        <!-- Start Main Content Area -->
+        <!-- Start Create From Area -->
+        <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasRight" aria-labelledby="offcanvasRightLabel">
+            <div class="offcanvas-header border-bottom p-4">
+                <h5 class="offcanvas-title fs-18 mb-0" id="offcanvasRightLabel">Add New Label</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+            <div class="offcanvas-body p-4">
+                <form>
+                    <div class="form-group mb-4">
+                        <label class="label">Label Name</label>
+                        <input type="text" class="form-control text-dark" placeholder="Label Name">
+                    </div>
+                    <div class="form-group mb-4">
+                        <label class="label">Select Icon</label>
+                        <select class="form-select form-control text-dark" aria-label="Default select example">
+                            <option selected>Home Icon</option>
+                            <option value="1">Start Icon</option>
+                            <option value="2">Trash Icon</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group d-flex gap-3">
+                        <button class="btn btn-primary text-white fw-semibold py-2 px-2 px-sm-3">
+                            <span class="py-sm-1 d-block">
+                                <i class="ri-add-line text-white"></i>
+                                <span>Create Label</span>
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <!-- End Create From Area -->
+        <!-- Start Theme Setting Area -->
+        <div class="offcanvas offcanvas-end bg-white" data-bs-scroll="true" data-bs-backdrop="true" tabindex="-1" id="offcanvasScrolling" aria-labelledby="offcanvasScrollingLabel" style="box-shadow: rgba(100, 100, 111, 0.2) 0px 7px 29px 0px;">
+            <div class="offcanvas-header bg-primary py-3 px-4">
+                <h5 class="offcanvas-title fs-18 text-white" id="offcanvasScrollingLabel">Theme Settings</h5>
+                <button type="button" class="btn-close text-white" data-bs-dismiss="offcanvas" aria-label="Close" style="filter: invert(1); opacity: 1;"></button>
+            </div>
+            <div class="offcanvas-body p-4">
+                <div class="mb-4 pb-2">
+                    <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">RTL / LTR</h4>
+
+                    <div class="d-flex align-items-center position-relative settings-box-wrap for-rtl-mode" style="gap: 25px;">
+                        <div class="cursor position-relative active-wrap2">
+                            <div class="settings-box">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                            <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                                <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                                <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                                <span class="fw-semibold">LTR</span>
+                            </div>
+                        </div>
+                        <div class="cursor position-relative active-wrap1">
+                            <div class="settings-box for-rtl">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                            <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                                <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                                <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                                <span class="fw-semibold">RTL</span>
+                            </div>
+                        </div>
+                        <label id="switch" class="switch-for-rtl">
+                            <input type="checkbox" class="position-absolute top-0 bottom-0 start-0 end-0 opacity-0 cursor" onchange="toggleTheme()" id="slider">
+                            <span class="sliders round"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Container Style Fluid / Boxed</h4>
+                <button class="boxed-style settings-btn fluid-boxed-btn" id="boxed-style">
+                    Click To <span class="fluid">Fluid</span> <span class="boxed">Boxed</span>
+                </button>
+            </div> -->
+
+                <div class="mb-4 pb-2">
+                    <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Only Sidebar Light / Dark</h4>
+
+                    <div class="d-flex align-items-center position-relative settings-box-wrap for-sidebar-dark" style="gap: 25px;">
+                        <div class="cursor position-relative active-wrap2">
+                            <div class="settings-box">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                            <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                                <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                                <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                                <span class="fw-semibold">Light</span>
+                            </div>
+                        </div>
+                        <div class="cursor position-relative active-wrap1">
+                            <div class="settings-box">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                            <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                                <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                                <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                                <span class="fw-semibold">Dark</span>
+                            </div>
+                        </div>
+                        <button class="sidebar-light-dark settings-btn" id="sidebar-light-dark"></button>
+                    </div>
+                </div>
+
+                <div class="mb-4 pb-2">
+                    <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Only Header Light / Dark</h4>
+
+                    <div class="d-flex align-items-center position-relative settings-box-wrap for-header-dark" style="gap: 25px;">
+                        <div class="cursor position-relative active-wrap2">
+                            <div class="settings-box">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                            <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                                <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                                <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                                <span class="fw-semibold">Light</span>
+                            </div>
+                        </div>
+                        <div class="cursor position-relative active-wrap1">
+                            <div class="settings-box">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                            <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                                <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                                <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                                <span class="fw-semibold">Dark</span>
+                            </div>
+                        </div>
+                        <button class="header-light-dark settings-btn" id="header-light-dark"></button>
+                    </div>
+                </div>
+
+                <div class="mb-4 pb-2">
+                    <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Only Footer Light / Dark</h4>
+
+                    <div class="d-flex align-items-center position-relative settings-box-wrap for-footer-dark" style="gap: 25px;">
+                        <div class="cursor position-relative active-wrap2">
+                            <div class="settings-box">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                            <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                                <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                                <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                                <span class="fw-semibold">Light</span>
+                            </div>
+                        </div>
+                        <div class="cursor position-relative active-wrap1">
+                            <div class="settings-box">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                            <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                                <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                                <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                                <span class="fw-semibold">Dark</span>
+                            </div>
+                        </div>
+                        <button class="footer-light-dark settings-btn" id="footer-light-dark"></button>
+                    </div>
+                </div>
+
+                <div class="mb-4 pb-2">
+                    <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Card Style Radius / Square</h4>
+
+                    <div class="d-flex align-items-center position-relative settings-box-wrap for-card-radius" style="gap: 25px;">
+                        <div class="cursor position-relative active-wrap2">
+                            <div class="settings-box">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span class="rounded-3"></span>
+                                <span class="rounded-3"></span>
+                                <span class="rounded-3"></span>
+                                <span class="rounded-3"></span>
+                                <span class="rounded-3"></span>
+                                <span class="rounded-3"></span>
+                            </div>
+                            <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                                <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                                <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                                <span class="fw-semibold">Radius</span>
+                            </div>
+                        </div>
+                        <div class="cursor position-relative active-wrap1">
+                            <div class="settings-box rounded-0">
+                                <span class="rounded-0"></span>
+                                <span class="rounded-0"></span>
+                                <span class="rounded-0"></span>
+                                <span class="rounded-0"></span>
+                                <span class="rounded-0"></span>
+                                <span class="rounded-0"></span>
+                                <span class="rounded-0"></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                            <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                                <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                                <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                                <span class="fw-semibold">Square</span>
+                            </div>
+                        </div>
+                        <button class="card-radius-square settings-btn" id="card-radius-square"></button>
+                    </div>
+                </div>
+
+                <div class="mb-4 pb-2">
+                    <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Card Style BG White / Gray</h4>
+
+                    <div class="d-flex align-items-center position-relative settings-box-wrap for-card-bg-gray" style="gap: 25px;">
+                        <div class="cursor position-relative active-wrap2">
+                            <div class="settings-box bg-light-40">
+                                <span class="bg-white"></span>
+                                <span class="bg-white"></span>
+                                <span class="bg-white"></span>
+                                <span class="bg-white"></span>
+                                <span class="bg-white"></span>
+                                <span class="bg-white"></span>
+                                <span class="bg-white"></span>
+                                <span class="rounded-3 bg-white"></span>
+                                <span class="rounded-3 bg-white"></span>
+                                <span class="rounded-3 bg-white"></span>
+                                <span class="rounded-3 bg-white"></span>
+                                <span class="rounded-3 bg-white"></span>
+                                <span class="rounded-3 bg-white"></span>
+                            </div>
+                            <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                                <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                                <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                                <span class="fw-semibold">White</span>
+                            </div>
+                        </div>
+                        <div class="cursor position-relative active-wrap1">
+                            <div class="settings-box">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span class="rounded-3"></span>
+                                <span class="rounded-3"></span>
+                                <span class="rounded-3"></span>
+                                <span class="rounded-3"></span>
+                                <span class="rounded-3"></span>
+                                <span class="rounded-3"></span>
+                            </div>
+                            <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                                <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                                <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                                <span class="fw-semibold">Gray</span>
+                            </div>
+                        </div>
+                        <button class="card-bg settings-btn" id="card-bg"></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- End Theme Setting Area -->
+        <!-- Link Of JS File -->
+        <script src="assets/js/bootstrap.bundle.min.js"></script>
+        <script src="assets/js/sidebar-menu.js"></script>
+        <script src="assets/js/dragdrop.js"></script>
+        <script src="assets/js/rangeslider.min.js"></script>
+        <script src="assets/js/quill.min.js"></script>
+        <script src="assets/js/data-table.js"></script>
+        <script src="assets/js/prism.js"></script>
+        <script src="assets/js/clipboard.min.js"></script>
+        <script src="assets/js/feather.min.js"></script>
+        <script src="assets/js/simplebar.min.js"></script>
+        <script src="assets/js/apexcharts.min.js"></script>
+        <script src="assets/js/echarts.min.js"></script>
+        <script src="assets/js/swiper-bundle.min.js"></script>
+        <script src="assets/js/fullcalendar.main.js"></script>
+        <script src="assets/js/jsvectormap.min.js"></script>
+        <script src="assets/js/world-merc.js"></script>
+        <script src="assets/js/moment.min.js"></script>
+        <script src="assets/js/lightpick.js"></script>
+        <script src="assets/js/custom/apexcharts.js"></script>
+        <script src="assets/js/custom/echarts.js"></script>
+        <script src="assets/js/custom/custom.js"></script>
+
+        <script>
+            // Toggle genérico para inputs sensíveis (card e cvv)
+            (function(){
+              function toggleVisibility(input, btn){
+                if(!input) return;
+                const isHidden = input.type === "password";
+                input.type = isHidden ? "text" : "password";
+                const icon = btn.querySelector("i");
+                if(icon){
+                  icon.classList.toggle("ri-eye-off-line", !isHidden);
+                  icon.classList.toggle("ri-eye-line", isHidden);
+                }
+                btn.setAttribute("aria-label", (isHidden ? "Hide" : "Show") + " value");
+              }
+
+              // Ligar a todos os botões com data-target
+              document.querySelectorAll('.toggle-visibility').forEach(btn=>{
+                const id = btn.getAttribute('data-target');
+                const input = document.getElementById(id);
+                btn.addEventListener('click', ()=> toggleVisibility(input, btn));
+              });
+
+              // (Opcional) impedir scroll do rato alterar valores numéricos
+              ['cardNumber','cardCVV'].forEach(id=>{
+                const el = document.getElementById(id);
+                if(!el) return;
+                el.addEventListener('wheel', e => el === document.activeElement && e.preventDefault());
+              });
+            })();
+
+            (function () {
+                const display = document.getElementById('expiryDisplay');
+                const hidden = document.getElementById('expiryHidden');
+                const pop = document.getElementById('myMonthYearPicker');
+                const yearLb = document.getElementById('myYearLabel');
+                const prevY = document.getElementById('myPrevYear');
+                const nextY = document.getElementById('myNextYear');
+                const grid = document.getElementById('myMonthGrid');
+
+                if (!display || !pop) return;
+
+                // === estado ===
+                let cur = new Date();
+                let selMonth = null, selYear = cur.getFullYear();
+
+                // === criar botões de meses
+                const MONTHS = [
+                    ['01', 'Jan'], ['02', 'Feb'], ['03', 'Mar'], ['04', 'Apr'],
+                    ['05', 'May'], ['06', 'Jun'], ['07', 'Jul'], ['08', 'Aug'],
+                    ['09', 'Sep'], ['10', 'Oct'], ['11', 'Nov'], ['12', 'Dec']
+                ];
+                function renderMonths() {
+                    grid.innerHTML = '';
+                    MONTHS.forEach(([val, label]) => {
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'my-month-btn';
+                        btn.textContent = label;
+                        btn.dataset.mm = val;
+                        if (selMonth === val) btn.classList.add('active');
+                        btn.addEventListener('click', () => {
+                            selMonth = val;
+                            setValueAndClose();
+                        });
+                        grid.appendChild(btn);
+                    });
+                }
+
+                function updateYear(y) {
+                    selYear = y;
+                    yearLb.textContent = String(selYear);
+                }
+
+                function setValueAndClose() {
+                    if (!selMonth || !selYear) return;
+                    const formatted = `${selMonth}/${selYear}`;
+                    display.value = formatted;
+                    hidden && (hidden.value = formatted);
+                    closePicker();
+                }
+
+                function openPicker() {
+                    // posiciona sempre o ano selecionado (default: atual)
+                    if (!selYear) selYear = new Date().getFullYear();
+                    updateYear(selYear);
+                    renderMonths();
+                    pop.classList.add('show');
+                    pop.setAttribute('aria-hidden', 'false');
+                    // focus management opcional
+                    setTimeout(() => pop.querySelector('.my-month-btn')?.focus(), 0);
+                    document.addEventListener('click', outside);
+                    document.addEventListener('keydown', escClose);
+                }
+
+                function closePicker() {
+                    pop.classList.remove('show');
+                    pop.setAttribute('aria-hidden', 'true');
+                    document.removeEventListener('click', outside);
+                    document.removeEventListener('keydown', escClose);
+                }
+
+                function outside(e) {
+                    if (!pop.contains(e.target) && e.target !== display) {
+                        closePicker();
+                    }
+                }
+                function escClose(e) {
+                    if (e.key === 'Escape') closePicker();
+                    if (e.key === 'ArrowLeft') updateYear(selYear - 1), renderMonths();
+                    if (e.key === 'ArrowRight') updateYear(selYear + 1), renderMonths();
+                }
+
+                // eventos
+                display.addEventListener('click', () => {
+                    pop.classList.contains('show') ? closePicker() : openPicker();
+                });
+                prevY.addEventListener('click', () => { updateYear(selYear - 1); });
+                nextY.addEventListener('click', () => { updateYear(selYear + 1); });
+
+                // Pré-preenche com um valor existente, se houver
+                (function hydrateFromHidden() {
+                    const v = hidden?.value || '';
+                    const m = /^(\d{2})\/(\d{4})$/.exec(v);
+                    if (m) { selMonth = m[1]; selYear = +m[2]; display.value = v; }
+                })();
+            })();
+
+            (function () {
+                // Limites: não permitir datas futuras; limite inferior razoável
+                const MIN_YEAR = 1900;
+                const maxDate = new Date(); // hoje
+                const maxY = maxDate.getFullYear(), maxM = maxDate.getMonth(), maxD = maxDate.getDate();
+
+                const elInput = document.getElementById('dobDisplay');
+                const elHidden = document.getElementById('dobHidden');
+                const picker = document.getElementById('dobPicker');
+                const grid = document.getElementById('dobGrid');
+                const monthSel = document.getElementById('dobMonthSelect');
+                const yearSel = document.getElementById('dobYearSelect');
+                const prevBtn = document.getElementById('dobPrev');
+                const nextBtn = document.getElementById('dobNext');
+
+                if (!elInput || !picker || !grid || !monthSel || !yearSel) return;
+
+                // Popular anos
+                (function fillYears() {
+                    for (let y = maxY; y >= MIN_YEAR; y--) {
+                        const opt = document.createElement('option');
+                        opt.value = String(y);
+                        opt.textContent = y;
+                        yearSel.appendChild(opt);
+                    }
+                })();
+
+                // Estado
+                let viewY = maxY;
+                let viewM = maxM;
+                let selected = null; // Date | null
+
+                // Helpers
+                const pad2 = n => (n < 10 ? '0' + n : '' + n);
+
+                function fmtDisplay(d) {
+                    return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+                }
+                function fmtHidden(d) {
+                    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+                }
+
+                function clampToMax(d) {
+                    // impede datas futuras
+                    if (d.getFullYear() > maxY ||
+                        (d.getFullYear() === maxY && d.getMonth() > maxM) ||
+                        (d.getFullYear() === maxY && d.getMonth() === maxM && d.getDate() > maxD)) {
+                        return new Date(maxY, maxM, maxD);
+                    }
+                    return d;
+                }
+
+                function isFuture(y, m, d) {
+                    if (y > maxY) return true;
+                    if (y === maxY && m > maxM) return true;
+                    if (y === maxY && m === maxM && d > maxD) return true;
+                    return false;
+                }
+
+                function openPicker() {
+                    picker.setAttribute('aria-hidden', 'false');
+                    document.addEventListener('click', onDocClick, { capture: true });
+                    document.addEventListener('keydown', onKey);
+                }
+                function closePicker() {
+                    picker.setAttribute('aria-hidden', 'true');
+                    document.removeEventListener('click', onDocClick, { capture: true });
+                    document.removeEventListener('keydown', onKey);
+                }
+                function onDocClick(e) {
+                    if (!picker.contains(e.target) && e.target !== elInput) {
+                        closePicker();
+                    }
+                }
+                function onKey(e) {
+                    if (e.key === 'Escape') closePicker();
+                }
+
+                function render() {
+                    monthSel.value = String(viewM);
+                    yearSel.value = String(viewY);
+
+                    grid.innerHTML = '';
+                    // semana começa na segunda-feira
+                    const firstOfMonth = new Date(viewY, viewM, 1);
+                    let startDay = firstOfMonth.getDay(); // 0=Dom ... 6=Sáb
+                    // Converter para segunda-feira=0 ... domingo=6
+                    startDay = (startDay + 6) % 7;
+
+                    // número de dias no mês
+                    const daysInMonth = new Date(viewY, viewM + 1, 0).getDate();
+                    // dias do mês anterior para preencher início
+                    const prevMonthDays = new Date(viewY, viewM, 0).getDate();
+
+                    // 42 células (6 semanas)
+                    for (let i = 0; i < 42; i++) {
+                        const cell = document.createElement('button');
+                        cell.type = 'button';
+                        cell.className = 'dob-day';
+
+                        let dayNum, cellY = viewY, cellM = viewM, other = false;
+                        if (i < startDay) {
+                            // dias do mês anterior
+                            dayNum = prevMonthDays - (startDay - 1 - i);
+                            cellM = viewM - 1;
+                            if (cellM < 0) { cellM = 11; cellY--; }
+                            other = true;
+                        } else if (i >= startDay + daysInMonth) {
+                            // dias do mês seguinte
+                            dayNum = (i - (startDay + daysInMonth)) + 1;
+                            cellM = viewM + 1;
+                            if (cellM > 11) { cellM = 0; cellY++; }
+                            other = true;
+                        } else {
+                            // dias do mês atual
+                            dayNum = (i - startDay) + 1;
+                        }
+
+                        cell.textContent = dayNum;
+
+                        if (other) cell.classList.add('other-month');
+
+                        // hoje
+                        const isToday = (cellY === maxY && cellM === maxM && dayNum === maxD);
+                        if (isToday && !isFuture(cellY, cellM, dayNum)) {
+                            cell.classList.add('today');
+                        }
+
+                        // desativar futuro
+                        if (isFuture(cellY, cellM, dayNum) || cellY < MIN_YEAR) {
+                            cell.classList.add('disabled');
+                            cell.disabled = true;
+                        }
+
+                        // selecionado
+                        if (selected &&
+                            selected.getFullYear() === cellY &&
+                            selected.getMonth() === cellM &&
+                            selected.getDate() === dayNum) {
+                            cell.classList.add('selected');
+                        }
+
+                        // click
+                        cell.addEventListener('click', () => {
+                            if (cell.classList.contains('disabled')) return;
+                            selected = new Date(cellY, cellM, dayNum);
+                            selected = clampToMax(selected);
+                            elInput.value = fmtDisplay(selected);
+                            elHidden.value = fmtHidden(selected);
+                            render(); // refaz para pintar selected
+                            closePicker();
+                        });
+
+                        grid.appendChild(cell);
+                    }
+                }
+
+                // Navegação
+                prevBtn.addEventListener('click', () => {
+                    viewM--;
+                    if (viewM < 0) { viewM = 11; viewY--; }
+                    render();
+                });
+                nextBtn.addEventListener('click', () => {
+                    viewM++;
+                    if (viewM > 11) { viewM = 0; viewY++; }
+                    render();
+                });
+                monthSel.addEventListener('change', () => {
+                    viewM = parseInt(monthSel.value, 10);
+                    render();
+                });
+                yearSel.addEventListener('change', () => {
+                    viewY = parseInt(yearSel.value, 10);
+                    // impedir ir para além do mês/ano atual no futuro (caso igual)
+                    if (viewY === maxY && viewM > maxM) viewM = maxM;
+                    render();
+                });
+
+                // Abrir/fechar
+                elInput.addEventListener('click', () => {
+                    // Posicionar o "view" no mês/ano do selecionado ou na última data válida
+                    if (selected) {
+                        viewY = selected.getFullYear();
+                        viewM = selected.getMonth();
+                    } else {
+                        viewY = maxY; viewM = maxM;
+                    }
+                    render();
+                    openPicker();
+                });
+
+                // API pequena p/ preset externo (se quiseres)
+                window.setDOBFromString = function (ddmmyyyy) {
+                    // aceita DD/MM/YYYY
+                    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(ddmmyyyy || '');
+                    if (!m) return;
+                    const d = parseInt(m[1], 10), mo = parseInt(m[2], 10) - 1, y = parseInt(m[3], 10);
+                    let cand = new Date(y, mo, d);
+                    if (isNaN(cand.getTime())) return;
+                    cand = clampToMax(cand);
+                    selected = cand;
+                    elInput.value = fmtDisplay(cand);
+                    elHidden.value = fmtHidden(cand);
+                    viewY = cand.getFullYear();
+                    viewM = cand.getMonth();
+                    render();
+                };
+
+                // Se houver valor inicial no input (ex: "18/06/1986"), tenta aplicar
+                if (elInput.value && /^\d{2}\/\d{2}\/\d{4}$/.test(elInput.value.trim())) {
+                    window.setDOBFromString(elInput.value.trim());
+                } else {
+                    // default: sem seleção; preparar dropdowns
+                    viewY = maxY; viewM = maxM;
+                    render();
+                }
+            })();
+
+            setDOBFromString("18/06/1986");
+
+            (function () {
+                const modalEl = document.getElementById('commissionsModal');
+                if (!modalEl) return;
+
+                const form = document.getElementById('commissionsForm');
+                const saveBtn = document.getElementById('saveCommissionsBtn');
+
+                const hiddenFreq = document.getElementById('payFrequencyHidden');
+                const hiddenMethod = document.getElementById('payMethodHidden');
+
+                // (Opcional) IDs de spans na página para refletir as escolhas ao guardar
+                const displayFreq = document.getElementById('displayPayFrequency'); // ex.: <span id="displayPayFrequency">Daily</span>
+                const displayMethod = document.getElementById('displayPayMethod');  // ex.: <span id="displayPayMethod">I-Payout</span>
+
+                // Mappers para labels bonitos
+                const freqLabel = { daily: 'Daily', weekly: 'Weekly' };
+                const methodLabel = { ipayout: 'I-Payout', volet: 'Volet', usdc: 'USDC (ERC20)' };
+
+                // Ao abrir o modal, tenta pré-preencher a partir dos hidden inputs/labels se existirem
+                modalEl.addEventListener('show.bs.modal', function () {
+                    try {
+                        // ler dos hidden inputs (se ja tiverem valor)
+                        const curFreq = (hiddenFreq.value || 'daily').toLowerCase();
+                        const curMethod = (hiddenMethod.value || 'ipayout').toLowerCase();
+
+                        const freqInput = form.querySelector(`input[name="payFrequency"][value="${curFreq}"]`);
+                        const methodInput = form.querySelector(`input[name="payMethod"][value="${curMethod}"]`);
+
+                        if (freqInput) freqInput.checked = true;
+                        if (methodInput) methodInput.checked = true;
+                    } catch (e) { }
+                });
+
+                // Guardar
+                saveBtn.addEventListener('click', function () {
+                    const selFreq = form.querySelector('input[name="payFrequency"]:checked')?.value || 'daily';
+                    const selMethod = form.querySelector('input[name="payMethod"]:checked')?.value || 'ipayout';
+
+                    hiddenFreq.value = selFreq;
+                    hiddenMethod.value = selMethod;
+
+                    // Atualizar textos na página, se existirem
+                    if (displayFreq) displayFreq.textContent = freqLabel[selFreq] || selFreq;
+                    if (displayMethod) displayMethod.textContent = methodLabel[selMethod] || selMethod;
+
+                    // Fechar modal
+                    const bsModal = bootstrap.Modal.getInstance(modalEl);
+                    if (bsModal) bsModal.hide();
+                });
+            })();
+
+            // password
+            // === Toggle de mostrar/ocultar password no modal "Change Password"
+            (function () {
+                // Delegação: só dentro do modal #accountInfoModal
+                document.addEventListener('click', function (e) {
+                    const icon = e.target.closest('#accountInfoModal .password-toggle-icon');
+                    if (!icon) return;
+
+                    // encontra o input de password mais próximo
+                    const wrap = icon.closest('.password-wrapper');
+                    const input = wrap ? wrap.querySelector('input') : null;
+                    if (!input) return;
+
+                    // alterna tipo
+                    const show = input.type === 'password';
+                    input.type = show ? 'text' : 'password';
+
+                    // alterna ícone (Remix Icon)
+                    icon.classList.toggle('ri-eye-line', show);
+                    icon.classList.toggle('ri-eye-off-line', !show);
+
+                    // mantém foco e cursor no fim
+                    input.focus({ preventScroll: true });
+                    try {
+                        const end = input.value.length;
+                        input.setSelectionRange(end, end);
+                    } catch (_) { }
+                });
+
+                // (Opcional) Validação simples no botão Save
+                document.addEventListener('click', function (e) {
+                    const btn = e.target.closest('#savePasswordBtn');
+                    if (!btn) return;
+
+                    const cur = document.getElementById('oldpassword');
+                    const nw = document.getElementById('newpassword');
+                    const cf = document.getElementById('confirmpassword');
+
+                    [cur, nw, cf].forEach(i => i.classList.remove('is-invalid'));
+
+                    let ok = true;
+                    if (!cur.value.trim()) { cur.classList.add('is-invalid'); ok = false; }
+                    if (!nw.value || nw.value.length < 8) { nw.classList.add('is-invalid'); ok = false; }
+                    if (!cf.value || cf.value !== nw.value) { cf.classList.add('is-invalid'); ok = false; }
+                    if (nw.value && cur.value && nw.value === cur.value) { nw.classList.add('is-invalid'); ok = false; }
+
+                    if (!ok) return;
+
+                    // TODO: envia para o backend
+                    // fetch('/api/change-password', {...})
+
+                    // fecha o modal
+                    const modalEl = document.getElementById('accountInfoModal');
+                    if (modalEl) {
+                        const bsModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                        bsModal.hide();
+                    }
+                });
+            })();
+
+            document.addEventListener("DOMContentLoaded", function () {
+                const buttons = document.querySelectorAll('#customTabs button');
+                const sections = document.querySelectorAll('.tab-section');
+
+                buttons.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        // remove active de todos os botões
+                        buttons.forEach(b => b.classList.remove('btn-primary', 'active'));
+                        buttons.forEach(b => b.classList.add('btn-outline-primary'));
+
+                        // ativa o botão atual
+                        btn.classList.remove('btn-outline-primary');
+                        btn.classList.add('btn-primary', 'active');
+
+                        // esconde todas as secções
+                        sections.forEach(sec => sec.classList.add('d-none'));
+                        sections.forEach(sec => sec.classList.remove('active'));
+
+                        // mostra a secção correspondente
+                        const target = document.querySelector(btn.getAttribute('data-target'));
+                        if (target) {
+                            target.classList.remove('d-none');
+                            target.classList.add('active');
+                        }
+                    });
+                });
+            });
+        </script>
+
+    </body>
+</html>

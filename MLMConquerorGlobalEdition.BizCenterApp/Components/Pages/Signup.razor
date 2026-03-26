@@ -1,0 +1,571 @@
+@page "/signup"
+@page "/signup/{SponsorSlug}"
+@layout MLMConquerorGlobalEdition.SharedComponents.Components.Layout.BlankLayout
+@inject SignupsApiClient Api
+@inject NavigationManager Navigation
+@inject JwtAuthStateProvider AuthProvider
+
+<div class="signup-wrapper">
+    <div class="signup-card">
+
+        <div class="signup-logo">
+            <h2>MLM Conqueror</h2>
+            <p class="text-muted">Create Your Account</p>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="progress-steps mb-4">
+            <div class="step @(Step >= 1 ? "active" : "") @(Step > 1 ? "done" : "")">
+                <span class="step-dot">@(Step > 1 ? "✓" : "1")</span>
+                <span class="step-label">Personal Info</span>
+            </div>
+            <div class="step-line"></div>
+            <div class="step @(Step >= 2 ? "active" : "") @(Step > 2 ? "done" : "")">
+                <span class="step-dot">@(Step > 2 ? "✓" : "2")</span>
+                <span class="step-label">Products</span>
+            </div>
+            <div class="step-line"></div>
+            <div class="step @(Step >= 3 ? "active" : "")">
+                <span class="step-dot">3</span>
+                <span class="step-label">Payment</span>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="alert alert-danger">@_error</div>
+        }
+
+        <!-- ── STEP 1 — Personal Info ───────────────────────────────────────── -->
+        @if (Step == 1)
+        {
+            @if (_sponsor is not null)
+            {
+                <div class="sponsor-banner mb-3">
+                    <span class="badge bg-success me-2">Sponsor</span>
+                    <strong>@_sponsor.DisplayName</strong>
+                </div>
+            }
+
+            <div class="row g-2 mb-2">
+                <div class="col-6">
+                    <label class="form-label">First Name *</label>
+                    <input class="form-control" @bind="_form.FirstName" placeholder="John" />
+                </div>
+                <div class="col-6">
+                    <label class="form-label">Last Name *</label>
+                    <input class="form-control" @bind="_form.LastName" placeholder="Doe" />
+                </div>
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Email *</label>
+                <input class="form-control" type="email" @bind="_form.Email" placeholder="john@email.com" />
+            </div>
+            <div class="row g-2 mb-2">
+                <div class="col-6">
+                    <label class="form-label">Password *</label>
+                    <input class="form-control" type="password" @bind="_form.Password" placeholder="••••••••" />
+                </div>
+                <div class="col-6">
+                    <label class="form-label">Confirm Password *</label>
+                    <input class="form-control" type="password" @bind="_form.ConfirmPassword" placeholder="••••••••" />
+                </div>
+            </div>
+            <div class="row g-2 mb-2">
+                <div class="col-6">
+                    <label class="form-label">Date of Birth *</label>
+                    <input class="form-control" type="date" @bind="_form.DateOfBirth" />
+                </div>
+                <div class="col-6">
+                    <label class="form-label">Country *</label>
+                    <input class="form-control" @bind="_form.Country" placeholder="US" />
+                </div>
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Phone</label>
+                <input class="form-control" @bind="_form.Phone" placeholder="+1 555 000 0000" />
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Replicate Site Slug</label>
+                <input class="form-control" @bind="_form.ReplicateSiteSlug" placeholder="my-unique-site" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Membership Level *</label>
+                @if (_levels.Count == 0)
+                {
+                    <div class="text-muted small">Loading membership levels…</div>
+                }
+                else
+                {
+                    <select class="form-select" @bind="_form.MembershipLevelId">
+                        <option value="0">— Select level —</option>
+                        @foreach (var lvl in _levels)
+                        {
+                            <option value="@lvl.Id">@lvl.Name — $@lvl.Price.ToString("N2")</option>
+                        }
+                    </select>
+                }
+            </div>
+            <button class="btn btn-primary w-100" disabled="@_busy" @onclick="HandleStep1">
+                @if (_busy) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                Continue
+            </button>
+        }
+
+        <!-- ── STEP 2 — Select Products ─────────────────────────────────────── -->
+        @if (Step == 2)
+        {
+            <p class="text-muted small mb-3">
+                Select the products to include with your signup. You can skip this step if no products are required.
+            </p>
+
+            @if (_products.Count == 0)
+            {
+                <div class="alert alert-info">No additional products available. Click Continue to proceed.</div>
+            }
+            else
+            {
+                @foreach (var p in _products)
+                {
+                    <div class="product-card @(_selectedProductIds.Contains(p.Id) ? "selected" : "")"
+                         @onclick="() => ToggleProduct(p.Id)">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>@p.Name</strong>
+                                @if (!string.IsNullOrEmpty(p.Description))
+                                {
+                                    <div class="text-muted small">@p.Description</div>
+                                }
+                            </div>
+                            <span class="badge bg-primary">$@p.Price.ToString("N2")</span>
+                        </div>
+                    </div>
+                }
+            }
+
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-outline-secondary flex-fill" @onclick="() => Step = 1">Back</button>
+                <button class="btn btn-primary flex-fill" disabled="@_busy" @onclick="HandleStep2">
+                    @if (_busy) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                    Continue
+                </button>
+            </div>
+        }
+
+        <!-- ── STEP 3 — Payment ─────────────────────────────────────────────── -->
+        @if (Step == 3)
+        {
+            <div class="mb-3">
+                <label class="form-label">Payment Method *</label>
+                <select class="form-select" @bind="_paymentMethod">
+                    <option value="CreditCard">Credit Card</option>
+                    <option value="Crypto">Cryptocurrency</option>
+                    <option value="Token">Token / Guest Pass</option>
+                    <option value="DiscountCode">Discount Code</option>
+                </select>
+            </div>
+
+            @if (_paymentMethod == "CreditCard")
+            {
+                <div class="mb-2">
+                    <label class="form-label">Gateway Token *</label>
+                    <input class="form-control" @bind="_cc.GatewayToken" placeholder="tok_..." />
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-4">
+                        <label class="form-label">First 6</label>
+                        <input class="form-control" @bind="_cc.First6" placeholder="411111" maxlength="6" />
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label">Last 4 *</label>
+                        <input class="form-control" @bind="_cc.Last4" placeholder="1111" maxlength="4" />
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label">Brand</label>
+                        <input class="form-control" @bind="_cc.CardBrand" placeholder="Visa" />
+                    </div>
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-4">
+                        <label class="form-label">Exp Month</label>
+                        <input class="form-control" type="number" @bind="_cc.ExpiryMonth" placeholder="12" min="1" max="12" />
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label">Exp Year</label>
+                        <input class="form-control" type="number" @bind="_cc.ExpiryYear" placeholder="2028" />
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label">Gateway</label>
+                        <input class="form-control" @bind="_cc.Gateway" placeholder="Stripe" />
+                    </div>
+                </div>
+            }
+
+            @if (_paymentMethod == "Crypto")
+            {
+                <div class="mb-2">
+                    <label class="form-label">Cryptocurrency</label>
+                    <input class="form-control" @bind="_cryptoCurrency" placeholder="BTC, ETH…" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Transaction ID *</label>
+                    <input class="form-control" @bind="_cryptoTxId" placeholder="0xabc..." />
+                </div>
+            }
+
+            @if (_paymentMethod == "Token")
+            {
+                <div class="mb-2">
+                    <label class="form-label">Token / Guest Pass Code *</label>
+                    <input class="form-control" @bind="_tokenCode" placeholder="TOKEN-XXXX-XXXX" />
+                </div>
+            }
+
+            @if (_paymentMethod == "DiscountCode")
+            {
+                <div class="mb-2">
+                    <label class="form-label">Discount Code *</label>
+                    <input class="form-control" @bind="_discountCode" placeholder="PROMO2026" />
+                </div>
+            }
+
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-outline-secondary flex-fill" @onclick="() => Step = 2">Back</button>
+                <button class="btn btn-success flex-fill" disabled="@_busy" @onclick="HandleStep3">
+                    @if (_busy) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                    Complete Signup
+                </button>
+            </div>
+        }
+
+        <!-- ── SUCCESS ───────────────────────────────────────────────────────── -->
+        @if (Step == 4)
+        {
+            <div class="text-center py-4">
+                <div class="display-4 mb-3">🎉</div>
+                <h4>Welcome, @_completedResponse?.Email!</h4>
+                <p class="text-muted">Your account is active. Redirecting to your dashboard…</p>
+            </div>
+        }
+
+        <div class="mt-3 text-center">
+            <a href="/login" class="text-muted small">Already have an account? Sign in</a>
+        </div>
+
+    </div>
+</div>
+
+<style>
+    .signup-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        min-height: 100vh;
+        background: #f0f2f5;
+        padding: 2rem 1rem;
+    }
+    .signup-card {
+        background: white;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 24px rgba(0,0,0,.08);
+        width: 100%;
+        max-width: 560px;
+    }
+    .signup-logo { text-align: center; margin-bottom: 1.5rem; }
+    /* Progress steps */
+    .progress-steps {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+    }
+    .step-dot {
+        width: 32px; height: 32px;
+        border-radius: 50%;
+        background: #dee2e6;
+        color: #6c757d;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 13px; font-weight: 600;
+    }
+    .step.active .step-dot { background: #0d6efd; color: white; }
+    .step.done   .step-dot { background: #198754; color: white; }
+    .step-label { font-size: 11px; color: #6c757d; }
+    .step.active .step-label { color: #0d6efd; font-weight: 600; }
+    .step-line { flex: 1; height: 2px; background: #dee2e6; margin: 0 8px 20px; }
+    /* Sponsor banner */
+    .sponsor-banner {
+        background: #d1e7dd;
+        border-radius: 8px;
+        padding: .5rem .75rem;
+        font-size: .9rem;
+    }
+    /* Product cards */
+    .product-card {
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        padding: .75rem 1rem;
+        margin-bottom: .5rem;
+        cursor: pointer;
+        transition: border-color .15s, background .15s;
+    }
+    .product-card:hover   { border-color: #0d6efd; background: #f8f9ff; }
+    .product-card.selected { border-color: #0d6efd; background: #e7efff; }
+</style>
+
+@code {
+    [Parameter] public string? SponsorSlug { get; set; }
+
+    private int Step = 1;
+    private bool _busy;
+    private string _error = string.Empty;
+
+    // Step 1 — personal info
+    private SignupFormModel _form = new();
+    private List<MembershipLevelModel> _levels = new();
+    private SponsorModel? _sponsor;
+    private string? _signupId;
+
+    // Step 2 — products
+    private List<ProductModel> _products = new();
+    private HashSet<string> _selectedProductIds = new();
+
+    // Step 3 — payment
+    private string _paymentMethod = "CreditCard";
+    private CreditCardModel _cc = new();
+    private string? _cryptoCurrency;
+    private string? _cryptoTxId;
+    private string? _tokenCode;
+    private string? _discountCode;
+
+    // Step 4 — completed
+    private CompletedModel? _completedResponse;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Already logged in? Go to dashboard
+        var state = await AuthProvider.GetAuthenticationStateAsync();
+        if (state.User.Identity?.IsAuthenticated == true)
+        {
+            Navigation.NavigateTo("/");
+            return;
+        }
+
+        // Load sponsor if slug provided
+        if (!string.IsNullOrWhiteSpace(SponsorSlug))
+        {
+            _form.SponsorMemberId = SponsorSlug;
+            var sponsorResp = await Api.PostAsync<SponsorModel>(
+                "api/v1/signups/validate-sponsor",
+                new { SponsorMemberId = SponsorSlug });
+
+            if (sponsorResp?.Success == true && sponsorResp.Data is not null)
+                _sponsor = sponsorResp.Data;
+        }
+
+        // Load membership levels
+        var levelsResp = await Api.GetAsync<List<MembershipLevelModel>>("api/v1/signups/membership-levels");
+        if (levelsResp?.Success == true && levelsResp.Data is not null)
+            _levels = levelsResp.Data;
+    }
+
+    private async Task HandleStep1()
+    {
+        _error = string.Empty;
+        if (string.IsNullOrWhiteSpace(_form.FirstName) || string.IsNullOrWhiteSpace(_form.LastName))
+            { _error = "First and last name are required."; return; }
+        if (string.IsNullOrWhiteSpace(_form.Email))
+            { _error = "Email is required."; return; }
+        if (string.IsNullOrWhiteSpace(_form.Password) || _form.Password != _form.ConfirmPassword)
+            { _error = "Passwords must match."; return; }
+        if (_form.MembershipLevelId == 0)
+            { _error = "Please select a membership level."; return; }
+        if (_form.DateOfBirth == default || _form.DateOfBirth > DateTime.UtcNow.AddYears(-18))
+            { _error = "You must be at least 18 years old."; return; }
+
+        _busy = true;
+        try
+        {
+            var resp = await Api.PostAsync<SignupResponseModel>("api/v1/signups/ambassador", new
+            {
+                SponsorMemberId    = _sponsor?.MemberId ?? _form.SponsorMemberId,
+                _form.FirstName,
+                _form.LastName,
+                _form.DateOfBirth,
+                _form.Email,
+                _form.Password,
+                _form.ConfirmPassword,
+                _form.Phone,
+                _form.Country,
+                _form.ReplicateSiteSlug,
+                _form.MembershipLevelId
+            });
+
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _signupId = resp.Data.SignupId;
+
+                // Load available products for Step 2
+                var productsResp = await Api.GetAsync<List<ProductModel>>("api/v1/signups/products");
+                if (productsResp?.Success == true && productsResp.Data is not null)
+                    _products = productsResp.Data;
+
+                Step = 2;
+            }
+            else
+            {
+                _error = resp?.Message ?? resp?.Errors?.FirstOrDefault() ?? "Signup failed. Please check your details.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Could not connect to the server: {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task HandleStep2()
+    {
+        if (_products.Count > 0 && _selectedProductIds.Count == 0)
+        {
+            _error = "Please select at least one product to continue.";
+            return;
+        }
+
+        _error = string.Empty;
+        _busy  = true;
+
+        try
+        {
+            if (_selectedProductIds.Count > 0)
+            {
+                var resp = await Api.PostAsync<bool>(
+                    $"api/v1/signups/{_signupId}/select-products",
+                    new { ProductIds = _selectedProductIds.ToList() });
+
+                if (resp?.Success != true)
+                {
+                    _error = resp?.Message ?? resp?.Errors?.FirstOrDefault() ?? "Could not save product selection.";
+                    return;
+                }
+            }
+
+            Step = 3;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Could not connect to the server: {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task HandleStep3()
+    {
+        _error = string.Empty;
+        _busy  = true;
+
+        try
+        {
+            object payment = _paymentMethod switch
+            {
+                "CreditCard"   => BuildPayload(new { CreditCard = _cc }),
+                "Crypto"       => BuildPayload(new { CryptoCurrency = _cryptoCurrency, CryptoTransactionId = _cryptoTxId }),
+                "Token"        => BuildPayload(new { TokenCode = _tokenCode }),
+                "DiscountCode" => BuildPayload(new { DiscountCode = _discountCode }),
+                _              => BuildPayload(new { })
+            };
+
+            var resp = await Api.PostAsync<CompletedModel>(
+                $"api/v1/signups/{_signupId}/complete", payment);
+
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _completedResponse = resp.Data;
+                Step = 4;
+                // Redirect to login with success after 3 seconds
+                await Task.Delay(3000);
+                Navigation.NavigateTo("/login");
+            }
+            else
+            {
+                _error = resp?.Message ?? resp?.Errors?.FirstOrDefault() ?? "Could not complete signup.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Could not connect to the server: {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private object BuildPayload(object extras)
+    {
+        // Anonymous types can't be merged; use a dict-like approach via reflection or just compose explicitly
+        return new
+        {
+            PaymentMethod      = _paymentMethod,
+            CreditCard         = _paymentMethod == "CreditCard"   ? _cc            : null,
+            CryptoCurrency     = _paymentMethod == "Crypto"       ? _cryptoCurrency : null,
+            CryptoTransactionId= _paymentMethod == "Crypto"       ? _cryptoTxId    : null,
+            TokenCode          = _paymentMethod == "Token"        ? _tokenCode     : null,
+            DiscountCode       = _paymentMethod == "DiscountCode" ? _discountCode  : null,
+        };
+    }
+
+    private void ToggleProduct(string productId)
+    {
+        if (!_selectedProductIds.Add(productId))
+            _selectedProductIds.Remove(productId);
+    }
+
+    // ── Local models (no project-level coupling to Signups DTOs) ─────────────
+
+    private class SignupFormModel
+    {
+        public string? SponsorMemberId   { get; set; }
+        public string  FirstName         { get; set; } = string.Empty;
+        public string  LastName          { get; set; } = string.Empty;
+        public string  Email             { get; set; } = string.Empty;
+        public string  Password          { get; set; } = string.Empty;
+        public string  ConfirmPassword   { get; set; } = string.Empty;
+        public string? Phone             { get; set; }
+        public string  Country           { get; set; } = "US";
+        public DateTime DateOfBirth      { get; set; } = DateTime.Today.AddYears(-25);
+        public string? ReplicateSiteSlug { get; set; }
+        public int     MembershipLevelId { get; set; }
+    }
+
+    private class CreditCardModel
+    {
+        public string GatewayToken { get; set; } = string.Empty;
+        public string Last4        { get; set; } = string.Empty;
+        public string First6       { get; set; } = string.Empty;
+        public string CardBrand    { get; set; } = string.Empty;
+        public int    ExpiryMonth  { get; set; }
+        public int    ExpiryYear   { get; set; }
+        public string Gateway      { get; set; } = string.Empty;
+        public string? CardToken   { get; set; }
+    }
+
+    private record SponsorModel(string MemberId, string DisplayName, string FullName, string? ReplicateSiteSlug);
+    private record MembershipLevelModel(int Id, string Name, string? Description, decimal Price, decimal RenewalPrice, bool IsFree);
+    private record ProductModel(string Id, string Name, string? Description, decimal Price, string? Sku);
+    private record SignupResponseModel(string SignupId, string MemberId, string Email, string MemberType, DateTime EnrollDate,
+        string? AccessToken, string? RefreshToken, DateTime? TokenExpiry);
+    private record CompletedModel(string SignupId, string MemberId, string Email, string MemberType, DateTime EnrollDate,
+        string? AccessToken, string? RefreshToken, DateTime? TokenExpiry);
+}

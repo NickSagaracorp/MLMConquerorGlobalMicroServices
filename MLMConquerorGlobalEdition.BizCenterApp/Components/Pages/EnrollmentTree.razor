@@ -1,0 +1,5 @@
+@page "/team/enrollment"
+@attribute [Authorize(Roles = "Ambassador")]
+@inject IViewContextService ViewContext
+
+<EnrollmentTeamBranches MemberProfileId="@ViewContext.ViewingMemberId" />

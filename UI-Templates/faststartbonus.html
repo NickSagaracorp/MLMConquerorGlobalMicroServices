@@ -1,0 +1,1831 @@
+<!DOCTYPE html>
+<html lang="zxx">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Links Of CSS File -->
+    <link rel="stylesheet" href="assets/css/sidebar-menu.css">
+    <link rel="stylesheet" href="assets/css/simplebar.css">
+    <link rel="stylesheet" href="assets/css/apexcharts.css">
+    <link rel="stylesheet" href="assets/css/prism.css">
+    <link rel="stylesheet" href="assets/css/rangeslider.css">
+    <link rel="stylesheet" href="assets/css/quill.snow.css">
+    <link rel="stylesheet" href="assets/css/google-icon.css">
+    <link rel="stylesheet" href="assets/css/remixicon.css">
+    <link rel="stylesheet" href="assets/css/swiper-bundle.min.css">
+    <link rel="stylesheet" href="assets/css/fullcalendar.main.css">
+    <link rel="stylesheet" href="assets/css/jsvectormap.min.css">
+    <link rel="stylesheet" href="assets/css/lightpick.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico">
+    <!-- Title -->
+    <title>MWRLife - BizCenter Dashboard - Commissions</title>
+
+    <style>
+        /* Contêiner do acordeão histórico */
+        .hist-acc .group-head {
+            background: #f3f4f6; /* cinza suave */
+            border-radius: .5rem;
+            padding: .75rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .75rem;
+            cursor: pointer;
+            user-select: none;
+        }
+
+            .hist-acc .group-head:hover {
+                background: #eef0f3;
+            }
+
+        .hist-acc .group-title {
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .hist-acc .group-total {
+            font-weight: 600;
+        }
+
+        .hist-acc .total-pos {
+            color: #16a34a;
+        }
+        /* verde */
+        .hist-acc .total-neg {
+            color: #dc2626;
+        }
+        /* vermelho */
+        .hist-acc .chevron {
+            font-family: 'Material Symbols Outlined';
+            font-size: 20px;
+            line-height: 1;
+        }
+
+        /* linhas técnicas que contêm o cabeçalho/colapso ocupam toda a largura */
+        .hist-acc tr.group-row > td,
+        .hist-acc tr.group-body-row > td {
+            border: 0 !important;
+            padding: .5rem 1rem !important;
+        }
+
+        /* tabela interna de detalhes */
+        .hist-acc .inner-table thead th {
+            white-space: nowrap;
+        }
+
+        .hist-acc .inner-table .badge {
+            font-weight: 500;
+        }
+
+        /* === FAST START BONUS STRIP CARDS (layout horizontal) === */
+        .fsb-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+        }
+
+        .fsb-card-wrap {
+            flex: 1 1 320px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .fsb-card {
+            border-radius: .75rem;
+            box-shadow: 0 16px 32px rgba(0,0,0,.06);
+            padding: 1.25rem 1.5rem;
+            color: #fff;
+            position: relative;
+            min-height: 160px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* topo do cartão: só o título */
+        .fsb-topline {
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            gap: 1rem;
+            margin-bottom: .5rem;
+        }
+
+        /* título grande */
+        .fsb-title {
+            font-size: 1.35rem;
+            font-weight: 800;
+            letter-spacing: .02em;
+        }
+
+        /* linha de baixo: ícones à esquerda, contador à direita */
+        .fsb-bottom {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: .5rem;
+        }
+
+        /* contador grande (fica no canto direito da .fsb-bottom) */
+        .fsb-timer {
+            font-size: 1.9rem;
+            font-weight: 800;
+            line-height: 1;
+            white-space: nowrap;
+            text-shadow: 0 0 10px rgba(255,255,255,.25);
+        }
+
+        .fsb-sub {
+            font-size: .85rem;
+            opacity: .9;
+        }
+
+        /* Estados de cartão */
+        .fsb-complete {
+            background: linear-gradient(90deg,#0c8c2c 0%, #4ade80 100%);
+        }
+
+        .fsb-active {
+            background: radial-gradient(circle at 0% 0%, #1a1fff 0%, #5b5bff 60%, #4f46e5 100%);
+        }
+
+        .fsb-locked {
+            background: radial-gradient(circle at 50% 0%, #1f2937 0%, #111827 70%);
+        }
+
+        /* ====== ÍCONES FSB (novos, com preenchimento claro) ====== */
+        .fsb-icons-area {
+            gap: .9rem;
+        }
+
+        .fsb-person-big {
+            position: relative;
+            width: 56px;
+            height: 56px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,.06);
+            border: 2px dashed rgba(255,255,255,.45);
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,.05);
+        }
+
+            .fsb-person-big i {
+                font-size: 28px;
+                line-height: 1;
+                color: rgba(255,255,255,.55);
+            }
+
+            /* === PREENCHIDO (verde/azul) === */
+            .fsb-person-big.active-green,
+            .fsb-person-big.active-blue {
+                border: 0;
+                box-shadow: 0 10px 22px rgba(0,0,0,.20), inset 0 0 0 1px rgba(255,255,255,.10);
+            }
+
+            .fsb-person-big.active-green {
+                background: linear-gradient(135deg,#16a34a 0%, #22c55e 100%);
+            }
+
+            .fsb-person-big.active-blue {
+                background: linear-gradient(135deg,#3b82f6 0%, #60a5fa 100%);
+            }
+
+                .fsb-person-big.active-green i,
+                .fsb-person-big.active-blue i {
+                    color: #fff;
+                    text-shadow: 0 2px 8px rgba(0,0,0,.25);
+                }
+
+                /* badge de confirmação (✓) nos preenchidos */
+                .fsb-person-big.active-green::after,
+                .fsb-person-big.active-blue::after {
+                    content: "✓";
+                    position: absolute;
+                    right: -4px;
+                    bottom: -4px;
+                    width: 18px;
+                    height: 18px;
+                    border-radius: 999px;
+                    background: #fff;
+                    color: #16a34a;
+                    font-weight: 900;
+                    font-size: 12px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    box-shadow: 0 4px 10px rgba(0,0,0,.25);
+                }
+
+            /* === VAZIO (mais óbvio) === */
+            .fsb-person-big.inactive {
+                border-style: dashed;
+                border-color: rgba(255,255,255,.55);
+                background: rgba(255,255,255,.04);
+            }
+
+                .fsb-person-big.inactive i {
+                    color: rgba(255,255,255,.45);
+                }
+                /* pequena barra diagonal subtil p/ reforçar “vazio” */
+                .fsb-person-big.inactive::before {
+                    content: "";
+                    position: absolute;
+                    width: 26px;
+                    height: 2px;
+                    background: rgba(255,255,255,.35);
+                    transform: rotate(-35deg);
+                    border-radius: 2px;
+                }
+
+            /* === LOCKED === */
+            .fsb-person-big.locked {
+                background: rgba(15,23,42,.35);
+                border: 2px dashed rgba(148,163,184,.45);
+            }
+
+                .fsb-person-big.locked i {
+                    color: rgba(203,213,225,.55);
+                }
+
+        /* (opcional) animação “pulse” no lugar vazio quando o FSB está ativo */
+        .fsb-active .fsb-person-big.inactive {
+            animation: fsbPulse 1.6s ease-in-out infinite;
+        }
+
+        @keyframes fsbPulse {
+            0%,100% {
+                box-shadow: inset 0 0 0 1px rgba(255,255,255,.10), 0 0 0 0 rgba(255,255,255,.0);
+            }
+
+            50% {
+                box-shadow: inset 0 0 0 1px rgba(255,255,255,.10), 0 0 0 8px rgba(255,255,255,.10);
+            }
+        }
+
+        /* Overlay locked do FSB3 */
+        .fsb-black-layer {
+            position: absolute;
+            inset: 0;
+            border-radius: .75rem;
+            background: rgba(0,0,0,.55);
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+
+            .fsb-black-layer i {
+                margin-right: .4rem;
+            }
+
+        /* Rodapé */
+        .fsb-footerline {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            font-size: .9rem;
+            font-weight: bold;
+            margin-top: .5rem;
+            opacity: 1;
+        }
+
+            .fsb-footerline.completed {
+                color: #16a34a;
+            }
+
+            .fsb-footerline.available {
+                color: #60a5fa;
+            }
+
+            .fsb-footerline.locked {
+                color: #000;
+            }
+    </style>
+</head>
+<body class="boxed-size">
+    <!-- Start Preloader Area -->
+    <!--<div class="preloader" id="preloader">
+        <div class="preloader">
+            <div class="waviy position-relative">
+                <img src="assets/images/logo.svg" style="width: 100%; height: auto;" />-->
+    <!--<span class="d-inline-block">M</span>
+    <span class="d-inline-block">W</span>
+    <span class="d-inline-block">R</span>
+    <span class="d-inline-block"></span>
+    <span class="d-inline-block">L</span>
+    <span class="d-inline-block">I</span>
+    <span class="d-inline-block">F</span>
+    <span class="d-inline-block">E</span>-->
+    <!--</div>
+        </div>
+    </div>-->
+    <div id="preloader">
+        <div class="preloader">
+            <div class="waviy">
+                <img src="assets/images/logo.svg" alt="logo">
+            </div>
+        </div>
+    </div>
+    <!-- End Preloader Area -->
+    <!-- Start Sidebar Area -->
+    <div class="sidebar-area" id="sidebar-area">
+        <div class="logo position-relative">
+            <a href="index.html" class="d-block text-decoration-none position-relative">
+                <img src="assets/images/logo.svg" alt="logo-icon">
+                <!--<span class="logo-text fw-bold text-dark">MWRLife</span>-->
+            </a>
+            <button class="sidebar-burger-menu bg-transparent p-0 border-0 opacity-0 z-n1 position-absolute top-50 end-0 translate-middle-y" id="sidebar-burger-menu">
+                <i data-feather="x"></i>
+            </button>
+        </div>
+
+        <aside id="layout-menu" class="layout-menu menu-vertical menu active" data-simplebar>
+            <ul class="menu-inner">
+                <li class="menu-title small text-uppercase">
+                    <span class="menu-title-text">MENU</span>
+                </li>
+
+                <li class="menu-item">
+                    <a href="index.html" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">home</span>
+                        <span class="title">Home</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="https://www.mwrlife.com/nunocacao" class="menu-link" target="_blank">
+                        <span class="material-symbols-outlined menu-icon">browse_activity</span>
+                        <span class="title">My Website</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <span class="material-symbols-outlined menu-icon">group</span>
+                        <span class="title">Enrollment Team</span>
+                        <span class="count">4</span>
+                    </a>
+                    <ul class="menu-sub">
+                        <li class="menu-item">
+                            <a href="enrollmentteam_myteam.html" class="menu-link">
+                                My Team
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="enrollmentteam_visualizer.html" class="menu-link">
+                                Visualizer
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="enrollmentteam_branches.html" class="menu-link">
+                                Branches
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="enrollmentteam_customers.html" class="menu-link">
+                                Customers
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <li class="menu-item">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <span class="material-symbols-outlined menu-icon">share</span>
+                        <span class="title">Dual Team</span>
+                        <span class="count">3</span>
+                    </a>
+                    <ul class="menu-sub">
+                        <li class="menu-item">
+                            <a href="dualteam_myteam.html" class="menu-link">
+                                My Dual Team
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="dualteam_binarytree.html" class="menu-link">
+                                Visualizer
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="dualteam_residuals.html" class="menu-link">
+                                Residuals
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <li class="menu-item active open">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle active">
+                        <span class="material-symbols-outlined menu-icon">paid</span>
+                        <span class="title">Commissions</span>
+                        <span class="count">5</span>
+                    </a>
+                    <ul class="menu-sub">
+                        <li class="menu-item">
+                            <a href="commissions.html" class="menu-link">
+                                Commissions
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="presidentialbonus.html" class="menu-link">
+                                Presidential Bonus
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="carbonus.html" class="menu-link">
+                                Car Bonus
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="javascript:void(0);" class="menu-link active">
+                                Fast Start Bonus
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="boostbonus.html" class="menu-link">
+                                Boost Bonus
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <li class="menu-item">
+                    <a href="tokens.html" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">content_paste</span>
+                        <span class="title">Tokens</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="events.html" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">event</span>
+                        <span class="title">Events</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="https://mwracademy.com/webservices/user_login?api_key=yDEOcDTM4RAm1AeczHJY&session_id=amxzxx7chrqgasjnmrvf" class="menu-link" target="_blank">
+                        <span class="material-symbols-outlined menu-icon">location_away</span>
+                        <span class="title">MWR Academy</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="javascript:void(0);" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">hotel</span>
+                        <span class="title">Travel Advantage</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="javascript:void(0);" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">settings</span>
+                        <span class="title">Tools</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="javascript:void(0);" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">support</span>
+                        <span class="title">Support</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="login.html" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">logout</span>
+                        <span class="title">Logout</span>
+                    </a>
+                </li>
+            </ul>
+        </aside>
+    </div>
+    <!-- End Sidebar Area -->
+    <!-- Start Main Content Area -->
+    <div class="container-fluid">
+        <div class="main-content d-flex flex-column">
+            <!-- Start Header Area -->
+            <header class="header-area bg-white mb-4 rounded-bottom-15" id="header-area">
+                <div class="row align-items-center">
+                    <div class="col-lg-4 col-sm-6">
+                        <div class="left-header-content">
+                            <ul class="d-flex align-items-center ps-0 mb-0 list-unstyled justify-content-center justify-content-sm-start">
+                                <li>
+                                    <button class="header-burger-menu bg-transparent p-0 border-0" id="header-burger-menu">
+                                        <span class="material-symbols-outlined">menu</span>
+                                    </button>
+                                </li>
+                                <li>
+                                    <form class="src-form position-relative">
+                                        <input type="text" class="form-control" placeholder="Search here.....">
+                                        <button type="submit" class="src-btn position-absolute top-50 end-0 translate-middle-y bg-transparent p-0 border-0">
+                                            <span class="material-symbols-outlined">search</span>
+                                        </button>
+                                    </form>
+                                </li>
+                                <!--<li>
+                                    <div class="dropdown notifications apps">
+                                        <button class="btn btn-secondary border-0 p-0 position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <span class="material-symbols-outlined">apps</span>
+                                        </button>
+                                        <div class="dropdown-menu dropdown-lg p-0 border-0 py-4 px-3 max-h-312" data-simplebar>
+                                            <div class="notification-menu d-flex flex-wrap justify-content-between gap-4">
+                                                <a href="https://www.figma.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/figma.svg" class="wh-25" alt="united-states">
+                                                    <span>Figma</span>
+                                                </a>
+                                                <a href="https://www.dribbble.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/dribbble.svg" class="wh-25" alt="united-states">
+                                                    <span>Dribbble</span>
+                                                </a>
+                                                <a href="https://www.spotify.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/spotify.svg" class="wh-25" alt="united-states">
+                                                    <span>Spotify</span>
+                                                </a>
+                                                <a href="https://www.github.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/github.svg" class="wh-25" alt="united-states">
+                                                    <span>Github</span>
+                                                </a>
+                                                <a href="https://www.google.com/drive/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/gdrive.svg" class="wh-25" alt="united-states">
+                                                    <span>GDrive</span>
+                                                </a>
+                                                <a href="https://www.trello.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/trello.svg" class="wh-25" alt="united-states">
+                                                    <span>Trello</span>
+                                                </a>
+                                                <a href="https://www.slak.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/slak.svg" class="wh-25" alt="united-states">
+                                                    <span>Slak</span>
+                                                </a>
+                                                <a href="https://www.pinterest.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/pinterest.svg" class="wh-25" alt="united-states">
+                                                    <span>Pinterest</span>
+                                                </a>
+                                                <a href="https://www.facebook.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/facebook.svg" class="wh-25" alt="united-states">
+                                                    <span>Facebook</span>
+                                                </a>
+                                                <a href="https://www.linkedin.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/linkedin.svg" class="wh-25" alt="united-states">
+                                                    <span>Linkedin</span>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>-->
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-8 col-sm-6">
+                        <div class="right-header-content mt-2 mt-sm-0">
+                            <ul class="d-flex align-items-center justify-content-center justify-content-sm-end ps-0 mb-0 list-unstyled">
+                                <li class="header-right-item">
+                                    <div class="light-dark">
+                                        <button class="switch-toggle settings-btn dark-btn p-0 bg-transparent border-0" id="switch-toggle">
+                                            <span class="dark"><i class="material-symbols-outlined">light_mode</i></span>
+                                            <span class="light"><i class="material-symbols-outlined">dark_mode</i></span>
+                                        </button>
+                                    </div>
+                                </li>
+                                <li class="header-right-item">
+                                    <div class="dropdown notifications language">
+                                        <button class="btn btn-secondary dropdown-toggle border-0 p-0 position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <span class="material-symbols-outlined">translate</span>
+                                        </button>
+                                        <div class="dropdown-menu dropdown-lg p-0 border-0 dropdown-menu-end">
+                                            <span class="fw-semibold fs-15 text-secondary title">Choose Language</span>
+                                            <div class="max-h-275" data-simplebar>
+                                                <div class="notification-menu">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/usa.svg" class="wh-30 rounded-circle" alt="united-states">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">English</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/france.svg" class="wh-30 rounded-circle" alt="france">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">French</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/portugal.svg" class="wh-30 rounded-circle" alt="portugal">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">Portuguese</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu mb-0">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/spain.svg" class="wh-30 rounded-circle" alt="spain">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">Spanish</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/italia.svg" class="wh-30 rounded-circle" alt="italia">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">Italian</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu mb-0">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/south_korea.svg" class="wh-30 rounded-circle" alt="south korea">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">Korean</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/japan.svg" class="wh-30 rounded-circle" alt="japan">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">Japanese</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li class="header-right-item">
+                                    <button class="fullscreen-btn bg-transparent p-0 border-0" id="fullscreen-button">
+                                        <i class="material-symbols-outlined text-body">fullscreen</i>
+                                    </button>
+                                </li>
+                                <li class="header-right-item">
+                                    <div class="dropdown notifications noti">
+                                        <button class="btn btn-secondary border-0 p-0 position-relative badge" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <span class="material-symbols-outlined">notifications</span>
+                                        </button>
+                                        <div class="dropdown-menu dropdown-lg p-0 border-0 p-0 dropdown-menu-end">
+                                            <div class="d-flex justify-content-between align-items-center title">
+                                                <span class="fw-semibold fs-15 text-secondary">Notifications <span class="fw-normal text-body fs-14">(03)</span></span>
+                                                <button class="p-0 m-0 bg-transparent border-0 fs-14 text-primary">Clear All</button>
+                                            </div>
+
+                                            <div class="max-h-217" data-simplebar>
+                                                <div class="notification-menu">
+                                                    <a href="notification.html" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <i class="material-symbols-outlined text-primary">sms</i>
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p>Your renewal fee will be charge on <span class="fw-semibold">September 2nd.</span></p>
+                                                                <span class="fs-13">2 hrs ago</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu unseen">
+                                                    <a href="notification.html" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <i class="material-symbols-outlined text-info">person</i>
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p><span class="fw-semibold">André Lourenço</span> enrolled your team, sponsored by <span class="fw-semibold">Yoni Ashurov</span>.</p>
+                                                                <span class="fs-13">3 hrs ago</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <!--<div class="notification-menu">
+                                                    <a href="notification.html" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <i class="material-symbols-outlined text-success">mark_email_unread</i>
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p>You have requested to <span class="fw-semibold">withdrawal</span></p>
+                                                                <span class="fs-13">1 day ago</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu">
+                                                    <a href="notification.html" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <i class="material-symbols-outlined text-primary">sms</i>
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p>You have requested to <span class="fw-semibold">withdrawal</span></p>
+                                                                <span class="fs-13">2 hrs ago</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu unseen">
+                                                    <a href="notification.html" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <i class="material-symbols-outlined text-info">person</i>
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p>A new user added in Trezo</p>
+                                                                <span class="fs-13">3 hrs ago</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu">
+                                                    <a href="notification.html" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <i class="material-symbols-outlined text-success">mark_email_unread</i>
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p>You have requested to <span class="fw-semibold">withdrawal</span></p>
+                                                                <span class="fs-13">1 day ago</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>-->
+                                            </div>
+
+                                            <a href="notification.html" class="dropdown-item text-center text-primary d-block view-all fw-medium rounded-bottom-3">
+                                                <span>See All Notifications </span>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li class="header-right-item">
+                                    <div class="dropdown admin-profile">
+                                        <div class="d-xxl-flex align-items-center bg-transparent border-0 text-start p-0 cursor dropdown-toggle" data-bs-toggle="dropdown">
+                                            <div class="flex-shrink-0">
+                                                <img class="rounded-circle wh-40 administrator" src="assets/images/administrator.jpg" alt="admin">
+                                            </div>
+                                            <div class="flex-grow-1 ms-2">
+                                                <div class="d-flex align-items-center justify-content-between">
+                                                    <div class="d-none d-xxl-block">
+                                                        <div class="d-flex align-content-center">
+                                                            <h3>Nuno Cação</h3>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="dropdown-menu border-0 bg-white dropdown-menu-end">
+                                            <div class="d-flex align-items-center info">
+                                                <div class="flex-shrink-0">
+                                                    <img class="rounded-circle wh-30 administrator" src="assets/images/administrator.jpg" alt="admin">
+                                                </div>
+                                                <div class="flex-grow-1 ms-2">
+                                                    <h3 class="fw-medium">Nuno Cação</h3>
+                                                    <span class="fs-12">Jade Ambassador</span>
+                                                </div>
+                                            </div>
+                                            <ul class="admin-link ps-0 mb-0 list-unstyled">
+                                                <li>
+                                                    <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="user-profile.html">
+                                                        <i class="material-symbols-outlined">account_circle</i>
+                                                        <span class="ms-2">My Profile</span>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="#">
+                                                        <i class="material-symbols-outlined">chat</i>
+                                                        <span class="ms-2">Messages</span>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="guestpasses.html">
+                                                        <i class="material-symbols-outlined">confirmation_number</i>
+                                                        <span class="ms-2">Guest Passes</span>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="marketing.html">
+                                                        <i class="material-symbols-outlined">format_list_bulleted</i>
+                                                        <span class="ms-2">Marketing</span>
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                            <ul class="admin-link ps-0 mb-0 list-unstyled">
+                                                <li>
+                                                    <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="#">
+                                                        <i class="material-symbols-outlined">support</i>
+                                                        <span class="ms-2">Support</span>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="login.html">
+                                                        <i class="material-symbols-outlined">logout</i>
+                                                        <span class="ms-2">Logout</span>
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li class="header-right-item">
+                                    <button class="theme-settings-btn p-0 border-0 bg-transparent" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasScrolling" aria-controls="offcanvasScrolling">
+                                        <i class="material-symbols-outlined" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Click On Theme Settings">settings</i>
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            <!-- End Header Area -->
+
+            <div class="main-content-container overflow-hidden">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+                    <h3 class="mb-0">Fast Start Bonus</h3>
+
+                    <nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+                        <ol class="breadcrumb align-items-center mb-0 lh-1">
+                            <li class="breadcrumb-item">
+                                <a href="index.html" class="d-flex align-items-center text-decoration-none">
+                                    <i class="ri-home-4-line fs-18 text-primary me-1"></i>
+                                    <span class="text-secondary fw-medium hover">Main Menu</span>
+                                </a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page">
+                                <span class="fw-medium">Commissions</span>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page">
+                                <span class="fw-medium">Fast Start Bonus</span>
+                            </li>
+                        </ol>
+                    </nav>
+                </div>
+
+                <div class="row justify-content-center mt-4 mb-4" id="faststart-section">
+                    <div class="col-lg-12">
+                        <style>
+                            .nav-tabs .nav-item .nav-link.active {
+                                color: #4936F5 !important;
+                            }
+                        </style>
+
+                        <ul class="nav nav-tabs bg-transparent border-bottom gap-2 gap-sm-5 p-4" id="myTabFSBCards" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body active" id="fsbnormalcards-tab" data-bs-toggle="tab" data-bs-target="#fsbnormalcards" type="button" role="tab" aria-controls="fsbnormalcards" aria-selected="true">Normal</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body" id="fsbpromo2025cards-tab" data-bs-toggle="tab" data-bs-target="#fsbpromo2025cards" type="button" role="tab" aria-controls="fsbpromo2025cards" aria-selected="true">Promo 2025</button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content" id="myFSBCardsTabContent">
+                            <div class="tab-pane fade show active" id="fsbnormalcards" role="tabpanel" aria-labelledby="fsbnormalcards-tab" tabindex="0">
+                                <div class="fsb-row">
+                                    <!-- FSB1 -->
+                                    <div class="fsb-card-wrap cursor" data-bs-toggle="modal" data-bs-target="#fsbModal" aria-controls="fsbModal">
+                                        <div class="fsb-card fsb-complete">
+                                            <div class="fsb-topline">
+                                                <div class="fsb-title">FAST START BONUS 1</div>
+                                            </div>
+
+                                            <div class="fsb-bottom">
+                                                <div class="fsb-icons-area">
+                                                    <div class="fsb-person-big active-green"><i class="material-symbols-outlined">person</i></div>
+                                                    <div class="fsb-person-big active-green"><i class="material-symbols-outlined">person</i></div>
+                                                </div>
+                                                <div class="fsb-timer" id="fsb1-timer-normal">$75.00</div>
+                                            </div>
+                                        </div>
+                                        <div class="fsb-footerline completed">
+                                            <span>11/05/2025 06:27:58</span>
+                                            <span>11/12/2025 06:27:58</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- FSB2 -->
+                                    <div class="fsb-card-wrap cursor" data-bs-toggle="modal" data-bs-target="#fsbModal" aria-controls="fsbModal">
+                                        <div class="fsb-card fsb-complete">
+                                            <div class="fsb-topline">
+                                                <div class="fsb-title">FAST START BONUS 2</div>
+                                            </div>
+
+                                            <div class="fsb-bottom">
+                                                <div class="fsb-icons-area">
+                                                    <div class="fsb-person-big active-green"><i class="material-symbols-outlined">person</i></div>
+                                                    <div class="fsb-person-big active-green"><i class="material-symbols-outlined">person</i></div>
+                                                </div>
+                                                <div class="fsb-timer" id="fsb2-timer-normal">$75.00</div>
+                                            </div>
+                                        </div>
+                                        <div class="fsb-footerline completed">
+                                            <span>11/05/2025 06:27:58</span>
+                                            <span>11/12/2025 06:27:58</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- FSB3 -->
+                                    <div class="fsb-card-wrap cursor" data-bs-toggle="modal" data-bs-target="#fsbModal" aria-controls="fsbModal">
+                                        <div class="fsb-card fsb-complete">
+                                            <div class="fsb-topline">
+                                                <div class="fsb-title">FAST START BONUS 3</div>
+                                            </div>
+
+                                            <div class="fsb-bottom">
+                                                <div class="fsb-icons-area">
+                                                    <div class="fsb-person-big active-green"><i class="material-symbols-outlined">person</i></div>
+                                                    <div class="fsb-person-big active-green"><i class="material-symbols-outlined">person</i></div>
+                                                </div>
+                                                <div class="fsb-timer" id="fsb3-timer-normal">$75.00</div>
+                                            </div>
+                                        </div>
+                                        <div class="fsb-footerline completed">
+                                            <span>11/05/2025 06:27:58</span>
+                                            <span>11/12/2025 06:27:58</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade show" id="fsbpromo2025cards" role="tabpanel" aria-labelledby="fsbpromo2025cards-tab" tabindex="0">
+                                <div class="fsb-row">
+                                    <!-- FSB1 (completo) -->
+                                    <div class="fsb-card-wrap cursor" data-bs-toggle="modal" data-bs-target="#fsbModal" aria-controls="fsbModal">
+                                        <div class="fsb-card fsb-complete">
+                                            <div class="fsb-topline">
+                                                <div class="fsb-title">FAST START BONUS 1</div>
+                                            </div>
+
+                                            <div class="fsb-bottom">
+                                                <div class="fsb-icons-area">
+                                                    <div class="fsb-person-big active-green"><i class="material-symbols-outlined">person</i></div>
+                                                    <div class="fsb-person-big active-green"><i class="material-symbols-outlined">person</i></div>
+                                                </div>
+                                                <div class="fsb-timer" id="fsb1-timer">$75.00</div>
+                                            </div>
+                                        </div>
+                                        <div class="fsb-footerline completed">
+                                            <span>11/05/2025 06:27:58</span>
+                                            <span>11/12/2025 06:27:58</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- FSB2 (ativo, contador a decrescer) -->
+                                    <div class="fsb-card-wrap cursor" data-bs-toggle="modal" data-bs-target="#fsbModal" aria-controls="fsbModal">
+                                        <div class="fsb-card fsb-active">
+                                            <div class="fsb-topline">
+                                                <div class="fsb-title">FAST START BONUS 2</div>
+                                            </div>
+
+                                            <div class="fsb-bottom">
+                                                <div class="fsb-icons-area">
+                                                    <div class="fsb-person-big active-blue"><i class="material-symbols-outlined">person</i></div>
+                                                    <div class="fsb-person-big inactive"><i class="material-symbols-outlined">person</i></div>
+                                                </div>
+                                                <div class="fsb-timer" id="fsb2-timer">--D --H --M --S</div>
+                                            </div>
+                                        </div>
+                                        <div class="fsb-footerline available">
+                                            <span>11/05/2025 06:27:58</span>
+                                            <span>11/19/2025 06:27:58</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- FSB3 (locked; contador visível e “congelado”) -->
+                                    <div class="fsb-card-wrap cursor" data-bs-toggle="modal" data-bs-target="#fsbModal" aria-controls="fsbModal">
+                                        <div class="fsb-card fsb-locked position-relative">
+                                            <div class="fsb-topline">
+                                                <div class="fsb-title">FAST START BONUS 3</div>
+                                            </div>
+
+                                            <div class="fsb-bottom">
+                                                <div class="fsb-icons-area" style="opacity:.7;filter:grayscale(.4);">
+                                                    <div class="fsb-person-big locked"><i class="material-symbols-outlined">person</i></div>
+                                                    <div class="fsb-person-big inactive"><i class="material-symbols-outlined">person</i></div>
+                                                </div>
+                                                <div class="fsb-timer" id="fsb3-timer">--D --H --M --S</div>
+                                            </div>
+
+                                            <div class="fsb-black-layer"><i class="ri-lock-line"></i>Locked — Coming Soon</div>
+                                        </div>
+                                        <div class="fsb-footerline locked">
+                                            <span>11/19/2025 06:27:58</span>
+                                            <span>11/26/2025 06:27:58</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card bg-white border-0 rounded-3 mb-4">
+                    <div class="card-body p-0">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
+                            <h3 class="mb-0">History</h3>
+                        </div>
+
+                        <style>
+                            .nav-tabs .nav-item .nav-link.active {
+                                color: #4936F5 !important;
+                            }
+                        </style>
+
+                        <ul class="nav nav-tabs bg-transparent border-bottom gap-2 gap-sm-5 p-4" id="myTab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body active" id="fsbnormal-tab" data-bs-toggle="tab" data-bs-target="#fsbnormal" type="button" role="tab" aria-controls="fsbnormal" aria-selected="true">Normal</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body" id="fsbpromo2025-tab" data-bs-toggle="tab" data-bs-target="#fsbpromo2025" type="button" role="tab" aria-controls="fsbpromo" aria-selected="true">Promo 2025</button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content" id="myTabContent">
+                            <div class="tab-pane fade show active" id="fsbnormal" role="tabpanel" aria-labelledby="fsbnormal-tab" tabindex="0">
+                                <div class="default-table-area style-two default-table-width">
+                                    <div class="table-responsive">
+                                        <table class="table align-middle border-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Type</th>
+                                                    <th>Description</th>
+                                                    <th>Earned Date</th>
+                                                    <th>Payment Date</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td class="text-body">Fast Start Bonus 1</td>
+                                                    <td class="text-body">First Half</td>
+                                                    <td class="text-body">03/27/2025</td>
+                                                    <td class="text-body">04/04/2025</td>
+                                                    <td><span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">Paid</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-body">Fast Start Bonus 2</td>
+                                                    <td class="text-body">First Half</td>
+                                                    <td class="text-body">03/28/2025</td>
+                                                    <td class="text-body">04/04/2025</td>
+                                                    <td><span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">Paid</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-body">Fast Start Bonus 3</td>
+                                                    <td class="text-body">First Half</td>
+                                                    <td class="text-body">03/29/2025</td>
+                                                    <td class="text-body">04/04/2025</td>
+                                                    <td><span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">Paid</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-body">Fast Start Bonus 1</td>
+                                                    <td class="text-body">Second Half</td>
+                                                    <td class="text-body">04/27/2025</td>
+                                                    <td class="text-body">05/04/2025</td>
+                                                    <td><span class="badge bg-warning bg-opacity-10 text-warning p-2 fs-12 fw-normal">Pending</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-body">Fast Start Bonus 2</td>
+                                                    <td class="text-body">Second Half</td>
+                                                    <td class="text-body">04/28/2025</td>
+                                                    <td class="text-body">05/04/2025</td>
+                                                    <td><span class="badge bg-warning bg-opacity-10 text-warning p-2 fs-12 fw-normal">Pending</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-body">Fast Start Bonus 3</td>
+                                                    <td class="text-body">Second Half</td>
+                                                    <td class="text-body">04/29/2025</td>
+                                                    <td class="text-body">05/04/2025</td>
+                                                    <td><span class="badge bg-warning bg-opacity-10 text-warning p-2 fs-12 fw-normal">Pending</span></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade show" id="fsbpromo2025" role="tabpanel" aria-labelledby="fsbpromo2025-tab" tabindex="0">
+                                <div class="default-table-area style-two default-table-width">
+                                    <div class="table-responsive">
+                                        <table class="table align-middle border-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Type</th>
+                                                    <th>Description</th>
+                                                    <th>Earned Date</th>
+                                                    <th>Payment Date</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td class="text-body">Fast Start Bonus 1</td>
+                                                    <td class="text-body">First Half</td>
+                                                    <td class="text-body">11/10/2025</td>
+                                                    <td class="text-body">11/14/2025</td>
+                                                    <td><span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">Paid</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-body">Fast Start Bonus 2</td>
+                                                    <td class="text-body">First Half</td>
+                                                    <td class="text-body">11/13/2025</td>
+                                                    <td class="text-body">11/17/2025</td>
+                                                    <td><span class="badge bg-warning bg-opacity-10 text-warning p-2 fs-12 fw-normal">Pending</span></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-grow-1"></div>
+
+            <!-- Start Footer Area -->
+            <footer class="footer-area bg-white text-center rounded-top-7">
+                <p class="fs-14">© <span class="text-primary-div">Trezo</span> is Proudly Owned by <a href="https://envytheme.com/" target="_blank" class="text-decoration-none text-primary">EnvyTheme</a></p>
+            </footer>
+            <!-- End Footer Area -->
+        </div>
+    </div>
+    <!-- Start Theme Setting Area -->
+    <!-- Modal FSB List -->
+    <div class="modal fade" id="fsbModal" tabindex="-1" aria-hidden="true" aria-labelledby="fsbModalTitle">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 90%;">
+            <div class="modal-content p-4 p-md-5">
+                <div class="modal-header p-0 border-0">
+                    <h3 class="mb-0" id="fsbModalTitle">FSB 1/2/3 Normal/Promo 2025</h3>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body p-0 pt-4">
+                    <div class="card bg-white border-0 rounded-3 mb-4">
+                        <div class="card-body p-0">
+                            <div class="default-table-area style-two default-table-width">
+                                <div class="table-responsive">
+                                    <table class="table align-middle">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">Name</th>
+                                                <th scope="col">Enroll Date</th>
+                                                <th scope="col">Service</th>
+                                                <th scope="col">Renewal Date</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <img src="assets/images/user-16.jpg" alt="" style="width:30px;height:30px;object-fit:cover;border-radius:50%;margin-right:8px;">
+                                                        <span>Yoni Ashurov</span>
+                                                    </div>
+                                                </td>
+                                                <td class="text-body">11/05/2025 11:53:12</td>
+                                                <td class="text-body">Travel Advantage Elite TURBO</td>
+                                                <td>
+                                                    <span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">
+                                                        12/05/2025 11:53:12
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <img src="assets/images/user-16.jpg" alt="" style="width:30px;height:30px;object-fit:cover;border-radius:50%;margin-right:8px;">
+                                                        <span>António Sala</span>
+                                                    </div>
+                                                </td>
+                                                <td class="text-body">11/07/2025 11:53:12</td>
+                                                <td class="text-body">Travel Advantage Elite</td>
+                                                <td>
+                                                    <span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">
+                                                        12/05/2025 11:53:12
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0 p-0">
+                    <button type="button" class="btn btn-info text-white px-3" data-bs-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="offcanvas offcanvas-end bg-white" data-bs-scroll="true" data-bs-backdrop="true" tabindex="-1" id="offcanvasScrolling" aria-labelledby="offcanvasScrollingLabel" style="box-shadow: rgba(100, 100, 111, 0.2) 0px 7px 29px 0px;">
+        <div class="offcanvas-header bg-primary py-3 px-4">
+            <h5 class="offcanvas-title fs-18 text-white" id="offcanvasScrollingLabel">Theme Settings</h5>
+            <button type="button" class="btn-close text-white" data-bs-dismiss="offcanvas" aria-label="Close" style="filter: invert(1); opacity: 1;"></button>
+        </div>
+        <div class="offcanvas-body p-4">
+            <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">RTL / LTR</h4>
+
+                <div class="d-flex align-items-center position-relative settings-box-wrap for-rtl-mode" style="gap: 25px;">
+                    <div class="cursor position-relative active-wrap2">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">LTR</span>
+                        </div>
+                    </div>
+                    <div class="cursor position-relative active-wrap1">
+                        <div class="settings-box for-rtl">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">RTL</span>
+                        </div>
+                    </div>
+                    <label id="switch" class="switch-for-rtl">
+                        <input type="checkbox" class="position-absolute top-0 bottom-0 start-0 end-0 opacity-0 cursor" onchange="toggleTheme()" id="slider">
+                        <span class="sliders round"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Container Style Fluid / Boxed</h4>
+                <button class="boxed-style settings-btn fluid-boxed-btn" id="boxed-style">
+                    Click To <span class="fluid">Fluid</span> <span class="boxed">Boxed</span>
+                </button>
+            </div> -->
+
+            <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Only Sidebar Light / Dark</h4>
+
+                <div class="d-flex align-items-center position-relative settings-box-wrap for-sidebar-dark" style="gap: 25px;">
+                    <div class="cursor position-relative active-wrap2">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Light</span>
+                        </div>
+                    </div>
+                    <div class="cursor position-relative active-wrap1">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Dark</span>
+                        </div>
+                    </div>
+                    <button class="sidebar-light-dark settings-btn" id="sidebar-light-dark"></button>
+                </div>
+            </div>
+
+            <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Only Header Light / Dark</h4>
+
+                <div class="d-flex align-items-center position-relative settings-box-wrap for-header-dark" style="gap: 25px;">
+                    <div class="cursor position-relative active-wrap2">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Light</span>
+                        </div>
+                    </div>
+                    <div class="cursor position-relative active-wrap1">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Dark</span>
+                        </div>
+                    </div>
+                    <button class="header-light-dark settings-btn" id="header-light-dark"></button>
+                </div>
+            </div>
+
+            <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Only Footer Light / Dark</h4>
+
+                <div class="d-flex align-items-center position-relative settings-box-wrap for-footer-dark" style="gap: 25px;">
+                    <div class="cursor position-relative active-wrap2">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Light</span>
+                        </div>
+                    </div>
+                    <div class="cursor position-relative active-wrap1">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Dark</span>
+                        </div>
+                    </div>
+                    <button class="footer-light-dark settings-btn" id="footer-light-dark"></button>
+                </div>
+            </div>
+
+            <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Card Style Radius / Square</h4>
+
+                <div class="d-flex align-items-center position-relative settings-box-wrap for-card-radius" style="gap: 25px;">
+                    <div class="cursor position-relative active-wrap2">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Radius</span>
+                        </div>
+                    </div>
+                    <div class="cursor position-relative active-wrap1">
+                        <div class="settings-box rounded-0">
+                            <span class="rounded-0"></span>
+                            <span class="rounded-0"></span>
+                            <span class="rounded-0"></span>
+                            <span class="rounded-0"></span>
+                            <span class="rounded-0"></span>
+                            <span class="rounded-0"></span>
+                            <span class="rounded-0"></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Square</span>
+                        </div>
+                    </div>
+                    <button class="card-radius-square settings-btn" id="card-radius-square"></button>
+                </div>
+            </div>
+
+            <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Card Style BG White / Gray</h4>
+
+                <div class="d-flex align-items-center position-relative settings-box-wrap for-card-bg-gray" style="gap: 25px;">
+                    <div class="cursor position-relative active-wrap2">
+                        <div class="settings-box bg-light-40">
+                            <span class="bg-white"></span>
+                            <span class="bg-white"></span>
+                            <span class="bg-white"></span>
+                            <span class="bg-white"></span>
+                            <span class="bg-white"></span>
+                            <span class="bg-white"></span>
+                            <span class="bg-white"></span>
+                            <span class="rounded-3 bg-white"></span>
+                            <span class="rounded-3 bg-white"></span>
+                            <span class="rounded-3 bg-white"></span>
+                            <span class="rounded-3 bg-white"></span>
+                            <span class="rounded-3 bg-white"></span>
+                            <span class="rounded-3 bg-white"></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">White</span>
+                        </div>
+                    </div>
+                    <div class="cursor position-relative active-wrap1">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Gray</span>
+                        </div>
+                    </div>
+                    <button class="card-bg settings-btn" id="card-bg"></button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- End Theme Setting Area -->
+    <!-- Modal Commissions -->
+    <div class="modal fade" id="commissionsInfoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 75%;">
+            <div class="modal-content p-4 p-md-5">
+                <div class="modal-header p-0 border-0">
+                    <h3 class="mb-0" id="modalCommissionsTitle">Commissions</h3>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body p-0 pt-4">
+                    <div class="card bg-white border-0 rounded-3 mb-4">
+                        <div class="card-body p-0">
+                            <div class="default-table-area style-two default-table-width">
+                                <div class="table-responsive">
+                                    <table class="table align-middle">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">Commission Type</th>
+                                                <th scope="col">Detail</th>
+                                                <th scope="col">Amount</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td class="text-body">Presidential Bonus</td>
+                                                <td class="text-body">Congratulations!</td>
+                                                <td>
+                                                    <span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">
+                                                        $78.05
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-body">Sponsor Bonus</td>
+                                                <td class="text-body">Member: José António</td>
+                                                <td>
+                                                    <span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">
+                                                        $40.00
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-body">Admin Fee</td>
+                                                <td class="text-body">Detail</td>
+                                                <td>
+                                                    <span class="badge bg-danger bg-opacity-10 text-danger p-2 fs-12 fw-normal">
+                                                        $1.95
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0 p-0">
+                    <button type="button" class="btn btn-success text-white px-3" data-bs-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Link Of JS File -->
+    <script src="assets/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/sidebar-menu.js"></script>
+    <script src="assets/js/dragdrop.js"></script>
+    <script src="assets/js/rangeslider.min.js"></script>
+    <script src="assets/js/quill.min.js"></script>
+    <script src="assets/js/data-table.js"></script>
+    <script src="assets/js/prism.js"></script>
+    <script src="assets/js/clipboard.min.js"></script>
+    <script src="assets/js/feather.min.js"></script>
+    <script src="assets/js/simplebar.min.js"></script>
+    <script src="assets/js/apexcharts.min.js"></script>
+    <script src="assets/js/echarts.min.js"></script>
+    <script src="assets/js/swiper-bundle.min.js"></script>
+    <script src="assets/js/fullcalendar.main.js"></script>
+    <script src="assets/js/jsvectormap.min.js"></script>
+    <script src="assets/js/world-merc.js"></script>
+    <script src="assets/js/moment.min.js"></script>
+    <script src="assets/js/lightpick.js"></script>
+    <script src="assets/js/custom/apexcharts.js"></script>
+    <script src="assets/js/custom/echarts.js"></script>
+    <script src="assets/js/custom/custom.js"></script>
+
+    <script>
+        function downloadYearlyReport(year) {
+            var link = '', filename = '';
+            link = 'https://www.mwrlife.com/paymentfiles/YearlyEarning/conmHHY5feNwiTQQUE5Jw.csv';
+            filename = 'yearlyReport' + year;
+            downloadDoc(link, filename);
+        }
+
+        function downloadDoc(link, filename) {
+            const a = document.createElement('a');
+            a.href = link; a.download = filename; a.click();
+        }
+
+        // ==== Delegação de cliques para abrir o modal correto e títulos ====
+        document.addEventListener('DOMContentLoaded', function () {
+            // impedir que botões dentro das tabelas submetam algo
+            document.querySelectorAll('table button').forEach(b => b.setAttribute('type', 'button'));
+
+            document.addEventListener('click', function (e) {
+                const icon = e.target.closest('i.material-symbols-outlined.text-primary');
+                if (!icon) return;
+
+                const btn = icon.closest('button');
+                if (btn) e.preventDefault();
+
+                const row = icon.closest('tr');
+                const table = icon.closest('table');
+                if (!row || !table) return;
+
+                const headers = Array.from(table.querySelectorAll('thead th'))
+                    .map(th => th.textContent.trim().toLowerCase());
+
+                const isHistory = headers.includes('month');
+                const isPending = headers.includes('earned date');
+                const isPaid = !isHistory && !isPending && headers.includes('payment date');
+
+                if (isHistory) {
+                    // Month + Income + Year (tab ativa)
+                    const month = row.children[0]?.textContent.trim() ?? '';
+                    const incomeRaw = row.children[1]?.textContent ?? '';
+                    const income = incomeRaw.replace(/\s+/g, ' ').trim();
+                    const activeYearBtn = document.querySelector('#myTab .nav-link.active');
+                    const year = activeYearBtn ? activeYearBtn.textContent.trim() : '';
+
+                    const modalTitle = document.getElementById('modalHistoryTitle');
+                    modalTitle.textContent = year
+                        ? `History (${month} ${year} — ${income})`
+                        : `History (${month} — ${income})`;
+
+                    new bootstrap.Modal(document.getElementById('historyInfoModal')).show();
+                    return;
+                }
+
+                if (isPending) {
+                    const earnedDate = row.children[0].textContent.trim();
+                    const paymentDate = row.children[1].textContent.trim();
+                    document.getElementById('modalCommissionsTitle').textContent =
+                        `Commissions (${earnedDate} - ${paymentDate})`;
+                    new bootstrap.Modal(document.getElementById('commissionsInfoModal')).show();
+                    return;
+                }
+
+                if (isPaid) {
+                    const paymentDate = row.children[0].textContent.trim();
+                    document.getElementById('modalCommissionsTitle').textContent =
+                        `Commissions (${paymentDate})`;
+                    new bootstrap.Modal(document.getElementById('commissionsInfoModal')).show();
+                    return;
+                }
+            });
+        });
+
+        document.addEventListener("DOMContentLoaded", function () {
+
+            // Atualiza o título e soma da tab ativa
+            function updateHistoryModalTitle() {
+                const activeTab = document.querySelector('#historyInfoModal .nav-link.active');
+                if (!activeTab) return;
+
+                const tabTitle = activeTab.textContent.trim();
+                const activePane = document.querySelector(activeTab.dataset.bsTarget);
+                if (!activePane) return;
+
+                const rows = activePane.querySelectorAll("table tbody tr");
+                let total = 0;
+
+                rows.forEach(row => {
+                    const amountCell = row.querySelector("td:nth-child(4) .badge");
+                    if (!amountCell) return;
+
+                    let text = amountCell.textContent.replace(/[^\d.,-]/g, "").replace(",", ".");
+                    let value = parseFloat(text);
+                    if (amountCell.classList.contains("text-danger")) value = -Math.abs(value);
+                    total += value || 0;
+                });
+
+                const divTitle = document.getElementById("modalHistoryDivTitle");
+                if (!divTitle) return;
+
+                if (total >= 0) {
+                    colorClass = "badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal";
+                    formatted = total.toLocaleString("en-US", {
+                        style: "currency",
+                        currency: "USD",
+                        minimumFractionDigits: 2,
+                    });
+                } else {
+                    colorClass = "badge bg-danger bg-opacity-10 text-danger p-2 fs-12 fw-normal";
+                    formatted = (total * (-1.00)).toLocaleString("en-US", {
+                        style: "currency",
+                        currency: "USD",
+                        minimumFractionDigits: 2,
+                    });
+                }
+
+                divTitle.innerHTML = `
+                <h3 class="mb-0">${tabTitle}</h3>
+                <h3 class="mb-0 ${colorClass}">${formatted}</h3>
+            `;
+            }
+
+            // Quando muda de tab dentro do modal
+            const modalTabs = document.querySelectorAll('#historyInfoModal [data-bs-toggle="tab"]');
+            modalTabs.forEach(tab => {
+                tab.addEventListener("shown.bs.tab", updateHistoryModalTitle);
+            });
+
+            // Quando o modal é aberto (recalcula o total inicial)
+            const historyModal = document.getElementById("historyInfoModal");
+            if (historyModal) {
+                historyModal.addEventListener("shown.bs.modal", updateHistoryModalTitle);
+            }
+
+        });
+
+        // Qual FSB está ativo neste momento?
+        const activeBonus = 2; // 1 | 2 | 3
+
+        // === Configura as datas reais ===
+        // Para veres o FSB2 a contar já, deixo por defeito "agora + 5 dias".
+        const fsb2End = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+
+        // O FSB3 começa quando o FSB2 termina e dura mais 7 dias (ajusta se quiseres)
+        const fsb3Start = new Date(fsb2End.getTime());
+        const fsb3End = new Date(fsb3Start.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+        // Helpers
+        function fmtDHMS(ms) {
+            if (ms <= 0) return "COMPLETED!";
+            const d = Math.floor(ms / 86400000); ms -= d * 86400000;
+            const h = Math.floor(ms / 3600000); ms -= h * 3600000;
+            const m = Math.floor(ms / 60000); ms -= m * 60000;
+            const s = Math.floor(ms / 1000);
+            return `${d}D ${h}H ${m}M ${s}S`;
+        }
+        function setFrozenTimer(el, end) {
+            if (!el) return;
+            el.textContent = fmtDHMS(end - new Date());
+        }
+        function runLiveTimer(el, end, done) {
+            if (!el) return;
+            function tick() {
+                const rem = end - new Date();
+                el.textContent = fmtDHMS(rem);
+                if (rem <= 0) { if (typeof done === 'function') done(); return; }
+                setTimeout(tick, 1000);
+            }
+            tick();
+        }
+
+        // Elementos
+        const el1 = document.getElementById('fsb1-timer');
+        const el2 = document.getElementById('fsb2-timer');
+        const el3 = document.getElementById('fsb3-timer');
+
+        // FSB1: mostra o valor ganho
+        if (el1) el1.textContent = "$75.00";
+
+        // FSB2/FSB3: ambos mostram contador; só o ativo é live
+        if (activeBonus === 2) {
+            runLiveTimer(el2, fsb2End, () => el2.textContent = "COMPLETED!");
+            setFrozenTimer(el3, fsb3End);
+        } else if (activeBonus === 3) {
+            setFrozenTimer(el2, fsb2End);
+            runLiveTimer(el3, fsb3End, () => el3.textContent = "COMPLETED!");
+        } else {
+            setFrozenTimer(el2, fsb2End);
+            setFrozenTimer(el3, fsb3End);
+        }
+    </script>
+
+</body>
+</html>

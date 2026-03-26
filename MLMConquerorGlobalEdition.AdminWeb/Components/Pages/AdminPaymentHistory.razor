@@ -1,0 +1,163 @@
+@page "/admin/billing/payments"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+
+<PageTitle>Payment History — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Payment History") })" />
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small mb-1">From</label>
+                <input type="date" class="form-control form-control-sm"
+                       value="@_dateFrom.ToString("yyyy-MM-dd")"
+                       @onchange="e => _dateFrom = DateTime.Parse(e.Value!.ToString()!)" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small mb-1">To</label>
+                <input type="date" class="form-control form-control-sm"
+                       value="@_dateTo.ToString("yyyy-MM-dd")"
+                       @onchange="e => _dateTo = DateTime.Parse(e.Value!.ToString()!)" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small mb-1">Status</label>
+                <select class="form-select form-select-sm" @bind="_statusFilter">
+                    <option value="">All Statuses</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Failed">Failed</option>
+                    <option value="Refunded">Refunded</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary btn-sm w-100" @onclick="LoadAsync">
+                    <i class="ri-search-line me-1"></i>Search
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        @if (_error is not null)
+        {
+            <div class="alert alert-danger m-3">@_error</div>
+        }
+        else if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="PaymentDto" DataSource="@_items"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250,500,1000})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn HeaderText="Transaction ID" Width="160">
+                        <Template>
+                            <code class="text-primary small">@(((PaymentDto)context).TransactionId[..Math.Min(16, ((PaymentDto)context).TransactionId.Length)])</code>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Member ID" Width="130">
+                        <Template>
+                            <a href="/admin/members/@(((PaymentDto)context).MemberId)" class="text-primary"><code>@(((PaymentDto)context).MemberId)</code></a>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Amount" Width="110" TextAlign="TextAlign.Right">
+                        <Template>
+                            <span class="fw-semibold">$@(((PaymentDto)context).Amount.ToString("F2"))</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(PaymentDto.Currency)" HeaderText="Currency" Width="90" TextAlign="TextAlign.Center" />
+                    <GridColumn Field="@nameof(PaymentDto.Gateway)" HeaderText="Gateway" Width="120" />
+                    <GridColumn HeaderText="Status" Width="110">
+                        <Template>
+                            <span class="badge @StatusBadge(((PaymentDto)context).Status)">@(((PaymentDto)context).Status)</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Description" Width="200">
+                        <Template>
+                            <span class="text-muted small">@(((PaymentDto)context).Description ?? "—")</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(PaymentDto.CreationDate)" HeaderText="Date" Width="150" Format="yyyy-MM-dd HH:mm" Type="ColumnType.DateTime" />
+                </GridColumns>
+            </SfGrid>
+
+            @if (_items.Count == 0)
+            {
+                <div class="text-center py-5 text-muted">
+                    <i class="ri-bank-card-line fs-1 d-block mb-2"></i>
+                    No payments found for the selected period.
+                </div>
+            }
+
+            @if (_totalPages > 1)
+            {
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
+                    <small class="text-muted">@_totalCount payments — Page @_page of @_totalPages</small>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(_page == 1 ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button>
+                            </li>
+                            @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
+                            { var p = i; <li class="page-item @(_page == p ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(p)">@p</button></li> }
+                            <li class="page-item @(_page == _totalPages ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => ChangePage(_page + 1)">›</button>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private List<PaymentDto> _items = new();
+    private bool _loading = true;
+    private string? _error;
+    private int _page = 1;
+    private const int PageSize = 25;
+    private int _totalCount;
+    private int _totalPages = 1;
+    private DateTime _dateFrom = DateTime.Today.AddDays(-2);
+    private DateTime _dateTo   = DateTime.Today;
+    private string _statusFilter = string.Empty;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; _error = null; StateHasChanged();
+        try
+        {
+            var url = $"api/v1/admin/payments?page={_page}&pageSize={PageSize}" +
+                      $"&from={_dateFrom:yyyy-MM-dd}&to={_dateTo:yyyy-MM-dd}";
+            if (!string.IsNullOrWhiteSpace(_statusFilter)) url += $"&status={_statusFilter}";
+            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<PaymentDto>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _items      = resp.Data.Items.ToList();
+                _totalCount = resp.Data.TotalCount;
+                _totalPages = resp.Data.TotalPages;
+            }
+            else { _error = resp?.Errors?.FirstOrDefault() ?? "Failed to load payments."; }
+        }
+        catch (Exception ex) { _error = $"API error: {ex.Message}"; }
+        finally { _loading = false; }
+    }
+
+    private async Task ChangePage(int p) { if (p < 1 || p > _totalPages) return; _page = p; await LoadAsync(); }
+
+    private static string StatusBadge(string s) => s switch
+    { "Completed" => "bg-success", "Pending" => "bg-warning text-dark", "Failed" => "bg-danger", "Refunded" => "bg-info text-dark", _ => "bg-secondary" };
+
+    private record PaymentDto(string Id, string TransactionId, string MemberId, decimal Amount,
+        string Currency, string Gateway, string Status, string? Description, DateTime CreationDate);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+}

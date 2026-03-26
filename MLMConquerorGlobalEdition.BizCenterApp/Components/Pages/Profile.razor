@@ -1,0 +1,5 @@
+@page "/profile"
+@attribute [Authorize]
+@inject IViewContextService ViewContext
+
+<UserProfilePage MemberProfileId="@ViewContext.ViewingMemberId" />

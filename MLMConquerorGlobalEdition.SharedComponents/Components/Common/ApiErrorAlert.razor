@@ -1,0 +1,18 @@
+@if (!string.IsNullOrEmpty(ErrorMessage))
+{
+    <div class="alert alert-danger d-flex align-items-start gap-2" role="alert">
+        <i class="ri-error-warning-line fs-5 mt-1 flex-shrink-0"></i>
+        <div>
+            @if (!string.IsNullOrEmpty(ErrorCode))
+            {
+                <div class="small text-muted mb-1">Code: @ErrorCode</div>
+            }
+            <div>@ErrorMessage</div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string? ErrorMessage { get; set; }
+    [Parameter] public string? ErrorCode    { get; set; }
+}

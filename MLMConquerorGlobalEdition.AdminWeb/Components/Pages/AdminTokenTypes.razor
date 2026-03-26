@@ -1,0 +1,187 @@
+@page "/admin/tokens/types"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+<PageTitle>Token Types — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Token Types") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-token-swap-line me-2 text-primary"></i>Token Types
+        </h6>
+        <button class="btn btn-primary btn-sm" @onclick="OpenCreate">
+            <i class="ri-add-line me-1"></i>New Token Type
+        </button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="TokenTypeDto" DataSource="@_items"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250,500,1000})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn Field="@nameof(TokenTypeDto.Id)" HeaderText="ID" Width="70" TextAlign="TextAlign.Center" />
+                    <GridColumn Field="@nameof(TokenTypeDto.Name)" HeaderText="Name" Width="180" />
+                    <GridColumn HeaderText="Description" Width="220">
+                        <Template><span class="text-muted small">@(((TokenTypeDto)context).Description ?? "—")</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Guest Pass" Width="120" TextAlign="TextAlign.Center">
+                        <Template>
+                            @if (((TokenTypeDto)context).IsGuestPass)
+                            { <span class="badge bg-info text-dark"><i class="ri-pass-valid-line me-1"></i>Yes</span> }
+                            else { <span class="text-muted">—</span> }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Template" Width="110" TextAlign="TextAlign.Center">
+                        <Template>
+                            @if (!string.IsNullOrWhiteSpace(((TokenTypeDto)context).TemplateUrl))
+                            { <a href="@(((TokenTypeDto)context).TemplateUrl)" target="_blank" class="text-primary small"><i class="ri-link me-1"></i>Link</a> }
+                            else { <span class="text-muted">—</span> }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Status" Width="100">
+                        <Template><span class="badge @ActiveBadge(((TokenTypeDto)context).IsActive)">@(((TokenTypeDto)context).IsActive ? "Active" : "Inactive")</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="140" TextAlign="TextAlign.Center">
+                        <Template>
+                            <button class="btn btn-sm btn-outline-info py-0 me-1" @onclick='() => Nav.NavigateTo($"/admin/tokens/types/{((TokenTypeDto)context).Id}/commissions")'><i class="ri-settings-3-line"></i></button>
+                            <button class="btn btn-sm btn-outline-primary py-0 me-1" @onclick="() => OpenEdit((TokenTypeDto)context)"><i class="ri-edit-line"></i></button>
+                            <button class="btn btn-sm btn-outline-danger py-0" @onclick="() => ConfirmDelete((TokenTypeDto)context)"><i class="ri-delete-bin-line"></i></button>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+@if (_showForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header"><h5 class="modal-title fw-bold">@(_editId is null ? "New Token Type" : "Edit Token Type")</h5><button type="button" class="btn-close" @onclick="CloseForm"></button></div>
+                <div class="modal-body">
+                    <div class="mb-3"><label class="form-label fw-semibold">Name <span class="text-danger">*</span></label><input class="form-control" @bind="_form.Name"/></div>
+                    <div class="mb-3"><label class="form-label fw-semibold">Description</label><textarea class="form-control" rows="2" @bind="_form.Description"></textarea></div>
+                    <div class="mb-3"><label class="form-label fw-semibold">Template URL</label><input class="form-control" @bind="_form.TemplateUrl" placeholder="https://..."/></div>
+                    <div class="form-check"><input class="form-check-input" type="checkbox" id="igp" @bind="_form.IsGuestPass"/><label class="form-check-label" for="igp">Is Guest Pass</label></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                    <button class="btn btn-primary" @onclick="Save" disabled="@_saving">
+                        @if (_saving){<span class="spinner-border spinner-border-sm me-1"></span>}
+                        @(_editId is null ? "Create" : "Save Changes")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showDeleteConfirm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header"><h5 class="modal-title fw-bold text-danger">Deactivate Token Type</h5><button type="button" class="btn-close" @onclick="() => { _showDeleteConfirm = false; _deleteItem = null; }"></button></div>
+                <div class="modal-body">Deactivate <strong>@_deleteItem?.Name</strong>?</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => { _showDeleteConfirm = false; _deleteItem = null; }">Cancel</button>
+                    <button class="btn btn-danger" @onclick="DeleteItem" disabled="@_saving">
+                        @if (_saving){<span class="spinner-border spinner-border-sm me-1"></span>}Deactivate
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<TokenTypeDto> _items = new();
+    private bool _loading = true;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private bool _showForm;
+    private bool _showDeleteConfirm;
+    private int? _editId;
+    private TokenTypeFormModel _form = new();
+    private TokenTypeDto? _deleteItem;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<IEnumerable<TokenTypeDto>>>("api/v1/admin/token-types");
+            if (resp?.Success == true && resp.Data is not null) _items = resp.Data.ToList();
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private void OpenCreate() { _editId = null; _form = new(); _showForm = true; }
+    private void OpenEdit(TokenTypeDto t) { _editId = t.Id; _form = new TokenTypeFormModel { Name = t.Name, Description = t.Description, TemplateUrl = t.TemplateUrl, IsGuestPass = t.IsGuestPass }; _showForm = true; }
+    private void CloseForm() { _showForm = false; _editId = null; }
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(_form.Name)) { _alertMsg = "Name is required."; _alertIsError = true; return; }
+        _saving = true;
+        try
+        {
+            var response = _editId is null ? await Http.PostAsJsonAsync("api/v1/admin/token-types", _form) : await Http.PutAsJsonAsync($"api/v1/admin/token-types/{_editId}", _form);
+            if (response.IsSuccessStatusCode) { _alertMsg = _editId is null ? "Token type created." : "Token type updated."; _alertIsError = false; CloseForm(); await LoadAsync(); }
+            else { _alertMsg = $"Save failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private void ConfirmDelete(TokenTypeDto t) { _deleteItem = t; _showDeleteConfirm = true; }
+    private async Task DeleteItem()
+    {
+        if (_deleteItem is null) return;
+        _saving = true;
+        try
+        {
+            var response = await Http.DeleteAsync($"api/v1/admin/token-types/{_deleteItem.Id}");
+            if (response.IsSuccessStatusCode) { _alertMsg = "Deactivated."; _alertIsError = false; _showDeleteConfirm = false; _deleteItem = null; await LoadAsync(); }
+            else { _alertMsg = $"Failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private class TokenTypeFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? TemplateUrl { get; set; }
+        public bool IsGuestPass { get; set; }
+    }
+
+    private static string ActiveBadge(bool isActive) => isActive ? "bg-success" : "bg-secondary";
+
+    private record TokenTypeDto(int Id, string Name, string? Description, bool IsGuestPass, string? TemplateUrl, bool IsActive);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+}

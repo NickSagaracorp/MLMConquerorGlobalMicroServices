@@ -1,0 +1,9 @@
+@page "/tickets/{TicketId}"
+@attribute [Authorize]
+@inject IViewContextService ViewContext
+
+<TicketDetailPage TicketId="@TicketId" MemberProfileId="@ViewContext.ViewingMemberId" />
+
+@code {
+    [Parameter] public string TicketId { get; set; } = string.Empty;
+}

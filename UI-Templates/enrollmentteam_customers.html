@@ -1,0 +1,1799 @@
+<!DOCTYPE html>
+<html lang="zxx">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Links Of CSS File -->
+    <link rel="stylesheet" href="assets/css/sidebar-menu.css">
+    <link rel="stylesheet" href="assets/css/simplebar.css">
+    <link rel="stylesheet" href="assets/css/apexcharts.css">
+    <link rel="stylesheet" href="assets/css/prism.css">
+    <link rel="stylesheet" href="assets/css/rangeslider.css">
+    <link rel="stylesheet" href="assets/css/quill.snow.css">
+    <link rel="stylesheet" href="assets/css/google-icon.css">
+    <link rel="stylesheet" href="assets/css/remixicon.css">
+    <link rel="stylesheet" href="assets/css/swiper-bundle.min.css">
+    <link rel="stylesheet" href="assets/css/fullcalendar.main.css">
+    <link rel="stylesheet" href="assets/css/jsvectormap.min.css">
+    <link rel="stylesheet" href="assets/css/lightpick.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico">
+    <!-- Title -->
+    <title>MWRLife - BizCenter Dashboard - Enrollment Team - Customers</title>
+
+    <style>
+        /* ===== Scrollbars ===== */
+        .genealogy-scroll::-webkit-scrollbar {
+            width: 5px;
+            height: 8px
+        }
+
+        .genealogy-scroll::-webkit-scrollbar-track {
+            border-radius: 10px;
+            background: #f0f0f0
+        }
+
+        .genealogy-scroll::-webkit-scrollbar-thumb {
+            background: #999;
+            border-radius: 10px;
+            transition: .3s
+        }
+
+            .genealogy-scroll::-webkit-scrollbar-thumb:hover {
+                background: #555
+            }
+
+        /* ===== Área da árvore + Zoom wrapper ===== */
+        .genealogy-body {
+            white-space: nowrap;
+            overflow: hidden;
+            position: relative;
+            width: 100%;
+            height: 78vh;
+            text-align: center;
+            background: linear-gradient(180deg,#f8f9fb,#eef1f4);
+            border-radius: 10px;
+            padding: 12px;
+        }
+
+        .tree-zoom-container {
+            transform-origin: 0 0;
+            transition: transform .15s ease-out;
+            display: inline-block
+        }
+
+        /* ===== Estrutura da árvore ===== */
+        .genealogy-tree ul {
+            padding-top: 16px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            flex-wrap: nowrap;
+            gap: 24px;
+        }
+
+        .genealogy-tree li {
+            list-style: none;
+            text-align: center;
+            position: relative;
+            padding: 16px 8px 0 8px
+        }
+
+            /* Linhas */
+            .genealogy-tree li::before, .genealogy-tree li::after {
+                content: '';
+                position: absolute;
+                top: 0;
+                border-top: 2px dashed #c9c9c9;
+                width: 50%;
+                height: 16px
+            }
+
+            .genealogy-tree li::before {
+                right: 50%
+            }
+
+            .genealogy-tree li::after {
+                left: 50%;
+                border-left: 2px dashed #c9c9c9
+            }
+
+            .genealogy-tree li:only-child::after, .genealogy-tree li:only-child::before {
+                display: none
+            }
+
+            .genealogy-tree li:only-child {
+                padding-top: 0
+            }
+
+        .genealogy-tree ul ul::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            border-left: 2px dashed #c9c9c9;
+            width: 0;
+            height: 16px
+        }
+
+        /* ===== Cartão compacto ===== */
+        .member-view-box {
+            display: inline-block;
+            text-align: center;
+            border-radius: 10px;
+            background: #fff;
+            box-shadow: 0 6px 18px rgba(0,0,0,.07);
+            padding: 8px 10px;
+            width: 140px;
+            transition: transform .18s ease, box-shadow .18s ease;
+            user-select: none;
+        }
+
+            .member-view-box:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 10px 22px rgba(0,0,0,.12)
+            }
+
+        .member-header {
+            font-weight: 600;
+            color: #fff;
+            border-radius: 8px 8px 0 0;
+            padding: 5px 8px;
+            font-size: 12px;
+            line-height: 1.1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 24px;
+        }
+
+        /* Cores do header por estado */
+        .member-view-box.status-qualified .member-header {
+            background: #2ecc71
+        }
+        /* active + qualified (verde) */
+        .member-view-box.status-unqualified .member-header {
+            background: #7d2a3b
+        }
+        /* active + unqualified (bordeaux) */
+        .member-view-box.status-cancelled .member-header {
+            background: #9aa0a6
+        }
+        /* cancelled (cinza) */
+
+        /* Avatar */
+        .member-image {
+            position: relative;
+            margin-top: 6px
+        }
+
+            .member-image img {
+                width: 66px;
+                height: 66px;
+                object-fit: cover;
+                border-radius: 50%;
+                border: 3px solid #fff;
+                box-shadow: 0 2px 6px rgba(0,0,0,.15);
+                display: block;
+                margin: 0 auto;
+            }
+
+        /* Footer: pontos */
+        .member-footer {
+            margin-top: 6px
+        }
+
+            .member-footer .points {
+                font-weight: 700;
+                font-size: 13px;
+                color: #222;
+            }
+
+        /* Botão Revert Placement (apenas folhas) */
+        .revert-btn {
+            margin-top: 6px;
+            font-size: 11px;
+            line-height: 1;
+            border: 1px solid #ffb4b4;
+            color: #b42318;
+            background: #fff4f4;
+            padding: 6px 10px;
+            border-radius: 8px;
+            transition: .15s;
+            display: inline-block;
+        }
+
+            .revert-btn:hover {
+                background: #ffe5e5
+            }
+
+        /* Slots vazios com "+" */
+        .placeholder-node {
+            width: 66px;
+            height: 66px;
+            border: 2px dashed #cfd6df;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            font-size: 22px;
+            color: #7b8794;
+            background: #fafbff;
+            margin: 0 auto;
+            transition: .15s;
+        }
+
+            .placeholder-node:hover {
+                transform: translateY(-1px);
+                border-color: #94a3b8;
+                color: #111;
+                cursor: pointer
+            }
+
+        /* Desativado quando pai não está posicionado */
+        .locked .placeholder-node {
+            opacity: .45;
+            pointer-events: none
+        }
+
+        /* Responsivo extra pequeno */
+        @media (max-width:480px) {
+            .member-view-box {
+                width: 126px;
+                padding: 7px 8px
+            }
+
+            .member-image img {
+                width: 60px;
+                height: 60px
+            }
+
+            .placeholder-node {
+                width: 60px;
+                height: 60px
+            }
+        }
+    </style>
+</head>
+<body class="boxed-size">
+    <!-- Start Preloader Area -->
+    <!--<div class="preloader" id="preloader">
+        <div class="preloader">
+            <div class="waviy position-relative">
+                <img src="assets/images/logo.svg" style="width: 100%; height: auto;" />-->
+    <!--<span class="d-inline-block">M</span>
+    <span class="d-inline-block">W</span>
+    <span class="d-inline-block">R</span>
+    <span class="d-inline-block"></span>
+    <span class="d-inline-block">L</span>
+    <span class="d-inline-block">I</span>
+    <span class="d-inline-block">F</span>
+    <span class="d-inline-block">E</span>-->
+    <!--</div>
+        </div>
+    </div>-->
+    <div id="preloader">
+        <div class="preloader">
+            <div class="waviy">
+                <img src="assets/images/logo.svg" alt="logo">
+            </div>
+        </div>
+    </div>
+    <!-- End Preloader Area -->
+    <!-- Start Sidebar Area -->
+    <div class="sidebar-area" id="sidebar-area">
+        <div class="logo position-relative">
+            <a href="index.html" class="d-block text-decoration-none position-relative">
+                <img src="assets/images/logo.svg" alt="logo-icon">
+                <!--<span class="logo-text fw-bold text-dark">MWRLife</span>-->
+            </a>
+            <button class="sidebar-burger-menu bg-transparent p-0 border-0 opacity-0 z-n1 position-absolute top-50 end-0 translate-middle-y" id="sidebar-burger-menu">
+                <i data-feather="x"></i>
+            </button>
+        </div>
+
+        <aside id="layout-menu" class="layout-menu menu-vertical menu active" data-simplebar>
+            <ul class="menu-inner">
+                <li class="menu-title small text-uppercase">
+                    <span class="menu-title-text">MENU</span>
+                </li>
+
+                <li class="menu-item">
+                    <a href="index.html" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">home</span>
+                        <span class="title">Home</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="https://www.mwrlife.com/nunocacao" class="menu-link" target="_blank">
+                        <span class="material-symbols-outlined menu-icon">browse_activity</span>
+                        <span class="title">My Website</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item active open">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle active">
+                        <span class="material-symbols-outlined menu-icon">group</span>
+                        <span class="title">Enrollment Team</span>
+                        <span class="count">4</span>
+                    </a>
+                    <ul class="menu-sub">
+                        <li class="menu-item">
+                            <a href="enrollmentteam_myteam.html" class="menu-link">
+                                My Team
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="enrollmentteam_visualizer.html" class="menu-link">
+                                Visualizer
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="enrollmentteam_branches.html" class="menu-link">
+                                Branches
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="javascript:void(0);" class="menu-link active">
+                                Customers
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <li class="menu-item">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <span class="material-symbols-outlined menu-icon">share</span>
+                        <span class="title">Dual Team</span>
+                        <span class="count">3</span>
+                    </a>
+                    <ul class="menu-sub">
+                        <li class="menu-item">
+                            <a href="dualteam_myteam.html" class="menu-link">
+                                My Dual Team
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="dualteam_binarytree.html" class="menu-link">
+                                Visualizer
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="dualteam_residuals.html" class="menu-link">
+                                Residuals
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <li class="menu-item">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <span class="material-symbols-outlined menu-icon">paid</span>
+                        <span class="title">Commissions</span>
+                        <span class="count">5</span>
+                    </a>
+                    <ul class="menu-sub">
+                        <li class="menu-item">
+                            <a href="commissions.html" class="menu-link">
+                                Commissions
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="presidentialbonus.html" class="menu-link">
+                                Presidential Bonus
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="carbonus.html" class="menu-link">
+                                Car Bonus
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="faststartbonus.html" class="menu-link">
+                                Fast Start Bonus
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="boostbonus.html" class="menu-link">
+                                Boost Bonus
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <li class="menu-item">
+                    <a href="tokens.html" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">content_paste</span>
+                        <span class="title">Tokens</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="events.html" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">event</span>
+                        <span class="title">Events</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="https://mwracademy.com/webservices/user_login?api_key=yDEOcDTM4RAm1AeczHJY&session_id=amxzxx7chrqgasjnmrvf" class="menu-link" target="_blank">
+                        <span class="material-symbols-outlined menu-icon">location_away</span>
+                        <span class="title">MWR Academy</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="javascript:void(0);" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">hotel</span>
+                        <span class="title">Travel Advantage</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="javascript:void(0);" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">settings</span>
+                        <span class="title">Tools</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="javascript:void(0);" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">support</span>
+                        <span class="title">Support</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="login.html" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">logout</span>
+                        <span class="title">Logout</span>
+                    </a>
+                </li>
+            </ul>
+        </aside>
+    </div>
+    <!-- End Sidebar Area -->
+    <!-- Start Main Content Area -->
+    <div class="container-fluid">
+        <div class="main-content d-flex flex-column">
+            <!-- Start Header Area -->
+            <header class="header-area bg-white mb-4 rounded-bottom-15" id="header-area">
+                <div class="row align-items-center">
+                    <div class="col-lg-4 col-sm-6">
+                        <div class="left-header-content">
+                            <ul class="d-flex align-items-center ps-0 mb-0 list-unstyled justify-content-center justify-content-sm-start">
+                                <li>
+                                    <button class="header-burger-menu bg-transparent p-0 border-0" id="header-burger-menu">
+                                        <span class="material-symbols-outlined">menu</span>
+                                    </button>
+                                </li>
+                                <li>
+                                    <form class="src-form position-relative">
+                                        <input type="text" class="form-control" placeholder="Search here.....">
+                                        <button type="submit" class="src-btn position-absolute top-50 end-0 translate-middle-y bg-transparent p-0 border-0">
+                                            <span class="material-symbols-outlined">search</span>
+                                        </button>
+                                    </form>
+                                </li>
+                                <!--<li>
+                                    <div class="dropdown notifications apps">
+                                        <button class="btn btn-secondary border-0 p-0 position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <span class="material-symbols-outlined">apps</span>
+                                        </button>
+                                        <div class="dropdown-menu dropdown-lg p-0 border-0 py-4 px-3 max-h-312" data-simplebar>
+                                            <div class="notification-menu d-flex flex-wrap justify-content-between gap-4">
+                                                <a href="https://www.figma.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/figma.svg" class="wh-25" alt="united-states">
+                                                    <span>Figma</span>
+                                                </a>
+                                                <a href="https://www.dribbble.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/dribbble.svg" class="wh-25" alt="united-states">
+                                                    <span>Dribbble</span>
+                                                </a>
+                                                <a href="https://www.spotify.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/spotify.svg" class="wh-25" alt="united-states">
+                                                    <span>Spotify</span>
+                                                </a>
+                                                <a href="https://www.github.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/github.svg" class="wh-25" alt="united-states">
+                                                    <span>Github</span>
+                                                </a>
+                                                <a href="https://www.google.com/drive/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/gdrive.svg" class="wh-25" alt="united-states">
+                                                    <span>GDrive</span>
+                                                </a>
+                                                <a href="https://www.trello.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/trello.svg" class="wh-25" alt="united-states">
+                                                    <span>Trello</span>
+                                                </a>
+                                                <a href="https://www.slak.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/slak.svg" class="wh-25" alt="united-states">
+                                                    <span>Slak</span>
+                                                </a>
+                                                <a href="https://www.pinterest.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/pinterest.svg" class="wh-25" alt="united-states">
+                                                    <span>Pinterest</span>
+                                                </a>
+                                                <a href="https://www.facebook.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/facebook.svg" class="wh-25" alt="united-states">
+                                                    <span>Facebook</span>
+                                                </a>
+                                                <a href="https://www.linkedin.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/linkedin.svg" class="wh-25" alt="united-states">
+                                                    <span>Linkedin</span>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>-->
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-8 col-sm-6">
+                        <div class="right-header-content mt-2 mt-sm-0">
+                            <ul class="d-flex align-items-center justify-content-center justify-content-sm-end ps-0 mb-0 list-unstyled">
+                                <li class="header-right-item">
+                                    <div class="light-dark">
+                                        <button class="switch-toggle settings-btn dark-btn p-0 bg-transparent border-0" id="switch-toggle">
+                                            <span class="dark"><i class="material-symbols-outlined">light_mode</i></span>
+                                            <span class="light"><i class="material-symbols-outlined">dark_mode</i></span>
+                                        </button>
+                                    </div>
+                                </li>
+                                <li class="header-right-item">
+                                    <div class="dropdown notifications language">
+                                        <button class="btn btn-secondary dropdown-toggle border-0 p-0 position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <span class="material-symbols-outlined">translate</span>
+                                        </button>
+                                        <div class="dropdown-menu dropdown-lg p-0 border-0 dropdown-menu-end">
+                                            <span class="fw-semibold fs-15 text-secondary title">Choose Language</span>
+                                            <div class="max-h-275" data-simplebar>
+                                                <div class="notification-menu">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/usa.svg" class="wh-30 rounded-circle" alt="united-states">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">English</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/france.svg" class="wh-30 rounded-circle" alt="france">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">French</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/portugal.svg" class="wh-30 rounded-circle" alt="portugal">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">Portuguese</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu mb-0">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/spain.svg" class="wh-30 rounded-circle" alt="spain">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">Spanish</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/italia.svg" class="wh-30 rounded-circle" alt="italia">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">Italian</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu mb-0">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/south_korea.svg" class="wh-30 rounded-circle" alt="south korea">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">Korean</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/japan.svg" class="wh-30 rounded-circle" alt="japan">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">Japanese</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li class="header-right-item">
+                                    <button class="fullscreen-btn bg-transparent p-0 border-0" id="fullscreen-button">
+                                        <i class="material-symbols-outlined text-body">fullscreen</i>
+                                    </button>
+                                </li>
+                                <li class="header-right-item">
+                                    <div class="dropdown notifications noti">
+                                        <button class="btn btn-secondary border-0 p-0 position-relative badge" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <span class="material-symbols-outlined">notifications</span>
+                                        </button>
+                                        <div class="dropdown-menu dropdown-lg p-0 border-0 p-0 dropdown-menu-end">
+                                            <div class="d-flex justify-content-between align-items-center title">
+                                                <span class="fw-semibold fs-15 text-secondary">Notifications <span class="fw-normal text-body fs-14">(03)</span></span>
+                                                <button class="p-0 m-0 bg-transparent border-0 fs-14 text-primary">Clear All</button>
+                                            </div>
+
+                                            <div class="max-h-217" data-simplebar>
+                                                <div class="notification-menu">
+                                                    <a href="notification.html" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <i class="material-symbols-outlined text-primary">sms</i>
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p>Your renewal fee will be charge on <span class="fw-semibold">September 2nd.</span></p>
+                                                                <span class="fs-13">2 hrs ago</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu unseen">
+                                                    <a href="notification.html" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <i class="material-symbols-outlined text-info">person</i>
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p><span class="fw-semibold">André Lourenço</span> enrolled your team, sponsored by <span class="fw-semibold">Yoni Ashurov</span>.</p>
+                                                                <span class="fs-13">3 hrs ago</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <!--<div class="notification-menu">
+                                                    <a href="notification.html" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <i class="material-symbols-outlined text-success">mark_email_unread</i>
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p>You have requested to <span class="fw-semibold">withdrawal</span></p>
+                                                                <span class="fs-13">1 day ago</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu">
+                                                    <a href="notification.html" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <i class="material-symbols-outlined text-primary">sms</i>
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p>You have requested to <span class="fw-semibold">withdrawal</span></p>
+                                                                <span class="fs-13">2 hrs ago</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu unseen">
+                                                    <a href="notification.html" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <i class="material-symbols-outlined text-info">person</i>
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p>A new user added in Trezo</p>
+                                                                <span class="fs-13">3 hrs ago</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu">
+                                                    <a href="notification.html" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <i class="material-symbols-outlined text-success">mark_email_unread</i>
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p>You have requested to <span class="fw-semibold">withdrawal</span></p>
+                                                                <span class="fs-13">1 day ago</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>-->
+                                            </div>
+
+                                            <a href="notification.html" class="dropdown-item text-center text-primary d-block view-all fw-medium rounded-bottom-3">
+                                                <span>See All Notifications </span>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li class="header-right-item">
+                                    <div class="dropdown admin-profile">
+                                        <div class="d-xxl-flex align-items-center bg-transparent border-0 text-start p-0 cursor dropdown-toggle" data-bs-toggle="dropdown">
+                                            <div class="flex-shrink-0">
+                                                <img class="rounded-circle wh-40 administrator" src="assets/images/administrator.jpg" alt="admin">
+                                            </div>
+                                            <div class="flex-grow-1 ms-2">
+                                                <div class="d-flex align-items-center justify-content-between">
+                                                    <div class="d-none d-xxl-block">
+                                                        <div class="d-flex align-content-center">
+                                                            <h3>Nuno Cação</h3>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="dropdown-menu border-0 bg-white dropdown-menu-end">
+                                            <div class="d-flex align-items-center info">
+                                                <div class="flex-shrink-0">
+                                                    <img class="rounded-circle wh-30 administrator" src="assets/images/administrator.jpg" alt="admin">
+                                                </div>
+                                                <div class="flex-grow-1 ms-2">
+                                                    <h3 class="fw-medium">Nuno Cação</h3>
+                                                    <span class="fs-12">Jade Ambassador</span>
+                                                </div>
+                                            </div>
+                                            <ul class="admin-link ps-0 mb-0 list-unstyled">
+                                                <li>
+                                                    <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="user-profile.html">
+                                                        <i class="material-symbols-outlined">account_circle</i>
+                                                        <span class="ms-2">My Profile</span>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="#">
+                                                        <i class="material-symbols-outlined">chat</i>
+                                                        <span class="ms-2">Messages</span>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="guestpasses.html">
+                                                        <i class="material-symbols-outlined">confirmation_number</i>
+                                                        <span class="ms-2">Guest Passes</span>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="guestpasses.html">
+                                                        <i class="material-symbols-outlined">confirmation_number</i>
+                                                        <span class="ms-2">Guest Passes</span>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="marketing.html">
+                                                        <i class="material-symbols-outlined">format_list_bulleted</i>
+                                                        <span class="ms-2">Marketing</span>
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                            <ul class="admin-link ps-0 mb-0 list-unstyled">
+                                                <li>
+                                                    <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="#">
+                                                        <i class="material-symbols-outlined">support</i>
+                                                        <span class="ms-2">Support</span>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="login.html">
+                                                        <i class="material-symbols-outlined">logout</i>
+                                                        <span class="ms-2">Logout</span>
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li class="header-right-item">
+                                    <button class="theme-settings-btn p-0 border-0 bg-transparent" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasScrolling" aria-controls="offcanvasScrolling">
+                                        <i class="material-symbols-outlined" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Click On Theme Settings">settings</i>
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            <!-- End Header Area -->
+
+            <div class="main-content-container overflow-hidden">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+                    <h3 class="mb-0">Enrollment Team - Customers</h3>
+
+                    <nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+                        <ol class="breadcrumb align-items-center mb-0 lh-1">
+                            <li class="breadcrumb-item">
+                                <a href="index.html" class="d-flex align-items-center text-decoration-none">
+                                    <i class="ri-home-4-line fs-18 text-primary me-1"></i>
+                                    <span class="text-secondary fw-medium hover">Main Menu</span>
+                                </a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page">
+                                <span class="fw-medium">Enrollment Team</span>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page">
+                                <span class="fw-medium">Customers</span>
+                            </li>
+                        </ol>
+                    </nav>
+                </div>
+
+                <div class="card bg-white border-0 rounded-3 mb-4">
+                    <div class="card bg-white border-0 rounded-3 mb-4">
+                        <div class="card-body p-4" style="padding-bottom: 0 !important;">
+                            <div class="mb-3 mb-lg-4">
+                                <h3 class="mb-0">My Customers</h3>
+                            </div>
+                            <div class="row">
+                                <div class="col-xxl-4 col-xl-4 col-sm-4">
+                                    <div class="card bg-primary bg-opacity-10 border-primary border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                                        <div class="card-body p-4">
+                                            <div class="d-flex align-items-center">
+                                                <div class="flex-shrink-0">
+                                                    <i class="material-symbols-outlined fs-40 text-primary">group</i>
+                                                </div>
+                                                <div class="flex-grow-1 ms-2">
+                                                    <span>Total Customers</span>
+                                                    <h3 class="fs-20 mt-1 mb-0">257</h3>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xxl-4 col-xl-4 col-sm-4">
+                                    <div class="card bg-success bg-opacity-10 border-success border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                                        <div class="card-body p-4">
+                                            <div class="d-flex align-items-center">
+                                                <div class="flex-shrink-0">
+                                                    <i class="material-symbols-outlined fs-40 text-success">contact_mail</i>
+                                                </div>
+                                                <div class="flex-grow-1 ms-2">
+                                                    <span>Total Active Customers</span>
+                                                    <h3 class="fs-20 mt-1 mb-0">198</h3>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xxl-4 col-xl-4 col-sm-4">
+                                    <div class="card bg-info bg-opacity-10 border-info border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                                        <div class="card-body p-4">
+                                            <div class="d-flex align-items-center">
+                                                <div class="flex-shrink-0">
+                                                    <i class="material-symbols-outlined fs-40 text-info">person</i>
+                                                </div>
+                                                <div class="flex-grow-1 ms-2">
+                                                    <span>New Customers (Current Month)</span>
+                                                    <h3 class="fs-20 mt-1 mb-0">5</h3>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card bg-white border-0 rounded-3 mb-4">
+                    <div class="card-body p-0">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
+                            <form class="position-relative table-src-form me-0">
+                                <input type="text" class="form-control" placeholder="Search here">
+                                <i class="material-symbols-outlined position-absolute top-50 start-0 translate-middle-y">search</i>
+                            </form>
+                            <div class="position-relative">
+                                <input type="text" class="form-control" id="range_datepicker" style="width:230px;height:36px;padding-left:35px;" placeholder="01/10/2025 - 31/10/2025" />
+                                <i class="ri-calendar-line position-absolute top-50 start-0 translate-middle-y ps-3"></i>
+                            </div>
+                        </div>
+
+                        <div class="default-table-area style-two default-table-width">
+                            <div class="table-responsive">
+                                <table class="table align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Join Date</th>
+                                            <th scope="col">ID</th>
+                                            <th scope="col">Name</th>
+                                            <th scope="col">Email</th>
+                                            <th scope="col">Phone</th>
+                                            <th scope="col">Service</th>
+                                            <th scope="col">Country</th>
+                                            <th scope="col">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr data-id="1"
+                                            data-name="Yoni Ashurov"
+                                            data-avatar="assets/images/user-16.jpg"
+                                            data-joindate="15/01/2010"
+                                            data-email="yoni@mwrlife.com"
+                                            data-phone="(+1) 647 264-8388"
+                                            data-service="Travel Advantage Elite TURBO"
+                                            data-country="USA"
+                                            data-sponsor="Nuno Cação"
+                                            data-status="Active">
+                                            <td>15/01/2010</td>
+                                            <td>1</td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <img src="assets/images/user-16.jpg" alt="" style="width:28px;height:28px;object-fit:cover;border-radius:50%;margin-right:8px;">
+                                                    <span>Yoni Ashurov</span>
+                                                </div>
+                                            </td>
+                                            <td>yoni@mwrlife.com</td>
+                                            <td>(+1) 647 264-8388</td>
+                                            <td>Travel Advantage Elite TURBO</td>
+                                            <td>USA</td>
+                                            <td><span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">Active</span></td>
+                                        </tr>
+
+                                        <tr data-id="2"
+                                            data-name="Elsa Tinta"
+                                            data-avatar="assets/images/user-17.jpg"
+                                            data-joindate="15/01/2011"
+                                            data-email="elsa@tinta.com"
+                                            data-phone="(+351) 910 000 000"
+                                            data-service="Travel Advantage Guest"
+                                            data-country="Portugal"
+                                            data-sponsor="Nuno Cação"
+                                            data-status="Active">
+                                            <td>15/01/2011</td>
+                                            <td>2</td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <img src="assets/images/user-17.jpg" alt="" style="width:28px;height:28px;object-fit:cover;border-radius:50%;margin-right:8px;">
+                                                    <span>Elsa Tinta</span>
+                                                </div>
+                                            </td>
+                                            <td>elsa@tinta.com</td>
+                                            <td>(+351) 910 000 000</td>
+                                            <td>Travel Advantage Guest</td>
+                                            <td>Portugal</td>
+                                            <td><span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">Active</span></td>
+                                        </tr>
+
+                                        <tr data-id="7"
+                                            data-name="Cristiano Ronaldo"
+                                            data-avatar="assets/images/user-18.jpg"
+                                            data-joindate="15/01/2019"
+                                            data-email="cristiano@cr7.com"
+                                            data-phone="(+351) 911 111 222"
+                                            data-service="Travel Advantage Plus"
+                                            data-country="Portugal"
+                                            data-sponsor="Nuno Cação"
+                                            data-status="Suspended"
+                                            data-suspensiondate="10/07/2024">
+                                            <td>15/01/2019</td>
+                                            <td>7</td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <img src="assets/images/user-18.jpg" alt="" style="width:28px;height:28px;object-fit:cover;border-radius:50%;margin-right:8px;">
+                                                    <span>Cristiano Ronaldo</span>
+                                                </div>
+                                            </td>
+                                            <td>cristiano@cr7.com</td>
+                                            <td>(+351) 911 111 222</td>
+                                            <td>Travel Advantage Plus</td>
+                                            <td>Portugal</td>
+                                            <td><span class="badge bg-warning bg-opacity-10 text-warning p-2 fs-12 fw-normal">Suspended</span></td>
+                                        </tr>
+
+                                        <tr data-id="77"
+                                            data-name="André Lourenço"
+                                            data-avatar="assets/images/user-16.jpg"
+                                            data-joindate="15/01/2020"
+                                            data-email="andre@mwrlife.com"
+                                            data-phone="(+34) 919 999 999"
+                                            data-service="Travel Advantage VIP"
+                                            data-country="Spain"
+                                            data-sponsor="Nuno Cação"
+                                            data-status="Cancelled"
+                                            data-cancelationdate="02/08/2024">
+                                            <td>15/01/2020</td>
+                                            <td>77</td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <img src="assets/images/user-16.jpg" alt="" style="width:28px;height:28px;object-fit:cover;border-radius:50%;margin-right:8px;">
+                                                    <span>André Lourenço</span>
+                                                </div>
+                                            </td>
+                                            <td>andre@mwrlife.com</td>
+                                            <td>(+34) 919 999 999</td>
+                                            <td>Travel Advantage VIP</td>
+                                            <td>Spain</td>
+                                            <td><span class="badge bg-danger bg-opacity-10 text-danger p-2 fs-12 fw-normal">Cancelled</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="p-4 pt-lg-4">
+                                <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
+                                    <span class="fs-12 fw-medium">Showing 4 of 4 Results</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card bg-white border-0 rounded-3 mb-4">
+                    <div class="card bg-white border-0 rounded-3 mb-4">
+                        <div class="card-body p-4" style="padding-bottom: 0 !important;">
+                            <div class="mb-3 mb-lg-4">
+                                <h3 class="mb-0">Team Customers</h3>
+                            </div>
+                            <div class="row">
+                                <div class="col-xxl-4 col-xl-4 col-sm-4">
+                                    <div class="card bg-primary bg-opacity-10 border-primary border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                                        <div class="card-body p-4">
+                                            <div class="d-flex align-items-center">
+                                                <div class="flex-shrink-0">
+                                                    <i class="material-symbols-outlined fs-40 text-primary">group</i>
+                                                </div>
+                                                <div class="flex-grow-1 ms-2">
+                                                    <span>Total Customers</span>
+                                                    <h3 class="fs-20 mt-1 mb-0">590</h3>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xxl-4 col-xl-4 col-sm-4">
+                                    <div class="card bg-success bg-opacity-10 border-success border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                                        <div class="card-body p-4">
+                                            <div class="d-flex align-items-center">
+                                                <div class="flex-shrink-0">
+                                                    <i class="material-symbols-outlined fs-40 text-success">contact_mail</i>
+                                                </div>
+                                                <div class="flex-grow-1 ms-2">
+                                                    <span>Total Active Customers</span>
+                                                    <h3 class="fs-20 mt-1 mb-0">400</h3>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xxl-4 col-xl-4 col-sm-4">
+                                    <div class="card bg-info bg-opacity-10 border-info border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                                        <div class="card-body p-4">
+                                            <div class="d-flex align-items-center">
+                                                <div class="flex-shrink-0">
+                                                    <i class="material-symbols-outlined fs-40 text-info">person</i>
+                                                </div>
+                                                <div class="flex-grow-1 ms-2">
+                                                    <span>New Customers (Current Month)</span>
+                                                    <h3 class="fs-20 mt-1 mb-0">57</h3>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card bg-white border-0 rounded-3 mb-4">
+                    <div class="card-body p-0">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
+                            <form class="position-relative table-src-form me-0">
+                                <input type="text" class="form-control" placeholder="Search here">
+                                <i class="material-symbols-outlined position-absolute top-50 start-0 translate-middle-y">search</i>
+                            </form>
+                            <div class="position-relative">
+                                <input type="text" class="form-control" id="range_datepicker" style="width:230px;height:36px;padding-left:35px;" placeholder="01/10/2025 - 31/10/2025" />
+                                <i class="ri-calendar-line position-absolute top-50 start-0 translate-middle-y ps-3"></i>
+                            </div>
+                        </div>
+
+                        <div class="default-table-area style-two default-table-width">
+                            <div class="table-responsive">
+                                <table class="table align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Join Date</th>
+                                            <th scope="col">ID</th>
+                                            <th scope="col">Name</th>
+                                            <th scope="col">Email</th>
+                                            <th scope="col">Phone</th>
+                                            <th scope="col">Service</th>
+                                            <th scope="col">Country</th>
+                                            <th scope="col">Sponsor</th>
+                                            <th scope="col">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr data-id="1"
+                                            data-name="Yoni Ashurov"
+                                            data-avatar="assets/images/user-16.jpg"
+                                            data-joindate="15/01/2010"
+                                            data-email="yoni@mwrlife.com"
+                                            data-phone="(+1) 647 264-8388"
+                                            data-service="Travel Advantage Elite TURBO"
+                                            data-country="USA"
+                                            data-sponsor="José Manuel"
+                                            data-status="Active">
+                                            <td>15/01/2010</td>
+                                            <td>1</td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <img src="assets/images/user-16.jpg" alt="" style="width:28px;height:28px;object-fit:cover;border-radius:50%;margin-right:8px;">
+                                                    <span>Yoni Ashurov</span>
+                                                </div>
+                                            </td>
+                                            <td>yoni@mwrlife.com</td>
+                                            <td>(+1) 647 264-8388</td>
+                                            <td>Travel Advantage Elite TURBO</td>
+                                            <td>USA</td>
+                                            <td>José Manuel</td>
+                                            <td><span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">Active</span></td>
+                                        </tr>
+
+                                        <tr data-id="2"
+                                            data-name="Elsa Tinta"
+                                            data-avatar="assets/images/user-17.jpg"
+                                            data-joindate="15/01/2011"
+                                            data-email="elsa@tinta.com"
+                                            data-phone="(+351) 910 000 000"
+                                            data-service="Travel Advantage Guest"
+                                            data-country="Portugal"
+                                            data-sponsor="Viktor Gyokeres"
+                                            data-status="Active">
+                                            <td>15/01/2011</td>
+                                            <td>2</td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <img src="assets/images/user-17.jpg" alt="" style="width:28px;height:28px;object-fit:cover;border-radius:50%;margin-right:8px;">
+                                                    <span>Elsa Tinta</span>
+                                                </div>
+                                            </td>
+                                            <td>elsa@tinta.com</td>
+                                            <td>(+351) 910 000 000</td>
+                                            <td>Travel Advantage Guest</td>
+                                            <td>Portugal</td>
+                                            <td>Viktor Gyokeres</td>
+                                            <td><span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">Active</span></td>
+                                        </tr>
+
+                                        <tr data-id="7"
+                                            data-name="Cristiano Ronaldo"
+                                            data-avatar="assets/images/user-18.jpg"
+                                            data-joindate="15/01/2019"
+                                            data-email="cristiano@cr7.com"
+                                            data-phone="(+351) 911 111 222"
+                                            data-service="Travel Advantage Plus"
+                                            data-country="Portugal"
+                                            data-sponsor="John Schmidt"
+                                            data-status="Suspended"
+                                            data-suspensiondate="10/07/2024">
+                                            <td>15/01/2019</td>
+                                            <td>7</td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <img src="assets/images/user-18.jpg" alt="" style="width:28px;height:28px;object-fit:cover;border-radius:50%;margin-right:8px;">
+                                                    <span>Cristiano Ronaldo</span>
+                                                </div>
+                                            </td>
+                                            <td>cristiano@cr7.com</td>
+                                            <td>(+351) 911 111 222</td>
+                                            <td>Travel Advantage Plus</td>
+                                            <td>Portugal</td>
+                                            <td>John Schmidt</td>
+                                            <td><span class="badge bg-warning bg-opacity-10 text-warning p-2 fs-12 fw-normal">Suspended</span></td>
+                                        </tr>
+
+                                        <tr data-id="77"
+                                            data-name="André Lourenço"
+                                            data-avatar="assets/images/user-16.jpg"
+                                            data-joindate="15/01/2020"
+                                            data-email="andre@mwrlife.com"
+                                            data-phone="(+34) 919 999 999"
+                                            data-service="Travel Advantage VIP"
+                                            data-country="Spain"
+                                            data-sponsor="Zé Tinto"
+                                            data-status="Cancelled"
+                                            data-cancelationdate="02/08/2024">
+                                            <td>15/01/2020</td>
+                                            <td>77</td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <img src="assets/images/user-16.jpg" alt="" style="width:28px;height:28px;object-fit:cover;border-radius:50%;margin-right:8px;">
+                                                    <span>André Lourenço</span>
+                                                </div>
+                                            </td>
+                                            <td>andre@mwrlife.com</td>
+                                            <td>(+34) 919 999 999</td>
+                                            <td>Travel Advantage VIP</td>
+                                            <td>Spain</td>
+                                            <td>Zé Tinto</td>
+                                            <td><span class="badge bg-danger bg-opacity-10 text-danger p-2 fs-12 fw-normal">Cancelled</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="p-4 pt-lg-4">
+                                <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
+                                    <span class="fs-12 fw-medium">Showing 4 of 4 Results</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="flex-grow-1"></div>
+
+            <!-- Start Footer Area -->
+            <footer class="footer-area bg-white text-center rounded-top-7">
+                <p class="fs-14">© <span class="text-primary-div">Trezo</span> is Proudly Owned by <a href="https://envytheme.com/" target="_blank" class="text-decoration-none text-primary">EnvyTheme</a></p>
+            </footer>
+            <!-- End Footer Area -->
+        </div>
+    </div>
+    <!-- Start Main Content Area -->
+    <!-- Start Create From Area -->
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="memberModal" aria-labelledby="mm-name">
+        <div class="offcanvas-header border-bottom p-4">
+            <h5 class="offcanvas-title fs-18 mb-0" id="mm-name">Member</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body p-4">
+            <form>
+                <div class="form-group mb-4">
+                    <img id="mm-avatar" src="" class="rounded-circle" width="64" height="64" alt="">
+                </div>
+                <div class="form-group mb-4">
+                    <strong>ID:</strong> <span id="mm-id">—</span>
+                </div>
+                <div class="form-group mb-4">
+                    <strong>Join Date:</strong> <span id="mm-joindate">—</span>
+                </div>
+                <div class="form-group mb-4">
+                    <strong>Status:</strong> <span id="mm-status">—</span>
+                </div>
+                <div class="form-group mb-4">
+                    <strong>Email:</strong> <span id="mm-email">—</span>
+                </div>
+                <div class="form-group mb-4">
+                    <strong>Phone:</strong> <span id="mm-phone">—</span>
+                </div>
+                <div class="form-group mb-4">
+                    <strong>Country:</strong> <span id="mm-country">—</span>
+                </div>
+                <div class="form-group mb-4">
+                    <strong>Sponsor:</strong> <span id="mm-sponsor">—</span>
+                </div>
+                <div class="form-group mb-4" id="divSuspensionDate">
+                    <strong>Suspension Date:</strong> <span id="mm-suspensiondate">—</span>
+                </div>
+                <div class="form-group mb-4" id="divCancelationDate">
+                    <strong>Cancelation Date:</strong> <span id="mm-cancelationdate">—</span>
+                </div>
+
+                <div class="form-group d-flex gap-3">
+                    <button type="button"
+                            class="btn btn-primary text-white fw-semibold py-2 px-2 px-sm-3"
+                            data-bs-dismiss="offcanvas">
+                        <span class="py-sm-1 d-block">
+                            <i class="ri-close-line text-white"></i>
+                            <span>Close</span>
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- End Create From Area -->
+    <!-- Start Theme Setting Area -->
+    <div class="offcanvas offcanvas-end bg-white" data-bs-scroll="true" data-bs-backdrop="true" tabindex="-1" id="offcanvasScrolling" aria-labelledby="offcanvasScrollingLabel" style="box-shadow: rgba(100, 100, 111, 0.2) 0px 7px 29px 0px;">
+        <div class="offcanvas-header bg-primary py-3 px-4">
+            <h5 class="offcanvas-title fs-18 text-white" id="offcanvasScrollingLabel">Theme Settings</h5>
+            <button type="button" class="btn-close text-white" data-bs-dismiss="offcanvas" aria-label="Close" style="filter: invert(1); opacity: 1;"></button>
+        </div>
+        <div class="offcanvas-body p-4">
+            <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">RTL / LTR</h4>
+
+                <div class="d-flex align-items-center position-relative settings-box-wrap for-rtl-mode" style="gap: 25px;">
+                    <div class="cursor position-relative active-wrap2">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">LTR</span>
+                        </div>
+                    </div>
+                    <div class="cursor position-relative active-wrap1">
+                        <div class="settings-box for-rtl">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">RTL</span>
+                        </div>
+                    </div>
+                    <label id="switch" class="switch-for-rtl">
+                        <input type="checkbox" class="position-absolute top-0 bottom-0 start-0 end-0 opacity-0 cursor" onchange="toggleTheme()" id="slider">
+                        <span class="sliders round"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Container Style Fluid / Boxed</h4>
+                <button class="boxed-style settings-btn fluid-boxed-btn" id="boxed-style">
+                    Click To <span class="fluid">Fluid</span> <span class="boxed">Boxed</span>
+                </button>
+            </div> -->
+
+            <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Only Sidebar Light / Dark</h4>
+
+                <div class="d-flex align-items-center position-relative settings-box-wrap for-sidebar-dark" style="gap: 25px;">
+                    <div class="cursor position-relative active-wrap2">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Light</span>
+                        </div>
+                    </div>
+                    <div class="cursor position-relative active-wrap1">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Dark</span>
+                        </div>
+                    </div>
+                    <button class="sidebar-light-dark settings-btn" id="sidebar-light-dark"></button>
+                </div>
+            </div>
+
+            <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Only Header Light / Dark</h4>
+
+                <div class="d-flex align-items-center position-relative settings-box-wrap for-header-dark" style="gap: 25px;">
+                    <div class="cursor position-relative active-wrap2">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Light</span>
+                        </div>
+                    </div>
+                    <div class="cursor position-relative active-wrap1">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Dark</span>
+                        </div>
+                    </div>
+                    <button class="header-light-dark settings-btn" id="header-light-dark"></button>
+                </div>
+            </div>
+
+            <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Only Footer Light / Dark</h4>
+
+                <div class="d-flex align-items-center position-relative settings-box-wrap for-footer-dark" style="gap: 25px;">
+                    <div class="cursor position-relative active-wrap2">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Light</span>
+                        </div>
+                    </div>
+                    <div class="cursor position-relative active-wrap1">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Dark</span>
+                        </div>
+                    </div>
+                    <button class="footer-light-dark settings-btn" id="footer-light-dark"></button>
+                </div>
+            </div>
+
+            <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Card Style Radius / Square</h4>
+
+                <div class="d-flex align-items-center position-relative settings-box-wrap for-card-radius" style="gap: 25px;">
+                    <div class="cursor position-relative active-wrap2">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Radius</span>
+                        </div>
+                    </div>
+                    <div class="cursor position-relative active-wrap1">
+                        <div class="settings-box rounded-0">
+                            <span class="rounded-0"></span>
+                            <span class="rounded-0"></span>
+                            <span class="rounded-0"></span>
+                            <span class="rounded-0"></span>
+                            <span class="rounded-0"></span>
+                            <span class="rounded-0"></span>
+                            <span class="rounded-0"></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Square</span>
+                        </div>
+                    </div>
+                    <button class="card-radius-square settings-btn" id="card-radius-square"></button>
+                </div>
+            </div>
+
+            <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Card Style BG White / Gray</h4>
+
+                <div class="d-flex align-items-center position-relative settings-box-wrap for-card-bg-gray" style="gap: 25px;">
+                    <div class="cursor position-relative active-wrap2">
+                        <div class="settings-box bg-light-40">
+                            <span class="bg-white"></span>
+                            <span class="bg-white"></span>
+                            <span class="bg-white"></span>
+                            <span class="bg-white"></span>
+                            <span class="bg-white"></span>
+                            <span class="bg-white"></span>
+                            <span class="bg-white"></span>
+                            <span class="rounded-3 bg-white"></span>
+                            <span class="rounded-3 bg-white"></span>
+                            <span class="rounded-3 bg-white"></span>
+                            <span class="rounded-3 bg-white"></span>
+                            <span class="rounded-3 bg-white"></span>
+                            <span class="rounded-3 bg-white"></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">White</span>
+                        </div>
+                    </div>
+                    <div class="cursor position-relative active-wrap1">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Gray</span>
+                        </div>
+                    </div>
+                    <button class="card-bg settings-btn" id="card-bg"></button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- End Theme Setting Area -->
+    <!-- Link Of JS File -->
+    <script src="assets/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/sidebar-menu.js"></script>
+    <script src="assets/js/dragdrop.js"></script>
+    <script src="assets/js/rangeslider.min.js"></script>
+    <script src="assets/js/quill.min.js"></script>
+    <script src="assets/js/data-table.js"></script>
+    <script src="assets/js/prism.js"></script>
+    <script src="assets/js/clipboard.min.js"></script>
+    <script src="assets/js/feather.min.js"></script>
+    <script src="assets/js/simplebar.min.js"></script>
+    <script src="assets/js/apexcharts.min.js"></script>
+    <script src="assets/js/echarts.min.js"></script>
+    <script src="assets/js/swiper-bundle.min.js"></script>
+    <script src="assets/js/fullcalendar.main.js"></script>
+    <script src="assets/js/jsvectormap.min.js"></script>
+    <script src="assets/js/world-merc.js"></script>
+    <script src="assets/js/moment.min.js"></script>
+    <script src="assets/js/lightpick.js"></script>
+    <script src="assets/js/custom/apexcharts.js"></script>
+    <script src="assets/js/custom/echarts.js"></script>
+    <script src="assets/js/custom/custom.js"></script>
+
+    <script>
+        (() => {
+            // ---------- Helpers ----------
+            const q = (sel, root = document) => root.querySelector(sel);
+            const qa = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+            const text = (el) => (el ? el.textContent.trim() : '').trim();
+
+            // Offcanvas Bootstrap 5
+            const offcanvasEl = document.getElementById('memberModal');
+            function getOffcanvas() {
+                if (!offcanvasEl) return null;
+                let oc = bootstrap.Offcanvas.getInstance(offcanvasEl);
+                if (!oc) oc = new bootstrap.Offcanvas(offcanvasEl);
+                return oc;
+            }
+
+            // Preenche o painel
+            function fillMemberPanel(d) {
+                if (!offcanvasEl) return;
+
+                const set = (sel, val) => {
+                    const el = q(sel, offcanvasEl);
+                    if (el) el.textContent = val ?? '—';
+                };
+                const setSrc = (sel, val) => {
+                    const el = q(sel, offcanvasEl);
+                    if (el) el.setAttribute('src', val || '');
+                };
+                const show = (el, on) => { if (el) el.style.display = on ? '' : 'none'; };
+
+                set('#mm-name', d.name || 'Member');
+                setSrc('#mm-avatar', d.avatar || '');
+                set('#mm-id', d.id || '—');
+                set('#mm-joindate', d.joindate || '—');
+                set('#mm-status', d.status || '—');
+                set('#mm-email', d.email || '—');
+                set('#mm-phone', d.phone || '—');
+                set('#mm-country', d.country || '—');
+                set('#mm-sponsor', d.sponsor || '—');
+
+                // Suspended / Cancelled blocks
+                const isSuspended = /suspend/i.test(d.status || '');
+                const isCancelled = /cancel/i.test(d.status || '');
+                const divSusp = q('#divSuspensionDate', offcanvasEl);
+                const divCanc = q('#divCancelationDate', offcanvasEl);
+
+                set('#mm-suspensiondate', isSuspended ? (d.suspensiondate || '—') : '—');
+                set('#mm-cancelationdate', isCancelled ? (d.cancelationdate || '—') : '—');
+
+                show(divSusp, isSuspended);
+                show(divCanc, isCancelled);
+            }
+
+            // Extrai dados da linha: prefere data-*, senão lê pelas colunas
+            function dataFromRow(tr) {
+                const usingData = tr.dataset && Object.keys(tr.dataset).length > 0;
+
+                // Mapeamento padrão por índice de coluna (sem checkbox inicial):
+                // 0: Join Date, 1: ID, 2: Name, 3: Email, 4: Phone, 5: Service, 6: Country, (Team table tem 7: Sponsor), last: Status (badge)
+                const tds = qa('td, th', tr);
+
+                // Se houver duas tabelas (My Customers vs Team Customers), a segunda tem Sponsor
+                const hasSponsorCol = tds.length >= 9;
+
+                const statusCell = tds[hasSponsorCol ? 8 : 7];
+                const statusBadge = statusCell ? text(statusCell) : (tr.dataset.status || '');
+
+                const d = {
+                    id: usingData ? tr.dataset.id : text(tds[1]),
+                    name: usingData ? tr.dataset.name : text(tds[2]),
+                    avatar: usingData ? tr.dataset.avatar : '',               // coloca via data-avatar se tiveres
+                    joindate: usingData ? tr.dataset.joindate : text(tds[0]),
+                    email: usingData ? tr.dataset.email : text(tds[3]),
+                    phone: usingData ? tr.dataset.phone : text(tds[4]),
+                    service: usingData ? tr.dataset.service : text(tds[5]),
+                    country: usingData ? tr.dataset.country : text(tds[6]),
+                    sponsor: usingData ? tr.dataset.sponsor : (hasSponsorCol ? text(tds[7]) : '—'),
+                    status: usingData ? tr.dataset.status : statusBadge,
+                    suspensiondate: usingData ? tr.dataset.suspensiondate : '',        // usa data-suspensiondate na <tr>
+                    cancelationdate: usingData ? tr.dataset.cancelationdate : ''         // usa data-cancelationdate na <tr>
+                };
+
+                return d;
+            }
+
+            // Delegado: clique em linhas
+            document.addEventListener('click', (e) => {
+                const tr = e.target.closest('.default-table-area table tbody tr');
+                if (!tr) return;
+
+                // ignora clicks em links/botões dentro da linha
+                if (e.target.closest('a, button, [role="button"], input, label, select, textarea')) return;
+
+                const data = dataFromRow(tr);
+                fillMemberPanel(data);
+                const oc = getOffcanvas(); if (oc) oc.show();
+            });
+
+            // Pesquisa rápida: cada .table-src-form filtra a TABELA seguinte dentro do mesmo card
+            qa('.table-src-form input').forEach(inp => {
+                inp.addEventListener('input', () => {
+                    const card = inp.closest('.card, .default-table-area, .card-body') || document;
+                    // procura a tabela mais próxima a seguir ao formulário
+                    let table = card.querySelector('.default-table-area table');
+                    if (!table) {
+                        // fallback: qualquer tabela mais próxima
+                        table = card.querySelector('table');
+                    }
+                    if (!table) return;
+
+                    const term = inp.value.trim().toLowerCase();
+                    const rows = qa('tbody tr', table);
+                    rows.forEach(row => {
+                        const hay = row.textContent.toLowerCase();
+                        row.style.display = hay.includes(term) ? '' : 'none';
+                    });
+
+                    // Atualiza "Showing X of Y Results" se existir no mesmo bloco
+                    const showingWrap = card.querySelector('.showing-wrap span');
+                    if (showingWrap) {
+                        const total = rows.length;
+                        const visible = rows.filter(r => r.style.display !== 'none').length;
+                        showingWrap.textContent = `Showing ${visible} of ${total} Results`;
+                    }
+                });
+            });
+
+            // (Opcional) Date range picker – evita erros se não existir Lightpick
+            try {
+                qa('#range_datepicker').forEach((el) => {
+                    if (typeof Lightpick !== 'undefined') {
+                        // inicialização simples; personaliza conforme precisares
+                        new Lightpick({
+                            field: el,
+                            singleDate: false,
+                            format: 'DD/MM/YYYY'
+                        });
+                    }
+                });
+            } catch (err) {
+                // silencioso
+            }
+
+            // Cursor "clicável" nas linhas (por JS para não depender de CSS externo)
+            qa('.default-table-area table tbody tr').forEach(tr => {
+                tr.style.cursor = 'pointer';
+            });
+        })();
+
+        // Evita refresh por submit acidental no offcanvas
+        document.addEventListener('DOMContentLoaded', () => {
+            const mmForm = document.querySelector('#memberModal form');
+            if (mmForm) {
+                mmForm.addEventListener('submit', (e) => e.preventDefault());
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,316 @@
+@page "/admin/commissions"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+
+<PageTitle>Commissions — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Commissions") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="row g-3 mb-3">
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm text-center py-3">
+            <div class="fw-bold fs-4 text-primary">@_items.Count</div>
+            <div class="small text-muted">Total (Page)</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm text-center py-3">
+            <div class="fw-bold fs-4 text-warning">@_items.Count(x => x.Status == "Pending")</div>
+            <div class="small text-muted">Pending</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm text-center py-3">
+            <div class="fw-bold fs-4 text-success">@_items.Count(x => x.Status == "Paid")</div>
+            <div class="small text-muted">Paid</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm text-center py-3">
+            <div class="fw-bold fs-4 text-danger">@_items.Count(x => x.Status == "Cancelled")</div>
+            <div class="small text-muted">Cancelled</div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2 flex-wrap">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-money-dollar-circle-line me-2 text-primary"></i>Commission Earnings
+        </h6>
+        <select class="form-select form-select-sm w-auto" style="min-width:140px"
+                @bind="_statusFilter" @bind:after="() => { _page = 1; _ = LoadAsync(); }">
+            <option value="">All Statuses</option>
+            <option value="Pending">Pending</option>
+            <option value="Paid">Paid</option>
+            <option value="Cancelled">Cancelled</option>
+        </select>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+        <button class="btn btn-primary btn-sm" @onclick="OpenCreate">
+            <i class="ri-add-line me-1"></i>New Commission
+        </button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="CommissionDto" DataSource="@_items"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250,500,1000})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn HeaderText="Member" Width="150">
+                        <Template>
+                            <a href="/admin/members/@(((CommissionDto)context).BeneficiaryMemberId)" class="text-primary small fw-semibold text-decoration-none">
+                                @(((CommissionDto)context).BeneficiaryMemberId)
+                            </a>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Commission Type" Width="180">
+                        <Template><span class="small">@(((CommissionDto)context).CommissionTypeName)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Amount" Width="110" TextAlign="TextAlign.Right">
+                        <Template><span class="fw-semibold">$@(((CommissionDto)context).Amount.ToString("F2"))</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Status" Width="110">
+                        <Template>
+                            <span class="badge @StatusBadge(((CommissionDto)context).Status)">@(((CommissionDto)context).Status)</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Earned Date" Width="130">
+                        <Template><span class="small text-muted">@(((CommissionDto)context).EarnedDate.ToString("yyyy-MM-dd"))</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Payment Date" Width="130">
+                        <Template>
+                            @if (((CommissionDto)context).PaymentDate.HasValue)
+                            {<text><span class="small text-muted">@(((CommissionDto)context).PaymentDate!.Value.ToString("yyyy-MM-dd"))</span></text>}
+                            else
+                            {<text><span class="small text-muted">—</span></text>}
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Manual" Width="90" TextAlign="TextAlign.Center">
+                        <Template>
+                            <span class="badge @(((CommissionDto)context).IsManualEntry ? "bg-info text-dark" : "bg-light text-dark border")">
+                                @(((CommissionDto)context).IsManualEntry ? "Yes" : "No")
+                            </span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="150" TextAlign="TextAlign.Center">
+                        <Template>
+                            @if (((CommissionDto)context).Status == "Pending")
+                            {
+                                <text>
+                                    <button class="btn btn-sm btn-outline-success py-0 me-1"
+                                            @onclick="() => MarkPaid((CommissionDto)context)">
+                                        <i class="ri-check-line"></i> Paid
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger py-0"
+                                            @onclick="() => ConfirmCancel((CommissionDto)context)">
+                                        <i class="ri-close-line"></i>
+                                    </button>
+                                </text>
+                            }
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+
+            @if (_totalPages > 1)
+            {
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
+                    <small class="text-muted">@_totalCount records — Page @_page of @_totalPages</small>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>
+                            @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
+                            { var pg = i; <li class="page-item @(_page == pg ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(pg)">@pg</button></li> }
+                            <li class="page-item @(_page == _totalPages ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page + 1)">›</button></li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@if (_showForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold">New Commission Entry</h5>
+                    <button type="button" class="btn-close" @onclick="CloseForm"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Member ID <span class="text-danger">*</span></label>
+                            <MemberPicker Value="@_form.BeneficiaryMemberId" ValueChanged="@(v => _form.BeneficiaryMemberId = v)" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Commission Type ID <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" @bind="_form.CommissionTypeId" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Amount ($) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" class="form-control" @bind="_form.Amount" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Period Date</label>
+                            <input type="date" class="form-control" @bind="_form.PeriodDate" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Notes</label>
+                            <textarea class="form-control" rows="3" @bind="_form.Notes"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SaveCommission" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Create
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showCancelConfirm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold text-danger">Cancel Commission</h5>
+                    <button type="button" class="btn-close" @onclick="() => { _showCancelConfirm = false; _cancelTarget = null; }"></button>
+                </div>
+                <div class="modal-body">Cancel commission of <strong>$@(_cancelTarget?.Amount.ToString("F2"))</strong> for member <code>@_cancelTarget?.BeneficiaryMemberId</code>? This cannot be undone.</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => { _showCancelConfirm = false; _cancelTarget = null; }">Back</button>
+                    <button class="btn btn-danger" @onclick="CancelCommission" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Cancel Commission
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<CommissionDto> _items = new();
+    private bool _loading = true;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private int _page = 1;
+    private const int PageSize = 25;
+    private int _totalCount;
+    private int _totalPages = 1;
+    private string _statusFilter = string.Empty;
+    private bool _showForm;
+    private bool _showCancelConfirm;
+    private CommissionFormModel _form = new();
+    private CommissionDto? _cancelTarget;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var url = $"api/v1/admin/commissions?page={_page}&pageSize={PageSize}";
+            if (!string.IsNullOrWhiteSpace(_statusFilter)) url += $"&status={_statusFilter}";
+            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<CommissionDto>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _items = resp.Data.Items.ToList();
+                _totalCount = resp.Data.TotalCount;
+                _totalPages = resp.Data.TotalPages;
+            }
+            else { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load commissions."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private async Task ChangePage(int p) { if (p < 1 || p > _totalPages) return; _page = p; await LoadAsync(); }
+
+    private void OpenCreate() { _form = new(); _showForm = true; }
+    private void CloseForm() { _showForm = false; }
+
+    private async Task SaveCommission()
+    {
+        if (string.IsNullOrWhiteSpace(_form.BeneficiaryMemberId) || _form.CommissionTypeId <= 0 || _form.Amount <= 0)
+        { _alertMsg = "Member ID, Commission Type ID, and Amount are required."; _alertIsError = true; return; }
+        _saving = true;
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/v1/admin/commissions", _form);
+            if (response.IsSuccessStatusCode) { _alertMsg = "Commission created."; _alertIsError = false; CloseForm(); await LoadAsync(); }
+            else { _alertMsg = $"Save failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private void ConfirmCancel(CommissionDto dto) { _cancelTarget = dto; _showCancelConfirm = true; }
+
+    private async Task CancelCommission()
+    {
+        if (_cancelTarget is null) return;
+        _saving = true;
+        try
+        {
+            var response = await Http.DeleteAsync($"api/v1/admin/commissions/{_cancelTarget.Id}");
+            if (response.IsSuccessStatusCode) { _alertMsg = "Commission cancelled."; _alertIsError = false; _showCancelConfirm = false; _cancelTarget = null; await LoadAsync(); }
+            else { _alertMsg = $"Cancel failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private async Task MarkPaid(CommissionDto dto)
+    {
+        _saving = true;
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/v1/admin/commissions/pay", new { CommissionIds = new[] { dto.Id } });
+            if (response.IsSuccessStatusCode) { _alertMsg = "Commission marked as paid."; _alertIsError = false; await LoadAsync(); }
+            else { _alertMsg = $"Pay failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private static string StatusBadge(string s) => s switch
+    { "Pending" => "bg-warning text-dark", "Paid" => "bg-success", "Cancelled" => "bg-danger", _ => "bg-secondary" };
+
+    private class CommissionFormModel
+    {
+        public string BeneficiaryMemberId { get; set; } = string.Empty;
+        public int CommissionTypeId { get; set; }
+        public decimal Amount { get; set; }
+        public DateTime? PeriodDate { get; set; }
+        public string? Notes { get; set; }
+    }
+
+    private record CommissionDto(string Id, string BeneficiaryMemberId, string CommissionTypeName, decimal Amount, string Status, DateTime EarnedDate, DateTime? PaymentDate, bool IsManualEntry);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+}

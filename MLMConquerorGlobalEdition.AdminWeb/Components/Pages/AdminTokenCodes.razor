@@ -1,0 +1,261 @@
+@page "/admin/tokens/codes"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+<PageTitle>Token Codes — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Tokens", "/admin/tokens/distribute"), new("Token Codes") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert alert-danger alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-header py-3">
+        <h6 class="card-title mb-0 fw-semibold">
+            <i class="ri-key-2-line me-2 text-primary"></i>Token Code Lookup
+        </h6>
+    </div>
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-lg-4">
+                <label class="form-label fw-semibold">Ambassador Member ID <span class="text-danger">*</span></label>
+                <MemberPicker Value="@_memberId" ValueChanged="@OnMemberChanged" />
+            </div>
+            <div class="col-lg-3">
+                <label class="form-label fw-semibold">Token Type</label>
+                @if (_tokenTypesLoading)
+                {
+                    <div class="form-control text-muted small"><span class="spinner-border spinner-border-sm me-1"></span>Loading...</div>
+                }
+                else
+                {
+                    <select class="form-select" @bind="_filterTokenTypeId">
+                        <option value="0">— All Types —</option>
+                        @foreach (var tt in _tokenTypes)
+                        {
+                            <option value="@tt.Id">@tt.Name@(tt.IsGuestPass ? " (Guest Pass)" : "")</option>
+                        }
+                    </select>
+                }
+            </div>
+            <div class="col-lg-2">
+                <label class="form-label fw-semibold">Status</label>
+                <select class="form-select" @bind="_filterIsUsed">
+                    <option value="">All</option>
+                    <option value="false">Available</option>
+                    <option value="true">Used</option>
+                </select>
+            </div>
+            <div class="col-lg-3">
+                <button class="btn btn-primary w-100" @onclick="Search" disabled="@(string.IsNullOrWhiteSpace(_memberId) || _loading)">
+                    @if (_loading) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                    <i class="ri-search-line me-1"></i>Search Token Codes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (_searched)
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-header py-3 d-flex align-items-center gap-2">
+            <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+                <i class="ri-key-line me-2 text-primary"></i>Token Codes for <code>@_memberId</code>
+            </h6>
+            <span class="badge bg-secondary">@_totalCount total</span>
+            <span class="badge bg-success">@_availableCount available</span>
+            <span class="badge bg-secondary opacity-75">@(_totalCount - _availableCount) used</span>
+        </div>
+        <div class="card-body p-0">
+            @if (_loading)
+            {
+                <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+            }
+            else if (_items.Count == 0)
+            {
+                <div class="text-center py-5 text-muted">
+                    <i class="ri-key-line fs-1 d-block mb-2"></i>
+                    <p class="mb-0">No token codes found for the selected filters.</p>
+                </div>
+            }
+            else
+            {
+                <SfGrid TValue="TokenCodeRow" DataSource="@_items"
+                        AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true"
+                        GridLines="GridLine.Horizontal">
+                    <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250})" />
+                    <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                    <GridColumns>
+                        <GridColumn HeaderText="Token Code" Width="160">
+                            <Template>
+                                @{ var row = (TokenCodeRow)context; }
+                                <span class="font-monospace fw-bold fs-6 @(row.IsUsed ? "text-muted text-decoration-line-through" : "text-primary")">
+                                    @row.TokenCode
+                                </span>
+                            </Template>
+                        </GridColumn>
+                        <GridColumn HeaderText="Token Type" Width="160">
+                            <Template>
+                                @{ var row = (TokenCodeRow)context; }
+                                @row.TokenTypeName
+                                @if (row.IsGuestPass)
+                                {
+                                    <span class="badge bg-info text-dark ms-1 small">Guest Pass</span>
+                                }
+                            </Template>
+                        </GridColumn>
+                        <GridColumn HeaderText="Status" Width="110" TextAlign="TextAlign.Center">
+                            <Template>
+                                @{ var row = (TokenCodeRow)context; }
+                                @if (row.IsUsed)
+                                {
+                                    <span class="badge bg-secondary">Used</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">Available</span>
+                                }
+                            </Template>
+                        </GridColumn>
+                        <GridColumn HeaderText="Type" Width="140">
+                            <Template>
+                                @{ var row = (TokenCodeRow)context; }
+                                <span class="badge bg-primary bg-opacity-10 text-primary small">@row.TransactionType</span>
+                            </Template>
+                        </GridColumn>
+                        <GridColumn HeaderText="Used By" Width="150">
+                            <Template>
+                                @{ var row = (TokenCodeRow)context; }
+                                @if (row.UsedByMemberId is not null)
+                                {
+                                    <code class="small">@row.UsedByMemberId</code>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">—</span>
+                                }
+                            </Template>
+                        </GridColumn>
+                        <GridColumn HeaderText="Used At" Width="140">
+                            <Template>
+                                @{ var row = (TokenCodeRow)context; }
+                                @if (row.UsedAt.HasValue)
+                                {
+                                    <span class="small text-muted">@row.UsedAt.Value.ToString("yyyy-MM-dd HH:mm")</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">—</span>
+                                }
+                            </Template>
+                        </GridColumn>
+                        <GridColumn HeaderText="Issued" Width="130">
+                            <Template>
+                                @{ var row = (TokenCodeRow)context; }
+                                <span class="small text-muted">@row.CreatedDate.ToString("yyyy-MM-dd HH:mm")</span>
+                            </Template>
+                        </GridColumn>
+                    </GridColumns>
+                </SfGrid>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "memberId")]
+    public string? QueryMemberId { get; set; }
+
+    private string _memberId = string.Empty;
+    private int _filterTokenTypeId;
+    private string _filterIsUsed = "";
+    private bool _loading;
+    private bool _searched;
+    private string? _alertMsg;
+    private int _totalCount;
+    private int _availableCount;
+
+    private List<TokenCodeRow> _items = new();
+    private List<TokenTypeDto> _tokenTypes = new();
+    private bool _tokenTypesLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTokenTypes();
+        if (!string.IsNullOrWhiteSpace(QueryMemberId))
+        {
+            _memberId = QueryMemberId;
+            await Search();
+        }
+    }
+
+    private async Task LoadTokenTypes()
+    {
+        _tokenTypesLoading = true;
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<IEnumerable<TokenTypeDto>>>("api/v1/admin/token-types");
+            if (resp?.Success == true && resp.Data is not null)
+                _tokenTypes = resp.Data.Where(t => t.IsActive).ToList();
+        }
+        catch { }
+        finally { _tokenTypesLoading = false; }
+    }
+
+    private void OnMemberChanged(string memberId)
+    {
+        _memberId = memberId;
+        _items.Clear();
+        _searched = false;
+        _totalCount = 0;
+        _availableCount = 0;
+    }
+
+    private async Task Search()
+    {
+        if (string.IsNullOrWhiteSpace(_memberId)) return;
+        _loading = true; _searched = true; StateHasChanged();
+        try
+        {
+            int? tokenTypeId = _filterTokenTypeId > 0 ? _filterTokenTypeId : null;
+            bool? isUsed = _filterIsUsed switch { "true" => true, "false" => false, _ => null };
+
+            var url = $"api/v1/admin/tokens/{_memberId}/codes?page=1&pageSize=500";
+            if (tokenTypeId.HasValue) url += $"&tokenTypeId={tokenTypeId}";
+            if (isUsed.HasValue) url += $"&isUsed={isUsed.Value.ToString().ToLower()}";
+
+            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<TokenCodeDto>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _items = resp.Data.Items.Select(x => new TokenCodeRow(
+                    x.Id, x.TokenCode, x.TokenTypeName, x.IsGuestPass,
+                    x.TransactionType, x.IsUsed, x.UsedByMemberId, x.UsedAt, x.CreatedDate
+                )).ToList();
+                _totalCount = resp.Data.TotalCount;
+                _availableCount = _items.Count(x => !x.IsUsed);
+            }
+            else
+            {
+                _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load token codes.";
+                _items.Clear();
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _items.Clear(); }
+        finally { _loading = false; }
+    }
+
+    private record TokenCodeRow(long Id, string TokenCode, string TokenTypeName, bool IsGuestPass,
+        string TransactionType, bool IsUsed, string? UsedByMemberId, DateTime? UsedAt, DateTime CreatedDate);
+    private record TokenTypeDto(int Id, string Name, string? Description, bool IsGuestPass, string? TemplateUrl, bool IsActive);
+    private record TokenCodeDto(long Id, string TokenCode, string TokenTypeName, bool IsGuestPass,
+        string TransactionType, bool IsUsed, string? UsedByMemberId, DateTime? UsedAt, DateTime CreatedDate);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+}

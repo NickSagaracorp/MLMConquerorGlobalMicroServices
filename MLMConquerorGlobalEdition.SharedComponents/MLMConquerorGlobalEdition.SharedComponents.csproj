@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Authorization" Version="10.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.2" />
+    <PackageReference Include="Syncfusion.Blazor.Grid" Version="33.1.44" />
+    <PackageReference Include="Syncfusion.Blazor.Navigations" Version="33.1.44" />
+    <PackageReference Include="Syncfusion.Blazor.Buttons" Version="33.1.44" />
+    <PackageReference Include="Syncfusion.Blazor.Inputs" Version="33.1.44" />
+    <PackageReference Include="Syncfusion.Blazor.Popups" Version="33.1.44" />
+    <PackageReference Include="Syncfusion.Blazor.RichTextEditor" Version="33.1.44" />
+    <PackageReference Include="Syncfusion.Blazor.Spinner" Version="33.1.44" />
+    <PackageReference Include="Syncfusion.Blazor.Calendars" Version="33.1.44" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel\MLMConquerorGlobalEdition.SharedKernel.csproj" />
+  </ItemGroup>
+</Project>

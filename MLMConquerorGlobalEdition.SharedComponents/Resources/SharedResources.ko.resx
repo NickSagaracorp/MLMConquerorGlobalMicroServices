@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+
+  <!-- Navigation -->
+  <data name="Nav.Dashboard" xml:space="preserve"><value>대시보드</value></data>
+  <data name="Nav.Members" xml:space="preserve"><value>회원</value></data>
+  <data name="Nav.Network" xml:space="preserve"><value>네트워크</value></data>
+  <data name="Nav.BinaryTree" xml:space="preserve"><value>이진 트리</value></data>
+  <data name="Nav.GenealogyTree" xml:space="preserve"><value>계보 트리</value></data>
+  <data name="Nav.Commissions" xml:space="preserve"><value>커미션</value></data>
+  <data name="Nav.CommissionTypes" xml:space="preserve"><value>커미션 유형</value></data>
+  <data name="Nav.CommissionCategories" xml:space="preserve"><value>카테고리</value></data>
+  <data name="Nav.Tickets" xml:space="preserve"><value>티켓</value></data>
+  <data name="Nav.AllTickets" xml:space="preserve"><value>모든 티켓</value></data>
+  <data name="Nav.TicketCategories" xml:space="preserve"><value>카테고리</value></data>
+  <data name="Nav.Tokens" xml:space="preserve"><value>토큰</value></data>
+  <data name="Nav.TokenTypes" xml:space="preserve"><value>토큰 유형</value></data>
+  <data name="Nav.GhostPoints" xml:space="preserve"><value>고스트 포인트</value></data>
+  <data name="Nav.Business" xml:space="preserve"><value>비즈니스</value></data>
+  <data name="Nav.Events" xml:space="preserve"><value>기업 이벤트</value></data>
+  <data name="Nav.Promos" xml:space="preserve"><value>프로모션</value></data>
+  <data name="Nav.Configuration" xml:space="preserve"><value>설정</value></data>
+  <data name="Nav.Ranks" xml:space="preserve"><value>직급</value></data>
+  <data name="Nav.RankRequirements" xml:space="preserve"><value>직급 요건</value></data>
+  <data name="Nav.Products" xml:space="preserve"><value>제품</value></data>
+  <data name="Nav.ProductCommissions" xml:space="preserve"><value>제품 커미션</value></data>
+  <data name="Nav.TokenCommissions" xml:space="preserve"><value>토큰 커미션</value></data>
+  <data name="Nav.LoyaltyPoints" xml:space="preserve"><value>적립 포인트</value></data>
+  <data name="Nav.Security" xml:space="preserve"><value>보안</value></data>
+  <data name="Nav.AccessAudit" xml:space="preserve"><value>접근 감사</value></data>
+  <data name="Nav.AccountChanges" xml:space="preserve"><value>계정 변경</value></data>
+  <data name="Nav.SystemUsers" xml:space="preserve"><value>시스템 사용자</value></data>
+  <data name="Nav.PaymentHistory" xml:space="preserve"><value>결제 내역</value></data>
+  <data name="Nav.Subscriptions" xml:space="preserve"><value>구독</value></data>
+
+  <!-- Common Actions -->
+  <data name="Common.Save" xml:space="preserve"><value>저장</value></data>
+  <data name="Common.Cancel" xml:space="preserve"><value>취소</value></data>
+  <data name="Common.Create" xml:space="preserve"><value>생성</value></data>
+  <data name="Common.Edit" xml:space="preserve"><value>편집</value></data>
+  <data name="Common.Delete" xml:space="preserve"><value>삭제</value></data>
+  <data name="Common.Deactivate" xml:space="preserve"><value>비활성화</value></data>
+  <data name="Common.Activate" xml:space="preserve"><value>활성화</value></data>
+  <data name="Common.Refresh" xml:space="preserve"><value>새로고침</value></data>
+  <data name="Common.Search" xml:space="preserve"><value>검색</value></data>
+  <data name="Common.Loading" xml:space="preserve"><value>로딩 중...</value></data>
+  <data name="Common.Submit" xml:space="preserve"><value>제출</value></data>
+  <data name="Common.Close" xml:space="preserve"><value>닫기</value></data>
+  <data name="Common.Confirm" xml:space="preserve"><value>확인</value></data>
+  <data name="Common.Add" xml:space="preserve"><value>추가</value></data>
+  <data name="Common.Update" xml:space="preserve"><value>업데이트</value></data>
+  <data name="Common.View" xml:space="preserve"><value>보기</value></data>
+  <data name="Common.Download" xml:space="preserve"><value>다운로드</value></data>
+  <data name="Common.Import" xml:space="preserve"><value>가져오기</value></data>
+  <data name="Common.Export" xml:space="preserve"><value>내보내기</value></data>
+
+  <!-- Common Labels -->
+  <data name="Common.Actions" xml:space="preserve"><value>작업</value></data>
+  <data name="Common.Status" xml:space="preserve"><value>상태</value></data>
+  <data name="Common.Date" xml:space="preserve"><value>날짜</value></data>
+  <data name="Common.Active" xml:space="preserve"><value>활성</value></data>
+  <data name="Common.Inactive" xml:space="preserve"><value>비활성</value></data>
+  <data name="Common.Yes" xml:space="preserve"><value>예</value></data>
+  <data name="Common.No" xml:space="preserve"><value>아니오</value></data>
+  <data name="Common.Name" xml:space="preserve"><value>이름</value></data>
+  <data name="Common.Description" xml:space="preserve"><value>설명</value></data>
+  <data name="Common.Notes" xml:space="preserve"><value>메모</value></data>
+  <data name="Common.CreatedBy" xml:space="preserve"><value>생성자</value></data>
+  <data name="Common.CreatedDate" xml:space="preserve"><value>생성일</value></data>
+  <data name="Common.Total" xml:space="preserve"><value>합계</value></data>
+  <data name="Common.Page" xml:space="preserve"><value>페이지</value></data>
+  <data name="Common.Of" xml:space="preserve"><value>/</value></data>
+  <data name="Common.Records" xml:space="preserve"><value>건</value></data>
+  <data name="Common.NoData" xml:space="preserve"><value>데이터가 없습니다.</value></data>
+  <data name="Common.Required" xml:space="preserve"><value>필수</value></data>
+  <data name="Common.Optional" xml:space="preserve"><value>선택</value></data>
+  <data name="Common.Error" xml:space="preserve"><value>오류</value></data>
+  <data name="Common.Success" xml:space="preserve"><value>성공</value></data>
+  <data name="Common.Warning" xml:space="preserve"><value>경고</value></data>
+  <data name="Common.MemberId" xml:space="preserve"><value>회원 ID</value></data>
+  <data name="Common.Email" xml:space="preserve"><value>이메일</value></data>
+  <data name="Common.Role" xml:space="preserve"><value>역할</value></data>
+  <data name="Common.Amount" xml:space="preserve"><value>금액</value></data>
+  <data name="Common.Points" xml:space="preserve"><value>포인트</value></data>
+
+  <!-- Header -->
+  <data name="Header.SearchPlaceholder" xml:space="preserve"><value>여기서 검색...</value></data>
+  <data name="Header.Notifications" xml:space="preserve"><value>알림</value></data>
+  <data name="Header.NoNotifications" xml:space="preserve"><value>새 알림이 없습니다.</value></data>
+  <data name="Header.Profile" xml:space="preserve"><value>프로필</value></data>
+  <data name="Header.Logout" xml:space="preserve"><value>로그아웃</value></data>
+  <data name="Header.ToggleDarkMode" xml:space="preserve"><value>다크 모드 전환</value></data>
+  <data name="Header.ChangeLanguage" xml:space="preserve"><value>언어 변경</value></data>
+
+  <!-- Language Names -->
+  <data name="Lang.en" xml:space="preserve"><value>English</value></data>
+  <data name="Lang.es" xml:space="preserve"><value>Español</value></data>
+  <data name="Lang.pt" xml:space="preserve"><value>Português</value></data>
+  <data name="Lang.fr" xml:space="preserve"><value>Français</value></data>
+  <data name="Lang.it" xml:space="preserve"><value>Italiano</value></data>
+  <data name="Lang.ko" xml:space="preserve"><value>한국어</value></data>
+  <data name="Lang.de" xml:space="preserve"><value>Deutsch</value></data>
+  <data name="Lang.ru" xml:space="preserve"><value>Русский</value></data>
+</root>

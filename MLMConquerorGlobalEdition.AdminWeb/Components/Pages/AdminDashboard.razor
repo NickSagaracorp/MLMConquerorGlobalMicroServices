@@ -1,0 +1,1016 @@
+@page "/admin"
+@page "/admin/dashboard"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+@inject IViewContextService ViewContext
+
+<PageTitle>CEO Dashboard — Admin</PageTitle>
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center align-items-center" style="min-height:60vh">
+        <div class="text-center">
+            <div class="spinner-border mb-3" style="width:3rem;height:3rem;color:#00BFA5;"></div>
+            <p class="text-muted small">Loading dashboard...</p>
+        </div>
+    </div>
+}
+else if (_error is not null)
+{
+    <div class="alert alert-danger d-flex align-items-center gap-2">
+        <i class="ri-error-warning-line fs-5"></i>
+        <span>@_error</span>
+        <button class="btn btn-sm btn-outline-danger ms-auto" @onclick="LoadAsync">
+            <i class="ri-refresh-line me-1"></i>Retry
+        </button>
+    </div>
+}
+else if (_data is not null)
+{
+    <!-- ══ HEADER ══════════════════════════════════════════════════════════ -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h4 class="fw-bold mb-0" style="color:#1a202c;letter-spacing:-.02em;">CEO Dashboard</h4>
+            <small class="text-muted" style="font-size:12px;">
+                <i class="ri-time-line me-1"></i>@DateTime.UtcNow.ToString("MMMM dd, yyyy · HH:mm") UTC
+            </small>
+        </div>
+        <button class="btn btn-sm" style="background:#fff;border:1px solid #e2e8f0;color:#374151;border-radius:8px;" @onclick="LoadAsync">
+            <i class="ri-refresh-line me-1"></i>Refresh
+        </button>
+    </div>
+
+    <!-- ══ ROW 1 — KPI CARDS ═══════════════════════════════════════════════ -->
+    <div class="row g-3 mb-4">
+
+        <!-- Active Members -->
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="kpi-card h-100">
+                <div class="d-flex align-items-start justify-content-between mb-3">
+                    <div class="kpi-icon teal"><i class="ri-group-line"></i></div>
+                    <span class="pill pill-teal">Active</span>
+                </div>
+                <div class="kpi-value">@_data.ActiveMembers.ToString("N0")</div>
+                <div class="kpi-label mt-1">Active Members</div>
+                <div class="kpi-sub mt-1">@_data.TotalMembers.ToString("N0") total</div>
+            </div>
+        </div>
+
+        <!-- New This Month -->
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="kpi-card h-100">
+                @{
+                    var growthPct = _data.NewMembersLastMonth > 0
+                        ? ((_data.NewMembersThisMonth - _data.NewMembersLastMonth) * 100.0 / _data.NewMembersLastMonth)
+                        : 0;
+                }
+                <div class="d-flex align-items-start justify-content-between mb-3">
+                    <div class="kpi-icon green"><i class="ri-user-add-line"></i></div>
+                    <span class="delta @(growthPct >= 0 ? "delta-up" : "delta-down")">
+                        @(growthPct >= 0 ? "↑" : "↓") @Math.Abs(growthPct).ToString("N0")%
+                    </span>
+                </div>
+                <div class="kpi-value">@_data.NewMembersThisMonth.ToString("N0")</div>
+                <div class="kpi-label mt-1">New This Month</div>
+                <div class="kpi-sub mt-1">@_data.NewMembersLastMonth last month</div>
+            </div>
+        </div>
+
+        <!-- Revenue MTD -->
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="kpi-card h-100">
+                @{
+                    var revPct = _data.RevenueLastMonth > 0
+                        ? (double)((_data.RevenueThisMonth - _data.RevenueLastMonth) / _data.RevenueLastMonth * 100)
+                        : 0;
+                }
+                <div class="d-flex align-items-start justify-content-between mb-3">
+                    <div class="kpi-icon amber"><i class="ri-money-dollar-circle-line"></i></div>
+                    <span class="delta @(revPct >= 0 ? "delta-up" : "delta-down")">
+                        @(revPct >= 0 ? "↑" : "↓") @Math.Abs(revPct).ToString("N0")%
+                    </span>
+                </div>
+                <div class="kpi-value">$@_data.RevenueThisMonth.ToString("N0")</div>
+                <div class="kpi-label mt-1">Revenue MTD</div>
+                <div class="kpi-sub mt-1">$@_data.RevenueLastMonth.ToString("N0") last mo.</div>
+            </div>
+        </div>
+
+        <!-- Commissions Pending -->
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="kpi-card h-100">
+                <div class="d-flex align-items-start justify-content-between mb-3">
+                    <div class="kpi-icon @(_data.CommissionsPending > 0 ? "amber" : "teal")"><i class="ri-time-line"></i></div>
+                    @if (_data.CommissionsPending > 0)
+                    {
+                        <span class="pill pill-amber">Pending</span>
+                    }
+                </div>
+                <div class="kpi-value">$@_data.CommissionsPending.ToString("N0")</div>
+                <div class="kpi-label mt-1">Commissions Pending</div>
+                <div class="kpi-sub mt-1">$@_data.CommissionsPaidThisMonth.ToString("N0") paid MTD</div>
+            </div>
+        </div>
+
+        <!-- Active Tickets -->
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="kpi-card h-100">
+                <div class="d-flex align-items-start justify-content-between mb-3">
+                    <div class="kpi-icon @(_data.TicketsCritical > 0 ? "red" : "blue")"><i class="ri-customer-service-2-line"></i></div>
+                    @if (_data.TicketsCritical > 0)
+                    {
+                        <span class="pill pill-red">@_data.TicketsCritical critical</span>
+                    }
+                </div>
+                <div class="kpi-value">@(_data.TicketsOpen + _data.TicketsInProgress)</div>
+                <div class="kpi-label mt-1">Active Tickets</div>
+                <div class="kpi-sub mt-1">@_data.TicketsResolvedThisMonth resolved MTD</div>
+            </div>
+        </div>
+
+        <!-- Pending Payments -->
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="kpi-card h-100">
+                <div class="d-flex align-items-start justify-content-between mb-3">
+                    <div class="kpi-icon @(_data.PaymentsFailed > 0 ? "red" : "green")"><i class="ri-bank-card-line"></i></div>
+                    @if (_data.PaymentsFailed > 0)
+                    {
+                        <span class="pill pill-red">@_data.PaymentsFailed failed</span>
+                    }
+                </div>
+                <div class="kpi-value">@_data.PaymentsPending</div>
+                <div class="kpi-label mt-1">Pending Payments</div>
+                <div class="kpi-sub mt-1">@_data.ActiveSubscriptions active subs</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ ROW 2 — MEMBERS + FINANCIAL + SUPPORT ═══════════════════════════ -->
+    <div class="row g-3 mb-4">
+
+        <!-- Members Panel -->
+        <div class="col-12 col-lg-5">
+            <div class="panel-card h-100">
+                <div class="panel-header">
+                    <div class="kpi-icon teal" style="width:28px;height:28px;font-size:.9rem;border-radius:7px;"><i class="ri-group-line"></i></div>
+                    <h6>Member Analytics</h6>
+                </div>
+                <div class="panel-body">
+                    <!-- Status Breakdown -->
+                    <p class="section-title">Status Distribution</p>
+                    @{
+                        var total = _data.TotalMembers > 0 ? _data.TotalMembers : 1;
+                    }
+                    <div class="mb-1 d-flex justify-content-between" style="font-size:13px;">
+                        <span><span class="pill pill-green me-1">Active</span></span>
+                        <span class="fw-semibold">@_data.ActiveMembers <span class="text-muted fw-normal">(@((_data.ActiveMembers * 100 / total).ToString("N0"))%)</span></span>
+                    </div>
+                    <div class="progress mb-3" style="height:5px">
+                        <div class="progress-bar prog-teal" style="width:@(_data.ActiveMembers * 100 / total)%"></div>
+                    </div>
+                    <div class="mb-1 d-flex justify-content-between" style="font-size:13px;">
+                        <span><span class="pill pill-gray me-1">Inactive</span></span>
+                        <span class="fw-semibold">@_data.InactiveMembers <span class="text-muted fw-normal">(@((_data.InactiveMembers * 100 / total).ToString("N0"))%)</span></span>
+                    </div>
+                    <div class="progress mb-3" style="height:5px">
+                        <div class="progress-bar prog-gray" style="width:@(_data.InactiveMembers * 100 / total)%"></div>
+                    </div>
+                    @if (_data.SuspendedMembers > 0)
+                    {
+                        <div class="mb-1 d-flex justify-content-between" style="font-size:13px;">
+                            <span><span class="pill pill-amber me-1">Suspended</span></span>
+                            <span class="fw-semibold">@_data.SuspendedMembers</span>
+                        </div>
+                        <div class="progress mb-3" style="height:5px">
+                            <div class="progress-bar prog-amber" style="width:@(_data.SuspendedMembers * 100 / total)%"></div>
+                        </div>
+                    }
+                    @if (_data.TerminatedMembers > 0)
+                    {
+                        <div class="mb-1 d-flex justify-content-between" style="font-size:13px;">
+                            <span><span class="pill pill-red me-1">Terminated</span></span>
+                            <span class="fw-semibold">@_data.TerminatedMembers</span>
+                        </div>
+                        <div class="progress mb-3" style="height:5px">
+                            <div class="progress-bar prog-red" style="width:@(_data.TerminatedMembers * 100 / total)%"></div>
+                        </div>
+                    }
+
+                    <div style="border-top:1px solid #f0f2f5;margin:16px 0;"></div>
+
+                    <!-- Network Composition -->
+                    <p class="section-title">Network Composition</p>
+                    <div class="row g-2 text-center">
+                        <div class="col-6">
+                            <div style="background:#f8fafc;border-radius:10px;padding:12px;">
+                                <div class="fw-bold" style="font-size:1.4rem;color:#00BFA5;">@_data.TotalAmbassadors.ToString("N0")</div>
+                                <div class="kpi-label mt-1">Ambassadors</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div style="background:#f8fafc;border-radius:10px;padding:12px;">
+                                <div class="fw-bold" style="font-size:1.4rem;color:#8695AA;">@_data.TotalExternalMembers.ToString("N0")</div>
+                                <div class="kpi-label mt-1">External</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="border-top:1px solid #f0f2f5;margin:16px 0;"></div>
+
+                    <!-- Growth Pulse -->
+                    <p class="section-title">Growth Pulse</p>
+                    <div class="stat-row">
+                        <span class="stat-label">Today</span>
+                        <span class="fw-bold" style="color:#00BFA5;">+@_data.NewMembersToday</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">This Week</span>
+                        <span class="fw-bold" style="color:#00BFA5;">+@_data.NewMembersThisWeek</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">This Month</span>
+                        <span class="fw-bold" style="color:#00BFA5;">+@_data.NewMembersThisMonth</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Last Month</span>
+                        <span class="stat-value text-muted">@_data.NewMembersLastMonth</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Financial Panel -->
+        <div class="col-12 col-lg-4">
+            <div class="panel-card h-100">
+                <div class="panel-header">
+                    <div class="kpi-icon green" style="width:28px;height:28px;font-size:.9rem;border-radius:7px;"><i class="ri-line-chart-line"></i></div>
+                    <h6>Financial Overview</h6>
+                </div>
+                <div class="panel-body">
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="stat-label">Revenue This Month</span>
+                            @if (_data.RevenueLastMonth > 0)
+                            {
+                                var pct2 = (double)((_data.RevenueThisMonth - _data.RevenueLastMonth) / _data.RevenueLastMonth * 100);
+                                <span class="delta @(pct2 >= 0 ? "delta-up" : "delta-down")">@(pct2 >= 0 ? "↑" : "↓") @Math.Abs(pct2).ToString("N0")%</span>
+                            }
+                        </div>
+                        <div style="font-size:1.6rem;font-weight:700;color:#16a34a;letter-spacing:-.02em;">$@_data.RevenueThisMonth.ToString("N2")</div>
+                        <div class="kpi-sub">Last month: $@_data.RevenueLastMonth.ToString("N2")</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="stat-label mb-1">Revenue This Year</div>
+                        <div style="font-size:1.2rem;font-weight:700;color:#1a202c;">$@_data.RevenueThisYear.ToString("N2")</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="stat-label mb-1">Orders This Month</div>
+                        <div class="d-flex align-items-baseline gap-2">
+                            <span style="font-size:1.2rem;font-weight:700;color:#1a202c;">@_data.OrdersThisMonth</span>
+                            <span class="kpi-sub">orders · avg $@_data.AvgOrderValueThisMonth.ToString("N2")</span>
+                        </div>
+                    </div>
+
+                    <div style="border-top:1px solid #f0f2f5;margin:16px 0;"></div>
+                    <p class="section-title">Commissions</p>
+
+                    <div class="stat-row">
+                        <span class="stat-label">Paid All Time</span>
+                        <span class="fw-semibold" style="color:#16a34a;">$@_data.CommissionsPaidAllTime.ToString("N2")</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Paid This Month</span>
+                        <span class="stat-value">$@_data.CommissionsPaidThisMonth.ToString("N2")</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Pending Payout</span>
+                        <span class="fw-semibold" style="color:#dc2626;">$@_data.CommissionsPending.ToString("N2")</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Support + Ops Panel -->
+        <div class="col-12 col-lg-3">
+            <!-- Support Queue -->
+            <div class="panel-card mb-3">
+                <div class="panel-header">
+                    <div class="kpi-icon blue" style="width:28px;height:28px;font-size:.9rem;border-radius:7px;"><i class="ri-customer-service-2-line"></i></div>
+                    <h6>Support Queue</h6>
+                </div>
+                <div class="panel-body">
+                    <div class="stat-row">
+                        <span class="stat-label">Open</span>
+                        <span class="pill pill-teal">@_data.TicketsOpen</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">In Progress</span>
+                        <span class="pill pill-blue">@_data.TicketsInProgress</span>
+                    </div>
+                    @if (_data.TicketsCritical > 0)
+                    {
+                        <div class="stat-row">
+                            <span class="stat-label">Critical</span>
+                            <span class="pill pill-red">@_data.TicketsCritical</span>
+                        </div>
+                    }
+                    <div class="stat-row">
+                        <span class="stat-label">Resolved MTD</span>
+                        <span class="pill pill-green">@_data.TicketsResolvedThisMonth</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Token Activity -->
+            <div class="panel-card mb-3">
+                <div class="panel-header">
+                    <div class="kpi-icon amber" style="width:28px;height:28px;font-size:.9rem;border-radius:7px;"><i class="ri-key-2-line"></i></div>
+                    <h6>Token Activity</h6>
+                </div>
+                <div class="panel-body">
+                    <div class="stat-row">
+                        <span class="stat-label">Total Codes</span>
+                        <span class="stat-value">@_data.TokenCodesTotal</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Available</span>
+                        <span class="pill pill-green">@_data.TokenCodesAvailable</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Used</span>
+                        <span class="pill pill-gray">@_data.TokenCodesUsed</span>
+                    </div>
+                    @if (_data.TokenCodesTotal > 0)
+                    {
+                        <div class="mt-2">
+                            <div class="kpi-sub mb-1">Usage Rate — @(_data.TokenCodesUsed * 100 / _data.TokenCodesTotal)%</div>
+                            <div class="progress" style="height:5px">
+                                <div class="progress-bar prog-amber" style="width:@(_data.TokenCodesUsed * 100 / _data.TokenCodesTotal)%"></div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Subscriptions -->
+            <div class="panel-card">
+                <div class="panel-header">
+                    <div class="kpi-icon teal" style="width:28px;height:28px;font-size:.9rem;border-radius:7px;"><i class="ri-vip-crown-line"></i></div>
+                    <h6>Subscriptions</h6>
+                </div>
+                <div class="panel-body">
+                    <div class="stat-row">
+                        <span class="stat-label">Active</span>
+                        <span class="pill pill-green">@_data.ActiveSubscriptions</span>
+                    </div>
+                    @if (_data.ExpiringSubscriptions30Days > 0)
+                    {
+                        <div class="stat-row">
+                            <span class="stat-label">Expiring (30d)</span>
+                            <span class="pill pill-amber">@_data.ExpiringSubscriptions30Days</span>
+                        </div>
+                    }
+                    @if (_data.CancelledSubscriptionsThisMonth > 0)
+                    {
+                        <div class="stat-row">
+                            <span class="stat-label">Cancelled MTD</span>
+                            <span class="pill pill-red">@_data.CancelledSubscriptionsThisMonth</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ ROW 3 — RECENT MEMBERS + MEMBERSHIP DISTRIBUTION ════════════════ -->
+    <div class="row g-3">
+
+        <!-- Recent Signups -->
+        <div class="col-12 col-xl-8">
+            <div class="panel-card">
+                <div class="panel-header">
+                    <div class="kpi-icon teal" style="width:28px;height:28px;font-size:.9rem;border-radius:7px;"><i class="ri-user-received-line"></i></div>
+                    <h6 class="flex-grow-1">Recent Signups</h6>
+                    <a href="/admin/members" class="btn btn-sm" style="background:#f0fdf9;color:#00BFA5;border:1px solid #ccfbf1;border-radius:8px;font-size:12px;">View All</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="clean-table w-100">
+                        <thead>
+                            <tr>
+                                <th>Member ID</th>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Sponsor</th>
+                                <th>Status</th>
+                                <th>Enrolled</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!_data.RecentMembers.Any())
+                            {
+                                <tr><td colspan="6" class="text-center text-muted py-4" style="font-size:13px;">No members found.</td></tr>
+                            }
+                            @foreach (var m in _data.RecentMembers)
+                            {
+                                <tr>
+                                    <td><a href="/admin/members/@m.MemberId" style="color:#00BFA5;text-decoration:none;font-family:monospace;font-size:12px;">@m.MemberId</a></td>
+                                    <td class="fw-semibold">@m.FullName</td>
+                                    <td><span class="pill @(m.MemberType == "Ambassador" ? "pill-teal" : "pill-gray")">@m.MemberType</span></td>
+                                    <td>
+                                        @if (!string.IsNullOrWhiteSpace(m.SponsorId))
+                                        { <span style="font-family:monospace;font-size:12px;color:#8695AA;">@m.SponsorId</span> }
+                                        else
+                                        { <span class="text-muted">—</span> }
+                                    </td>
+                                    <td><span class="pill @(m.Status == "Active" ? "pill-green" : m.Status == "Suspended" ? "pill-amber" : "pill-gray")">@m.Status</span></td>
+                                    <td style="color:#8695AA;font-size:12px;">@m.EnrollDate.ToString("MMM dd, yyyy")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Membership Distribution -->
+        <div class="col-12 col-xl-4">
+            <div class="panel-card h-100">
+                <div class="panel-header">
+                    <div class="kpi-icon violet" style="width:28px;height:28px;font-size:.9rem;border-radius:7px;"><i class="ri-bar-chart-grouped-line"></i></div>
+                    <h6>Membership Distribution</h6>
+                </div>
+                <div class="panel-body">
+                    @if (!_data.MembershipBreakdown.Any())
+                    {
+                        <p class="text-muted text-center py-3" style="font-size:13px;">No active subscriptions.</p>
+                    }
+                    else
+                    {
+                        var maxCount = _data.MembershipBreakdown.Max(x => x.ActiveCount);
+                        @foreach (var lvl in _data.MembershipBreakdown)
+                        {
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span style="font-size:13px;font-weight:600;color:#374151;">
+                                        @lvl.LevelName
+                                        @if (lvl.IsFree) { <span class="pill pill-green ms-1" style="font-size:10px;">Free</span> }
+                                    </span>
+                                    <span class="pill pill-teal">@lvl.ActiveCount</span>
+                                </div>
+                                <div class="progress" style="height:5px">
+                                    <div class="progress-bar prog-teal" style="width:@(maxCount > 0 ? (lvl.ActiveCount * 100 / maxCount) : 0)%"></div>
+                                </div>
+                            </div>
+                        }
+                        <div style="border-top:1px solid #f0f2f5;margin:12px 0;"></div>
+                        <div class="d-flex justify-content-between" style="font-size:13px;">
+                            <span class="text-muted">Total Active Subscriptions</span>
+                            <span class="fw-bold" style="color:#1a202c;">@_data.ActiveSubscriptions</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ══ ROW 4 — AMBASSADORS BY LEVEL ════════════════════════════════════ -->
+    <div class="row g-3 mt-1">
+        <div class="col-12">
+            <div class="panel-card">
+                <div class="panel-header">
+                    <div class="kpi-icon teal" style="width:28px;height:28px;font-size:.9rem;border-radius:7px;"><i class="ri-user-star-line"></i></div>
+                    <h6 class="flex-grow-1">Active Ambassadors by Membership Level</h6>
+                    <span class="pill pill-teal">@_data.AmbassadorsByLevel.Sum(x => x.Count) total</span>
+                </div>
+                <div class="panel-body">
+                    @if (!_data.AmbassadorsByLevel.Any())
+                    {
+                        <p class="text-muted text-center py-3" style="font-size:13px;">No active ambassadors found.</p>
+                    }
+                    else
+                    {
+                        var ambTotal = _data.AmbassadorsByLevel.Sum(x => x.Count);
+                        var ambMax   = _data.AmbassadorsByLevel.Max(x => x.Count);
+                        string[] levelColors = ["#00BFA5","#2563eb","#d97706","#dc2626","#7c3aed","#8695AA"];
+                        <div class="row g-3">
+                            @foreach (var (lvl, idx) in _data.AmbassadorsByLevel.Select((x, i) => (x, i)))
+                            {
+                                var pct = ambTotal > 0 ? lvl.Count * 100 / ambTotal : 0;
+                                var lc  = levelColors[idx % levelColors.Length];
+                                <div class="col-6 col-md-4 col-lg-3 col-xl-2">
+                                    <div style="background:#f8fafc;border-radius:12px;padding:16px;text-align:center;border-top:3px solid @lc;">
+                                        <div style="font-size:1.6rem;font-weight:700;color:@lc;letter-spacing:-.02em;">@lvl.Count.ToString("N0")</div>
+                                        <div style="font-size:12px;font-weight:600;color:#374151;margin-top:2px;">@lvl.LevelName</div>
+                                        @if (lvl.IsFree) { <span class="pill pill-green mt-1" style="font-size:10px;">Free</span> }
+                                        <div class="progress mt-2" style="height:4px">
+                                            <div class="progress-bar" style="width:@(ambMax > 0 ? lvl.Count * 100 / ambMax : 0)%;background:@lc;"></div>
+                                        </div>
+                                        <div class="kpi-sub mt-1">@pct% of total</div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ ROW 5 — LAST BILLING RUN ════════════════════════════════════════ -->
+    @if (_data.LastBillingRun is { } br)
+    {
+        <div class="row g-3 mt-1 mb-1">
+            <div class="col-12">
+                <div class="panel-card">
+                    <div class="panel-header flex-wrap gap-2">
+                        <div class="kpi-icon teal" style="width:28px;height:28px;font-size:.9rem;border-radius:7px;"><i class="ri-refresh-line"></i></div>
+                        <h6 class="flex-grow-1">
+                            Last Billing Run
+                            <span style="font-weight:400;font-size:12px;color:#8695AA;margin-left:8px;">@br.RunDate.ToString("MMMM dd, yyyy")</span>
+                        </h6>
+                        @{
+                            var srClass = br.SuccessRate >= 90 ? "pill-green" : br.SuccessRate >= 70 ? "pill-amber" : "pill-red";
+                        }
+                        <span class="pill @srClass" style="font-size:13px;padding:4px 14px;">@br.SuccessRate.ToString("N1")% collection rate</span>
+                    </div>
+                    <div class="panel-body">
+
+                        <!-- KPI strip -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-6 col-md-4 col-lg-2">
+                                <div style="background:#f8fafc;border-radius:10px;padding:14px;text-align:center;border-top:3px solid #00BFA5;">
+                                    <div style="font-size:1.5rem;font-weight:700;color:#00BFA5;">@br.TotalDue.ToString("N0")</div>
+                                    <div class="kpi-label mt-1">Due for Renewal</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-2">
+                                <div style="background:#f8fafc;border-radius:10px;padding:14px;text-align:center;border-top:3px solid #16a34a;">
+                                    <div style="font-size:1.5rem;font-weight:700;color:#16a34a;">@br.TotalSuccessful.ToString("N0")</div>
+                                    <div class="kpi-label mt-1">Successful</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-2">
+                                <div style="background:#f8fafc;border-radius:10px;padding:14px;text-align:center;border-top:3px solid @(br.TotalFailed > 0 ? "#dc2626" : "#94a3b8");">
+                                    <div style="font-size:1.5rem;font-weight:700;color:@(br.TotalFailed > 0 ? "#dc2626" : "#94a3b8");">@br.TotalFailed.ToString("N0")</div>
+                                    <div class="kpi-label mt-1">Failed</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-2">
+                                <div style="background:#f8fafc;border-radius:10px;padding:14px;text-align:center;border-top:3px solid @(br.TotalPending > 0 ? "#d97706" : "#94a3b8");">
+                                    <div style="font-size:1.5rem;font-weight:700;color:@(br.TotalPending > 0 ? "#d97706" : "#94a3b8");">@br.TotalPending.ToString("N0")</div>
+                                    <div class="kpi-label mt-1">Pending</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-2">
+                                <div style="background:#f8fafc;border-radius:10px;padding:14px;text-align:center;border-top:3px solid #16a34a;">
+                                    <div style="font-size:1.5rem;font-weight:700;color:#16a34a;">$@br.RevenueCollected.ToString("N0")</div>
+                                    <div class="kpi-label mt-1">Collected</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-2">
+                                <div style="background:#f8fafc;border-radius:10px;padding:14px;text-align:center;border-top:3px solid @(br.RevenueMissed > 0 ? "#dc2626" : "#94a3b8");">
+                                    <div style="font-size:1.5rem;font-weight:700;color:@(br.RevenueMissed > 0 ? "#dc2626" : "#94a3b8");">$@br.RevenueMissed.ToString("N0")</div>
+                                    <div class="kpi-label mt-1">Missed Revenue</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Progress bar: Success vs Failed vs Pending of total Due -->
+                        @if (br.TotalDue > 0)
+                        {
+                            var okPct      = (int)(br.TotalSuccessful * 100 / br.TotalDue);
+                            var failPct    = (int)(br.TotalFailed    * 100 / br.TotalDue);
+                            var pendPct    = (int)(br.TotalPending   * 100 / br.TotalDue);
+                            <div class="mb-1 d-flex justify-content-between small text-muted">
+                                <span>Renewal outcomes (@br.TotalDue total due)</span>
+                                <span>
+                                    <span class="text-success fw-semibold">@okPct% ok</span> ·
+                                    <span class="text-danger fw-semibold">@failPct% failed</span> ·
+                                    <span class="text-warning fw-semibold">@pendPct% pending</span>
+                                </span>
+                            </div>
+                            <div class="progress mb-4" style="height:12px;border-radius:6px;">
+                                <div class="progress-bar bg-success" style="width:@(okPct)%" title="Successful: @br.TotalSuccessful"></div>
+                                <div class="progress-bar bg-danger"  style="width:@(failPct)%" title="Failed: @br.TotalFailed"></div>
+                                <div class="progress-bar bg-warning" style="width:@(pendPct)%" title="Pending: @br.TotalPending"></div>
+                            </div>
+                        }
+
+                        <!-- Per-level breakdown table -->
+                        @if (br.ByLevel.Any())
+                        {
+                            <div class="table-responsive">
+                                <table class="clean-table w-100">
+                                    <thead>
+                                        <tr>
+                                            <th>Membership Level</th>
+                                            <th style="text-align:right;">Price</th>
+                                            <th style="text-align:center;">Due</th>
+                                            <th style="text-align:center;">Successful</th>
+                                            <th style="text-align:center;">Failed</th>
+                                            <th style="text-align:center;">Pending</th>
+                                            <th style="text-align:right;">Collected</th>
+                                            <th style="text-align:right;">Missed</th>
+                                            <th style="text-align:center;">Rate</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var lvl in br.ByLevel)
+                                        {
+                                            var lvlRate = lvl.DueCount > 0 ? (int)(lvl.SuccessCount * 100 / lvl.DueCount) : 0;
+                                            var rateColor = lvlRate >= 90 ? "#16a34a" : lvlRate >= 70 ? "#d97706" : "#dc2626";
+                                            <tr>
+                                                <td class="fw-semibold">@lvl.LevelName</td>
+                                                <td style="text-align:right;">$@lvl.RenewalPrice.ToString("N2")</td>
+                                                <td style="text-align:center;font-weight:700;">@lvl.DueCount</td>
+                                                <td style="text-align:center;color:#16a34a;font-weight:600;">@lvl.SuccessCount</td>
+                                                <td style="text-align:center;color:@(lvl.FailedCount > 0 ? "#dc2626" : "#adb5bd");font-weight:@(lvl.FailedCount > 0 ? "600" : "400");">@(lvl.FailedCount > 0 ? lvl.FailedCount.ToString() : "—")</td>
+                                                <td style="text-align:center;color:@(lvl.PendingCount > 0 ? "#d97706" : "#adb5bd");font-weight:@(lvl.PendingCount > 0 ? "600" : "400");">@(lvl.PendingCount > 0 ? lvl.PendingCount.ToString() : "—")</td>
+                                                <td style="text-align:right;color:#16a34a;">$@lvl.RevenueCollected.ToString("N2")</td>
+                                                <td style="text-align:right;color:@(lvl.RevenueMissed > 0 ? "#dc2626" : "#adb5bd");">@(lvl.RevenueMissed > 0 ? "$" + lvl.RevenueMissed.ToString("N2") : "—")</td>
+                                                <td style="text-align:center;color:@rateColor;font-weight:700;">@(lvl.DueCount > 0 ? lvlRate + "%" : "—")</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                    <tfoot>
+                                        <tr style="background:#f8fafc;font-weight:700;">
+                                            <td>Total</td>
+                                            <td></td>
+                                            <td style="text-align:center;">@br.TotalDue</td>
+                                            <td style="text-align:center;color:#16a34a;">@br.TotalSuccessful</td>
+                                            <td style="text-align:center;color:@(br.TotalFailed > 0 ? "#dc2626" : "#adb5bd");">@(br.TotalFailed > 0 ? br.TotalFailed.ToString() : "—")</td>
+                                            <td style="text-align:center;color:@(br.TotalPending > 0 ? "#d97706" : "#adb5bd");">@(br.TotalPending > 0 ? br.TotalPending.ToString() : "—")</td>
+                                            <td style="text-align:right;color:#16a34a;">$@br.RevenueCollected.ToString("N2")</td>
+                                            <td style="text-align:right;color:@(br.RevenueMissed > 0 ? "#dc2626" : "#adb5bd");">@(br.RevenueMissed > 0 ? "$" + br.RevenueMissed.ToString("N2") : "—")</td>
+                                            <td style="text-align:center;"><span class="pill @srClass">@br.SuccessRate.ToString("N1")%</span></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted text-center py-3" style="font-size:13px;">No billing run data found.</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- ══ ROW 6 — HISTOGRAM: NEW MEMBERS PER MONTH ════════════════════════ -->
+    <div class="row g-3 mt-1 mb-4">
+        <div class="col-12">
+            <div class="panel-card">
+                <div class="panel-header">
+                    <div class="kpi-icon teal" style="width:28px;height:28px;font-size:.9rem;border-radius:7px;"><i class="ri-bar-chart-2-line"></i></div>
+                    <h6>New Members by Membership Level &amp; Status — @DateTime.UtcNow.Year</h6>
+                </div>
+                <div class="panel-body">
+                    @{
+                        var allLevels   = _data.MonthlySignups.Select(x => x.MembershipLevel).Distinct().OrderBy(x => x).ToList();
+                        var allStatuses = _data.MonthlySignups.Select(x => x.Status).Distinct().OrderBy(x => x).ToList();
+                        var currentMonth = DateTime.UtcNow.Month;
+                        string[] chartColors = ["#00BFA5","#2563eb","#d97706","#dc2626","#7c3aed","#8695AA","#0dcaf0","#fd7e14"];
+                        string[] statusPatterns = ["1","0.6","0.35"]; // opacity per status
+
+                        // Build lookup: month -> level -> status -> count
+                        var lookup = _data.MonthlySignups
+                            .GroupBy(x => x.Month)
+                            .ToDictionary(g => g.Key, g => g.GroupBy(x => x.MembershipLevel)
+                                .ToDictionary(g2 => g2.Key, g2 => g2.ToDictionary(x => x.Status, x => x.Count)));
+
+                        var maxBar = allLevels.Count > 0
+                            ? Enumerable.Range(1, currentMonth)
+                                .SelectMany(m => allLevels.Select(l =>
+                                    lookup.TryGetValue(m, out var ld) && ld.TryGetValue(l, out var sd)
+                                        ? sd.Values.Sum() : 0))
+                                .DefaultIfEmpty(1).Max()
+                            : 1;
+                        if (maxBar == 0) maxBar = 1;
+                    }
+
+                    @if (!_data.MonthlySignups.Any())
+                    {
+                        <p class="text-muted text-center py-4">No signup data for @DateTime.UtcNow.Year yet.</p>
+                    }
+                    else
+                    {
+                        <!-- Legend -->
+                        <div class="d-flex flex-wrap gap-3 mb-3">
+                            @foreach (var (lvl, li) in allLevels.Select((x, i) => (x, i)))
+                            {
+                                <div class="d-flex align-items-center gap-1">
+                                    <div style="width:14px;height:14px;border-radius:3px;background:@chartColors[li % chartColors.Length]"></div>
+                                    <span class="small">@lvl</span>
+                                </div>
+                            }
+                            <div class="vr mx-1"></div>
+                            <span class="small text-muted fst-italic">Opacity = status: Active (100%) · Inactive (60%) · Other (35%)</span>
+                        </div>
+
+                        <!-- Chart -->
+                        <div class="position-relative" style="overflow-x:auto;">
+                            <div class="d-flex align-items-end gap-2" style="min-width:600px;height:220px;padding-bottom:24px;">
+                                @for (int mo = 1; mo <= currentMonth; mo++)
+                                {
+                                    var monthName = new DateTime(DateTime.UtcNow.Year, mo, 1).ToString("MMM");
+                                    <div class="d-flex flex-column align-items-center flex-grow-1" style="min-width:36px;">
+                                        <!-- Bars group -->
+                                        <div class="d-flex align-items-end gap-1 w-100 justify-content-center" style="height:190px;">
+                                            @foreach (var (lvl, li) in allLevels.Select((x, i) => (x, i)))
+                                            {
+                                                var color = chartColors[li % chartColors.Length];
+                                                @if (lookup.TryGetValue(mo, out var ld) && ld.TryGetValue(lvl, out var sd))
+                                                {
+                                                    <!-- Stacked bar by status -->
+                                                    var totalForBar = sd.Values.Sum();
+                                                    var barHeightPx = maxBar > 0 ? (int)(totalForBar * 185.0 / maxBar) : 0;
+                                                    <div class="position-relative d-flex flex-column-reverse"
+                                                         style="width:10px;height:@(barHeightPx)px;border-radius:3px 3px 0 0;overflow:hidden;"
+                                                         title="@lvl · @monthName: @totalForBar">
+                                                        @foreach (var (st, si) in allStatuses.Select((x, i) => (x, i)))
+                                                        {
+                                                            @if (sd.TryGetValue(st, out var sc) && sc > 0)
+                                                            {
+                                                                var segPct = totalForBar > 0 ? sc * 100 / totalForBar : 0;
+                                                                var opacity = si == 0 ? "1" : si == 1 ? "0.6" : "0.35";
+                                                                <div style="height:@(segPct)%;background:@color;opacity:@opacity;min-height:2px;"
+                                                                     title="@st: @sc"></div>
+                                                            }
+                                                        }
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <div style="width:10px;height:2px;"></div>
+                                                }
+                                            }
+                                        </div>
+                                        <!-- Month label -->
+                                        <div class="text-muted text-center" style="font-size:10px;margin-top:4px;">@monthName</div>
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- Y-axis guide lines -->
+                            <div class="position-absolute top-0 start-0 w-100" style="height:190px;pointer-events:none;">
+                                @for (int tick = 0; tick <= 4; tick++)
+                                {
+                                    var val  = maxBar * (4 - tick) / 4;
+                                    var top  = tick * 25;
+                                    <div class="position-absolute d-flex align-items-center" style="top:@(top)%;left:0;width:100%;">
+                                        <span class="text-muted me-1" style="font-size:9px;white-space:nowrap;min-width:18px;">@val</span>
+                                        <div style="flex:1;border-top:1px dashed #dee2e6;opacity:.6;"></div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Status breakdown table below chart -->
+                        <div class="table-responsive mt-3">
+                            <table class="clean-table w-100">
+                                <thead>
+                                    <tr>
+                                        <th>Level / Status</th>
+                                        @for (int mo = 1; mo <= currentMonth; mo++)
+                                        {
+                                            <th class="text-center">@(new DateTime(DateTime.UtcNow.Year, mo, 1).ToString("MMM"))</th>
+                                        }
+                                        <th class="text-center fw-bold">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var (lvl, li) in allLevels.Select((x, i) => (x, i)))
+                                    {
+                                        var color = chartColors[li % chartColors.Length];
+                                        @foreach (var st in allStatuses)
+                                        {
+                                            var rowTotal = Enumerable.Range(1, currentMonth).Sum(mo =>
+                                                lookup.TryGetValue(mo, out var ld) && ld.TryGetValue(lvl, out var sd) && sd.TryGetValue(st, out var sc) ? sc : 0);
+                                            if (rowTotal == 0) continue;
+                                            <tr>
+                                                <td>
+                                                    <span class="me-1" style="display:inline-block;width:10px;height:10px;border-radius:2px;background:@color;opacity:@(st == "Active" ? "1" : st == "Inactive" ? "0.6" : "0.35")"></span>
+                                                    @lvl <span class="text-muted">· @st</span>
+                                                </td>
+                                                @for (int mo = 1; mo <= currentMonth; mo++)
+                                                {
+                                                    var val = lookup.TryGetValue(mo, out var ld2) && ld2.TryGetValue(lvl, out var sd2) && sd2.TryGetValue(st, out var sc2) ? sc2 : 0;
+                                                    <td class="text-center @(val > 0 ? "fw-semibold" : "text-muted")">@(val > 0 ? val.ToString() : "—")</td>
+                                                }
+                                                <td class="text-center fw-bold">@rowTotal</td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ ROW 7 — WORLD MAP: ACTIVE MEMBERS BY COUNTRY ════════════════════ -->
+    <div class="row g-3 mt-1 mb-4">
+        <div class="col-12">
+            <div class="panel-card">
+                <div class="panel-header">
+                    <div class="kpi-icon teal" style="width:28px;height:28px;font-size:.9rem;border-radius:7px;"><i class="ri-earth-line"></i></div>
+                    <h6 class="flex-grow-1">Active Members by Country</h6>
+                    <span class="pill pill-teal">@_data.MembersByCountry.Count countries</span>
+                    <span class="pill pill-green">@_data.MembersByCountry.Sum(x => x.ActiveCount).ToString("N0") members</span>
+                </div>
+                <div style="padding:0;">
+                    @if (!_data.MembersByCountry.Any())
+                    {
+                        <p class="text-muted text-center py-4" style="font-size:13px;">No country data available.</p>
+                    }
+                    else
+                    {
+                        var maxCountryCount = _data.MembersByCountry.Max(x => x.ActiveCount);
+                        var top10 = _data.MembersByCountry.Take(10).ToList();
+                        <div class="row g-0">
+                            <!-- Map -->
+                            <div class="col-12 col-xl-8 p-3">
+                                <SfMaps Height="420px" Background="transparent">
+                                    <MapsZoomSettings Enable="true" EnablePanning="true" />
+                                    <MapsLayers>
+                                        <MapsLayer TValue="MembersByCountryItem"
+                                                   ShapeData='new { dataOptions = "https://cdn.syncfusion.com/maps/map-data/world-map.json" }'
+                                                   DataSource="@_data.MembersByCountry"
+                                                   ShapeDataPath="CountryName"
+                                                   ShapePropertyPath='new string[]{"name"}'>
+                                            <MapsShapeSettings Fill="#e2e8f0" ColorValuePath="ActiveCount">
+                                                <MapsColorMappings>
+                                                    <MapsColorMapping StartRange="0" EndRange="0"
+                                                                      Color='new string[]{"#f0f4f8"}' />
+                                                    <MapsColorMapping StartRange="1" EndRange="@maxCountryCount"
+                                                                      Color='new string[]{"#ccfbf1","#00897B"}' />
+                                                </MapsColorMappings>
+                                            </MapsShapeSettings>
+                                            <MapsLayerTooltipSettings Visible="true"
+                                                                       ValuePath="ActiveCount"
+                                                                       Format="${CountryName} — ${ActiveCount} active members" />
+                                            <MapsDataLabelSettings Visible="false" />
+                                        </MapsLayer>
+                                    </MapsLayers>
+                                    <MapsTitleSettings Text="">
+                                        <MapsTitleTextStyle Size="0px" />
+                                    </MapsTitleSettings>
+                                </SfMaps>
+                            </div>
+                            <!-- Top countries ranked table -->
+                            <div class="col-12 col-xl-4 p-3" style="border-left:1px solid #f0f2f5;">
+                                <p class="section-title">Top Countries</p>
+                                @foreach (var (c, idx) in top10.Select((x, i) => (x, i + 1)))
+                                {
+                                    var barPct = maxCountryCount > 0 ? c.ActiveCount * 100 / maxCountryCount : 0;
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <span style="font-size:13px;font-weight:600;color:#374151;">
+                                                <span style="display:inline-block;width:20px;height:20px;border-radius:50%;background:#f0f4f8;text-align:center;line-height:20px;font-size:10px;font-weight:700;color:#8695AA;margin-right:6px;">@idx</span>
+                                                @c.CountryName
+                                            </span>
+                                            <span class="pill pill-teal">@c.ActiveCount.ToString("N0")</span>
+                                        </div>
+                                        <div class="progress" style="height:4px;">
+                                            <div class="progress-bar prog-teal" style="width:@(barPct)%"></div>
+                                        </div>
+                                    </div>
+                                }
+                                @if (_data.MembersByCountry.Count > 10)
+                                {
+                                    <p class="text-muted text-center mt-2" style="font-size:12px;">
+                                        + @(_data.MembersByCountry.Count - 10) more countries
+                                    </p>
+                                }
+                            </div>
+                        </div>
+                        @if (_data.MembersByCountry.Count > 10)
+                        {
+                            <div class="px-3 pb-3">
+                                <details>
+                                    <summary style="color:#00BFA5;font-size:13px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:4px;">
+                                        <i class="ri-arrow-down-s-line"></i>Show all @_data.MembersByCountry.Count countries
+                                    </summary>
+                                    <div class="table-responsive mt-2">
+                                        <table class="clean-table w-100">
+                                            <thead>
+                                                <tr><th>#</th><th>Country</th><th style="text-align:right;">Active Members</th><th style="text-align:right;">% of Total</th></tr>
+                                            </thead>
+                                            <tbody>
+                                                @{ var grandTotal = _data.MembersByCountry.Sum(x => x.ActiveCount); }
+                                                @foreach (var (c2, i2) in _data.MembersByCountry.Select((x, i) => (x, i + 1)))
+                                                {
+                                                    <tr>
+                                                        <td style="color:#8695AA;">@i2</td>
+                                                        <td class="fw-semibold">@c2.CountryName</td>
+                                                        <td style="text-align:right;">@c2.ActiveCount.ToString("N0")</td>
+                                                        <td style="text-align:right;color:#8695AA;">@(grandTotal > 0 ? (c2.ActiveCount * 100.0 / grandTotal).ToString("N1") : "0")%</td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </details>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+}
+
+@code {
+    private CeoDashboardDto? _data;
+    private bool _loading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; _error = null; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<CeoDashboardDto>>("api/v1/admin/dashboard/ceo");
+            if (resp?.Success == true && resp.Data is not null)
+                _data = resp.Data;
+            else
+                _error = resp?.Errors?.FirstOrDefault() ?? "Failed to load dashboard data.";
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error: {ex.Message}";
+        }
+        finally { _loading = false; }
+    }
+
+    private record RecentMemberItem(string MemberId, string FullName, string MemberType, string Status, DateTime EnrollDate, string? SponsorId);
+    private class CeoDashboardDto
+    {
+        public int TotalMembers { get; set; }
+        public int TotalAmbassadors { get; set; }
+        public int TotalExternalMembers { get; set; }
+        public int ActiveMembers { get; set; }
+        public int InactiveMembers { get; set; }
+        public int SuspendedMembers { get; set; }
+        public int TerminatedMembers { get; set; }
+        public int NewMembersToday { get; set; }
+        public int NewMembersThisWeek { get; set; }
+        public int NewMembersThisMonth { get; set; }
+        public int NewMembersLastMonth { get; set; }
+        public decimal RevenueThisMonth { get; set; }
+        public decimal RevenueLastMonth { get; set; }
+        public decimal RevenueThisYear { get; set; }
+        public int OrdersThisMonth { get; set; }
+        public decimal AvgOrderValueThisMonth { get; set; }
+        public decimal CommissionsPaidAllTime { get; set; }
+        public decimal CommissionsPaidThisMonth { get; set; }
+        public decimal CommissionsPending { get; set; }
+        public int ActiveSubscriptions { get; set; }
+        public int ExpiringSubscriptions30Days { get; set; }
+        public int CancelledSubscriptionsThisMonth { get; set; }
+        public int TicketsOpen { get; set; }
+        public int TicketsInProgress { get; set; }
+        public int TicketsCritical { get; set; }
+        public int TicketsResolvedThisMonth { get; set; }
+        public int TokenCodesTotal { get; set; }
+        public int TokenCodesUsed { get; set; }
+        public int TokenCodesAvailable { get; set; }
+        public int PaymentsPending { get; set; }
+        public int PaymentsFailed { get; set; }
+        public List<RecentMemberItem> RecentMembers { get; set; } = new();
+        public List<MembershipBreakdownItem> MembershipBreakdown { get; set; } = new();
+        public List<AmbassadorsByLevelItem> AmbassadorsByLevel { get; set; } = new();
+        public List<MonthlySignupItem> MonthlySignups { get; set; } = new();
+        public List<MembersByCountryItem> MembersByCountry { get; set; } = new();
+        public BillingRunDto? LastBillingRun { get; set; }
+    }
+    private record MembershipBreakdownItem(string LevelName, int ActiveCount, bool IsFree);
+    private record AmbassadorsByLevelItem(string LevelName, int Count, bool IsFree);
+    private record MonthlySignupItem(int Month, string MembershipLevel, string Status, int Count);
+    private record MembersByCountryItem(string CountryName, int ActiveCount);
+    private class BillingRunDto
+    {
+        public DateTime RunDate { get; set; }
+        public int TotalDue { get; set; }
+        public int TotalSuccessful { get; set; }
+        public int TotalFailed { get; set; }
+        public int TotalPending { get; set; }
+        public decimal RevenueCollected { get; set; }
+        public decimal RevenueMissed { get; set; }
+        public decimal SuccessRate { get; set; }
+        public List<BillingRunLevelItem> ByLevel { get; set; } = new();
+    }
+    private record BillingRunLevelItem(string LevelName, decimal RenewalPrice, int DueCount, int SuccessCount, int FailedCount, int PendingCount, decimal RevenueCollected, decimal RevenueMissed);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+}

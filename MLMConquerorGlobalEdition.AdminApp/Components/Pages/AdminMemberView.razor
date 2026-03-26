@@ -1,0 +1,76 @@
+@page "/admin/members/{MemberId}/view"
+@attribute [Authorize(Roles = "SuperAdmin,Admin,SupportManager,SupportLevel1,SupportLevel2,SupportLevel3,IT,CommissionManager,BillingManager")]
+@inject IViewContextService ViewContext
+
+@*
+    This page renders the same shared components as the member sees in BizCenter,
+    but with IsAdminContext = true so admin-only actions (delete commission, ghost points, etc.) are visible.
+    The ViewContextService is already configured by AdminViewContextInitializer.
+*@
+
+<div class="container-fluid py-4">
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="/admin/members" class="btn btn-sm btn-outline-secondary">← Back to Members</a>
+        @if (ViewContext.IsImpersonating)
+        {
+            <span class="badge bg-warning text-dark fs-6 px-3 py-2">
+                👁 Viewing as @MemberId
+            </span>
+        }
+    </div>
+
+    <ul class="nav nav-tabs mb-4" id="memberViewTabs">
+        <li class="nav-item">
+            <button class="nav-link @(_tab == "dashboard" ? "active" : "")" @onclick='() => _tab = "dashboard"'>Dashboard</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link @(_tab == "profile" ? "active" : "")" @onclick='() => _tab = "profile"'>Profile</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link @(_tab == "commissions" ? "active" : "")" @onclick='() => _tab = "commissions"'>Commissions</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link @(_tab == "team" ? "active" : "")" @onclick='() => _tab = "team"'>Team</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link @(_tab == "tokens" ? "active" : "")" @onclick='() => _tab = "tokens"'>Tokens</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link @(_tab == "ranks" ? "active" : "")" @onclick='() => _tab = "ranks"'>Ranks</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link @(_tab == "tickets" ? "active" : "")" @onclick='() => _tab = "tickets"'>Tickets</button>
+        </li>
+    </ul>
+
+    @switch (_tab)
+    {
+        case "dashboard":
+            <DashboardPage MemberProfileId="@MemberId" />
+            break;
+        case "profile":
+            <UserProfilePage MemberProfileId="@MemberId" />
+            break;
+        case "commissions":
+            <CommissionsDashboard MemberProfileId="@MemberId" />
+            break;
+        case "team":
+            <DualTeamMyTeam MemberProfileId="@MemberId" />
+            break;
+        case "tokens":
+            <TokensPage MemberProfileId="@MemberId" />
+            break;
+        case "ranks":
+            <RankDashboard MemberProfileId="@MemberId" />
+            break;
+        case "tickets":
+            <TicketListPage MemberProfileId="@MemberId" />
+            break;
+    }
+</div>
+
+@code {
+    [Parameter] public string MemberId { get; set; } = string.Empty;
+
+    private string _tab = "dashboard";
+}

@@ -1,0 +1,229 @@
+@page "/admin/system-users"
+@attribute [Authorize(Roles = "SuperAdmin")]
+@inject AdminApiClient Api
+@inject IViewContextService ViewContext
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="mb-1">System Users</h4>
+            <p class="text-muted small mb-0">Manage admin staff accounts — SuperAdmin only.</p>
+        </div>
+        <button class="btn btn-primary" @onclick="() => _showCreate = true">
+            <i class="ri-user-add-line me-1"></i> Add Staff User
+        </button>
+    </div>
+
+    <div class="card">
+        <div class="card-body p-0">
+            <LoadingSpinner IsLoading="@_loading" />
+            @if (!_loading)
+            {
+                <SfGrid TValue="SystemUserItem" DataSource="@_users" AllowPaging="true" AllowSorting="true">
+                    <GridPageSettings PageSize="20"></GridPageSettings>
+                    <GridColumns>
+                        <GridColumn Field="@nameof(SystemUserItem.FullName)" HeaderText="Name" Width="180"></GridColumn>
+                        <GridColumn Field="@nameof(SystemUserItem.Email)" HeaderText="Email"></GridColumn>
+                        <GridColumn HeaderText="Roles">
+                            <Template>
+                                @{ var u = (SystemUserItem)context; }
+                                @foreach (var role in u.Roles)
+                                {
+                                    <span class="badge bg-secondary me-1">@role</span>
+                                }
+                            </Template>
+                        </GridColumn>
+                        <GridColumn HeaderText="Status" Width="110">
+                            <Template>
+                                @{ var u = (SystemUserItem)context; }
+                                <StatusBadge Status="@(u.IsActive ? "Active" : "Disabled")" />
+                            </Template>
+                        </GridColumn>
+                        <GridColumn HeaderText="Created" Width="140">
+                            <Template>
+                                @{ var u = (SystemUserItem)context; }
+                                @u.CreatedAt.ToString("MMM dd, yyyy")
+                            </Template>
+                        </GridColumn>
+                        <GridColumn HeaderText="Actions" Width="150">
+                            <Template>
+                                @{ var u = (SystemUserItem)context; }
+                                <div class="d-flex gap-1">
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                            @onclick="() => EditUser(u)">Edit</button>
+                                    <button class="btn btn-sm @(u.IsActive ? "btn-outline-danger" : "btn-outline-success")"
+                                            @onclick="() => ToggleStatusAsync(u)">
+                                        @(u.IsActive ? "Disable" : "Enable")
+                                    </button>
+                                </div>
+                            </Template>
+                        </GridColumn>
+                    </GridColumns>
+                </SfGrid>
+            }
+        </div>
+    </div>
+</div>
+
+@if (_showCreate || _editUser != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.5)">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_editUser != null ? "Edit Staff User" : "Add Staff User")</h5>
+                    <button class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="_form" OnValidSubmit="SaveUserAsync">
+                        <DataAnnotationsValidator />
+
+                        <div class="mb-3">
+                            <label class="form-label">Full Name</label>
+                            <InputText class="form-control" @bind-Value="_form.FullName" />
+                            <ValidationMessage For="() => _form.FullName" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <InputText class="form-control" @bind-Value="_form.Email" type="email" />
+                            <ValidationMessage For="() => _form.Email" />
+                        </div>
+                        @if (_editUser == null)
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">Temporary Password</label>
+                                <InputText class="form-control" @bind-Value="_form.Password" type="password" />
+                                <ValidationMessage For="() => _form.Password" />
+                                <div class="form-text">User must change on first login.</div>
+                            </div>
+                        }
+                        <div class="mb-3">
+                            <label class="form-label">Roles</label>
+                            @foreach (var role in _availableRoles)
+                            {
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="role_@role"
+                                           checked="@_form.SelectedRoles.Contains(role)"
+                                           @onchange="e => ToggleRole(role, (bool)e.Value!)" />
+                                    <label class="form-check-label" for="role_@role">@role</label>
+                                </div>
+                            }
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(_formError))
+                        {
+                            <ApiErrorAlert Message="@_formError" />
+                        }
+
+                        <div class="d-flex gap-2 justify-content-end">
+                            <button type="button" class="btn btn-outline-secondary" @onclick="CloseModal">Cancel</button>
+                            <button type="submit" class="btn btn-primary" disabled="@_formBusy">
+                                @if (_formBusy) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                                Save
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<SystemUserItem> _users = new();
+    private bool _loading = true;
+    private bool _showCreate;
+    private SystemUserItem? _editUser;
+    private SystemUserForm _form = new();
+    private bool _formBusy;
+    private string _formError = string.Empty;
+
+    private static readonly string[] _availableRoles =
+    [
+        AppRoles.Admin, AppRoles.CommissionManager, AppRoles.BillingManager,
+        AppRoles.SupportManager, AppRoles.SupportLevel1, AppRoles.SupportLevel2,
+        AppRoles.SupportLevel3, AppRoles.IT
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        // TODO: GET /api/v1/admin/system-users
+        await Task.Delay(50);
+        _users =
+        [
+            new("usr-001", "Alice Nguyen", "alice@corp.com", [AppRoles.Admin], true, DateTime.Today.AddDays(-30)),
+            new("usr-002", "Carlos Ruiz",  "carlos@corp.com", [AppRoles.SupportManager, AppRoles.SupportLevel1], true, DateTime.Today.AddDays(-15)),
+        ];
+        _loading = false;
+    }
+
+    private void EditUser(SystemUserItem u)
+    {
+        _editUser = u;
+        _form = new SystemUserForm { FullName = u.FullName, Email = u.Email, SelectedRoles = [.. u.Roles] };
+    }
+
+    private void CloseModal()
+    {
+        _showCreate = false;
+        _editUser   = null;
+        _form       = new();
+        _formError  = string.Empty;
+    }
+
+    private void ToggleRole(string role, bool isChecked)
+    {
+        if (isChecked) _form.SelectedRoles.Add(role);
+        else           _form.SelectedRoles.Remove(role);
+    }
+
+    private async Task SaveUserAsync()
+    {
+        _formBusy  = true;
+        _formError = string.Empty;
+        try
+        {
+            // TODO: POST/PUT /api/v1/admin/system-users
+            await Task.Delay(50);
+            CloseModal();
+            await OnInitializedAsync();
+        }
+        catch
+        {
+            _formError = "Failed to save user.";
+        }
+        finally
+        {
+            _formBusy = false;
+        }
+    }
+
+    private async Task ToggleStatusAsync(SystemUserItem u)
+    {
+        // TODO: PUT /api/v1/admin/system-users/{u.UserId}/status
+        await Task.Delay(50);
+        await OnInitializedAsync();
+    }
+
+    private record SystemUserItem(
+        string       UserId,
+        string       FullName,
+        string       Email,
+        List<string> Roles,
+        bool         IsActive,
+        DateTime     CreatedAt);
+
+    private class SystemUserForm
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public string FullName { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        public string Password { get; set; } = string.Empty;
+
+        public HashSet<string> SelectedRoles { get; set; } = new();
+    }
+}

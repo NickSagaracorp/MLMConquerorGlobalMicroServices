@@ -1,0 +1,292 @@
+@page "/admin/config/commission-types"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+
+<PageTitle>Commission Types — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Commission Types") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-settings-3-line me-2 text-primary"></i>Commission Types
+        </h6>
+        <button class="btn btn-primary btn-sm" @onclick="OpenCreate">
+            <i class="ri-add-line me-1"></i>New Commission Type
+        </button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="CommissionTypeDto" DataSource="@_items"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250,500,1000})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn Field="@nameof(CommissionTypeDto.Id)" HeaderText="ID" Width="70" TextAlign="TextAlign.Center" />
+                    <GridColumn HeaderText="Name" Width="200">
+                        <Template><span class="fw-semibold">@(((CommissionTypeDto)context).Name)</span>@if(!string.IsNullOrWhiteSpace(((CommissionTypeDto)context).Description)){<text><br/><small class="text-muted">@(((CommissionTypeDto)context).Description)</small></text>}</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="%" Width="90" TextAlign="TextAlign.Right">
+                        <Template>@(((CommissionTypeDto)context).Percentage.ToString("F2"))%</Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(CommissionTypeDto.PaymentDelayDays)" HeaderText="Delay(d)" Width="100" TextAlign="TextAlign.Center" />
+                    <GridColumn HeaderText="Real-Time" Width="100" TextAlign="TextAlign.Center">
+                        <Template>
+                            <span class="badge @BoolBadge(((CommissionTypeDto)context).IsRealTime)">
+                                @(((CommissionTypeDto)context).IsRealTime ? "Yes" : "No")
+                            </span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Status" Width="100">
+                        <Template>
+                            <span class="badge @BoolBadge(((CommissionTypeDto)context).IsActive)">
+                                @(((CommissionTypeDto)context).IsActive ? "Active" : "Inactive")
+                            </span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="100" TextAlign="TextAlign.Center">
+                        <Template>
+                            <button class="btn btn-sm btn-outline-primary py-0 me-1" @onclick="() => OpenEdit((CommissionTypeDto)context)"><i class="ri-edit-line"></i></button>
+                            <button class="btn btn-sm btn-outline-danger py-0" @onclick="() => ConfirmDelete((CommissionTypeDto)context)"><i class="ri-delete-bin-line"></i></button>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+@if (_showForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold">@(_editId is null ? "New Commission Type" : "Edit Commission Type")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseForm"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+                            <input class="form-control" @bind="_form.Name" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Category <span class="text-danger">*</span></label>
+                            <select class="form-select" @bind="_form.CommissionCategoryId">
+                                <option value="0">— Select Category —</option>
+                                @foreach (var cat in _categories)
+                                {
+                                    <option value="@cat.Id">@cat.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Description</label>
+                            <textarea class="form-control" rows="3" @bind="_form.Description"></textarea>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Percentage (%)</label>
+                            <input type="number" step="0.01" class="form-control" @bind="_form.Percentage" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Payment Delay (days)</label>
+                            <input type="number" class="form-control" @bind="_form.PaymentDelayDays" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Trigger Order</label>
+                            <input type="number" class="form-control" @bind="_form.TriggerOrder" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Level No</label>
+                            <input type="number" class="form-control" @bind="_form.LevelNo" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Personal Points</label>
+                            <input type="number" class="form-control" @bind="_form.PersonalPoints" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Team Points</label>
+                            <input type="number" class="form-control" @bind="_form.TeamPoints" />
+                        </div>
+                        <div class="col-12">
+                            <div class="d-flex flex-wrap gap-4">
+                                <div class="form-check"><input class="form-check-input" type="checkbox" id="rt" @bind="_form.IsRealTime"/><label class="form-check-label" for="rt">Real-Time</label></div>
+                                <div class="form-check"><input class="form-check-input" type="checkbox" id="os" @bind="_form.IsPaidOnSignup"/><label class="form-check-label" for="os">Paid on Signup</label></div>
+                                <div class="form-check"><input class="form-check-input" type="checkbox" id="or" @bind="_form.IsPaidOnRenewal"/><label class="form-check-label" for="or">Paid on Renewal</label></div>
+                                <div class="form-check"><input class="form-check-input" type="checkbox" id="cm" @bind="_form.Cummulative"/><label class="form-check-label" for="cm">Cumulative</label></div>
+                                <div class="form-check"><input class="form-check-input" type="checkbox" id="rb" @bind="_form.ResidualBased"/><label class="form-check-label" for="rb">Residual Based</label></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                    <button class="btn btn-primary" @onclick="Save" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        @(_editId is null ? "Create" : "Save Changes")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showDeleteConfirm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header"><h5 class="modal-title fw-bold text-danger">Deactivate Commission Type</h5><button type="button" class="btn-close" @onclick="() => { _showDeleteConfirm = false; _deleteItem = null; }"></button></div>
+                <div class="modal-body">Deactivate <strong>@_deleteItem?.Name</strong>?</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => { _showDeleteConfirm = false; _deleteItem = null; }">Cancel</button>
+                    <button class="btn btn-danger" @onclick="DeleteItem" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Deactivate
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<CommissionTypeDto> _items = new();
+    private List<CategoryItem> _categories = new();
+    private bool _loading = true;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private bool _showForm;
+    private bool _showDeleteConfirm;
+    private int? _editId;
+    private CommissionTypeFormModel _form = new();
+    private CommissionTypeDto? _deleteItem;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategories();
+        await LoadAsync();
+    }
+
+    private async Task LoadCategories()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<IEnumerable<CategoryItem>>>("api/v1/admin/commission-categories");
+            if (resp?.Success == true && resp.Data is not null)
+                _categories = resp.Data.ToList();
+        }
+        catch { /* non-critical */ }
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<CommissionTypeDto>>>("api/v1/admin/commission-types?page=1&pageSize=100");
+            if (resp?.Success == true && resp.Data is not null)
+                _items = resp.Data.Items.ToList();
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private void OpenCreate() { _editId = null; _form = new(); _showForm = true; }
+
+    private void OpenEdit(CommissionTypeDto ct)
+    {
+        _editId = ct.Id;
+        _form = new CommissionTypeFormModel
+        {
+            CommissionCategoryId = ct.CommissionCategoryId, Name = ct.Name, Description = ct.Description,
+            Percentage = ct.Percentage, PaymentDelayDays = ct.PaymentDelayDays, IsRealTime = ct.IsRealTime,
+            IsPaidOnSignup = ct.IsPaidOnSignup, IsPaidOnRenewal = ct.IsPaidOnRenewal,
+            Cummulative = ct.Cummulative, TriggerOrder = ct.TriggerOrder, LevelNo = ct.LevelNo,
+            PersonalPoints = ct.PersonalPoints, TeamPoints = ct.TeamPoints, ResidualBased = ct.ResidualBased
+        };
+        _showForm = true;
+    }
+
+    private void CloseForm() { _showForm = false; _editId = null; }
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(_form.Name)) { _alertMsg = "Name is required."; _alertIsError = true; return; }
+        _saving = true;
+        try
+        {
+            var response = _editId is null
+                ? await Http.PostAsJsonAsync("api/v1/admin/commission-types", _form)
+                : await Http.PutAsJsonAsync($"api/v1/admin/commission-types/{_editId}", _form);
+            if (response.IsSuccessStatusCode) { _alertMsg = _editId is null ? "Created." : "Updated."; _alertIsError = false; CloseForm(); await LoadAsync(); }
+            else { _alertMsg = $"Save failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private void ConfirmDelete(CommissionTypeDto ct) { _deleteItem = ct; _showDeleteConfirm = true; }
+
+    private async Task DeleteItem()
+    {
+        if (_deleteItem is null) return;
+        _saving = true;
+        try
+        {
+            var response = await Http.DeleteAsync($"api/v1/admin/commission-types/{_deleteItem.Id}");
+            if (response.IsSuccessStatusCode) { _alertMsg = "Deactivated."; _alertIsError = false; _showDeleteConfirm = false; _deleteItem = null; await LoadAsync(); }
+            else { _alertMsg = $"Failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private class CommissionTypeFormModel
+    {
+        public int CommissionCategoryId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public decimal Percentage { get; set; }
+        public int PaymentDelayDays { get; set; }
+        public bool IsRealTime { get; set; }
+        public bool IsPaidOnSignup { get; set; }
+        public bool IsPaidOnRenewal { get; set; }
+        public bool Cummulative { get; set; }
+        public int TriggerOrder { get; set; }
+        public int LevelNo { get; set; }
+        public bool ResidualBased { get; set; }
+        public int PersonalPoints { get; set; }
+        public int TeamPoints { get; set; }
+    }
+
+    private static string BoolBadge(bool val) => val ? "bg-success" : "bg-secondary";
+
+    private record CommissionTypeDto(
+        int Id, int CommissionCategoryId, string Name, string? Description,
+        decimal Percentage, int PaymentDelayDays, bool IsActive, bool IsRealTime,
+        bool IsPaidOnSignup, bool IsPaidOnRenewal, bool Cummulative, int TriggerOrder,
+        int NewMembers, int DaysAfterJoining, int MembersRebill, int LifeTimeRank,
+        int CurrentRank, int LevelNo, bool ResidualBased, int ResidualOverCommissionType,
+        double ResidualPercentage, int PersonalPoints, int TeamPoints,
+        double MaxTeamPointsPerBranch, int EnrollmentTeam, double MaxEnrollmentTeamPointsPerBranch,
+        int ExternalMembers, int SponsoredMembers, int ReverseId);
+    private record CategoryItem(int Id, string Name);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+}

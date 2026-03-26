@@ -1,0 +1,203 @@
+@page "/admin/network/binary-tree"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+
+<PageTitle>Binary Tree — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Binary Tree") })" />
+
+<div class="row mb-3 align-items-end g-2">
+    <div class="col-md-5">
+        <label class="form-label fw-semibold mb-1">Root Member ID</label>
+        <div class="input-group">
+            <MemberPicker Value="@_rootMemberId" ValueChanged="@((string v) => { _rootMemberId = v; })" />
+            <button class="btn btn-primary" @onclick="LoadTree" disabled="@_loading">
+                @if (_loading) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                <i class="ri-search-line me-1"></i>Load Tree
+            </button>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label fw-semibold mb-1">Depth</label>
+        <select class="form-select" @bind="_depth">
+            <option value="2">2 Levels</option>
+            <option value="3">3 Levels</option>
+            <option value="4">4 Levels</option>
+            <option value="5">5 Levels</option>
+        </select>
+    </div>
+</div>
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-info") alert-dismissible">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+@if (_root is not null)
+{
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <div class="card bg-primary text-white border-0 rounded-3">
+                <div class="card-body text-center py-3">
+                    <div class="fs-4 fw-bold">@_root.LeftPoints.ToString("N2")</div>
+                    <div>Left Leg Points &bull; @_root.LeftCount members</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card bg-info text-dark border-0 rounded-3">
+                <div class="card-body text-center py-3">
+                    <div class="fs-4 fw-bold">@_root.RightPoints.ToString("N2")</div>
+                    <div>Right Leg Points &bull; @_root.RightCount members</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header py-3">
+            <h6 class="card-title mb-0 fw-semibold">
+                <i class="ri-node-tree me-2 text-primary"></i>Binary Tree — Root: <code>@_root.MemberId</code> @_root.FullName
+                <button class="btn btn-sm btn-outline-secondary ms-3" @onclick="() => { _rootMemberId = _root.MemberId; LoadTree(); }">
+                    <i class="ri-refresh-line"></i>
+                </button>
+            </h6>
+        </div>
+        <div class="card-body overflow-auto p-3">
+            <div style="min-width: 800px;">
+                @RenderNode(_root, 0)
+            </div>
+        </div>
+    </div>
+}
+else if (!_loading && _searched)
+{
+    <div class="alert alert-warning">No binary tree data found for this member.</div>
+}
+
+@code {
+    private string _rootMemberId = string.Empty;
+    private int _depth = 3;
+    private bool _loading;
+    private bool _searched;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private BinaryNodeDto? _root;
+
+    private async Task LoadTree()
+    {
+        if (string.IsNullOrWhiteSpace(_rootMemberId)) { _alertMsg = "Please enter a Member ID."; _alertIsError = false; return; }
+        _loading = true; _searched = true; _root = null; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<BinaryNodeDto>>(
+                $"api/v1/admin/network/binary-tree?memberId={Uri.EscapeDataString(_rootMemberId)}&depth={_depth}");
+            if (resp?.Success == true && resp.Data is not null)
+            { _root = resp.Data; _alertMsg = null; }
+            else
+            { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "No data found."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private RenderFragment RenderNode(BinaryNodeDto node, int level) => builder =>
+    {
+        // Render as a flex row: left subtree | node card | right subtree
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "class", "d-flex flex-column align-items-center");
+        builder.AddAttribute(2, "style", "width:100%;");
+
+        // Node card
+        builder.OpenElement(3, "div");
+        builder.AddAttribute(4, "class", "card border-0 shadow-sm mb-2 text-center");
+        builder.AddAttribute(5, "style", "min-width:140px;max-width:180px;cursor:pointer;");
+        builder.AddAttribute(6, "onclick", EventCallback.Factory.Create(this, async () =>
+        {
+            _rootMemberId = node.MemberId;
+            await LoadTree();
+        }));
+
+        builder.OpenElement(7, "div");
+        builder.AddAttribute(8, "class", $"card-body p-2 {(level == 0 ? "bg-primary text-white" : "bg-light")}");
+        builder.AddContent(9, $"[{node.MemberId}]");
+        builder.OpenElement(10, "div");
+        builder.AddAttribute(11, "class", "small fw-semibold");
+        builder.AddContent(12, node.FullName);
+        builder.CloseElement();
+        if (!string.IsNullOrWhiteSpace(node.RankName))
+        {
+            builder.OpenElement(13, "span");
+            builder.AddAttribute(14, "class", "badge bg-secondary mt-1");
+            builder.AddContent(15, node.RankName);
+            builder.CloseElement();
+        }
+        builder.CloseElement(); // card-body
+        builder.CloseElement(); // card
+
+        // Children row
+        if (node.Left is not null || node.Right is not null)
+        {
+            builder.OpenElement(16, "div");
+            builder.AddAttribute(17, "class", "d-flex w-100 gap-2 justify-content-center");
+
+            // Left
+            builder.OpenElement(18, "div");
+            builder.AddAttribute(19, "class", "flex-fill d-flex flex-column align-items-center");
+            builder.OpenElement(20, "span");
+            builder.AddAttribute(21, "class", "badge bg-primary mb-1");
+            builder.AddContent(22, "L");
+            builder.CloseElement();
+            if (node.Left is not null)
+                builder.AddContent(23, RenderNode(node.Left, level + 1));
+            else
+            {
+                builder.OpenElement(24, "div");
+                builder.AddAttribute(25, "class", "card border-dashed border-secondary text-center");
+                builder.AddAttribute(26, "style", "min-width:100px;opacity:.4;");
+                builder.OpenElement(27, "div");
+                builder.AddAttribute(28, "class", "card-body p-2 small text-muted");
+                builder.AddContent(29, "Empty");
+                builder.CloseElement();
+                builder.CloseElement();
+            }
+            builder.CloseElement(); // left
+
+            // Right
+            builder.OpenElement(30, "div");
+            builder.AddAttribute(31, "class", "flex-fill d-flex flex-column align-items-center");
+            builder.OpenElement(32, "span");
+            builder.AddAttribute(33, "class", "badge bg-info text-dark mb-1");
+            builder.AddContent(34, "R");
+            builder.CloseElement();
+            if (node.Right is not null)
+                builder.AddContent(35, RenderNode(node.Right, level + 1));
+            else
+            {
+                builder.OpenElement(36, "div");
+                builder.AddAttribute(37, "class", "card border-dashed border-secondary text-center");
+                builder.AddAttribute(38, "style", "min-width:100px;opacity:.4;");
+                builder.OpenElement(39, "div");
+                builder.AddAttribute(40, "class", "card-body p-2 small text-muted");
+                builder.AddContent(41, "Empty");
+                builder.CloseElement();
+                builder.CloseElement();
+            }
+            builder.CloseElement(); // right
+
+            builder.CloseElement(); // children row
+        }
+
+        builder.CloseElement(); // outer div
+    };
+
+    private record BinaryNodeDto(
+        string MemberId, string FullName, string? RankName,
+        decimal LeftPoints, decimal RightPoints,
+        int LeftCount, int RightCount,
+        BinaryNodeDto? Left, BinaryNodeDto? Right);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+}

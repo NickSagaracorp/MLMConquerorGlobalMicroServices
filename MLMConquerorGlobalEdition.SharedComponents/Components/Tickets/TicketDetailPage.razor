@@ -1,0 +1,324 @@
+@inject IViewContextService ViewContext
+@inject NavigationManager Nav
+
+@using MLMConquerorGlobalEdition.SharedComponents.Constants
+
+<BreadcrumbNav Items="@_breadcrumb" />
+
+<LoadingSpinner IsLoading="@_isLoading" />
+
+@if (!_isLoading && _ticket is not null)
+{
+    <div class="row g-3">
+
+        <!-- ── Left column: ticket info + comments ─────────────────────── -->
+        <div class="col-12 col-lg-8">
+
+            <!-- Ticket header card -->
+            <div class="card mb-3">
+                <div class="card-header d-flex align-items-center justify-content-between py-3">
+                    <h6 class="card-title mb-0 fw-semibold">
+                        #@_ticket.TicketNumber — @_ticket.Subject
+                    </h6>
+                    <div class="d-flex gap-2 align-items-center">
+                        @if (_ticket.EscalationLevel > 0)
+                        {
+                            <StatusBadge Status="@EscalationLabel(_ticket.EscalationLevel)" />
+                        }
+                        <StatusBadge Status="@_ticket.Status" />
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p class="mb-3">@_ticket.Description</p>
+                    <div class="row g-2 text-muted small">
+                        <div class="col-6">
+                            Category: <strong class="text-body">@_ticket.Category</strong>
+                        </div>
+                        <div class="col-6">
+                            Priority: <strong class="text-body">@_ticket.Priority</strong>
+                        </div>
+                        <div class="col-6">
+                            Assigned To: <strong class="text-body">@(_ticket.AssignedTo ?? "Unassigned")</strong>
+                        </div>
+                        <div class="col-6">
+                            Created: <strong class="text-body">@_ticket.CreatedAt.ToString("MMM dd, yyyy HH:mm")</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comments thread -->
+            <div class="card">
+                <div class="card-header py-3">
+                    <h6 class="card-title mb-0 fw-semibold">
+                        Comments (@_comments.Count)
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    @if (_comments.Count == 0)
+                    {
+                        <div class="text-center py-4 text-muted small">No comments yet. Be the first to reply.</div>
+                    }
+                    else
+                    {
+                        @foreach (var c in _comments)
+                        {
+                            <div class="border-bottom p-3 @(c.IsStaff ? "bg-light" : "")">
+                                <div class="d-flex justify-content-between align-items-center small text-muted mb-1">
+                                    <div>
+                                        <strong class="text-body">@c.Author</strong>
+                                        @if (c.IsStaff)
+                                        {
+                                            <span class="badge bg-secondary ms-2">Staff</span>
+                                        }
+                                    </div>
+                                    <span>@c.CreatedAt.ToString("MMM dd, yyyy HH:mm")</span>
+                                </div>
+                                <p class="mb-0 small">@c.Content</p>
+                            </div>
+                        }
+                    }
+                </div>
+                <!-- Add comment footer -->
+                <div class="card-footer">
+                    <textarea class="form-control mb-2"
+                              rows="3"
+                              placeholder="Write a comment…"
+                              @bind="_newComment"></textarea>
+                    <button class="btn btn-primary btn-sm"
+                            @onclick="AddCommentAsync"
+                            disabled="@_savingComment">
+                        @if (_savingComment)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        Post Comment
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Right column: actions sidebar ──────────────────────────── -->
+        <div class="col-12 col-lg-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="fw-semibold mb-3">Actions</h6>
+                    <div class="d-grid gap-2">
+
+                        <!-- Assign -->
+                        <AdminOnlyWrapper Permission="@Permissions.Ticket.Assign">
+                            @if (_showAssignForm)
+                            {
+                                <div class="border rounded p-2 mb-1">
+                                    <label class="form-label small mb-1">Assign To (Agent ID / Name)</label>
+                                    <input class="form-control form-control-sm mb-2"
+                                           placeholder="Enter agent name…"
+                                           @bind="_assignTarget" />
+                                    <div class="d-flex gap-1">
+                                        <button class="btn btn-sm btn-primary flex-grow-1"
+                                                @onclick="AssignTicketAsync"
+                                                disabled="@_busyAssign">
+                                            @if (_busyAssign)
+                                            {
+                                                <span class="spinner-border spinner-border-sm me-1"></span>
+                                            }
+                                            Confirm
+                                        </button>
+                                        <button class="btn btn-sm btn-secondary"
+                                                @onclick="@(() => _showAssignForm = false)">
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <button class="btn btn-outline-secondary btn-sm"
+                                        @onclick="@(() => _showAssignForm = true)">
+                                    <i class="ri-user-add-line me-1"></i>Assign Agent
+                                </button>
+                            }
+                        </AdminOnlyWrapper>
+
+                        <!-- Resolve -->
+                        <AdminOnlyWrapper Permission="@Permissions.Ticket.Resolve">
+                            <button class="btn btn-success btn-sm"
+                                    @onclick="@(() => _showResolveModal = true)">
+                                <i class="ri-check-double-line me-1"></i>Resolve Ticket
+                            </button>
+                        </AdminOnlyWrapper>
+
+                        <!-- Merge -->
+                        <AdminOnlyWrapper Permission="@Permissions.Ticket.Merge">
+                            <button class="btn btn-outline-secondary btn-sm">
+                                <i class="ri-git-merge-line me-1"></i>Merge Ticket
+                            </button>
+                        </AdminOnlyWrapper>
+
+                        <!-- Escalate dropdown -->
+                        <AdminOnlyWrapper Permission="@Permissions.Ticket.EscalateToL2">
+                            <div class="dropdown">
+                                <button class="btn btn-outline-warning btn-sm dropdown-toggle w-100"
+                                        type="button"
+                                        data-bs-toggle="dropdown"
+                                        aria-expanded="false">
+                                    <i class="ri-arrow-up-line me-1"></i>Escalate
+                                </button>
+                                <ul class="dropdown-menu w-100">
+                                    @if (ViewContext.HasPermission(Permissions.Ticket.EscalateToL2))
+                                    {
+                                        <li>
+                                            <button class="dropdown-item"
+                                                    @onclick="@(() => EscalateAsync(2))">
+                                                Level 2 Support
+                                            </button>
+                                        </li>
+                                    }
+                                    @if (ViewContext.HasPermission(Permissions.Ticket.EscalateToL3))
+                                    {
+                                        <li>
+                                            <button class="dropdown-item"
+                                                    @onclick="@(() => EscalateAsync(3))">
+                                                Level 3 Support
+                                            </button>
+                                        </li>
+                                    }
+                                    @if (ViewContext.HasPermission(Permissions.Ticket.EscalateToIT))
+                                    {
+                                        <li>
+                                            <button class="dropdown-item text-danger"
+                                                    @onclick="@(() => EscalateAsync(4))">
+                                                IT Department
+                                            </button>
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        </AdminOnlyWrapper>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+}
+
+<!-- Resolve confirm modal -->
+@if (_showResolveModal)
+{
+    <ConfirmModal IsVisible="true"
+                  Title="Resolve Ticket"
+                  Message="Mark this ticket as resolved? The member will be notified."
+                  ConfirmLabel="Resolve"
+                  ConfirmColor="success"
+                  IsBusy="@_busyResolve"
+                  OnConfirm="ResolveTicketAsync"
+                  OnCancel="@(() => _showResolveModal = false)" />
+}
+
+@code {
+    [Parameter, EditorRequired] public string TicketId        { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+
+    private bool   _isLoading     = true;
+    private bool   _savingComment;
+    private bool   _showResolveModal;
+    private bool   _busyResolve;
+    private bool   _showAssignForm;
+    private bool   _busyAssign;
+    private string _newComment    = string.Empty;
+    private string _assignTarget  = string.Empty;
+
+    private TicketDetail? _ticket;
+    private List<TicketCommentItem> _comments = new();
+
+    private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
+    {
+        new("Home",    "/dashboard"),
+        new("Tickets", "/tickets"),
+        new($"#{_ticket?.TicketNumber ?? TicketId}")
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(TicketId)) return;
+        _isLoading = true;
+        StateHasChanged();
+
+        // TODO: GET /api/v1/bizcenter/tickets/{TicketId}
+        await Task.Delay(50);
+
+        _isLoading = false;
+    }
+
+    private async Task AddCommentAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newComment)) return;
+        _savingComment = true;
+
+        // TODO: POST /api/v1/bizcenter/tickets/{TicketId}/comments
+        await Task.Delay(300);
+
+        _newComment    = string.Empty;
+        _savingComment = false;
+    }
+
+    private async Task EscalateAsync(int level)
+    {
+        // TODO: POST /api/v1/tickets/{TicketId}/assign with escalation level {level}
+        await Task.CompletedTask;
+    }
+
+    private async Task ResolveTicketAsync()
+    {
+        _busyResolve = true;
+
+        // TODO: POST /api/v1/tickets/{TicketId}/resolve
+        await Task.Delay(300);
+
+        _busyResolve     = false;
+        _showResolveModal = false;
+    }
+
+    private async Task AssignTicketAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_assignTarget)) return;
+        _busyAssign = true;
+
+        // TODO: POST /api/v1/tickets/{TicketId}/assign with agent name/id
+        await Task.Delay(300);
+
+        _assignTarget  = string.Empty;
+        _showAssignForm = false;
+        _busyAssign     = false;
+    }
+
+    private static string EscalationLabel(int level) => level switch
+    {
+        1 => "Level 1",
+        2 => "Level 2",
+        3 => "Level 3",
+        4 => "IT",
+        _ => $"Level {level}"
+    };
+
+    // ── Local data models ─────────────────────────────────────────────────────
+    private record TicketDetail(
+        string   TicketId,
+        string   TicketNumber,
+        string   Subject,
+        string   Description,
+        string   Category,
+        string   Priority,
+        string   Status,
+        DateTime CreatedAt,
+        string?  AssignedTo,
+        int      EscalationLevel);
+
+    private record TicketCommentItem(
+        string   Author,
+        string   Content,
+        DateTime CreatedAt,
+        bool     IsStaff);
+}

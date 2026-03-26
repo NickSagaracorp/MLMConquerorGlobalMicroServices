@@ -1,0 +1,5 @@
+@page "/loyalty"
+@attribute [Authorize]
+@inject IViewContextService ViewContext
+
+<LoyaltyPointsPage MemberProfileId="@ViewContext.ViewingMemberId" />

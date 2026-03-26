@@ -1,0 +1,124 @@
+@page "/admin/security/audit"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+
+<PageTitle>Security Audit — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Security"), new("Access Audit") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="d-flex gap-2 mb-3 flex-wrap">
+    <a href="/admin/security/account-changes" class="btn btn-outline-secondary btn-sm">
+        <i class="ri-user-settings-line me-1"></i>Account Changes
+    </a>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-shield-check-line me-2 text-primary"></i>Access Audit Log
+        </h6>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="AuditEntryDto" DataSource="@_items"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250,500})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn HeaderText="Member ID" Width="140">
+                        <Template><code class="small">@(((AuditEntryDto)context).MemberId)</code></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Old Status" Width="130">
+                        <Template><span class="badge @StatusBadge(((AuditEntryDto)context).OldStatus)">@(((AuditEntryDto)context).OldStatus ?? "—")</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="New Status" Width="130">
+                        <Template><span class="badge @StatusBadge(((AuditEntryDto)context).NewStatus)">@(((AuditEntryDto)context).NewStatus ?? "—")</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Reason" Width="220">
+                        <Template><span class="small text-muted">@(((AuditEntryDto)context).Reason ?? "—")</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Changed By" Width="150">
+                        <Template><span class="small">@(((AuditEntryDto)context).ChangedBy ?? "—")</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Date" Width="150">
+                        <Template><span class="small text-muted">@(((AuditEntryDto)context).CreationDate.ToString("yyyy-MM-dd HH:mm"))</span></Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+
+            @if (_totalPages > 1)
+            {
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
+                    <small class="text-muted">@_totalCount records — Page @_page of @_totalPages</small>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>
+                            @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
+                            { var pg = i; <li class="page-item @(_page == pg ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(pg)">@pg</button></li> }
+                            <li class="page-item @(_page == _totalPages ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page + 1)">›</button></li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private List<AuditEntryDto> _items = new();
+    private bool _loading = true;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private int _page = 1;
+    private const int PageSize = 50;
+    private int _totalCount;
+    private int _totalPages = 1;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<AuditEntryDto>>>($"api/v1/admin/security/access-audit?page={_page}&pageSize={PageSize}");
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _items = resp.Data.Items.ToList();
+                _totalCount = resp.Data.TotalCount;
+                _totalPages = resp.Data.TotalPages;
+            }
+            else { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load audit log."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private async Task ChangePage(int p) { if (p < 1 || p > _totalPages) return; _page = p; await LoadAsync(); }
+
+    private static string StatusBadge(string? s) => s switch
+    {
+        "Active" => "bg-success",
+        "Suspended" => "bg-warning text-dark",
+        "Inactive" => "bg-secondary",
+        _ => "bg-light text-dark border"
+    };
+
+    private record AuditEntryDto(string MemberId, string? OldStatus, string? NewStatus, string? Reason, string? ChangedBy, DateTime CreationDate);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+}

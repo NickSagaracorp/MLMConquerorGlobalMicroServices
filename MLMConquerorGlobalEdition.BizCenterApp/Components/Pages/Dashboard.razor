@@ -1,0 +1,5 @@
+@page "/"
+@attribute [Authorize]
+@inject IViewContextService ViewContext
+
+<DashboardPage MemberProfileId="@ViewContext.ViewingMemberId" />

@@ -1,0 +1,234 @@
+@page "/admin/tokens/distribute"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+
+<PageTitle>Distribute Tokens — Admin</PageTitle>
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <h4 class="fw-bold mb-0"><i class="ri-send-plane-line me-2 text-primary"></i>Distribute Tokens to Member</h4>
+</div>
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible" role="alert">
+        @_alertMsg
+        <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card border-0 rounded-3">
+            <div class="card-header bg-transparent fw-semibold border-bottom">
+                <i class="ri-send-plane-line me-2 text-primary"></i>Grant Tokens
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Member ID <span class="text-danger">*</span></label>
+                    <MemberPicker Value="@_memberId" ValueChanged="@((string v) => { _memberId = v; })" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Token Type <span class="text-danger">*</span></label>
+                    @if (_tokenTypesLoading)
+                    {
+                        <div class="text-muted small"><span class="spinner-border spinner-border-sm me-1"></span>Loading types...</div>
+                    }
+                    else
+                    {
+                        <select class="form-select" @bind="_tokenTypeId">
+                            <option value="0">— Select Token Type —</option>
+                            @foreach (var tt in _tokenTypes)
+                            {
+                                <option value="@tt.Id">@tt.Name@(tt.IsGuestPass ? " (Guest Pass)" : "")</option>
+                            }
+                        </select>
+                    }
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Quantity <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" min="1" max="100" @bind="_quantity" />
+                    <div class="form-text">Maximum 100 tokens per grant.</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Notes</label>
+                    <textarea class="form-control" rows="3" @bind="_notes" placeholder="Optional reason or notes..."></textarea>
+                </div>
+                <button class="btn btn-primary w-100" @onclick="GrantTokens" disabled="@_saving">
+                    @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                    <i class="ri-send-plane-line me-1"></i>Distribute Tokens
+                </button>
+            </div>
+        </div>
+
+        @if (_lastGeneratedCodes.Count > 0)
+        {
+            <div class="card border-0 rounded-3 mt-3 border-success">
+                <div class="card-header bg-success bg-opacity-10 fw-semibold border-bottom border-success">
+                    <i class="ri-key-line me-2 text-success"></i>Generated Token Codes
+                    <span class="badge bg-success ms-2">@_lastGeneratedCodes.Count codes</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="p-3" style="max-height:320px;overflow-y:auto;">
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var tokenCode in _lastGeneratedCodes)
+                            {
+                                <span class="badge bg-light text-dark border font-monospace fs-6 px-3 py-2">@tokenCode</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="border-top px-3 py-2 bg-light d-flex justify-content-between align-items-center">
+                        <small class="text-muted">Share these codes with the ambassador.</small>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => _lastGeneratedCodes.Clear()">
+                            <i class="ri-close-line"></i> Clear
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card border-0 rounded-3">
+            <div class="card-header bg-transparent fw-semibold border-bottom">
+                <i class="ri-history-line me-2 text-primary"></i>Recent Token Balances
+                <button class="btn btn-sm btn-outline-secondary float-end py-0" @onclick="LoadBalances">
+                    <i class="ri-refresh-line"></i>
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Member ID</th>
+                            <th>Token Type</th>
+                            <th>Balance</th>
+                            <th>Used</th>
+                            <th>Distributed</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (_balancesLoading)
+                        {
+                            <tr><td colspan="5" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></td></tr>
+                        }
+                        else if (_balances.Count == 0)
+                        {
+                            <tr><td colspan="5" class="text-center py-4 text-muted">No token balances found.</td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var b in _balances)
+                            {
+                                <tr>
+                                    <td>
+                                        <a href="/admin/tokens/codes?memberId=@b.MemberId" class="text-primary fw-semibold text-decoration-none">
+                                            <code>@b.MemberId</code>
+                                        </a>
+                                        <span class="text-muted small ms-1">@b.MemberFullName</span>
+                                    </td>
+                                    <td>@b.TokenTypeName</td>
+                                    <td>
+                                        <a href="/admin/tokens/codes?memberId=@b.MemberId" class="text-decoration-none">
+                                            <span class="badge bg-primary">@b.Balance</span>
+                                        </a>
+                                    </td>
+                                    <td>@b.Used</td>
+                                    <td>@b.Distributed</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _memberId = string.Empty;
+    private int _tokenTypeId;
+    private int _quantity = 1;
+    private string? _notes;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+
+    private List<string> _lastGeneratedCodes = new();
+
+    private List<TokenTypeDto> _tokenTypes = new();
+    private bool _tokenTypesLoading = true;
+
+    private List<TokenBalanceDto> _balances = new();
+    private bool _balancesLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(LoadTokenTypes(), LoadBalances());
+    }
+
+    private async Task LoadTokenTypes()
+    {
+        _tokenTypesLoading = true;
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<IEnumerable<TokenTypeDto>>>("api/v1/admin/token-types");
+            if (resp?.Success == true && resp.Data is not null)
+                _tokenTypes = resp.Data.Where(t => t.IsActive).ToList();
+        }
+        catch { }
+        finally { _tokenTypesLoading = false; }
+    }
+
+    private async Task LoadBalances()
+    {
+        _balancesLoading = true;
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<TokenBalanceDto>>>("api/v1/admin/tokens?page=1&pageSize=20");
+            if (resp?.Success == true && resp.Data is not null)
+                _balances = resp.Data.Items.ToList();
+        }
+        catch { }
+        finally { _balancesLoading = false; }
+    }
+
+    private async Task GrantTokens()
+    {
+        if (string.IsNullOrWhiteSpace(_memberId)) { _alertMsg = "Member ID is required."; _alertIsError = true; return; }
+        if (_tokenTypeId == 0) { _alertMsg = "Please select a token type."; _alertIsError = true; return; }
+        if (_quantity < 1 || _quantity > 100) { _alertMsg = "Quantity must be between 1 and 100."; _alertIsError = true; return; }
+
+        _saving = true;
+        _lastGeneratedCodes.Clear();
+        try
+        {
+            var payload = new { MemberId = _memberId, TokenTypeId = _tokenTypeId, Quantity = _quantity, Notes = _notes };
+            var response = await Http.PostAsJsonAsync("api/v1/admin/tokens", payload);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ApiResp<GrantTokensResultDto>>();
+                _lastGeneratedCodes = result?.Data?.GeneratedTokenCodes ?? new();
+
+                _alertMsg = $"Successfully granted {_quantity} token(s) to member {_memberId}. {_lastGeneratedCodes.Count} token code(s) generated.";
+                _alertIsError = false;
+                _memberId = string.Empty; _tokenTypeId = 0; _quantity = 1; _notes = null;
+                await LoadBalances();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                _alertMsg = $"Grant failed: {response.StatusCode}. {body}";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private record TokenTypeDto(int Id, string Name, string? Description, bool IsGuestPass, string? TemplateUrl, bool IsActive);
+    private record TokenBalanceDto(string Id, string MemberId, string MemberFullName, string TokenTypeName, int Balance, int Used, int Distributed);
+    private record GrantTokensResultDto(string TokenBalanceId, string MemberId, string TokenTypeName, bool IsGuestPass, int Balance, List<string> GeneratedTokenCodes);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+}

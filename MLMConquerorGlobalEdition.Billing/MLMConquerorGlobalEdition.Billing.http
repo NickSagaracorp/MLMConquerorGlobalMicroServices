@@ -1,0 +1,6 @@
+@MLMConquerorGlobalEdition.Billing_HostAddress = http://localhost:5102
+
+GET {{MLMConquerorGlobalEdition.Billing_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

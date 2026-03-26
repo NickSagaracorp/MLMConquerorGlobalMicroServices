@@ -1,0 +1,6 @@
+namespace MLMConquerorGlobalEdition.Signups.DTOs;
+
+public class ValidateSponsorRequest
+{
+    public string SponsorMemberId { get; set; } = string.Empty;
+}

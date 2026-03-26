@@ -1,0 +1,14 @@
+@inject IViewContextService ViewContext
+
+@if (ViewContext.HasPermission(Permission) || ViewContext.IsAdminContext && string.IsNullOrEmpty(Permission))
+{
+    @ChildContent
+}
+
+@code {
+    /// <summary>
+    /// Permission key from Permissions constants. If empty, shows content for any admin context.
+    /// </summary>
+    [Parameter] public string Permission { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

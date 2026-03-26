@@ -1,0 +1,55 @@
+@inject HttpClient Http
+
+<div class="card h-100">
+    <div class="card-header py-3">
+        <h6 class="card-title mb-0 fw-semibold">Recent Activity</h6>
+    </div>
+    <div class="card-body p-0">
+        <LoadingSpinner IsLoading="@_isLoading" />
+        @if (!_isLoading)
+        {
+            @if (!_activities.Any())
+            {
+                <EmptyState Icon="ri-history-line" Title="No recent activity" Message="Your activity will appear here." />
+            }
+            else
+            {
+                <ul class="list-group list-group-flush">
+                    @foreach (var a in _activities)
+                    {
+                        <li class="list-group-item d-flex align-items-start gap-3 py-3">
+                            <div class="rounded-circle bg-@a.Color bg-opacity-10 d-flex align-items-center justify-content-center flex-shrink-0"
+                                 style="width:36px;height:36px;">
+                                <i class="@a.Icon text-@a.Color small"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="fw-medium small">@a.Title</div>
+                                <div class="text-muted" style="font-size:0.75rem;">@a.Description</div>
+                            </div>
+                            <div class="text-muted" style="font-size:0.7rem;white-space:nowrap;">@a.TimeAgo</div>
+                        </li>
+                    }
+                </ul>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+
+    private bool _isLoading = true;
+    private List<ActivityItem> _activities = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(MemberProfileId)) return;
+        _isLoading = true;
+        StateHasChanged();
+        // TODO: load from API
+        await Task.Delay(50);
+        _isLoading = false;
+    }
+
+    private record ActivityItem(string Icon, string Color, string Title, string Description, string TimeAgo);
+}

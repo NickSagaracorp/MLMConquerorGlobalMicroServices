@@ -1,0 +1,1804 @@
+<!DOCTYPE html>
+<html lang="zxx">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Links Of CSS File -->
+    <link rel="stylesheet" href="assets/css/sidebar-menu.css">
+    <link rel="stylesheet" href="assets/css/simplebar.css">
+    <link rel="stylesheet" href="assets/css/apexcharts.css">
+    <link rel="stylesheet" href="assets/css/prism.css">
+    <link rel="stylesheet" href="assets/css/rangeslider.css">
+    <link rel="stylesheet" href="assets/css/quill.snow.css">
+    <link rel="stylesheet" href="assets/css/google-icon.css">
+    <link rel="stylesheet" href="assets/css/remixicon.css">
+    <link rel="stylesheet" href="assets/css/swiper-bundle.min.css">
+    <link rel="stylesheet" href="assets/css/fullcalendar.main.css">
+    <link rel="stylesheet" href="assets/css/jsvectormap.min.css">
+    <link rel="stylesheet" href="assets/css/lightpick.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico">
+    <!-- Title -->
+    <title>MWRLife - BizCenter Dashboard</title>
+
+    <style>
+        /* === FAST START BONUS STRIP CARDS (layout horizontal) === */
+        .fsb-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+        }
+
+        .fsb-card-wrap {
+            flex: 1 1 320px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .fsb-card {
+            border-radius: .75rem;
+            box-shadow: 0 16px 32px rgba(0,0,0,.06);
+            padding: 1.25rem 1.5rem;
+            color: #fff;
+            position: relative;
+            min-height: 160px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* topo do cartão: só o título */
+        .fsb-topline {
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            gap: 1rem;
+            margin-bottom: .5rem;
+        }
+
+        /* título grande */
+        .fsb-title {
+            font-size: 1.35rem;
+            font-weight: 800;
+            letter-spacing: .02em;
+        }
+
+        /* linha de baixo: ícones à esquerda, contador à direita */
+        .fsb-bottom {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: .5rem;
+        }
+
+        /* contador grande (fica no canto direito da .fsb-bottom) */
+        .fsb-timer {
+            font-size: 1.9rem;
+            font-weight: 800;
+            line-height: 1;
+            white-space: nowrap;
+            text-shadow: 0 0 10px rgba(255,255,255,.25);
+        }
+
+        .fsb-sub {
+            font-size: .85rem;
+            opacity: .9;
+        }
+
+        /* Estados de cartão */
+        .fsb-complete {
+            background: linear-gradient(90deg,#0c8c2c 0%, #4ade80 100%);
+        }
+
+        .fsb-active {
+            background: radial-gradient(circle at 0% 0%, #1a1fff 0%, #5b5bff 60%, #4f46e5 100%);
+        }
+
+        .fsb-locked {
+            background: radial-gradient(circle at 50% 0%, #1f2937 0%, #111827 70%);
+        }
+
+        /* ====== ÍCONES FSB (novos, com preenchimento claro) ====== */
+        .fsb-icons-area {
+            gap: .9rem;
+        }
+
+        .fsb-person-big {
+            position: relative;
+            width: 56px;
+            height: 56px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,.06);
+            border: 2px dashed rgba(255,255,255,.45);
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,.05);
+        }
+
+            .fsb-person-big i {
+                font-size: 28px;
+                line-height: 1;
+                color: rgba(255,255,255,.55);
+            }
+
+            /* === PREENCHIDO (verde/azul) === */
+            .fsb-person-big.active-green,
+            .fsb-person-big.active-blue {
+                border: 0;
+                box-shadow: 0 10px 22px rgba(0,0,0,.20), inset 0 0 0 1px rgba(255,255,255,.10);
+            }
+
+            .fsb-person-big.active-green {
+                background: linear-gradient(135deg,#16a34a 0%, #22c55e 100%);
+            }
+
+            .fsb-person-big.active-blue {
+                background: linear-gradient(135deg,#3b82f6 0%, #60a5fa 100%);
+            }
+
+                .fsb-person-big.active-green i,
+                .fsb-person-big.active-blue i {
+                    color: #fff;
+                    text-shadow: 0 2px 8px rgba(0,0,0,.25);
+                }
+
+                /* badge de confirmação (✓) nos preenchidos */
+                .fsb-person-big.active-green::after,
+                .fsb-person-big.active-blue::after {
+                    content: "✓";
+                    position: absolute;
+                    right: -4px;
+                    bottom: -4px;
+                    width: 18px;
+                    height: 18px;
+                    border-radius: 999px;
+                    background: #fff;
+                    color: #16a34a;
+                    font-weight: 900;
+                    font-size: 12px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    box-shadow: 0 4px 10px rgba(0,0,0,.25);
+                }
+
+            /* === VAZIO (mais óbvio) === */
+            .fsb-person-big.inactive {
+                border-style: dashed;
+                border-color: rgba(255,255,255,.55);
+                background: rgba(255,255,255,.04);
+            }
+
+                .fsb-person-big.inactive i {
+                    color: rgba(255,255,255,.45);
+                }
+                /* pequena barra diagonal subtil p/ reforçar “vazio” */
+                .fsb-person-big.inactive::before {
+                    content: "";
+                    position: absolute;
+                    width: 26px;
+                    height: 2px;
+                    background: rgba(255,255,255,.35);
+                    transform: rotate(-35deg);
+                    border-radius: 2px;
+                }
+
+            /* === LOCKED === */
+            .fsb-person-big.locked {
+                background: rgba(15,23,42,.35);
+                border: 2px dashed rgba(148,163,184,.45);
+            }
+
+                .fsb-person-big.locked i {
+                    color: rgba(203,213,225,.55);
+                }
+
+        /* (opcional) animação “pulse” no lugar vazio quando o FSB está ativo */
+        .fsb-active .fsb-person-big.inactive {
+            animation: fsbPulse 1.6s ease-in-out infinite;
+        }
+
+        @keyframes fsbPulse {
+            0%,100% {
+                box-shadow: inset 0 0 0 1px rgba(255,255,255,.10), 0 0 0 0 rgba(255,255,255,.0);
+            }
+
+            50% {
+                box-shadow: inset 0 0 0 1px rgba(255,255,255,.10), 0 0 0 8px rgba(255,255,255,.10);
+            }
+        }
+
+        /* Overlay locked do FSB3 */
+        .fsb-black-layer {
+            position: absolute;
+            inset: 0;
+            border-radius: .75rem;
+            background: rgba(0,0,0,.55);
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+
+            .fsb-black-layer i {
+                margin-right: .4rem;
+            }
+
+        /* Rodapé */
+        .fsb-footerline {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            font-size: .9rem;
+            font-weight: bold;
+            margin-top: .5rem;
+            opacity: 1;
+        }
+
+            .fsb-footerline.completed {
+                color: #16a34a;
+            }
+
+            .fsb-footerline.available {
+                color: #60a5fa;
+            }
+
+            .fsb-footerline.locked {
+                color: #000;
+            }
+    </style>
+
+</head>
+<body class="boxed-size">
+    <!-- Start Preloader Area -->
+    <!--<div class="preloader" id="preloader">
+        <div class="preloader">
+            <div class="waviy position-relative">
+                <img src="assets/images/logo.svg" style="width: 100%; height: auto;" />-->
+    <!--<span class="d-inline-block">M</span>
+    <span class="d-inline-block">W</span>
+    <span class="d-inline-block">R</span>
+    <span class="d-inline-block"></span>
+    <span class="d-inline-block">L</span>
+    <span class="d-inline-block">I</span>
+    <span class="d-inline-block">F</span>
+    <span class="d-inline-block">E</span>-->
+    <!--</div>
+        </div>
+    </div>-->
+    <div id="preloader">
+        <div class="preloader">
+            <div class="waviy">
+                <img src="assets/images/logo.svg" alt="logo">
+            </div>
+        </div>
+    </div>
+    <!-- End Preloader Area -->
+    <!-- Start Sidebar Area -->
+    <div class="sidebar-area" id="sidebar-area">
+        <div class="logo position-relative">
+            <a href="index.html" class="d-block text-decoration-none position-relative">
+                <img src="assets/images/logo.svg" alt="logo-icon">
+                <!--<span class="logo-text fw-bold text-dark">MWRLife</span>-->
+            </a>
+            <button class="sidebar-burger-menu bg-transparent p-0 border-0 opacity-0 z-n1 position-absolute top-50 end-0 translate-middle-y" id="sidebar-burger-menu">
+                <i data-feather="x"></i>
+            </button>
+        </div>
+
+        <aside id="layout-menu" class="layout-menu menu-vertical menu" data-simplebar>
+            <ul class="menu-inner">
+                <li class="menu-title small text-uppercase">
+                    <span class="menu-title-text">MENU</span>
+                </li>
+
+                <li class="menu-item active">
+                    <a href="javascript:void(0);" class="menu-link active">
+                        <span class="material-symbols-outlined menu-icon">home</span>
+                        <span class="title">Home</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="https://www.mwrlife.com/nunocacao" class="menu-link" target="_blank">
+                        <span class="material-symbols-outlined menu-icon">browse_activity</span>
+                        <span class="title">My Website</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <span class="material-symbols-outlined menu-icon">group</span>
+                        <span class="title">Enrollment Team</span>
+                        <span class="count">4</span>
+                    </a>
+                    <ul class="menu-sub">
+                        <li class="menu-item">
+                            <a href="enrollmentteam_myteam.html" class="menu-link">
+                                My Team
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="enrollmentteam_visualizer.html" class="menu-link">
+                                Visualizer
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="enrollmentteam_branches.html" class="menu-link">
+                                Branches
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="enrollmentteam_customers.html" class="menu-link">
+                                Customers
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <li class="menu-item">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <span class="material-symbols-outlined menu-icon">share</span>
+                        <span class="title">Dual Team</span>
+                        <span class="count">3</span>
+                    </a>
+                    <ul class="menu-sub">
+                        <li class="menu-item">
+                            <a href="dualteam_myteam.html" class="menu-link">
+                                My Dual Team
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="dualteam_binarytree.html" class="menu-link">
+                                Visualizer
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="dualteam_residuals.html" class="menu-link">
+                                Residuals
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <li class="menu-item">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <span class="material-symbols-outlined menu-icon">paid</span>
+                        <span class="title">Commissions</span>
+                        <span class="count">5</span>
+                    </a>
+                    <ul class="menu-sub">
+                        <li class="menu-item">
+                            <a href="commissions.html" class="menu-link">
+                                Commissions
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="presidentialbonus.html" class="menu-link">
+                                Presidential Bonus
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="carbonus.html" class="menu-link">
+                                Car Bonus
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="faststartbonus.html" class="menu-link">
+                                Fast Start Bonus
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="boostbonus.html" class="menu-link">
+                                Boost Bonus
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <li class="menu-item">
+                    <a href="tokens.html" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">content_paste</span>
+                        <span class="title">Tokens</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="events.html" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">event</span>
+                        <span class="title">Events</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="https://mwracademy.com/webservices/user_login?api_key=yDEOcDTM4RAm1AeczHJY&session_id=amxzxx7chrqgasjnmrvf" class="menu-link" target="_blank">
+                        <span class="material-symbols-outlined menu-icon">location_away</span>
+                        <span class="title">MWR Academy</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="javascript:void(0);" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">hotel</span>
+                        <span class="title">Travel Advantage</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="javascript:void(0);" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">settings</span>
+                        <span class="title">Tools</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="javascript:void(0);" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">support</span>
+                        <span class="title">Support</span>
+                        <!--<span class="count">10</span>-->
+                    </a>
+                </li>
+
+                <li class="menu-item">
+                    <a href="login.html" class="menu-link">
+                        <span class="material-symbols-outlined menu-icon">logout</span>
+                        <span class="title">Logout</span>
+                    </a>
+                </li>
+            </ul>
+        </aside>
+    </div>
+    <!-- End Sidebar Area -->
+    <!-- Start Main Content Area -->
+    <div class="container-fluid">
+        <div class="main-content d-flex flex-column">
+            <!-- Start Header Area -->
+            <header class="header-area bg-white mb-4 rounded-bottom-15" id="header-area">
+                <div class="row align-items-center">
+                    <div class="col-lg-4 col-sm-6">
+                        <div class="left-header-content">
+                            <ul class="d-flex align-items-center ps-0 mb-0 list-unstyled justify-content-center justify-content-sm-start">
+                                <li>
+                                    <button class="header-burger-menu bg-transparent p-0 border-0" id="header-burger-menu">
+                                        <span class="material-symbols-outlined">menu</span>
+                                    </button>
+                                </li>
+                                <li>
+                                    <form class="src-form position-relative">
+                                        <input type="text" class="form-control" placeholder="Search here.....">
+                                        <button type="submit" class="src-btn position-absolute top-50 end-0 translate-middle-y bg-transparent p-0 border-0">
+                                            <span class="material-symbols-outlined">search</span>
+                                        </button>
+                                    </form>
+                                </li>
+                                <!--<li>
+                                    <div class="dropdown notifications apps">
+                                        <button class="btn btn-secondary border-0 p-0 position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <span class="material-symbols-outlined">apps</span>
+                                        </button>
+                                        <div class="dropdown-menu dropdown-lg p-0 border-0 py-4 px-3 max-h-312" data-simplebar>
+                                            <div class="notification-menu d-flex flex-wrap justify-content-between gap-4">
+                                                <a href="https://www.figma.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/figma.svg" class="wh-25" alt="united-states">
+                                                    <span>Figma</span>
+                                                </a>
+                                                <a href="https://www.dribbble.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/dribbble.svg" class="wh-25" alt="united-states">
+                                                    <span>Dribbble</span>
+                                                </a>
+                                                <a href="https://www.spotify.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/spotify.svg" class="wh-25" alt="united-states">
+                                                    <span>Spotify</span>
+                                                </a>
+                                                <a href="https://www.github.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/github.svg" class="wh-25" alt="united-states">
+                                                    <span>Github</span>
+                                                </a>
+                                                <a href="https://www.google.com/drive/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/gdrive.svg" class="wh-25" alt="united-states">
+                                                    <span>GDrive</span>
+                                                </a>
+                                                <a href="https://www.trello.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/trello.svg" class="wh-25" alt="united-states">
+                                                    <span>Trello</span>
+                                                </a>
+                                                <a href="https://www.slak.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/slak.svg" class="wh-25" alt="united-states">
+                                                    <span>Slak</span>
+                                                </a>
+                                                <a href="https://www.pinterest.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/pinterest.svg" class="wh-25" alt="united-states">
+                                                    <span>Pinterest</span>
+                                                </a>
+                                                <a href="https://www.facebook.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/facebook.svg" class="wh-25" alt="united-states">
+                                                    <span>Facebook</span>
+                                                </a>
+                                                <a href="https://www.linkedin.com/" target="_blank" class="dropdown-item p-0 text-center">
+                                                    <img src="assets/images/linkedin.svg" class="wh-25" alt="united-states">
+                                                    <span>Linkedin</span>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>-->
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-8 col-sm-6">
+                        <div class="right-header-content mt-2 mt-sm-0">
+                            <ul class="d-flex align-items-center justify-content-center justify-content-sm-end ps-0 mb-0 list-unstyled">
+                                <li class="header-right-item">
+                                    <div class="light-dark">
+                                        <button class="switch-toggle settings-btn dark-btn p-0 bg-transparent border-0" id="switch-toggle">
+                                            <span class="dark"><i class="material-symbols-outlined">light_mode</i></span>
+                                            <span class="light"><i class="material-symbols-outlined">dark_mode</i></span>
+                                        </button>
+                                    </div>
+                                </li>
+                                <li class="header-right-item">
+                                    <div class="dropdown notifications language">
+                                        <button class="btn btn-secondary dropdown-toggle border-0 p-0 position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <span class="material-symbols-outlined">translate</span>
+                                        </button>
+                                        <div class="dropdown-menu dropdown-lg p-0 border-0 dropdown-menu-end">
+                                            <span class="fw-semibold fs-15 text-secondary title">Choose Language</span>
+                                            <div class="max-h-275" data-simplebar>
+                                                <div class="notification-menu">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/usa.svg" class="wh-30 rounded-circle" alt="united-states">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">English</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/france.svg" class="wh-30 rounded-circle" alt="france">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">French</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/portugal.svg" class="wh-30 rounded-circle" alt="portugal">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">Portuguese</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu mb-0">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/spain.svg" class="wh-30 rounded-circle" alt="spain">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">Spanish</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/italia.svg" class="wh-30 rounded-circle" alt="italia">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">Italian</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu mb-0">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/south_korea.svg" class="wh-30 rounded-circle" alt="south korea">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">Korean</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu">
+                                                    <a href="javascript:void(0);" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <img src="assets/images/japan.svg" class="wh-30 rounded-circle" alt="japan">
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-2">
+                                                                <span class="text-secondary fw-medium fs-14">Japanese</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li class="header-right-item">
+                                    <button class="fullscreen-btn bg-transparent p-0 border-0" id="fullscreen-button">
+                                        <i class="material-symbols-outlined text-body">fullscreen</i>
+                                    </button>
+                                </li>
+                                <li class="header-right-item">
+                                    <div class="dropdown notifications noti">
+                                        <button class="btn btn-secondary border-0 p-0 position-relative badge" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <span class="material-symbols-outlined">notifications</span>
+                                        </button>
+                                        <div class="dropdown-menu dropdown-lg p-0 border-0 p-0 dropdown-menu-end">
+                                            <div class="d-flex justify-content-between align-items-center title">
+                                                <span class="fw-semibold fs-15 text-secondary">Notifications <span class="fw-normal text-body fs-14">(03)</span></span>
+                                                <button class="p-0 m-0 bg-transparent border-0 fs-14 text-primary">Clear All</button>
+                                            </div>
+
+                                            <div class="max-h-217" data-simplebar>
+                                                <div class="notification-menu">
+                                                    <a href="notification.html" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <i class="material-symbols-outlined text-primary">sms</i>
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p>Your renewal fee will be charge on <span class="fw-semibold">September 2nd.</span></p>
+                                                                <span class="fs-13">2 hrs ago</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu unseen">
+                                                    <a href="notification.html" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <i class="material-symbols-outlined text-info">person</i>
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p><span class="fw-semibold">André Lourenço</span> enrolled your team, sponsored by <span class="fw-semibold">Yoni Ashurov</span>.</p>
+                                                                <span class="fs-13">3 hrs ago</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <!--<div class="notification-menu">
+                                                    <a href="notification.html" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <i class="material-symbols-outlined text-success">mark_email_unread</i>
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p>You have requested to <span class="fw-semibold">withdrawal</span></p>
+                                                                <span class="fs-13">1 day ago</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu">
+                                                    <a href="notification.html" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <i class="material-symbols-outlined text-primary">sms</i>
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p>You have requested to <span class="fw-semibold">withdrawal</span></p>
+                                                                <span class="fs-13">2 hrs ago</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu unseen">
+                                                    <a href="notification.html" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <i class="material-symbols-outlined text-info">person</i>
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p>A new user added in Trezo</p>
+                                                                <span class="fs-13">3 hrs ago</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="notification-menu">
+                                                    <a href="notification.html" class="dropdown-item">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="flex-shrink-0">
+                                                                <i class="material-symbols-outlined text-success">mark_email_unread</i>
+                                                            </div>
+                                                            <div class="flex-grow-1 ms-3">
+                                                                <p>You have requested to <span class="fw-semibold">withdrawal</span></p>
+                                                                <span class="fs-13">1 day ago</span>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>-->
+                                            </div>
+
+                                            <a href="notification.html" class="dropdown-item text-center text-primary d-block view-all fw-medium rounded-bottom-3">
+                                                <span>See All Notifications </span>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li class="header-right-item">
+                                    <div class="dropdown admin-profile">
+                                        <div class="d-xxl-flex align-items-center bg-transparent border-0 text-start p-0 cursor dropdown-toggle" data-bs-toggle="dropdown">
+                                            <div class="flex-shrink-0">
+                                                <img class="rounded-circle wh-40 administrator" src="assets/images/administrator.jpg" alt="admin">
+                                            </div>
+                                            <div class="flex-grow-1 ms-2">
+                                                <div class="d-flex align-items-center justify-content-between">
+                                                    <div class="d-none d-xxl-block">
+                                                        <div class="d-flex align-content-center">
+                                                            <h3>Nuno Cação</h3>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="dropdown-menu border-0 bg-white dropdown-menu-end">
+                                            <div class="d-flex align-items-center info">
+                                                <div class="flex-shrink-0">
+                                                    <img class="rounded-circle wh-30 administrator" src="assets/images/administrator.jpg" alt="admin">
+                                                </div>
+                                                <div class="flex-grow-1 ms-2">
+                                                    <h3 class="fw-medium">Nuno Cação</h3>
+                                                    <span class="fs-12">Jade Ambassador</span>
+                                                </div>
+                                            </div>
+                                            <ul class="admin-link ps-0 mb-0 list-unstyled">
+                                                <li>
+                                                    <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="user-profile.html">
+                                                        <i class="material-symbols-outlined">account_circle</i>
+                                                        <span class="ms-2">My Profile</span>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="#">
+                                                        <i class="material-symbols-outlined">chat</i>
+                                                        <span class="ms-2">Messages</span>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="guestpasses.html">
+                                                        <i class="material-symbols-outlined">confirmation_number</i>
+                                                        <span class="ms-2">Guest Passes</span>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="marketing.html">
+                                                        <i class="material-symbols-outlined">format_list_bulleted </i>
+                                                        <span class="ms-2">Marketing</span>
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                            <ul class="admin-link ps-0 mb-0 list-unstyled">
+                                                <li>
+                                                    <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="#">
+                                                        <i class="material-symbols-outlined">support</i>
+                                                        <span class="ms-2">Support</span>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="login.html">
+                                                        <i class="material-symbols-outlined">logout</i>
+                                                        <span class="ms-2">Logout</span>
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li class="header-right-item">
+                                    <button class="theme-settings-btn p-0 border-0 bg-transparent" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasScrolling" aria-controls="offcanvasScrolling">
+                                        <i class="material-symbols-outlined" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-title="Click On Theme Settings">settings</i>
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            <!-- End Header Area -->
+
+            <div class="main-content-container overflow-hidden">
+                <div class="row justify-content-center cursor" onclick="openNewWindow('https://inevent.com/en/MWRLife/ELEVATION26/purchase.php');">
+                    <div class="col-lg-12">
+                        <!--<div class="card bg-primary border-0 rounded-3 welcome-box mb-4">
+                            <div class="card-body">
+                                <div class="row align-items-center">
+                                    <div class="col-lg-12 col-md-12 col-sm-12">
+                                        <div class="border-bottom position-relative top-5">
+                                            <h3 class="text-white fw-semibold mb-1">Good Morning, <span class="text-danger-div">Nuno!</span></h3>
+                                            <p class="text-light">Here your resume for the current week!</p>
+                                        </div>
+                                    </div
+                                    <div class="col-lg-12 col-md-12 col-sm-12">
+                                        <div class="welcome-img text-center mt-4 mt-sm-0">
+                                            <img src="assets/images/12monthwidget.jpg" alt="welcome" style="width: 100% !important">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>-->
+                        <div class="welcome-img text-center mt-4 mb-4 mt-sm-0">
+                            <img src="https://www.mwrlife.com/images/Top-banner-EN.jpg" alt="welcome" style="width: 100% !important; border-radius: 1rem !important;">
+                        </div>
+                    </div>
+                </div>
+                <div class="row justify-content-center">
+                    <div class="col-lg-12" data-bs-toggle="modal" data-bs-target="#tffModal" aria-controls="tffModal">
+                        <div class="welcome-img text-center mt-4 mt-sm-0 cursor" id="tffTrigger">
+                            <img src="assets/images/12monthwidget.jpg" alt="Travel For Free details" style="width: 100% !important; border-radius: 1rem !important;">
+                        </div>
+                    </div>
+                </div>
+                <div class="row justify-content-center mt-4 mb-4" id="faststart-section">
+                    <div class="col-lg-12">
+                        <div class="fsb-row">
+
+                            <!-- FSB1 (completo) -->
+                            <div class="fsb-card-wrap">
+                                <div class="fsb-card fsb-complete">
+                                    <div class="fsb-topline">
+                                        <div class="fsb-title">FAST START BONUS 1</div>
+                                    </div>
+
+                                    <div class="fsb-bottom">
+                                        <div class="fsb-icons-area">
+                                            <div class="fsb-person-big active-green"><i class="material-symbols-outlined">person</i></div>
+                                            <div class="fsb-person-big active-green"><i class="material-symbols-outlined">person</i></div>
+                                        </div>
+                                        <div class="fsb-timer" id="fsb1-timer">$75.00</div>
+                                    </div>
+                                </div>
+                                <div class="fsb-footerline completed">
+                                    <span>Completed</span>
+                                    <span>Unlocked FSB 2</span>
+                                </div>
+                            </div>
+
+                            <!-- FSB2 (ativo, contador a decrescer) -->
+                            <div class="fsb-card-wrap">
+                                <div class="fsb-card fsb-active">
+                                    <div class="fsb-topline">
+                                        <div class="fsb-title">FAST START BONUS 2</div>
+                                    </div>
+
+                                    <div class="fsb-bottom">
+                                        <div class="fsb-icons-area">
+                                            <div class="fsb-person-big active-blue"><i class="material-symbols-outlined">person</i></div>
+                                            <div class="fsb-person-big inactive"><i class="material-symbols-outlined">person</i></div>
+                                        </div>
+                                        <div class="fsb-timer" id="fsb2-timer">--D --H --M --S</div>
+                                    </div>
+                                </div>
+                                <div class="fsb-footerline available">
+                                    <span>Started: Oct 27, 2025</span>
+                                    <span>Ends in Nov 10th, 2025 (14:35:15)</span>
+                                </div>
+                            </div>
+
+                            <!-- FSB3 (locked; contador visível e “congelado”) -->
+                            <div class="fsb-card-wrap">
+                                <div class="fsb-card fsb-locked position-relative">
+                                    <div class="fsb-topline">
+                                        <div class="fsb-title">FAST START BONUS 3</div>
+                                    </div>
+
+                                    <div class="fsb-bottom">
+                                        <div class="fsb-icons-area" style="opacity:.7;filter:grayscale(.4);">
+                                            <div class="fsb-person-big locked"><i class="material-symbols-outlined">person</i></div>
+                                            <div class="fsb-person-big inactive"><i class="material-symbols-outlined">person</i></div>
+                                        </div>
+                                        <div class="fsb-timer" id="fsb3-timer">--D --H --M --S</div>
+                                    </div>
+
+                                    <div class="fsb-black-layer"><i class="ri-lock-line"></i>Locked — Coming Soon</div>
+                                </div>
+                                <div class="fsb-footerline locked">
+                                    <span>Locked</span>
+                                    <span>Available after FSB2</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+
+                <div class="row justify-content-center">
+                    <div class="col-lg-12 col-md-12 col-sm-12">
+                        <div class="card bg-white border-0 rounded-3 mb-4">
+                            <div class="card-body p-4" style="padding-bottom: 0 !important;">
+                                <div class="mb-3 mb-lg-4">
+                                    <h3 class="mb-0">My Resume</h3>
+                                </div>
+                                <div class="row">
+                                    <div class="col-xxl-6 col-xl-6 col-sm-6">
+                                        <div class="card bg-primary bg-opacity-10 border-primary border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                                            <div class="card-body p-4">
+                                                <div class="d-flex align-items-center mb-35">
+                                                    <div class="flex-shrink-0">
+                                                        <i class="material-symbols-outlined fs-40 text-primary">account_circle</i>
+                                                    </div>
+                                                    <div class="flex-grow-1 ms-2">
+                                                        <span>#5131598</span>
+                                                        <h3 class="fs-20 mt-1 mb-0">Nuno Cação</h3>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex justify-content-between flex-wrap gap-2 align-items-center">
+                                                    <span class="count up fw-medium ms-0">Active</span>
+                                                    <span class="count up fw-medium ms-0">Qualified</span>
+                                                    <!--<span class="count down fw-medium ms-0">Unqualified</span>
+                                                    <span class="count disabled fw-medium ms-0">Cancelled</span>-->
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-xxl-6 col-xl-6 col-sm-6">
+                                        <div class="card bg-danger bg-opacity-10 border-danger border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                                            <div class="card-body p-4">
+                                                <div class="d-flex align-items-center mb-35">
+                                                    <div class="flex-shrink-0">
+                                                        <i class="material-symbols-outlined fs-40 text-danger">stacks</i>
+                                                    </div>
+                                                    <div class="flex-grow-1 ms-2">
+                                                        <span>Actual Rank</span>
+                                                        <h3 class="fs-20 mt-1 mb-0">Jade</h3>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex justify-content-between flex-wrap gap-2 align-items-center">
+                                                    <span class="count up fw-medium ms-0">Next Rank</span>
+                                                    <span class="count up fw-medium ms-0">Pearl</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-xxl-6 col-xl-6 col-sm-6">
+                                        <div class="card bg-success bg-opacity-10 border-success border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                                            <div class="card-body p-4">
+                                                <div class="d-flex align-items-center mb-35">
+                                                    <div class="flex-shrink-0">
+                                                        <i class="material-symbols-outlined fs-40 text-success">group</i>
+                                                    </div>
+                                                    <div class="flex-grow-1 ms-2">
+                                                        <span>Enrollment Team Points</span>
+                                                        <h3 class="fs-20 mt-1 mb-0">372</h3>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex justify-content-between flex-wrap gap-2 align-items-center">
+                                                    <span class="fs-12">Compare with yesterday</span>
+                                                    <span class="count down fw-medium ms-0">-15</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-xxl-6 col-xl-6 col-sm-6">
+                                        <div class="card bg-primary-div bg-opacity-10 border-primary-div border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                                            <div class="card-body p-4">
+                                                <div class="d-flex align-items-center mb-4">
+                                                    <div class="flex-shrink-0">
+                                                        <i class="material-symbols-outlined fs-40 text-primary-div">share</i>
+                                                    </div>
+                                                    <div class="flex-grow-1 ms-2">
+                                                        <span>Dual Team Points</span>
+                                                        <h3 class="fs-20 mt-1 mb-0">690</h3>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex justify-content-between flex-wrap gap-2 align-items-center">
+                                                    <span class="fs-12">Members added this week</span>
+                                                    <ul class="ps-0 mb-0 list-unstyled d-flex align-items-center">
+                                                        <li>
+                                                            <a href="javascript:void(0);">
+                                                                <img src="assets/images/user-16.jpg" class="wh-34 lh-34 rounded-circle border border-1 border-color-white" alt="user">
+                                                            </a>
+                                                        </li>
+                                                        <li class="ms-m-15">
+                                                            <a href="javascript:void(0);">
+                                                                <img src="assets/images/user-17.jpg" class="wh-34 lh-34 rounded-circle border border-1 border-color-white" alt="user">
+                                                            </a>
+                                                        </li>
+                                                        <li class="ms-m-15">
+                                                            <a href="javascript:void(0);">
+                                                                <img src="assets/images/user-18.jpg" class="wh-34 lh-34 rounded-circle border border-1 border-color-white" alt="user">
+                                                            </a>
+                                                        </li>
+                                                        <li class="ms-m-15">
+                                                            <a href="users-list.html" class="wh-34 lh-34 rounded-circle bg-primary d-block text-center text-decoration-none text-white fs-12 fw-medium border border-1 border-color-white">+6</a>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-xxl-6 col-xl-6 col-sm-6">
+                                        <div class="card bg-primary bg-opacity-10 border-primary border-opacity-10 rounded-3 mb-4 stats-box style-three cursor" data-bs-toggle="modal" data-bs-target="#promotionModal" aria-controls="promotionModal">
+                                            <div class="card-body p-4">
+                                                <div class="d-flex align-items-center mb-35">
+                                                    <div class="flex-shrink-0">
+                                                        <i class="material-symbols-outlined fs-40 text-primary">workspace_premium</i>
+                                                    </div>
+                                                    <div class="flex-grow-1 ms-2">
+                                                        <span>Lifestyle Jackpot</span>
+                                                        <h3 class="fs-20 mt-1 mb-0">72 Points</h3>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex justify-content-between flex-wrap gap-2 align-items-center">
+                                                    <span class="count down fw-medium ms-0">1456th</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-xxl-6 col-xl-6 col-sm-6">
+                                        <div class="card bg-danger bg-opacity-10 border-danger border-opacity-10 rounded-3 mb-4 stats-box style-three cursor" onclick="openNewWindow('carbonus.html');">
+                                            <div class="card-body p-4">
+                                                <div class="d-flex align-items-center mb-35">
+                                                    <div class="flex-shrink-0">
+                                                        <i class="material-symbols-outlined fs-40 text-danger">directions_car</i>
+                                                    </div>
+                                                    <div class="flex-grow-1 ms-2">
+                                                        <span>Car Bonus</span>
+                                                        <h3 class="fs-20 mt-1 mb-0">300 Eligible Points</h3>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex justify-content-between flex-wrap gap-2 align-items-center">
+                                                    <span class="count up fw-medium ms-0">100%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row justify-content-center">
+                    <div class="col-lg-12 col-md-12 col-sm-12 cursor" onclick="openNewWindow('boostbonus.html');">
+                        <div class="card bg-white border-0 rounded-3 mb-4">
+                            <div class="card-body p-4" style="padding-bottom: 0 !important;">
+                                <div class="mb-3 mb-lg-4">
+                                    <h3 class="mb-0">Boost Bonus</h3>
+                                </div>
+                                <div class="mb-4">
+                                    <div class="d-flex justify-content-between mb-2 pb-1">
+                                        <div>
+                                            <span class="fs-20 d-block mb-1 text-gold">GOLD</span>
+                                            <h4 class="fs-20 mb-0 text-gold">24 points</h4>
+                                        </div>
+                                        <div class="text-end">
+                                            <span class="fs-20 d-block mb-1 text-secondary">Goal Reached</span>
+                                            <h4 class="fs-20 mb-0 text-secondary">67%</h4>
+                                        </div>
+                                    </div>
+                                    <div class="progress rounded-pill" style="height: 20px;" role="progressbar" aria-label="Primary example" aria-valuenow="66" aria-valuemin="0" aria-valuemax="100">
+                                        <div class="progress-bar bg-gold rounded-pill" style="width: 66%; height: 20px;"></div>
+                                    </div>
+                                </div>
+                                <div class="mb-4">
+                                    <div class="d-flex justify-content-between mb-2 pb-1">
+                                        <div>
+                                            <span class="fs-20 d-block mb-1 text-platinum">PLATINUM</span>
+                                            <h4 class="fs-20 mb-0 text-platinum">36 points</h4>
+                                        </div>
+                                        <div class="text-end">
+                                            <span class="fs-20 d-block mb-1 text-secondary">Goal Reached</span>
+                                            <h4 class="fs-20 mb-0 text-secondary">50%</h4>
+                                        </div>
+                                    </div>
+                                    <div class="progress rounded-pill" style="height: 20px;" role="progressbar" aria-label="Primary example" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100">
+                                        <div class="progress-bar bg-platinum rounded-pill" style="width: 50%; height: 20px;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row justify-content-center">
+                    <div class="col-lg-6 col-md-6 col-sm-12">
+                        <div class="card bg-white border-0 rounded-3 mb-4">
+                            <div class="card-body p-4">
+                                <div id="carouselExampleControlsNoTouching" class="carousel slide" data-bs-touch="false">
+                                    <div class="carousel-inner">
+                                        <div class="carousel-item active">
+                                            <img src="assets/images/carousel-2.jpg" class="d-block w-100" alt="carousel" />
+                                        </div>
+                                        <div class="carousel-item">
+                                            <img src="assets/images/carousel-1.jpg" class="d-block w-100" alt="carousel" />
+                                        </div>
+                                        <div class="carousel-item cursor">
+                                            <img src="https://www.mwrlife.com/Images/Banner-Interactive.jpg" class="d-block w-100" alt="Interactive Presentation" onclick="openNewWindow('http://www.themwredge.com/');" />
+                                        </div>
+                                        <div class="carousel-item cursor" data-bs-toggle="modal" data-bs-target="#mwrlifeappModal" aria-controls="mwrlifeappModal">
+                                            <img src="assets/images/app-phone.png" class="d-block w-100" alt="MWR Life App" />
+                                        </div>
+                                    </div>
+                                    <button class="carousel-control-prev" type="button" data-bs-target="#carouselExampleControlsNoTouching" data-bs-slide="prev">
+                                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                        <span class="visually-hidden">Previous</span>
+                                    </button>
+                                    <button class="carousel-control-next" type="button" data-bs-target="#carouselExampleControlsNoTouching" data-bs-slide="next">
+                                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                        <span class="visually-hidden">Next</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6 col-md-6 col-sm-12">
+                        <div class="card bg-white border-0 rounded-3 mb-4">
+                            <div class="card-body p-4">
+                                <div class="mb-3 mb-lg-4">
+                                    <h3 class="mb-0">Working Schedule</h3>
+                                </div>
+                                <div class="calendar-wraps">
+                                    <div id="calendari"></div>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <span class="fw-medium">Upcoming Events:</span>
+                                    <div class="swiper-pagination1 text-end" style="width: 100px;"></div>
+                                </div>
+
+                                <div class="swiper upcoming-events-slide">
+                                    <div class="swiper-wrapper">
+                                        <div class="swiper-slide cursor">
+                                            <div class="position-relative d-flex">
+                                                <span class="wh-11 bg-primary rounded-1 d-inline-block position-relative top-1"></span>
+                                                <div>
+                                                    <h4 class="fs-12 fw-semibold text-secondary mb-0 ms-1"> Travel Advantage Elite TURBO - Renewal Fee</h4>
+                                                    <p class="fs-12"><span class="text-primary">September 2, 2025</span> -  13:00 PM</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="swiper-slide cursor">
+                                            <div class="position-relative d-flex">
+                                                <span class="wh-11 bg-primary rounded-1 d-inline-block position-relative top-1"></span>
+                                                <div>
+                                                    <h4 class="fs-12 fw-semibold text-secondary mb-0 ms-1"> BOOTCAMP 2025</h4>
+                                                    <p class="fs-12"><span class="text-primary">October 25-26, 2025</span> -  All Day</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Start Footer Area -->
+            <footer class="footer-area bg-white text-center rounded-top-7">
+                <p class="fs-14">© <span class="text-primary-div">Trezo</span> is Proudly Owned by <a href="https://envytheme.com/" target="_blank" class="text-decoration-none text-primary">EnvyTheme</a></p>
+            </footer>
+            <!-- End Footer Area -->
+        </div>
+    </div>
+    <!-- Start Main Content Area -->
+    <!-- Modal Commissions -->
+    <div class="modal fade" id="promotionModal" tabindex="-1" aria-hidden="true" aria-labelledby="promotionModalTitle">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 90%;">
+            <div class="modal-content p-4 p-md-5">
+                <div class="modal-header p-0 border-0">
+                    <h3 class="mb-0" id="promotionModalTitle">Lifestyle Jackpot</h3>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body p-0 pt-4">
+                    <div class="card bg-white border-0 rounded-3 mb-4">
+                        <div class="card-body p-0">
+                            <div class="welcome-img text-center mt-4 mb-4 mt-sm-0">
+                                <img src="https://mcusercontent.com/b1822f70a172479f063a1080e/images/0f147343-5717-8ffb-5e2e-d77df6038da7.jpg" alt="Lifestyle Jackpot" style="width: 100% !important; border-radius: 1rem !important;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-body p-0 pt-4">
+                    <div class="card bg-white border-0 rounded-3 mb-4">
+                        <div class="card-body p-0">
+                            <div class="default-table-area style-two default-table-width">
+                                <div class="table-responsive">
+                                    <table class="table align-middle">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">Name</th>
+                                                <th scope="col">Country</th>
+                                                <th scope="col">Total Points</th>
+                                                <th scope="col">Position</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td class="text-body">Oyunmaa B.</td>
+                                                <td class="text-body">Mongolia</td>
+                                                <td>
+                                                    <span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">
+                                                        1848
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">
+                                                        1st
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-body">Tuvshinjargal T.</td>
+                                                <td class="text-body">Mongolia</td>
+                                                <td>
+                                                    <span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">
+                                                        1383
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">
+                                                        2nd
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-body">Svetlana M.</td>
+                                                <td class="text-body">Russia</td>
+                                                <td>
+                                                    <span class="badge bg-warning bg-opacity-10 text-warning p-2 fs-12 fw-normal">
+                                                        837
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">
+                                                        3rd
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-body">Nuno Cação</td>
+                                                <td class="text-body">Portugal</td>
+                                                <td>
+                                                    <span class="badge bg-warning bg-opacity-10 text-warning p-2 fs-12 fw-normal">
+                                                        500
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-warning bg-opacity-10 text-warning p-2 fs-12 fw-normal">
+                                                        20th
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-body">Nuno Cação</td>
+                                                <td class="text-body">Portugal</td>
+                                                <td>
+                                                    <span class="badge bg-danger bg-opacity-10 text-danger p-2 fs-12 fw-normal">
+                                                        250
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-warning bg-opacity-10 text-warning p-2 fs-12 fw-normal">
+                                                        50th
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-body">Nuno Cação</td>
+                                                <td class="text-body">Portugal</td>
+                                                <td>
+                                                    <span class="badge bg-danger bg-opacity-10 text-danger p-2 fs-12 fw-normal">
+                                                        72
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-danger bg-opacity-10 text-danger p-2 fs-12 fw-normal">
+                                                        1456th
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0 p-0">
+                    <button type="button" class="btn btn-info text-white px-3" onclick="openNewWindow('https://mailchi.mp/mwrlife/lifestyle-jackpot-5391507');">Click Here For Details!</button>
+                    <button type="button" class="btn btn-success text-white px-3" data-bs-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Travel For Free Modal -->
+    <div class="modal fade" id="tffModal" tabindex="-1" aria-hidden="true" aria-labelledby="tffTitle">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 50%;">
+            <div class="modal-content p-4 p-md-5">
+                <div class="modal-header p-0 border-0">
+                    <h3 class="mb-0" id="tffTitle"><i class="ri-flight-takeoff-line"></i> Terms and Conditions</h3>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body p-0 pt-4">
+                    <div class="card bg-white border-0 rounded-3 mb-4">
+                        <div class="card-body">
+                            <h3 class="fs-18 mt-1 mb-0">
+                                To redeem 100% of Loyalty Points toward a Life Experience®, Elite members must complete 12 consecutive months of billing. Only points earned during this 12-month period are eligible, and redemption applies per room, not per person.<br /><br />
+                                Members may not be suspended for 30 consecutive days or more, or for more than 90 total days within the year; if either occurs, the counter resets to zero and the 12-month requirement must start over.<br /><br />
+                                Once a Life Experience® is booked using 100% points, members must remain active through the date of travel, or the booking will be cancelled.
+                            </h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0 p-0">
+                    <button type="button" class="btn btn-info text-white px-3" data-bs-dismiss="modal">GOT IT!</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Travel For Free Modal -->
+    <div class="modal fade" id="mwrlifeappModal" tabindex="-1" aria-hidden="true" aria-labelledby="mwrlifeappModalTitle">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 50%;">
+            <div class="modal-content p-4 p-md-5">
+                <div class="modal-header p-0 border-0">
+                    <h3 class="mb-0" id="mwrlifeappModalTitle">MWR Life App</h3>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body p-0 pt-4">
+                    <div class="card bg-white border-0 rounded-3 mb-4">
+                        <div class="card-body p-0">
+                            <div class="welcome-img text-center mt-4 mb-4 mt-sm-0">
+                                <img src="assets/images/app-phone.png" alt="MWR Life App" style="width: 100% !important; border-radius: 1rem !important;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-body p-0 pt-4">
+                    <div class="card bg-white border-0 rounded-3 mb-4">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-xxl-6 col-xl-6 col-sm-6 cursor" onclick="openNewWindow('https://play.google.com/store/apps/details?id=com.mwrlife');">
+                                    <div class="card bg-opacity-10 border-opacity-10 rounded-3 mb-4 stats-box style-three" style="background-color: #7D9339; border-color: #9DB847">
+                                        <div class="card-body p-4">
+                                            <div class="d-flex align-items-center">
+                                                <div class="flex-shrink-0">
+                                                    <i class="material-symbols-outlined fs-40" style="color: #A3C639">android</i>
+                                                </div>
+                                                <div class="flex-grow-1 ms-2" style="color: #9ACD32">
+                                                    <span>Click here to download!</span>
+                                                    <h3 class="fs-20 mt-1 mb-0" style="color: #9ACD32">Android</h3>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xxl-6 col-xl-6 col-sm-6 cursor" onclick="openNewWindow('https://itunes.apple.com/us/app/mwr-life-consultant/id1464497956?ls=1&mt=8');">
+                                    <div class="card bg-opacity-10 border-black border-opacity-10 rounded-3 mb-4 stats-box style-three" style="background-color: #555555">
+                                        <div class="card-body p-4">
+                                            <div class="d-flex align-items-center">
+                                                <div class="flex-shrink-0">
+                                                    <i class="material-symbols-outlined fs-40 text-white">ios</i>
+                                                </div>
+                                                <div class="flex-grow-1 ms-2">
+                                                    <span class="text-white">Click here to download!</span>
+                                                    <h3 class="fs-20 mt-1 mb-0 text-white">iOS</h3>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0 p-0">
+                    <button type="button" class="btn btn-info text-white px-3" data-bs-dismiss="modal">CLOSE</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start Theme Setting Area -->
+    <div class="offcanvas offcanvas-end bg-white" data-bs-scroll="true" data-bs-backdrop="true" tabindex="-1" id="offcanvasScrolling" aria-labelledby="offcanvasScrollingLabel" style="box-shadow: rgba(100, 100, 111, 0.2) 0px 7px 29px 0px;">
+        <div class="offcanvas-header bg-primary py-3 px-4">
+            <h5 class="offcanvas-title fs-18 text-white" id="offcanvasScrollingLabel">Theme Settings</h5>
+            <button type="button" class="btn-close text-white" data-bs-dismiss="offcanvas" aria-label="Close" style="filter: invert(1); opacity: 1;"></button>
+        </div>
+        <div class="offcanvas-body p-4">
+            <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">RTL / LTR</h4>
+
+                <div class="d-flex align-items-center position-relative settings-box-wrap for-rtl-mode" style="gap: 25px;">
+                    <div class="cursor position-relative active-wrap2">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">LTR</span>
+                        </div>
+                    </div>
+                    <div class="cursor position-relative active-wrap1">
+                        <div class="settings-box for-rtl">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">RTL</span>
+                        </div>
+                    </div>
+                    <label id="switch" class="switch-for-rtl">
+                        <input type="checkbox" class="position-absolute top-0 bottom-0 start-0 end-0 opacity-0 cursor" onchange="toggleTheme()" id="slider">
+                        <span class="sliders round"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Container Style Fluid / Boxed</h4>
+                <button class="boxed-style settings-btn fluid-boxed-btn" id="boxed-style">
+                    Click To <span class="fluid">Fluid</span> <span class="boxed">Boxed</span>
+                </button>
+            </div> -->
+
+            <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Only Sidebar Light / Dark</h4>
+
+                <div class="d-flex align-items-center position-relative settings-box-wrap for-sidebar-dark" style="gap: 25px;">
+                    <div class="cursor position-relative active-wrap2">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Light</span>
+                        </div>
+                    </div>
+                    <div class="cursor position-relative active-wrap1">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Dark</span>
+                        </div>
+                    </div>
+                    <button class="sidebar-light-dark settings-btn" id="sidebar-light-dark"></button>
+                </div>
+            </div>
+
+            <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Only Header Light / Dark</h4>
+
+                <div class="d-flex align-items-center position-relative settings-box-wrap for-header-dark" style="gap: 25px;">
+                    <div class="cursor position-relative active-wrap2">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Light</span>
+                        </div>
+                    </div>
+                    <div class="cursor position-relative active-wrap1">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Dark</span>
+                        </div>
+                    </div>
+                    <button class="header-light-dark settings-btn" id="header-light-dark"></button>
+                </div>
+            </div>
+
+            <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Only Footer Light / Dark</h4>
+
+                <div class="d-flex align-items-center position-relative settings-box-wrap for-footer-dark" style="gap: 25px;">
+                    <div class="cursor position-relative active-wrap2">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Light</span>
+                        </div>
+                    </div>
+                    <div class="cursor position-relative active-wrap1">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Dark</span>
+                        </div>
+                    </div>
+                    <button class="footer-light-dark settings-btn" id="footer-light-dark"></button>
+                </div>
+            </div>
+
+            <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Card Style Radius / Square</h4>
+
+                <div class="d-flex align-items-center position-relative settings-box-wrap for-card-radius" style="gap: 25px;">
+                    <div class="cursor position-relative active-wrap2">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Radius</span>
+                        </div>
+                    </div>
+                    <div class="cursor position-relative active-wrap1">
+                        <div class="settings-box rounded-0">
+                            <span class="rounded-0"></span>
+                            <span class="rounded-0"></span>
+                            <span class="rounded-0"></span>
+                            <span class="rounded-0"></span>
+                            <span class="rounded-0"></span>
+                            <span class="rounded-0"></span>
+                            <span class="rounded-0"></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Square</span>
+                        </div>
+                    </div>
+                    <button class="card-radius-square settings-btn" id="card-radius-square"></button>
+                </div>
+            </div>
+
+            <div class="mb-4 pb-2">
+                <h4 class="fs-15 fw-semibold border-bottom pb-2 mb-3">Card Style BG White / Gray</h4>
+
+                <div class="d-flex align-items-center position-relative settings-box-wrap for-card-bg-gray" style="gap: 25px;">
+                    <div class="cursor position-relative active-wrap2">
+                        <div class="settings-box bg-light-40">
+                            <span class="bg-white"></span>
+                            <span class="bg-white"></span>
+                            <span class="bg-white"></span>
+                            <span class="bg-white"></span>
+                            <span class="bg-white"></span>
+                            <span class="bg-white"></span>
+                            <span class="bg-white"></span>
+                            <span class="rounded-3 bg-white"></span>
+                            <span class="rounded-3 bg-white"></span>
+                            <span class="rounded-3 bg-white"></span>
+                            <span class="rounded-3 bg-white"></span>
+                            <span class="rounded-3 bg-white"></span>
+                            <span class="rounded-3 bg-white"></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">White</span>
+                        </div>
+                    </div>
+                    <div class="cursor position-relative active-wrap1">
+                        <div class="settings-box">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                            <span class="rounded-3"></span>
+                        </div>
+                        <div class="d-flex align-items-center" style="gap: 5px; margin-top: 10px;">
+                            <i class="ri-checkbox-circle-fill position-relative top-1 fs-18 text-primary opacity-1"></i>
+                            <i class="ri-checkbox-blank-circle-line position-relative fs-18 text-light-40 position-absolute start-0 bottom-0 opacity-0"></i>
+                            <span class="fw-semibold">Gray</span>
+                        </div>
+                    </div>
+                    <button class="card-bg settings-btn" id="card-bg"></button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- End Theme Setting Area -->
+    <!-- Link Of JS File -->
+    <script src="assets/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/sidebar-menu.js"></script>
+    <script src="assets/js/dragdrop.js"></script>
+    <script src="assets/js/rangeslider.min.js"></script>
+    <script src="assets/js/quill.min.js"></script>
+    <script src="assets/js/data-table.js"></script>
+    <script src="assets/js/prism.js"></script>
+    <script src="assets/js/clipboard.min.js"></script>
+    <script src="assets/js/feather.min.js"></script>
+    <script src="assets/js/simplebar.min.js"></script>
+    <script src="assets/js/apexcharts.min.js"></script>
+    <script src="assets/js/echarts.min.js"></script>
+    <script src="assets/js/swiper-bundle.min.js"></script>
+    <script src="assets/js/fullcalendar.main.js"></script>
+    <script src="assets/js/jsvectormap.min.js"></script>
+    <script src="assets/js/world-merc.js"></script>
+    <script src="assets/js/moment.min.js"></script>
+    <script src="assets/js/lightpick.js"></script>
+    <script src="assets/js/custom/apexcharts.js"></script>
+    <script src="assets/js/custom/echarts.js"></script>
+    <script src="assets/js/custom/custom.js"></script>
+
+    <script>
+        // Qual FSB está ativo neste momento?
+        const activeBonus = 2; // 1 | 2 | 3
+
+        // === Configura as datas reais ===
+        // Para veres o FSB2 a contar já, deixo por defeito "agora + 5 dias".
+        const fsb2End = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+
+        // O FSB3 começa quando o FSB2 termina e dura mais 7 dias (ajusta se quiseres)
+        const fsb3Start = new Date(fsb2End.getTime());
+        const fsb3End = new Date(fsb3Start.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+        // Helpers
+        function fmtDHMS(ms) {
+            if (ms <= 0) return "COMPLETED!";
+            const d = Math.floor(ms / 86400000); ms -= d * 86400000;
+            const h = Math.floor(ms / 3600000); ms -= h * 3600000;
+            const m = Math.floor(ms / 60000); ms -= m * 60000;
+            const s = Math.floor(ms / 1000);
+            return `${d}D ${h}H ${m}M ${s}S`;
+        }
+        function setFrozenTimer(el, end) {
+            if (!el) return;
+            el.textContent = fmtDHMS(end - new Date());
+        }
+        function runLiveTimer(el, end, done) {
+            if (!el) return;
+            function tick() {
+                const rem = end - new Date();
+                el.textContent = fmtDHMS(rem);
+                if (rem <= 0) { if (typeof done === 'function') done(); return; }
+                setTimeout(tick, 1000);
+            }
+            tick();
+        }
+
+        // Elementos
+        const el1 = document.getElementById('fsb1-timer');
+        const el2 = document.getElementById('fsb2-timer');
+        const el3 = document.getElementById('fsb3-timer');
+
+        // FSB1: mostra o valor ganho
+        if (el1) el1.textContent = "$75.00";
+
+        // FSB2/FSB3: ambos mostram contador; só o ativo é live
+        if (activeBonus === 2) {
+            runLiveTimer(el2, fsb2End, () => el2.textContent = "COMPLETED!");
+            setFrozenTimer(el3, fsb3End);
+        } else if (activeBonus === 3) {
+            setFrozenTimer(el2, fsb2End);
+            runLiveTimer(el3, fsb3End, () => el3.textContent = "COMPLETED!");
+        } else {
+            setFrozenTimer(el2, fsb2End);
+            setFrozenTimer(el3, fsb3End);
+        }
+
+        function openNewWindow(newWindow) { window.open(newWindow, '_blank'); }
+    </script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+@using System.Globalization
+@using Microsoft.AspNetCore.Localization
+@inject IHttpContextAccessor HttpContextAccessor
+
+<!DOCTYPE html>
+<html lang="@CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <ResourcePreloader />
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="@Assets["lib/bootstrap/dist/css/bootstrap.min.css"]" />
+
+    <!-- UI Template styles -->
+    <link rel="stylesheet" href="assets/css/remixicon.css" />
+    <link rel="stylesheet" href="assets/css/simplebar.css" />
+    <link rel="stylesheet" href="assets/css/style.css" />
+    <link rel="stylesheet" href="assets/css/sidebar-menu.css" />
+
+    <!-- Syncfusion Blazor theme -->
+    <link href="_content/Syncfusion.Blazor.Themes/bootstrap5.css" rel="stylesheet" />
+
+    <!-- App overrides -->
+    <link rel="stylesheet" href="@Assets["app.css"]" />
+    <link rel="stylesheet" href="@Assets["MLMConquerorGlobalEdition.AdminWeb.styles.css"]" />
+
+    <ImportMap />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <HeadOutlet />
+</head>
+
+<body>
+    <Routes />
+    <ReconnectModal />
+    <PersistentComponentState />
+
+    <!-- Blazor -->
+    <script src="@Assets["_framework/blazor.web.js"]"></script>
+
+    <!-- Syncfusion scripts (must load after blazor.web.js, IgnoreScriptIsolation=true required) -->
+    <script src="_content/Syncfusion.Blazor.Core/scripts/syncfusion-blazor.min.js" type="text/javascript"></script>
+
+    <!-- UI Template scripts -->
+    <script src="assets/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/simplebar.min.js"></script>
+    <script src="assets/js/feather.min.js"></script>
+    <script src="assets/js/sidebar-menu.js"></script>
+    <script>
+        // Init feather icons after Blazor renders
+        if (typeof feather !== 'undefined') feather.replace();
+    </script>
+
+    <script>
+        // Set culture from cookie before Blazor circuit starts
+        (function() {
+            var cookie = document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('.AspNetCore.Culture='));
+            if (cookie) {
+                var val = decodeURIComponent(cookie.split('=')[1]);
+                var m = val.match(/uic=([^|]+)/);
+                if (m) document.documentElement.lang = m[1];
+            }
+        })();
+    </script>
+    <script>
+        // Burger menu toggle — uses sidebar-data-theme attribute as expected by style.css
+        (function () {
+            function initBurger() {
+                var btn = document.getElementById('header-burger-menu');
+                if (!btn || btn._burgerInit) return;
+                btn._burgerInit = true;
+                btn.addEventListener('click', function () {
+                    var body = document.body;
+                    if (body.getAttribute('sidebar-data-theme') === 'sidebar-hide') {
+                        body.removeAttribute('sidebar-data-theme');
+                    } else {
+                        body.setAttribute('sidebar-data-theme', 'sidebar-hide');
+                    }
+                });
+            }
+            // Init on DOMContentLoaded and also after Blazor circuit starts
+            document.addEventListener('DOMContentLoaded', initBurger);
+            document.addEventListener('blazor:connected', initBurger);
+            // Fallback: re-init on any navigation
+            document.addEventListener('enhancedload', initBurger);
+            setTimeout(initBurger, 500);
+        })();
+    </script>
+</body>
+
+</html>
+
+@code {
+    protected override void OnInitialized()
+    {
+        var requestCulture = HttpContextAccessor.HttpContext?
+            .Features.Get<IRequestCultureFeature>()?.RequestCulture;
+        if (requestCulture is not null)
+        {
+            CultureInfo.DefaultThreadCurrentCulture = requestCulture.Culture;
+            CultureInfo.DefaultThreadCurrentUICulture = requestCulture.UICulture;
+        }
+    }
+}

@@ -1,0 +1,16 @@
+<span class="badge rounded-pill bg-@BadgeColor">@DisplayText</span>
+
+@code {
+    [Parameter, EditorRequired] public string Status { get; set; } = string.Empty;
+
+    private string BadgeColor => Status?.ToLowerInvariant() switch
+    {
+        "active"    or "paid"     or "approved" or "completed" or "resolved" => "success",
+        "pending"   or "open"     or "inprogress"                            => "warning",
+        "cancelled" or "rejected" or "deactivated"                           => "danger",
+        "expired"   or "closed"                                              => "secondary",
+        _                                                                    => "primary"
+    };
+
+    private string DisplayText => Status ?? string.Empty;
+}

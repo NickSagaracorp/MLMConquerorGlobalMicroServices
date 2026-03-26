@@ -1,0 +1,321 @@
+@page "/admin/config/products/{ProductId}/commissions"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+<PageTitle>Product Commissions — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Products", "/admin/config/products"), new("Commission Settings") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-toggle-line me-2 text-primary"></i>Commission Triggers
+            @if (!string.IsNullOrWhiteSpace(_productName))
+            {
+                <span class="text-muted fw-normal ms-1">— @_productName</span>
+            }
+        </h6>
+        <a href="/admin/config/products" class="btn btn-outline-secondary btn-sm"><i class="ri-arrow-left-line me-1"></i>Back</a>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+        <button class="btn btn-primary btn-sm" @onclick="OpenCreate"><i class="ri-add-line me-1"></i>New Rule</button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else if (_items.Count == 0)
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="ri-toggle-line fs-2 d-block mb-2"></i>
+                No commission rule configured.<br />
+                <button class="btn btn-primary btn-sm mt-3" @onclick="OpenCreate"><i class="ri-add-line me-1"></i>Create Rule</button>
+            </div>
+        }
+        else
+        {
+            <SfGrid TValue="ProductCommissionDto" DataSource="@_items"
+                    AllowPaging="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="20" />
+                <GridColumns>
+                    <GridColumn Field="@nameof(ProductCommissionDto.Id)" HeaderText="ID" Width="70" TextAlign="TextAlign.Center" />
+                    <GridColumn HeaderText="Sponsor" Width="100" TextAlign="TextAlign.Center">
+                        <Template><span class="badge @FB(((ProductCommissionDto)context).TriggerSponsorBonus)">@YN(((ProductCommissionDto)context).TriggerSponsorBonus)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Sponsor Turbo" Width="120" TextAlign="TextAlign.Center">
+                        <Template><span class="badge @FB(((ProductCommissionDto)context).TriggerSponsorBonusTurbo)">@YN(((ProductCommissionDto)context).TriggerSponsorBonusTurbo)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Builder" Width="90" TextAlign="TextAlign.Center">
+                        <Template><span class="badge @FB(((ProductCommissionDto)context).TriggerBuilderBonus)">@YN(((ProductCommissionDto)context).TriggerBuilderBonus)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Builder Turbo" Width="120" TextAlign="TextAlign.Center">
+                        <Template><span class="badge @FB(((ProductCommissionDto)context).TriggerBuilderBonusTurbo)">@YN(((ProductCommissionDto)context).TriggerBuilderBonusTurbo)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Fast Start" Width="100" TextAlign="TextAlign.Center">
+                        <Template><span class="badge @FB(((ProductCommissionDto)context).TriggerFastStartBonus)">@YN(((ProductCommissionDto)context).TriggerFastStartBonus)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Boost" Width="85" TextAlign="TextAlign.Center">
+                        <Template><span class="badge @FB(((ProductCommissionDto)context).TriggerBoostBonus)">@YN(((ProductCommissionDto)context).TriggerBoostBonus)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Car" Width="75" TextAlign="TextAlign.Center">
+                        <Template><span class="badge @FB(((ProductCommissionDto)context).CarBonusEligible)">@YN(((ProductCommissionDto)context).CarBonusEligible)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Presidential" Width="110" TextAlign="TextAlign.Center">
+                        <Template><span class="badge @FB(((ProductCommissionDto)context).PresidentialBonusEligible)">@YN(((ProductCommissionDto)context).PresidentialBonusEligible)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Mbr Residual" Width="115" TextAlign="TextAlign.Center">
+                        <Template><span class="badge @FB(((ProductCommissionDto)context).EligibleMembershipResidual)">@YN(((ProductCommissionDto)context).EligibleMembershipResidual)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Daily Residual" Width="115" TextAlign="TextAlign.Center">
+                        <Template><span class="badge @FB(((ProductCommissionDto)context).EligibleDailyResidual)">@YN(((ProductCommissionDto)context).EligibleDailyResidual)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="90" TextAlign="TextAlign.Center">
+                        <Template>
+                            <button class="btn btn-sm btn-outline-primary py-0 me-1" @onclick="() => OpenEdit((ProductCommissionDto)context)"><i class="ri-edit-line"></i></button>
+                            <button class="btn btn-sm btn-outline-danger py-0" @onclick="() => ConfirmDelete((ProductCommissionDto)context)"><i class="ri-delete-bin-line"></i></button>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+@if (_showForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">@(_editId is null ? "New Commission Rule" : "Edit Commission Rule")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseForm"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">Turn on/off which commission types fire when this product is purchased.</p>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="border rounded-3 p-3">
+                                <p class="fw-semibold text-primary mb-3"><i class="ri-team-line me-2"></i>Sponsor &amp; Builder</p>
+                                <div class="d-flex flex-column gap-2">
+                                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="fSB" @bind="_form.TriggerSponsorBonus"><label class="form-check-label" for="fSB">Sponsor Bonus</label></div>
+                                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="fSBT" @bind="_form.TriggerSponsorBonusTurbo"><label class="form-check-label" for="fSBT">Sponsor Bonus Turbo</label></div>
+                                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="fBB" @bind="_form.TriggerBuilderBonus"><label class="form-check-label" for="fBB">Builder Bonus</label></div>
+                                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="fBBT" @bind="_form.TriggerBuilderBonusTurbo"><label class="form-check-label" for="fBBT">Builder Bonus Turbo</label></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="border rounded-3 p-3">
+                                <p class="fw-semibold text-primary mb-3"><i class="ri-rocket-line me-2"></i>Performance</p>
+                                <div class="d-flex flex-column gap-2">
+                                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="fFS" @bind="_form.TriggerFastStartBonus"><label class="form-check-label" for="fFS">Fast Start Bonus</label></div>
+                                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="fBo" @bind="_form.TriggerBoostBonus"><label class="form-check-label" for="fBo">Boost Bonus</label></div>
+                                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="fCar" @bind="_form.CarBonusEligible"><label class="form-check-label" for="fCar">Car Bonus</label></div>
+                                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="fPres" @bind="_form.PresidentialBonusEligible"><label class="form-check-label" for="fPres">Presidential Bonus</label></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="border rounded-3 p-3">
+                                <p class="fw-semibold text-primary mb-3"><i class="ri-repeat-line me-2"></i>Residuals</p>
+                                <div class="row g-2">
+                                    <div class="col-md-6"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="fMR" @bind="_form.EligibleMembershipResidual"><label class="form-check-label" for="fMR">Membership Residual</label></div></div>
+                                    <div class="col-md-6"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="fDR" @bind="_form.EligibleDailyResidual"><label class="form-check-label" for="fDR">Daily Residual</label></div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                    <button class="btn btn-primary" @onclick="Save" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        @(_editId is null ? "Create" : "Save Changes")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showDeleteConfirm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header"><h5 class="modal-title fw-bold text-danger">Delete Rule</h5><button type="button" class="btn-close" @onclick="() => { _showDeleteConfirm = false; _deleteItem = null; }"></button></div>
+                <div class="modal-body">Delete commission rule #<strong>@_deleteItem?.Id</strong>? This cannot be undone.</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => { _showDeleteConfirm = false; _deleteItem = null; }">Cancel</button>
+                    <button class="btn btn-danger" @onclick="DeleteItem" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string ProductId { get; set; } = string.Empty;
+
+    private List<ProductCommissionDto> _items = new();
+    private bool _loading = true;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private bool _showForm;
+    private bool _showDeleteConfirm;
+    private int? _editId;
+    private CommissionFormModel _form = new();
+    private ProductCommissionDto? _deleteItem;
+    private string? _productName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProductName();
+        await LoadAsync();
+    }
+
+    private async Task LoadProductName()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<ProductItem>>>($"api/v1/admin/products?page=1&pageSize=500");
+            if (resp?.Success == true && resp.Data is not null)
+                _productName = resp.Data.Items.FirstOrDefault(x => x.Id == ProductId)?.Name;
+        }
+        catch { /* non-critical */ }
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<ProductCommissionDto>>>($"api/v1/admin/product-commissions?productId={ProductId}&page=1&pageSize=100");
+            if (resp?.Success == true && resp.Data is not null)
+                _items = resp.Data.Items.ToList();
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private void OpenCreate()
+    {
+        _editId = null;
+        _form = new CommissionFormModel
+        {
+            TriggerSponsorBonus = true, TriggerBuilderBonus = true,
+            TriggerFastStartBonus = true, TriggerBoostBonus = true,
+            CarBonusEligible = true, PresidentialBonusEligible = true,
+            EligibleMembershipResidual = true, EligibleDailyResidual = true
+        };
+        _showForm = true;
+    }
+
+    private void OpenEdit(ProductCommissionDto item)
+    {
+        _editId = item.Id;
+        _form = new CommissionFormModel
+        {
+            TriggerSponsorBonus = item.TriggerSponsorBonus,
+            TriggerSponsorBonusTurbo = item.TriggerSponsorBonusTurbo,
+            TriggerBuilderBonus = item.TriggerBuilderBonus,
+            TriggerBuilderBonusTurbo = item.TriggerBuilderBonusTurbo,
+            TriggerFastStartBonus = item.TriggerFastStartBonus,
+            TriggerBoostBonus = item.TriggerBoostBonus,
+            CarBonusEligible = item.CarBonusEligible,
+            PresidentialBonusEligible = item.PresidentialBonusEligible,
+            EligibleMembershipResidual = item.EligibleMembershipResidual,
+            EligibleDailyResidual = item.EligibleDailyResidual
+        };
+        _showForm = true;
+    }
+
+    private void CloseForm() { _showForm = false; _editId = null; }
+
+    private async Task Save()
+    {
+        _saving = true;
+        try
+        {
+            HttpResponseMessage response;
+            if (_editId is null)
+            {
+                var payload = new
+                {
+                    ProductId,
+                    _form.TriggerSponsorBonus, _form.TriggerSponsorBonusTurbo,
+                    _form.TriggerBuilderBonus, _form.TriggerBuilderBonusTurbo,
+                    _form.TriggerFastStartBonus, _form.TriggerBoostBonus,
+                    _form.CarBonusEligible, _form.PresidentialBonusEligible,
+                    _form.EligibleMembershipResidual, _form.EligibleDailyResidual
+                };
+                response = await Http.PostAsJsonAsync("api/v1/admin/product-commissions", payload);
+            }
+            else
+            {
+                response = await Http.PutAsJsonAsync($"api/v1/admin/product-commissions/{_editId}", _form);
+            }
+
+            if (response.IsSuccessStatusCode) { _alertMsg = _editId is null ? "Created." : "Updated."; _alertIsError = false; CloseForm(); await LoadAsync(); }
+            else { _alertMsg = $"Save failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private void ConfirmDelete(ProductCommissionDto item) { _deleteItem = item; _showDeleteConfirm = true; }
+
+    private async Task DeleteItem()
+    {
+        if (_deleteItem is null) return;
+        _saving = true;
+        try
+        {
+            var response = await Http.DeleteAsync($"api/v1/admin/product-commissions/{_deleteItem.Id}");
+            if (response.IsSuccessStatusCode) { _alertMsg = "Deleted."; _alertIsError = false; _showDeleteConfirm = false; _deleteItem = null; await LoadAsync(); }
+            else { _alertMsg = $"Failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private static string FB(bool v) => v ? "bg-success" : "bg-light text-dark border";
+    private static string YN(bool v) => v ? "Yes" : "No";
+
+    private record ProductCommissionDto(int Id, string ProductId,
+        bool TriggerSponsorBonus, bool TriggerSponsorBonusTurbo,
+        bool TriggerBuilderBonus, bool TriggerBuilderBonusTurbo,
+        bool TriggerFastStartBonus, bool TriggerBoostBonus,
+        bool CarBonusEligible, bool PresidentialBonusEligible,
+        bool EligibleMembershipResidual, bool EligibleDailyResidual);
+
+    private class CommissionFormModel
+    {
+        public bool TriggerSponsorBonus { get; set; }
+        public bool TriggerSponsorBonusTurbo { get; set; }
+        public bool TriggerBuilderBonus { get; set; }
+        public bool TriggerBuilderBonusTurbo { get; set; }
+        public bool TriggerFastStartBonus { get; set; }
+        public bool TriggerBoostBonus { get; set; }
+        public bool CarBonusEligible { get; set; }
+        public bool PresidentialBonusEligible { get; set; }
+        public bool EligibleMembershipResidual { get; set; }
+        public bool EligibleDailyResidual { get; set; }
+    }
+
+    private record ProductItem(string Id, string Name);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+}

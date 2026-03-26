@@ -1,0 +1,94 @@
+@inject HttpClient Http
+@inject IViewContextService ViewContext
+
+<div class="card">
+    <div class="card-header py-3">
+        <h6 class="card-title mb-0 fw-semibold">Security Log</h6>
+    </div>
+    <div class="card-body p-0">
+        <LoadingSpinner IsLoading="@_isLoading" />
+        @if (!_isLoading)
+        {
+            <div class="table-responsive">
+                <table class="table table-hover table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Event</th>
+                            <th>IP Address</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!_items.Any())
+                        {
+                            <tr><td colspan="4" class="text-center text-muted py-4">No data available.</td></tr>
+                        }
+                        @foreach (var log in _items)
+                        {
+                            <tr>
+                                <td>@log.EventType</td>
+                                <td><code>@log.IpAddress</code></td>
+                                <td>@log.OccurredAt.ToString("MMM dd, yyyy HH:mm")</td>
+                                <td><StatusBadge Status="@log.Status" /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (_total > _pageSize)
+            {
+                var totalPages = (int)Math.Ceiling((double)_total / _pageSize);
+                <div class="d-flex justify-content-center py-3">
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(_page <= 1 ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => ChangePage(_page - 1)">&#x2039;</button>
+                            </li>
+                            @for (var pg = 1; pg <= totalPages; pg++)
+                            {
+                                var p = pg;
+                                <li class="page-item @(p == _page ? "active" : "")">
+                                    <button class="page-link" @onclick="() => ChangePage(p)">@p</button>
+                                </li>
+                            }
+                            <li class="page-item @(_page >= totalPages ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => ChangePage(_page + 1)">&#x203A;</button>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+
+    private bool _isLoading = true;
+    private int  _page     = 1;
+    private int  _pageSize = 20;
+    private int  _total;
+    private List<SecurityLogItem> _items = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(MemberProfileId)) return;
+        await LoadPageAsync(1);
+    }
+
+    private async Task ChangePage(int page) => await LoadPageAsync(page);
+
+    private async Task LoadPageAsync(int page)
+    {
+        _page      = page;
+        _isLoading = true;
+        StateHasChanged();
+        // TODO: GET /api/v1/bizcenter/profile/security-log?memberId={MemberProfileId}&page={page}&pageSize={_pageSize}
+        await Task.Delay(50);
+        _isLoading = false;
+    }
+
+    public record SecurityLogItem(string EventType, string IpAddress, DateTime OccurredAt, string Status);
+}

@@ -1,0 +1,5 @@
+@page "/tokens"
+@attribute [Authorize(Roles = "Ambassador")]
+@inject IViewContextService ViewContext
+
+<TokensPage MemberProfileId="@ViewContext.ViewingMemberId" />

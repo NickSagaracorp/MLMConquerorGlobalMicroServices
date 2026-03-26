@@ -1,0 +1,107 @@
+@page "/admin/events/promos/{PromoId}/members"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+<PageTitle>Promo Members — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Corporate Promos", "/admin/events/promos"), new($"Promo Members") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert alert-danger alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-team-line me-2 text-primary"></i>Members Signed Up During Promo
+            @if (!_loading) { <span class="badge bg-secondary ms-2">@_items.Count total</span> }
+        </h6>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+        <a href="/admin/events/promos/@PromoId/dashboard" class="btn btn-outline-success btn-sm">
+            <i class="ri-dashboard-line me-1"></i>Dashboard
+        </a>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="PromoMemberDto" DataSource="@_items"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250,500,1000})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn HeaderText="Member" Width="250">
+                        <Template>
+                            <a href="/admin/members/@(((PromoMemberDto)context).MemberId)" class="text-primary fw-semibold">
+                                <code class="small">@(((PromoMemberDto)context).MemberId)</code>
+                            </a>
+                            <span class="ms-1 small">@(((PromoMemberDto)context).FullName)</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(PromoMemberDto.Email)" HeaderText="Email" Width="220" />
+                    <GridColumn Field="@nameof(PromoMemberDto.MembershipLevelName)" HeaderText="Level" Width="150" />
+                    <GridColumn HeaderText="Signup Date" Width="140">
+                        <Template><span class="small">@(((PromoMemberDto)context).SignupDate.ToString("yyyy-MM-dd HH:mm"))</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Status" Width="110">
+                        <Template>
+                            <span class="badge @StatusBadge(((PromoMemberDto)context).SubscriptionStatus)">
+                                @(((PromoMemberDto)context).SubscriptionStatus)
+                            </span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="90" TextAlign="TextAlign.Center">
+                        <Template>
+                            <a href="/admin/members/@(((PromoMemberDto)context).MemberId)" class="btn btn-sm btn-outline-primary py-0">
+                                <i class="ri-eye-line"></i>
+                            </a>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string PromoId { get; set; } = string.Empty;
+
+    private List<PromoMemberDto> _items = new();
+    private bool _loading = true;
+    private string? _alertMsg;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<PromoMemberDto>>>($"api/v1/admin/corporate-promos/{PromoId}/members?page=1&pageSize=500");
+            if (resp?.Success == true && resp.Data is not null)
+                _items = resp.Data.Items.ToList();
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; }
+        finally { _loading = false; }
+    }
+
+    private static string StatusBadge(string status) => status switch
+    {
+        "Active" => "bg-success",
+        "Cancelled" => "bg-danger",
+        "Pending" => "bg-warning text-dark",
+        _ => "bg-secondary"
+    };
+
+    private record PromoMemberDto(string MemberId, string FullName, string Email, string MembershipLevelName, DateTime SignupDate, string SubscriptionStatus);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+}

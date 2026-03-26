@@ -1,0 +1,95 @@
+@inject HttpClient Http
+@using System.Timers
+
+<div class="position-relative">
+    <input class="form-control @(string.IsNullOrEmpty(Value) ? "" : "is-valid")"
+           value="@_inputText"
+           @oninput="OnInput"
+           @onblur="OnBlur"
+           placeholder="Type name or Member ID..."
+           autocomplete="off" />
+    @if (_loading)
+    {
+        <div class="position-absolute end-0 top-50 translate-middle-y pe-2">
+            <span class="spinner-border spinner-border-sm text-secondary"></span>
+        </div>
+    }
+    @if (_suggestions.Count > 0 && _showDropdown)
+    {
+        <div class="dropdown-menu show w-100 shadow-sm" style="max-height:220px;overflow-y:auto;z-index:9999;position:absolute">
+            @foreach (var s in _suggestions)
+            {
+                var suggestion = s;
+                <button type="button" class="dropdown-item py-2" @onmousedown="() => Select(suggestion)">
+                    <span class="fw-semibold text-primary small">@suggestion.MemberId</span>
+                    <span class="ms-2 text-dark">@suggestion.FullName</span>
+                    @if (!string.IsNullOrEmpty(suggestion.Country))
+                    {
+                        <span class="ms-1 text-muted small">(@suggestion.Country)</span>
+                    }
+                </button>
+            }
+        </div>
+    }
+    @if (!string.IsNullOrEmpty(Value) && Value != _inputText)
+    {
+        <div class="form-text text-success"><i class="ri-check-line me-1"></i>Selected: <strong>@Value</strong></div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Type name or Member ID...";
+
+    private string _inputText = string.Empty;
+    private List<AutocompleteItem> _suggestions = new();
+    private bool _loading;
+    private bool _showDropdown;
+    private System.Timers.Timer? _debounce;
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrEmpty(Value) && _inputText == string.Empty)
+            _inputText = Value;
+    }
+
+    private void OnInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _inputText = e.Value?.ToString() ?? string.Empty;
+        _showDropdown = true;
+        _debounce?.Dispose();
+        _debounce = new System.Timers.Timer(300);
+        _debounce.Elapsed += async (_, _) => { _debounce?.Dispose(); await InvokeAsync(Search); };
+        _debounce.AutoReset = false;
+        _debounce.Start();
+    }
+
+    private async Task Search()
+    {
+        if (_inputText.Length < 2) { _suggestions.Clear(); StateHasChanged(); return; }
+        _loading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<IEnumerable<AutocompleteItem>>>($"api/v1/admin/members/autocomplete?q={Uri.EscapeDataString(_inputText)}");
+            _suggestions = resp?.Data?.ToList() ?? new();
+        }
+        catch { _suggestions.Clear(); }
+        finally { _loading = false; StateHasChanged(); }
+    }
+
+    private async Task Select(AutocompleteItem item)
+    {
+        _inputText = $"{item.MemberId} — {item.FullName}";
+        _suggestions.Clear();
+        _showDropdown = false;
+        await ValueChanged.InvokeAsync(item.MemberId);
+    }
+
+    private void OnBlur() => Task.Delay(200).ContinueWith(_ => InvokeAsync(() => { _showDropdown = false; StateHasChanged(); }));
+
+    public void Dispose() => _debounce?.Dispose();
+
+    private record AutocompleteItem(string MemberId, string FullName, string Country);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+}

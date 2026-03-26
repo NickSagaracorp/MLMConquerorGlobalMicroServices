@@ -1,0 +1,172 @@
+@page "/admin/events/promos/{PromoId}/dashboard"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+<PageTitle>Promo Dashboard — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Corporate Promos", "/admin/events/promos"), new("Promo Dashboard") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert alert-danger alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="d-flex mb-3 gap-2">
+    <a href="/admin/events/promos/@PromoId/members" class="btn btn-outline-secondary btn-sm"><i class="ri-team-line me-1"></i>Members</a>
+    <a href="/admin/events/promos/@PromoId/commissions" class="btn btn-outline-secondary btn-sm"><i class="ri-percent-line me-1"></i>Commissions</a>
+    <button class="btn btn-outline-secondary btn-sm ms-auto" @onclick="LoadAsync"><i class="ri-refresh-line me-1"></i>Refresh</button>
+</div>
+
+@if (_loading)
+{
+    <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else if (_stats is not null)
+{
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-sm-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="fs-2 fw-bold text-primary">@_stats.TotalSignups.ToString("N0")</div>
+                    <div class="text-muted small">Total Signups</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="fs-2 fw-bold text-success">@_stats.RetentionRate.ToString("F1")%</div>
+                    <div class="text-muted small">Retention Rate</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="fs-2 fw-bold text-danger">@_stats.ChurnRate.ToString("F1")%</div>
+                    <div class="text-muted small">Churn Rate</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="fs-2 fw-bold text-info">@_stats.ActiveSubscriptions.ToString("N0")</div>
+                    <div class="text-muted small">Active Subscriptions</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4 col-sm-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="fs-3 fw-bold text-success">@_stats.TotalIncome.ToString("C2")</div>
+                    <div class="text-muted small">Income (Signups)</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 col-sm-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="fs-3 fw-bold text-danger">@_stats.TotalCommissions.ToString("C2")</div>
+                    <div class="text-muted small">Commission Expenses</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 col-sm-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    @{ var net = _stats.TotalIncome - _stats.TotalCommissions; }
+                    <div class="fs-3 fw-bold @(net >= 0 ? "text-success" : "text-danger")">@net.ToString("C2")</div>
+                    <div class="text-muted small">Net Revenue</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header py-3">
+            <h6 class="card-title mb-0 fw-semibold"><i class="ri-bar-chart-2-line me-2 text-primary"></i>Signups by Membership Level</h6>
+        </div>
+        <div class="card-body p-0">
+            @if (_stats.SignupsByMembershipLevel.Count == 0)
+            {
+                <div class="text-center py-4 text-muted">No level data available.</div>
+            }
+            else
+            {
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Membership Level</th>
+                            <th class="text-end">Signups</th>
+                            <th style="width:35%">Share</th>
+                            <th class="text-end">%</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var kv in _stats.SignupsByMembershipLevel.OrderByDescending(x => x.Value))
+                        {
+                            var pct = _stats.TotalSignups > 0 ? (decimal)kv.Value / _stats.TotalSignups * 100 : 0;
+                            <tr>
+                                <td class="fw-semibold">@kv.Key</td>
+                                <td class="text-end">@kv.Value.ToString("N0")</td>
+                                <td>
+                                    <div class="progress" style="height:10px;">
+                                        <div class="progress-bar bg-primary" style="width:@pct.ToString("F1")%"></div>
+                                    </div>
+                                </td>
+                                <td class="text-end">@pct.ToString("F1")%</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+}
+else if (!_loading)
+{
+    <div class="alert alert-warning">No dashboard data available for this promo.</div>
+}
+
+@code {
+    [Parameter] public string PromoId { get; set; } = string.Empty;
+
+    private bool _loading = true;
+    private string? _alertMsg;
+    private PromoStatsDto? _stats;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<PromoStatsDto>>($"api/v1/admin/corporate-promos/{PromoId}/stats");
+            if (resp?.Success == true && resp.Data is not null)
+                _stats = resp.Data;
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; }
+        finally { _loading = false; }
+    }
+
+    private record PromoStatsDto(
+        int TotalSignups,
+        int ActiveSubscriptions,
+        int CancelledSubscriptions,
+        decimal RetentionRate,
+        decimal ChurnRate,
+        decimal TotalIncome,
+        decimal TotalCommissions,
+        Dictionary<string, int> SignupsByMembershipLevel);
+
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+}

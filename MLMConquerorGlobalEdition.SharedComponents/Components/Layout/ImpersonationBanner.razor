@@ -1,0 +1,25 @@
+@inject IViewContextService ViewContext
+@inject NavigationManager Nav
+
+@if (ViewContext.IsImpersonating)
+{
+    <div class="impersonation-banner">
+        <div class="impersonation-banner__inner">
+            <i class="ri-eye-line me-2"></i>
+            <span>Viewing as member: <strong>@ViewContext.ViewingMemberId</strong></span>
+            <button class="btn btn-sm btn-light ms-3" @onclick="ExitImpersonation">
+                <i class="ri-logout-box-line me-1"></i> Exit Impersonation
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public EventCallback OnExitImpersonation { get; set; }
+
+    private async Task ExitImpersonation()
+    {
+        if (OnExitImpersonation.HasDelegate)
+            await OnExitImpersonation.InvokeAsync();
+    }
+}

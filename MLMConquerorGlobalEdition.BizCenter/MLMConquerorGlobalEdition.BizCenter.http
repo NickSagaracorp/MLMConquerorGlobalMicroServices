@@ -1,0 +1,6 @@
+@MLMConquerorGlobalEdition.BizCenter_HostAddress = http://localhost:5102
+
+GET {{MLMConquerorGlobalEdition.BizCenter_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

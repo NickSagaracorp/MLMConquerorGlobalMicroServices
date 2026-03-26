@@ -1,0 +1,295 @@
+@page "/admin/events"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+
+<PageTitle>Corporate Events — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Corporate Events") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-calendar-event-line me-2 text-primary"></i>Corporate Events
+        </h6>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+        <button class="btn btn-primary btn-sm" @onclick="OpenCreate">
+            <i class="ri-add-line me-1"></i>New Event
+        </button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else if (_items.Count == 0)
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="ri-calendar-event-line fs-1 d-block mb-2"></i>
+                <p class="mb-0">No corporate events found. Create one to get started.</p>
+            </div>
+        }
+        else
+        {
+            <SfGrid TValue="CorporateEventDto" DataSource="@_items"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250,500,1000})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn HeaderText="Title" Width="220">
+                        <Template>
+                            <span class="fw-semibold">@(((CorporateEventDto)context).Title)</span>
+                            @if (!string.IsNullOrWhiteSpace(((CorporateEventDto)context).Description))
+                            {<text><br/><small class="text-muted">@(((CorporateEventDto)context).Description!.Length > 80 ? ((CorporateEventDto)context).Description![..80] + "…" : ((CorporateEventDto)context).Description!)</small></text>}
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Event Date" Width="130">
+                        <Template><span class="small">@(((CorporateEventDto)context).EventDate.ToString("yyyy-MM-dd"))</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Location" Width="160">
+                        <Template><span class="small text-muted">@(((CorporateEventDto)context).Location ?? "—")</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Image" Width="80" TextAlign="TextAlign.Center">
+                        <Template>
+                            @if (!string.IsNullOrWhiteSpace(((CorporateEventDto)context).ImageUrl))
+                            {<text><i class="ri-image-line text-primary"></i></text>}
+                            else
+                            {<text><span class="text-muted small">—</span></text>}
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Status" Width="110">
+                        <Template>
+                            <span class="badge @(((CorporateEventDto)context).IsActive ? "bg-success" : "bg-secondary")">
+                                @(((CorporateEventDto)context).IsActive ? "Active" : "Inactive")
+                            </span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Created" Width="120">
+                        <Template><span class="small text-muted">@(((CorporateEventDto)context).CreationDate.ToString("yyyy-MM-dd"))</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="130" TextAlign="TextAlign.Center">
+                        <Template>
+                            <button class="btn btn-sm btn-outline-primary py-0 me-1"
+                                    @onclick="() => OpenEdit((CorporateEventDto)context)">
+                                <i class="ri-edit-line"></i>
+                            </button>
+                            @if (((CorporateEventDto)context).IsActive)
+                            {
+                                <text>
+                                    <button class="btn btn-sm btn-outline-danger py-0"
+                                            @onclick="() => ConfirmDeactivate((CorporateEventDto)context)">
+                                        <i class="ri-close-circle-line"></i>
+                                    </button>
+                                </text>
+                            }
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+
+            @if (_totalPages > 1)
+            {
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
+                    <small class="text-muted">@_totalCount events — Page @_page of @_totalPages</small>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>
+                            @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
+                            { var pg = i; <li class="page-item @(_page == pg ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(pg)">@pg</button></li> }
+                            <li class="page-item @(_page == _totalPages ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page + 1)">›</button></li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@if (_showForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold">@(_editId is null ? "New Event" : "Edit Event")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseForm"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Title <span class="text-danger">*</span></label>
+                            <input class="form-control" @bind="_form.Title" placeholder="Event title" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Description</label>
+                            <textarea class="form-control" rows="3" @bind="_form.Description"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Event Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" @bind="_form.EventDate" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Location</label>
+                            <input class="form-control" @bind="_form.Location" placeholder="City, Venue, or Online" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Image URL</label>
+                            <input class="form-control" @bind="_form.ImageUrl" placeholder="https://..." />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SaveEvent" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        @(_editId is null ? "Create Event" : "Save Changes")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showDeactivateConfirm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold text-danger">Deactivate Event</h5>
+                    <button type="button" class="btn-close" @onclick="() => { _showDeactivateConfirm = false; _deactivateTarget = null; }"></button>
+                </div>
+                <div class="modal-body">Deactivate <strong>@_deactivateTarget?.Title</strong>? It will no longer be visible to members.</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => { _showDeactivateConfirm = false; _deactivateTarget = null; }">Cancel</button>
+                    <button class="btn btn-danger" @onclick="DeactivateEvent" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Deactivate
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<CorporateEventDto> _items = new();
+    private bool _loading = true;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private int _page = 1;
+    private const int PageSize = 25;
+    private int _totalCount;
+    private int _totalPages = 1;
+    private bool _showForm;
+    private bool _showDeactivateConfirm;
+    private string? _editId;
+    private CorporateEventFormModel _form = new();
+    private CorporateEventDto? _deactivateTarget;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<CorporateEventDto>>>($"api/v1/admin/corporate-events?page={_page}&pageSize={PageSize}");
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _items = resp.Data.Items.ToList();
+                _totalCount = resp.Data.TotalCount;
+                _totalPages = resp.Data.TotalPages;
+            }
+            else { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load events."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private async Task ChangePage(int p) { if (p < 1 || p > _totalPages) return; _page = p; await LoadAsync(); }
+
+    private void OpenCreate() { _editId = null; _form = new CorporateEventFormModel { EventDate = DateTime.Today }; _showForm = true; }
+
+    private void OpenEdit(CorporateEventDto ev)
+    {
+        _editId = ev.Id;
+        _form = new CorporateEventFormModel
+        {
+            Title = ev.Title,
+            Description = ev.Description,
+            EventDate = ev.EventDate,
+            Location = ev.Location,
+            ImageUrl = ev.ImageUrl
+        };
+        _showForm = true;
+    }
+
+    private void CloseForm() { _showForm = false; _editId = null; }
+
+    private async Task SaveEvent()
+    {
+        if (string.IsNullOrWhiteSpace(_form.Title)) { _alertMsg = "Title is required."; _alertIsError = true; return; }
+        _saving = true;
+        try
+        {
+            var response = _editId is null
+                ? await Http.PostAsJsonAsync("api/v1/admin/corporate-events", _form)
+                : await Http.PutAsJsonAsync($"api/v1/admin/corporate-events/{_editId}", _form);
+            if (response.IsSuccessStatusCode)
+            {
+                _alertMsg = _editId is null ? "Event created." : "Event updated.";
+                _alertIsError = false;
+                CloseForm();
+                await LoadAsync();
+            }
+            else { _alertMsg = $"Save failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private void ConfirmDeactivate(CorporateEventDto ev) { _deactivateTarget = ev; _showDeactivateConfirm = true; }
+
+    private async Task DeactivateEvent()
+    {
+        if (_deactivateTarget is null) return;
+        _saving = true;
+        try
+        {
+            var response = await Http.DeleteAsync($"api/v1/admin/corporate-events/{_deactivateTarget.Id}");
+            if (response.IsSuccessStatusCode)
+            {
+                _alertMsg = "Event deactivated.";
+                _alertIsError = false;
+                _showDeactivateConfirm = false;
+                _deactivateTarget = null;
+                await LoadAsync();
+            }
+            else { _alertMsg = $"Deactivate failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private class CorporateEventFormModel
+    {
+        public string Title { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public DateTime EventDate { get; set; } = DateTime.Today;
+        public string? Location { get; set; }
+        public string? ImageUrl { get; set; }
+    }
+
+    private record CorporateEventDto(string Id, string Title, string? Description, DateTime EventDate, string? Location, string? ImageUrl, bool IsActive, DateTime CreationDate);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+}
