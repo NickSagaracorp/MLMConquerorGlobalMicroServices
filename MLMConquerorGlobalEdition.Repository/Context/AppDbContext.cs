@@ -77,6 +77,16 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     public DbSet<TicketComment> TicketComments => Set<TicketComment>();
     public DbSet<TicketAttachment> TicketAttachments => Set<TicketAttachment>();
     public DbSet<TicketCategory> TicketCategories => Set<TicketCategory>();
+    public DbSet<TicketHistory> TicketHistories => Set<TicketHistory>();
+    public DbSet<TicketSequence> TicketSequences => Set<TicketSequence>();
+    public DbSet<SlaPolicy> SlaPolicies => Set<SlaPolicy>();
+    public DbSet<SlaBreach> SlaBreaches => Set<SlaBreach>();
+    public DbSet<CannedResponse> CannedResponses => Set<CannedResponse>();
+    public DbSet<KnowledgeBaseArticle> KbArticles => Set<KnowledgeBaseArticle>();
+    public DbSet<KbArticleVersion> KbArticleVersions => Set<KbArticleVersion>();
+    public DbSet<SupportTeam> SupportTeams => Set<SupportTeam>();
+    public DbSet<SupportAgent> SupportAgents => Set<SupportAgent>();
+    public DbSet<TicketMetricsDaily> TicketMetrics => Set<TicketMetricsDaily>();
 
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 

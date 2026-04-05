@@ -26,6 +26,17 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<TokenTransaction> TokenTransactions { get; }
     public IRepository<MemberRankHistory> MemberRanks { get; }
     public IRepository<Ticket> Tickets { get; }
+    public IRepository<TicketComment> TicketComments { get; }
+    public IRepository<TicketHistory> TicketHistory { get; }
+    public IRepository<SlaPolicy> SlaPolicies { get; }
+    public IRepository<SlaBreach> SlaBreaches { get; }
+    public IRepository<CannedResponse> CannedResponses { get; }
+    public IRepository<KnowledgeBaseArticle> KbArticles { get; }
+    public IRepository<KbArticleVersion> KbArticleVersions { get; }
+    public IRepository<SupportTeam> SupportTeams { get; }
+    public IRepository<SupportAgent> SupportAgents { get; }
+    public IRepository<TicketCategory> TicketCategories { get; }
+    public IRepository<TicketMetricsDaily> TicketMetrics { get; }
     public IRepository<Orders> Orders { get; }
     public IRepository<PaymentHistory> Payments { get; }
 
@@ -41,6 +52,17 @@ public class UnitOfWork : IUnitOfWork
         TokenTransactions = new GenericRepository<TokenTransaction>(context);
         MemberRanks = new GenericRepository<MemberRankHistory>(context);
         Tickets = new GenericRepository<Ticket>(context);
+        TicketComments = new GenericRepository<TicketComment>(context);
+        TicketHistory = new GenericRepository<TicketHistory>(context);
+        SlaPolicies = new GenericRepository<SlaPolicy>(context);
+        SlaBreaches = new GenericRepository<SlaBreach>(context);
+        CannedResponses = new GenericRepository<CannedResponse>(context);
+        KbArticles = new GenericRepository<KnowledgeBaseArticle>(context);
+        KbArticleVersions = new GenericRepository<KbArticleVersion>(context);
+        SupportTeams = new GenericRepository<SupportTeam>(context);
+        SupportAgents = new GenericRepository<SupportAgent>(context);
+        TicketCategories = new GenericRepository<TicketCategory>(context);
+        TicketMetrics = new GenericRepository<TicketMetricsDaily>(context);
         Orders = new GenericRepository<Orders>(context);
         Payments = new GenericRepository<PaymentHistory>(context);
     }

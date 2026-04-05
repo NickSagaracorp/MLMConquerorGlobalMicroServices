@@ -14,6 +14,11 @@ using MLMConquerorGlobalEdition.TicketManagementSystem.Features.GetTickets;
 using MLMConquerorGlobalEdition.TicketManagementSystem.Features.MergeTicket;
 using MLMConquerorGlobalEdition.TicketManagementSystem.Features.ResolveTicket;
 using MLMConquerorGlobalEdition.TicketManagementSystem.Features.UpdateTicket;
+using MLMConquerorGlobalEdition.TicketManagementSystem.Features.EscalateTicket;
+using MLMConquerorGlobalEdition.TicketManagementSystem.Features.CloseTicket;
+using MLMConquerorGlobalEdition.TicketManagementSystem.Features.SubmitCsat;
+using MLMConquerorGlobalEdition.TicketManagementSystem.Features.GetTicketSlaStatus;
+using MLMConquerorGlobalEdition.TicketManagementSystem.Features.KnowledgeBase;
 
 namespace MLMConquerorGlobalEdition.TicketManagementSystem.Controllers;
 
@@ -194,10 +199,83 @@ public class TicketsController : ControllerBase
             if (result.ErrorCode == "FORBIDDEN")
                 return StatusCode(StatusCodes.Status403Forbidden,
                     ApiResponse<object>.Fail(result.ErrorCode, result.Error!, HttpContext.TraceIdentifier));
-
             return NotFound(ApiResponse<object>.Fail(result.ErrorCode!, result.Error!, HttpContext.TraceIdentifier));
         }
-
         return Ok(ApiResponse<bool>.Ok(true));
+    }
+
+    /// <summary>POST /api/v1/tickets/{ticketId}/escalate — escalate ticket</summary>
+    [HttpPost("{ticketId}/escalate")]
+    public async Task<IActionResult> EscalateTicket(string ticketId, [FromBody] EscalateTicketRequest request, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new EscalateTicketCommand(ticketId, request), ct);
+        if (!result.IsSuccess)
+        {
+            if (result.ErrorCode == "FORBIDDEN")
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    ApiResponse<object>.Fail(result.ErrorCode, result.Error!, HttpContext.TraceIdentifier));
+            return BadRequest(ApiResponse<object>.Fail(result.ErrorCode!, result.Error!, HttpContext.TraceIdentifier));
+        }
+        return Ok(ApiResponse<bool>.Ok(true));
+    }
+
+    /// <summary>POST /api/v1/tickets/{ticketId}/close — close ticket manually</summary>
+    [HttpPost("{ticketId}/close")]
+    public async Task<IActionResult> CloseTicket(string ticketId, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new CloseTicketCommand(ticketId), ct);
+        if (!result.IsSuccess)
+        {
+            if (result.ErrorCode == "FORBIDDEN")
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    ApiResponse<object>.Fail(result.ErrorCode, result.Error!, HttpContext.TraceIdentifier));
+            return BadRequest(ApiResponse<object>.Fail(result.ErrorCode!, result.Error!, HttpContext.TraceIdentifier));
+        }
+        return Ok(ApiResponse<bool>.Ok(true));
+    }
+
+    /// <summary>POST /api/v1/tickets/{ticketId}/csat — submit CSAT survey</summary>
+    [HttpPost("{ticketId}/csat")]
+    public async Task<IActionResult> SubmitCsat(string ticketId, [FromBody] SubmitCsatRequest request, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new SubmitCsatCommand(ticketId, request), ct);
+        if (!result.IsSuccess)
+        {
+            if (result.ErrorCode == "FORBIDDEN")
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    ApiResponse<object>.Fail(result.ErrorCode, result.Error!, HttpContext.TraceIdentifier));
+            return BadRequest(ApiResponse<object>.Fail(result.ErrorCode!, result.Error!, HttpContext.TraceIdentifier));
+        }
+        return Ok(ApiResponse<bool>.Ok(true));
+    }
+
+    /// <summary>GET /api/v1/tickets/{ticketId}/sla — get SLA status</summary>
+    [HttpGet("{ticketId}/sla")]
+    public async Task<IActionResult> GetSlaStatus(string ticketId, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetTicketSlaStatusQuery(ticketId), ct);
+        if (!result.IsSuccess)
+        {
+            if (result.ErrorCode == "FORBIDDEN")
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    ApiResponse<object>.Fail(result.ErrorCode, result.Error!, HttpContext.TraceIdentifier));
+            return NotFound(ApiResponse<object>.Fail(result.ErrorCode!, result.Error!, HttpContext.TraceIdentifier));
+        }
+        return Ok(ApiResponse<SlaStatusDto>.Ok(result.Value!));
+    }
+
+    /// <summary>POST /api/v1/tickets/{ticketId}/create-kb — create KB article from resolved ticket</summary>
+    [HttpPost("{ticketId}/create-kb")]
+    public async Task<IActionResult> CreateKbFromTicket(string ticketId, [FromBody] CreateKbArticleRequest request, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new CreateKbArticleFromTicketCommand(ticketId, request), ct);
+        if (!result.IsSuccess)
+        {
+            if (result.ErrorCode == "FORBIDDEN")
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    ApiResponse<object>.Fail(result.ErrorCode, result.Error!, HttpContext.TraceIdentifier));
+            return BadRequest(ApiResponse<object>.Fail(result.ErrorCode!, result.Error!, HttpContext.TraceIdentifier));
+        }
+        return Ok(ApiResponse<KbArticleDto>.Ok(result.Value!));
     }
 }
