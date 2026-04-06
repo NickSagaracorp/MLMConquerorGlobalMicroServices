@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs.Auth;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.ChangePassword;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.ForgotPassword;
@@ -17,11 +18,16 @@ namespace MLMConquerorGlobalEdition.SignupAPI.Controllers;
 [Route("api/v1/auth")]
 public class AuthController : ControllerBase
 {
-    private readonly IMediator _mediator;
+    private readonly IMediator       _mediator;
+    private readonly IJwtService     _jwt;
 
-    public AuthController(IMediator mediator) => _mediator = mediator;
+    public AuthController(IMediator mediator, IJwtService jwt)
+    {
+        _mediator = mediator;
+        _jwt      = jwt;
+    }
 
-    /// <summary>Authenticates a user and returns JWT tokens.</summary>
+    /// <summary>Authenticates a user; refresh token is set as an HttpOnly cookie.</summary>
     [HttpPost("login")]
     [AllowAnonymous]
     public async Task<IActionResult> Login(
@@ -29,25 +35,35 @@ public class AuthController : ControllerBase
         CancellationToken ct)
     {
         var result = await _mediator.Send(new LoginCommand(request), ct);
-        return result.IsSuccess
-            ? Ok(ApiResponse<AuthResponse>.Ok(result.Value!))
-            : Unauthorized(ApiResponse<AuthResponse>.Fail(result.ErrorCode!, result.Error!));
+        if (!result.IsSuccess)
+            return Unauthorized(ApiResponse<AuthResponse>.Fail(result.ErrorCode!, result.Error!));
+
+        var response = result.Value!;
+        SetRefreshTokenCookie(response.RefreshToken);
+        response.RefreshToken = string.Empty; // do not expose in response body
+        return Ok(ApiResponse<AuthResponse>.Ok(response));
     }
 
-    /// <summary>Issues new tokens using a valid refresh token.</summary>
+    /// <summary>Issues new access token using the HttpOnly refresh cookie.</summary>
     [HttpPost("refresh")]
     [AllowAnonymous]
-    public async Task<IActionResult> Refresh(
-        [FromBody] RefreshTokenRequest request,
-        CancellationToken ct)
+    public async Task<IActionResult> Refresh(CancellationToken ct)
     {
-        var result = await _mediator.Send(new RefreshTokenCommand(request.RefreshToken), ct);
-        return result.IsSuccess
-            ? Ok(ApiResponse<AuthResponse>.Ok(result.Value!))
-            : Unauthorized(ApiResponse<AuthResponse>.Fail(result.ErrorCode!, result.Error!));
+        var rawToken = Request.Cookies["refresh_token"];
+        if (string.IsNullOrEmpty(rawToken))
+            return Unauthorized(ApiResponse<AuthResponse>.Fail("INVALID_REFRESH_TOKEN", "Refresh token missing."));
+
+        var result = await _mediator.Send(new RefreshTokenCommand(rawToken), ct);
+        if (!result.IsSuccess)
+            return Unauthorized(ApiResponse<AuthResponse>.Fail(result.ErrorCode!, result.Error!));
+
+        var response = result.Value!;
+        SetRefreshTokenCookie(response.RefreshToken);
+        response.RefreshToken = string.Empty;
+        return Ok(ApiResponse<AuthResponse>.Ok(response));
     }
 
-    /// <summary>Logs out the current user by invalidating the refresh token.</summary>
+    /// <summary>Logs out the current user, invalidates the DB token, and clears the cookie.</summary>
     [HttpPost("logout")]
     [Authorize]
     public async Task<IActionResult> Logout(CancellationToken ct)
@@ -56,6 +72,7 @@ public class AuthController : ControllerBase
                   ?? User.FindFirstValue("sub")
                   ?? string.Empty;
         var result = await _mediator.Send(new LogoutCommand(userId), ct);
+        Response.Cookies.Delete("refresh_token");
         return Ok(ApiResponse<bool>.Ok(result.Value));
     }
 
@@ -97,5 +114,18 @@ public class AuthController : ControllerBase
         return result.IsSuccess
             ? Ok(ApiResponse<bool>.Ok(true, "Password changed successfully."))
             : BadRequest(ApiResponse<bool>.Fail(result.ErrorCode!, result.Error!));
+    }
+
+    // ── helpers ────────────────────────────────────────────────────────────────
+
+    private void SetRefreshTokenCookie(string rawToken)
+    {
+        Response.Cookies.Append("refresh_token", rawToken, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure   = true,
+            SameSite = SameSiteMode.Strict,
+            Expires  = DateTimeOffset.UtcNow.Add(_jwt.RefreshTokenExpiry)
+        });
     }
 }

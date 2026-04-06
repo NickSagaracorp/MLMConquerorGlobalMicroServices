@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using MLMConquerorGlobalEdition.AdminWeb.Middleware;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Localization;
 using MLMConquerorGlobalEdition.AdminWeb.Components;
@@ -27,8 +28,9 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.ExpireTimeSpan     = TimeSpan.FromHours(8);
         options.SlidingExpiration  = true;
         options.Cookie.Name        = "mlm_admin_cookie";
-        options.Cookie.HttpOnly    = true;
-        options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.SameAsRequest;
+        options.Cookie.HttpOnly     = true;
+        options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
+        options.Cookie.SameSite     = Microsoft.AspNetCore.Http.SameSiteMode.Strict;
     });
 
 builder.Services.AddAuthorization();
@@ -60,6 +62,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseRequestLocalization(new RequestLocalizationOptions()
     .SetDefaultCulture("en")
     .AddSupportedCultures(supportedCultures)

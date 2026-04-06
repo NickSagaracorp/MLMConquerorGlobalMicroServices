@@ -1,0 +1,5 @@
+@page "/team/placement"
+@attribute [Authorize(Roles = "Ambassador")]
+@inject IViewContextService ViewContext
+
+<PlacementPage HistoryRoute="/team/placement/history" />

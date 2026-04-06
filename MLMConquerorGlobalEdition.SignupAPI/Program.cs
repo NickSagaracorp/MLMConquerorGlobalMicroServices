@@ -1,4 +1,4 @@
-using System.Text;
+using System.Security.Cryptography;
 using Amazon.S3;
 using AspNetCoreRateLimit;
 using Hangfire;
@@ -16,12 +16,16 @@ using MLMConquerorGlobalEdition.SharedKernel.Behaviors;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using IErrorTrackingService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IErrorTrackingService;
 using IPushNotificationService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IPushNotificationService;
+using MLMConquerorGlobalEdition.SharedKernel.Logging;
 using MLMConquerorGlobalEdition.SignupAPI.Jobs;
 using MLMConquerorGlobalEdition.SignupAPI.Mappings;
 using MLMConquerorGlobalEdition.SignupAPI.Middleware;
 using MLMConquerorGlobalEdition.SignupAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ── PII-masking logging — replaces default providers ─────────────────────────
+builder.Logging.AddPiiMaskingConsole();
 
 // DbContext
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -113,8 +117,22 @@ builder.Services.AddCors(options =>
     });
 });
 
-// JWT Authentication
-var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured.");
+// ── JWT Authentication (RS256 — asymmetric) ───────────────────────────────────
+var publicKeyBase64 = builder.Configuration["Jwt:PublicKeyBase64"]
+    ?? throw new InvalidOperationException("Jwt:PublicKeyBase64 not configured.");
+
+if (publicKeyBase64.StartsWith("REPLACE_WITH_") && !builder.Environment.IsDevelopment())
+    throw new InvalidOperationException(
+        "JWT RSA public key must be set before running in non-Development mode.");
+
+RsaSecurityKey? jwtValidationKey = null;
+if (!publicKeyBase64.StartsWith("REPLACE_WITH_"))
+{
+    var rsaValidation = RSA.Create();
+    rsaValidation.ImportSubjectPublicKeyInfo(Convert.FromBase64String(publicKeyBase64), out _);
+    jwtValidationKey = new RsaSecurityKey(rsaValidation);
+}
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -124,10 +142,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuer           = true,
             ValidateAudience         = true,
             ValidateLifetime         = true,
-            ValidateIssuerSigningKey = true,
+            ValidateIssuerSigningKey = jwtValidationKey is not null,
             ValidIssuer              = builder.Configuration["Jwt:Issuer"],
             ValidAudience            = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+            IssuerSigningKey         = jwtValidationKey,
+            ClockSkew                = TimeSpan.Zero
         };
     });
 

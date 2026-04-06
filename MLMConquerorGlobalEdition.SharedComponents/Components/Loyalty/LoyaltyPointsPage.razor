@@ -123,15 +123,39 @@
     private async Task LoadPageAsync(int page)
     {
         _page = page; _isLoading = true; StateHasChanged();
-        // TODO: GET /api/v1/bizcenter/loyalty?memberId={MemberProfileId}&page={page}&pageSize={_pageSize}
-        await Task.Delay(50);
-        _isLoading = false;
+        try
+        {
+            var response = await Http.GetFromJsonAsync<ApiResponse<LoyaltyPageData>>(
+                $"api/v1/bizcenter/loyalty?page={page}&pageSize={_pageSize}");
+            if (response?.Success == true && response.Data is not null)
+            {
+                _items          = response.Data.Items;
+                _total          = response.Data.TotalCount;
+                _totalPoints    = response.Data.TotalPoints;
+                _unlockedPoints = response.Data.UnlockedPoints;
+                _lockedPoints   = response.Data.LockedPoints;
+            }
+        }
+        catch { /* silently degrade */ }
+        finally { _isLoading = false; }
     }
 
     private async Task ManualUnlock(string id)
     {
-        // TODO: POST /api/v1/admin/loyalty/{id}/unlock
-        await Task.CompletedTask;
+        try { await Http.PostAsJsonAsync($"api/v1/admin/loyalty/{id}/unlock", new { }); }
+        catch { /* silently degrade */ }
+        await LoadPageAsync(_page);
+    }
+
+    private class ApiResponse<T> { public bool Success { get; set; } public T? Data { get; set; } }
+
+    private class LoyaltyPageData
+    {
+        public decimal             TotalPoints    { get; set; }
+        public decimal             UnlockedPoints { get; set; }
+        public decimal             LockedPoints   { get; set; }
+        public List<LoyaltyPointDto> Items        { get; set; } = new();
+        public int                 TotalCount     { get; set; }
     }
 
     public record LoyaltyPointDto(string Id, string MonthLabel, int Points, bool IsLocked, bool MissedPayment);

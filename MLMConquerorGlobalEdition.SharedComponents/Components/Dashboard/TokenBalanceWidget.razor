@@ -52,10 +52,23 @@
         if (string.IsNullOrEmpty(MemberProfileId)) return;
         _isLoading = true;
         StateHasChanged();
-        // TODO: load from API  GET /api/v1/bizcenter/tokens
-        await Task.Delay(50);
-        _isLoading = false;
+
+        try
+        {
+            var response = await Http.GetFromJsonAsync<ApiResponse<List<TokenBalanceItem>>>(
+                "api/v1/bizcenter/tokens/balances");
+
+            if (response?.Success == true && response.Data is not null)
+                _balances = response.Data;
+        }
+        catch { /* non-critical widget — silently degrade */ }
+        finally
+        {
+            _isLoading = false;
+        }
     }
 
-    private record TokenBalanceItem(string TokenTypeName, int Balance);
+    private class ApiResponse<T> { public bool Success { get; set; } public T? Data { get; set; } }
+
+    private record TokenBalanceItem(string TokenTypeName, int Balance, bool IsGuestPass);
 }

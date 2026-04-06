@@ -98,11 +98,20 @@
     {
         _loading = true;
         StateHasChanged();
-        // TODO: GET /api/v1/admin/members?search={_searchQuery}&page={_page}&pageSize={PageSize}
-        await Task.Delay(50);
-        _members    = GenerateMockData();
-        _totalCount = 142;
-        _loading    = false;
+        try
+        {
+            var query = $"api/v1/admin/members?page={_page}&pageSize={PageSize}";
+            if (!string.IsNullOrEmpty(_searchQuery)) query += $"&search={Uri.EscapeDataString(_searchQuery)}";
+
+            var result = await Api.GetAsync<PagedResult<MemberListItem>>(query);
+            if (result is not null)
+            {
+                _members    = result.Items.ToList();
+                _totalCount = result.TotalCount;
+            }
+        }
+        catch { /* silently degrade */ }
+        finally { _loading = false; }
     }
 
     private async Task HandleActionBegin(ActionEventArgs<MemberListItem> args)
@@ -137,13 +146,6 @@
             _impersonatingId = null;
         }
     }
-
-    private static List<MemberListItem> GenerateMockData() =>
-    [
-        new("AMB-001", "John Smith",  "john@example.com", "Ambassador", "Active", DateTime.Today.AddDays(-120)),
-        new("AMB-002", "Jane Doe",    "jane@example.com", "Ambassador", "Active", DateTime.Today.AddDays(-90)),
-        new("MEM-003", "Bob Johnson", "bob@example.com",  "Member",     "Active", DateTime.Today.AddDays(-45)),
-    ];
 
     private record MemberListItem(
         string   MemberId,

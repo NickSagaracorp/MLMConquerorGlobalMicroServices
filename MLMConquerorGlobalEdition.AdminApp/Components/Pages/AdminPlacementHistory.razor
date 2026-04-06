@@ -1,0 +1,4 @@
+@page "/admin/placement/history"
+@attribute [Authorize(Roles = "SuperAdmin,Admin")]
+
+<PlacementHistoryTable BackRoute="/admin/placement" />

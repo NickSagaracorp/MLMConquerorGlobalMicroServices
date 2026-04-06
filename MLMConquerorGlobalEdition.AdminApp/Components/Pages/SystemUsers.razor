@@ -112,7 +112,7 @@
 
                         @if (!string.IsNullOrEmpty(_formError))
                         {
-                            <ApiErrorAlert Message="@_formError" />
+                            <ApiErrorAlert ErrorMessage="@_formError" />
                         }
 
                         <div class="d-flex gap-2 justify-content-end">
@@ -147,14 +147,14 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // TODO: GET /api/v1/admin/system-users
-        await Task.Delay(50);
-        _users =
-        [
-            new("usr-001", "Alice Nguyen", "alice@corp.com", [AppRoles.Admin], true, DateTime.Today.AddDays(-30)),
-            new("usr-002", "Carlos Ruiz",  "carlos@corp.com", [AppRoles.SupportManager, AppRoles.SupportLevel1], true, DateTime.Today.AddDays(-15)),
-        ];
-        _loading = false;
+        try
+        {
+            var result = await Api.GetAsync<List<SystemUserItem>>("api/v1/admin/system-users");
+            if (result is not null)
+                _users = result;
+        }
+        catch { /* silently degrade */ }
+        finally { _loading = false; }
     }
 
     private void EditUser(SystemUserItem u)
@@ -183,8 +183,11 @@
         _formError = string.Empty;
         try
         {
-            // TODO: POST/PUT /api/v1/admin/system-users
-            await Task.Delay(50);
+            var body = new { _form.FullName, _form.Email, _form.Password, Roles = _form.SelectedRoles.ToList() };
+            if (_editUser is null)
+                await Api.PostAsync<object>("api/v1/admin/system-users", body);
+            else
+                await Api.PutAsync<object>($"api/v1/admin/system-users/{_editUser.UserId}", body);
             CloseModal();
             await OnInitializedAsync();
         }
@@ -200,8 +203,8 @@
 
     private async Task ToggleStatusAsync(SystemUserItem u)
     {
-        // TODO: PUT /api/v1/admin/system-users/{u.UserId}/status
-        await Task.Delay(50);
+        try { await Api.PutAsync<object>($"api/v1/admin/system-users/{u.UserId}/status", new { IsActive = !u.IsActive }); }
+        catch { /* silently degrade */ }
         await OnInitializedAsync();
     }
 

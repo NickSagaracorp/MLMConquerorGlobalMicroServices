@@ -155,8 +155,31 @@
 
         try
         {
-            // TODO: GET /api/v1/bizcenter/profile?memberId={MemberProfileId}
-            await Task.Delay(50);
+            var response = await Http.GetFromJsonAsync<ApiResponse<ProfileApiDto>>(
+                "api/v1/bizcenter/profile");
+
+            if (response?.Success == true && response.Data is not null)
+            {
+                var d = response.Data;
+                _profile = new MemberProfileDto
+                {
+                    MemberId         = d.MemberId,
+                    FirstName        = d.FirstName,
+                    LastName         = d.LastName,
+                    Email            = d.Email,
+                    Status           = d.Status,
+                    MembershipLevel  = d.MembershipLevel ?? "—",
+                    MembershipStatus = d.MembershipStatus ?? "—",
+                    EnrollDate       = d.EnrollDate,
+                    Phone            = d.Phone,
+                    Country          = d.Country,
+                    City             = d.City
+                };
+            }
+            else
+            {
+                _error = response?.Message ?? "Failed to load profile.";
+            }
         }
         catch (Exception ex)
         {
@@ -171,22 +194,41 @@
     private async Task ChangeStatusAsync()
     {
         _showStatusModal = false;
-        // TODO: PUT /api/v1/admin/members/{MemberProfileId}/status
-        await Task.CompletedTask;
+        await Http.PutAsJsonAsync(
+            $"api/v1/admin/members/{MemberProfileId}/status",
+            new { Status = "Inactive" });
+    }
+
+    // ── Local DTOs ────────────────────────────────────────────────────────────
+    private class ApiResponse<T> { public bool Success { get; set; } public T? Data { get; set; } public string? Message { get; set; } }
+
+    private class ProfileApiDto
+    {
+        public string   MemberId         { get; set; } = string.Empty;
+        public string   FirstName        { get; set; } = string.Empty;
+        public string   LastName         { get; set; } = string.Empty;
+        public string   Email            { get; set; } = string.Empty;
+        public string   Status           { get; set; } = string.Empty;
+        public string?  MembershipLevel  { get; set; }
+        public string?  MembershipStatus { get; set; }
+        public DateTime EnrollDate       { get; set; }
+        public string?  Phone            { get; set; }
+        public string?  Country          { get; set; }
+        public string?  City             { get; set; }
     }
 
     public class MemberProfileDto
     {
-        public string MemberId        { get; set; } = string.Empty;
-        public string FirstName       { get; set; } = string.Empty;
-        public string LastName        { get; set; } = string.Empty;
-        public string Email           { get; set; } = string.Empty;
-        public string Status          { get; set; } = string.Empty;
-        public string MembershipLevel { get; set; } = string.Empty;
-        public string MembershipStatus{ get; set; } = string.Empty;
-        public DateTime EnrollDate    { get; set; }
-        public string? Phone          { get; set; }
-        public string? Country        { get; set; }
-        public string? City           { get; set; }
+        public string   MemberId         { get; set; } = string.Empty;
+        public string   FirstName        { get; set; } = string.Empty;
+        public string   LastName         { get; set; } = string.Empty;
+        public string   Email            { get; set; } = string.Empty;
+        public string   Status           { get; set; } = string.Empty;
+        public string   MembershipLevel  { get; set; } = string.Empty;
+        public string   MembershipStatus { get; set; } = string.Empty;
+        public DateTime EnrollDate       { get; set; }
+        public string?  Phone            { get; set; }
+        public string?  Country          { get; set; }
+        public string?  City             { get; set; }
     }
 }

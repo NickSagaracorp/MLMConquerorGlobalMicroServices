@@ -75,9 +75,28 @@
         if (string.IsNullOrEmpty(MemberProfileId)) return;
         _isLoading = true;
         StateHasChanged();
-        // TODO: GET /api/v1/bizcenter/team/dual-tree?memberId={MemberProfileId}
-        await Task.Delay(50);
-        _isLoading = false;
+        try
+        {
+            var response = await Http.GetFromJsonAsync<ApiResponse<DualTreeResponseDto>>(
+                "api/v1/bizcenter/team/dual-tree");
+            if (response?.Success == true && response.Data is not null)
+            {
+                _treeNodes   = response.Data.Nodes;
+                _leftPoints  = response.Data.LeftLegPoints;
+                _rightPoints = response.Data.RightLegPoints;
+            }
+        }
+        catch { /* silently degrade */ }
+        finally { _isLoading = false; }
+    }
+
+    private class ApiResponse<T> { public bool Success { get; set; } public T? Data { get; set; } }
+
+    private class DualTreeResponseDto
+    {
+        public decimal              LeftLegPoints  { get; set; }
+        public decimal              RightLegPoints { get; set; }
+        public List<DualTeamNodeDto> Nodes         { get; set; } = new();
     }
 
     public record DualTeamNodeDto(string MemberId, string? ParentMemberId, string Side, decimal Points);

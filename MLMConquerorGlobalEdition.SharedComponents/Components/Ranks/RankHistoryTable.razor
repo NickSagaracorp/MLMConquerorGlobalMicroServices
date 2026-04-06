@@ -1,3 +1,4 @@
+@inject HttpClient Http
 @inject IViewContextService ViewContext
 @inject NavigationManager Nav
 
@@ -129,10 +130,22 @@
         _page = page;
         _isLoading = true;
         StateHasChanged();
-        // TODO: GET /api/v1/bizcenter/ranks/history?memberId={MemberProfileId}&page={page}&pageSize={_pageSize}
-        await Task.Delay(50);
-        _isLoading = false;
+        try
+        {
+            var response = await Http.GetFromJsonAsync<ApiResponse<PagedData<RankHistoryItem>>>(
+                $"api/v1/bizcenter/ranks/history?page={page}&pageSize={_pageSize}");
+            if (response?.Success == true && response.Data is not null)
+            {
+                _items = response.Data.Items;
+                _total = response.Data.TotalCount;
+            }
+        }
+        catch { /* silently degrade */ }
+        finally { _isLoading = false; }
     }
+
+    private class ApiResponse<T> { public bool Success { get; set; } public T? Data { get; set; } }
+    private class PagedData<T>   { public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
 
     private record RankHistoryItem(
         DateTime AchievedDate,

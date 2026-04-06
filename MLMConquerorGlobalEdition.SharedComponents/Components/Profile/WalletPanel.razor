@@ -88,29 +88,6 @@
                                     </tbody>
                                 </table>
                             </div>
-                            @if (_historyTotal > 20)
-                            {
-                                var totalPages = (int)Math.Ceiling((double)_historyTotal / 20);
-                                <div class="d-flex justify-content-center py-3">
-                                    <nav>
-                                        <ul class="pagination pagination-sm mb-0">
-                                            <li class="page-item @(_historyPage <= 1 ? "disabled" : "")">
-                                                <button class="page-link" @onclick="() => ChangeHistoryPage(_historyPage - 1)">&#x2039;</button>
-                                            </li>
-                                            @for (var pg = 1; pg <= totalPages; pg++)
-                                            {
-                                                var p = pg;
-                                                <li class="page-item @(p == _historyPage ? "active" : "")">
-                                                    <button class="page-link" @onclick="() => ChangeHistoryPage(p)">@p</button>
-                                                </li>
-                                            }
-                                            <li class="page-item @(_historyPage >= totalPages ? "disabled" : "")">
-                                                <button class="page-link" @onclick="() => ChangeHistoryPage(_historyPage + 1)">&#x203A;</button>
-                                            </li>
-                                        </ul>
-                                    </nav>
-                                </div>
-                            }
                         }
                     </div>
                 </div>
@@ -136,9 +113,27 @@
         if (string.IsNullOrEmpty(MemberProfileId)) return;
         _isLoading = true;
         StateHasChanged();
-        // TODO: GET /api/v1/bizcenter/wallet and /api/v1/bizcenter/billing/credit-cards
-        await Task.Delay(50);
-        _isLoading = false;
+
+        try
+        {
+            var walletTask = Http.GetFromJsonAsync<ApiResponse<WalletDto>>(
+                "api/v1/bizcenter/wallet");
+            var cardsTask  = Http.GetFromJsonAsync<ApiResponse<List<CreditCardDto>>>(
+                "api/v1/bizcenter/billing/credit-cards");
+
+            await Task.WhenAll(walletTask, cardsTask);
+
+            var walletResp = await walletTask;
+            var cardsResp  = await cardsTask;
+
+            if (walletResp?.Success == true) _wallet      = walletResp.Data;
+            if (cardsResp?.Success  == true) _creditCards = cardsResp.Data ?? new();
+        }
+        catch { /* silently degrade */ }
+        finally
+        {
+            _isLoading = false;
+        }
     }
 
     private async Task ChangeHistoryPage(int page) => await LoadHistoryAsync(page);
@@ -148,10 +143,22 @@
         _historyPage    = page;
         _historyLoading = true;
         StateHasChanged();
-        // TODO: GET /api/v1/admin/members/{MemberProfileId}/wallet/history?page={page}
-        await Task.Delay(50);
-        _historyLoading = false;
+        try
+        {
+            var response = await Http.GetFromJsonAsync<ApiResponse<PagedData<WalletHistoryItem>>>(
+                $"api/v1/admin/members/{MemberProfileId}/wallet/history?page={page}");
+            if (response?.Success == true && response.Data is not null)
+            {
+                _history      = response.Data.Items;
+                _historyTotal = response.Data.TotalCount;
+            }
+        }
+        catch { /* silently degrade */ }
+        finally { _historyLoading = false; }
     }
+
+    private class ApiResponse<T> { public bool Success { get; set; } public T? Data { get; set; } }
+    private class PagedData<T>   { public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
 
     public record WalletDto(string WalletType, string Status, DateTime CreatedAt);
     public record CreditCardDto(string MaskedNumber, string Brand, int ExpiryMonth, int ExpiryYear);

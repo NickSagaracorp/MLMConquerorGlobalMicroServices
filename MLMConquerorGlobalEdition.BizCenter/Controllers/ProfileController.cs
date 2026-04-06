@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MLMConquerorGlobalEdition.BizCenter.DTOs.Profile;
 using MLMConquerorGlobalEdition.BizCenter.Features.Profile.GetProfile;
+using MLMConquerorGlobalEdition.BizCenter.Features.Profile.GetSecurityLog;
 using MLMConquerorGlobalEdition.BizCenter.Features.Profile.UpdateEmail;
 using MLMConquerorGlobalEdition.BizCenter.Features.Profile.UpdatePassword;
 using MLMConquerorGlobalEdition.BizCenter.Features.Profile.UpdateProfile;
@@ -73,5 +74,18 @@ public class ProfileController : ControllerBase
         if (!result.IsSuccess)
             return BadRequest(ApiResponse<bool>.Fail(result.ErrorCode!, result.Error!));
         return Ok(ApiResponse<bool>.Ok(true));
+    }
+
+    /// <summary>GET /api/v1/bizcenter/profile/security-log — paged audit log for the current member.</summary>
+    [HttpGet("profile/security-log")]
+    public async Task<IActionResult> GetSecurityLog(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new GetSecurityLogQuery(page, pageSize), ct);
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<PagedResult<SecurityLogDto>>.Fail(result.ErrorCode!, result.Error!));
+        return Ok(ApiResponse<PagedResult<SecurityLogDto>>.Ok(result.Value!));
     }
 }

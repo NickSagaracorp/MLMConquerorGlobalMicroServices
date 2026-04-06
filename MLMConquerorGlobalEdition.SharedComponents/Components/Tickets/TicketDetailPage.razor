@@ -1,3 +1,4 @@
+@inject HttpClient Http
 @inject IViewContextService ViewContext
 @inject NavigationManager Nav
 
@@ -245,53 +246,67 @@
         if (string.IsNullOrEmpty(TicketId)) return;
         _isLoading = true;
         StateHasChanged();
-
-        // TODO: GET /api/v1/bizcenter/tickets/{TicketId}
-        await Task.Delay(50);
-
-        _isLoading = false;
+        try
+        {
+            var response = await Http.GetFromJsonAsync<ApiResponse<TicketDetailWithComments>>(
+                $"api/v1/bizcenter/tickets/{TicketId}");
+            if (response?.Success == true && response.Data is not null)
+            {
+                _ticket   = response.Data.Ticket;
+                _comments = response.Data.Comments;
+            }
+        }
+        catch { /* silently degrade */ }
+        finally { _isLoading = false; }
     }
 
     private async Task AddCommentAsync()
     {
         if (string.IsNullOrWhiteSpace(_newComment)) return;
         _savingComment = true;
-
-        // TODO: POST /api/v1/bizcenter/tickets/{TicketId}/comments
-        await Task.Delay(300);
-
-        _newComment    = string.Empty;
-        _savingComment = false;
+        try
+        {
+            await Http.PostAsJsonAsync($"api/v1/bizcenter/tickets/{TicketId}/comments",
+                new { Content = _newComment });
+            _newComment = string.Empty;
+            await OnParametersSetAsync();
+        }
+        catch { /* silently degrade */ }
+        finally { _savingComment = false; }
     }
 
     private async Task EscalateAsync(int level)
     {
-        // TODO: POST /api/v1/tickets/{TicketId}/assign with escalation level {level}
-        await Task.CompletedTask;
+        try { await Http.PostAsJsonAsync($"api/v1/admin/tickets/{TicketId}/assign", new { EscalationLevel = level }); }
+        catch { /* silently degrade */ }
     }
 
     private async Task ResolveTicketAsync()
     {
         _busyResolve = true;
-
-        // TODO: POST /api/v1/tickets/{TicketId}/resolve
-        await Task.Delay(300);
-
-        _busyResolve     = false;
-        _showResolveModal = false;
+        try
+        {
+            await Http.PostAsJsonAsync($"api/v1/admin/tickets/{TicketId}/resolve", new { });
+            _showResolveModal = false;
+            await OnParametersSetAsync();
+        }
+        catch { /* silently degrade */ }
+        finally { _busyResolve = false; }
     }
 
     private async Task AssignTicketAsync()
     {
         if (string.IsNullOrWhiteSpace(_assignTarget)) return;
         _busyAssign = true;
-
-        // TODO: POST /api/v1/tickets/{TicketId}/assign with agent name/id
-        await Task.Delay(300);
-
-        _assignTarget  = string.Empty;
-        _showAssignForm = false;
-        _busyAssign     = false;
+        try
+        {
+            await Http.PostAsJsonAsync($"api/v1/admin/tickets/{TicketId}/assign", new { AssignedTo = _assignTarget });
+            _assignTarget   = string.Empty;
+            _showAssignForm = false;
+            await OnParametersSetAsync();
+        }
+        catch { /* silently degrade */ }
+        finally { _busyAssign = false; }
     }
 
     private static string EscalationLabel(int level) => level switch
@@ -304,6 +319,14 @@
     };
 
     // ── Local data models ─────────────────────────────────────────────────────
+    private class ApiResponse<T> { public bool Success { get; set; } public T? Data { get; set; } }
+
+    private class TicketDetailWithComments
+    {
+        public TicketDetail?              Ticket   { get; set; }
+        public List<TicketCommentItem>    Comments { get; set; } = new();
+    }
+
     private record TicketDetail(
         string   TicketId,
         string   TicketNumber,

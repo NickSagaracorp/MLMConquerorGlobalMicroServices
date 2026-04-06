@@ -56,16 +56,21 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await Task.Delay(50); // placeholder for API call
-        _stats = new AdminStats { TotalMembers = 142, ActiveAmbassadors = 87, PendingCommissions = 15340.50m, OpenTickets = 23 };
-        _loading = false;
+        try
+        {
+            var result = await Api.GetAsync<AdminStats>("api/v1/admin/dashboard/financial");
+            if (result is not null)
+                _stats = result;
+        }
+        catch { /* silently degrade */ }
+        finally { _loading = false; }
     }
 
     private record AdminStats
     {
-        public int TotalMembers { get; init; }
-        public int ActiveAmbassadors { get; init; }
-        public decimal PendingCommissions { get; init; }
-        public int OpenTickets { get; init; }
+        public int     TotalMembers        { get; init; }
+        public int     ActiveAmbassadors   { get; init; }
+        public decimal PendingCommissions  { get; init; }
+        public int     OpenTickets         { get; init; }
     }
 }

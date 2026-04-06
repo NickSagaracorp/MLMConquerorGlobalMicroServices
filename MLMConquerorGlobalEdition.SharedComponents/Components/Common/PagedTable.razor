@@ -23,7 +23,7 @@
             else
             {
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
+                    <table class="table table-hover align-middle mb-0" role="grid" aria-label="@(string.IsNullOrEmpty(Title) ? "Tabla de datos" : Title)">
                         <thead class="table-light">
                             <tr>@HeaderTemplate</tr>
                         </thead>
@@ -39,27 +39,38 @@
                 <!-- Pagination -->
                 @if (TotalPages > 1)
                 {
-                    <div class="d-flex align-items-center justify-content-between px-4 py-3 border-top">
-                        <small class="text-muted">
-                            Showing @((CurrentPage - 1) * PageSize + 1)&ndash;@(Math.Min(CurrentPage * PageSize, TotalCount)) of @TotalCount records
-                        </small>
-                        <nav>
+                    <div class="d-flex align-items-center justify-content-between px-4 py-3 border-top flex-wrap gap-2">
+                        <p class="text-muted small mb-0" role="status" aria-live="polite" aria-atomic="true">
+                            Mostrando @((CurrentPage - 1) * PageSize + 1)–@(Math.Min(CurrentPage * PageSize, TotalCount)) de @TotalCount registros
+                        </p>
+                        <nav aria-label="Navegación de páginas">
                             <ul class="pagination pagination-sm mb-0 gap-1">
                                 <li class="page-item @(CurrentPage == 1 ? "disabled" : "")">
-                                    <button class="page-link" @onclick="() => GoToPage(CurrentPage - 1)">
-                                        <i class="ri-arrow-left-s-line"></i>
+                                    <button class="page-link"
+                                            @onclick="() => GoToPage(CurrentPage - 1)"
+                                            aria-label="Página anterior"
+                                            disabled="@(CurrentPage == 1)">
+                                        <i class="ri-arrow-left-s-line" aria-hidden="true"></i>
                                     </button>
                                 </li>
                                 @for (int p = Math.Max(1, CurrentPage - 2); p <= Math.Min(TotalPages, CurrentPage + 2); p++)
                                 {
                                     var page = p;
-                                    <li class="page-item @(page == CurrentPage ? "active" : "")">
-                                        <button class="page-link" @onclick="() => GoToPage(page)">@(page)</button>
+                                    <li class="page-item @(page == CurrentPage ? "active" : "")"
+                                        aria-current="@(page == CurrentPage ? "page" : null)">
+                                        <button class="page-link"
+                                                @onclick="() => GoToPage(page)"
+                                                aria-label="Ir a página @(page)">
+                                            @(page)
+                                        </button>
                                     </li>
                                 }
                                 <li class="page-item @(CurrentPage == TotalPages ? "disabled" : "")">
-                                    <button class="page-link" @onclick="() => GoToPage(CurrentPage + 1)">
-                                        <i class="ri-arrow-right-s-line"></i>
+                                    <button class="page-link"
+                                            @onclick="() => GoToPage(CurrentPage + 1)"
+                                            aria-label="Página siguiente"
+                                            disabled="@(CurrentPage == TotalPages)">
+                                        <i class="ri-arrow-right-s-line" aria-hidden="true"></i>
                                     </button>
                                 </li>
                             </ul>

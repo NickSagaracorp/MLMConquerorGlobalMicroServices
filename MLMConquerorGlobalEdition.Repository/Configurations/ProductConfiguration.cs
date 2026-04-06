@@ -38,10 +38,11 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(x => x.RowVersion).IsRowVersion();
 
         builder.Property(x => x.Name).IsRequired().HasMaxLength(200);
-        builder.Property(x => x.Description).IsRequired().HasMaxLength(2000);
+        builder.Property(x => x.Description).IsRequired().HasColumnType("nvarchar(max)");
         builder.Property(x => x.ImageUrl).IsRequired().HasMaxLength(500);
-        builder.Property(x => x.DescriptionPromo).HasMaxLength(2000);
+        builder.Property(x => x.DescriptionPromo).HasColumnType("nvarchar(max)");
         builder.Property(x => x.ImageUrlPromo).HasMaxLength(500);
+        builder.Property(x => x.ThemeClass).HasMaxLength(50);
 
         builder.Property(x => x.MonthlyFee).IsRequired().HasColumnType("decimal(10,2)");
         builder.Property(x => x.SetupFee).IsRequired().HasColumnType("decimal(10,2)");
@@ -75,6 +76,7 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
                 QualificationPoins = 0,
                 MembershipLevelId  = null,
                 OldSystemProductId = 1,
+                ThemeClass   = "theme-product-guest",
                 CorporateFee = false, JoinPageMembership = false,
                 IsActive = true, IsDeleted = false,
                 CreationDate = SeedDate, CreatedBy = "seed",
@@ -92,6 +94,7 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
                 QualificationPoins = 3,
                 MembershipLevelId  = 2,
                 OldSystemProductId = 2,
+                ThemeClass   = "theme-product-vip",
                 CorporateFee = false, JoinPageMembership = false,
                 IsActive = true, IsDeleted = false,
                 CreationDate = SeedDate, CreatedBy = "seed",
@@ -109,6 +112,7 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
                 QualificationPoins = 6,
                 MembershipLevelId  = 3,
                 OldSystemProductId = 3,
+                ThemeClass   = "theme-product-elite",
                 CorporateFee = false, JoinPageMembership = true,
                 IsActive = true, IsDeleted = false,
                 CreationDate = SeedDate, CreatedBy = "seed",
@@ -126,6 +130,7 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
                 QualificationPoins = 6,
                 MembershipLevelId  = 4,
                 OldSystemProductId = 4,
+                ThemeClass   = "theme-product-turbo",
                 CorporateFee = false, JoinPageMembership = true,
                 IsActive = true, IsDeleted = false,
                 CreationDate = SeedDate, CreatedBy = "seed",
@@ -144,6 +149,7 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
                 QualificationPoins = 0,
                 MembershipLevelId  = 1,
                 OldSystemProductId = 5,
+                ThemeClass   = null,
                 CorporateFee = true, JoinPageMembership = false,
                 IsActive = true, IsDeleted = false,
                 CreationDate = SeedDate, CreatedBy = "seed",
@@ -161,6 +167,7 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
                 QualificationPoins = 0,
                 MembershipLevelId  = null,
                 OldSystemProductId = 6,
+                ThemeClass   = null,
                 CorporateFee = false, JoinPageMembership = false,
                 IsActive = true, IsDeleted = false,
                 CreationDate = SeedDate, CreatedBy = "seed",

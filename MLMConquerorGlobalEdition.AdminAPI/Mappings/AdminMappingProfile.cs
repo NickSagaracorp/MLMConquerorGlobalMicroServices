@@ -17,9 +17,18 @@ public class AdminMappingProfile : Profile
     public AdminMappingProfile()
     {
         // Products
+        // Description, DescriptionPromo, and ThemeClass are intentionally ignored
+        // here — the controller sanitizes them via IHtmlSanitizerService and validates
+        // ThemeClass against a whitelist before assigning to the entity directly.
         CreateMap<Product, ProductDto>();
-        CreateMap<CreateProductDto, Product>();
-        CreateMap<UpdateProductDto, Product>();
+        CreateMap<CreateProductDto, Product>()
+            .ForMember(d => d.Description,      o => o.Ignore())
+            .ForMember(d => d.DescriptionPromo, o => o.Ignore())
+            .ForMember(d => d.ThemeClass,       o => o.Ignore());
+        CreateMap<UpdateProductDto, Product>()
+            .ForMember(d => d.Description,      o => o.Ignore())
+            .ForMember(d => d.DescriptionPromo, o => o.Ignore())
+            .ForMember(d => d.ThemeClass,       o => o.Ignore());
 
         // MembershipLevel
         CreateMap<MembershipLevel, MembershipLevelDto>();

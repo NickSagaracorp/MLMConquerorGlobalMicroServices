@@ -109,6 +109,19 @@ public class SystemUsersController : ControllerBase
         return Ok(ApiResponse<bool>.Ok(true, "Updated."));
     }
 
+    [HttpPut("{id}/status")]
+    public async Task<IActionResult> ToggleStatus(string id, [FromBody] ToggleStatusRequest dto, CancellationToken ct = default)
+    {
+        var user = await _userManager.FindByIdAsync(id);
+        if (user is null)
+            return NotFound(ApiResponse<bool>.Fail("NOT_FOUND", "User not found."));
+
+        user.IsActive = dto.IsActive;
+        await _userManager.UpdateAsync(user);
+        var message = dto.IsActive ? "User activated." : "User deactivated.";
+        return Ok(ApiResponse<bool>.Ok(true, message));
+    }
+
     [HttpDelete("{id}")]
     public async Task<IActionResult> Deactivate(string id, CancellationToken ct = default)
     {
@@ -126,4 +139,5 @@ public class SystemUsersController : ControllerBase
 
     public record CreateSystemUserRequest(string Email, string Password, string Role, bool IsActive);
     public record UpdateSystemUserRequest(string Email, string Role, bool IsActive);
+    public record ToggleStatusRequest(bool IsActive);
 }

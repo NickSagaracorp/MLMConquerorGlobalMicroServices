@@ -1,21 +1,49 @@
+@inject IJSRuntime JS
+
 @if (IsVisible)
 {
-    <div class="modal fade show d-block" tabindex="-1" role="dialog" style="background:rgba(0,0,0,0.5)">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
+    <div class="modal fade show d-block"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="@_titleId"
+         aria-describedby="@_bodyId"
+         tabindex="-1"
+         style="background:rgba(0,0,0,0.5)"
+         @onkeydown="HandleKeyDown">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content" @ref="_contentRef">
                 <div class="modal-header">
-                    <h5 class="modal-title">@Title</h5>
-                    <button type="button" class="btn-close" @onclick="Cancel"></button>
+                    <h5 class="modal-title" id="@_titleId">@Title</h5>
+                    <button type="button"
+                            class="btn-close"
+                            aria-label="Cerrar diálogo"
+                            @onclick="Cancel"
+                            disabled="@IsBusy"></button>
                 </div>
-                <div class="modal-body">
-                    <p>@Message</p>
+                <div class="modal-body" id="@_bodyId">
+                    @if (BodyContent != null)
+                    {
+                        @BodyContent
+                    }
+                    else
+                    {
+                        <p>@Message</p>
+                    }
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" @onclick="Cancel" disabled="@IsBusy">Cancel</button>
-                    <button class="btn btn-@ConfirmColor" @onclick="Confirm" disabled="@IsBusy">
+                    <button class="btn btn-secondary"
+                            @onclick="Cancel"
+                            disabled="@IsBusy">
+                        @CancelLabel
+                    </button>
+                    <button class="btn btn-@ConfirmColor"
+                            @onclick="Confirm"
+                            disabled="@IsBusy"
+                            @ref="_confirmBtnRef">
                         @if (IsBusy)
                         {
-                            <span class="spinner-border spinner-border-sm me-2"></span>
+                            <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                            <span class="visually-hidden">Procesando…</span>
                         }
                         @ConfirmLabel
                     </button>
@@ -26,14 +54,33 @@
 }
 
 @code {
-    [Parameter] public bool IsVisible        { get; set; }
-    [Parameter] public string Title          { get; set; } = "Confirm";
-    [Parameter] public string Message        { get; set; } = "Are you sure?";
-    [Parameter] public string ConfirmLabel   { get; set; } = "Confirm";
-    [Parameter] public string ConfirmColor   { get; set; } = "danger";
-    [Parameter] public bool IsBusy           { get; set; }
-    [Parameter] public EventCallback OnConfirm { get; set; }
-    [Parameter] public EventCallback OnCancel  { get; set; }
+    [Parameter] public bool IsVisible             { get; set; }
+    [Parameter] public string Title               { get; set; } = "Confirmar";
+    [Parameter] public string Message             { get; set; } = "¿Está seguro?";
+    [Parameter] public string ConfirmLabel        { get; set; } = "Confirmar";
+    [Parameter] public string CancelLabel         { get; set; } = "Cancelar";
+    [Parameter] public string ConfirmColor        { get; set; } = "danger";
+    [Parameter] public bool IsBusy                { get; set; }
+    [Parameter] public RenderFragment? BodyContent { get; set; }
+    [Parameter] public EventCallback OnConfirm    { get; set; }
+    [Parameter] public EventCallback OnCancel     { get; set; }
+
+    private ElementReference _contentRef;
+    private ElementReference _confirmBtnRef;
+    private readonly string _titleId = $"modal-title-{Guid.NewGuid():N}";
+    private readonly string _bodyId  = $"modal-body-{Guid.NewGuid():N}";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsVisible)
+            await JS.InvokeVoidAsync("focusElement", _confirmBtnRef);
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape" && !IsBusy)
+            await Cancel();
+    }
 
     private async Task Confirm() => await OnConfirm.InvokeAsync();
     private async Task Cancel()  => await OnCancel.InvokeAsync();

@@ -1,0 +1,386 @@
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Placement
+
+<BreadcrumbNav Items="@_breadcrumb" />
+
+<!-- Header -->
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+        <h4 class="mb-0 fw-semibold">Placement — Vista Admin</h4>
+        <p class="text-muted small mb-0 mt-1">
+            Gestiona el placement de todos los miembros de la red. Sin restricciones de tiempo ni oportunidades.
+        </p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <button class="btn btn-outline-info btn-sm"
+                @onclick="RunAutoPlacementAsync"
+                disabled="@_isRunningAuto"
+                type="button"
+                aria-label="Ejecutar auto-placement manualmente">
+            @if (_isRunningAuto)
+            {
+                <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                <span class="visually-hidden">Ejecutando…</span>
+            }
+            <i class="ri-robot-line me-1" aria-hidden="true"></i>
+            Auto-Placement
+        </button>
+        <a class="btn btn-outline-secondary btn-sm" href="@HistoryRoute">
+            <i class="ri-history-line me-1" aria-hidden="true"></i>
+            Ver historial
+        </a>
+    </div>
+</div>
+
+@if (_autoMsg is not null)
+{
+    <div class="alert @(_autoError ? "alert-danger" : "alert-success") alert-dismissible d-flex gap-2 mb-3"
+         role="alert">
+        <i class="@(_autoError ? "ri-error-warning-line" : "ri-checkbox-circle-line") flex-shrink-0" aria-hidden="true"></i>
+        <div>@_autoMsg</div>
+        <button type="button" class="btn-close" @onclick="() => _autoMsg = null" aria-label="Cerrar"></button>
+    </div>
+}
+
+<!-- Stats row -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <StatCard Title="Pendientes"
+                  Value="@_pendingCount.ToString()"
+                  Icon="ri-user-add-line"
+                  Color="warning" />
+    </div>
+    <div class="col-6 col-md-3">
+        <StatCard Title="Colocados"
+                  Value="@_placedCount.ToString()"
+                  Icon="ri-checkbox-circle-line"
+                  Color="success" />
+    </div>
+    <div class="col-6 col-md-3">
+        <StatCard Title="Auto-colocados"
+                  Value="@_autoPlacedCount.ToString()"
+                  Icon="ri-robot-line"
+                  Color="info" />
+    </div>
+    <div class="col-6 col-md-3">
+        <StatCard Title="Expirados"
+                  Value="@_expiredCount.ToString()"
+                  Icon="ri-time-line"
+                  Color="danger" />
+    </div>
+</div>
+
+<!-- Filter row -->
+<div class="d-flex flex-wrap gap-3 align-items-center mb-3">
+    <div class="d-flex align-items-center gap-2">
+        <label class="small text-muted fw-semibold text-nowrap" for="sponsor-filter">Sponsor:</label>
+        <input id="sponsor-filter"
+               type="text"
+               class="form-control form-control-sm"
+               style="width:200px"
+               placeholder="ID o nombre del sponsor…"
+               @bind="_sponsorFilter"
+               @bind:event="oninput"
+               aria-label="Filtrar por sponsor" />
+    </div>
+</div>
+
+@if (_isLoading)
+{
+    <div role="status" aria-label="Cargando placements…">
+        @for (int i = 0; i < 3; i++)
+        {
+            <div class="placement-card mb-3 skeleton-card" aria-hidden="true">
+                <div class="d-flex gap-3 align-items-center">
+                    <div class="rounded-circle bg-secondary bg-opacity-10"
+                         style="width:48px;height:48px;min-width:48px"></div>
+                    <div class="flex-grow-1">
+                        <div class="bg-secondary bg-opacity-10 rounded mb-2"
+                             style="height:16px;width:60%"></div>
+                        <div class="bg-secondary bg-opacity-10 rounded"
+                             style="height:12px;width:40%"></div>
+                    </div>
+                </div>
+            </div>
+        }
+        <span class="visually-hidden">Cargando…</span>
+    </div>
+}
+else if (_error != null)
+{
+    <ApiErrorAlert Message="@_error" OnRetry="LoadAsync" />
+}
+else if (!_placements.Any())
+{
+    <EmptyState Icon="ri-group-line"
+                Title="Sin placements pendientes"
+                Message="No hay miembros pendientes de placement en la red." />
+}
+else
+{
+    <!-- Filter tabs -->
+    <ul class="nav nav-pills mb-3" role="tablist" aria-label="Filtrar placements">
+        @foreach (var tab in _tabs)
+        {
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(tab == _activeTab ? "active" : "")"
+                        role="tab"
+                        aria-selected="@(tab == _activeTab ? "true" : "false")"
+                        @onclick="() => _activeTab = tab"
+                        type="button">
+                    @tab
+                    <span class="badge bg-@(tab == _activeTab ? "white text-primary" : "secondary") ms-1">
+                        @GetTabCount(tab)
+                    </span>
+                </button>
+            </li>
+        }
+    </ul>
+
+    <div class="d-flex flex-column gap-3"
+         role="list"
+         aria-label="Lista de miembros para placement">
+        @foreach (var p in FilteredPlacements)
+        {
+            <div role="listitem">
+                <!-- Admin context info -->
+                @if (!string.IsNullOrEmpty(p.SponsorFullName))
+                {
+                    <div class="small text-muted mb-1 ps-1">
+                        <i class="ri-user-star-line me-1" aria-hidden="true"></i>
+                        Sponsor: <strong>@p.SponsorFullName</strong>
+                        <code class="ms-1 text-muted">@p.SponsorMemberId</code>
+                    </div>
+                }
+                <PlacementCard Placement="@p.AsPlacementDto()"
+                               OnPlace="@(() => OpenWizard(p.AsPlacementDto()))"
+                               OnMove="@(() => OpenWizard(p.AsPlacementDto()))"
+                               OnRemove="@(() => ConfirmRemove(p.AsPlacementDto()))" />
+            </div>
+        }
+    </div>
+}
+
+<!-- Placement Wizard -->
+@if (_wizardPlacement != null)
+{
+    <PlacementWizard Placement="@_wizardPlacement"
+                     OnSuccess="@OnWizardSuccess"
+                     OnCancel="@(() => _wizardPlacement = null)" />
+}
+
+<!-- Confirm Remove Modal -->
+<ConfirmModal IsVisible="@(_removeTarget != null)"
+              Title="Eliminar Placement"
+              ConfirmLabel="Eliminar placement"
+              CancelLabel="Cancelar"
+              ConfirmColor="danger"
+              IsBusy="@_isRemoving"
+              OnConfirm="ExecuteRemove"
+              OnCancel="@(() => _removeTarget = null)">
+    <BodyContent>
+        @if (_removeTarget != null)
+        {
+            <div class="d-flex align-items-start gap-3">
+                <i class="ri-alert-line fs-2 text-danger flex-shrink-0" aria-hidden="true"></i>
+                <div>
+                    <p class="mb-1">
+                        Vas a eliminar el placement de
+                        <strong>@_removeTarget.FullName</strong>
+                        (@_removeTarget.MemberId).
+                    </p>
+                    <p class="mb-0 text-muted small">
+                        Acción admin: no usa oportunidad de placement.
+                    </p>
+                </div>
+            </div>
+        }
+    </BodyContent>
+</ConfirmModal>
+
+@code {
+    [Parameter] public string HistoryRoute { get; set; } = "/admin/placement/history";
+
+    private bool   _isLoading = true;
+    private bool   _isRemoving;
+    private bool   _isRunningAuto;
+    private string? _error;
+    private string? _autoMsg;
+    private bool   _autoError;
+    private string  _sponsorFilter = string.Empty;
+
+    private List<AdminPendingPlacementDto> _placements = new();
+    private PlacementPage.PendingPlacementDto? _wizardPlacement;
+    private PlacementPage.PendingPlacementDto? _removeTarget;
+
+    private readonly string[] _tabs = { "Todos", "Pendientes", "Colocados", "Bloqueados" };
+    private string _activeTab = "Todos";
+
+    private int _pendingCount    => _placements.Count(p => p.PlacementStatus == "Unplaced");
+    private int _placedCount     => _placements.Count(p => p.PlacementStatus is "Placed" or "AutoPlaced");
+    private int _autoPlacedCount => _placements.Count(p => p.PlacementStatus == "AutoPlaced");
+    private int _expiredCount    => _placements.Count(p => p.PlacementStatus == "Expired");
+
+    private IEnumerable<AdminPendingPlacementDto> FilteredPlacements
+    {
+        get
+        {
+            var filtered = _activeTab switch
+            {
+                "Pendientes" => _placements.Where(p => p.PlacementStatus is "Unplaced" or "Expired"),
+                "Colocados"  => _placements.Where(p => p.PlacementStatus is "Placed" or "AutoPlaced"),
+                "Bloqueados" => _placements.Where(p => p.IsBlocked),
+                _            => _placements.AsEnumerable()
+            };
+
+            if (!string.IsNullOrWhiteSpace(_sponsorFilter))
+            {
+                var f = _sponsorFilter.Trim();
+                filtered = filtered.Where(p =>
+                    (p.SponsorMemberId?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (p.SponsorFullName?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false));
+            }
+
+            return filtered;
+        }
+    }
+
+    private int GetTabCount(string tab) => tab switch
+    {
+        "Pendientes" => _pendingCount,
+        "Colocados"  => _placedCount,
+        "Bloqueados" => _placements.Count(p => p.IsBlocked),
+        _            => _placements.Count
+    };
+
+    private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
+    {
+        new("Admin Dashboard", "/admin"),
+        new("Placement")
+    };
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _error     = null;
+        StateHasChanged();
+
+        try
+        {
+            var response = await Http.GetFromJsonAsync<ApiResponse<IEnumerable<AdminPendingPlacementDto>>>(
+                "api/v1/admin/placement/pending");
+            _placements = response?.Data?.ToList() ?? new();
+        }
+        catch (Exception ex)
+        {
+            _error = $"No se pudieron cargar los placements. {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task RunAutoPlacementAsync()
+    {
+        _isRunningAuto = true;
+        _autoMsg       = null;
+
+        try
+        {
+            var resp = await Http.PostAsJsonAsync("api/v1/admin/placement/run-auto-placement", new { });
+            if (resp.IsSuccessStatusCode)
+            {
+                var result = await resp.Content.ReadFromJsonAsync<ApiResponse<AutoPlacementResultDto>>();
+                _autoMsg  = $"Auto-placement completado: {result?.Data?.PlacedCount ?? 0} miembro(s) colocado(s).";
+                _autoError = false;
+                await LoadAsync();
+            }
+            else
+            {
+                var err = await resp.Content.ReadFromJsonAsync<ApiResponse<object>>();
+                _autoMsg  = err?.Message ?? "Error al ejecutar auto-placement.";
+                _autoError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _autoMsg  = $"Error inesperado: {ex.Message}";
+            _autoError = true;
+        }
+        finally
+        {
+            _isRunningAuto = false;
+        }
+    }
+
+    private void OpenWizard(PlacementPage.PendingPlacementDto placement)
+        => _wizardPlacement = placement;
+
+    private void ConfirmRemove(PlacementPage.PendingPlacementDto placement)
+        => _removeTarget = placement;
+
+    private async Task ExecuteRemove()
+    {
+        if (_removeTarget is null) return;
+        _isRemoving = true;
+
+        try
+        {
+            var resp = await Http.DeleteAsync(
+                $"api/v1/admin/placement/{_removeTarget.MemberId}");
+
+            if (resp.IsSuccessStatusCode)
+            {
+                _removeTarget = null;
+                await LoadAsync();
+            }
+            else
+            {
+                var err = await resp.Content.ReadFromJsonAsync<ApiResponse<object>>();
+                _error        = err?.Message ?? "Error al eliminar el placement.";
+                _removeTarget = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _error        = $"Error inesperado: {ex.Message}";
+            _removeTarget = null;
+        }
+        finally
+        {
+            _isRemoving = false;
+        }
+    }
+
+    private async Task OnWizardSuccess()
+    {
+        _wizardPlacement = null;
+        await LoadAsync();
+    }
+
+    private class ApiResponse<T>
+    {
+        public bool    Success { get; set; }
+        public T?      Data    { get; set; }
+        public string? Message { get; set; }
+    }
+
+    private class AutoPlacementResultDto
+    {
+        public int PlacedCount { get; set; }
+    }
+
+    // Admin DTO extends PendingPlacementDto with sponsor context
+    public class AdminPendingPlacementDto : PlacementPage.PendingPlacementDto
+    {
+        public string? SponsorMemberId { get; set; }
+        public string? SponsorFullName { get; set; }
+
+        public PlacementPage.PendingPlacementDto AsPlacementDto() => this;
+    }
+}

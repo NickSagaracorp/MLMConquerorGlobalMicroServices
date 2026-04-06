@@ -1,0 +1,7 @@
+@page "/admin/placement"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin")]
+
+<PageTitle>Placement — Admin</PageTitle>
+
+<AdminPlacementPage HistoryRoute="/admin/placement/history" />

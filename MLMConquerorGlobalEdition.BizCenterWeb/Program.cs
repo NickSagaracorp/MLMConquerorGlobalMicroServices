@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Localization;
 using MLMConquerorGlobalEdition.BizCenterWeb.Components;
+using MLMConquerorGlobalEdition.BizCenterWeb.Middleware;
 using MLMConquerorGlobalEdition.BizCenterWeb.Services;
 using MLMConquerorGlobalEdition.SharedComponents.Extensions;
 
@@ -23,13 +24,15 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.ExpireTimeSpan     = TimeSpan.FromHours(24);
         options.SlidingExpiration  = true;
         options.Cookie.Name        = "mlm_bizcenter_cookie";
-        options.Cookie.HttpOnly    = true;
+        options.Cookie.HttpOnly     = true;
         options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
+        options.Cookie.SameSite     = Microsoft.AspNetCore.Http.SameSiteMode.Strict;
     });
 
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddTransient<BizCenterApiAuthHandler>();
 
 // Server-side auth state provider (persists to WASM client)
 builder.Services.AddScoped<AuthenticationStateProvider, PersistingServerAuthStateProvider>();
@@ -38,11 +41,12 @@ builder.Services.AddScoped<AuthenticationStateProvider, PersistingServerAuthStat
 builder.Services.AddSharedComponents();
 builder.Services.AddScoped<ServerViewContextInitializer>();
 
-// HTTP client — BizCenter authenticated API
+// HTTP client — BizCenter authenticated API.
+// BizCenterApiAuthHandler forwards the JWT from the HttpOnly cookie claim to the API.
 builder.Services.AddHttpClient("BizCenterApi", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7001");
-});
+}).AddHttpMessageHandler<BizCenterApiAuthHandler>();
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("BizCenterApi"));
 
 // HTTP client — Signups public API (unauthenticated signup wizard)
@@ -60,6 +64,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseRequestLocalization(new RequestLocalizationOptions()
     .SetDefaultCulture("en")
     .AddSupportedCultures(supportedCultures)

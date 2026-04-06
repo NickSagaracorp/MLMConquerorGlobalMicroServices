@@ -33,6 +33,13 @@ public class Product : AuditChangesStringKey
     /// <summary>Marks this product as selectable in the "Select your membership" section of the join page.</summary>
     public bool JoinPageMembership { get; set; } = false;
 
+    // Visual branding
+    /// <summary>
+    /// CSS theme class applied to the external-member signup page for this product.
+    /// Allowed values: theme-product-guest | theme-product-vip | theme-product-elite | theme-product-turbo
+    /// </summary>
+    public string? ThemeClass { get; set; }
+
     // Migration reference
     public int OldSystemProductId { get; set; } = 0;
 

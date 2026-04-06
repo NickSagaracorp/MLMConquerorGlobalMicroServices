@@ -1,3 +1,4 @@
+@inject HttpClient Http
 @inject NavigationManager Nav
 
 @if (_visible)
@@ -137,12 +138,23 @@
 
         try
         {
-            // TODO: POST /api/v1/bizcenter/tickets
-            //       Body: { subject, category, priority, description, memberId }
-            await Task.Delay(300);
+            var response = await Http.PostAsJsonAsync("api/v1/bizcenter/tickets", new
+            {
+                Subject     = _form.Subject,
+                Category    = _form.Category,
+                Priority    = _form.Priority,
+                Description = _form.Description
+            });
 
-            Hide();
-            await OnTicketCreated.InvokeAsync();
+            if (response.IsSuccessStatusCode)
+            {
+                Hide();
+                await OnTicketCreated.InvokeAsync();
+            }
+            else
+            {
+                _errorMessage = "Failed to create ticket. Please try again.";
+            }
         }
         catch (Exception ex)
         {

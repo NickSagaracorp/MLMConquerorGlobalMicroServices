@@ -93,7 +93,14 @@ appsettings.*.json
 !appsettings.json
 *.pfx
 *.p12
+*.pem
+*.key
+*.cer
+*.crt
 secrets.json
+.env
+.env.*
+!.env.example
 
 # ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store

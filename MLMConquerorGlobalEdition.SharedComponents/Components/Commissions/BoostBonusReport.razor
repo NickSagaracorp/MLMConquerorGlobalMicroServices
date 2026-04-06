@@ -93,10 +93,22 @@
     private async Task LoadPageAsync(int page)
     {
         _page = page; _isLoading = true; StateHasChanged();
-        // TODO: GET /api/v1/bizcenter/commissions/boost-bonus?memberId={MemberProfileId}&page={page}&pageSize={_pageSize}
-        await Task.Delay(50);
-        _isLoading = false;
+        try
+        {
+            var response = await Http.GetFromJsonAsync<ApiResponse<PagedData<BoostBonusDto>>>(
+                $"api/v1/bizcenter/commissions/boost-bonus?page={page}&pageSize={_pageSize}");
+            if (response?.Success == true && response.Data is not null)
+            {
+                _items = response.Data.Items;
+                _total = response.Data.TotalCount;
+            }
+        }
+        catch { /* silently degrade */ }
+        finally { _isLoading = false; }
     }
+
+    private class ApiResponse<T> { public bool Success { get; set; } public T? Data { get; set; } }
+    private class PagedData<T>   { public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
 
     public record BoostBonusDto(
         string    Period,

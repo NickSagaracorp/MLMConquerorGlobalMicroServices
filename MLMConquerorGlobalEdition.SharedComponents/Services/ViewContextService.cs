@@ -70,6 +70,10 @@ public class ViewContextService : IViewContextService
     public bool HasPermission(string permission)
     {
         EnsureInitialized();
+        // SuperAdmin-only permissions are evaluated before the broad Admin shortcut
+        if (permission == Permissions.SystemUsers.Manage)
+            return _viewerRoles.Contains(AppRoles.SuperAdmin);
+
         if (_viewerRoles.Contains(AppRoles.SuperAdmin) || _viewerRoles.Contains(AppRoles.Admin))
             return true;
 

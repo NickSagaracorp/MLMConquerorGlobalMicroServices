@@ -1,15 +1,25 @@
-<span class="badge rounded-pill bg-@BadgeColor">@DisplayText</span>
+<span class="badge rounded-pill bg-@BadgeColor"
+      role="status"
+      aria-label="Estado: @DisplayText">
+    @if (!string.IsNullOrEmpty(Icon))
+    {
+        <i class="@Icon me-1" aria-hidden="true"></i>
+    }
+    @DisplayText
+</span>
 
 @code {
     [Parameter, EditorRequired] public string Status { get; set; } = string.Empty;
+    [Parameter] public string? Icon { get; set; }
 
     private string BadgeColor => Status?.ToLowerInvariant() switch
     {
-        "active"    or "paid"     or "approved" or "completed" or "resolved" => "success",
-        "pending"   or "open"     or "inprogress"                            => "warning",
-        "cancelled" or "rejected" or "deactivated"                           => "danger",
-        "expired"   or "closed"                                              => "secondary",
-        _                                                                    => "primary"
+        "active"    or "paid"     or "approved" or "completed" or "resolved" or "placed"    => "success",
+        "pending"   or "open"     or "inprogress" or "unplaced"                             => "warning",
+        "cancelled" or "rejected" or "deactivated" or "blocked"                            => "danger",
+        "expired"   or "closed"                                                             => "secondary",
+        "autoplaced"                                                                        => "info",
+        _                                                                                   => "primary"
     };
 
     private string DisplayText => Status ?? string.Empty;

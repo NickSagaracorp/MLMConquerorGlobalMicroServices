@@ -3,6 +3,7 @@
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @inject HttpClient Http
 @inject NavigationManager Nav
+@using Syncfusion.Blazor.RichTextEditor
 
 <PageTitle>Products — Admin</PageTitle>
 
@@ -36,8 +37,23 @@
                 <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250,500,1000})" />
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
                 <GridColumns>
-                    <GridColumn HeaderText="Name" Width="200">
-                        <Template><span class="fw-semibold">@(((ProductDto)context).Name)</span>@if(!string.IsNullOrWhiteSpace(((ProductDto)context).Description)){<text><br/><small class="text-muted">@(((ProductDto)context).Description)</small></text>}</Template>
+                    <GridColumn HeaderText="Name" Width="220">
+                        <Template>
+                            @{
+                                var p = (ProductDto)context;
+                                <span class="fw-semibold">@p.Name</span>
+                                @if (!string.IsNullOrWhiteSpace(p.ThemeClass))
+                                {
+                                    <span class="badge ms-1 product-theme-badge @p.ThemeClass">@p.ThemeClass</span>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(p.Description))
+                                {
+                                    <div class="text-muted small product-desc-preview mt-1">
+                                        @((MarkupString)TruncateHtml(p.Description, 80))
+                                    </div>
+                                }
+                            }
+                        </Template>
                     </GridColumn>
                     <GridColumn HeaderText="Monthly" Width="110" TextAlign="TextAlign.Right">
                         <Template>$@(((ProductDto)context).MonthlyFee.ToString("F2"))</Template>
@@ -73,12 +89,38 @@
 @if (_showForm)
 {
     <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content border-0 rounded-3 shadow">
-                <div class="modal-header"><h5 class="modal-title fw-bold">@(_editId is null ? "New Product" : "Edit Product")</h5><button type="button" class="btn-close" @onclick="CloseForm"></button></div>
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">@(_editId is null ? "New Product" : "Edit Product")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseForm"></button>
+                </div>
                 <div class="modal-body">
                     <div class="row g-3">
-                        <div class="col-md-6"><label class="form-label fw-semibold">Name <span class="text-danger">*</span></label><input class="form-control" @bind="_form.Name"/></div>
+
+                        @* Name + Theme *@
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+                            <input class="form-control" @bind="_form.Name" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Product Theme</label>
+                            <select class="form-select" @bind="_form.ThemeClass">
+                                <option value="">— None —</option>
+                                @foreach (var t in _themeOptions)
+                                {
+                                    <option value="@t.Value">@t.Label</option>
+                                }
+                            </select>
+                            @if (!string.IsNullOrWhiteSpace(_form.ThemeClass))
+                            {
+                                <div class="mt-2 p-2 rounded product-theme-preview @_form.ThemeClass">
+                                    <small class="fw-semibold">Theme preview — @_form.ThemeClass</small>
+                                </div>
+                            }
+                        </div>
+
+                        @* Product image *@
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Product Image</label>
                             <div class="d-flex align-items-center gap-2">
@@ -87,29 +129,11 @@
                             </div>
                             @if (!string.IsNullOrWhiteSpace(_form.ImageUrl))
                             {
-                                <div class="mt-1"><small class="text-muted text-truncate d-block" style="max-width:260px" title="@_form.ImageUrl"><i class="ri-image-line me-1"></i>@_form.ImageUrl</small></div>
-                            }
-                        </div>
-                        <div class="col-12"><label class="form-label fw-semibold">Description</label><textarea class="form-control" rows="3" @bind="_form.Description"></textarea></div>
-                        <div class="col-md-4"><label class="form-label fw-semibold">Monthly Fee ($)</label><input type="number" step="0.01" class="form-control" @bind="_form.MonthlyFee"/></div>
-                        <div class="col-md-4"><label class="form-label fw-semibold">Setup Fee ($)</label><input type="number" step="0.01" class="form-control" @bind="_form.SetupFee"/></div>
-                        <div class="col-md-4"><label class="form-label fw-semibold">Annual Price ($)</label><input type="number" step="0.01" class="form-control" @bind="_form.AnnualPrice"/></div>
-                        <div class="col-md-4"><label class="form-label fw-semibold">90-Day Price ($)</label><input type="number" step="0.01" class="form-control" @bind="_form.Price90Days"/></div>
-                        <div class="col-md-4"><label class="form-label fw-semibold">180-Day Price ($)</label><input type="number" step="0.01" class="form-control" @bind="_form.Price180Days"/></div>
-                        <div class="col-md-4"><label class="form-label fw-semibold">BV Points</label><input type="number" class="form-control" @bind="_form.QualificationPoins"/></div>
-                        <div class="col-md-4"><label class="form-label fw-semibold">Monthly Promo ($)</label><input type="number" step="0.01" class="form-control" @bind="_form.MonthlyFeePromo"/></div>
-                        <div class="col-md-4"><label class="form-label fw-semibold">Setup Promo ($)</label><input type="number" step="0.01" class="form-control" @bind="_form.SetupFeePromo"/></div>
-                        <div class="col-md-4"><label class="form-label fw-semibold">Promo BV Pts</label><input type="number" class="form-control" @bind="_form.QualificationPoinsPromo"/></div>
-                        <div class="col-md-6"><label class="form-label fw-semibold">Promo Description</label><textarea class="form-control" rows="3" @bind="_form.DescriptionPromo"></textarea></div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Promo Image</label>
-                            <div class="d-flex align-items-center gap-2">
-                                <InputFile OnChange="@(e => UploadImageAsync(e, true))" class="form-control form-control-sm" accept="image/*" />
-                                @if (_uploadingImagePromo) { <span class="spinner-border spinner-border-sm text-primary"></span> }
-                            </div>
-                            @if (!string.IsNullOrWhiteSpace(_form.ImageUrlPromo))
-                            {
-                                <div class="mt-1"><small class="text-muted text-truncate d-block" style="max-width:260px" title="@_form.ImageUrlPromo"><i class="ri-image-line me-1"></i>@_form.ImageUrlPromo</small></div>
+                                <div class="mt-1">
+                                    <small class="text-muted text-truncate d-block" style="max-width:260px" title="@_form.ImageUrl">
+                                        <i class="ri-image-line me-1"></i>@_form.ImageUrl
+                                    </small>
+                                </div>
                             }
                         </div>
                         <div class="col-md-6">
@@ -122,7 +146,60 @@
                                 }
                             </select>
                         </div>
-                        <div class="col-md-6"><label class="form-label fw-semibold">Old System ID</label><input type="number" class="form-control" @bind="_form.OldSystemProductId"/></div>
+
+                        @* Description (richtext) *@
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Description</label>
+                            <SfRichTextEditor @bind-Value="_form.Description"
+                                             Height="220"
+                                             Placeholder="Enter product description…">
+                                <RichTextEditorToolbarSettings Items="@_rteToolbar" />
+                            </SfRichTextEditor>
+                        </div>
+
+                        @* Pricing *@
+                        <div class="col-md-4"><label class="form-label fw-semibold">Monthly Fee ($)</label><input type="number" step="0.01" class="form-control" @bind="_form.MonthlyFee" /></div>
+                        <div class="col-md-4"><label class="form-label fw-semibold">Setup Fee ($)</label><input type="number" step="0.01" class="form-control" @bind="_form.SetupFee" /></div>
+                        <div class="col-md-4"><label class="form-label fw-semibold">Annual Price ($)</label><input type="number" step="0.01" class="form-control" @bind="_form.AnnualPrice" /></div>
+                        <div class="col-md-4"><label class="form-label fw-semibold">90-Day Price ($)</label><input type="number" step="0.01" class="form-control" @bind="_form.Price90Days" /></div>
+                        <div class="col-md-4"><label class="form-label fw-semibold">180-Day Price ($)</label><input type="number" step="0.01" class="form-control" @bind="_form.Price180Days" /></div>
+                        <div class="col-md-4"><label class="form-label fw-semibold">BV Points</label><input type="number" class="form-control" @bind="_form.QualificationPoins" /></div>
+
+                        @* Promo section *@
+                        <div class="col-12"><hr class="my-1" /><small class="text-muted fw-semibold text-uppercase">Promotional Offer</small></div>
+
+                        <div class="col-md-4"><label class="form-label fw-semibold">Monthly Promo ($)</label><input type="number" step="0.01" class="form-control" @bind="_form.MonthlyFeePromo" /></div>
+                        <div class="col-md-4"><label class="form-label fw-semibold">Setup Promo ($)</label><input type="number" step="0.01" class="form-control" @bind="_form.SetupFeePromo" /></div>
+                        <div class="col-md-4"><label class="form-label fw-semibold">Promo BV Pts</label><input type="number" class="form-control" @bind="_form.QualificationPoinsPromo" /></div>
+
+                        @* Promo description (richtext) *@
+                        <div class="col-md-7">
+                            <label class="form-label fw-semibold">Promo Description</label>
+                            <SfRichTextEditor @bind-Value="_form.DescriptionPromo"
+                                             Height="200"
+                                             Placeholder="Enter promotional description…">
+                                <RichTextEditorToolbarSettings Items="@_rteToolbar" />
+                            </SfRichTextEditor>
+                        </div>
+
+                        <div class="col-md-5">
+                            <label class="form-label fw-semibold">Promo Image</label>
+                            <div class="d-flex align-items-center gap-2">
+                                <InputFile OnChange="@(e => UploadImageAsync(e, true))" class="form-control form-control-sm" accept="image/*" />
+                                @if (_uploadingImagePromo) { <span class="spinner-border spinner-border-sm text-primary"></span> }
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(_form.ImageUrlPromo))
+                            {
+                                <div class="mt-1">
+                                    <small class="text-muted text-truncate d-block" style="max-width:260px" title="@_form.ImageUrlPromo">
+                                        <i class="ri-image-line me-1"></i>@_form.ImageUrlPromo
+                                    </small>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="col-12"><hr class="my-1" /></div>
+                        <div class="col-md-6"><label class="form-label fw-semibold">Old System ID</label><input type="number" class="form-control" @bind="_form.OldSystemProductId" /></div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -169,6 +246,35 @@
     private List<MembershipLevelItem> _membershipLevels = new();
     private bool _uploadingImage;
     private bool _uploadingImagePromo;
+
+    private static readonly (string Value, string Label)[] _themeOptions =
+    {
+        ("theme-product-guest",  "Guest Member (Blue-Grey)"),
+        ("theme-product-vip",    "VIP (Gold)"),
+        ("theme-product-elite",  "Elite (Purple)"),
+        ("theme-product-turbo",  "Turbo (Red-Orange)")
+    };
+
+    private static readonly List<ToolbarItemModel> _rteToolbar = new()
+    {
+        new() { Command = ToolbarCommand.Bold },
+        new() { Command = ToolbarCommand.Italic },
+        new() { Command = ToolbarCommand.Underline },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.Formats },
+        new() { Command = ToolbarCommand.Alignments },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.OrderedList },
+        new() { Command = ToolbarCommand.UnorderedList },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.CreateLink },
+        new() { Command = ToolbarCommand.Image },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.Undo },
+        new() { Command = ToolbarCommand.Redo },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.SourceCode }
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -230,23 +336,52 @@
     private void OpenEdit(ProductDto p)
     {
         _editId = p.Id;
-        _form = new ProductFormModel { Name = p.Name, Description = p.Description, ImageUrl = p.ImageUrl, MonthlyFee = p.MonthlyFee, SetupFee = p.SetupFee, Price90Days = p.Price90Days, Price180Days = p.Price180Days, AnnualPrice = p.AnnualPrice, DescriptionPromo = p.DescriptionPromo, MonthlyFeePromo = p.MonthlyFeePromo, SetupFeePromo = p.SetupFeePromo, ImageUrlPromo = p.ImageUrlPromo, QualificationPoins = p.QualificationPoins, QualificationPoinsPromo = p.QualificationPoinsPromo, MembershipLevelId = p.MembershipLevelId, OldSystemProductId = p.OldSystemProductId };
+        _form = new ProductFormModel
+        {
+            Name                  = p.Name,
+            Description           = p.Description,
+            ImageUrl              = p.ImageUrl,
+            MonthlyFee            = p.MonthlyFee,
+            SetupFee              = p.SetupFee,
+            Price90Days           = p.Price90Days,
+            Price180Days          = p.Price180Days,
+            AnnualPrice           = p.AnnualPrice,
+            DescriptionPromo      = p.DescriptionPromo,
+            MonthlyFeePromo       = p.MonthlyFeePromo,
+            SetupFeePromo         = p.SetupFeePromo,
+            ImageUrlPromo         = p.ImageUrlPromo,
+            QualificationPoins    = p.QualificationPoins,
+            QualificationPoinsPromo = p.QualificationPoinsPromo,
+            MembershipLevelId     = p.MembershipLevelId,
+            OldSystemProductId    = p.OldSystemProductId,
+            ThemeClass            = p.ThemeClass
+        };
         _showForm = true;
     }
     private void CloseForm() { _showForm = false; _editId = null; }
+
     private async Task SaveProduct()
     {
         if (string.IsNullOrWhiteSpace(_form.Name)) { _alertMsg = "Name is required."; _alertIsError = true; return; }
         _saving = true;
         try
         {
-            var response = _editId is null ? await Http.PostAsJsonAsync("api/v1/admin/products", _form) : await Http.PutAsJsonAsync($"api/v1/admin/products/{_editId}", _form);
-            if (response.IsSuccessStatusCode) { _alertMsg = _editId is null ? "Product created." : "Product updated."; _alertIsError = false; CloseForm(); await LoadAsync(); }
+            var response = _editId is null
+                ? await Http.PostAsJsonAsync("api/v1/admin/products", _form)
+                : await Http.PutAsJsonAsync($"api/v1/admin/products/{_editId}", _form);
+            if (response.IsSuccessStatusCode)
+            {
+                _alertMsg = _editId is null ? "Product created." : "Product updated.";
+                _alertIsError = false;
+                CloseForm();
+                await LoadAsync();
+            }
             else { _alertMsg = $"Save failed ({response.StatusCode})."; _alertIsError = true; }
         }
         catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
         finally { _saving = false; }
     }
+
     private void ConfirmDelete(ProductDto p) { _deleteProduct = p; _showDeleteConfirm = true; }
     private async Task DeleteProduct()
     {
@@ -255,38 +390,66 @@
         try
         {
             var response = await Http.DeleteAsync($"api/v1/admin/products/{_deleteProduct.Id}");
-            if (response.IsSuccessStatusCode) { _alertMsg = "Product deleted."; _alertIsError = false; _showDeleteConfirm = false; _deleteProduct = null; await LoadAsync(); }
+            if (response.IsSuccessStatusCode)
+            {
+                _alertMsg = "Product deleted."; _alertIsError = false;
+                _showDeleteConfirm = false; _deleteProduct = null;
+                await LoadAsync();
+            }
             else { _alertMsg = $"Delete failed ({response.StatusCode})."; _alertIsError = true; }
         }
         catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
         finally { _saving = false; }
     }
 
+    /// <summary>Strips HTML tags to produce a plain-text preview of up to <paramref name="maxLength"/> characters.</summary>
+    private static string TruncateHtml(string html, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(html)) return string.Empty;
+        // Strip tags with a simple regex-free approach: keep only text nodes
+        var sb = new System.Text.StringBuilder();
+        bool inTag = false;
+        foreach (var c in html)
+        {
+            if (c == '<') { inTag = true; continue; }
+            if (c == '>') { inTag = false; continue; }
+            if (!inTag) sb.Append(c);
+            if (sb.Length >= maxLength) break;
+        }
+        var text = sb.ToString().Trim();
+        return text.Length > maxLength ? text[..maxLength] + "…" : text;
+    }
+
     private class ProductFormModel
     {
-        public string Name { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public string ImageUrl { get; set; } = string.Empty;
-        public decimal MonthlyFee { get; set; }
-        public decimal SetupFee { get; set; }
-        public decimal Price90Days { get; set; }
-        public decimal Price180Days { get; set; }
-        public decimal AnnualPrice { get; set; }
-        public string? DescriptionPromo { get; set; }
-        public decimal MonthlyFeePromo { get; set; }
-        public decimal SetupFeePromo { get; set; }
-        public string? ImageUrlPromo { get; set; }
-        public int QualificationPoins { get; set; }
-        public int QualificationPoinsPromo { get; set; }
-        public int? MembershipLevelId { get; set; }
-        public int OldSystemProductId { get; set; }
+        public string  Name                   { get; set; } = string.Empty;
+        public string  Description            { get; set; } = string.Empty;
+        public string  ImageUrl               { get; set; } = string.Empty;
+        public decimal MonthlyFee             { get; set; }
+        public decimal SetupFee               { get; set; }
+        public decimal Price90Days            { get; set; }
+        public decimal Price180Days           { get; set; }
+        public decimal AnnualPrice            { get; set; }
+        public string? DescriptionPromo       { get; set; }
+        public decimal MonthlyFeePromo        { get; set; }
+        public decimal SetupFeePromo          { get; set; }
+        public string? ImageUrlPromo          { get; set; }
+        public int     QualificationPoins     { get; set; }
+        public int     QualificationPoinsPromo { get; set; }
+        public int?    MembershipLevelId      { get; set; }
+        public int     OldSystemProductId     { get; set; }
+        public string? ThemeClass             { get; set; }
     }
 
     private static string ActiveBadge(bool isActive) => isActive ? "bg-success" : "bg-secondary";
 
     private record MembershipLevelItem(int Id, string Name);
     private record UploadResult(string Url);
-    private record ProductDto(string Id, string Name, string Description, string ImageUrl, decimal MonthlyFee, decimal SetupFee, decimal Price90Days, decimal Price180Days, decimal AnnualPrice, string? DescriptionPromo, decimal MonthlyFeePromo, decimal SetupFeePromo, string? ImageUrlPromo, int QualificationPoins, int QualificationPoinsPromo, bool IsActive, int? MembershipLevelId, int OldSystemProductId);
+    private record ProductDto(string Id, string Name, string Description, string ImageUrl,
+        decimal MonthlyFee, decimal SetupFee, decimal Price90Days, decimal Price180Days,
+        decimal AnnualPrice, string? DescriptionPromo, decimal MonthlyFeePromo, decimal SetupFeePromo,
+        string? ImageUrlPromo, int QualificationPoins, int QualificationPoinsPromo,
+        bool IsActive, int? MembershipLevelId, int OldSystemProductId, string? ThemeClass);
     private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
     private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
 }

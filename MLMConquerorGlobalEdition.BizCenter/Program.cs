@@ -1,51 +1,60 @@
-using System.Text;
+using System.Security.Cryptography;
 using AspNetCoreRateLimit;
 using Hangfire;
+using Hangfire.Dashboard;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Hangfire.InMemory;
+using MLMConquerorGlobalEdition.BizCenter.Infrastructure;
 using MLMConquerorGlobalEdition.BizCenter.Jobs;
 using MLMConquerorGlobalEdition.BizCenter.Middleware;
 using MLMConquerorGlobalEdition.BizCenter.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Services;
+using FluentValidation;
 using MLMConquerorGlobalEdition.SharedKernel.Behaviors;
-using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
-using IPushNotificationService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IPushNotificationService;
-using CacheService = MLMConquerorGlobalEdition.SharedKernel.Services.CacheService;
-using IErrorTrackingService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IErrorTrackingService;
+using MLMConquerorGlobalEdition.SharedKernel.Logging;
+using ICacheService             = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
+using IPushNotificationService  = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IPushNotificationService;
+using CacheService              = MLMConquerorGlobalEdition.SharedKernel.Services.CacheService;
+using IErrorTrackingService     = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IErrorTrackingService;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// DbContext
+// ── PII-masking logging — replaces default providers ─────────────────────────
+builder.Logging.AddPiiMaskingConsole();
+
+// ── DbContext ─────────────────────────────────────────────────────────────────
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// MediatR — scans all handlers in this assembly + error-handling pipeline behavior
+// ── MediatR + validation + error-handling pipeline behaviors ─────────────────
+// Order matters: Validation runs first, then error handling wraps the handler.
 builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
+    cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
     cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ErrorHandlingBehavior<,>));
 });
 
-// Services
+// Auto-register all FluentValidation validators in this assembly
+builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
+
+// ── Services ──────────────────────────────────────────────────────────────────
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 builder.Services.AddSingleton<MLMConquerorGlobalEdition.SharedKernel.Interfaces.IDateTimeProvider>(
     sp => sp.GetRequiredService<IDateTimeProvider>());
-
-// Error Tracking — singleton; uses IServiceScopeFactory for isolated DB writes
 builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
 
 // ── Redis distributed cache ───────────────────────────────────────────────────
 builder.Services.AddStackExchangeRedisCache(options =>
 {
-    options.Configuration = builder.Configuration.GetConnectionString("Redis")
-        ?? "localhost:6379";
+    options.Configuration = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
 });
 builder.Services.AddSingleton<ICacheService, CacheService>();
 
@@ -56,6 +65,7 @@ builder.Services.AddSingleton<IPushNotificationService, FirebasePushNotification
 builder.Services.AddScoped<MemberStatisticSnapshotJob>();
 builder.Services.AddScoped<ExpiredTokenCleanupJob>();
 builder.Services.AddScoped<LoyaltyPointsMonthlyRollupJob>();
+builder.Services.AddScoped<AutoPlacementJob>();
 builder.Services.AddHangfire(cfg =>
 {
     cfg.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
@@ -74,29 +84,64 @@ builder.Services.AddHangfireServer(options =>
     options.WorkerCount = builder.Configuration.GetValue("Hangfire:WorkerCount", 5);
 });
 
-// Controllers
+// ── Controllers ───────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
 
-// JWT Authentication
-var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured.");
+// ── CORS — whitelist-based, credentials allowed ───────────────────────────────
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>()
+    ?? (builder.Environment.IsDevelopment()
+        ? new[] { "https://localhost:7002", "https://localhost:7004" }
+        : Array.Empty<string>());
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("BizCenterPolicy", policy =>
+    {
+        if (allowedOrigins.Length > 0)
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyHeader()
+                  .WithMethods("GET", "POST", "PUT", "DELETE", "PATCH")
+                  .AllowCredentials();
+    });
+});
+
+// ── JWT Authentication (RS256 — asymmetric) ───────────────────────────────────
+var publicKeyBase64 = builder.Configuration["Jwt:PublicKeyBase64"]
+    ?? throw new InvalidOperationException("Jwt:PublicKeyBase64 not configured.");
+
+if (publicKeyBase64.StartsWith("REPLACE_WITH_") && !builder.Environment.IsDevelopment())
+    throw new InvalidOperationException(
+        "JWT RSA public key must be set before running in non-Development mode.");
+
+RsaSecurityKey? jwtValidationKey = null;
+if (!publicKeyBase64.StartsWith("REPLACE_WITH_"))
+{
+    var rsaValidation = RSA.Create();
+    rsaValidation.ImportSubjectPublicKeyInfo(Convert.FromBase64String(publicKeyBase64), out _);
+    jwtValidationKey = new RsaSecurityKey(rsaValidation);
+}
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+            ValidateIssuer           = true,
+            ValidateAudience         = true,
+            ValidateLifetime         = true,
+            ValidateIssuerSigningKey = jwtValidationKey is not null,
+            ValidIssuer              = builder.Configuration["Jwt:Issuer"],
+            ValidAudience            = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey         = jwtValidationKey,
+            ClockSkew                = TimeSpan.Zero
         };
     });
 
 builder.Services.AddAuthorization();
 
-// Rate Limiting
+// ── Rate Limiting (IP-based) ──────────────────────────────────────────────────
 builder.Services.AddMemoryCache();
 builder.Services.Configure<IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
 builder.Services.AddSingleton<IIpPolicyStore, MemoryCacheIpPolicyStore>();
@@ -105,23 +150,26 @@ builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>()
 builder.Services.AddSingleton<IProcessingStrategy, AsyncKeyLockProcessingStrategy>();
 builder.Services.AddInMemoryRateLimiting();
 
-// Swagger
+// ── Swagger ───────────────────────────────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "MLMConqueror BizCenter API", Version = "v1" });
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Name = "Authorization",
-        Type = SecuritySchemeType.Http,
-        Scheme = "Bearer",
+        Name        = "Authorization",
+        Type        = SecuritySchemeType.Http,
+        Scheme      = "Bearer",
         BearerFormat = "JWT",
-        In = ParameterLocation.Header
+        In          = ParameterLocation.Header
     });
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
-            new OpenApiSecurityScheme { Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" } },
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+            },
             Array.Empty<string>()
         }
     });
@@ -129,7 +177,21 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+// ── HTTPS enforcement ─────────────────────────────────────────────────────────
+if (!app.Environment.IsDevelopment())
+    app.UseHsts();
+
+app.UseHttpsRedirection();
+
+// ── Security headers — must be first to cover all responses ──────────────────
+app.UseMiddleware<SecurityHeadersMiddleware>();
+
+// ── Domain exception handler ──────────────────────────────────────────────────
 app.UseMiddleware<DomainExceptionMiddleware>();
+
+// ── CORS — before auth ────────────────────────────────────────────────────────
+app.UseCors("BizCenterPolicy");
+
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseIpRateLimiting();
@@ -137,24 +199,38 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// ── HangFire dashboard & recurring jobs ───────────────────────────────────────
-app.UseHangfireDashboard("/hangfire");
+// ── HangFire dashboard — restricted to authenticated admins only ──────────────
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = new[] { new HangfireAdminAuthorizationFilter() },
+    AppPath       = "/health"
+});
+
 RecurringJob.AddOrUpdate<MemberStatisticSnapshotJob>(
     "member-statistic-snapshot",
-    job => job.ExecuteAsync(CancellationToken.None),
+    job => job.ExecuteAsync(),
     "0 1 * * *",
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
 RecurringJob.AddOrUpdate<ExpiredTokenCleanupJob>(
     "expired-token-cleanup",
-    job => job.ExecuteAsync(CancellationToken.None),
+    job => job.ExecuteAsync(),
     "0 5 * * *",
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
 RecurringJob.AddOrUpdate<LoyaltyPointsMonthlyRollupJob>(
     "loyalty-points-monthly-rollup",
-    job => job.ExecuteAsync(CancellationToken.None),
+    job => job.ExecuteAsync(),
     "30 2 1 * *",
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
+RecurringJob.AddOrUpdate<AutoPlacementJob>(
+    "auto-placement",
+    job => job.ExecuteAsync(),
+    "0 */6 * * *",
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
+   .AllowAnonymous();
 
 app.Run();

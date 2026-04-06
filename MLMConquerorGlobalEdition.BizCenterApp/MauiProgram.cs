@@ -36,10 +36,22 @@ public static class MauiProgram
         // View context initializer (sets BizCenter context from JWT claims)
         builder.Services.AddScoped<ViewContextInitializer>();
 
-        // HTTP client — BizCenter API (authenticated endpoints)
-        builder.Services.AddHttpClient<BizCenterApiClient>(client =>
+        // Auth handler for SharedComponents default HttpClient
+        builder.Services.AddScoped<BizCenterAuthHandler>();
+
+        // Default HttpClient — SharedComponents inject this via @inject HttpClient Http.
+        // The BizCenterAuthHandler attaches the JWT on every request.
+        builder.Services.AddHttpClient("bizcenter", client =>
         {
             // TODO: Replace with config-driven base address before production
+            client.BaseAddress = new Uri("https://localhost:7001");
+        }).AddHttpMessageHandler(sp => sp.GetRequiredService<BizCenterAuthHandler>());
+        builder.Services.AddScoped(sp =>
+            sp.GetRequiredService<IHttpClientFactory>().CreateClient("bizcenter"));
+
+        // Typed client for explicit BizCenterApiClient usage
+        builder.Services.AddHttpClient<BizCenterApiClient>(client =>
+        {
             client.BaseAddress = new Uri("https://localhost:7001");
         });
 

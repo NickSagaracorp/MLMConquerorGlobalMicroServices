@@ -91,8 +91,8 @@
 
 .menu-item .menu-link:hover,
 .menu-item.active .menu-link {
-    background: rgba(96,93,255,0.08);
-    color: #605DFF;
+    background: rgba(0,191,165,0.10);
+    color: var(--mlm-primary, #00BFA5);
 }
 
 .menu-icon {
@@ -130,4 +130,397 @@
 
 .dark-mode .menu-item .menu-link {
     color: #adb5bd;
+}
+
+/* ============================================================
+   Placement module styles
+   ============================================================ */
+
+/* Placement card */
+.placement-card {
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    padding: 20px;
+    background: #fff;
+    transition: box-shadow 0.2s;
+}
+
+.placement-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,.08);
+}
+
+.placement-card.is-urgent {
+    border-left: 4px solid #dc2626;
+}
+
+.placement-card.is-warning {
+    border-left: 4px solid #d97706;
+}
+
+.placement-card.is-placed {
+    border-left: 4px solid #16a34a;
+}
+
+.placement-card.is-blocked {
+    border-left: 4px solid #6b7280;
+    opacity: 0.8;
+}
+
+/* Window countdown bar */
+.placement-window-bar {
+    height: 6px;
+    border-radius: 999px;
+    background: #e5e7eb;
+    overflow: hidden;
+}
+
+.placement-window-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.4s ease;
+}
+
+.placement-window-bar-fill.safe    { background: #16a34a; }
+.placement-window-bar-fill.warning { background: #d97706; }
+.placement-window-bar-fill.urgent  { background: #dc2626; }
+
+/* Opportunity pips */
+.opportunity-pips {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.opportunity-pip {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    border: 2px solid #d1d5db;
+}
+
+.opportunity-pip.used {
+    background: #dc2626;
+    border-color: #dc2626;
+}
+
+.opportunity-pip.available {
+    background: #16a34a;
+    border-color: #16a34a;
+}
+
+/* Node selector — dual tree */
+.placement-tree-selector {
+    display: grid;
+    gap: 16px;
+}
+
+.placement-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.placement-node-sponsor {
+    background: var(--mlm-primary-light, #E0F7F4);
+    border: 2px solid var(--mlm-primary, #00BFA5);
+    border-radius: 12px;
+    padding: 16px 24px;
+    text-align: center;
+    min-width: 160px;
+}
+
+.placement-node-slot {
+    border: 2px dashed #d1d5db;
+    border-radius: 12px;
+    padding: 16px 24px;
+    text-align: center;
+    min-width: 160px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    background: #f9fafb;
+}
+
+.placement-node-slot:hover:not(:disabled),
+.placement-node-slot:focus-visible {
+    border-color: var(--mlm-primary, #00BFA5);
+    background: var(--mlm-primary-light, #E0F7F4);
+    outline: 2px solid var(--mlm-primary, #00BFA5);
+    outline-offset: 2px;
+}
+
+.placement-node-slot.selected {
+    border-color: var(--mlm-primary, #00BFA5);
+    background: var(--mlm-primary-light, #E0F7F4);
+}
+
+.placement-node-slot.occupied {
+    border-style: solid;
+    border-color: #e5e7eb;
+    background: #f3f4f6;
+    cursor: not-allowed;
+}
+
+.placement-node-connector {
+    width: 2px;
+    height: 24px;
+    background: #d1d5db;
+}
+
+.placement-legs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    width: 100%;
+    max-width: 420px;
+}
+
+/* Wizard stepper */
+.placement-stepper {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+    margin-bottom: 32px;
+    overflow-x: auto;
+}
+
+.placement-step {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    min-width: 80px;
+}
+
+.placement-step::before {
+    content: '';
+    position: absolute;
+    top: 16px;
+    left: calc(-50% + 16px);
+    right: calc(50% + 16px);
+    height: 2px;
+    background: #e5e7eb;
+    z-index: 0;
+}
+
+.placement-step:first-child::before { display: none; }
+
+.placement-step.done::before,
+.placement-step.active::before {
+    background: var(--mlm-primary, #00BFA5);
+}
+
+.placement-step-dot {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid #e5e7eb;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: #9ca3af;
+    position: relative;
+    z-index: 1;
+    transition: all 0.2s;
+}
+
+.placement-step.done .placement-step-dot {
+    background: var(--mlm-primary, #00BFA5);
+    border-color: var(--mlm-primary, #00BFA5);
+    color: #fff;
+}
+
+.placement-step.active .placement-step-dot {
+    border-color: var(--mlm-primary, #00BFA5);
+    color: var(--mlm-primary, #00BFA5);
+    box-shadow: 0 0 0 4px var(--mlm-primary-light, #E0F7F4);
+}
+
+.placement-step-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #9ca3af;
+    text-align: center;
+    margin-top: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.placement-step.active .placement-step-label,
+.placement-step.done .placement-step-label {
+    color: var(--mlm-primary, #00BFA5);
+}
+
+/* Auto-placement badge */
+.auto-placed-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #dbeafe;
+    color: #1e40af;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 10px;
+    letter-spacing: 0.03em;
+}
+
+/* Dark mode */
+.dark-mode .placement-card {
+    background: #0C1427;
+    border-color: #172036;
+}
+
+.dark-mode .placement-node-slot {
+    background: #0f1a2e;
+    border-color: #172036;
+    color: #e9ecef;
+}
+
+.dark-mode .placement-node-sponsor {
+    background: rgba(0,191,165,0.15);
+}
+
+@media (max-width: 575px) {
+    .placement-legs {
+        grid-template-columns: 1fr;
+    }
+    .placement-node-slot,
+    .placement-node-sponsor {
+        min-width: unset;
+        width: 100%;
+    }
+}
+
+/* ============================================================
+   Product Theme Classes
+   Applied to the external-member signup page per product tier
+   and used in the Admin CRUD as preview/badge indicators.
+   ============================================================ */
+
+/* ── Guest Member (Blue-Grey / Teal accent) ─────────────────── */
+.theme-product-guest {
+    --product-primary:      #1a7a8a;
+    --product-secondary:    #2d9aac;
+    --product-accent:       #00bcd4;
+    --product-bg:           #e8f6f8;
+    --product-bg-dark:      #0d3d47;
+    --product-text:         #0d3d47;
+    --product-text-light:   #ffffff;
+    --product-gradient:     linear-gradient(135deg, #1a7a8a 0%, #0d3d47 100%);
+    background: var(--product-bg);
+    color: var(--product-text);
+    border-left: 4px solid var(--product-accent);
+    border-radius: 6px;
+}
+
+/* ── VIP (Gold / Amber) ──────────────────────────────────────── */
+.theme-product-vip {
+    --product-primary:      #c9960c;
+    --product-secondary:    #e8b825;
+    --product-accent:       #ffd700;
+    --product-bg:           #fdf8e1;
+    --product-bg-dark:      #4a3200;
+    --product-text:         #4a3200;
+    --product-text-light:   #ffffff;
+    --product-gradient:     linear-gradient(135deg, #c9960c 0%, #4a3200 100%);
+    background: var(--product-bg);
+    color: var(--product-text);
+    border-left: 4px solid var(--product-accent);
+    border-radius: 6px;
+}
+
+/* ── Elite (Purple / Violet) ─────────────────────────────────── */
+.theme-product-elite {
+    --product-primary:      #6a1b9a;
+    --product-secondary:    #8e24aa;
+    --product-accent:       #ce93d8;
+    --product-bg:           #f5eefa;
+    --product-bg-dark:      #2e0046;
+    --product-text:         #2e0046;
+    --product-text-light:   #ffffff;
+    --product-gradient:     linear-gradient(135deg, #6a1b9a 0%, #2e0046 100%);
+    background: var(--product-bg);
+    color: var(--product-text);
+    border-left: 4px solid var(--product-accent);
+    border-radius: 6px;
+}
+
+/* ── Turbo (Red-Orange / Fiery) ──────────────────────────────── */
+.theme-product-turbo {
+    --product-primary:      #d84315;
+    --product-secondary:    #f4511e;
+    --product-accent:       #ff7043;
+    --product-bg:           #fdecea;
+    --product-bg-dark:      #5c1100;
+    --product-text:         #5c1100;
+    --product-text-light:   #ffffff;
+    --product-gradient:     linear-gradient(135deg, #d84315 0%, #5c1100 100%);
+    background: var(--product-bg);
+    color: var(--product-text);
+    border-left: 4px solid var(--product-accent);
+    border-radius: 6px;
+}
+
+/* ── Signup page hero section ────────────────────────────────── */
+.product-signup-hero {
+    background: var(--product-gradient, linear-gradient(135deg, #1a7a8a, #0d3d47));
+    color: var(--product-text-light, #fff);
+    padding: 3rem 2rem;
+    border-radius: 0 0 1.5rem 1.5rem;
+}
+
+.product-signup-hero .product-logo {
+    max-height: 80px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,.3));
+}
+
+/* ── Signup CTA button inherits accent color ─────────────────── */
+.product-cta-btn {
+    background: var(--product-accent, #00bcd4);
+    border: none;
+    color: var(--product-text, #fff);
+    font-weight: 700;
+    letter-spacing: .04em;
+    padding: .75rem 2rem;
+    border-radius: 2rem;
+    transition: filter .2s, transform .15s;
+}
+.product-cta-btn:hover {
+    filter: brightness(1.12);
+    transform: translateY(-2px);
+}
+
+/* ── Admin grid badge + preview ──────────────────────────────── */
+.product-theme-badge {
+    font-size: .65rem;
+    font-weight: 600;
+    letter-spacing: .03em;
+    padding: .2em .55em;
+    border-radius: .4rem;
+    vertical-align: middle;
+}
+
+.product-theme-badge.theme-product-guest  { background: #d0f0f4; color: #0d3d47; }
+.product-theme-badge.theme-product-vip    { background: #fff3c4; color: #4a3200; }
+.product-theme-badge.theme-product-elite  { background: #ede0f7; color: #2e0046; }
+.product-theme-badge.theme-product-turbo  { background: #ffd4cc; color: #5c1100; }
+
+.product-theme-preview {
+    padding: .5rem .75rem;
+    font-size: .8rem;
+    border-radius: .4rem;
+}
+
+.product-desc-preview {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
 }

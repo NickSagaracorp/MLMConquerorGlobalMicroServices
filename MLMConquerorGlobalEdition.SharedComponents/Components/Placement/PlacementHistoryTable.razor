@@ -1,0 +1,136 @@
+@inject HttpClient Http
+
+<BreadcrumbNav Items="@_breadcrumb" />
+
+<PagedTable TItem="PlacementHistoryItem"
+            Title="Historial de Placements"
+            Items="@_items"
+            TotalCount="@_total"
+            PageSize="@_pageSize"
+            CurrentPage="@_page"
+            IsLoading="@_isLoading"
+            OnPageChange="@OnPageChange">
+    <HeaderTemplate>
+        <th scope="col">Miembro</th>
+        <th scope="col">Acción</th>
+        <th scope="col">Nodo destino</th>
+        <th scope="col">Pierna</th>
+        <th scope="col">Ejecutado por</th>
+        <th scope="col">Fecha</th>
+    </HeaderTemplate>
+    <RowTemplate Context="item">
+        <tr>
+            <td>
+                <div class="fw-semibold">@item.MemberFullName</div>
+                <code class="text-muted small">@item.MemberCode</code>
+            </td>
+            <td>
+                <span class="badge rounded-pill @ActionBadgeClass(item.Action)">
+                    @item.Action
+                </span>
+            </td>
+            <td>
+                <span class="small">@(item.TargetParentFullName ?? item.TargetParentMemberId ?? "—")</span>
+            </td>
+            <td>
+                @if (!string.IsNullOrEmpty(item.Side))
+                {
+                    <span class="badge bg-@(item.Side == "Left" ? "primary" : "info") bg-opacity-10 text-@(item.Side == "Left" ? "primary" : "info")">
+                        @(item.Side == "Left" ? "Izquierda" : "Derecha")
+                    </span>
+                }
+                else
+                {
+                    <span class="text-muted">—</span>
+                }
+            </td>
+            <td>
+                <span class="badge rounded-pill bg-light text-secondary">
+                    @item.ExecutedByType
+                </span>
+            </td>
+            <td>
+                <span class="small">@item.ExecutedAt.ToString("dd MMM yyyy HH:mm")</span>
+            </td>
+        </tr>
+    </RowTemplate>
+    <HeaderActions>
+        <button class="btn btn-outline-secondary btn-sm"
+                @onclick="LoadAsync"
+                type="button"
+                aria-label="Refrescar historial">
+            <i class="ri-refresh-line" aria-hidden="true"></i>
+        </button>
+    </HeaderActions>
+</PagedTable>
+
+@code {
+    [Parameter] public string BackRoute { get; set; } = "/team/placement";
+
+    private bool   _isLoading = true;
+    private int    _page      = 1;
+    private int    _pageSize  = 20;
+    private int    _total;
+    private List<PlacementHistoryItem> _items = new();
+
+    private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
+    {
+        new("Dashboard",  "/dashboard"),
+        new("Equipo",     "/team"),
+        new("Placement",  BackRoute),
+        new("Historial")
+    };
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResponse<PagedResultWrapper>>(
+                $"api/v1/bizcenter/placement/history?page={_page}&pageSize={_pageSize}");
+
+            _items = resp?.Data?.Items ?? new();
+            _total = resp?.Data?.TotalCount ?? 0;
+        }
+        catch { /* ApiErrorAlert handles display */ }
+        finally { _isLoading = false; }
+    }
+
+    private async Task OnPageChange(int page)
+    {
+        _page = page;
+        await LoadAsync();
+    }
+
+    private static string ActionBadgeClass(string action) => action switch
+    {
+        "Placed"     => "bg-success",
+        "Removed"    => "bg-danger",
+        "AutoPlaced" => "bg-info",
+        _            => "bg-secondary"
+    };
+
+    private class ApiResponse<T> { public T? Data { get; set; } }
+    private class PagedResultWrapper
+    {
+        public List<PlacementHistoryItem> Items      { get; set; } = new();
+        public int                        TotalCount { get; set; }
+    }
+
+    public class PlacementHistoryItem
+    {
+        public long     Id                   { get; set; }
+        public string   MemberId             { get; set; } = string.Empty;
+        public string   MemberFullName       { get; set; } = string.Empty;
+        public string   MemberCode           { get; set; } = string.Empty;
+        public string   Action               { get; set; } = string.Empty;
+        public string?  TargetParentMemberId { get; set; }
+        public string?  TargetParentFullName { get; set; }
+        public string?  Side                 { get; set; }
+        public DateTime ExecutedAt           { get; set; }
+        public string   ExecutedByType       { get; set; } = string.Empty;
+    }
+}

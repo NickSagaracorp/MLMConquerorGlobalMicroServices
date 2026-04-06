@@ -128,10 +128,15 @@ public class GrantTokensHandlerTests
             }),
             CancellationToken.None);
 
-        var tx = db.TokenTransactions.Single();
-        tx.TransactionType.Should().Be(TokenTransactionType.AdminGranted);
-        tx.MemberId.Should().Be("AMB-001");
-        tx.Quantity.Should().Be(5);
-        tx.Notes.Should().Be("Bonus grant");
+        // Handler creates one transaction per token (Quantity=1 each)
+        var txs = db.TokenTransactions.ToList();
+        txs.Should().HaveCount(5);
+        txs.Should().AllSatisfy(tx =>
+        {
+            tx.TransactionType.Should().Be(TokenTransactionType.AdminGranted);
+            tx.MemberId.Should().Be("AMB-001");
+            tx.Quantity.Should().Be(1);
+            tx.Notes.Should().Be("Bonus grant");
+        });
     }
 }

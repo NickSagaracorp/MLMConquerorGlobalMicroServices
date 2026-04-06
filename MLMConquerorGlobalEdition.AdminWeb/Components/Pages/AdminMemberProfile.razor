@@ -206,6 +206,18 @@ else
             </div>
         </div>
     }
+    else if (_activeTab == "placement")
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4 text-center py-5">
+                <i class="ri-user-add-line fs-2 text-primary d-block mb-3"></i>
+                <p class="text-muted mb-3">Gestiona el placement de los miembros reclutados por este ambassador.</p>
+                <a href="/admin/placement?sponsorId=@MemberId" class="btn btn-primary btn-sm">
+                    <i class="ri-external-link-line me-1"></i>Ver Placements
+                </a>
+            </div>
+        </div>
+    }
     else if (_activeTab == "orders")
     {
         <div class="card border-0 shadow-sm">
@@ -263,6 +275,7 @@ else
         new("profile",    "Profile",     "ri-user-line"),
         new("status",     "Status",      "ri-toggle-line"),
         new("network",    "Network",     "ri-node-tree"),
+        new("placement",  "Placement",   "ri-user-add-line"),
         new("commissions","Commissions", "ri-money-dollar-circle-line"),
         new("ranks",      "Ranks",       "ri-award-line"),
         new("orders",     "Orders",      "ri-shopping-bag-line"),

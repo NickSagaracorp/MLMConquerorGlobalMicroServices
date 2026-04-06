@@ -1,3 +1,4 @@
+@inject HttpClient Http
 @inject IViewContextService ViewContext
 @inject NavigationManager Nav
 
@@ -169,10 +170,23 @@
         _page = page;
         _isLoading = true;
         StateHasChanged();
-        // TODO: ViewAll → GET /api/v1/admin/tickets?status={_statusFilter}&priority={_priorityFilter}&page={page}&pageSize={_pageSize}
-        //       member  → GET /api/v1/bizcenter/tickets?status={_statusFilter}&priority={_priorityFilter}&page={page}&pageSize={_pageSize}
-        await Task.Delay(50);
-        _isLoading = false;
+        try
+        {
+            var isAdmin = ViewContext.HasPermission(Permissions.Ticket.ViewAll);
+            var baseUrl = isAdmin ? "api/v1/admin/tickets" : "api/v1/bizcenter/tickets";
+            var query   = $"?page={page}&pageSize={_pageSize}";
+            if (!string.IsNullOrEmpty(_statusFilter))   query += $"&status={_statusFilter}";
+            if (!string.IsNullOrEmpty(_priorityFilter)) query += $"&priority={_priorityFilter}";
+
+            var response = await Http.GetFromJsonAsync<ApiResponse<PagedData<TicketListItem>>>(baseUrl + query);
+            if (response?.Success == true && response.Data is not null)
+            {
+                _items = response.Data.Items;
+                _total = response.Data.TotalCount;
+            }
+        }
+        catch { /* silently degrade */ }
+        finally { _isLoading = false; }
     }
 
     private async Task HandleTicketCreatedAsync()
@@ -180,6 +194,9 @@
         _showCreateModal = false;
         await LoadPageAsync(1);
     }
+
+    private class ApiResponse<T> { public bool Success { get; set; } public T? Data { get; set; } }
+    private class PagedData<T>   { public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
 
     private record TicketListItem(
         string   TicketId,

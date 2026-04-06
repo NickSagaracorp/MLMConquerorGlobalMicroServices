@@ -86,10 +86,20 @@ else
 
         try
         {
-            // TODO: replace with actual API calls when BizCenter API endpoints are wired
-            // var stats = await Http.GetFromJsonAsync<ApiResponse<DashboardStatsDto>>(
-            //     $"api/v1/bizcenter/dashboard?memberId={MemberProfileId}");
-            await Task.Delay(50); // placeholder
+            var response = await Http.GetFromJsonAsync<ApiResponse<DashboardStatsDto>>(
+                "api/v1/bizcenter/dashboard/stats");
+
+            if (response?.Success == true && response.Data is not null)
+            {
+                var d = response.Data;
+                _totalEarnings = d.TotalEarnings.ToString("C");
+                _teamSize      = d.TeamSize.ToString();
+                _tokenBalance  = d.TokenBalance.ToString();
+                _currentRank   = d.CurrentRank ?? "—";
+                _fsbWindows    = d.FsbWindows
+                    .Select(w => new FsbWindowDto(w.WindowNumber, w.StartDate, w.EndDate, w.Earned, w.Status))
+                    .ToList();
+            }
         }
         catch (Exception ex)
         {
@@ -99,6 +109,27 @@ else
         {
             _isLoading = false;
         }
+    }
+
+    // ── Local DTOs matching the API response ─────────────────────────────────
+    private class ApiResponse<T> { public bool Success { get; set; } public T? Data { get; set; } }
+
+    private class DashboardStatsDto
+    {
+        public decimal TotalEarnings { get; set; }
+        public int     TeamSize      { get; set; }
+        public int     TokenBalance  { get; set; }
+        public string? CurrentRank   { get; set; }
+        public List<FsbWindowApiDto> FsbWindows { get; set; } = new();
+    }
+
+    private class FsbWindowApiDto
+    {
+        public int       WindowNumber { get; set; }
+        public DateTime? StartDate    { get; set; }
+        public DateTime? EndDate      { get; set; }
+        public decimal   Earned       { get; set; }
+        public string    Status       { get; set; } = string.Empty;
     }
 
     public record FsbWindowDto(int WindowNumber, DateTime? StartDate, DateTime? EndDate, decimal Earned, string Status);

@@ -1,3 +1,4 @@
+@inject HttpClient Http
 @inject IViewContextService ViewContext
 @inject NavigationManager Nav
 
@@ -113,35 +114,48 @@
         _isLoading = true;
         StateHasChanged();
 
-        // TODO: GET /api/v1/ranks/progress/{MemberProfileId}
-        await Task.Delay(50);
-
-        // Placeholder data — replaced when real API is wired
-        _progress = new RankProgress(
-            CurrentRank:     "Silver",
-            CurrentPoints:   4_200,
-            PointsToNext:    800,
-            Percentage:      84.0,
-            QualifiedMonths: 6);
-
-        _requirements = new List<RankRequirementRow>
+        try
         {
-            new("Personal Volume (PV)",  420,  500),
-            new("Group Volume (GV)",     3_800, 5_000),
-            new("Active Downlines",      12,   15)
-        };
-
-        _isLoading = false;
+            var response = await Http.GetFromJsonAsync<ApiResponse<RankProgressDto>>(
+                $"api/v1/bizcenter/ranks/dashboard");
+            if (response?.Success == true && response.Data is not null)
+            {
+                var d = response.Data;
+                _progress = new RankProgress(d.CurrentRank, d.CurrentPoints, d.PointsToNext, d.Percentage, d.QualifiedMonths);
+                _requirements = d.Requirements.Select(r => new RankRequirementRow(r.Label, r.Current, r.Required)).ToList();
+            }
+        }
+        catch { /* silently degrade */ }
+        finally { _isLoading = false; }
     }
 
     private async Task HandleOverrideConfirmedAsync()
     {
         _showOverrideModal = false;
-        // TODO: POST /api/v1/ranks/evaluate/{MemberProfileId} with manual override payload
-        await Task.CompletedTask;
+        try { await Http.PostAsJsonAsync($"api/v1/admin/members/{MemberProfileId}/rank/override", new { }); }
+        catch { /* silently degrade */ }
     }
 
     // ── Local data models ────────────────────────────────────────────────────
+    private class ApiResponse<T> { public bool Success { get; set; } public T? Data { get; set; } }
+
+    private class RankProgressDto
+    {
+        public string CurrentRank    { get; set; } = string.Empty;
+        public int    CurrentPoints  { get; set; }
+        public int    PointsToNext   { get; set; }
+        public double Percentage     { get; set; }
+        public int    QualifiedMonths { get; set; }
+        public List<RequirementDto> Requirements { get; set; } = new();
+    }
+
+    private class RequirementDto
+    {
+        public string  Label    { get; set; } = string.Empty;
+        public decimal Current  { get; set; }
+        public decimal Required { get; set; }
+    }
+
     private record RankProgress(
         string CurrentRank,
         int    CurrentPoints,

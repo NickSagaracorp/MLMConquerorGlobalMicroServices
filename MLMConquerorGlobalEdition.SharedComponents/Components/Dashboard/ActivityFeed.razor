@@ -46,9 +46,50 @@
         if (string.IsNullOrEmpty(MemberProfileId)) return;
         _isLoading = true;
         StateHasChanged();
-        // TODO: load from API
-        await Task.Delay(50);
-        _isLoading = false;
+
+        try
+        {
+            // Recent commissions serve as activity feed items
+            var response = await Http.GetFromJsonAsync<ApiResponse<PagedData<CommissionItem>>>(
+                "api/v1/bizcenter/commissions?page=1&pageSize=5");
+
+            if (response?.Success == true && response.Data?.Items is not null)
+            {
+                _activities = response.Data.Items
+                    .Select(c => new ActivityItem(
+                        Icon:        "ri-money-dollar-circle-line",
+                        Color:       "success",
+                        Title:       $"{c.CommissionType} — {c.Amount:C}",
+                        Description: $"Period: {c.PeriodDate:MMM yyyy} · Status: {c.Status}",
+                        TimeAgo:     FormatTimeAgo(c.PeriodDate)))
+                    .ToList();
+            }
+        }
+        catch { /* non-critical widget — silently degrade */ }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private static string FormatTimeAgo(DateTime dt)
+    {
+        var diff = DateTime.UtcNow - dt;
+        if (diff.TotalDays >= 30)  return $"{(int)(diff.TotalDays / 30)}mo ago";
+        if (diff.TotalDays >= 1)   return $"{(int)diff.TotalDays}d ago";
+        if (diff.TotalHours >= 1)  return $"{(int)diff.TotalHours}h ago";
+        return $"{(int)diff.TotalMinutes}m ago";
+    }
+
+    private class ApiResponse<T> { public bool Success { get; set; } public T? Data { get; set; } }
+    private class PagedData<T>   { public List<T> Items { get; set; } = new(); }
+
+    private class CommissionItem
+    {
+        public string   CommissionType { get; set; } = string.Empty;
+        public decimal  Amount         { get; set; }
+        public DateTime PeriodDate     { get; set; }
+        public string   Status         { get; set; } = string.Empty;
     }
 
     private record ActivityItem(string Icon, string Color, string Title, string Description, string TimeAgo);

@@ -131,22 +131,32 @@
         _page      = page;
         _isLoading = true;
         StateHasChanged();
-        // TODO: GET /api/v1/bizcenter/commissions?memberId={MemberProfileId}&page={page}&pageSize={_pageSize}
-        await Task.Delay(50);
-        _isLoading = false;
+
+        try
+        {
+            var response = await Http.GetFromJsonAsync<ApiResponse<PagedData<CommissionEarningDto>>>(
+                $"api/v1/bizcenter/commissions?page={page}&pageSize={_pageSize}");
+
+            if (response?.Success == true && response.Data is not null)
+            {
+                _items = response.Data.Items;
+                _total = response.Data.TotalCount;
+            }
+        }
+        catch { /* silently degrade */ }
+        finally { _isLoading = false; }
     }
 
     private void ConfirmDelete(string id)
     {
-        _targetId         = id;
+        _targetId          = id;
         _showDeleteConfirm = true;
     }
 
     private async Task ExecuteDeleteAsync()
     {
         _actionBusy = true;
-        // TODO: DELETE /api/v1/admin/commissions/{_targetId}
-        await Task.Delay(300);
+        await Http.DeleteAsync($"api/v1/admin/commissions/{_targetId}");
         _showDeleteConfirm = false;
         _actionBusy        = false;
         _targetId          = null;
@@ -155,9 +165,12 @@
 
     private async Task ForcePay(string id)
     {
-        // TODO: POST /api/v1/admin/commissions/pay with { commissionId: id }
-        await Task.CompletedTask;
+        await Http.PostAsJsonAsync("api/v1/admin/commissions/pay", new { CommissionId = id });
+        await LoadPageAsync(_page);
     }
+
+    private class ApiResponse<T> { public bool Success { get; set; } public T? Data { get; set; } }
+    private class PagedData<T>   { public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
 
     public record CommissionEarningDto(
         string    Id,

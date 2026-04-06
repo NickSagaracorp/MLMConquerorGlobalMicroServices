@@ -20,4 +20,5 @@ public class UpdateProductDto
     public bool CorporateFee { get; set; }
     public bool JoinPageMembership { get; set; }
     public int? MembershipLevelId { get; set; }
+    public string? ThemeClass { get; set; }
 }

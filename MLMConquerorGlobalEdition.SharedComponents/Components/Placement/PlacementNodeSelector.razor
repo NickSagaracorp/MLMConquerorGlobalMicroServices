@@ -1,0 +1,151 @@
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Placement
+
+@* Visual tile-based binary tree node selector.
+   Fully accessible: keyboard navigable, ARIA roles, no canvas required. *@
+
+<fieldset class="border-0 p-0 m-0">
+    <legend class="visually-hidden">Seleccionar nodo y pierna en el Dual Team</legend>
+
+    @if (!Nodes.Any())
+    {
+        <EmptyState Icon="ri-node-tree"
+                    Title="Sin posiciones disponibles"
+                    Message="No hay nodos con slots libres en el árbol del sponsor." />
+    }
+    else
+    {
+        <!-- Depth-grouped view: show nodes level by level -->
+        @foreach (var depth in NodesByDepth.Keys.OrderBy(k => k))
+        {
+            <div class="mb-4">
+                <div class="text-muted small mb-2 text-uppercase fw-semibold"
+                     style="letter-spacing:.05em">
+                    @(depth == 0 ? "Sponsor (Nivel raíz)" : $"Nivel {depth}")
+                </div>
+
+                <div class="d-flex flex-wrap gap-3">
+                    @foreach (var node in NodesByDepth[depth])
+                    {
+                        <!-- Node container -->
+                        <div class="placement-node">
+                            <!-- Parent node (occupied) -->
+                            <div class="placement-node-sponsor"
+                                 aria-label="Nodo: @node.FullName (@node.MemberCode)">
+                                @if (!string.IsNullOrEmpty(node.PhotoUrl))
+                                {
+                                    <img src="@node.PhotoUrl"
+                                         alt=""
+                                         class="rounded-circle mb-1"
+                                         style="width:32px;height:32px;object-fit:cover"
+                                         aria-hidden="true" />
+                                }
+                                else
+                                {
+                                    <i class="ri-user-3-line fs-5 d-block mb-1" aria-hidden="true"></i>
+                                }
+                                <div class="fw-semibold small text-truncate" style="max-width:120px">
+                                    @node.FullName
+                                </div>
+                                <div class="text-muted" style="font-size:10px">@node.MemberCode</div>
+                            </div>
+
+                            <!-- Connector -->
+                            <div class="placement-node-connector" aria-hidden="true"></div>
+
+                            <!-- Leg slots -->
+                            <div class="placement-legs">
+                                @* Left slot *@
+                                @if (node.IsLeftAvailable)
+                                {
+                                    <button type="button"
+                                            class='placement-node-slot @(IsSelected(node.MemberId, "Left") ? "selected" : "")'
+                                            @onclick='() => Select(node.MemberId, "Left", node.FullName)'
+                                            aria-label='Pierna izquierda de @node.FullName — disponible. @(IsSelected(node.MemberId, "Left") ? "Seleccionado." : "Haz clic para seleccionar.")'
+                                            aria-pressed='@IsSelected(node.MemberId, "Left").ToString().ToLower()'>
+                                        <i class="ri-add-circle-line text-primary d-block mb-1 fs-5" aria-hidden="true"></i>
+                                        <div class="small fw-semibold text-primary">Izquierda</div>
+                                        <div class="text-muted" style="font-size:10px">Disponible</div>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <div class="placement-node-slot occupied"
+                                         aria-label="Pierna izquierda de @node.FullName — ocupada por @(node.LeftChildName ?? "otro miembro")">
+                                        <i class="ri-user-line d-block mb-1 fs-5 text-muted" aria-hidden="true"></i>
+                                        <div class="small text-muted fw-semibold">Izquierda</div>
+                                        <div class="text-muted text-truncate" style="font-size:10px;max-width:100px">
+                                            @(node.LeftChildName ?? "Ocupado")
+                                        </div>
+                                    </div>
+                                }
+
+                                @* Right slot *@
+                                @if (node.IsRightAvailable)
+                                {
+                                    <button type="button"
+                                            class='placement-node-slot @(IsSelected(node.MemberId, "Right") ? "selected" : "")'
+                                            @onclick='() => Select(node.MemberId, "Right", node.FullName)'
+                                            aria-label='Pierna derecha de @node.FullName — disponible. @(IsSelected(node.MemberId, "Right") ? "Seleccionado." : "Haz clic para seleccionar.")'
+                                            aria-pressed='@IsSelected(node.MemberId, "Right").ToString().ToLower()'>
+                                        <i class="ri-add-circle-line text-info d-block mb-1 fs-5" aria-hidden="true"></i>
+                                        <div class="small fw-semibold text-info">Derecha</div>
+                                        <div class="text-muted" style="font-size:10px">Disponible</div>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <div class="placement-node-slot occupied"
+                                         aria-label="Pierna derecha de @node.FullName — ocupada por @(node.RightChildName ?? "otro miembro")">
+                                        <i class="ri-user-line d-block mb-1 fs-5 text-muted" aria-hidden="true"></i>
+                                        <div class="small text-muted fw-semibold">Derecha</div>
+                                        <div class="text-muted text-truncate" style="font-size:10px;max-width:100px">
+                                            @(node.RightChildName ?? "Ocupado")
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(SelectedParentId))
+        {
+            <div class="alert alert-success d-flex align-items-center gap-2 small mt-2 mb-0"
+                 role="status"
+                 aria-live="polite">
+                <i class="ri-checkbox-circle-line flex-shrink-0" aria-hidden="true"></i>
+                <div>
+                    Seleccionaste: pierna
+                    <strong>@(SelectedSide == "Left" ? "Izquierda" : "Derecha")</strong>
+                    bajo <strong>@_selectedParentName</strong>.
+                </div>
+            </div>
+        }
+    }
+</fieldset>
+
+@code {
+    [Parameter] public List<PlacementWizard.PlacementTreeNodeDto> Nodes { get; set; } = new();
+    [Parameter] public string? SelectedParentId { get; set; }
+    [Parameter] public string? SelectedSide     { get; set; }
+    [Parameter] public EventCallback<(string ParentId, string Side, string ParentName)> OnSelect { get; set; }
+
+    private string? _selectedParentName;
+
+    private Dictionary<int, List<PlacementWizard.PlacementTreeNodeDto>> NodesByDepth =>
+        Nodes
+            .Where(n => n.IsLeftAvailable || n.IsRightAvailable)
+            .GroupBy(n => n.Depth)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+    private bool IsSelected(string parentId, string side) =>
+        SelectedParentId == parentId && SelectedSide == side;
+
+    private async Task Select(string parentId, string side, string parentName)
+    {
+        _selectedParentName = parentName;
+        await OnSelect.InvokeAsync((parentId, side, parentName));
+    }
+}

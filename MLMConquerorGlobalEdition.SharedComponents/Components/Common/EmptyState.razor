@@ -1,21 +1,26 @@
-<div class="text-center py-5">
-    <div class="mb-3">
+<div class="text-center py-5" role="status" aria-live="polite">
+    <div class="mb-3" aria-hidden="true">
         <i class="@Icon fs-1 text-muted opacity-50"></i>
     </div>
     <h6 class="fw-semibold mb-1">@Title</h6>
     <p class="text-muted small mb-3">@Message</p>
     @if (!string.IsNullOrEmpty(ActionLabel))
     {
-        <button class="btn btn-primary btn-sm" @onclick="OnAction">
+        <button class="btn btn-primary btn-sm" @onclick="OnAction" type="button">
+            @if (!string.IsNullOrEmpty(ActionIcon))
+            {
+                <i class="@ActionIcon me-1" aria-hidden="true"></i>
+            }
             @ActionLabel
         </button>
     }
 </div>
 
 @code {
-    [Parameter] public string Icon          { get; set; } = "ri-inbox-line";
-    [Parameter] public string Title         { get; set; } = "No data found";
-    [Parameter] public string Message       { get; set; } = "There is nothing to display here yet.";
-    [Parameter] public string? ActionLabel  { get; set; }
+    [Parameter] public string Icon           { get; set; } = "ri-inbox-line";
+    [Parameter] public string Title          { get; set; } = "Sin registros";
+    [Parameter] public string Message        { get; set; } = "No hay nada que mostrar aquí todavía.";
+    [Parameter] public string? ActionLabel   { get; set; }
+    [Parameter] public string? ActionIcon    { get; set; }
     [Parameter] public EventCallback OnAction { get; set; }
 }

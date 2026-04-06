@@ -3896,12 +3896,10 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("DescriptionPromo")
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ImageUrl")
                         .IsRequired()
@@ -3969,6 +3967,10 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<decimal>("SetupFeePromo")
                         .HasColumnType("decimal(10,2)");
 
+                    b.Property<string>("ThemeClass")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("MembershipLevelId");
@@ -3998,7 +4000,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             QualificationPoins = 0,
                             QualificationPoinsPromo = 0,
                             SetupFee = 0m,
-                            SetupFeePromo = 0m
+                            SetupFeePromo = 0m,
+                            ThemeClass = "theme-product-guest"
                         },
                         new
                         {
@@ -4023,7 +4026,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             QualificationPoins = 3,
                             QualificationPoinsPromo = 0,
                             SetupFee = 0m,
-                            SetupFeePromo = 0m
+                            SetupFeePromo = 0m,
+                            ThemeClass = "theme-product-vip"
                         },
                         new
                         {
@@ -4048,7 +4052,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             QualificationPoins = 6,
                             QualificationPoinsPromo = 0,
                             SetupFee = 0m,
-                            SetupFeePromo = 0m
+                            SetupFeePromo = 0m,
+                            ThemeClass = "theme-product-elite"
                         },
                         new
                         {
@@ -4073,7 +4078,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             QualificationPoins = 6,
                             QualificationPoinsPromo = 0,
                             SetupFee = 0m,
-                            SetupFeePromo = 0m
+                            SetupFeePromo = 0m,
+                            ThemeClass = "theme-product-turbo"
                         },
                         new
                         {

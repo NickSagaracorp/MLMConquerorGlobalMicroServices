@@ -33,6 +33,9 @@
             <button class="nav-link @(_tab == "team" ? "active" : "")" @onclick='() => _tab = "team"'>Team</button>
         </li>
         <li class="nav-item">
+            <button class="nav-link @(_tab == "placement" ? "active" : "")" @onclick='() => _tab = "placement"'>Placement</button>
+        </li>
+        <li class="nav-item">
             <button class="nav-link @(_tab == "tokens" ? "active" : "")" @onclick='() => _tab = "tokens"'>Tokens</button>
         </li>
         <li class="nav-item">
@@ -56,6 +59,9 @@
             break;
         case "team":
             <DualTeamMyTeam MemberProfileId="@MemberId" />
+            break;
+        case "placement":
+            <PlacementPage HistoryRoute="@($"/admin/members/{MemberId}/view")" IsAdminContext="true" />
             break;
         case "tokens":
             <TokensPage MemberProfileId="@MemberId" />

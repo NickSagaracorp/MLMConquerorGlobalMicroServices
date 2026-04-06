@@ -22,4 +22,5 @@ public class ProductDto
     public bool JoinPageMembership { get; set; }
     public int? MembershipLevelId { get; set; }
     public int OldSystemProductId { get; set; }
+    public string? ThemeClass { get; set; }
 }

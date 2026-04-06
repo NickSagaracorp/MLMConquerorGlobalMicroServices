@@ -12,6 +12,7 @@
     <PackageReference Include="Syncfusion.Blazor.Maps" Version="33.1.44" />
     <PackageReference Include="Syncfusion.Blazor.Core" Version="33.1.44" />
     <PackageReference Include="Syncfusion.Blazor.Themes" Version="33.1.44" />
+    <PackageReference Include="Syncfusion.Blazor.RichTextEditor" Version="33.1.44" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\MLMConquerorGlobalEdition.AdminWeb.Client\MLMConquerorGlobalEdition.AdminWeb.Client.csproj" />

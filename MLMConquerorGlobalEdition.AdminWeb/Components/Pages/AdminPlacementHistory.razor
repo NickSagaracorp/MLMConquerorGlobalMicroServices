@@ -1,0 +1,7 @@
+@page "/admin/placement/history"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin")]
+
+<PageTitle>Historial de Placement — Admin</PageTitle>
+
+<PlacementHistoryTable BackRoute="/admin/placement" />

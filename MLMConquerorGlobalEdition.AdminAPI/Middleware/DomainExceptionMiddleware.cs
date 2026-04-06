@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using FluentValidation;
 using MLMConquerorGlobalEdition.Domain.Exceptions;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
@@ -26,6 +27,23 @@ public class DomainExceptionMiddleware
         try
         {
             await _next(context);
+        }
+        catch (ValidationException ex)
+        {
+            context.Response.StatusCode  = StatusCodes.Status400BadRequest;
+            context.Response.ContentType = "application/json";
+
+            var errors = ex.Errors
+                .Select(e => $"{e.PropertyName}: {e.ErrorMessage}")
+                .ToArray();
+
+            await context.Response.WriteAsJsonAsync(new ApiResponse<object>
+            {
+                Success   = false,
+                ErrorCode = "VALIDATION_ERROR",
+                Errors    = errors,
+                TraceId   = context.TraceIdentifier
+            });
         }
         catch (DomainException ex)
         {

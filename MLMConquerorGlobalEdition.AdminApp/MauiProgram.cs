@@ -36,8 +36,20 @@ public static class MauiProgram
         // Admin-specific view context initializer (manages impersonation state)
         builder.Services.AddScoped<AdminViewContextInitializer>();
 
-        // HTTP client — base address to AdminAPI
-        // TODO: Replace with config-driven base address before production
+        // Auth handler for SharedComponents default HttpClient
+        builder.Services.AddScoped<AdminAuthHandler>();
+
+        // Default HttpClient — SharedComponents inject this via @inject HttpClient Http.
+        // The AdminAuthHandler attaches the effective JWT (admin or impersonation) on every request.
+        builder.Services.AddHttpClient("admin", client =>
+        {
+            // TODO: Replace with config-driven base address before production
+            client.BaseAddress = new Uri("https://localhost:7002");
+        }).AddHttpMessageHandler(sp => sp.GetRequiredService<AdminAuthHandler>());
+        builder.Services.AddScoped(sp =>
+            sp.GetRequiredService<IHttpClientFactory>().CreateClient("admin"));
+
+        // Typed client for explicit AdminApiClient usage
         builder.Services.AddHttpClient<AdminApiClient>(client =>
         {
             client.BaseAddress = new Uri("https://localhost:7002");
