@@ -1,11 +1,11 @@
-using AutoMapper;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
-using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.RankEngine.DTOs;
 using MLMConquerorGlobalEdition.RankEngine.Features.GetRankProgress;
+using MLMConquerorGlobalEdition.RankEngine.Mappings;
 using MLMConquerorGlobalEdition.RankEngine.Services;
+using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.RankEngine.Features.EvaluateRank;
@@ -13,20 +13,17 @@ namespace MLMConquerorGlobalEdition.RankEngine.Features.EvaluateRank;
 public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<RankEvaluationResponse>>
 {
     private readonly AppDbContext _db;
-    private readonly IMapper _mapper;
     private readonly IDateTimeProvider _dateTime;
     private readonly ICurrentUserService _currentUser;
     private readonly GetRankProgressHandler _progressHelper;
 
     public EvaluateRankHandler(
         AppDbContext db,
-        IMapper mapper,
         IDateTimeProvider dateTime,
         ICurrentUserService currentUser,
         GetRankProgressHandler progressHelper)
     {
         _db = db;
-        _mapper = mapper;
         _dateTime = dateTime;
         _currentUser = currentUser;
         _progressHelper = progressHelper;
@@ -65,7 +62,7 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
                 MemberId = command.MemberId,
                 RankAchieved = false,
                 AchievedRank = currentRankHistory?.RankDefinition is not null
-                    ? _mapper.Map<RankDefinitionResponse>(currentRankHistory.RankDefinition)
+                    ? RankEngineMappingExtensions.ToResponse(currentRankHistory.RankDefinition)
                     : null,
                 Message = "Member is already at the highest rank or no higher ranks are available.",
                 EvaluatedAt = _dateTime.Now
@@ -92,7 +89,7 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
                 MemberId = command.MemberId,
                 RankAchieved = false,
                 AchievedRank = currentRankHistory?.RankDefinition is not null
-                    ? _mapper.Map<RankDefinitionResponse>(currentRankHistory.RankDefinition)
+                    ? RankEngineMappingExtensions.ToResponse(currentRankHistory.RankDefinition)
                     : null,
                 Message = "Member does not qualify for a rank advancement at this time.",
                 EvaluatedAt = _dateTime.Now
@@ -119,9 +116,9 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
         {
             MemberId = command.MemberId,
             RankAchieved = true,
-            AchievedRank = _mapper.Map<RankDefinitionResponse>(highestQualifiedRank),
+            AchievedRank = RankEngineMappingExtensions.ToResponse(highestQualifiedRank),
             PreviousRank = currentRankHistory?.RankDefinition is not null
-                ? _mapper.Map<RankDefinitionResponse>(currentRankHistory.RankDefinition)
+                ? RankEngineMappingExtensions.ToResponse(currentRankHistory.RankDefinition)
                 : null,
             Message = $"Congratulations! Member has achieved the '{highestQualifiedRank.Name}' rank.",
             EvaluatedAt = now

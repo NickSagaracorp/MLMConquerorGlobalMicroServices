@@ -67,15 +67,12 @@ public class GenerateCertificateHandler : IRequestHandler<GenerateCertificateCom
             RankDescription: history.RankDefinition.Description ?? string.Empty,
             AchievedAt: history.AchievedAt);
 
-        // 1. Load PDF template → fill AcroForm fields → flatten → bytes
         var pdfBytes = await _pdfFiller.FillAsync(rankNameSlug, templateData, ct);
 
-        // 2. Upload to S3: certificates/{memberId}/{rank-slug}/{historyId}.pdf
         var s3Key = $"certificates/{member.MemberId}/{rankNameSlug}/{history.Id}.pdf";
         using var stream = new MemoryStream(pdfBytes);
         var certificateUrl = await _s3.UploadAsync(s3Key, stream, "application/pdf", ct);
 
-        // 3. Persist S3 URL
         var now = _dateTime.Now;
         history.GeneratedCertificateUrl = certificateUrl;
         history.LastUpdateDate = now;

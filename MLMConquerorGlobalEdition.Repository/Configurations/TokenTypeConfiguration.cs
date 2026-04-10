@@ -23,7 +23,6 @@ public class TokenTypeConfiguration : IEntityTypeConfiguration<TokenType>
 
         builder.HasData(
 
-            // ── ENROLLMENT: AMBASSADOR PACKAGES ──────────────────────────────────
             new TokenType { Id = 1,  Name = "Enrollment: Ambassador + Pro",                      IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 2,  Name = "Guest Member",                                      IsGuestPass = true,  IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 5,  Name = "Enrollment: Ambassador + Elite",                    IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
@@ -45,7 +44,6 @@ public class TokenTypeConfiguration : IEntityTypeConfiguration<TokenType>
             new TokenType { Id = 75, Name = "Enrollment: Ambassador + VIP 180",                  IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 76, Name = "Enrollment: Ambassador + VIP 180 + Event",          IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
 
-            // ── ENROLLMENT: AMBASSADOR + TURBO PROGRAM ───────────────────────────
             new TokenType { Id = 69, Name = "Enrollment: Ambassador + Elite + TURBO",             IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 70, Name = "Enrollment: Ambassador + Elite + Event + TURBO",     IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 71, Name = "Enrollment: Ambassador + Elite (Coupon)",            IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
@@ -54,7 +52,6 @@ public class TokenTypeConfiguration : IEntityTypeConfiguration<TokenType>
             new TokenType { Id = 74, Name = "Enrollment: Ambassador + Elite + TURBO (Coupon)",   IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 80, Name = "Enrollment: Elite Member + TURBO",                   IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
 
-            // ── ENROLLMENT: MEMBER ONLY (no ambassador) ──────────────────────────
             new TokenType { Id = 13, Name = "Enrollment: VIP Member",                            IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 15, Name = "Enrollment: Pro Member",                            IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 16, Name = "Enrollment: Elite Member",                          IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
@@ -65,10 +62,8 @@ public class TokenTypeConfiguration : IEntityTypeConfiguration<TokenType>
             new TokenType { Id = 54, Name = "Enrollment: Plus Member",                           IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 79, Name = "Enrollment: VIP 180 Member",                        IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
 
-            // ── ENROLLMENT: NO COMMISSION ─────────────────────────────────────────
             new TokenType { Id = 9,  Name = "Enrollment Pro ($99.97 cost / no commission)",      IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
 
-            // ── ENROLLMENT: FREE (no sponsor commissions on signup) ───────────────
             new TokenType { Id = 81, Name = "Enrollment: Ambassador + Elite FREE",               IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 82, Name = "Enrollment: Ambassador + Elite (Coupon) FREE",      IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 83, Name = "Enrollment: Ambassador + Elite + TURBO FREE",       IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
@@ -83,7 +78,6 @@ public class TokenTypeConfiguration : IEntityTypeConfiguration<TokenType>
             new TokenType { Id = 92, Name = "Enrollment: VIP Member FREE",                       IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 93, Name = "Enrollment: VIP 180 FREE",                          IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
 
-            // ── ENROLLMENT: HELP A FRIEND / SPECIAL PROMOS ───────────────────────
             new TokenType { Id = 94, Name = "Elite Ambassador SpecialPromo",                     IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 95, Name = "Plus Ambassador SpecialPromo",                      IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 96, Name = "Turbo Ambassador SpecialPromo",                     IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
@@ -91,7 +85,6 @@ public class TokenTypeConfiguration : IEntityTypeConfiguration<TokenType>
             new TokenType { Id = 98, Name = "Enrollment: Ambassador + Elite (Help a Friend)",    IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 99, Name = "Enrollment: Ambassador + Elite + TURBO (Help a Friend)", IsGuestPass = false, IsActive = true, CreationDate = SeedDate, CreatedBy = "seed" },
 
-            // ── MONTHLY SUBSCRIPTIONS ─────────────────────────────────────────────
             new TokenType { Id = 3,  Name = "Monthly: Elite",                                    IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 4,  Name = "Monthly: VIP",                                      IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 22, Name = "Monthly: Pro",                                      IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
@@ -104,12 +97,10 @@ public class TokenTypeConfiguration : IEntityTypeConfiguration<TokenType>
             new TokenType { Id = 55, Name = "Monthly: Elite180 (59.97)",                         IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 25, Name = "Monthly: Mall",                                     IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
 
-            // ── ANNUAL / RECURRING ────────────────────────────────────────────────
             new TokenType { Id = 21, Name = "Annual: VIP 365",                                   IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 23, Name = "Annual: Biz Center",                                IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 78, Name = "Recurring: VIP 180",                                IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
 
-            // ── UPGRADES: GUEST TO PAID (trigger enrollment commissions) ─────────
             new TokenType { Id = 56, Name = "Upgrade: Guest to VIP",                             IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 57, Name = "Upgrade: Guest to VIP 365",                         IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 58, Name = "Upgrade: Guest to Plus",                            IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
@@ -117,7 +108,6 @@ public class TokenTypeConfiguration : IEntityTypeConfiguration<TokenType>
             new TokenType { Id = 60, Name = "Upgrade: Guest to Elite180",                        IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 77, Name = "Upgrade: Guest to VIP 180",                         IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
 
-            // ── UPGRADES: PAID TO PAID (residual eligible, no enrollment commissions) ──
             new TokenType { Id = 17, Name = "Upgrade: Pro to Elite",                             IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 35, Name = "Upgrade: Plus180 to Pro",                           IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 36, Name = "Upgrade: Plus180 to Pro180",                        IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
@@ -135,7 +125,6 @@ public class TokenTypeConfiguration : IEntityTypeConfiguration<TokenType>
             new TokenType { Id = 63, Name = "Upgrade: VIP to Elite180",                          IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 66, Name = "Upgrade: Elite to Turbo",                           IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
 
-            // ── SPECIALTY / FEES / OTHER ──────────────────────────────────────────
             new TokenType { Id = 6,  Name = "Travel Advantage Elite (Signup)",                   IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 7,  Name = "Travel Advantage Lite",                             IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },
             new TokenType { Id = 10, Name = "Annual Fee",                                        IsGuestPass = false, IsActive = true,  CreationDate = SeedDate, CreatedBy = "seed" },

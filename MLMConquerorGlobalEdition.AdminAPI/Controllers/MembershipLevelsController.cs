@@ -1,9 +1,8 @@
-using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.AdminAPI.DTOs.MembershipLevels;
-using MLMConquerorGlobalEdition.Domain.Entities.Membership;
+using MLMConquerorGlobalEdition.AdminAPI.Mappings;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
 
@@ -15,19 +14,14 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 public class MembershipLevelsController : ControllerBase
 {
     private readonly AppDbContext _db;
-    private readonly IMapper _mapper;
 
-    public MembershipLevelsController(AppDbContext db, IMapper mapper)
-    {
-        _db = db;
-        _mapper = mapper;
-    }
+    public MembershipLevelsController(AppDbContext db) => _db = db;
 
     [HttpGet]
     public async Task<IActionResult> GetAll(CancellationToken ct = default)
     {
         var items = await _db.MembershipLevels.AsNoTracking().OrderBy(x => x.SortOrder).ToListAsync(ct);
-        return Ok(ApiResponse<IEnumerable<MembershipLevelDto>>.Ok(_mapper.Map<IEnumerable<MembershipLevelDto>>(items)));
+        return Ok(ApiResponse<IEnumerable<MembershipLevelDto>>.Ok(items.Select(x => x.ToDto())));
     }
 
     [HttpGet("{id:int}")]
@@ -37,17 +31,17 @@ public class MembershipLevelsController : ControllerBase
         if (entity is null)
             return NotFound(ApiResponse<MembershipLevelDto>.Fail("MEMBERSHIP_LEVEL_NOT_FOUND", $"Membership level '{id}' not found."));
 
-        return Ok(ApiResponse<MembershipLevelDto>.Ok(_mapper.Map<MembershipLevelDto>(entity)));
+        return Ok(ApiResponse<MembershipLevelDto>.Ok(entity.ToDto()));
     }
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateMembershipLevelDto dto, CancellationToken ct = default)
     {
-        var entity = _mapper.Map<MembershipLevel>(dto);
+        var entity = dto.ToNewEntity();
         entity.CreatedBy = User.Identity?.Name ?? "admin";
         await _db.MembershipLevels.AddAsync(entity, ct);
         await _db.SaveChangesAsync(ct);
-        return CreatedAtAction(nameof(GetById), new { id = entity.Id }, ApiResponse<MembershipLevelDto>.Ok(_mapper.Map<MembershipLevelDto>(entity)));
+        return CreatedAtAction(nameof(GetById), new { id = entity.Id }, ApiResponse<MembershipLevelDto>.Ok(entity.ToDto()));
     }
 
     [HttpPut("{id:int}")]
@@ -57,10 +51,10 @@ public class MembershipLevelsController : ControllerBase
         if (entity is null)
             return NotFound(ApiResponse<MembershipLevelDto>.Fail("MEMBERSHIP_LEVEL_NOT_FOUND", $"Membership level '{id}' not found."));
 
-        _mapper.Map(dto, entity);
+        dto.ApplyTo(entity);
         entity.LastUpdateBy = User.Identity?.Name ?? "admin";
         await _db.SaveChangesAsync(ct);
-        return Ok(ApiResponse<MembershipLevelDto>.Ok(_mapper.Map<MembershipLevelDto>(entity)));
+        return Ok(ApiResponse<MembershipLevelDto>.Ok(entity.ToDto()));
     }
 
     [HttpDelete("{id:int}")]

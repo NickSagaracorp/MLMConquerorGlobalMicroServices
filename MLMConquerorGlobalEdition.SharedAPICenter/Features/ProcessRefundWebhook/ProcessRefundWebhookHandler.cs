@@ -34,7 +34,6 @@ public class ProcessRefundWebhookHandler : IRequestHandler<ProcessRefundWebhookC
     {
         var payload = request.Payload;
 
-        // ── Locate the PaymentHistory record ──────────────────────────────────
         var payment = await _db.PaymentHistories
             .FirstOrDefaultAsync(
                 p => p.GatewayTransactionId == payload.TransactionId,
@@ -45,13 +44,11 @@ public class ProcessRefundWebhookHandler : IRequestHandler<ProcessRefundWebhookC
                 "PAYMENT_NOT_FOUND",
                 $"No payment record found for transaction '{payload.TransactionId}'.");
 
-        // ── Mark payment as refunded ──────────────────────────────────────────
         payment.TransactionStatus = PaymentHistoryTransactionStatus.Refunded;
         payment.ProcessedAt       = _clock.Now;
         payment.LastUpdateDate    = _clock.Now;
         payment.LastUpdateBy      = $"webhook:{request.Provider}";
 
-        // ── Mark linked order as refunded ─────────────────────────────────────
         var orderId = !string.IsNullOrWhiteSpace(payload.OrderId)
             ? payload.OrderId
             : payment.OrderId;

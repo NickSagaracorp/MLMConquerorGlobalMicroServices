@@ -121,7 +121,6 @@ public class CorporatePromosController : ControllerBase
         return Ok(ApiResponse<PromoStatsDto>.Ok(result.Value!));
     }
 
-    // ── Product-Commission overrides for a promo ──────────────────────────────
 
     [HttpGet("{id}/product-commissions")]
     public async Task<IActionResult> GetProductCommissions(

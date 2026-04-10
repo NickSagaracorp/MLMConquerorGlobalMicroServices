@@ -42,7 +42,6 @@ public class GetRankDashboardHandlerTests : IDisposable
     private GetRankDashboardHandler CreateHandler() =>
         new(_db, _currentUser.Object, _cache.Object);
 
-    // ── Cache hit ─────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Handle_WhenCacheHit_ReturnsCachedDtoWithoutHittingDb()
@@ -61,7 +60,6 @@ public class GetRankDashboardHandlerTests : IDisposable
                       Times.Never);
     }
 
-    // ── Cache miss → DB ───────────────────────────────────────────────────────
 
     [Fact]
     public async Task Handle_WhenCacheMiss_ReturnsRankDataFromDb()
@@ -116,7 +114,6 @@ public class GetRankDashboardHandlerTests : IDisposable
         result.Value!.EnrollmentTeamSize.Should().Be(12);
     }
 
-    // ── No data ────────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Handle_WhenNoStatsOrRankHistory_ReturnsEmptyDtoWithMemberId()
@@ -148,7 +145,6 @@ public class GetRankDashboardHandlerTests : IDisposable
         result.Value!.CurrentRankName.Should().BeNull();
     }
 
-    // ── Lifetime rank vs current rank ─────────────────────────────────────────
 
     [Fact]
     public async Task Handle_WhenMultipleRanks_LifetimeRankIsHighestSortOrder()

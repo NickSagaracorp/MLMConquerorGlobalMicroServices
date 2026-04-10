@@ -128,7 +128,6 @@ public class CompleteSignupHandlerTests
         DiscountCode  = method == PaymentMethodType.DiscountCode ? "FREE100" : null
     };
 
-    // ── Failure cases ─────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Handle_WhenSignupNotFound_ReturnsFailure()
@@ -248,7 +247,6 @@ public class CompleteSignupHandlerTests
         result.ErrorCode.Should().Be("USER_NOT_FOUND");
     }
 
-    // ── Success cases ─────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Handle_WhenValid_ActivatesOrderAndReturnsSuccess()

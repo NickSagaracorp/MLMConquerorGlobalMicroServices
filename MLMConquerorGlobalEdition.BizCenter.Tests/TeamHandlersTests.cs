@@ -45,7 +45,6 @@ public class TeamHandlersTests : IDisposable
         CreatedBy       = "seed"
     };
 
-    // ── GetEnrollmentTeamHandler ───────────────────────────────────────────────
 
     [Fact]
     public async Task GetEnrollmentTeam_WhenMemberHasDirectChildren_ReturnsDirectChildrenOnly()
@@ -95,7 +94,6 @@ public class TeamHandlersTests : IDisposable
         result.Value!.Should().BeEmpty();
     }
 
-    // ── GetTeamMembersHandler ──────────────────────────────────────────────────
 
     [Fact]
     public async Task GetTeamMembers_WhenMemberHasSponsoredMembers_ReturnsThem()
@@ -141,7 +139,6 @@ public class TeamHandlersTests : IDisposable
         result.Value.Items.Should().HaveCount(3);
     }
 
-    // ── GetAllTeamMembersHandler ───────────────────────────────────────────────
 
     [Fact]
     public async Task GetAllTeamMembers_WhenMemberHasFullSubtree_ReturnsAllDescendants()
@@ -201,7 +198,6 @@ public class TeamHandlersTests : IDisposable
         result.Value.Items.Should().HaveCount(3);
     }
 
-    // ── GetDualTreeHandler ─────────────────────────────────────────────────────
 
     [Fact]
     public async Task GetDualTree_WhenMemberHasLeftAndRightChildren_ReturnsBoth()

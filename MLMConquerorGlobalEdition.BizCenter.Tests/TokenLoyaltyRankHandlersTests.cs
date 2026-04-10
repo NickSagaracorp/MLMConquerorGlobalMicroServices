@@ -44,7 +44,6 @@ public class TokenLoyaltyRankHandlersTests : IDisposable
 
     public void Dispose() => _db.Dispose();
 
-    // ── GetTokenBalancesHandler ────────────────────────────────────────────────
 
     [Fact]
     public async Task GetTokenBalances_WhenMemberHasMultipleTokenTypes_ReturnsBothBalances()
@@ -118,7 +117,6 @@ public class TokenLoyaltyRankHandlersTests : IDisposable
         result.Value!.Should().BeEmpty();
     }
 
-    // ── GetGuestPassesHandler ──────────────────────────────────────────────────
 
     [Fact]
     public async Task GetGuestPasses_WhenMemberHasGuestPassBalance_ReturnsOnlyGuestPasses()
@@ -169,7 +167,6 @@ public class TokenLoyaltyRankHandlersTests : IDisposable
         result.Value!.Should().BeEmpty();
     }
 
-    // ── GetLoyaltyPointsHandler ────────────────────────────────────────────────
 
     [Fact]
     public async Task GetLoyaltyPoints_WhenMemberHasPoints_ReturnsPagedResult()
@@ -240,7 +237,6 @@ public class TokenLoyaltyRankHandlersTests : IDisposable
         result.Value.Items.Should().HaveCount(3);
     }
 
-    // ── GetRankHistoryHandler ──────────────────────────────────────────────────
 
     [Fact]
     public async Task GetRankHistory_WhenMemberHasRankHistory_ReturnsPagedHistory()

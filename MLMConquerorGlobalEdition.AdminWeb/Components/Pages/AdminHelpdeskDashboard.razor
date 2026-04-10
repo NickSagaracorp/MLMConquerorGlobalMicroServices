@@ -1,0 +1,365 @@
+@page "/admin/helpdesk/dashboard"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin,SupportManager,SupportLevel1,SupportLevel2,SupportLevel3,IT")]
+@inject IHttpClientFactory HttpClientFactory
+
+<PageTitle>Helpdesk Dashboard — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Helpdesk"), new("Dashboard") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+@if (_loading)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary"></div>
+        <p class="text-muted mt-2 mb-0">Loading dashboard…</p>
+    </div>
+}
+else if (_metrics is not null)
+{
+    @* ── KPI Stat Cards ── *@
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-start justify-content-between">
+                        <div>
+                            <p class="text-muted small mb-1">First Response Time</p>
+                            <h4 class="fw-bold mb-0">@_metrics.FrtMinutes.ToString("F1") <small class="fs-6 fw-normal text-muted">min</small></h4>
+                        </div>
+                        <span class="badge bg-primary-subtle text-primary p-2 rounded-3">
+                            <i class="ri-time-line fs-5"></i>
+                        </span>
+                    </div>
+                    <p class="mb-0 mt-2 small @(_metrics.FrtDeltaPercent <= 0 ? "text-success" : "text-danger")">
+                        <i class="@(_metrics.FrtDeltaPercent <= 0 ? "ri-arrow-down-line" : "ri-arrow-up-line")"></i>
+                        @Math.Abs(_metrics.FrtDeltaPercent).ToString("F1")% vs last period
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-start justify-content-between">
+                        <div>
+                            <p class="text-muted small mb-1">Mean Time to Resolve</p>
+                            <h4 class="fw-bold mb-0">@_metrics.MttrMinutes.ToString("F1") <small class="fs-6 fw-normal text-muted">min</small></h4>
+                        </div>
+                        <span class="badge bg-warning-subtle text-warning p-2 rounded-3">
+                            <i class="ri-timer-flash-line fs-5"></i>
+                        </span>
+                    </div>
+                    <p class="mb-0 mt-2 small @(_metrics.MttrDeltaPercent <= 0 ? "text-success" : "text-danger")">
+                        <i class="@(_metrics.MttrDeltaPercent <= 0 ? "ri-arrow-down-line" : "ri-arrow-up-line")"></i>
+                        @Math.Abs(_metrics.MttrDeltaPercent).ToString("F1")% vs last period
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-start justify-content-between">
+                        <div>
+                            <p class="text-muted small mb-1">First Contact Resolution</p>
+                            <h4 class="fw-bold mb-0">@_metrics.FcrPercent.ToString("F1")<small class="fs-6 fw-normal text-muted">%</small></h4>
+                        </div>
+                        <span class="badge bg-success-subtle text-success p-2 rounded-3">
+                            <i class="ri-checkbox-circle-line fs-5"></i>
+                        </span>
+                    </div>
+                    <p class="mb-0 mt-2 small @(_metrics.FcrDeltaPercent >= 0 ? "text-success" : "text-danger")">
+                        <i class="@(_metrics.FcrDeltaPercent >= 0 ? "ri-arrow-up-line" : "ri-arrow-down-line")"></i>
+                        @Math.Abs(_metrics.FcrDeltaPercent).ToString("F1")% vs last period
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-start justify-content-between">
+                        <div>
+                            <p class="text-muted small mb-1">CSAT Score</p>
+                            <h4 class="fw-bold mb-0">@_metrics.CsatAverage.ToString("F2") <small class="fs-6 fw-normal text-muted">/ 5</small></h4>
+                        </div>
+                        <span class="badge bg-info-subtle text-info p-2 rounded-3">
+                            <i class="ri-star-smile-line fs-5"></i>
+                        </span>
+                    </div>
+                    <p class="mb-0 mt-2 small @(_metrics.CsatDelta >= 0 ? "text-success" : "text-danger")">
+                        <i class="@(_metrics.CsatDelta >= 0 ? "ri-arrow-up-line" : "ri-arrow-down-line")"></i>
+                        @Math.Abs(_metrics.CsatDelta).ToString("F2") vs last period
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        @* ── Ticket Status Summary ── *@
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header py-3">
+                    <h6 class="card-title mb-0 fw-semibold">
+                        <i class="ri-bar-chart-box-line me-2 text-primary"></i>Ticket Status Breakdown
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 text-center">
+                        <div class="col-4 col-md-2">
+                            <div class="p-3 rounded-3 bg-primary-subtle">
+                                <div class="h4 fw-bold text-primary mb-1">@_metrics.OpenCount</div>
+                                <div class="small text-muted">Open</div>
+                            </div>
+                        </div>
+                        <div class="col-4 col-md-2">
+                            <div class="p-3 rounded-3 bg-warning-subtle">
+                                <div class="h4 fw-bold text-warning mb-1">@_metrics.InProgressCount</div>
+                                <div class="small text-muted">In Progress</div>
+                            </div>
+                        </div>
+                        <div class="col-4 col-md-2">
+                            <div class="p-3 rounded-3 bg-info-subtle">
+                                <div class="h4 fw-bold text-info mb-1">@_metrics.WaitingCustomerCount</div>
+                                <div class="small text-muted">Waiting</div>
+                            </div>
+                        </div>
+                        <div class="col-4 col-md-2">
+                            <div class="p-3 rounded-3 bg-danger-subtle">
+                                <div class="h4 fw-bold text-danger mb-1">@_metrics.EscalatedCount</div>
+                                <div class="small text-muted">Escalated</div>
+                            </div>
+                        </div>
+                        <div class="col-4 col-md-2">
+                            <div class="p-3 rounded-3 bg-success-subtle">
+                                <div class="h4 fw-bold text-success mb-1">@_metrics.ResolvedCount</div>
+                                <div class="small text-muted">Resolved</div>
+                            </div>
+                        </div>
+                    </div>
+                    <hr class="my-3" />
+                    <div class="row g-2 text-center">
+                        <div class="col-4">
+                            <p class="text-muted small mb-0">SLA Compliance</p>
+                            <span class="fw-bold fs-5 @(_metrics.SlaComplianceRate >= 90 ? "text-success" : _metrics.SlaComplianceRate >= 75 ? "text-warning" : "text-danger")">
+                                @_metrics.SlaComplianceRate.ToString("F1")%
+                            </span>
+                        </div>
+                        <div class="col-4">
+                            <p class="text-muted small mb-0">FRT Breaches Today</p>
+                            <span class="fw-bold fs-5 @(_metrics.FrtBreachesToday == 0 ? "text-success" : "text-danger")">@_metrics.FrtBreachesToday</span>
+                        </div>
+                        <div class="col-4">
+                            <p class="text-muted small mb-0">Resolution Breaches Today</p>
+                            <span class="fw-bold fs-5 @(_metrics.ResolutionBreachesToday == 0 ? "text-success" : "text-danger")">@_metrics.ResolutionBreachesToday</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* ── Last 30-Day Trend ── *@
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header py-3 d-flex align-items-center gap-2">
+                    <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+                        <i class="ri-line-chart-line me-2 text-primary"></i>30-Day Trend
+                    </h6>
+                </div>
+                <div class="card-body p-0" style="max-height:260px;overflow-y:auto;">
+                    @if (_trends.Count == 0)
+                    {
+                        <div class="text-center py-4 text-muted"><small>No trend data available.</small></div>
+                    }
+                    else
+                    {
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th class="ps-3">Date</th>
+                                    <th class="text-center">Created</th>
+                                    <th class="text-center">Resolved</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var t in _trends.OrderByDescending(x => x.Date))
+                                {
+                                    <tr>
+                                        <td class="ps-3 small text-muted">@t.Date.ToString("MMM dd")</td>
+                                        <td class="text-center"><span class="badge bg-primary-subtle text-primary">@t.Created</span></td>
+                                        <td class="text-center"><span class="badge bg-success-subtle text-success">@t.Resolved</span></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ── Agent Workload ── *@
+    <div class="card border-0 shadow-sm">
+        <div class="card-header py-3 d-flex align-items-center gap-2">
+            <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+                <i class="ri-team-line me-2 text-primary"></i>Agent Workload
+            </h6>
+            <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+        </div>
+        <div class="card-body p-0">
+            @if (_agents.Count == 0)
+            {
+                <div class="text-center py-4 text-muted">
+                    <i class="ri-user-line fs-1 d-block mb-2"></i>
+                    <p class="mb-0">No agent workload data available.</p>
+                </div>
+            }
+            else
+            {
+                <SfGrid TValue="AgentWorkloadDto" DataSource="@_agents"
+                        AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                    <GridPageSettings PageSize="25" PageSizes="@(new int[]{25,50,100})" />
+                    <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                    <GridColumns>
+                        <GridColumn HeaderText="Agent" Width="200">
+                            <Template>
+                                @{ var ag = (AgentWorkloadDto)context; }
+                                <span class="fw-semibold">@ag.DisplayName</span>
+                                <br /><small class="text-muted">@ag.Email</small>
+                            </Template>
+                        </GridColumn>
+                        <GridColumn HeaderText="Tier" Width="70" TextAlign="TextAlign.Center">
+                            <Template>
+                                <span class="badge bg-secondary-subtle text-secondary">T@(((AgentWorkloadDto)context).Tier)</span>
+                            </Template>
+                        </GridColumn>
+                        <GridColumn HeaderText="Availability" Width="110">
+                            <Template>
+                                @{ var avail = ((AgentWorkloadDto)context).Availability; }
+                                <span class="badge @(avail == "Online" ? "bg-success" : avail == "Busy" ? "bg-warning text-dark" : "bg-secondary")">
+                                    @avail
+                                </span>
+                            </Template>
+                        </GridColumn>
+                        <GridColumn HeaderText="Tickets" Width="90" TextAlign="TextAlign.Center">
+                            <Template>
+                                @{ var a = (AgentWorkloadDto)context; }
+                                <span class="small fw-semibold">@a.CurrentTicketCount / @a.MaxConcurrentTickets</span>
+                            </Template>
+                        </GridColumn>
+                        <GridColumn HeaderText="Workload" Width="180">
+                            <Template>
+                                @{ var pct = ((AgentWorkloadDto)context).WorkloadPercent; }
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height:8px;">
+                                        <div class="progress-bar @(pct >= 90 ? "bg-danger" : pct >= 70 ? "bg-warning" : "bg-success")"
+                                             style="width:@(Math.Min(pct,100))%"></div>
+                                    </div>
+                                    <small class="text-muted" style="min-width:36px;">@pct.ToString("F0")%</small>
+                                </div>
+                            </Template>
+                        </GridColumn>
+                    </GridColumns>
+                </SfGrid>
+            }
+        </div>
+    </div>
+
+    <p class="text-muted small mt-3 mb-0">
+        <i class="ri-information-line me-1"></i>Generated at @_metrics.GeneratedAt.ToString("yyyy-MM-dd HH:mm") UTC
+    </p>
+}
+
+@code {
+    private bool _loading = true;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private DashboardMetricsDto? _metrics;
+    private List<DashboardTrendDto> _trends = new();
+    private List<AgentWorkloadDto> _agents = new();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var http = HttpClientFactory.CreateClient("HelpdeskApi");
+
+            var metricsResp = await http.GetFromJsonAsync<ApiResp<DashboardMetricsDto>>("api/v1/helpdesk/dashboard");
+            if (metricsResp?.Success == true && metricsResp.Data is not null)
+            {
+                _metrics = metricsResp.Data;
+                _agents = _metrics.AgentWorkloads ?? new List<AgentWorkloadDto>();
+            }
+            else
+            {
+                _alertMsg = metricsResp?.Errors?.FirstOrDefault() ?? "Failed to load dashboard metrics.";
+                _alertIsError = true;
+            }
+
+            var trendsResp = await http.GetFromJsonAsync<ApiResp<IEnumerable<DashboardTrendDto>>>("api/v1/helpdesk/dashboard/trends?days=30");
+            if (trendsResp?.Success == true && trendsResp.Data is not null)
+                _trends = trendsResp.Data.ToList();
+
+            // Agent workload endpoint as fallback if not embedded in metrics
+            if (_agents.Count == 0)
+            {
+                var workloadResp = await http.GetFromJsonAsync<ApiResp<IEnumerable<AgentWorkloadDto>>>("api/v1/helpdesk/dashboard/agent-workload");
+                if (workloadResp?.Success == true && workloadResp.Data is not null)
+                    _agents = workloadResp.Data.ToList();
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+
+    private class DashboardMetricsDto
+    {
+        public double FrtMinutes { get; set; }
+        public double FrtDeltaPercent { get; set; }
+        public double MttrMinutes { get; set; }
+        public double MttrDeltaPercent { get; set; }
+        public double FcrPercent { get; set; }
+        public double FcrDeltaPercent { get; set; }
+        public double CsatAverage { get; set; }
+        public double CsatDelta { get; set; }
+        public int OpenCount { get; set; }
+        public int InProgressCount { get; set; }
+        public int WaitingCustomerCount { get; set; }
+        public int EscalatedCount { get; set; }
+        public int ResolvedCount { get; set; }
+        public double SlaComplianceRate { get; set; }
+        public int FrtBreachesToday { get; set; }
+        public int ResolutionBreachesToday { get; set; }
+        public Dictionary<string, int>? TicketsByChannel { get; set; }
+        public Dictionary<string, int>? TicketsByCategory { get; set; }
+        public List<AgentWorkloadDto>? AgentWorkloads { get; set; }
+        public DateTime GeneratedAt { get; set; }
+    }
+
+    private record DashboardTrendDto(DateTime Date, int Created, int Resolved);
+
+    private class AgentWorkloadDto
+    {
+        public string AgentId { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Availability { get; set; } = string.Empty;
+        public int Tier { get; set; }
+        public int CurrentTicketCount { get; set; }
+        public int MaxConcurrentTickets { get; set; }
+        public double WorkloadPercent { get; set; }
+    }
+}

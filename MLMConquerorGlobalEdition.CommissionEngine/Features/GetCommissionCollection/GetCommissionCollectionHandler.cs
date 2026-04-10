@@ -1,8 +1,8 @@
-using AutoMapper;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.CommissionEngine.DTOs;
+using MLMConquerorGlobalEdition.CommissionEngine.Mappings;
+using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.CommissionEngine.Features.GetCommissionCollection;
@@ -11,13 +11,8 @@ public class GetCommissionCollectionHandler
     : IRequestHandler<GetCommissionCollectionQuery, Result<PagedResult<CommissionEarningResponse>>>
 {
     private readonly AppDbContext _db;
-    private readonly IMapper _mapper;
 
-    public GetCommissionCollectionHandler(AppDbContext db, IMapper mapper)
-    {
-        _db = db;
-        _mapper = mapper;
-    }
+    public GetCommissionCollectionHandler(AppDbContext db) => _db = db;
 
     public async Task<Result<PagedResult<CommissionEarningResponse>>> Handle(
         GetCommissionCollectionQuery request, CancellationToken ct)
@@ -64,7 +59,7 @@ public class GetCommissionCollectionHandler
             .Take(request.PageSize)
             .ToListAsync(ct);
 
-        var mapped = _mapper.Map<List<CommissionEarningResponse>>(items);
+        var mapped = items.Select(e => e.ToResponse()).ToList();
 
         return Result<PagedResult<CommissionEarningResponse>>.Success(new PagedResult<CommissionEarningResponse>
         {

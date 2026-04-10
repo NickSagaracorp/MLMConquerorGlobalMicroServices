@@ -6,18 +6,15 @@ namespace MLMConquerorGlobalEdition.SharedKernel;
 /// </summary>
 public static class CacheKeys
 {
-    // ── Per-member keys ────────────────────────────────────────────────────────
     public static string MemberProfile(string memberId)      => $"member:{memberId}:profile";
     public static string MemberRank(string memberId)         => $"member:{memberId}:rank";
     public static string MemberStats(string memberId)        => $"member:{memberId}:stats";
     public static string MemberTokenBalances(string memberId)=> $"member:{memberId}:token-balances";
 
-    // ── Shared catalogue keys ──────────────────────────────────────────────────
     public const string RankDefinitions  = "rank:definitions";
     public const string MembershipLevels = "membership:levels";
     public const string CommissionTypes  = "commission:types";
 
-    // ── TTLs (per CLAUDE.md §13) ───────────────────────────────────────────────
     public static readonly TimeSpan MemberProfileTtl       = TimeSpan.FromMinutes(30);
     public static readonly TimeSpan MemberRankTtl          = TimeSpan.FromHours(1);
     public static readonly TimeSpan MemberStatsTtl         = TimeSpan.FromMinutes(15);

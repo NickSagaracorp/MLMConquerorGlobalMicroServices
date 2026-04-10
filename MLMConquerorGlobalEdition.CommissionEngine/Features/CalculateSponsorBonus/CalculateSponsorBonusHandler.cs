@@ -29,7 +29,6 @@ public class CalculateSponsorBonusHandler
     {
         var now = _dateTime.Now;
 
-        // ── Load order ────────────────────────────────────────────────────────
         var order = await _db.Orders
             .AsNoTracking()
             .FirstOrDefaultAsync(o => o.Id == command.OrderId
@@ -41,7 +40,6 @@ public class CalculateSponsorBonusHandler
                 "ORDER_NOT_FOUND",
                 $"Completed order '{command.OrderId}' for member '{command.NewMemberId}' not found.");
 
-        // ── Load new member's sponsor ─────────────────────────────────────────
         var member = await _db.MemberProfiles
             .AsNoTracking()
             .FirstOrDefaultAsync(m => m.MemberId == command.NewMemberId, ct);
@@ -60,7 +58,6 @@ public class CalculateSponsorBonusHandler
                 SkippedReasons = new() { "Member has no sponsor — no sponsor bonus to award." }
             });
 
-        // ── Resolve membership level from the order's product ─────────────────
         // The Member Bonus amount differs by tier (VIP=$20, Elite=$40, Turbo=$80).
         // CommissionType.LevelNo matches MembershipLevel.Id.
         // Lifestyle Ambassador (LevelNo=1) does not trigger a Member Bonus.
@@ -84,7 +81,6 @@ public class CalculateSponsorBonusHandler
                 }
             });
 
-        // ── Select the tier-specific sponsor bonus commission type ────────────
         var commType = await _db.CommissionTypes
             .AsNoTracking()
             .FirstOrDefaultAsync(t => t.IsActive && t.IsSponsorBonus && t.LevelNo == membershipLevelId, ct);
@@ -94,7 +90,6 @@ public class CalculateSponsorBonusHandler
                 "NO_SPONSOR_BONUS_TYPE",
                 $"No active sponsor bonus commission type configured for membership level {membershipLevelId}.");
 
-        // ── Idempotency ───────────────────────────────────────────────────────
         var alreadyExists = await _db.CommissionEarnings
             .AnyAsync(e => e.SourceOrderId == command.OrderId
                         && e.CommissionTypeId == commType.Id
@@ -113,7 +108,6 @@ public class CalculateSponsorBonusHandler
                 }
             });
 
-        // ── Calculate and persist ─────────────────────────────────────────────
         // Use FixedAmount when set (comp plan: VIP=$20, Elite=$40, Turbo=$80).
         var amount = commType.FixedAmount
             ?? Math.Round(order.TotalAmount * commType.Percentage / 100, 2);

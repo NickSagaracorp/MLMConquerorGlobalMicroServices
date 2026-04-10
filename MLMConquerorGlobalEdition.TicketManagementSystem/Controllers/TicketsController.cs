@@ -34,8 +34,7 @@ public class TicketsController : ControllerBase
         _mediator = mediator;
     }
 
-    // NOTE: Static routes (categories, priorities) are defined BEFORE {ticketId}
-    // to prevent routing conflicts.
+    // Static routes must be declared before {ticketId} to avoid routing ambiguity.
 
     /// <summary>GET /api/v1/tickets/categories — list active categories</summary>
     [HttpGet("categories")]

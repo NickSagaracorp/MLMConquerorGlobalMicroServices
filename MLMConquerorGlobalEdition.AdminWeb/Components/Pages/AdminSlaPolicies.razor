@@ -1,0 +1,376 @@
+@page "/admin/helpdesk/sla"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin,SupportManager,IT")]
+@inject IHttpClientFactory HttpClientFactory
+
+<PageTitle>SLA Policies — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Helpdesk", "/admin/helpdesk/dashboard"), new("SLA Policies") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-shield-check-line me-2 text-primary"></i>SLA Policies
+        </h6>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+        <button class="btn btn-primary btn-sm" @onclick="OpenCreate">
+            <i class="ri-add-line me-1"></i>New Policy
+        </button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else if (_items.Count == 0)
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="ri-shield-check-line fs-1 d-block mb-2"></i>
+                <p class="mb-0">No SLA policies found. Create one to get started.</p>
+            </div>
+        }
+        else
+        {
+            <SfGrid TValue="SlaPolicyDto" DataSource="@_items"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn HeaderText="Name" Width="200">
+                        <Template>
+                            @{ var p = (SlaPolicyDto)context; }
+                            <span class="fw-semibold">@p.Name</span>
+                            @if (!string.IsNullOrWhiteSpace(p.Description))
+                            {
+                                <text><br /><small class="text-muted">@(p.Description.Length > 70 ? p.Description[..70] + "…" : p.Description)</small></text>
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Default" Width="90" TextAlign="TextAlign.Center">
+                        <Template>
+                            @if (((SlaPolicyDto)context).IsDefault)
+                            {
+                                <span class="badge bg-primary">Default</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">—</span>
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Status" Width="90" TextAlign="TextAlign.Center">
+                        <Template>
+                            <span class="badge @(((SlaPolicyDto)context).IsActive ? "bg-success" : "bg-secondary")">
+                                @(((SlaPolicyDto)context).IsActive ? "Active" : "Inactive")
+                            </span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="FRT Normal (min)" Width="150" TextAlign="TextAlign.Center">
+                        <Template><span class="small">@(((SlaPolicyDto)context).FirstResponseNormalMinutes)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Resolution Normal (min)" Width="180" TextAlign="TextAlign.Center">
+                        <Template><span class="small">@(((SlaPolicyDto)context).ResolutionNormalMinutes)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Timezone" Width="110">
+                        <Template><span class="small text-muted">@(((SlaPolicyDto)context).Timezone)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="110" TextAlign="TextAlign.Center">
+                        <Template>
+                            @{ var item = (SlaPolicyDto)context; }
+                            <button class="btn btn-sm btn-outline-primary py-0 me-1"
+                                    @onclick="() => OpenEdit(item)">
+                                <i class="ri-edit-line"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger py-0"
+                                    @onclick="() => ConfirmDelete(item)">
+                                <i class="ri-delete-bin-line"></i>
+                            </button>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+@* ── Create / Edit Modal ── *@
+@if (_showForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold">@(_editId is null ? "New SLA Policy" : "Edit SLA Policy")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseForm"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+                            <input class="form-control" @bind="_form.Name" placeholder="e.g. Standard SLA" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Description</label>
+                            <textarea class="form-control" rows="2" @bind="_form.Description" placeholder="Optional description…"></textarea>
+                        </div>
+
+                        <div class="col-12"><hr class="mt-1 mb-0" /><p class="fw-semibold mt-2 mb-1 text-primary">First Response Time (minutes)</p></div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small">Critical</label>
+                            <input type="number" class="form-control" @bind="_form.FirstResponseCriticalMinutes" min="1" />
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small">High</label>
+                            <input type="number" class="form-control" @bind="_form.FirstResponseHighMinutes" min="1" />
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small">Normal</label>
+                            <input type="number" class="form-control" @bind="_form.FirstResponseNormalMinutes" min="1" />
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small">Low</label>
+                            <input type="number" class="form-control" @bind="_form.FirstResponseLowMinutes" min="1" />
+                        </div>
+
+                        <div class="col-12"><hr class="mt-1 mb-0" /><p class="fw-semibold mt-2 mb-1 text-primary">Resolution Time (minutes)</p></div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small">Critical</label>
+                            <input type="number" class="form-control" @bind="_form.ResolutionCriticalMinutes" min="1" />
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small">High</label>
+                            <input type="number" class="form-control" @bind="_form.ResolutionHighMinutes" min="1" />
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small">Normal</label>
+                            <input type="number" class="form-control" @bind="_form.ResolutionNormalMinutes" min="1" />
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small">Low</label>
+                            <input type="number" class="form-control" @bind="_form.ResolutionLowMinutes" min="1" />
+                        </div>
+
+                        <div class="col-12"><hr class="mt-1 mb-0" /></div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Timezone</label>
+                            <input class="form-control" @bind="_form.Timezone" placeholder="UTC" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Business Hours Start</label>
+                            <input type="text" class="form-control" @bind="_form.BusinessHoursStart" placeholder="08:00" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Business Hours End</label>
+                            <input type="text" class="form-control" @bind="_form.BusinessHoursEnd" placeholder="18:00" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Warning Threshold (%)</label>
+                            <input type="number" class="form-control" @bind="_form.WarningThresholdPercent" min="1" max="100" />
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="slaDefault" @bind="_form.IsDefault" />
+                                <label class="form-check-label fw-semibold" for="slaDefault">Set as Default Policy</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                    <button class="btn btn-primary" @onclick="Save" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        @(_editId is null ? "Create Policy" : "Save Changes")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ── Delete Confirm Modal ── *@
+@if (_showDeleteConfirm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold text-danger">Delete SLA Policy</h5>
+                    <button type="button" class="btn-close" @onclick="() => { _showDeleteConfirm = false; _deleteTarget = null; }"></button>
+                </div>
+                <div class="modal-body">
+                    Delete policy <strong>@_deleteTarget?.Name</strong>? This cannot be undone.
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => { _showDeleteConfirm = false; _deleteTarget = null; }">Cancel</button>
+                    <button class="btn btn-danger" @onclick="DeletePolicy" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<SlaPolicyDto> _items = new();
+    private bool _loading = true;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private bool _showForm;
+    private bool _showDeleteConfirm;
+    private string? _editId;
+    private SlaPolicyFormModel _form = new();
+    private SlaPolicyDto? _deleteTarget;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var http = HttpClientFactory.CreateClient("HelpdeskApi");
+            var resp = await http.GetFromJsonAsync<ApiResp<IEnumerable<SlaPolicyDto>>>("api/v1/helpdesk/sla/policies");
+            if (resp?.Success == true && resp.Data is not null)
+                _items = resp.Data.ToList();
+            else { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load SLA policies."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private void OpenCreate()
+    {
+        _editId = null;
+        _form = new SlaPolicyFormModel();
+        _showForm = true;
+    }
+
+    private void OpenEdit(SlaPolicyDto p)
+    {
+        _editId = p.Id;
+        _form = new SlaPolicyFormModel
+        {
+            Name = p.Name,
+            Description = p.Description,
+            FirstResponseCriticalMinutes = p.FirstResponseCriticalMinutes,
+            FirstResponseHighMinutes = p.FirstResponseHighMinutes,
+            FirstResponseNormalMinutes = p.FirstResponseNormalMinutes,
+            FirstResponseLowMinutes = p.FirstResponseLowMinutes,
+            ResolutionCriticalMinutes = p.ResolutionCriticalMinutes,
+            ResolutionHighMinutes = p.ResolutionHighMinutes,
+            ResolutionNormalMinutes = p.ResolutionNormalMinutes,
+            ResolutionLowMinutes = p.ResolutionLowMinutes,
+            Timezone = p.Timezone,
+            BusinessHoursStart = p.BusinessHoursStart,
+            BusinessHoursEnd = p.BusinessHoursEnd,
+            WarningThresholdPercent = p.WarningThresholdPercent,
+            IsDefault = p.IsDefault
+        };
+        _showForm = true;
+    }
+
+    private void CloseForm() { _showForm = false; _editId = null; }
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(_form.Name)) { _alertMsg = "Name is required."; _alertIsError = true; return; }
+        _saving = true;
+        try
+        {
+            var http = HttpClientFactory.CreateClient("HelpdeskApi");
+            HttpResponseMessage response;
+            if (_editId is null)
+                response = await http.PostAsJsonAsync("api/v1/helpdesk/sla/policies", _form);
+            else
+                response = await http.PutAsJsonAsync($"api/v1/helpdesk/sla/policies/{_editId}", _form);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _alertMsg = _editId is null ? "SLA policy created." : "SLA policy updated.";
+                _alertIsError = false;
+                CloseForm();
+                await LoadAsync();
+            }
+            else { _alertMsg = $"Save failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private void ConfirmDelete(SlaPolicyDto p) { _deleteTarget = p; _showDeleteConfirm = true; }
+
+    private async Task DeletePolicy()
+    {
+        if (_deleteTarget is null) return;
+        _saving = true;
+        try
+        {
+            var http = HttpClientFactory.CreateClient("HelpdeskApi");
+            var response = await http.DeleteAsync($"api/v1/helpdesk/sla/policies/{_deleteTarget.Id}");
+            if (response.IsSuccessStatusCode)
+            {
+                _alertMsg = "SLA policy deleted.";
+                _alertIsError = false;
+                _showDeleteConfirm = false;
+                _deleteTarget = null;
+                await LoadAsync();
+            }
+            else { _alertMsg = $"Delete failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+
+    private class SlaPolicyDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public int FirstResponseCriticalMinutes { get; set; }
+        public int FirstResponseHighMinutes { get; set; }
+        public int FirstResponseNormalMinutes { get; set; }
+        public int FirstResponseLowMinutes { get; set; }
+        public int ResolutionCriticalMinutes { get; set; }
+        public int ResolutionHighMinutes { get; set; }
+        public int ResolutionNormalMinutes { get; set; }
+        public int ResolutionLowMinutes { get; set; }
+        public string Timezone { get; set; } = "UTC";
+        public string WorkdaysJson { get; set; } = string.Empty;
+        public string BusinessHoursStart { get; set; } = "08:00";
+        public string BusinessHoursEnd { get; set; } = "18:00";
+        public int WarningThresholdPercent { get; set; } = 80;
+        public bool IsDefault { get; set; }
+        public bool IsActive { get; set; }
+    }
+
+    private class SlaPolicyFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public int FirstResponseCriticalMinutes { get; set; } = 30;
+        public int FirstResponseHighMinutes { get; set; } = 60;
+        public int FirstResponseNormalMinutes { get; set; } = 240;
+        public int FirstResponseLowMinutes { get; set; } = 480;
+        public int ResolutionCriticalMinutes { get; set; } = 120;
+        public int ResolutionHighMinutes { get; set; } = 480;
+        public int ResolutionNormalMinutes { get; set; } = 1440;
+        public int ResolutionLowMinutes { get; set; } = 2880;
+        public string Timezone { get; set; } = "UTC";
+        public string BusinessHoursStart { get; set; } = "08:00";
+        public string BusinessHoursEnd { get; set; } = "18:00";
+        public int WarningThresholdPercent { get; set; } = 80;
+        public bool IsDefault { get; set; }
+    }
+}

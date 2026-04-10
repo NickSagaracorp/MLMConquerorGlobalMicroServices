@@ -5,6 +5,7 @@ using MLMConquerorGlobalEdition.BizCenter.DTOs.Tokens;
 using MLMConquerorGlobalEdition.BizCenter.Features.Tokens.DistributeToken;
 using MLMConquerorGlobalEdition.BizCenter.Features.Tokens.GetGuestPasses;
 using MLMConquerorGlobalEdition.BizCenter.Features.Tokens.GetTokenBalances;
+using MLMConquerorGlobalEdition.BizCenter.Features.Tokens.GetTokenTransactions;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Controllers;
@@ -18,8 +19,19 @@ public class TokensController : ControllerBase
 
     public TokensController(IMediator mediator) => _mediator = mediator;
 
-    /// <summary>GET /api/v1/bizcenter/tokens — all token balances for current member</summary>
+    /// <summary>GET /api/v1/bizcenter/tokens — paged token transaction history for current member</summary>
     [HttpGet]
+    public async Task<IActionResult> GetTokenTransactions(
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new GetTokenTransactionsQuery(page, pageSize), ct);
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<PagedResult<TokenTransactionDto>>.Fail(result.ErrorCode!, result.Error!));
+        return Ok(ApiResponse<PagedResult<TokenTransactionDto>>.Ok(result.Value!));
+    }
+
+    /// <summary>GET /api/v1/bizcenter/tokens/balances — current token balances per type for current member</summary>
+    [HttpGet("balances")]
     public async Task<IActionResult> GetTokenBalances(CancellationToken ct)
     {
         var result = await _mediator.Send(new GetTokenBalancesQuery(), ct);

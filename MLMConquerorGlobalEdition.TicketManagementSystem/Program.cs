@@ -1,4 +1,4 @@
-using System.Text;
+using System.Security.Cryptography;
 using AspNetCoreRateLimit;
 using Hangfire;
 using Hangfire.SqlServer;
@@ -20,35 +20,28 @@ using IErrorTrackingService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.
 
 var builder = WebApplication.CreateBuilder(args);
 
-// DbContext
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// MediatR — scans all handlers in this assembly + error-handling pipeline behavior
 builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
     cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ErrorHandlingBehavior<,>));
 });
 
-// Services
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 
-// Helpdesk services
 builder.Services.AddScoped<IRoutingEngine, RoutingEngine>();
 builder.Services.AddScoped<ISlaMonitorService, SlaMonitorService>();
 
-// HangFire jobs (transient — HangFire resolves via IServiceScopeFactory internally)
 builder.Services.AddTransient<SlaCheckerJob>();
 builder.Services.AddTransient<AutoCloseJob>();
 builder.Services.AddTransient<TicketMetricsAggregatorJob>();
 
-// Error Tracking — singleton; uses IServiceScopeFactory for isolated DB writes
 builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
 
-// ── Redis distributed cache ───────────────────────────────────────────────────
 builder.Services.AddStackExchangeRedisCache(options =>
 {
     options.Configuration = builder.Configuration.GetConnectionString("Redis")
@@ -56,10 +49,8 @@ builder.Services.AddStackExchangeRedisCache(options =>
 });
 builder.Services.AddSingleton<ICacheService, CacheService>();
 
-// ── Firebase push notifications ───────────────────────────────────────────────
 builder.Services.AddSingleton<IPushNotificationService, FirebasePushNotificationService>();
 
-// ── HangFire ─────────────────────────────────────────────────────────────────
 builder.Services.AddHangfire(config => config
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
     .UseSimpleAssemblyNameTypeSerializer()
@@ -75,11 +66,14 @@ builder.Services.AddHangfire(config => config
         }));
 builder.Services.AddHangfireServer();
 
-// Controllers
 builder.Services.AddControllers();
 
-// JWT Authentication
-var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured.");
+var publicKeyBase64 = builder.Configuration["Jwt:PublicKeyBase64"]
+    ?? throw new InvalidOperationException("Jwt:PublicKeyBase64 not configured.");
+var rsa = RSA.Create();
+rsa.ImportSubjectPublicKeyInfo(Convert.FromBase64String(publicKeyBase64), out _);
+var rsaSecurityKey = new RsaSecurityKey(rsa);
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -91,13 +85,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+            IssuerSigningKey = rsaSecurityKey
         };
     });
 
 builder.Services.AddAuthorization();
 
-// Rate Limiting
 builder.Services.AddMemoryCache();
 builder.Services.Configure<IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
 builder.Services.AddSingleton<IIpPolicyStore, MemoryCacheIpPolicyStore>();
@@ -106,7 +99,6 @@ builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>()
 builder.Services.AddSingleton<IProcessingStrategy, AsyncKeyLockProcessingStrategy>();
 builder.Services.AddInMemoryRateLimiting();
 
-// Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -138,28 +130,26 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// ── HangFire Dashboard & Recurring Jobs ───────────────────────────────────────
 app.UseHangfireDashboard("/hangfire", new DashboardOptions
 {
-    Authorization = [] // Open in dev — restrict with auth filter in production
+    Authorization = []
 });
 
 RecurringJob.AddOrUpdate<SlaCheckerJob>(
     "sla-checker",
     job => job.ExecuteAsync(),
-    "*/5 * * * *");   // Every 5 minutes
+    "*/5 * * * *");
 
 RecurringJob.AddOrUpdate<AutoCloseJob>(
     "auto-close",
     job => job.ExecuteAsync(),
-    Cron.Hourly());   // Every hour
+    Cron.Hourly());
 
 RecurringJob.AddOrUpdate<TicketMetricsAggregatorJob>(
     "metrics-aggregator",
     job => job.ExecuteAsync(),
-    "0 1 * * *");     // Nightly at 1:00 AM UTC
+    "0 1 * * *");
 
-// Health check
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
 
 app.Run();

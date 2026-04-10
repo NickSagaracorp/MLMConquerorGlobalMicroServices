@@ -98,7 +98,6 @@ public class AutoPlacementJob
             now, toAutoPlace.Count);
     }
 
-    // ── Core auto-placement logic ────────────────────────────────────────────────
 
     private async Task AutoPlaceAsync(
         AppDbContext db, string memberId, string sponsorMemberId, DateTime now)
@@ -260,7 +259,6 @@ public class AutoPlacementJob
             var hasLeft  = children.Any(c => c.Side == TreeSide.Left);
             var hasRight = children.Any(c => c.Side == TreeSide.Right);
 
-            // This node has at least one open slot → candidate
             if (!hasLeft || !hasRight)
             {
                 var currentNode = await db.DualTeamTree

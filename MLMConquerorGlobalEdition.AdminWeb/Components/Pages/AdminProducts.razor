@@ -200,6 +200,17 @@
 
                         <div class="col-12"><hr class="my-1" /></div>
                         <div class="col-md-6"><label class="form-label fw-semibold">Old System ID</label><input type="number" class="form-control" @bind="_form.OldSystemProductId" /></div>
+                        @if (_editId is not null)
+                        {
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="productIsActive" @bind="_form.IsActive" />
+                                    <label class="form-check-label fw-semibold" for="productIsActive">
+                                        @(_form.IsActive ? "Active" : "Inactive")
+                                    </label>
+                                </div>
+                            </div>
+                        }
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -298,9 +309,10 @@
     {
         try
         {
-            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<MembershipLevelItem>>>("api/v1/admin/membership-levels?page=1&pageSize=100");
+            // The membership-levels endpoint returns a flat IEnumerable (not paged) — match that shape exactly
+            var resp = await Http.GetFromJsonAsync<ApiResp<IEnumerable<MembershipLevelItem>>>("api/v1/admin/membership-levels");
             if (resp?.Success == true && resp.Data is not null)
-                _membershipLevels = resp.Data.Items.ToList();
+                _membershipLevels = resp.Data.ToList();
         }
         catch { /* non-critical — dropdown will be empty */ }
     }
@@ -354,7 +366,8 @@
             QualificationPoinsPromo = p.QualificationPoinsPromo,
             MembershipLevelId     = p.MembershipLevelId,
             OldSystemProductId    = p.OldSystemProductId,
-            ThemeClass            = p.ThemeClass
+            ThemeClass            = p.ThemeClass,
+            IsActive              = p.IsActive
         };
         _showForm = true;
     }
@@ -439,6 +452,7 @@
         public int?    MembershipLevelId      { get; set; }
         public int     OldSystemProductId     { get; set; }
         public string? ThemeClass             { get; set; }
+        public bool    IsActive               { get; set; } = true;
     }
 
     private static string ActiveBadge(bool isActive) => isActive ? "bg-success" : "bg-secondary";

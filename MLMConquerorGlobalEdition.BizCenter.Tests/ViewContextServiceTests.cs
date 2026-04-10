@@ -9,7 +9,6 @@ public class ViewContextServiceTests
     private static ViewContextService CreateService() =>
         new(new HttpContextAccessor());
 
-    // ── SetContext ────────────────────────────────────────────────────────────
 
     [Fact]
     public void SetContext_WhenCalled_UpdatesAllProperties()
@@ -34,7 +33,6 @@ public class ViewContextServiceTests
         svc.ViewerRoles.Should().Contain(AppRoles.Admin);
     }
 
-    // ── HasPermission — positive cases ────────────────────────────────────────
 
     [Fact]
     public void HasPermission_WhenSuperAdmin_AlwaysReturnsTrue()
@@ -115,7 +113,6 @@ public class ViewContextServiceTests
         }
     }
 
-    // ── HasPermission — negative cases ────────────────────────────────────────
 
     [Fact]
     public void HasPermission_WhenAmbassador_CannotDeleteCommission()
@@ -165,7 +162,6 @@ public class ViewContextServiceTests
         svc.HasPermission(Permissions.SystemUsers.Manage).Should().BeFalse();
     }
 
-    // ── IsInAnyRole ────────────────────────────────────────────────────────────
 
     [Fact]
     public void IsInAnyRole_WhenMatchingRole_ReturnsTrue()

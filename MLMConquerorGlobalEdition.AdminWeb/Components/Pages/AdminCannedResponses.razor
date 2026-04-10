@@ -1,0 +1,310 @@
+@page "/admin/helpdesk/canned-responses"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin,SupportManager,SupportLevel1,SupportLevel2,SupportLevel3,IT")]
+@inject IHttpClientFactory HttpClientFactory
+@using Syncfusion.Blazor.RichTextEditor
+
+<PageTitle>Canned Responses — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Helpdesk", "/admin/helpdesk/dashboard"), new("Canned Responses") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-chat-quote-line me-2 text-primary"></i>Canned Responses
+        </h6>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+        <button class="btn btn-primary btn-sm" @onclick="OpenCreate">
+            <i class="ri-add-line me-1"></i>New Response
+        </button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else if (_items.Count == 0)
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="ri-chat-quote-line fs-1 d-block mb-2"></i>
+                <p class="mb-0">No canned responses found. Create one to get started.</p>
+            </div>
+        }
+        else
+        {
+            <SfGrid TValue="CannedResponseDto" DataSource="@_items"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn HeaderText="Title" Width="220">
+                        <Template>
+                            <span class="fw-semibold">@(((CannedResponseDto)context).Title)</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Category" Width="140">
+                        <Template>
+                            <span class="small text-muted">@(((CannedResponseDto)context).Category ?? "—")</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Scope" Width="110" TextAlign="TextAlign.Center">
+                        <Template>
+                            @{ var scope = ((CannedResponseDto)context).Scope; }
+                            <span class="badge @(scope == "global" ? "bg-primary" : scope == "team" ? "bg-info text-dark" : "bg-secondary")">
+                                @scope
+                            </span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Usage" Width="90" TextAlign="TextAlign.Center">
+                        <Template>
+                            <span class="badge bg-light text-dark border">@(((CannedResponseDto)context).UsageCount)</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="110" TextAlign="TextAlign.Center">
+                        <Template>
+                            @{ var item = (CannedResponseDto)context; }
+                            <button class="btn btn-sm btn-outline-primary py-0 me-1"
+                                    @onclick="() => OpenEdit(item)">
+                                <i class="ri-edit-line"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger py-0"
+                                    @onclick="() => ConfirmDelete(item)">
+                                <i class="ri-delete-bin-line"></i>
+                            </button>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+@* ── Create / Edit Modal ── *@
+@if (_showForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold">@(_editId is null ? "New Canned Response" : "Edit Canned Response")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseForm"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Title <span class="text-danger">*</span></label>
+                            <input class="form-control" @bind="_form.Title" placeholder="e.g. Welcome message" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Body <span class="text-danger">*</span></label>
+                            <SfRichTextEditor @bind-Value="_form.Body" Height="260" Placeholder="Response body…">
+                                <RichTextEditorToolbarSettings Items="@_rteToolbar" />
+                            </SfRichTextEditor>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Category</label>
+                            <input class="form-control" @bind="_form.Category" placeholder="e.g. Billing, Technical" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Scope</label>
+                            <select class="form-select" @bind="_form.Scope">
+                                <option value="global">Global</option>
+                                <option value="team">Team</option>
+                                <option value="personal">Personal</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                    <button class="btn btn-primary" @onclick="Save" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        @(_editId is null ? "Create Response" : "Save Changes")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ── Delete Confirm Modal ── *@
+@if (_showDeleteConfirm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold text-danger">Delete Canned Response</h5>
+                    <button type="button" class="btn-close" @onclick="() => { _showDeleteConfirm = false; _deleteTarget = null; }"></button>
+                </div>
+                <div class="modal-body">
+                    Delete <strong>@_deleteTarget?.Title</strong>? This cannot be undone.
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => { _showDeleteConfirm = false; _deleteTarget = null; }">Cancel</button>
+                    <button class="btn btn-danger" @onclick="DeleteItem" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private static readonly List<ToolbarItemModel> _rteToolbar = new()
+    {
+        new() { Command = ToolbarCommand.Bold },
+        new() { Command = ToolbarCommand.Italic },
+        new() { Command = ToolbarCommand.Underline },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.Formats },
+        new() { Command = ToolbarCommand.Alignments },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.OrderedList },
+        new() { Command = ToolbarCommand.UnorderedList },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.CreateLink },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.Undo },
+        new() { Command = ToolbarCommand.Redo }
+    };
+
+    private List<CannedResponseDto> _items = new();
+    private bool _loading = true;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private bool _showForm;
+    private bool _showDeleteConfirm;
+    private string? _editId;
+    private CannedResponseFormModel _form = new();
+    private CannedResponseDto? _deleteTarget;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var http = HttpClientFactory.CreateClient("HelpdeskApi");
+            var resp = await http.GetFromJsonAsync<ApiResp<IEnumerable<CannedResponseDto>>>("api/v1/helpdesk/canned-responses");
+            if (resp?.Success == true && resp.Data is not null)
+                _items = resp.Data.ToList();
+            else { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load canned responses."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private void OpenCreate()
+    {
+        _editId = null;
+        _form = new CannedResponseFormModel();
+        _showForm = true;
+    }
+
+    private void OpenEdit(CannedResponseDto item)
+    {
+        _editId = item.Id;
+        _form = new CannedResponseFormModel
+        {
+            Title = item.Title,
+            Body = item.Body,
+            Category = item.Category,
+            Scope = item.Scope
+        };
+        _showForm = true;
+    }
+
+    private void CloseForm() { _showForm = false; _editId = null; }
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(_form.Title)) { _alertMsg = "Title is required."; _alertIsError = true; return; }
+        if (string.IsNullOrWhiteSpace(_form.Body)) { _alertMsg = "Body is required."; _alertIsError = true; return; }
+        _saving = true;
+        try
+        {
+            var http = HttpClientFactory.CreateClient("HelpdeskApi");
+            HttpResponseMessage response;
+            var payload = new
+            {
+                _form.Title,
+                _form.Body,
+                _form.Category,
+                TagsJson = "[]",
+                _form.Scope
+            };
+            if (_editId is null)
+                response = await http.PostAsJsonAsync("api/v1/helpdesk/canned-responses", payload);
+            else
+                response = await http.PutAsJsonAsync($"api/v1/helpdesk/canned-responses/{_editId}", payload);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _alertMsg = _editId is null ? "Canned response created." : "Canned response updated.";
+                _alertIsError = false;
+                CloseForm();
+                await LoadAsync();
+            }
+            else { _alertMsg = $"Save failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private void ConfirmDelete(CannedResponseDto item) { _deleteTarget = item; _showDeleteConfirm = true; }
+
+    private async Task DeleteItem()
+    {
+        if (_deleteTarget is null) return;
+        _saving = true;
+        try
+        {
+            var http = HttpClientFactory.CreateClient("HelpdeskApi");
+            var response = await http.DeleteAsync($"api/v1/helpdesk/canned-responses/{_deleteTarget.Id}");
+            if (response.IsSuccessStatusCode)
+            {
+                _alertMsg = "Canned response deleted.";
+                _alertIsError = false;
+                _showDeleteConfirm = false;
+                _deleteTarget = null;
+                await LoadAsync();
+            }
+            else { _alertMsg = $"Delete failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+
+    private class CannedResponseDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public string Body { get; set; } = string.Empty;
+        public string? Category { get; set; }
+        public string TagsJson { get; set; } = "[]";
+        public string Scope { get; set; } = "global";
+        public int UsageCount { get; set; }
+    }
+
+    private class CannedResponseFormModel
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Body { get; set; } = string.Empty;
+        public string? Category { get; set; }
+        public string Scope { get; set; } = "global";
+    }
+}

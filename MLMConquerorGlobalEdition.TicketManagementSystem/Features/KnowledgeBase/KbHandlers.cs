@@ -8,7 +8,6 @@ using MLMConquerorGlobalEdition.TicketManagementSystem.Services;
 
 namespace MLMConquerorGlobalEdition.TicketManagementSystem.Features.KnowledgeBase;
 
-// ─── CREATE ───────────────────────────────────────────────────────────────────
 public class CreateKbArticleHandler : IRequestHandler<CreateKbArticleCommand, Result<KbArticleDto>>
 {
     private readonly AppDbContext _db;
@@ -94,7 +93,6 @@ public class CreateKbArticleHandler : IRequestHandler<CreateKbArticleCommand, Re
     };
 }
 
-// ─── UPDATE ───────────────────────────────────────────────────────────────────
 public class UpdateKbArticleHandler : IRequestHandler<UpdateKbArticleCommand, Result<bool>>
 {
     private readonly AppDbContext _db;
@@ -148,7 +146,6 @@ public class UpdateKbArticleHandler : IRequestHandler<UpdateKbArticleCommand, Re
     }
 }
 
-// ─── PUBLISH ──────────────────────────────────────────────────────────────────
 public class PublishKbArticleHandler : IRequestHandler<PublishKbArticleCommand, Result<bool>>
 {
     private readonly AppDbContext _db;
@@ -178,7 +175,6 @@ public class PublishKbArticleHandler : IRequestHandler<PublishKbArticleCommand, 
     }
 }
 
-// ─── DELETE ───────────────────────────────────────────────────────────────────
 public class DeleteKbArticleHandler : IRequestHandler<DeleteKbArticleCommand, Result<bool>>
 {
     private readonly AppDbContext _db;
@@ -209,7 +205,6 @@ public class DeleteKbArticleHandler : IRequestHandler<DeleteKbArticleCommand, Re
     }
 }
 
-// ─── SUBMIT FEEDBACK ──────────────────────────────────────────────────────────
 public class SubmitKbFeedbackHandler : IRequestHandler<SubmitKbFeedbackCommand, Result<bool>>
 {
     private readonly AppDbContext _db;
@@ -238,7 +233,6 @@ public class SubmitKbFeedbackHandler : IRequestHandler<SubmitKbFeedbackCommand, 
     }
 }
 
-// ─── CREATE FROM TICKET ───────────────────────────────────────────────────────
 public class CreateKbArticleFromTicketHandler : IRequestHandler<CreateKbArticleFromTicketCommand, Result<KbArticleDto>>
 {
     private readonly AppDbContext _db;
@@ -273,7 +267,6 @@ public class CreateKbArticleFromTicketHandler : IRequestHandler<CreateKbArticleF
     }
 }
 
-// ─── GET BY SLUG ──────────────────────────────────────────────────────────────
 public class GetKbArticleBySlugHandler : IRequestHandler<GetKbArticleBySlugQuery, Result<KbArticleDto>>
 {
     private readonly AppDbContext _db;
@@ -311,7 +304,6 @@ public class GetKbArticleBySlugHandler : IRequestHandler<GetKbArticleBySlugQuery
     }
 }
 
-// ─── SEARCH ───────────────────────────────────────────────────────────────────
 public class SearchKnowledgeBaseHandler : IRequestHandler<SearchKnowledgeBaseQuery, Result<PagedResult<KbArticleSummaryDto>>>
 {
     private readonly AppDbContext _db;
@@ -373,7 +365,6 @@ public class SearchKnowledgeBaseHandler : IRequestHandler<SearchKnowledgeBaseQue
     };
 }
 
-// ─── GET SUGGESTIONS ──────────────────────────────────────────────────────────
 public class GetKbSuggestionsHandler : IRequestHandler<GetKbSuggestionsQuery, Result<IEnumerable<KbArticleSummaryDto>>>
 {
     private readonly AppDbContext _db;

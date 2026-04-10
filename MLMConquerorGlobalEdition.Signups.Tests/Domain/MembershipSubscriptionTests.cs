@@ -17,7 +17,6 @@ public class MembershipSubscriptionTests
         LastUpdateDate = DateTime.UtcNow
     };
 
-    // ─── Same Level Tests ─────────────────────────────────────────────────────
 
     [Fact]
     public void ValidateChange_WhenUpgradeToSameLevel_ThrowsMembershipChangeNotAllowedException()
@@ -41,7 +40,6 @@ public class MembershipSubscriptionTests
            .WithMessage("*same*");
     }
 
-    // ─── Upgrade Tests ────────────────────────────────────────────────────────
 
     [Fact]
     public void ValidateChange_WhenUpgradeToHigherSortOrder_Succeeds()
@@ -75,7 +73,6 @@ public class MembershipSubscriptionTests
         act.Should().Throw<MembershipChangeNotAllowedException>();
     }
 
-    // ─── Downgrade Tests ──────────────────────────────────────────────────────
 
     [Fact]
     public void ValidateChange_WhenDowngradeToLowerSortOrder_Succeeds()

@@ -34,7 +34,6 @@ public class GetCeoDashboardHandler : IRequestHandler<GetCeoDashboardQuery, Resu
         var last7Days = now.AddDays(-7);
         var next30Days = now.AddDays(30);
 
-        // ── MEMBERS ──────────────────────────────────────────────────────────
         var membersByStatus = await _db.MemberProfiles
             .AsNoTracking()
             .Where(m => !m.IsDeleted)
@@ -63,7 +62,6 @@ public class GetCeoDashboardHandler : IRequestHandler<GetCeoDashboardQuery, Resu
         var newThisMonth = await _db.MemberProfiles.AsNoTracking().CountAsync(m => !m.IsDeleted && m.EnrollDate >= startOfMonth, ct);
         var newLastMonth = await _db.MemberProfiles.AsNoTracking().CountAsync(m => !m.IsDeleted && m.EnrollDate >= startOfLastMonth && m.EnrollDate < startOfMonth, ct);
 
-        // ── FINANCIAL ────────────────────────────────────────────────────────
         var revenueThisMonth = await _db.Orders.AsNoTracking()
             .Where(o => o.OrderDate >= startOfMonth && o.Status != OrderStatus.Cancelled)
             .SumAsync(o => (decimal?)o.TotalAmount, ct) ?? 0;
@@ -81,7 +79,6 @@ public class GetCeoDashboardHandler : IRequestHandler<GetCeoDashboardQuery, Resu
 
         var avgOrderValue = ordersThisMonth > 0 ? Math.Round(revenueThisMonth / ordersThisMonth, 2) : 0;
 
-        // ── COMMISSIONS ──────────────────────────────────────────────────────
         var commissionsPaidAll = await _db.CommissionEarnings.AsNoTracking()
             .Where(c => c.Status == CommissionEarningStatus.Paid)
             .SumAsync(c => (decimal?)c.Amount, ct) ?? 0;
@@ -94,7 +91,6 @@ public class GetCeoDashboardHandler : IRequestHandler<GetCeoDashboardQuery, Resu
             .Where(c => c.Status == CommissionEarningStatus.Pending)
             .SumAsync(c => (decimal?)c.Amount, ct) ?? 0;
 
-        // ── SUBSCRIPTIONS ────────────────────────────────────────────────────
         var activeSubs = await _db.MembershipSubscriptions.AsNoTracking()
             .CountAsync(s => s.SubscriptionStatus == MembershipStatus.Active, ct);
 
@@ -109,24 +105,20 @@ public class GetCeoDashboardHandler : IRequestHandler<GetCeoDashboardQuery, Resu
                           && s.CancellationDate.HasValue
                           && s.CancellationDate.Value >= startOfMonth, ct);
 
-        // ── SUPPORT ──────────────────────────────────────────────────────────
         var ticketsOpen       = await _db.Tickets.AsNoTracking().CountAsync(t => t.Status == TicketStatus.Open, ct);
         var ticketsInProgress = await _db.Tickets.AsNoTracking().CountAsync(t => t.Status == TicketStatus.InProgress, ct);
         var ticketsCritical   = await _db.Tickets.AsNoTracking().CountAsync(t => t.Priority == TicketPriority.Critical && t.Status != TicketStatus.Resolved && t.Status != TicketStatus.Closed, ct);
         var ticketsResolved   = await _db.Tickets.AsNoTracking().CountAsync(t => t.Status == TicketStatus.Resolved && t.CreationDate >= startOfMonth, ct);
 
-        // ── TOKENS ───────────────────────────────────────────────────────────
         var tokenTotal     = await _db.TokenTransactions.AsNoTracking().CountAsync(t => t.ReferenceId != null, ct);
         var tokenUsed      = await _db.TokenTransactions.AsNoTracking().CountAsync(t => t.ReferenceId != null && t.UsedAt != null, ct);
         var tokenAvailable = tokenTotal - tokenUsed;
 
-        // ── PAYMENTS ─────────────────────────────────────────────────────────
         var paymentsPending = await _db.PaymentHistories.AsNoTracking()
             .CountAsync(p => p.TransactionStatus == PaymentHistoryTransactionStatus.Pending, ct);
         var paymentsFailed  = await _db.PaymentHistories.AsNoTracking()
             .CountAsync(p => p.TransactionStatus == PaymentHistoryTransactionStatus.Failed, ct);
 
-        // ── RECENT MEMBERS ───────────────────────────────────────────────────
         var recentMembers = await _db.MemberProfiles
             .AsNoTracking()
             .Where(m => !m.IsDeleted)
@@ -141,7 +133,6 @@ public class GetCeoDashboardHandler : IRequestHandler<GetCeoDashboardQuery, Resu
                 m.SponsorMemberId))
             .ToListAsync(ct);
 
-        // ── LAST BILLING RUN ─────────────────────────────────────────────────
         // Determine last run date: most recent day with processed payments
         var lastProcessed = await _db.PaymentHistories
             .AsNoTracking()
@@ -228,7 +219,6 @@ public class GetCeoDashboardHandler : IRequestHandler<GetCeoDashboardQuery, Resu
             ByLevel          = billingByLevel,
         };
 
-        // ── AMBASSADORS BY MEMBERSHIP LEVEL (active only) ───────────────────
         var ambassadorsByLevel = await (
             from m in _db.MemberProfiles.AsNoTracking()
             join s in _db.MembershipSubscriptions.AsNoTracking() on m.MemberId equals s.MemberId
@@ -242,7 +232,6 @@ public class GetCeoDashboardHandler : IRequestHandler<GetCeoDashboardQuery, Resu
             select new AmbassadorsByLevelItem(g.Key.Name, g.Count(), g.Key.IsFree)
         ).ToListAsync(ct);
 
-        // ── MONTHLY SIGNUPS — current year, by level + status ────────────────
         var monthlySignups = await (
             from m in _db.MemberProfiles.AsNoTracking()
             join s in _db.MembershipSubscriptions.AsNoTracking() on m.MemberId equals s.MemberId
@@ -263,7 +252,6 @@ public class GetCeoDashboardHandler : IRequestHandler<GetCeoDashboardQuery, Resu
                 g.Count())
         ).ToListAsync(ct);
 
-        // ── MEMBERS BY COUNTRY ───────────────────────────────────────────────
         var membersByCountryRaw = await _db.MemberProfiles
             .AsNoTracking()
             .Where(m => !m.IsDeleted
@@ -279,7 +267,6 @@ public class GetCeoDashboardHandler : IRequestHandler<GetCeoDashboardQuery, Resu
             .Select(x => new MembersByCountryItem(x.CountryName!, x.ActiveCount))
             .ToList();
 
-        // ── MEMBERSHIP BREAKDOWN ─────────────────────────────────────────────
         var membershipBreakdown = await (
             from s in _db.MembershipSubscriptions.AsNoTracking()
             join ml in _db.MembershipLevels.AsNoTracking() on s.MembershipLevelId equals ml.Id

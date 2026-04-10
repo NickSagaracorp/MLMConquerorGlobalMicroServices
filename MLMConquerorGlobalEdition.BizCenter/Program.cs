@@ -24,14 +24,11 @@ using IErrorTrackingService     = MLMConquerorGlobalEdition.SharedKernel.Interfa
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ── PII-masking logging — replaces default providers ─────────────────────────
 builder.Logging.AddPiiMaskingConsole();
 
-// ── DbContext ─────────────────────────────────────────────────────────────────
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// ── MediatR + validation + error-handling pipeline behaviors ─────────────────
 // Order matters: Validation runs first, then error handling wraps the handler.
 builder.Services.AddMediatR(cfg =>
 {
@@ -43,7 +40,6 @@ builder.Services.AddMediatR(cfg =>
 // Auto-register all FluentValidation validators in this assembly
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 
-// ── Services ──────────────────────────────────────────────────────────────────
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
@@ -51,17 +47,14 @@ builder.Services.AddSingleton<MLMConquerorGlobalEdition.SharedKernel.Interfaces.
     sp => sp.GetRequiredService<IDateTimeProvider>());
 builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
 
-// ── Redis distributed cache ───────────────────────────────────────────────────
 builder.Services.AddStackExchangeRedisCache(options =>
 {
     options.Configuration = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
 });
 builder.Services.AddSingleton<ICacheService, CacheService>();
 
-// ── Firebase push notifications ───────────────────────────────────────────────
 builder.Services.AddSingleton<IPushNotificationService, FirebasePushNotificationService>();
 
-// ── HangFire ──────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<MemberStatisticSnapshotJob>();
 builder.Services.AddScoped<ExpiredTokenCleanupJob>();
 builder.Services.AddScoped<LoyaltyPointsMonthlyRollupJob>();
@@ -84,10 +77,8 @@ builder.Services.AddHangfireServer(options =>
     options.WorkerCount = builder.Configuration.GetValue("Hangfire:WorkerCount", 5);
 });
 
-// ── Controllers ───────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
 
-// ── CORS — whitelist-based, credentials allowed ───────────────────────────────
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
     .Get<string[]>()
@@ -107,7 +98,6 @@ builder.Services.AddCors(options =>
     });
 });
 
-// ── JWT Authentication (RS256 — asymmetric) ───────────────────────────────────
 var publicKeyBase64 = builder.Configuration["Jwt:PublicKeyBase64"]
     ?? throw new InvalidOperationException("Jwt:PublicKeyBase64 not configured.");
 
@@ -141,7 +131,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// ── Rate Limiting (IP-based) ──────────────────────────────────────────────────
 builder.Services.AddMemoryCache();
 builder.Services.Configure<IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
 builder.Services.AddSingleton<IIpPolicyStore, MemoryCacheIpPolicyStore>();
@@ -150,7 +139,6 @@ builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>()
 builder.Services.AddSingleton<IProcessingStrategy, AsyncKeyLockProcessingStrategy>();
 builder.Services.AddInMemoryRateLimiting();
 
-// ── Swagger ───────────────────────────────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -177,19 +165,15 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// ── HTTPS enforcement ─────────────────────────────────────────────────────────
 if (!app.Environment.IsDevelopment())
     app.UseHsts();
 
 app.UseHttpsRedirection();
 
-// ── Security headers — must be first to cover all responses ──────────────────
 app.UseMiddleware<SecurityHeadersMiddleware>();
 
-// ── Domain exception handler ──────────────────────────────────────────────────
 app.UseMiddleware<DomainExceptionMiddleware>();
 
-// ── CORS — before auth ────────────────────────────────────────────────────────
 app.UseCors("BizCenterPolicy");
 
 app.UseSwagger();
@@ -199,7 +183,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// ── HangFire dashboard — restricted to authenticated admins only ──────────────
 app.UseHangfireDashboard("/hangfire", new DashboardOptions
 {
     Authorization = new[] { new HangfireAdminAuthorizationFilter() },

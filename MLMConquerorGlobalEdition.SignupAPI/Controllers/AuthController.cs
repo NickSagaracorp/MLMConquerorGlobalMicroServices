@@ -116,7 +116,6 @@ public class AuthController : ControllerBase
             : BadRequest(ApiResponse<bool>.Fail(result.ErrorCode!, result.Error!));
     }
 
-    // ── helpers ────────────────────────────────────────────────────────────────
 
     private void SetRefreshTokenCookie(string rawToken)
     {

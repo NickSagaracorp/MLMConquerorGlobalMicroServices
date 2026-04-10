@@ -32,7 +32,6 @@ public class GetDashboardStatsHandlerTests : IDisposable
     private GetDashboardStatsHandler CreateHandler() =>
         new(_db, _currentUser.Object);
 
-    // ── TotalEarnings ─────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Handle_WhenMemberHasPaidCommissions_ReturnsSumOfPaidAmounts()
@@ -77,7 +76,6 @@ public class GetDashboardStatsHandlerTests : IDisposable
         result.Value!.TotalEarnings.Should().Be(0m);
     }
 
-    // ── TeamSize ──────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Handle_WhenMemberHasDirectChildren_ReturnsCorrectTeamSize()
@@ -102,7 +100,6 @@ public class GetDashboardStatsHandlerTests : IDisposable
         result.Value!.TeamSize.Should().Be(0);
     }
 
-    // ── TokenBalance ──────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Handle_WhenMemberHasMultipleTokenBalances_ReturnsSummedBalance()
@@ -119,7 +116,6 @@ public class GetDashboardStatsHandlerTests : IDisposable
         result.Value!.TokenBalance.Should().Be(15);
     }
 
-    // ── FSB Windows ───────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Handle_WhenMemberHasFsbEarnings_ReturnsFsbWindowsUpToThree()
@@ -155,7 +151,6 @@ public class GetDashboardStatsHandlerTests : IDisposable
         result.Value!.FsbWindows.Should().BeEmpty();
     }
 
-    // ── Always success ────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Handle_Always_ReturnsSuccess()

@@ -1,0 +1,457 @@
+@page "/admin/helpdesk/agents"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin,SupportManager,IT")]
+@inject IHttpClientFactory HttpClientFactory
+
+<PageTitle>Teams & Agents — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Helpdesk", "/admin/helpdesk/dashboard"), new("Teams & Agents") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+@* ════════════════════════════════════════════════════ *@
+@*  TEAMS SECTION                                       *@
+@* ════════════════════════════════════════════════════ *@
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-team-line me-2 text-primary"></i>Support Teams
+        </h6>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+        <button class="btn btn-primary btn-sm" @onclick="OpenCreateTeam">
+            <i class="ri-add-line me-1"></i>New Team
+        </button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loadingTeams)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else if (_teams.Count == 0)
+        {
+            <div class="text-center py-4 text-muted">
+                <i class="ri-team-line fs-1 d-block mb-2"></i>
+                <p class="mb-0">No teams found. Create one to get started.</p>
+            </div>
+        }
+        else
+        {
+            <SfGrid TValue="SupportTeamDto" DataSource="@_teams"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="25" PageSizes="@(new int[]{25,50,100})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn HeaderText="Name" Width="200">
+                        <Template>
+                            @{ var t = (SupportTeamDto)context; }
+                            <span class="fw-semibold">@t.Name</span>
+                            @if (!string.IsNullOrWhiteSpace(t.Description))
+                            {
+                                <text><br /><small class="text-muted">@(t.Description.Length > 60 ? t.Description[..60] + "…" : t.Description)</small></text>
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Routing" Width="130">
+                        <Template>
+                            @{ var rm = ((SupportTeamDto)context).RoutingMethod ?? "manual"; }
+                            <span class="badge bg-secondary-subtle text-secondary border">@rm.Replace("_", " ")</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Status" Width="90" TextAlign="TextAlign.Center">
+                        <Template>
+                            <span class="badge @(((SupportTeamDto)context).IsActive ? "bg-success" : "bg-secondary")">
+                                @(((SupportTeamDto)context).IsActive ? "Active" : "Inactive")
+                            </span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Agents" Width="80" TextAlign="TextAlign.Center">
+                        <Template>
+                            <span class="small fw-semibold">@(((SupportTeamDto)context).AgentCount)</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="90" TextAlign="TextAlign.Center">
+                        <Template>
+                            <button class="btn btn-sm btn-outline-primary py-0"
+                                    @onclick="() => OpenEditTeam((SupportTeamDto)context)">
+                                <i class="ri-edit-line"></i>
+                            </button>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+@* ════════════════════════════════════════════════════ *@
+@*  AGENTS SECTION                                      *@
+@* ════════════════════════════════════════════════════ *@
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-customer-service-2-line me-2 text-primary"></i>Support Agents
+        </h6>
+        <button class="btn btn-primary btn-sm" @onclick="OpenCreateAgent">
+            <i class="ri-add-line me-1"></i>New Agent
+        </button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loadingAgents)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else if (_agents.Count == 0)
+        {
+            <div class="text-center py-4 text-muted">
+                <i class="ri-user-line fs-1 d-block mb-2"></i>
+                <p class="mb-0">No agents found.</p>
+            </div>
+        }
+        else
+        {
+            <SfGrid TValue="AgentWorkloadDto" DataSource="@_agents"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="25" PageSizes="@(new int[]{25,50,100})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn HeaderText="Agent" Width="220">
+                        <Template>
+                            @{ var ag = (AgentWorkloadDto)context; }
+                            <span class="fw-semibold">@ag.DisplayName</span>
+                            <br /><small class="text-muted">@ag.Email</small>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Tier" Width="70" TextAlign="TextAlign.Center">
+                        <Template>
+                            <span class="badge bg-secondary-subtle text-secondary border">T@(((AgentWorkloadDto)context).Tier)</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Availability" Width="120">
+                        <Template>
+                            @{ var avail = ((AgentWorkloadDto)context).Availability; }
+                            <span class="badge @(avail == "Online" ? "bg-success" : avail == "Busy" ? "bg-warning text-dark" : "bg-secondary")">
+                                @avail
+                            </span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Tickets (Active/Max)" Width="165" TextAlign="TextAlign.Center">
+                        <Template>
+                            @{ var a = (AgentWorkloadDto)context; }
+                            <span class="small fw-semibold">@a.CurrentTicketCount / @a.MaxConcurrentTickets</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Workload" Width="180">
+                        <Template>
+                            @{ var pct = ((AgentWorkloadDto)context).WorkloadPercent; }
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="progress flex-grow-1" style="height:8px;">
+                                    <div class="progress-bar @(pct >= 90 ? "bg-danger" : pct >= 70 ? "bg-warning" : "bg-success")"
+                                         style="width:@(Math.Min(pct, 100))%"></div>
+                                </div>
+                                <small class="text-muted" style="min-width:36px;">@pct.ToString("F0")%</small>
+                            </div>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+@* ── Team Create/Edit Modal ── *@
+@if (_showTeamForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold">@(_editTeamId is null ? "New Support Team" : "Edit Support Team")</h5>
+                    <button type="button" class="btn-close" @onclick="() => { _showTeamForm = false; _editTeamId = null; }"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+                            <input class="form-control" @bind="_teamForm.Name" placeholder="e.g. Technical Support" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Description</label>
+                            <textarea class="form-control" rows="2" @bind="_teamForm.Description" placeholder="Optional description…"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Routing Method</label>
+                            <select class="form-select" @bind="_teamForm.RoutingMethod">
+                                <option value="round_robin">Round Robin</option>
+                                <option value="least_busy">Least Busy</option>
+                                <option value="manual">Manual</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="teamActive" @bind="_teamForm.IsActive" />
+                                <label class="form-check-label" for="teamActive">Active</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => { _showTeamForm = false; _editTeamId = null; }">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SaveTeam" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        @(_editTeamId is null ? "Create Team" : "Save Changes")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ── Agent Create Modal ── *@
+@if (_showAgentForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold">New Support Agent</h5>
+                    <button type="button" class="btn-close" @onclick="() => _showAgentForm = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">User ID <span class="text-danger">*</span></label>
+                            <input class="form-control font-monospace" @bind="_agentForm.UserId" placeholder="Identity UserId (GUID)" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Display Name <span class="text-danger">*</span></label>
+                            <input class="form-control" @bind="_agentForm.DisplayName" placeholder="Full name" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" @bind="_agentForm.Email" placeholder="agent@domain.com" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Team</label>
+                            <select class="form-select" @bind="_agentForm.TeamId">
+                                <option value="">— No team —</option>
+                                @foreach (var team in _teams.Where(t => t.IsActive))
+                                {
+                                    <option value="@team.Id">@team.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Tier</label>
+                            <select class="form-select" @bind="_agentForm.Tier">
+                                <option value="1">Tier 1</option>
+                                <option value="2">Tier 2</option>
+                                <option value="3">Tier 3</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Max Tickets</label>
+                            <input type="number" class="form-control" @bind="_agentForm.MaxConcurrentTickets" min="1" max="100" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => _showAgentForm = false">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SaveAgent" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Create Agent
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    // ── State ──────────────────────────────────────────────
+    private List<SupportTeamDto> _teams = new();
+    private List<AgentWorkloadDto> _agents = new();
+    private bool _loadingTeams = true;
+    private bool _loadingAgents = true;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+
+    // Teams form
+    private bool _showTeamForm;
+    private int? _editTeamId;
+    private TeamFormModel _teamForm = new();
+
+    // Agents form
+    private bool _showAgentForm;
+    private AgentFormModel _agentForm = new();
+
+    // ── Lifecycle ──────────────────────────────────────────
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loadingTeams = true;
+        _loadingAgents = true;
+        StateHasChanged();
+
+        var http = HttpClientFactory.CreateClient("HelpdeskApi");
+
+        try
+        {
+            var teamsResp = await http.GetFromJsonAsync<ApiResp<IEnumerable<SupportTeamDto>>>("api/v1/helpdesk/admin/teams");
+            if (teamsResp?.Success == true && teamsResp.Data is not null)
+                _teams = teamsResp.Data.ToList();
+            else { _alertMsg = teamsResp?.Errors?.FirstOrDefault() ?? "Failed to load teams."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Teams error: {ex.Message}"; _alertIsError = true; }
+        finally { _loadingTeams = false; }
+
+        try
+        {
+            var agentsResp = await http.GetFromJsonAsync<ApiResp<IEnumerable<AgentWorkloadDto>>>("api/v1/helpdesk/admin/agents");
+            if (agentsResp?.Success == true && agentsResp.Data is not null)
+                _agents = agentsResp.Data.ToList();
+            else { _alertMsg = agentsResp?.Errors?.FirstOrDefault() ?? "Failed to load agents."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Agents error: {ex.Message}"; _alertIsError = true; }
+        finally { _loadingAgents = false; }
+    }
+
+    // ── Teams ──────────────────────────────────────────────
+    private void OpenCreateTeam()
+    {
+        _editTeamId = null;
+        _teamForm = new TeamFormModel { IsActive = true, RoutingMethod = "round_robin" };
+        _showTeamForm = true;
+    }
+
+    private void OpenEditTeam(SupportTeamDto t)
+    {
+        _editTeamId = t.Id;
+        _teamForm = new TeamFormModel
+        {
+            Name = t.Name,
+            Description = t.Description,
+            RoutingMethod = t.RoutingMethod ?? "manual",
+            IsActive = t.IsActive
+        };
+        _showTeamForm = true;
+    }
+
+    private async Task SaveTeam()
+    {
+        if (string.IsNullOrWhiteSpace(_teamForm.Name)) { _alertMsg = "Team name is required."; _alertIsError = true; return; }
+        _saving = true;
+        try
+        {
+            var http = HttpClientFactory.CreateClient("HelpdeskApi");
+            HttpResponseMessage response;
+            if (_editTeamId is null)
+                response = await http.PostAsJsonAsync("api/v1/helpdesk/admin/teams", _teamForm);
+            else
+                response = await http.PutAsJsonAsync($"api/v1/helpdesk/admin/teams/{_editTeamId}", _teamForm);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _alertMsg = _editTeamId is null ? "Team created." : "Team updated.";
+                _alertIsError = false;
+                _showTeamForm = false;
+                _editTeamId = null;
+                await LoadAsync();
+            }
+            else { _alertMsg = $"Save failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    // ── Agents ─────────────────────────────────────────────
+    private void OpenCreateAgent()
+    {
+        _agentForm = new AgentFormModel();
+        _showAgentForm = true;
+    }
+
+    private async Task SaveAgent()
+    {
+        if (string.IsNullOrWhiteSpace(_agentForm.UserId)) { _alertMsg = "User ID is required."; _alertIsError = true; return; }
+        if (string.IsNullOrWhiteSpace(_agentForm.DisplayName)) { _alertMsg = "Display Name is required."; _alertIsError = true; return; }
+        if (string.IsNullOrWhiteSpace(_agentForm.Email)) { _alertMsg = "Email is required."; _alertIsError = true; return; }
+        _saving = true;
+        try
+        {
+            var http = HttpClientFactory.CreateClient("HelpdeskApi");
+            var payload = new
+            {
+                _agentForm.UserId,
+                _agentForm.DisplayName,
+                _agentForm.Email,
+                TeamId = string.IsNullOrEmpty(_agentForm.TeamId) ? (int?)null : int.Parse(_agentForm.TeamId),
+                _agentForm.Tier,
+                SkillsJson = "[]",
+                LanguagesJson = "[\"es\"]",
+                _agentForm.MaxConcurrentTickets
+            };
+            var response = await http.PostAsJsonAsync("api/v1/helpdesk/admin/agents", payload);
+            if (response.IsSuccessStatusCode)
+            {
+                _alertMsg = "Agent created.";
+                _alertIsError = false;
+                _showAgentForm = false;
+                await LoadAsync();
+            }
+            else { _alertMsg = $"Create failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    // ── DTOs & Models ──────────────────────────────────────
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+
+    private class SupportTeamDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? SupervisorAgentId { get; set; }
+        public string? RoutingMethod { get; set; }
+        public bool IsActive { get; set; }
+        public int AgentCount { get; set; }
+    }
+
+    private class AgentWorkloadDto
+    {
+        public string AgentId { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Availability { get; set; } = string.Empty;
+        public int Tier { get; set; }
+        public int CurrentTicketCount { get; set; }
+        public int MaxConcurrentTickets { get; set; }
+        public double WorkloadPercent { get; set; }
+    }
+
+    private class TeamFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string RoutingMethod { get; set; } = "round_robin";
+        public bool IsActive { get; set; } = true;
+    }
+
+    private class AgentFormModel
+    {
+        public string UserId { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string TeamId { get; set; } = string.Empty; // string for select binding, converted to int? on save
+        public int Tier { get; set; } = 1;
+        public int MaxConcurrentTickets { get; set; } = 10;
+    }
+}

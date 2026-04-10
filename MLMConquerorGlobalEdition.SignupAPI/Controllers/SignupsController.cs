@@ -21,7 +21,6 @@ public class SignupsController : ControllerBase
 
     public SignupsController(IMediator mediator) => _mediator = mediator;
 
-    // ── Phase 1: Register ─────────────────────────────────────────────────────
 
     [HttpPost("ambassador")]
     public async Task<IActionResult> SignupAmbassador(
@@ -43,7 +42,6 @@ public class SignupsController : ControllerBase
         return Ok(ApiResponse<SignupResponse>.Ok(result.Value!));
     }
 
-    // ── Phase 2: Select products ──────────────────────────────────────────────
 
     [HttpPost("{signupId}/select-products")]
     public async Task<IActionResult> SelectProducts(
@@ -55,7 +53,6 @@ public class SignupsController : ControllerBase
         return Ok(ApiResponse<bool>.Ok(true, "Products selected successfully."));
     }
 
-    // ── Phase 3: Complete ─────────────────────────────────────────────────────
 
     [HttpPost("{signupId}/complete")]
     public async Task<IActionResult> CompleteSignup(
@@ -67,7 +64,6 @@ public class SignupsController : ControllerBase
         return Ok(ApiResponse<SignupResponse>.Ok(result.Value!));
     }
 
-    // ── Validation helpers ────────────────────────────────────────────────────
 
     [HttpPost("validate-replicate-site")]
     public async Task<IActionResult> ValidateReplicateSite(

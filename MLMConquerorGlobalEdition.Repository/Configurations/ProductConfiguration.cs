@@ -65,7 +65,6 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
 
         builder.HasData(
 
-            // ── TRAVEL ADVANTAGE: GUEST MEMBER ───────────────────────────────────
             new Product
             {
                 Id = GuestMemberId,
@@ -83,7 +82,6 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
                 LastUpdateDate = SeedDate
             },
 
-            // ── TRAVEL ADVANTAGE: VIP ─────────────────────────────────────────────
             new Product
             {
                 Id = VipId,
@@ -101,7 +99,6 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
                 LastUpdateDate = SeedDate
             },
 
-            // ── TRAVEL ADVANTAGE: ELITE ─── JoinPageMembership = true ─────────────
             new Product
             {
                 Id = EliteId,
@@ -119,7 +116,6 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
                 LastUpdateDate = SeedDate
             },
 
-            // ── TRAVEL ADVANTAGE: TURBO ─── JoinPageMembership = true ─────────────
             new Product
             {
                 Id = TurboId,
@@ -137,7 +133,6 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
                 LastUpdateDate = SeedDate
             },
 
-            // ── SUBSCRIPTION ─── CorporateFee = true ─────────────────────────────
             new Product
             {
                 Id = SubscriptionId,
@@ -156,7 +151,6 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
                 LastUpdateDate = SeedDate
             },
 
-            // ── MONTHLY SUBSCRIPTION ──────────────────────────────────────────────
             new Product
             {
                 Id = MonthlySubId,

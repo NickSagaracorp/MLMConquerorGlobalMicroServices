@@ -25,7 +25,7 @@ public class SecurityHeadersMiddleware
             "style-src 'self' 'unsafe-inline'; " +
             "img-src 'self' data: blob: https:; " +
             "connect-src 'self' wss: ws:; " +
-            "font-src 'self' https:; " +
+            "font-src 'self' data: https:; " +
             "object-src 'none'; " +
             "base-uri 'self'; " +
             "frame-ancestors 'none'";

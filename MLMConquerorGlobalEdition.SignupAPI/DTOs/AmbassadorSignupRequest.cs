@@ -3,10 +3,8 @@ namespace MLMConquerorGlobalEdition.SignupAPI.DTOs;
 /// <summary>Phase 1 of the ambassador signup wizard — personal info and membership level only.</summary>
 public class AmbassadorSignupRequest
 {
-    // ── Sponsor ──────────────────────────────────────────────────────────────
     public string? SponsorMemberId { get; set; }
 
-    // ── Personal info ────────────────────────────────────────────────────────
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public DateTime DateOfBirth { get; set; }           // must be ≥ 18 years
@@ -16,18 +14,15 @@ public class AmbassadorSignupRequest
     public string? Phone { get; set; }
     public string? WhatsApp { get; set; }
 
-    // ── Address ───────────────────────────────────────────────────────────────
     public string Country { get; set; } = string.Empty;
     public string? State { get; set; }
     public string? City { get; set; }
     public string? Address { get; set; }
     public string? ZipCode { get; set; }
 
-    // ── Business identity ─────────────────────────────────────────────────────
     public string? BusinessName { get; set; }
     public bool ShowBusinessName { get; set; }
 
-    // ── MLM setup ─────────────────────────────────────────────────────────────
     public string? ReplicateSiteSlug { get; set; }
     public int MembershipLevelId { get; set; }
 }

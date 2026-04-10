@@ -1,22 +1,17 @@
-using AutoMapper;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs;
+using MLMConquerorGlobalEdition.SignupAPI.Mappings;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Queries.GetMembershipLevels;
 
 public class GetMembershipLevelsHandler : IRequestHandler<GetMembershipLevelsQuery, Result<IEnumerable<MembershipLevelDto>>>
 {
     private readonly AppDbContext _db;
-    private readonly IMapper _mapper;
 
-    public GetMembershipLevelsHandler(AppDbContext db, IMapper mapper)
-    {
-        _db = db;
-        _mapper = mapper;
-    }
+    public GetMembershipLevelsHandler(AppDbContext db) => _db = db;
 
     public async Task<Result<IEnumerable<MembershipLevelDto>>> Handle(GetMembershipLevelsQuery query, CancellationToken ct)
     {
@@ -26,6 +21,6 @@ public class GetMembershipLevelsHandler : IRequestHandler<GetMembershipLevelsQue
             .OrderBy(x => x.SortOrder)
             .ToListAsync(ct);
 
-        return Result<IEnumerable<MembershipLevelDto>>.Success(_mapper.Map<IEnumerable<MembershipLevelDto>>(levels));
+        return Result<IEnumerable<MembershipLevelDto>>.Success(levels.Select(l => l.ToDto()));
     }
 }

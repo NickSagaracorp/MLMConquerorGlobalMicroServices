@@ -53,6 +53,12 @@ builder.Services.AddHttpClient("AdminApi", client =>
 }).AddHttpMessageHandler<AdminApiAuthHandler>();
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("AdminApi"));
 
+// HTTP client to TicketManagementSystem — attaches JWT Bearer token automatically
+builder.Services.AddHttpClient("HelpdeskApi", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["HelpdeskApiUrl"] ?? "http://localhost:5045");
+}).AddHttpMessageHandler<AdminApiAuthHandler>();
+
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
@@ -79,6 +85,7 @@ app.MapRazorComponents<App>()
 // Auth endpoints — antiforgery disabled on both (login = unauthenticated, logout = trivial)
 app.MapPost("/account/login",  (Delegate)AuthEndpoints.LoginAsync).DisableAntiforgery();
 app.MapPost("/account/logout", (Delegate)AuthEndpoints.LogoutAsync).DisableAntiforgery();
+app.MapGet("/account/logout",  (Delegate)AuthEndpoints.LogoutAsync);
 
 // Culture selection endpoint — sets cookie and redirects back
 app.MapGet("/culture", (HttpContext ctx, string culture, string redirectUri) =>

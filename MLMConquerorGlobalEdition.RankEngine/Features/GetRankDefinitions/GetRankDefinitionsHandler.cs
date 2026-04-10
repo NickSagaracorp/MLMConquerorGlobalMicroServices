@@ -1,9 +1,9 @@
-using AutoMapper;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
-using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.RankEngine.DTOs;
+using MLMConquerorGlobalEdition.RankEngine.Mappings;
+using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.RankEngine.Features.GetRankDefinitions;
@@ -11,13 +11,8 @@ namespace MLMConquerorGlobalEdition.RankEngine.Features.GetRankDefinitions;
 public class GetRankDefinitionsHandler : IRequestHandler<GetRankDefinitionsQuery, Result<List<RankDefinitionResponse>>>
 {
     private readonly AppDbContext _db;
-    private readonly IMapper _mapper;
 
-    public GetRankDefinitionsHandler(AppDbContext db, IMapper mapper)
-    {
-        _db = db;
-        _mapper = mapper;
-    }
+    public GetRankDefinitionsHandler(AppDbContext db) => _db = db;
 
     public async Task<Result<List<RankDefinitionResponse>>> Handle(GetRankDefinitionsQuery request, CancellationToken ct)
     {
@@ -28,7 +23,6 @@ public class GetRankDefinitionsHandler : IRequestHandler<GetRankDefinitionsQuery
             .OrderBy(r => r.SortOrder)
             .ToListAsync(ct);
 
-        var result = _mapper.Map<List<RankDefinitionResponse>>(definitions);
-        return Result<List<RankDefinitionResponse>>.Success(result);
+        return Result<List<RankDefinitionResponse>>.Success(definitions.Select(d => d.ToResponse()).ToList());
     }
 }

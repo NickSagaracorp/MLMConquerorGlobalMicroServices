@@ -44,7 +44,6 @@ public class ErrorLog : AuditChangesLongKey
 
     public DateTime OccurredAt { get; set; }
 
-    // ── Resolution tracking ────────────────────────────────────────────────
     public bool IsResolved { get; set; }
     public string? ResolvedBy { get; set; }
     public DateTime? ResolvedAt { get; set; }

@@ -3,6 +3,7 @@
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @inject HttpClient Http
 @inject NavigationManager Nav
+@using Syncfusion.Blazor.RichTextEditor
 
 <PageTitle>Tickets — Admin</PageTitle>
 
@@ -185,16 +186,18 @@
                             <input class="form-control" @bind="_form.Subject" placeholder="Brief summary of the issue" />
                         </div>
                         <div class="col-12">
-                            <label class="form-label fw-semibold">Body</label>
-                            <textarea class="form-control" rows="4" @bind="_form.Body" placeholder="Detailed description..."></textarea>
+                            <label class="form-label fw-semibold">Description</label>
+                            <SfRichTextEditor @bind-Value="_form.Body" Height="240" Placeholder="Detailed description...">
+                                <RichTextEditorToolbarSettings Items="@_rteToolbar" />
+                            </SfRichTextEditor>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Priority</label>
                             <select class="form-select" @bind="_form.Priority">
-                                <option value="0">Low</option>
-                                <option value="1">Normal</option>
-                                <option value="2">High</option>
-                                <option value="3">Critical</option>
+                                <option value="1">Low</option>
+                                <option value="2">Normal</option>
+                                <option value="3">High</option>
+                                <option value="4">Critical</option>
                             </select>
                         </div>
                     </div>
@@ -212,6 +215,24 @@
 }
 
 @code {
+    private static readonly List<ToolbarItemModel> _rteToolbar = new()
+    {
+        new() { Command = ToolbarCommand.Bold },
+        new() { Command = ToolbarCommand.Italic },
+        new() { Command = ToolbarCommand.Underline },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.Formats },
+        new() { Command = ToolbarCommand.Alignments },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.OrderedList },
+        new() { Command = ToolbarCommand.UnorderedList },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.CreateLink },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.Undo },
+        new() { Command = ToolbarCommand.Redo }
+    };
+
     private List<TicketDto> _items = new();
     private List<TicketCategoryItem> _categories = new();
     private TicketStatsDto? _stats;
@@ -299,7 +320,7 @@
         public string MemberId { get; set; } = string.Empty;
         public string Subject { get; set; } = string.Empty;
         public string? Body { get; set; }
-        public int Priority { get; set; } = 1;
+        public int Priority { get; set; } = 2;
         public int? CategoryId { get; set; }
     }
 

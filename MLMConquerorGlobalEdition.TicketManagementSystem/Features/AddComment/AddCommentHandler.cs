@@ -58,7 +58,6 @@ public class AddCommentHandler : IRequestHandler<AddCommentCommand, Result<Ticke
 
         await _db.TicketComments.AddAsync(comment, ct);
 
-        // ── Auto-status rules ─────────────────────────────────────────────────
         var oldStatus = ticket.Status;
 
         if (authorType == "agent" && ticket.Status == TicketStatus.InProgress)

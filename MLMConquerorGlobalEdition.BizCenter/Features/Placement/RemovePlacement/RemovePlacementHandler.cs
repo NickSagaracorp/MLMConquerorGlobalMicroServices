@@ -34,7 +34,6 @@ public class RemovePlacementHandler : IRequestHandler<RemovePlacementCommand, Re
         var now     = _clock.UtcNow;
         var isAdmin = _currentUser.IsAdmin;
 
-        // ── Load member ─────────────────────────────────────────────────────────
         var member = await _db.MemberProfiles
             .AsNoTracking()
             .FirstOrDefaultAsync(m => m.MemberId == command.MemberToRemoveId && !m.IsDeleted, ct);
@@ -43,7 +42,6 @@ public class RemovePlacementHandler : IRequestHandler<RemovePlacementCommand, Re
             return Result<RemovePlacementResult>.Failure("MEMBER_NOT_FOUND",
                 "El miembro no existe.");
 
-        // ── Load current tree node ──────────────────────────────────────────────
         var node = await _db.DualTeamTree
             .FirstOrDefaultAsync(d => d.MemberId == command.MemberToRemoveId, ct);
 
@@ -51,7 +49,6 @@ public class RemovePlacementHandler : IRequestHandler<RemovePlacementCommand, Re
             return Result<RemovePlacementResult>.Failure("NOT_PLACED",
                 "El miembro no tiene placement asignado en el Dual Team.");
 
-        // ── Load latest placement log ───────────────────────────────────────────
         var log = await _db.PlacementLogs
             .Where(p => p.MemberId == command.MemberToRemoveId)
             .OrderByDescending(p => p.CreationDate)
@@ -61,11 +58,9 @@ public class RemovePlacementHandler : IRequestHandler<RemovePlacementCommand, Re
 
         if (!isAdmin)
         {
-            // ── Rule: Max 2 opportunities ───────────────────────────────────────
             if (opportunitiesUsed >= MaxPlacementOpportunities)
                 throw new UnplacementLimitExceededException();
 
-            // ── Rule: 72h correction window ─────────────────────────────────────
             if (log?.FirstPlacementDate is null ||
                 now > log.FirstPlacementDate.Value.AddHours(CorrectionWindowHours))
                 throw new UnplacementWindowExpiredException();
@@ -76,10 +71,8 @@ public class RemovePlacementHandler : IRequestHandler<RemovePlacementCommand, Re
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
         try
         {
-            // ── Remove the node ─────────────────────────────────────────────────
             _db.DualTeamTree.Remove(node);
 
-            // ── Detach direct children (they become unplaced root orphans) ───────
             var directChildren = await _db.DualTeamTree
                 .Where(d => d.ParentMemberId == command.MemberToRemoveId)
                 .ToListAsync(ct);
@@ -92,7 +85,6 @@ public class RemovePlacementHandler : IRequestHandler<RemovePlacementCommand, Re
                 child.LastUpdateBy   = _currentUser.UserId;
             }
 
-            // ── Log the removal ─────────────────────────────────────────────────
             var removalLog = new PlacementLog
             {
                 MemberId            = command.MemberToRemoveId,
@@ -109,7 +101,6 @@ public class RemovePlacementHandler : IRequestHandler<RemovePlacementCommand, Re
             _db.PlacementLogs.Add(removalLog);
             await _db.SaveChangesAsync(ct);
 
-            // ── Recalculate stats for the previous parent's upline ──────────────
             if (!string.IsNullOrEmpty(parentMemberId))
                 await RecalculateUplineAsync(parentMemberId, ct);
 

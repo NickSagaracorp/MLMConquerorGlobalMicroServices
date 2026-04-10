@@ -41,18 +41,15 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
         var req = command.Request;
         var now = _dateTime.Now;
 
-        // ── Age verification ─────────────────────────────────────────────────
         var age = now.Year - req.DateOfBirth.Year;
         if (req.DateOfBirth.Date > now.AddYears(-age)) age--;
         if (age < 18)
             return Result<SignupResponse>.Failure("UNDERAGE", "Applicant must be at least 18 years old.");
 
-        // ── Duplicate email check ─────────────────────────────────────────────
         var emailTaken = await _userManager.FindByEmailAsync(req.Email);
         if (emailTaken is not null)
             return Result<SignupResponse>.Failure("EMAIL_TAKEN", "This email is already registered.");
 
-        // ── Replicate site uniqueness ─────────────────────────────────────────
         if (!string.IsNullOrEmpty(req.ReplicateSiteSlug))
         {
             var slugExists = await _db.MemberProfiles
@@ -61,7 +58,6 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
                 throw new DuplicateReplicateSiteException(req.ReplicateSiteSlug);
         }
 
-        // ── Sponsor validation ────────────────────────────────────────────────
         if (!string.IsNullOrEmpty(req.SponsorMemberId))
         {
             var sponsorExists = await _db.MemberProfiles
@@ -71,7 +67,6 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
                     "SPONSOR_NOT_FOUND", $"Sponsor '{req.SponsorMemberId}' not found.");
         }
 
-        // ── Membership level ──────────────────────────────────────────────────
         var membershipLevel = await _db.MembershipLevels
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == req.MembershipLevelId && x.IsActive, ct);
@@ -79,7 +74,6 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
             return Result<SignupResponse>.Failure(
                 "MEMBERSHIP_LEVEL_NOT_FOUND", "The selected membership level is invalid or inactive.");
 
-        // ── Build pending member ──────────────────────────────────────────────
         var memberId = GenerateMemberId();
 
         var member = new MemberProfile
@@ -109,7 +103,6 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
             LastUpdateDate    = now
         };
 
-        // ── Pending order (products added in Phase 2) ─────────────────────────
         var orderId = Guid.NewGuid().ToString();
         var order = new Orders
         {
@@ -124,7 +117,6 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
             LastUpdateDate = now
         };
 
-        // ── Pending subscription ──────────────────────────────────────────────
         var subscriptionId = Guid.NewGuid().ToString();
         var subscription = new MembershipSubscription
         {
@@ -144,7 +136,6 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
 
         order.MembershipSubscriptionId = subscriptionId;
 
-        // ── Enrollment tree (position established at registration) ────────────
         GenealogyEntity? sponsorNode = null;
         if (!string.IsNullOrEmpty(req.SponsorMemberId))
         {
@@ -166,14 +157,12 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
             LastUpdateDate = now
         };
 
-        // ── Persist domain records ────────────────────────────────────────────
         await _db.MemberProfiles.AddAsync(member, ct);
         await _db.Orders.AddAsync(order, ct);
         await _db.MembershipSubscriptions.AddAsync(subscription, ct);
         await _db.GenealogyTree.AddAsync(genealogyNode, ct);
         await _db.SaveChangesAsync(ct);
 
-        // ── Create inactive Identity user (activated in Complete step) ─────────
         var appUser = new ApplicationUser
         {
             Id                 = Guid.NewGuid().ToString(),

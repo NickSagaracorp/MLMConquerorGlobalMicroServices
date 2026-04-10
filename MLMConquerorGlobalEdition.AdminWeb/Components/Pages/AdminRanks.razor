@@ -3,6 +3,7 @@
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @inject HttpClient Http
 @inject NavigationManager Nav
+@using Syncfusion.Blazor.RichTextEditor
 
 <PageTitle>Rank Definitions — Admin</PageTitle>
 
@@ -71,7 +72,12 @@
                 <div class="modal-header"><h5 class="modal-title fw-bold">@(_editId is null ? "New Rank" : "Edit Rank")</h5><button type="button" class="btn-close" @onclick="CloseForm"></button></div>
                 <div class="modal-body">
                     <div class="mb-3"><label class="form-label fw-semibold">Name <span class="text-danger">*</span></label><input class="form-control" @bind="_form.Name"/></div>
-                    <div class="mb-3"><label class="form-label fw-semibold">Description</label><textarea class="form-control" rows="3" @bind="_form.Description"></textarea></div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Description</label>
+                        <SfRichTextEditor @bind-Value="_form.Description" Height="220">
+                            <RichTextEditorToolbarSettings Items="@_rteToolbar" />
+                        </SfRichTextEditor>
+                    </div>
                     <div class="mb-3"><label class="form-label fw-semibold">Sort Order</label><input type="number" class="form-control" @bind="_form.SortOrder"/></div>
                     <div class="mb-3"><label class="form-label fw-semibold">Certificate Template URL</label><input class="form-control" @bind="_form.CertificateTemplateUrl" placeholder="https://..."/></div>
                 </div>
@@ -114,6 +120,7 @@
     private bool _showForm;
     private bool _showDeleteConfirm;
     private int? _editId;
+    private string _editStatus = "Active"; // preserved from the loaded entity during edit
     private RankFormModel _form = new();
     private RankDto? _deleteItem;
 
@@ -131,8 +138,8 @@
         finally { _loading = false; }
     }
 
-    private void OpenCreate() { _editId = null; _form = new(); _showForm = true; }
-    private void OpenEdit(RankDto r) { _editId = r.Id; _form = new RankFormModel { Name = r.Name, Description = r.Description, SortOrder = r.SortOrder, CertificateTemplateUrl = r.CertificateTemplateUrl }; _showForm = true; }
+    private void OpenCreate() { _editId = null; _editStatus = "Active"; _form = new(); _showForm = true; }
+    private void OpenEdit(RankDto r) { _editId = r.Id; _editStatus = r.Status; _form = new RankFormModel { Name = r.Name, Description = r.Description, SortOrder = r.SortOrder, CertificateTemplateUrl = r.CertificateTemplateUrl }; _showForm = true; }
     private void CloseForm() { _showForm = false; _editId = null; }
 
     private async Task Save()
@@ -141,7 +148,30 @@
         _saving = true;
         try
         {
-            var response = _editId is null ? await Http.PostAsJsonAsync("api/v1/admin/rank-definitions", _form) : await Http.PutAsJsonAsync($"api/v1/admin/rank-definitions/{_editId}", _form);
+            HttpResponseMessage response;
+            if (_editId is null)
+            {
+                // POST: CreateRankDefinitionDto — no Status field
+                response = await Http.PostAsJsonAsync("api/v1/admin/rank-definitions", new
+                {
+                    _form.Name,
+                    _form.Description,
+                    _form.SortOrder,
+                    _form.CertificateTemplateUrl
+                });
+            }
+            else
+            {
+                // PUT: UpdateRankDefinitionDto — must include Status to prevent mapper zeroing it out
+                response = await Http.PutAsJsonAsync($"api/v1/admin/rank-definitions/{_editId}", new
+                {
+                    _form.Name,
+                    _form.Description,
+                    _form.SortOrder,
+                    _form.CertificateTemplateUrl,
+                    Status = _editStatus
+                });
+            }
             if (response.IsSuccessStatusCode) { _alertMsg = _editId is null ? "Rank created." : "Rank updated."; _alertIsError = false; CloseForm(); await LoadAsync(); }
             else { _alertMsg = $"Save failed ({response.StatusCode})."; _alertIsError = true; }
         }
@@ -163,6 +193,19 @@
         catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
         finally { _saving = false; }
     }
+
+    private static readonly List<ToolbarItemModel> _rteToolbar =
+    [
+        new() { Command = ToolbarCommand.Bold },
+        new() { Command = ToolbarCommand.Italic },
+        new() { Command = ToolbarCommand.Underline },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.OrderedList },
+        new() { Command = ToolbarCommand.UnorderedList },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.CreateLink },
+        new() { Command = ToolbarCommand.ClearFormat },
+    ];
 
     private class RankFormModel
     {

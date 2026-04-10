@@ -66,7 +66,6 @@ public class SponsorBonusServiceTests
         await db.SaveChangesAsync();
     }
 
-    // ─── ComputeAsync Tests ───────────────────────────────────────────────────
 
     [Fact]
     public async Task ComputeAsync_WhenSponsorMemberIdIsNull_DoesNotCreateEarning()
@@ -182,7 +181,6 @@ public class SponsorBonusServiceTests
         earning.Amount.Should().Be(20m);
     }
 
-    // ─── TryReverseAsync Tests ────────────────────────────────────────────────
 
     [Fact]
     public async Task TryReverseAsync_WhenNoSponsorBonusTypesConfigured_DoesNothing()

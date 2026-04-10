@@ -40,12 +40,10 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
         var req = command.Request;
         var now = _dateTime.Now;
 
-        // ── Duplicate email check ─────────────────────────────────────────────
         var emailTaken = await _userManager.FindByEmailAsync(req.Email);
         if (emailTaken is not null)
             return Result<SignupResponse>.Failure("EMAIL_TAKEN", "This email is already registered.");
 
-        // ── Sponsor validation ────────────────────────────────────────────────
         if (!string.IsNullOrEmpty(req.SponsorMemberId))
         {
             var sponsorExists = await _db.MemberProfiles
@@ -55,7 +53,6 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
                     "SPONSOR_NOT_FOUND", $"Sponsor '{req.SponsorMemberId}' not found.");
         }
 
-        // ── Membership level ──────────────────────────────────────────────────
         var membershipLevel = await _db.MembershipLevels
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == req.MembershipLevelId && x.IsActive, ct);
@@ -63,7 +60,6 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
             return Result<SignupResponse>.Failure(
                 "MEMBERSHIP_LEVEL_NOT_FOUND", "The selected membership level is invalid or inactive.");
 
-        // ── Build pending member ──────────────────────────────────────────────
         var memberId = $"MBR-{Random.Shared.Next(1, 999999):D6}";
 
         var member = new MemberProfile
@@ -87,7 +83,6 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
             LastUpdateDate = now
         };
 
-        // ── Pending order ─────────────────────────────────────────────────────
         var orderId = Guid.NewGuid().ToString();
         var order = new Orders
         {
@@ -102,7 +97,6 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
             LastUpdateDate = now
         };
 
-        // ── Pending subscription ──────────────────────────────────────────────
         var subscriptionId = Guid.NewGuid().ToString();
         var subscription = new MembershipSubscription
         {
@@ -122,7 +116,6 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
 
         order.MembershipSubscriptionId = subscriptionId;
 
-        // ── Enrollment tree ───────────────────────────────────────────────────
         GenealogyEntity? sponsorNode = null;
         if (!string.IsNullOrEmpty(req.SponsorMemberId))
         {
@@ -144,14 +137,12 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
             LastUpdateDate = now
         };
 
-        // ── Persist domain records ────────────────────────────────────────────
         await _db.MemberProfiles.AddAsync(member, ct);
         await _db.Orders.AddAsync(order, ct);
         await _db.MembershipSubscriptions.AddAsync(subscription, ct);
         await _db.GenealogyTree.AddAsync(genealogyNode, ct);
         await _db.SaveChangesAsync(ct);
 
-        // ── Create inactive Identity user ─────────────────────────────────────
         var appUser = new ApplicationUser
         {
             Id                 = Guid.NewGuid().ToString(),

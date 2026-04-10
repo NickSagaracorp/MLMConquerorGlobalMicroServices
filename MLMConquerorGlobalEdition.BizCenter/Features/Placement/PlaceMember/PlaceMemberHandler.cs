@@ -37,7 +37,6 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
         var isAdmin  = _currentUser.IsAdmin;
         var side     = Enum.Parse<TreeSide>(command.Side);
 
-        // ── Load member to place ────────────────────────────────────────────────
         var member = await _db.MemberProfiles
             .FirstOrDefaultAsync(m => m.MemberId == command.MemberToPlaceId && !m.IsDeleted, ct);
 
@@ -45,12 +44,10 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
             return Result<PlaceMemberResult>.Failure("MEMBER_NOT_FOUND",
                 "El miembro que intenta colocar no existe.");
 
-        // ── Rule 3: Ambassador cancelled ───────────────────────────────────────
         if (member.Status == MemberAccountStatus.Terminated)
             return Result<PlaceMemberResult>.Failure("MEMBER_CANCELLED",
                 "No se puede colocar a un ambassador con estado Cancelado.");
 
-        // ── Load existing placement log ─────────────────────────────────────────
         var placementLog = await _db.PlacementLogs
             .Where(p => p.MemberId == command.MemberToPlaceId)
             .OrderByDescending(p => p.CreationDate)
@@ -60,16 +57,13 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
 
         if (!isAdmin)
         {
-            // ── Rule 1 (Ambassador): Placement window 30 days ───────────────────
             if (now > member.EnrollDate.AddDays(PlacementWindowDays))
                 throw new PlacementWindowExpiredException();
 
-            // ── Rule 1 (Ambassador): Max 2 opportunities ────────────────────────
             if (opportunitiesUsed >= MaxPlacementOpportunities)
                 throw new UnplacementLimitExceededException();
         }
 
-        // ── Load target parent node ─────────────────────────────────────────────
         var targetParent = await _db.DualTeamTree
             .FirstOrDefaultAsync(d => d.MemberId == command.TargetParentMemberId, ct);
 
@@ -77,7 +71,6 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
             return Result<PlaceMemberResult>.Failure("TARGET_NOT_FOUND",
                 "El nodo destino no existe en el Dual Team.");
 
-        // ── Rule 6: No third leg — check slot availability ──────────────────────
         var slotOccupied = await _db.DualTeamTree
             .AnyAsync(d => d.ParentMemberId == command.TargetParentMemberId
                         && d.Side == side, ct);
@@ -87,7 +80,6 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
                 $"El nodo {command.TargetParentMemberId} ya tiene ocupada la pierna {command.Side}. " +
                 "La estructura es estrictamente binaria.");
 
-        // ── Rule 4: No circular reference ───────────────────────────────────────
         // If the member to place is already in the tree, their hierarchyPath must NOT
         // be a prefix of the target parent's path (i.e. target is not their descendant).
         var existingNode = await _db.DualTeamTree
@@ -100,12 +92,10 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
                     "No se puede realizar este placement: generaría una referencia circular en el árbol.");
         }
 
-        // ── Rule 5: No auto-superiority ─────────────────────────────────────────
         if (command.TargetParentMemberId == command.MemberToPlaceId)
             return Result<PlaceMemberResult>.Failure("AUTO_SUPERIORITY",
                 "Un ambassador no puede ser su propio superior directo.");
 
-        // ── Rule 2: No move if member has own enrolled downline in the tree ────
         if (existingNode != null)
         {
             var hasOwnDownline = await HasOwnEnrolledDownlineAsync(
@@ -120,7 +110,6 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
         try
         {
-            // ── Remove from current position (if placed) ────────────────────────
             if (existingNode != null)
             {
                 _db.DualTeamTree.Remove(existingNode);
@@ -141,7 +130,6 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
                 }
             }
 
-            // ── Create new node ─────────────────────────────────────────────────
             var newPath = $"{targetParent.HierarchyPath}{command.MemberToPlaceId}/";
             var newNode = new DualTeamEntity
             {
@@ -157,7 +145,6 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
 
             _db.DualTeamTree.Add(newNode);
 
-            // ── Log the placement ───────────────────────────────────────────────
             var isFirstPlacement  = placementLog is null;
             var newOpportunities  = opportunitiesUsed + 1;
 
@@ -178,7 +165,6 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
 
             await _db.SaveChangesAsync(ct);
 
-            // ── Recalculate upline stats ────────────────────────────────────────
             await RecalculateUplineStatsAsync(command.TargetParentMemberId, ct);
 
             await tx.CommitAsync(ct);

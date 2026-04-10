@@ -1,8 +1,8 @@
-using AutoMapper;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.CommissionEngine.DTOs;
+using MLMConquerorGlobalEdition.CommissionEngine.Mappings;
+using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.CommissionEngine.Features.GetCommissionRules;
@@ -10,13 +10,8 @@ namespace MLMConquerorGlobalEdition.CommissionEngine.Features.GetCommissionRules
 public class GetCommissionRulesHandler : IRequestHandler<GetCommissionRulesQuery, Result<List<CommissionTypeResponse>>>
 {
     private readonly AppDbContext _db;
-    private readonly IMapper _mapper;
 
-    public GetCommissionRulesHandler(AppDbContext db, IMapper mapper)
-    {
-        _db = db;
-        _mapper = mapper;
-    }
+    public GetCommissionRulesHandler(AppDbContext db) => _db = db;
 
     public async Task<Result<List<CommissionTypeResponse>>> Handle(GetCommissionRulesQuery request, CancellationToken ct)
     {
@@ -28,6 +23,6 @@ public class GetCommissionRulesHandler : IRequestHandler<GetCommissionRulesQuery
             .ThenBy(t => t.Name)
             .ToListAsync(ct);
 
-        return Result<List<CommissionTypeResponse>>.Success(_mapper.Map<List<CommissionTypeResponse>>(types));
+        return Result<List<CommissionTypeResponse>>.Success(types.Select(t => t.ToResponse()).ToList());
     }
 }

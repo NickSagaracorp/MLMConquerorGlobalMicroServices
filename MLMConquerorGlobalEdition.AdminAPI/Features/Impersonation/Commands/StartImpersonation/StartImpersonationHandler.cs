@@ -35,7 +35,6 @@ public class StartImpersonationHandler
     public async Task<Result<StartImpersonationResult>> Handle(
         StartImpersonationCommand command, CancellationToken ct)
     {
-        // 1. Verify target member exists
         var member = await _db.MemberProfiles
             .FirstOrDefaultAsync(m => m.MemberId == command.TargetMemberId, ct);
 
@@ -50,7 +49,6 @@ public class StartImpersonationHandler
                 $"Member '{command.TargetMemberId}' not found.");
         }
 
-        // 2. Find the ApplicationUser linked to this MemberProfile
         var targetUser = await _userManager.Users
             .FirstOrDefaultAsync(u => u.MemberProfileId == member.Id, ct);
 
@@ -65,16 +63,14 @@ public class StartImpersonationHandler
                 $"Member '{command.TargetMemberId}' does not have an associated user account.");
         }
 
-        // 3. Determine read-only access:
-        //    SupportManager without SuperAdmin/Admin → read-only
+        // SupportManager without SuperAdmin/Admin gets read-only access
         var isReadOnly = command.AdminRoles.Contains("SupportManager")
                       && !command.AdminRoles.Contains("SuperAdmin")
                       && !command.AdminRoles.Contains("Admin");
 
-        // 4. Get target user's roles
         var targetRoles = await _userManager.GetRolesAsync(targetUser);
 
-        // 5. Generate impersonation JWT — fixed 2-hour expiry regardless of normal token config
+        // Impersonation tokens have a fixed 2-hour expiry
         var expiresAt = _dateTime.Now.AddHours(2);
 
         var accessToken = _jwt.GenerateAccessToken(

@@ -10,7 +10,6 @@ public class SignupResponse
     public string MemberType   { get; set; } = string.Empty;
     public DateTime EnrollDate { get; set; }
 
-    // ── Auth tokens returned after the Complete step ───────────────────────
     public string? AccessToken   { get; set; }
     public string? RefreshToken  { get; set; }
     public DateTime? TokenExpiry { get; set; }

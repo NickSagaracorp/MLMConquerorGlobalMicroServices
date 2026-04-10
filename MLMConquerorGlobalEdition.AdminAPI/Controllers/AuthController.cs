@@ -119,7 +119,6 @@ public class AuthController : ControllerBase
         return Ok(ApiResponse<bool>.Ok(true, "Logged out successfully."));
     }
 
-    // ── helpers ────────────────────────────────────────────────────────────────
 
     private void SetRefreshTokenCookie(string rawToken)
     {

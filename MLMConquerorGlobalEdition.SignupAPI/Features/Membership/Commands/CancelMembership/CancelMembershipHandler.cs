@@ -28,13 +28,11 @@ public class CancelMembershipHandler : IRequestHandler<CancelMembershipCommand, 
         var now = _dateTime.Now;
         var effectiveDate = command.ScheduledCancellationDate ?? now;
 
-        // ── Load member ───────────────────────────────────────────────────────
         var member = await _db.MemberProfiles
             .FirstOrDefaultAsync(x => x.MemberId == command.MemberId, ct);
         if (member is null)
             return Result<bool>.Failure("MEMBER_NOT_FOUND", $"Member '{command.MemberId}' not found.");
 
-        // ── Load active subscription ──────────────────────────────────────────
         var subscription = await _db.MembershipSubscriptions
             .FirstOrDefaultAsync(x => x.MemberId == command.MemberId
                                    && x.SubscriptionStatus == MembershipStatus.Active, ct);
@@ -42,12 +40,10 @@ public class CancelMembershipHandler : IRequestHandler<CancelMembershipCommand, 
             return Result<bool>.Failure(
                 "NO_ACTIVE_SUBSCRIPTION", "Member has no active membership subscription.");
 
-        // ── Always: disable auto-renew and record cancellation date ──────────
         subscription.IsAutoRenew = false;
         subscription.CancellationDate = effectiveDate;
         subscription.LastUpdateBy = command.MemberId;
 
-        // ── Apply immediately if effective date has arrived ───────────────────
         if (effectiveDate.Date <= now.Date
             && subscription.SubscriptionStatus != MembershipStatus.Cancelled)
         {
@@ -71,10 +67,8 @@ public class CancelMembershipHandler : IRequestHandler<CancelMembershipCommand, 
                 CreationDate = now
             }, ct);
 
-            // ── Reverse stats for member and all uplines ──────────────────────
             await ReverseUplineStatsAsync(command.MemberId, now, ct);
 
-            // ── Reverse sponsor bonus if within 14-day chargeback window ──────
             await TryReverseSponsorBonusIfEligibleAsync(command.MemberId, command.Reason, now, ct);
         }
         // else: effective date is in the future — leave status Active.

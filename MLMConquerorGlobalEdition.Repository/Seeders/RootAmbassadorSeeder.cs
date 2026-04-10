@@ -37,7 +37,6 @@ public static class RootAmbassadorSeeder
 
         var now = DateTime.UtcNow;
 
-        // ── 1. MemberProfile ──────────────────────────────────────────────────
         var member = new MemberProfile
         {
             UserId          = Guid.NewGuid(),
@@ -54,7 +53,6 @@ public static class RootAmbassadorSeeder
             LastUpdateDate  = now
         };
 
-        // ── 2. Genealogy tree root node ───────────────────────────────────────
         var genealogy = new GenealogyEntity
         {
             MemberId       = RootMemberCode,
@@ -66,7 +64,6 @@ public static class RootAmbassadorSeeder
             LastUpdateDate = now
         };
 
-        // ── 3. Dual team root node ────────────────────────────────────────────
         var dualTeam = new DualTeamEntity
         {
             MemberId       = RootMemberCode,
@@ -80,7 +77,6 @@ public static class RootAmbassadorSeeder
             LastUpdateDate = now
         };
 
-        // ── 4. Membership subscription — highest active level ─────────────────
         var topLevel = await db.MembershipLevels
             .Where(l => l.IsActive)
             .OrderByDescending(l => l.SortOrder)
@@ -105,7 +101,6 @@ public static class RootAmbassadorSeeder
             };
         }
 
-        // ── 5. Persist domain entities ────────────────────────────────────────
         await db.MemberProfiles.AddAsync(member);
         await db.GenealogyTree.AddAsync(genealogy);
         await db.DualTeamTree.AddAsync(dualTeam);
@@ -113,7 +108,6 @@ public static class RootAmbassadorSeeder
             await db.MembershipSubscriptions.AddAsync(subscription);
         await db.SaveChangesAsync();
 
-        // ── 6. ApplicationUser (Identity) ─────────────────────────────────────
         var appUser = new ApplicationUser
         {
             Id                 = Guid.NewGuid().ToString(),

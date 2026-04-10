@@ -16,7 +16,6 @@ public class SupportAdminController : ControllerBase
 
     public SupportAdminController(IMediator mediator) => _mediator = mediator;
 
-    // ── TEAMS ─────────────────────────────────────────────────────────────────
 
     [HttpGet("teams")]
     public async Task<IActionResult> GetTeams(CancellationToken ct)
@@ -50,7 +49,6 @@ public class SupportAdminController : ControllerBase
         return Ok(ApiResponse<bool>.Ok(true));
     }
 
-    // ── AGENTS ────────────────────────────────────────────────────────────────
 
     [HttpGet("agents")]
     public async Task<IActionResult> GetAgents([FromQuery] int? teamId, CancellationToken ct = default)

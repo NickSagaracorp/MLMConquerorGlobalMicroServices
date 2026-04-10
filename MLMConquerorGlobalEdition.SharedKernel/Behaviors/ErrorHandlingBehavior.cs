@@ -99,11 +99,10 @@ public class ErrorHandlingBehavior<TRequest, TResponse>
     {
         if (context is null) return "en";
 
-        // 1. JWT claim "lang"
+        // Prefer explicit "lang" claim over Accept-Language header
         var claim = context.User.FindFirstValue("lang");
         if (!string.IsNullOrWhiteSpace(claim)) return claim.ToLowerInvariant();
 
-        // 2. Accept-Language header — take the first tag
         var header = context.Request.Headers.AcceptLanguage.FirstOrDefault();
         if (!string.IsNullOrWhiteSpace(header))
         {

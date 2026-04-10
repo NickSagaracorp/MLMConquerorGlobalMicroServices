@@ -23,14 +23,12 @@ public class SelectProductsHandler : IRequestHandler<SelectProductsCommand, Resu
 
     public async Task<Result<bool>> Handle(SelectProductsCommand command, CancellationToken ct)
     {
-        // ── Locate pending order ──────────────────────────────────────────────
         var order = await _db.Orders
             .FirstOrDefaultAsync(o => o.Id == command.SignupId && o.Status == OrderStatus.Pending, ct);
 
         if (order is null)
             return Result<bool>.Failure("SIGNUP_NOT_FOUND", "Pending signup not found.");
 
-        // ── Load the member for audit context ─────────────────────────────────
         var member = await _db.MemberProfiles
             .AsNoTracking()
             .FirstOrDefaultAsync(m => m.MemberId == order.MemberId, ct);
@@ -38,7 +36,6 @@ public class SelectProductsHandler : IRequestHandler<SelectProductsCommand, Resu
         if (member is null)
             return Result<bool>.Failure("MEMBER_NOT_FOUND", "Associated member not found.");
 
-        // ── Validate products ─────────────────────────────────────────────────
         var products = await _db.Products
             .AsNoTracking()
             .Where(p => command.Request.ProductIds.Contains(p.Id) && p.IsActive)
@@ -49,7 +46,6 @@ public class SelectProductsHandler : IRequestHandler<SelectProductsCommand, Resu
 
         var now = _dateTime.Now;
 
-        // ── Replace existing order details ────────────────────────────────────
         var existingDetails = await _db.OrderDetails
             .Where(d => d.OrderId == order.Id)
             .ToListAsync(ct);
@@ -67,7 +63,6 @@ public class SelectProductsHandler : IRequestHandler<SelectProductsCommand, Resu
 
         await _db.OrderDetails.AddRangeAsync(newDetails, ct);
 
-        // ── Update order total ────────────────────────────────────────────────
         order.TotalAmount    = products.Sum(p => p.SetupFee + p.MonthlyFee);
         order.LastUpdateDate = now;
         order.LastUpdateBy   = member.Email;

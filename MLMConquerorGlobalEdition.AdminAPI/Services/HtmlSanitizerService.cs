@@ -17,7 +17,6 @@ public class HtmlSanitizerService : IHtmlSanitizerService
     {
         _sanitizer = new HtmlSanitizer();
 
-        // ── Allowed tags ──────────────────────────────────────────────────────
         _sanitizer.AllowedTags.Clear();
         foreach (var tag in new[]
         {
@@ -34,7 +33,6 @@ public class HtmlSanitizerService : IHtmlSanitizerService
             _sanitizer.AllowedTags.Add(tag);
         }
 
-        // ── Allowed attributes ────────────────────────────────────────────────
         _sanitizer.AllowedAttributes.Clear();
         foreach (var attr in new[]
         {
@@ -47,13 +45,11 @@ public class HtmlSanitizerService : IHtmlSanitizerService
             _sanitizer.AllowedAttributes.Add(attr);
         }
 
-        // ── Allowed URI schemes — strips javascript:, vbscript:, data: ───────
         _sanitizer.AllowedSchemes.Clear();
         _sanitizer.AllowedSchemes.Add("http");
         _sanitizer.AllowedSchemes.Add("https");
         _sanitizer.AllowedSchemes.Add("mailto");
 
-        // ── Allowed CSS properties (inline style) ────────────────────────────
         _sanitizer.AllowedCssProperties.Clear();
         foreach (var prop in new[]
         {

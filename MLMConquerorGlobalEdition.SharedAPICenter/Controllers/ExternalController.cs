@@ -28,7 +28,6 @@ public class ExternalController : ControllerBase
         _config   = config;
     }
 
-    // ── Private helper ────────────────────────────────────────────────────────
 
     /// <summary>
     /// Returns true when the X-Api-Key header matches the configured secret.
@@ -42,7 +41,6 @@ public class ExternalController : ControllerBase
         return string.Equals(provided, expected, StringComparison.Ordinal);
     }
 
-    // ── Endpoints ─────────────────────────────────────────────────────────────
 
     /// <summary>
     /// Returns a slim public profile for the given member.

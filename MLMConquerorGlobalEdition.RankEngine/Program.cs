@@ -33,8 +33,6 @@ builder.Services.AddMediatR(cfg =>
     cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ErrorHandlingBehavior<,>));
 });
 
-// AutoMapper
-builder.Services.AddAutoMapper(typeof(RankEngineMappingProfile));
 
 // Services
 builder.Services.AddHttpContextAccessor();
@@ -47,7 +45,6 @@ builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
 // Register GetRankProgressHandler as scoped so EvaluateRankHandler can inject it
 builder.Services.AddScoped<GetRankProgressHandler>();
 
-// ── Redis distributed cache ───────────────────────────────────────────────────
 builder.Services.AddStackExchangeRedisCache(options =>
 {
     options.Configuration = builder.Configuration.GetConnectionString("Redis")
@@ -55,10 +52,8 @@ builder.Services.AddStackExchangeRedisCache(options =>
 });
 builder.Services.AddSingleton<ICacheService, CacheService>();
 
-// ── Firebase push notifications ───────────────────────────────────────────────
 builder.Services.AddSingleton<IPushNotificationService, FirebasePushNotificationService>();
 
-// ── HangFire ──────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<RankEvaluationSweepJob>();
 builder.Services.AddHangfire(cfg => cfg
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
@@ -153,7 +148,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// ── HangFire dashboard & recurring jobs ───────────────────────────────────────
 app.UseHangfireDashboard("/hangfire");
 RecurringJob.AddOrUpdate<RankEvaluationSweepJob>(
     "rank-evaluation-sweep",

@@ -27,7 +27,6 @@ public class MembershipLevelConfiguration : IEntityTypeConfiguration<MembershipL
 
         builder.HasData(
 
-            // ── Lifestyle Ambassador (builder) ────────────────────────────────
             // Annual business fee. No Member Bonus triggered for this level.
             new MembershipLevel
             {
@@ -40,7 +39,6 @@ public class MembershipLevelConfiguration : IEntityTypeConfiguration<MembershipL
                 CreationDate = SeedDate, CreatedBy = "seed"
             },
 
-            // ── Travel Advantage – VIP ────────────────────────────────────────
             // 1 qualification point per month (after first rebilling).
             // Triggers $20 Member Bonus to the direct enroller.
             new MembershipLevel
@@ -54,7 +52,6 @@ public class MembershipLevelConfiguration : IEntityTypeConfiguration<MembershipL
                 CreationDate = SeedDate, CreatedBy = "seed"
             },
 
-            // ── Travel Advantage – Elite ──────────────────────────────────────
             // 6 qualification points per month. Triggers $40 Member Bonus.
             new MembershipLevel
             {
@@ -67,7 +64,6 @@ public class MembershipLevelConfiguration : IEntityTypeConfiguration<MembershipL
                 CreationDate = SeedDate, CreatedBy = "seed"
             },
 
-            // ── Travel Advantage – Turbo ──────────────────────────────────────
             // 6 qualification points per month. Triggers $80 Member Bonus.
             new MembershipLevel
             {

@@ -1,9 +1,8 @@
-using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.AdminAPI.DTOs.Commissions;
-using MLMConquerorGlobalEdition.Domain.Entities.Commission;
+using MLMConquerorGlobalEdition.AdminAPI.Mappings;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
 
@@ -15,13 +14,8 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 public class CommissionTypesController : ControllerBase
 {
     private readonly AppDbContext _db;
-    private readonly IMapper _mapper;
 
-    public CommissionTypesController(AppDbContext db, IMapper mapper)
-    {
-        _db = db;
-        _mapper = mapper;
-    }
+    public CommissionTypesController(AppDbContext db) => _db = db;
 
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] PagedRequest request, CancellationToken ct = default)
@@ -36,7 +30,7 @@ public class CommissionTypesController : ControllerBase
 
         var result = new PagedResult<CommissionTypeDto>
         {
-            Items = _mapper.Map<IEnumerable<CommissionTypeDto>>(items),
+            Items = items.Select(x => x.ToDto()),
             TotalCount = total,
             Page = request.Page,
             PageSize = request.PageSize
@@ -52,17 +46,17 @@ public class CommissionTypesController : ControllerBase
         if (entity is null)
             return NotFound(ApiResponse<CommissionTypeDto>.Fail("COMMISSION_TYPE_NOT_FOUND", $"Commission type '{id}' not found."));
 
-        return Ok(ApiResponse<CommissionTypeDto>.Ok(_mapper.Map<CommissionTypeDto>(entity)));
+        return Ok(ApiResponse<CommissionTypeDto>.Ok(entity.ToDto()));
     }
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCommissionTypeDto dto, CancellationToken ct = default)
     {
-        var entity = _mapper.Map<CommissionType>(dto);
+        var entity = dto.ToNewEntity();
         entity.CreatedBy = User.Identity?.Name ?? "admin";
         await _db.CommissionTypes.AddAsync(entity, ct);
         await _db.SaveChangesAsync(ct);
-        return CreatedAtAction(nameof(GetById), new { id = entity.Id }, ApiResponse<CommissionTypeDto>.Ok(_mapper.Map<CommissionTypeDto>(entity)));
+        return CreatedAtAction(nameof(GetById), new { id = entity.Id }, ApiResponse<CommissionTypeDto>.Ok(entity.ToDto()));
     }
 
     [HttpPut("{id:int}")]
@@ -72,10 +66,10 @@ public class CommissionTypesController : ControllerBase
         if (entity is null)
             return NotFound(ApiResponse<CommissionTypeDto>.Fail("COMMISSION_TYPE_NOT_FOUND", $"Commission type '{id}' not found."));
 
-        _mapper.Map(dto, entity);
+        dto.ApplyTo(entity);
         entity.LastUpdateBy = User.Identity?.Name ?? "admin";
         await _db.SaveChangesAsync(ct);
-        return Ok(ApiResponse<CommissionTypeDto>.Ok(_mapper.Map<CommissionTypeDto>(entity)));
+        return Ok(ApiResponse<CommissionTypeDto>.Ok(entity.ToDto()));
     }
 
     [HttpDelete("{id:int}")]

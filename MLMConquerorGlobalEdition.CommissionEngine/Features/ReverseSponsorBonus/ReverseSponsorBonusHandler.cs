@@ -29,7 +29,6 @@ public class ReverseSponsorBonusHandler
     {
         var now = _dateTime.Now;
 
-        // ── Validate the 14-day window ────────────────────────────────────────
         var signupOrder = await _db.Orders
             .AsNoTracking()
             .FirstOrDefaultAsync(o => o.Id == command.SignupOrderId, ct);
@@ -51,7 +50,6 @@ public class ReverseSponsorBonusHandler
                 }
             });
 
-        // ── Find the original sponsor bonus earning ───────────────────────────
         var sponsorBonusTypeIds = await _db.CommissionTypes
             .AsNoTracking()
             .Where(t => t.IsSponsorBonus)

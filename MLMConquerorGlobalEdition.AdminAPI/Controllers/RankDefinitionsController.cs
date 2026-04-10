@@ -1,8 +1,8 @@
-using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.AdminAPI.DTOs.Ranks;
+using MLMConquerorGlobalEdition.AdminAPI.Mappings;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
@@ -15,19 +15,14 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 public class RankDefinitionsController : ControllerBase
 {
     private readonly AppDbContext _db;
-    private readonly IMapper _mapper;
 
-    public RankDefinitionsController(AppDbContext db, IMapper mapper)
-    {
-        _db = db;
-        _mapper = mapper;
-    }
+    public RankDefinitionsController(AppDbContext db) => _db = db;
 
     [HttpGet]
     public async Task<IActionResult> GetAll(CancellationToken ct = default)
     {
         var items = await _db.RankDefinitions.AsNoTracking().OrderBy(x => x.SortOrder).ToListAsync(ct);
-        return Ok(ApiResponse<IEnumerable<RankDefinitionDto>>.Ok(_mapper.Map<IEnumerable<RankDefinitionDto>>(items)));
+        return Ok(ApiResponse<IEnumerable<RankDefinitionDto>>.Ok(items.Select(x => x.ToDto())));
     }
 
     [HttpGet("{id:int}")]
@@ -39,17 +34,17 @@ public class RankDefinitionsController : ControllerBase
         if (entity is null)
             return NotFound(ApiResponse<RankDefinitionDto>.Fail("RANK_NOT_FOUND", $"Rank definition '{id}' not found."));
 
-        return Ok(ApiResponse<RankDefinitionDto>.Ok(_mapper.Map<RankDefinitionDto>(entity)));
+        return Ok(ApiResponse<RankDefinitionDto>.Ok(entity.ToDto()));
     }
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateRankDefinitionDto dto, CancellationToken ct = default)
     {
-        var entity = _mapper.Map<RankDefinition>(dto);
+        var entity = dto.ToNewEntity();
         entity.CreatedBy = User.Identity?.Name ?? "admin";
         await _db.RankDefinitions.AddAsync(entity, ct);
         await _db.SaveChangesAsync(ct);
-        return CreatedAtAction(nameof(GetById), new { id = entity.Id }, ApiResponse<RankDefinitionDto>.Ok(_mapper.Map<RankDefinitionDto>(entity)));
+        return CreatedAtAction(nameof(GetById), new { id = entity.Id }, ApiResponse<RankDefinitionDto>.Ok(entity.ToDto()));
     }
 
     [HttpPut("{id:int}")]
@@ -59,10 +54,10 @@ public class RankDefinitionsController : ControllerBase
         if (entity is null)
             return NotFound(ApiResponse<RankDefinitionDto>.Fail("RANK_NOT_FOUND", $"Rank definition '{id}' not found."));
 
-        _mapper.Map(dto, entity);
+        dto.ApplyTo(entity);
         entity.LastUpdateBy = User.Identity?.Name ?? "admin";
         await _db.SaveChangesAsync(ct);
-        return Ok(ApiResponse<RankDefinitionDto>.Ok(_mapper.Map<RankDefinitionDto>(entity)));
+        return Ok(ApiResponse<RankDefinitionDto>.Ok(entity.ToDto()));
     }
 
     [HttpDelete("{id:int}")]

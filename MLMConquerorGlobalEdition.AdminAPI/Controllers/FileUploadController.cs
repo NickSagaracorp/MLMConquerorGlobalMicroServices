@@ -30,7 +30,6 @@ public class FileUploadController : ControllerBase
     [RequestFormLimits(MultipartBodyLengthLimit = 5_000_000)]
     public async Task<IActionResult> UploadFile(IFormFile file, CancellationToken ct = default)
     {
-        // ── Basic presence check ─────────────────────────────────────────────
         if (file is null || file.Length == 0)
             return BadRequest(ApiResponse<UploadResult>.Fail("INVALID_FILE", "No file provided."));
 
@@ -38,13 +37,11 @@ public class FileUploadController : ControllerBase
             return BadRequest(ApiResponse<UploadResult>.Fail("FILE_TOO_LARGE",
                 $"Maximum allowed file size is {MaxFileSizeBytes / 1_000_000} MB."));
 
-        // ── Extension whitelist check (first gate) ────────────────────────────
         var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (!AllowedExtensions.Contains(ext))
             return BadRequest(ApiResponse<UploadResult>.Fail("INVALID_FILE_TYPE",
                 "Only image files are allowed (.jpg, .jpeg, .png, .gif, .webp)."));
 
-        // ── Magic bytes validation via ImageSharp (real content check) ────────
         // Load the image from the stream BEFORE saving to disk.
         // If the file is not a valid image format (regardless of extension),
         // ImageSharp will throw an UnknownImageFormatException.
@@ -65,7 +62,6 @@ public class FileUploadController : ControllerBase
                 "The uploaded file is not a valid image."));
         }
 
-        // ── Prepare storage ───────────────────────────────────────────────────
         var uploadsPath = Path.Combine(
             _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
             "uploads");
@@ -78,7 +74,6 @@ public class FileUploadController : ControllerBase
         var filePath  = Path.Combine(uploadsPath, fileName);
         var thumbPath = Path.Combine(uploadsPath, thumbName);
 
-        // ── Persist original (already validated in memory) ────────────────────
         try
         {
             file.OpenReadStream().Position = 0;
@@ -92,7 +87,6 @@ public class FileUploadController : ControllerBase
                 "An error occurred while saving the file."));
         }
 
-        // ── Generate 100×100 thumbnail from in-memory image ───────────────────
         try
         {
             using (validatedImage)

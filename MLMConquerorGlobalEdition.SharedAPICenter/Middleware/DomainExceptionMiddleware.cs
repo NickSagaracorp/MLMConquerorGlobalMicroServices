@@ -89,7 +89,6 @@ public class DomainExceptionMiddleware
         }
     }
 
-    // ── Language detection — JWT "lang" claim → Accept-Language header → "en" ─
     private static string DetectLanguage(HttpContext context)
     {
         var claim = context.User.FindFirstValue("lang");

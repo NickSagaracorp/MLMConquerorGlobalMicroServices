@@ -36,14 +36,12 @@ public class ProcessPaymentWebhookHandler : IRequestHandler<ProcessPaymentWebhoo
     {
         var payload = request.Payload;
 
-        // ── Resolve target status from event name ─────────────────────────────
         var targetStatus = ResolveStatus(payload.Event);
         if (targetStatus is null)
             return Result<bool>.Failure(
                 "WEBHOOK_UNKNOWN_EVENT",
                 $"Unknown payment event '{payload.Event}'.");
 
-        // ── Look up existing PaymentHistory by gateway transaction ID ─────────
         var existing = await _db.PaymentHistories
             .FirstOrDefaultAsync(
                 p => p.GatewayTransactionId == payload.TransactionId,
@@ -81,7 +79,6 @@ public class ProcessPaymentWebhookHandler : IRequestHandler<ProcessPaymentWebhoo
             await _db.PaymentHistories.AddAsync(newRecord, ct);
         }
 
-        // ── Advance the linked Order when payment succeeds ────────────────────
         if (targetStatus == PaymentHistoryTransactionStatus.Captured
             && !string.IsNullOrWhiteSpace(payload.OrderId))
         {
@@ -103,7 +100,6 @@ public class ProcessPaymentWebhookHandler : IRequestHandler<ProcessPaymentWebhoo
         return Result<bool>.Success(true);
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static PaymentHistoryTransactionStatus? ResolveStatus(string eventName) =>
         eventName.ToLowerInvariant() switch

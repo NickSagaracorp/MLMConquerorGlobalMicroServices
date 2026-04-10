@@ -126,15 +126,13 @@ public class RunAutoPlacementHandler : IRequestHandler<RunAutoPlacementCommand, 
             .AsNoTracking()
             .FirstOrDefaultAsync(d => d.ParentMemberId == sponsorId && d.Side == TreeSide.Right, ct);
 
-        // 5.2.a: No children → place LEFT of sponsor
         if (leftChild is null)
             return (sponsorId, TreeSide.Left);
 
-        // 5.2.b: Only left child → place RIGHT of sponsor
         if (rightChild is null)
             return (sponsorId, TreeSide.Right);
 
-        // 5.2.c: Both children → BFS on preferred side
+        // Both legs occupied — run BFS on preferred side first
         var preferredSide = sponsorNode.Side;
         var (bfsTarget, bfsSide) = await FindDeepestAvailableNodeAsync(sponsorId, preferredSide, ct);
 

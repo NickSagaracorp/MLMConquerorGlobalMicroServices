@@ -78,7 +78,6 @@ public class ValidateReplicateSiteHandlerTests
         var handler = new ValidateReplicateSiteHandler(db);
         var result = await handler.Handle(new ValidateReplicateSiteQuery("mwrlife"), CancellationToken.None);
 
-        // InMemory uses ordinal comparison by default — case differs, so slug is available
         result.IsSuccess.Should().BeTrue();
     }
 }

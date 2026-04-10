@@ -1,10 +1,9 @@
-using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.AdminAPI.DTOs.Products;
+using MLMConquerorGlobalEdition.AdminAPI.Mappings;
 using MLMConquerorGlobalEdition.AdminAPI.Services;
-using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
 
@@ -16,7 +15,6 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 public class ProductsController : ControllerBase
 {
     private readonly AppDbContext _db;
-    private readonly IMapper _mapper;
     private readonly IHtmlSanitizerService _sanitizer;
 
     private static readonly IReadOnlySet<string> _allowedThemes = new HashSet<string>
@@ -27,10 +25,9 @@ public class ProductsController : ControllerBase
         "theme-product-turbo"
     };
 
-    public ProductsController(AppDbContext db, IMapper mapper, IHtmlSanitizerService sanitizer)
+    public ProductsController(AppDbContext db, IHtmlSanitizerService sanitizer)
     {
         _db        = db;
-        _mapper    = mapper;
         _sanitizer = sanitizer;
     }
 
@@ -47,7 +44,7 @@ public class ProductsController : ControllerBase
 
         var result = new PagedResult<ProductDto>
         {
-            Items = _mapper.Map<IEnumerable<ProductDto>>(items),
+            Items = items.Select(x => x.ToDto()),
             TotalCount = total,
             Page = request.Page,
             PageSize = request.PageSize
@@ -63,7 +60,7 @@ public class ProductsController : ControllerBase
         if (entity is null)
             return NotFound(ApiResponse<ProductDto>.Fail("PRODUCT_NOT_FOUND", $"Product '{id}' not found."));
 
-        return Ok(ApiResponse<ProductDto>.Ok(_mapper.Map<ProductDto>(entity)));
+        return Ok(ApiResponse<ProductDto>.Ok(entity.ToDto()));
     }
 
     [HttpPost]
@@ -72,7 +69,7 @@ public class ProductsController : ControllerBase
         if (dto.ThemeClass is not null && !_allowedThemes.Contains(dto.ThemeClass))
             return BadRequest(ApiResponse<ProductDto>.Fail("INVALID_THEME", $"ThemeClass '{dto.ThemeClass}' is not allowed."));
 
-        var entity = _mapper.Map<Product>(dto);
+        var entity = dto.ToNewEntity();
         entity.Description      = _sanitizer.Sanitize(dto.Description);
         entity.DescriptionPromo = string.IsNullOrWhiteSpace(dto.DescriptionPromo)
             ? null
@@ -82,7 +79,7 @@ public class ProductsController : ControllerBase
 
         await _db.Products.AddAsync(entity, ct);
         await _db.SaveChangesAsync(ct);
-        return CreatedAtAction(nameof(GetById), new { id = entity.Id }, ApiResponse<ProductDto>.Ok(_mapper.Map<ProductDto>(entity)));
+        return CreatedAtAction(nameof(GetById), new { id = entity.Id }, ApiResponse<ProductDto>.Ok(entity.ToDto()));
     }
 
     [HttpPut("{id}")]
@@ -95,7 +92,7 @@ public class ProductsController : ControllerBase
         if (entity is null)
             return NotFound(ApiResponse<ProductDto>.Fail("PRODUCT_NOT_FOUND", $"Product '{id}' not found."));
 
-        _mapper.Map(dto, entity);
+        dto.ApplyTo(entity);
         entity.Description      = _sanitizer.Sanitize(dto.Description);
         entity.DescriptionPromo = string.IsNullOrWhiteSpace(dto.DescriptionPromo)
             ? null
@@ -104,7 +101,7 @@ public class ProductsController : ControllerBase
         entity.LastUpdateBy  = User.Identity?.Name ?? "admin";
 
         await _db.SaveChangesAsync(ct);
-        return Ok(ApiResponse<ProductDto>.Ok(_mapper.Map<ProductDto>(entity)));
+        return Ok(ApiResponse<ProductDto>.Ok(entity.ToDto()));
     }
 
     [HttpDelete("{id}")]

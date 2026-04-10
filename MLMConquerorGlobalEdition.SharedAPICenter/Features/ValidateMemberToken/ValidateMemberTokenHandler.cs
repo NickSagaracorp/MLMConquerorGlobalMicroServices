@@ -28,7 +28,6 @@ public class ValidateMemberTokenHandler
     {
         var req = request.Request;
 
-        // ── Verify token type exists and is active ────────────────────────────
         var tokenType = await _db.TokenTypes
             .AsNoTracking()
             .FirstOrDefaultAsync(t => t.Id == req.TokenTypeId && t.IsActive, ct);
@@ -38,7 +37,6 @@ public class ValidateMemberTokenHandler
                 "TOKEN_TYPE_NOT_FOUND",
                 $"Token type '{req.TokenTypeId}' was not found or is inactive.");
 
-        // ── Load balance (may not exist yet — treat as 0) ─────────────────────
         var balance = await _db.TokenBalances
             .AsNoTracking()
             .FirstOrDefaultAsync(

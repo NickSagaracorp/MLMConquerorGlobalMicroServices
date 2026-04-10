@@ -140,7 +140,6 @@ public class ProcessScheduledCancellationsJob
         if (statusHistories.Count > 0)
             await _db.MemberStatusHistories.AddRangeAsync(statusHistories, ct);
 
-        // ── Reverse sponsor bonuses for signups within the 14-day window ──────
         // Load signup subscriptions for all cancelled members
         var signupSubs = await _db.MembershipSubscriptions
             .AsNoTracking()

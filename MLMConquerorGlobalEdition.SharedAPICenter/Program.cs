@@ -19,26 +19,21 @@ using IErrorTrackingService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ── DbContext ─────────────────────────────────────────────────────────────────
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// ── MediatR — scans all handlers + error-handling pipeline behavior ───────────
 builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
     cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ErrorHandlingBehavior<,>));
 });
 
-// ── Infrastructure services ───────────────────────────────────────────────────
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 
-// ── Error Tracking — singleton; uses IServiceScopeFactory for isolated DB writes
 builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
 
-// ── Redis distributed cache ───────────────────────────────────────────────────
 builder.Services.AddStackExchangeRedisCache(options =>
 {
     options.Configuration = builder.Configuration.GetConnectionString("Redis")
@@ -46,13 +41,10 @@ builder.Services.AddStackExchangeRedisCache(options =>
 });
 builder.Services.AddSingleton<ICacheService, CacheService>();
 
-// ── Firebase push notifications ───────────────────────────────────────────────
 builder.Services.AddSingleton<IPushNotificationService, FirebasePushNotificationService>();
 
-// ── Controllers ───────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
 
-// ── JWT Authentication ────────────────────────────────────────────────────────
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("JWT Key is not configured.");
 
@@ -73,7 +65,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// ── Rate Limiting ─────────────────────────────────────────────────────────────
 builder.Services.AddMemoryCache();
 builder.Services.Configure<IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
 builder.Services.AddSingleton<IIpPolicyStore, MemoryCacheIpPolicyStore>();
@@ -82,7 +73,6 @@ builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>()
 builder.Services.AddSingleton<IProcessingStrategy, AsyncKeyLockProcessingStrategy>();
 builder.Services.AddInMemoryRateLimiting();
 
-// ── Swagger ───────────────────────────────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -117,10 +107,8 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
 var app = builder.Build();
 
-// ── Middleware pipeline ───────────────────────────────────────────────────────
 app.UseMiddleware<DomainExceptionMiddleware>();
 app.UseSwagger();
 app.UseSwaggerUI(c =>
@@ -133,7 +121,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// ── Health check ──────────────────────────────────────────────────────────────
 app.MapGet("/health", () => Results.Ok(new
 {
     status    = "healthy",

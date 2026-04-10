@@ -3,6 +3,7 @@
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @inject HttpClient Http
 @inject NavigationManager Nav
+@using Syncfusion.Blazor.RichTextEditor
 
 <PageTitle>Corporate Promos — Admin</PageTitle>
 
@@ -90,7 +91,9 @@
                         </div>
                         <div class="col-12">
                             <label class="form-label fw-semibold">Description</label>
-                            <textarea class="form-control" rows="3" @bind="_form.Description"></textarea>
+                            <SfRichTextEditor @bind-Value="_form.Description" Height="220" Placeholder="Promo description…">
+                                <RichTextEditorToolbarSettings Items="@_rteToolbar" />
+                            </SfRichTextEditor>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Start Date <span class="text-danger">*</span></label>
@@ -147,6 +150,25 @@
 }
 
 @code {
+    private static readonly List<ToolbarItemModel> _rteToolbar = new()
+    {
+        new() { Command = ToolbarCommand.Bold },
+        new() { Command = ToolbarCommand.Italic },
+        new() { Command = ToolbarCommand.Underline },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.Formats },
+        new() { Command = ToolbarCommand.Alignments },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.OrderedList },
+        new() { Command = ToolbarCommand.UnorderedList },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.CreateLink },
+        new() { Command = ToolbarCommand.Image },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.Undo },
+        new() { Command = ToolbarCommand.Redo }
+    };
+
     private List<CorporatePromoDto> _items = new();
     private bool _loading = true;
     private bool _saving;
@@ -198,9 +220,32 @@
         _saving = true;
         try
         {
-            var response = _editId is null
-                ? await Http.PostAsJsonAsync("api/v1/admin/corporate-promos", _form)
-                : await Http.PutAsJsonAsync($"api/v1/admin/corporate-promos/{_editId}", _form);
+            HttpResponseMessage response;
+            if (_editId is null)
+            {
+                // POST: CreateCorporatePromoRequest — no IsActive field
+                response = await Http.PostAsJsonAsync("api/v1/admin/corporate-promos", new
+                {
+                    _form.Title,
+                    _form.Description,
+                    _form.StartDate,
+                    _form.EndDate,
+                    _form.BannerUrl
+                });
+            }
+            else
+            {
+                // PUT: UpdateCorporatePromoRequest — must include IsActive to preserve the current toggle value
+                response = await Http.PutAsJsonAsync($"api/v1/admin/corporate-promos/{_editId}", new
+                {
+                    _form.Title,
+                    _form.Description,
+                    _form.StartDate,
+                    _form.EndDate,
+                    _form.BannerUrl,
+                    _form.IsActive
+                });
+            }
             if (response.IsSuccessStatusCode) { _alertMsg = _editId is null ? "Promo created." : "Promo updated."; _alertIsError = false; CloseForm(); await LoadAsync(); }
             else { _alertMsg = $"Save failed ({response.StatusCode})."; _alertIsError = true; }
         }

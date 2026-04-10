@@ -33,21 +33,18 @@ public class AdminPlaceMemberHandler : IRequestHandler<AdminPlaceMemberCommand, 
         var now  = _clock.Now;
         var side = Enum.Parse<TreeSide>(command.Side);
 
-        // ── Member must exist ────────────────────────────────────────────────────
         var member = await _db.MemberProfiles
             .FirstOrDefaultAsync(m => m.MemberId == command.MemberToPlaceId && !m.IsDeleted, ct);
 
         if (member is null)
             return Result<string>.Failure("MEMBER_NOT_FOUND", "El miembro que intenta colocar no existe.");
 
-        // ── Target parent must exist in dual tree ────────────────────────────────
         var targetParent = await _db.DualTeamTree
             .FirstOrDefaultAsync(d => d.MemberId == command.TargetParentMemberId, ct);
 
         if (targetParent is null)
             return Result<string>.Failure("TARGET_NOT_FOUND", "El nodo destino no existe en el Dual Team.");
 
-        // ── Structural: no third leg ─────────────────────────────────────────────
         var slotOccupied = await _db.DualTeamTree
             .AnyAsync(d => d.ParentMemberId == command.TargetParentMemberId && d.Side == side, ct);
 
@@ -55,12 +52,10 @@ public class AdminPlaceMemberHandler : IRequestHandler<AdminPlaceMemberCommand, 
             return Result<string>.Failure("SLOT_OCCUPIED",
                 $"El nodo {command.TargetParentMemberId} ya tiene ocupada la pierna {command.Side}.");
 
-        // ── Structural: no auto-superiority ──────────────────────────────────────
         if (command.TargetParentMemberId == command.MemberToPlaceId)
             return Result<string>.Failure("AUTO_SUPERIORITY",
                 "Un ambassador no puede ser su propio superior directo.");
 
-        // ── Structural: no circular reference ────────────────────────────────────
         var existingNode = await _db.DualTeamTree
             .FirstOrDefaultAsync(d => d.MemberId == command.MemberToPlaceId, ct);
 
@@ -72,7 +67,6 @@ public class AdminPlaceMemberHandler : IRequestHandler<AdminPlaceMemberCommand, 
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
         try
         {
-            // ── Remove from current position ─────────────────────────────────────
             if (existingNode != null)
             {
                 _db.DualTeamTree.Remove(existingNode);
@@ -91,7 +85,6 @@ public class AdminPlaceMemberHandler : IRequestHandler<AdminPlaceMemberCommand, 
                 }
             }
 
-            // ── Place at new position ────────────────────────────────────────────
             var newPath = $"{targetParent.HierarchyPath}{command.MemberToPlaceId}/";
             _db.DualTeamTree.Add(new DualTeamEntity
             {
@@ -105,7 +98,6 @@ public class AdminPlaceMemberHandler : IRequestHandler<AdminPlaceMemberCommand, 
                 LastUpdateBy   = _currentUser.UserId
             });
 
-            // ── Log the placement (admin override — does not consume opportunity) ─
             var prevLog = await _db.PlacementLogs
                 .Where(p => p.MemberId == command.MemberToPlaceId)
                 .OrderByDescending(p => p.CreationDate)
@@ -126,7 +118,6 @@ public class AdminPlaceMemberHandler : IRequestHandler<AdminPlaceMemberCommand, 
 
             await _db.SaveChangesAsync(ct);
 
-            // ── Recalculate upline ────────────────────────────────────────────────
             await RecalculateUplineStatsAsync(command.TargetParentMemberId, ct);
 
             await tx.CommitAsync(ct);

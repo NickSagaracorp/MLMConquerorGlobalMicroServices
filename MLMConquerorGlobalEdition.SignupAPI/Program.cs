@@ -18,13 +18,11 @@ using IErrorTrackingService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.
 using IPushNotificationService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IPushNotificationService;
 using MLMConquerorGlobalEdition.SharedKernel.Logging;
 using MLMConquerorGlobalEdition.SignupAPI.Jobs;
-using MLMConquerorGlobalEdition.SignupAPI.Mappings;
 using MLMConquerorGlobalEdition.SignupAPI.Middleware;
 using MLMConquerorGlobalEdition.SignupAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ── PII-masking logging — replaces default providers ─────────────────────────
 builder.Logging.AddPiiMaskingConsole();
 
 // DbContext
@@ -54,8 +52,6 @@ builder.Services.AddMediatR(cfg =>
     cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ErrorHandlingBehavior<,>));
 });
 
-// AutoMapper
-builder.Services.AddAutoMapper(typeof(SignupsMappingProfile));
 
 // Services
 builder.Services.AddHttpContextAccessor();
@@ -117,7 +113,6 @@ builder.Services.AddCors(options =>
     });
 });
 
-// ── JWT Authentication (RS256 — asymmetric) ───────────────────────────────────
 var publicKeyBase64 = builder.Configuration["Jwt:PublicKeyBase64"]
     ?? throw new InvalidOperationException("Jwt:PublicKeyBase64 not configured.");
 

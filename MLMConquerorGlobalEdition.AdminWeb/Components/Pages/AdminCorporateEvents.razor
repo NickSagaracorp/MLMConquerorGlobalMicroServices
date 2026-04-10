@@ -2,6 +2,7 @@
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @inject HttpClient Http
+@using Syncfusion.Blazor.RichTextEditor
 
 <PageTitle>Corporate Events — Admin</PageTitle>
 
@@ -129,7 +130,9 @@
                         </div>
                         <div class="col-12">
                             <label class="form-label fw-semibold">Description</label>
-                            <textarea class="form-control" rows="3" @bind="_form.Description"></textarea>
+                            <SfRichTextEditor @bind-Value="_form.Description" Height="220" Placeholder="Event description…">
+                                <RichTextEditorToolbarSettings Items="@_rteToolbar" />
+                            </SfRichTextEditor>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Event Date <span class="text-danger">*</span></label>
@@ -180,6 +183,25 @@
 }
 
 @code {
+    private static readonly List<ToolbarItemModel> _rteToolbar = new()
+    {
+        new() { Command = ToolbarCommand.Bold },
+        new() { Command = ToolbarCommand.Italic },
+        new() { Command = ToolbarCommand.Underline },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.Formats },
+        new() { Command = ToolbarCommand.Alignments },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.OrderedList },
+        new() { Command = ToolbarCommand.UnorderedList },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.CreateLink },
+        new() { Command = ToolbarCommand.Image },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.Undo },
+        new() { Command = ToolbarCommand.Redo }
+    };
+
     private List<CorporateEventDto> _items = new();
     private bool _loading = true;
     private bool _saving;
@@ -241,9 +263,32 @@
         _saving = true;
         try
         {
-            var response = _editId is null
-                ? await Http.PostAsJsonAsync("api/v1/admin/corporate-events", _form)
-                : await Http.PutAsJsonAsync($"api/v1/admin/corporate-events/{_editId}", _form);
+            HttpResponseMessage response;
+            if (_editId is null)
+            {
+                // POST: CreateCorporateEventRequest — no IsActive field
+                response = await Http.PostAsJsonAsync("api/v1/admin/corporate-events", new
+                {
+                    _form.Title,
+                    _form.Description,
+                    _form.EventDate,
+                    _form.Location,
+                    _form.ImageUrl
+                });
+            }
+            else
+            {
+                // PUT: UpdateCorporateEventRequest — must include IsActive=true to preserve active status
+                response = await Http.PutAsJsonAsync($"api/v1/admin/corporate-events/{_editId}", new
+                {
+                    _form.Title,
+                    _form.Description,
+                    _form.EventDate,
+                    _form.Location,
+                    _form.ImageUrl,
+                    IsActive = true
+                });
+            }
             if (response.IsSuccessStatusCode)
             {
                 _alertMsg = _editId is null ? "Event created." : "Event updated.";

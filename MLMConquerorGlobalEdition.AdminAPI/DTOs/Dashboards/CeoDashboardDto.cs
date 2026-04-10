@@ -2,7 +2,6 @@ namespace MLMConquerorGlobalEdition.AdminAPI.DTOs.Dashboards;
 
 public class CeoDashboardDto
 {
-    // ── MEMBERS ──────────────────────────────────────────────────────────────
     public int TotalMembers { get; set; }
     public int TotalAmbassadors { get; set; }
     public int TotalExternalMembers { get; set; }
@@ -15,39 +14,32 @@ public class CeoDashboardDto
     public int NewMembersThisMonth { get; set; }
     public int NewMembersLastMonth { get; set; }
 
-    // ── FINANCIAL ────────────────────────────────────────────────────────────
     public decimal RevenueThisMonth { get; set; }
     public decimal RevenueLastMonth { get; set; }
     public decimal RevenueThisYear { get; set; }
     public int OrdersThisMonth { get; set; }
     public decimal AvgOrderValueThisMonth { get; set; }
 
-    // ── COMMISSIONS ──────────────────────────────────────────────────────────
     public decimal CommissionsPaidAllTime { get; set; }
     public decimal CommissionsPaidThisMonth { get; set; }
     public decimal CommissionsPending { get; set; }
 
-    // ── SUBSCRIPTIONS ────────────────────────────────────────────────────────
     public int ActiveSubscriptions { get; set; }
     public int ExpiringSubscriptions30Days { get; set; }
     public int CancelledSubscriptionsThisMonth { get; set; }
 
-    // ── SUPPORT ──────────────────────────────────────────────────────────────
     public int TicketsOpen { get; set; }
     public int TicketsInProgress { get; set; }
     public int TicketsCritical { get; set; }
     public int TicketsResolvedThisMonth { get; set; }
 
-    // ── TOKENS ───────────────────────────────────────────────────────────────
     public int TokenCodesTotal { get; set; }
     public int TokenCodesUsed { get; set; }
     public int TokenCodesAvailable { get; set; }
 
-    // ── PAYMENTS ─────────────────────────────────────────────────────────────
     public int PaymentsPending { get; set; }
     public int PaymentsFailed { get; set; }
 
-    // ── LISTS ─────────────────────────────────────────────────────────────────
     public List<RecentMemberItem> RecentMembers { get; set; } = new();
     public List<MembershipBreakdownItem> MembershipBreakdown { get; set; } = new();
     public List<AmbassadorsByLevelItem> AmbassadorsByLevel { get; set; } = new();

@@ -1,9 +1,8 @@
-using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.AdminAPI.DTOs.Commissions;
-using MLMConquerorGlobalEdition.Domain.Entities.Commission;
+using MLMConquerorGlobalEdition.AdminAPI.Mappings;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
 
@@ -15,19 +14,14 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 public class CommissionCategoriesController : ControllerBase
 {
     private readonly AppDbContext _db;
-    private readonly IMapper _mapper;
 
-    public CommissionCategoriesController(AppDbContext db, IMapper mapper)
-    {
-        _db = db;
-        _mapper = mapper;
-    }
+    public CommissionCategoriesController(AppDbContext db) => _db = db;
 
     [HttpGet]
     public async Task<IActionResult> GetAll(CancellationToken ct = default)
     {
         var items = await _db.CommissionCategories.AsNoTracking().OrderBy(x => x.Name).ToListAsync(ct);
-        return Ok(ApiResponse<IEnumerable<CommissionCategoryDto>>.Ok(_mapper.Map<IEnumerable<CommissionCategoryDto>>(items)));
+        return Ok(ApiResponse<IEnumerable<CommissionCategoryDto>>.Ok(items.Select(x => x.ToDto())));
     }
 
     [HttpGet("{id:int}")]
@@ -37,17 +31,17 @@ public class CommissionCategoriesController : ControllerBase
         if (entity is null)
             return NotFound(ApiResponse<CommissionCategoryDto>.Fail("COMMISSION_CATEGORY_NOT_FOUND", $"Commission category '{id}' not found."));
 
-        return Ok(ApiResponse<CommissionCategoryDto>.Ok(_mapper.Map<CommissionCategoryDto>(entity)));
+        return Ok(ApiResponse<CommissionCategoryDto>.Ok(entity.ToDto()));
     }
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCommissionCategoryDto dto, CancellationToken ct = default)
     {
-        var entity = _mapper.Map<CommissionCategory>(dto);
+        var entity = dto.ToNewEntity();
         entity.CreatedBy = User.Identity?.Name ?? "admin";
         await _db.CommissionCategories.AddAsync(entity, ct);
         await _db.SaveChangesAsync(ct);
-        return CreatedAtAction(nameof(GetById), new { id = entity.Id }, ApiResponse<CommissionCategoryDto>.Ok(_mapper.Map<CommissionCategoryDto>(entity)));
+        return CreatedAtAction(nameof(GetById), new { id = entity.Id }, ApiResponse<CommissionCategoryDto>.Ok(entity.ToDto()));
     }
 
     [HttpPut("{id:int}")]
@@ -57,10 +51,10 @@ public class CommissionCategoriesController : ControllerBase
         if (entity is null)
             return NotFound(ApiResponse<CommissionCategoryDto>.Fail("COMMISSION_CATEGORY_NOT_FOUND", $"Commission category '{id}' not found."));
 
-        _mapper.Map(dto, entity);
+        dto.ApplyTo(entity);
         entity.LastUpdateBy = User.Identity?.Name ?? "admin";
         await _db.SaveChangesAsync(ct);
-        return Ok(ApiResponse<CommissionCategoryDto>.Ok(_mapper.Map<CommissionCategoryDto>(entity)));
+        return Ok(ApiResponse<CommissionCategoryDto>.Ok(entity.ToDto()));
     }
 
     [HttpDelete("{id:int}")]

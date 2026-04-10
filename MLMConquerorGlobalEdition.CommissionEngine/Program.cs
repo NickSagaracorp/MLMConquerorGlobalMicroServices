@@ -8,7 +8,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MLMConquerorGlobalEdition.CommissionEngine.Jobs;
-using MLMConquerorGlobalEdition.CommissionEngine.Mappings;
 using MLMConquerorGlobalEdition.CommissionEngine.Middleware;
 using MLMConquerorGlobalEdition.CommissionEngine.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
@@ -32,8 +31,6 @@ builder.Services.AddMediatR(cfg =>
     cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ErrorHandlingBehavior<,>));
 });
 
-// AutoMapper
-builder.Services.AddAutoMapper(typeof(CommissionEngineMappingProfile));
 
 // Services
 builder.Services.AddHttpContextAccessor();
@@ -43,7 +40,6 @@ builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 // Error Tracking — singleton; uses IServiceScopeFactory for isolated DB writes
 builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
 
-// ── Redis distributed cache ───────────────────────────────────────────────────
 builder.Services.AddStackExchangeRedisCache(options =>
 {
     options.Configuration = builder.Configuration.GetConnectionString("Redis")
@@ -51,7 +47,6 @@ builder.Services.AddStackExchangeRedisCache(options =>
 });
 builder.Services.AddSingleton<ICacheService, CacheService>();
 
-// ── Firebase push notifications ───────────────────────────────────────────────
 builder.Services.AddSingleton<IPushNotificationService, FirebasePushNotificationService>();
 
 // HangFire job classes (scoped so they can inject DbContext / IMediator)

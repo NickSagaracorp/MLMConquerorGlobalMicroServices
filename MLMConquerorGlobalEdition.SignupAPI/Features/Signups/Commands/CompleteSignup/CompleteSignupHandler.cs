@@ -48,14 +48,12 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
         var req = command.Request;
         var now = _dateTime.Now;
 
-        // ── Load pending order ────────────────────────────────────────────────
         var order = await _db.Orders
             .FirstOrDefaultAsync(o => o.Id == command.SignupId && o.Status == OrderStatus.Pending, ct);
 
         if (order is null)
             return Result<SignupResponse>.Failure("SIGNUP_NOT_FOUND", "Pending signup not found.");
 
-        // ── Verify products were selected (only required when product catalog is non-empty) ──
         var productsExistInCatalog = await _db.Products
             .AnyAsync(p => p.IsActive && !p.IsDeleted, ct);
 
@@ -66,14 +64,12 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
             return Result<SignupResponse>.Failure(
                 "NO_PRODUCTS_SELECTED", "Please select at least one product before completing signup.");
 
-        // ── Load member ───────────────────────────────────────────────────────
         var member = await _db.MemberProfiles
             .FirstOrDefaultAsync(m => m.MemberId == order.MemberId, ct);
 
         if (member is null)
             return Result<SignupResponse>.Failure("MEMBER_NOT_FOUND", "Associated member not found.");
 
-        // ── Load pending subscription ─────────────────────────────────────────
         var subscription = await _db.MembershipSubscriptions
             .FirstOrDefaultAsync(
                 s => s.MemberId == member.MemberId && s.SubscriptionStatus == MembershipStatus.Pending, ct);
@@ -81,13 +77,11 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
         if (subscription is null)
             return Result<SignupResponse>.Failure("SUBSCRIPTION_NOT_FOUND", "Pending subscription not found.");
 
-        // ── Load inactive Identity user ───────────────────────────────────────
         var appUser = await _userManager.FindByEmailAsync(member.Email);
         if (appUser is null || appUser.IsActive)
             return Result<SignupResponse>.Failure(
                 "USER_NOT_FOUND", "Pending user account not found for this signup.");
 
-        // ── Screenshot upload (chargeback evidence) ───────────────────────────
         if (!string.IsNullOrEmpty(req.CheckoutScreenshotBase64))
         {
             var screenshotBytes = Convert.FromBase64String(req.CheckoutScreenshotBase64);
@@ -99,7 +93,6 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
                 s3Key, stream, req.CheckoutScreenshotContentType, ct);
         }
 
-        // ── Credit card storage ───────────────────────────────────────────────
         if (req.PaymentMethod == PaymentMethodType.CreditCard && req.CreditCard is not null)
         {
             var cc = req.CreditCard;
@@ -123,23 +116,19 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
             }, ct);
         }
 
-        // ── Activate order ────────────────────────────────────────────────────
         order.Status         = OrderStatus.Completed;
         order.LastUpdateDate = now;
         order.LastUpdateBy   = member.Email;
 
-        // ── Activate member ───────────────────────────────────────────────────
         member.Status         = MemberAccountStatus.Active;
         member.LastUpdateDate = now;
         member.LastUpdateBy   = member.Email;
 
-        // ── Activate subscription ─────────────────────────────────────────────
         subscription.SubscriptionStatus = MembershipStatus.Active;
         subscription.StartDate          = now;
         subscription.LastUpdateDate     = now;
         subscription.LastUpdateBy       = member.Email;
 
-        // ── Member statistics ─────────────────────────────────────────────────
         var totalQualPoints = await _db.OrderDetails
             .AsNoTracking()
             .Where(od => od.OrderId == order.Id)
@@ -154,7 +143,6 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
             CreationDate   = now
         }, ct);
 
-        // ── Propagate enrollment points up the sponsor chain ──────────────────
         if (!string.IsNullOrEmpty(member.SponsorMemberId))
         {
             var sponsorNode = await _db.GenealogyTree
@@ -203,14 +191,12 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
             }
         }
 
-        // ── Sponsor bonus ─────────────────────────────────────────────────────
         await _sponsorBonus.ComputeAsync(
             member.SponsorMemberId, member.MemberId, order.Id,
             order.TotalAmount, member.Email, now, ct);
 
         await _db.SaveChangesAsync(ct);
 
-        // ── Activate Identity user and issue JWT ──────────────────────────────
         appUser.IsActive       = true;
         appUser.EmailConfirmed = true;
 

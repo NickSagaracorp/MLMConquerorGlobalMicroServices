@@ -57,7 +57,6 @@ public class SelectProductsHandlerTests
         LastUpdateDate = FixedNow
     };
 
-    // ── Failure cases ─────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Handle_WhenSignupNotFound_ReturnsFailure()
@@ -140,7 +139,6 @@ public class SelectProductsHandlerTests
         result.ErrorCode.Should().Be("NO_VALID_PRODUCTS");
     }
 
-    // ── Success cases ─────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Handle_WhenValidProducts_ReturnsSuccess()
@@ -247,7 +245,6 @@ public class SelectProductsHandlerTests
     }
 }
 
-// ── Test helpers ──────────────────────────────────────────────────────────────
 internal static class MockExtensions
 {
     internal static T Also<T>(this T value, Action<T> configure)

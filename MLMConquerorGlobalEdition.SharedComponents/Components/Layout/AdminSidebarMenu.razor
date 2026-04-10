@@ -92,12 +92,17 @@
 
         <AuthorizeView Roles="SuperAdmin,Admin,SupportManager,SupportLevel1,SupportLevel2,SupportLevel3,IT">
             <Authorized>
-                <li class="menu-item open @(IsSection("/admin/tickets") ? "active" : "")">
+                <li class="menu-item open @(IsSection("/admin/tickets","/admin/helpdesk/","/admin/config/ticket-categories") ? "active" : "")">
                     <a href="javascript:void(0);" class="menu-link menu-toggle">
                         <i class="ri-customer-service-2-line menu-icon"></i>
-                        <span class="title">Tickets</span>
+                        <span class="title">Helpdesk</span>
                     </a>
                     <ul class="menu-sub">
+                        <li class="menu-item @IsActive("/admin/helpdesk/dashboard")">
+                            <a href="/admin/helpdesk/dashboard" class="menu-link @IsActive("/admin/helpdesk/dashboard")">
+                                <span class="title">Dashboard</span>
+                            </a>
+                        </li>
                         <li class="menu-item @IsActive("/admin/tickets")">
                             <a href="/admin/tickets" class="menu-link @IsActive("/admin/tickets")">
                                 <span class="title">All Tickets</span>
@@ -106,6 +111,26 @@
                         <li class="menu-item @IsActive("/admin/config/ticket-categories")">
                             <a href="/admin/config/ticket-categories" class="menu-link @IsActive("/admin/config/ticket-categories")">
                                 <span class="title">Ticket Categories</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/helpdesk/sla")">
+                            <a href="/admin/helpdesk/sla" class="menu-link @IsActive("/admin/helpdesk/sla")">
+                                <span class="title">SLA Policies</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/helpdesk/canned-responses")">
+                            <a href="/admin/helpdesk/canned-responses" class="menu-link @IsActive("/admin/helpdesk/canned-responses")">
+                                <span class="title">Canned Responses</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/helpdesk/kb")">
+                            <a href="/admin/helpdesk/kb" class="menu-link @IsActive("/admin/helpdesk/kb")">
+                                <span class="title">Knowledge Base</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/helpdesk/agents")">
+                            <a href="/admin/helpdesk/agents" class="menu-link @IsActive("/admin/helpdesk/agents")">
+                                <span class="title">Teams & Agents</span>
                             </a>
                         </li>
                     </ul>

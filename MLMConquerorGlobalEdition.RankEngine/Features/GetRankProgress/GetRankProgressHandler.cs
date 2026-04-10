@@ -1,11 +1,11 @@
-using AutoMapper;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.Domain.Enums;
-using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.RankEngine.DTOs;
+using MLMConquerorGlobalEdition.RankEngine.Mappings;
 using MLMConquerorGlobalEdition.RankEngine.Services;
+using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.RankEngine.Features.GetRankProgress;
@@ -13,13 +13,11 @@ namespace MLMConquerorGlobalEdition.RankEngine.Features.GetRankProgress;
 public class GetRankProgressHandler : IRequestHandler<GetRankProgressQuery, Result<RankProgressResponse>>
 {
     private readonly AppDbContext _db;
-    private readonly IMapper _mapper;
     private readonly IDateTimeProvider _dateTime;
 
-    public GetRankProgressHandler(AppDbContext db, IMapper mapper, IDateTimeProvider dateTime)
+    public GetRankProgressHandler(AppDbContext db, IDateTimeProvider dateTime)
     {
         _db = db;
-        _mapper = mapper;
         _dateTime = dateTime;
     }
 
@@ -65,9 +63,9 @@ public class GetRankProgressHandler : IRequestHandler<GetRankProgressQuery, Resu
         {
             MemberId = request.MemberId,
             CurrentRank = currentRankHistory?.RankDefinition is not null
-                ? _mapper.Map<RankDefinitionResponse>(currentRankHistory.RankDefinition)
+                ? RankEngineMappingExtensions.ToResponse(currentRankHistory.RankDefinition)
                 : null,
-            NextRank = nextRank is not null ? _mapper.Map<RankDefinitionResponse>(nextRank) : null,
+            NextRank = nextRank is not null ? RankEngineMappingExtensions.ToResponse(nextRank) : null,
             CurrentMetrics = metrics,
             ProgressToNextRank = progressToNext,
             EvaluatedAt = _dateTime.Now

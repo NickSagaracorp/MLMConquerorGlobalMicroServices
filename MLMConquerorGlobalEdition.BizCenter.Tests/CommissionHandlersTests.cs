@@ -36,7 +36,6 @@ public class CommissionHandlersTests : IDisposable
 
     public void Dispose() => _db.Dispose();
 
-    // ── Helpers ────────────────────────────────────────────────────────────────
 
     private CommissionCategory SeedCategory(int id, string name)
     {
@@ -68,7 +67,6 @@ public class CommissionHandlersTests : IDisposable
         return e;
     }
 
-    // ── GetFastStartBonusCommissions ───────────────────────────────────────────
 
     [Fact]
     public async Task FastStartBonus_WhenMemberHasFsbEarnings_ReturnsThem()
@@ -126,7 +124,6 @@ public class CommissionHandlersTests : IDisposable
         result.Value.Items.Should().HaveCount(3);
     }
 
-    // ── GetDualResidualCommissions ─────────────────────────────────────────────
 
     [Fact]
     public async Task DualResidual_WhenMemberHasResidualEarnings_ReturnsThem()
@@ -168,7 +165,6 @@ public class CommissionHandlersTests : IDisposable
         result.Value!.TotalCount.Should().Be(0);
     }
 
-    // ── GetBoostBonusCommissions ───────────────────────────────────────────────
 
     [Fact]
     public async Task BoostBonus_WhenMemberHasBoostEarnings_ReturnsThem()
@@ -211,7 +207,6 @@ public class CommissionHandlersTests : IDisposable
         result.Value!.TotalCount.Should().Be(0);
     }
 
-    // ── GetPresidentialBonusCommissions ───────────────────────────────────────
 
     [Fact]
     public async Task PresidentialBonus_WhenMemberHasPresidentialEarnings_ReturnsThem()

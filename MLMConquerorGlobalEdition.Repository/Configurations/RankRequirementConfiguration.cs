@@ -37,7 +37,6 @@ public class RankRequirementConfiguration : IEntityTypeConfiguration<RankRequire
 
         builder.HasData(
 
-            // ── ET-BASED RANKS (Silver / Gold / Platinum) ──
             new RankRequirement
             {
                 Id = 1, RankDefinitionId = 1, LevelNo = 1,
@@ -77,7 +76,6 @@ public class RankRequirementConfiguration : IEntityTypeConfiguration<RankRequire
                 CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, DateTimeKind.Utc), CreatedBy = "seed"
             },
 
-            // ── DT-BASED RANKS (Titanium through Black Royal) ──
             new RankRequirement
             {
                 Id = 4, RankDefinitionId = 4, LevelNo = 4,

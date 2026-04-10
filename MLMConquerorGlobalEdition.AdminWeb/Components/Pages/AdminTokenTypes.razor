@@ -122,6 +122,7 @@
     private bool _showForm;
     private bool _showDeleteConfirm;
     private int? _editId;
+    private bool _editIsActive = true; // preserved from loaded entity so PUT doesn't silently deactivate
     private TokenTypeFormModel _form = new();
     private TokenTypeDto? _deleteItem;
 
@@ -139,8 +140,8 @@
         finally { _loading = false; }
     }
 
-    private void OpenCreate() { _editId = null; _form = new(); _showForm = true; }
-    private void OpenEdit(TokenTypeDto t) { _editId = t.Id; _form = new TokenTypeFormModel { Name = t.Name, Description = t.Description, TemplateUrl = t.TemplateUrl, IsGuestPass = t.IsGuestPass }; _showForm = true; }
+    private void OpenCreate() { _editId = null; _editIsActive = true; _form = new(); _showForm = true; }
+    private void OpenEdit(TokenTypeDto t) { _editId = t.Id; _editIsActive = t.IsActive; _form = new TokenTypeFormModel { Name = t.Name, Description = t.Description, TemplateUrl = t.TemplateUrl, IsGuestPass = t.IsGuestPass }; _showForm = true; }
     private void CloseForm() { _showForm = false; _editId = null; }
 
     private async Task Save()
@@ -149,7 +150,24 @@
         _saving = true;
         try
         {
-            var response = _editId is null ? await Http.PostAsJsonAsync("api/v1/admin/token-types", _form) : await Http.PutAsJsonAsync($"api/v1/admin/token-types/{_editId}", _form);
+            HttpResponseMessage response;
+            if (_editId is null)
+            {
+                // POST: CreateTokenTypeDto — no IsActive field
+                response = await Http.PostAsJsonAsync("api/v1/admin/token-types", _form);
+            }
+            else
+            {
+                // PUT: UpdateTokenTypeDto — must include IsActive to preserve active status
+                response = await Http.PutAsJsonAsync($"api/v1/admin/token-types/{_editId}", new
+                {
+                    _form.Name,
+                    _form.Description,
+                    _form.TemplateUrl,
+                    _form.IsGuestPass,
+                    IsActive = _editIsActive
+                });
+            }
             if (response.IsSuccessStatusCode) { _alertMsg = _editId is null ? "Token type created." : "Token type updated."; _alertIsError = false; CloseForm(); await LoadAsync(); }
             else { _alertMsg = $"Save failed ({response.StatusCode})."; _alertIsError = true; }
         }

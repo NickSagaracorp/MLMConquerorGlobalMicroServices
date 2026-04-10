@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using MLMConquerorGlobalEdition.AdminAPI.Mappings;
 using MLMConquerorGlobalEdition.AdminAPI.Middleware;
 using MLMConquerorGlobalEdition.AdminAPI.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
@@ -25,14 +24,11 @@ using JwtService            = MLMConquerorGlobalEdition.AdminAPI.Services.JwtSer
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ── PII-masking logging — replaces default providers ─────────────────────────
 builder.Logging.AddPiiMaskingConsole();
 
-// ── DbContext ─────────────────────────────────────────────────────────────────
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// ── ASP.NET Identity ──────────────────────────────────────────────────────────
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
 {
     options.Password.RequiredLength         = 8;
@@ -47,7 +43,6 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
 .AddEntityFrameworkStores<AppDbContext>()
 .AddDefaultTokenProviders();
 
-// ── MediatR + validation + error-handling pipeline behaviors ─────────────────
 builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssemblyContaining<Program>();
@@ -57,10 +52,7 @@ builder.Services.AddMediatR(cfg =>
 
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
-// ── AutoMapper ────────────────────────────────────────────────────────────────
-builder.Services.AddAutoMapper(typeof(AdminMappingProfile));
 
-// ── Services ──────────────────────────────────────────────────────────────────
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
@@ -68,17 +60,14 @@ builder.Services.AddSingleton<IHtmlSanitizerService, HtmlSanitizerService>();
 builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 
-// ── Redis distributed cache ───────────────────────────────────────────────────
 builder.Services.AddStackExchangeRedisCache(options =>
 {
     options.Configuration = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
 });
 builder.Services.AddSingleton<ICacheService, CacheService>();
 
-// ── Controllers ───────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
 
-// ── CORS — whitelist-based ────────────────────────────────────────────────────
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
     .Get<string[]>()
@@ -98,7 +87,6 @@ builder.Services.AddCors(options =>
     });
 });
 
-// ── JWT Authentication (RS256 — asymmetric) ───────────────────────────────────
 var publicKeyBase64 = builder.Configuration["Jwt:PublicKeyBase64"]
     ?? throw new InvalidOperationException("Jwt:PublicKeyBase64 not configured.");
 
@@ -133,7 +121,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// ── Rate Limiting (IP-based) ──────────────────────────────────────────────────
 builder.Services.AddMemoryCache();
 builder.Services.Configure<IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
 builder.Services.AddSingleton<IIpPolicyStore, MemoryCacheIpPolicyStore>();
@@ -142,10 +129,8 @@ builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>()
 builder.Services.AddSingleton<IProcessingStrategy, AsyncKeyLockProcessingStrategy>();
 builder.Services.AddInMemoryRateLimiting();
 
-// ── Health Checks ─────────────────────────────────────────────────────────────
 builder.Services.AddHealthChecks();
 
-// ── Swagger ───────────────────────────────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -173,19 +158,12 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// ── HTTPS enforcement ─────────────────────────────────────────────────────────
 if (!app.Environment.IsDevelopment())
     app.UseHsts();
 
 app.UseHttpsRedirection();
-
-// ── Security headers ──────────────────────────────────────────────────────────
 app.UseMiddleware<SecurityHeadersMiddleware>();
-
-// ── Domain exception handler ──────────────────────────────────────────────────
 app.UseMiddleware<DomainExceptionMiddleware>();
-
-// ── CORS ──────────────────────────────────────────────────────────────────────
 app.UseCors("AdminApiPolicy");
 
 app.UseSwagger();
