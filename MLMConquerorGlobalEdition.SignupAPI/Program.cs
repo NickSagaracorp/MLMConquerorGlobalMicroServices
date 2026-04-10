@@ -146,7 +146,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
-builder.Services.AddHealthChecks();
 
 // Rate Limiting
 builder.Services.AddMemoryCache();
@@ -213,6 +212,17 @@ RecurringJob.AddOrUpdate<ProcessScheduledCancellationsJob>(
     "0 1 * * *",
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
-app.MapHealthChecks("/health");
+app.MapGet("/health", async (AppDbContext db, CancellationToken ct) =>
+{
+    var canConnect = await db.Database.CanConnectAsync(ct);
+    var status = canConnect ? "Healthy" : "Unhealthy";
+    return Results.Ok(new
+    {
+        service   = "MLMConquerorGlobalEdition.SignupAPI",
+        status,
+        checks    = new { database = canConnect ? "Healthy" : "Unhealthy" },
+        timestamp = DateTime.UtcNow
+    });
+}).AllowAnonymous();
 
 app.Run();

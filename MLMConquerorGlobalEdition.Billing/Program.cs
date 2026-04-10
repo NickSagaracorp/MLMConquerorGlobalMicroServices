@@ -139,6 +139,13 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+// Apply pending EF migrations automatically on startup (idempotent).
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync();
+}
+
 app.UseMiddleware<DomainExceptionMiddleware>();
 app.UseSwagger();
 app.UseSwaggerUI(c =>
@@ -165,11 +172,17 @@ RecurringJob.AddOrUpdate<CommissionPayoutJob>(
     "0 8 * * 5",                    // Weekly Friday 8:00 AM UTC
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
-app.MapGet("/health", () => Results.Ok(new
+app.MapGet("/health", async (AppDbContext db, CancellationToken ct) =>
 {
-    status = "healthy",
-    service = "MLMConquerorGlobalEdition.Billing",
-    timestamp = DateTime.Now
-}));
+    var canConnect = await db.Database.CanConnectAsync(ct);
+    var status = canConnect ? "Healthy" : "Unhealthy";
+    return Results.Ok(new
+    {
+        service   = "MLMConquerorGlobalEdition.Billing",
+        status,
+        checks    = new { database = canConnect ? "Healthy" : "Unhealthy" },
+        timestamp = DateTime.UtcNow
+    });
+}).AllowAnonymous();
 
 app.Run();

@@ -129,7 +129,12 @@ builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>()
 builder.Services.AddSingleton<IProcessingStrategy, AsyncKeyLockProcessingStrategy>();
 builder.Services.AddInMemoryRateLimiting();
 
-builder.Services.AddHealthChecks();
+builder.Services.AddHttpClient();
+builder.Services.AddHttpClient("HealthCheck")
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+    });
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -158,6 +163,14 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+// Apply pending EF migrations automatically on startup (idempotent).
+// Lets any developer get a stable DB with zero manual steps.
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync();
+}
+
 if (!app.Environment.IsDevelopment())
     app.UseHsts();
 
@@ -174,6 +187,18 @@ app.UseIpRateLimiting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-app.MapHealthChecks("/health").AllowAnonymous();
+
+app.MapGet("/health", async (AppDbContext db, CancellationToken ct) =>
+{
+    var canConnect = await db.Database.CanConnectAsync(ct);
+    var status = canConnect ? "Healthy" : "Unhealthy";
+    return Results.Ok(new
+    {
+        service   = "MLMConquerorGlobalEdition.AdminAPI",
+        status,
+        checks    = new { database = canConnect ? "Healthy" : "Unhealthy" },
+        timestamp = DateTime.UtcNow
+    });
+}).AllowAnonymous();
 
 app.Run();
