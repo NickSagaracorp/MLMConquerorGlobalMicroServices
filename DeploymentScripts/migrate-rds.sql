@@ -6617,3 +6617,68 @@ END;
 
 COMMIT;
 GO
+
+BEGIN TRANSACTION;
+GO
+
+-- Migration: 20260411022418_AddRankEvaluationQueue
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260411022418_AddRankEvaluationQueue'
+)
+BEGIN
+    CREATE TABLE [RankEvaluationQueue] (
+        [Id]               bigint        NOT NULL IDENTITY,
+        [TriggerMemberId]  nvarchar(50)  NOT NULL,
+        [EvaluateMemberId] nvarchar(50)  NOT NULL,
+        [TriggerEvent]     int           NOT NULL,
+        [TriggerDate]      datetime2     NOT NULL,
+        [IsProcessed]      bit           NOT NULL,
+        [ProcessedAt]      datetime2     NULL,
+        [ProcessedBy]      nvarchar(200) NULL,
+        [ErrorMessage]     nvarchar(1000) NULL,
+        [RetryCount]       int           NOT NULL,
+        [CreationDate]     datetime2     NOT NULL,
+        [CreatedBy]        nvarchar(100) NOT NULL,
+        CONSTRAINT [PK_RankEvaluationQueue] PRIMARY KEY ([Id])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260411022418_AddRankEvaluationQueue'
+)
+BEGIN
+    CREATE INDEX [IX_RankEvaluationQueue_EvaluateMemberId]
+        ON [RankEvaluationQueue] ([EvaluateMemberId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260411022418_AddRankEvaluationQueue'
+)
+BEGIN
+    CREATE INDEX [IX_RankEvaluationQueue_IsProcessed_TriggerDate]
+        ON [RankEvaluationQueue] ([IsProcessed], [TriggerDate]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260411022418_AddRankEvaluationQueue'
+)
+BEGIN
+    CREATE INDEX [IX_RankEvaluationQueue_TriggerMemberId]
+        ON [RankEvaluationQueue] ([TriggerMemberId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260411022418_AddRankEvaluationQueue'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260411022418_AddRankEvaluationQueue', N'10.0.5');
+END;
+
+COMMIT;
+GO

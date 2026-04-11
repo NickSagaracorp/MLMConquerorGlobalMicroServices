@@ -45,6 +45,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     public DbSet<RankDefinition> RankDefinitions => Set<RankDefinition>();
     public DbSet<RankRequirement> RankRequirements => Set<RankRequirement>();
     public DbSet<MemberRankHistory> MemberRankHistories => Set<MemberRankHistory>();
+    public DbSet<RankEvaluationQueue> RankEvaluationQueue => Set<RankEvaluationQueue>();
 
     public DbSet<GenealogyEntity> GenealogyTree => Set<GenealogyEntity>();
     public DbSet<DualTeamEntity> DualTeamTree => Set<DualTeamEntity>();

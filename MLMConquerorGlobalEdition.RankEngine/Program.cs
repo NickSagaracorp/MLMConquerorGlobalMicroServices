@@ -55,6 +55,7 @@ builder.Services.AddSingleton<ICacheService, CacheService>();
 builder.Services.AddSingleton<IPushNotificationService, FirebasePushNotificationService>();
 
 builder.Services.AddScoped<RankEvaluationSweepJob>();
+builder.Services.AddScoped<ProcessRankQueueJob>();
 builder.Services.AddHangfire(cfg => cfg
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
     .UseSimpleAssemblyNameTypeSerializer()
@@ -156,6 +157,14 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.UseHangfireDashboard("/hangfire");
+// Near-real-time: process RankEvaluationQueue entries written by SignupAPI
+RecurringJob.AddOrUpdate<ProcessRankQueueJob>(
+    "process-rank-queue",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "*/5 * * * *",
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+// Nightly safety net: Phase 1 = recover missed queue entries, Phase 2 = full ambassador sweep
 RecurringJob.AddOrUpdate<RankEvaluationSweepJob>(
     "rank-evaluation-sweep",
     job => job.ExecuteAsync(CancellationToken.None),

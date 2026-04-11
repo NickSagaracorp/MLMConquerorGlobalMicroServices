@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Domain.Exceptions;
@@ -75,6 +76,25 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<boo
 
         await _db.DualTeamTree.AddAsync(node, ct);
         await _db.PlacementLogs.AddAsync(log, ct);
+
+        // Queue rank re-evaluation for every dual-team upline of the placement parent
+        var dualUplineIds = parentPath
+            .Split('/', StringSplitOptions.RemoveEmptyEntries)
+            .Where(id => id != command.MemberId);
+
+        foreach (var uplineId in dualUplineIds)
+        {
+            await _db.RankEvaluationQueue.AddAsync(new RankEvaluationQueue
+            {
+                TriggerMemberId  = command.MemberId,
+                EvaluateMemberId = uplineId,
+                TriggerEvent     = RankEvaluationTrigger.Placement,
+                TriggerDate      = now,
+                CreatedBy        = command.MemberId,
+                CreationDate     = now
+            }, ct);
+        }
+
         await _db.SaveChangesAsync(ct);
 
         // Notify the placed member

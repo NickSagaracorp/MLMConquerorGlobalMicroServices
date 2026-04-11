@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
+using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Domain.Exceptions;
@@ -164,6 +165,27 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
         await _db.Orders.AddAsync(order, ct);
         await _db.MembershipSubscriptions.AddAsync(subscription, ct);
         await _db.GenealogyTree.AddAsync(genealogyNode, ct);
+
+        // Queue rank re-evaluation for every genealogy upline of the sponsor
+        if (sponsorNode is not null)
+        {
+            var uplineIds = sponsorNode.HierarchyPath
+                .Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var uplineId in uplineIds)
+            {
+                await _db.RankEvaluationQueue.AddAsync(new RankEvaluationQueue
+                {
+                    TriggerMemberId  = memberId,
+                    EvaluateMemberId = uplineId,
+                    TriggerEvent     = RankEvaluationTrigger.Enrollment,
+                    TriggerDate      = now,
+                    CreatedBy        = req.Email,
+                    CreationDate     = now
+                }, ct);
+            }
+        }
+
         await _db.SaveChangesAsync(ct);
 
         // Notify all uplines in the enrollment tree (genealogy)
