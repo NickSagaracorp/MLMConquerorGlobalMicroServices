@@ -5,6 +5,7 @@ using MLMConquerorGlobalEdition.AdminAPI.DTOs.Commissions;
 using MLMConquerorGlobalEdition.AdminAPI.Mappings;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
+using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 
@@ -14,8 +15,13 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 public class CommissionTypesController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly ICacheService _cache;
 
-    public CommissionTypesController(AppDbContext db) => _db = db;
+    public CommissionTypesController(AppDbContext db, ICacheService cache)
+    {
+        _db = db;
+        _cache = cache;
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] PagedRequest request, CancellationToken ct = default)
@@ -56,6 +62,7 @@ public class CommissionTypesController : ControllerBase
         entity.CreatedBy = User.Identity?.Name ?? "admin";
         await _db.CommissionTypes.AddAsync(entity, ct);
         await _db.SaveChangesAsync(ct);
+        await _cache.RemoveAsync(CacheKeys.CommissionTypes, ct);
         return CreatedAtAction(nameof(GetById), new { id = entity.Id }, ApiResponse<CommissionTypeDto>.Ok(entity.ToDto()));
     }
 
@@ -69,6 +76,7 @@ public class CommissionTypesController : ControllerBase
         dto.ApplyTo(entity);
         entity.LastUpdateBy = User.Identity?.Name ?? "admin";
         await _db.SaveChangesAsync(ct);
+        await _cache.RemoveAsync(CacheKeys.CommissionTypes, ct);
         return Ok(ApiResponse<CommissionTypeDto>.Ok(entity.ToDto()));
     }
 
@@ -82,6 +90,7 @@ public class CommissionTypesController : ControllerBase
         entity.IsActive = false;
         entity.LastUpdateBy = User.Identity?.Name ?? "admin";
         await _db.SaveChangesAsync(ct);
+        await _cache.RemoveAsync(CacheKeys.CommissionTypes, ct);
         return Ok(ApiResponse<object>.Ok(new { }, "Commission type deactivated."));
     }
 }

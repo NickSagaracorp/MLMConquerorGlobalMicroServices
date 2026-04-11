@@ -5,6 +5,7 @@ using MLMConquerorGlobalEdition.AdminAPI.DTOs.MembershipLevels;
 using MLMConquerorGlobalEdition.AdminAPI.Mappings;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
+using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 
@@ -14,8 +15,13 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 public class MembershipLevelsController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly ICacheService _cache;
 
-    public MembershipLevelsController(AppDbContext db) => _db = db;
+    public MembershipLevelsController(AppDbContext db, ICacheService cache)
+    {
+        _db = db;
+        _cache = cache;
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetAll(CancellationToken ct = default)
@@ -41,6 +47,7 @@ public class MembershipLevelsController : ControllerBase
         entity.CreatedBy = User.Identity?.Name ?? "admin";
         await _db.MembershipLevels.AddAsync(entity, ct);
         await _db.SaveChangesAsync(ct);
+        await _cache.RemoveAsync(CacheKeys.MembershipLevels, ct);
         return CreatedAtAction(nameof(GetById), new { id = entity.Id }, ApiResponse<MembershipLevelDto>.Ok(entity.ToDto()));
     }
 
@@ -54,6 +61,7 @@ public class MembershipLevelsController : ControllerBase
         dto.ApplyTo(entity);
         entity.LastUpdateBy = User.Identity?.Name ?? "admin";
         await _db.SaveChangesAsync(ct);
+        await _cache.RemoveAsync(CacheKeys.MembershipLevels, ct);
         return Ok(ApiResponse<MembershipLevelDto>.Ok(entity.ToDto()));
     }
 
@@ -67,6 +75,7 @@ public class MembershipLevelsController : ControllerBase
         entity.IsActive = false;
         entity.LastUpdateBy = User.Identity?.Name ?? "admin";
         await _db.SaveChangesAsync(ct);
+        await _cache.RemoveAsync(CacheKeys.MembershipLevels, ct);
         return Ok(ApiResponse<object>.Ok(new { }, "Membership level deactivated."));
     }
 }

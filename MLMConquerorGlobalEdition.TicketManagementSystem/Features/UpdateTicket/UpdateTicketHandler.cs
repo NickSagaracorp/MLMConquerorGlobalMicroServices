@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
+using IPushNotificationService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IPushNotificationService;
 using MLMConquerorGlobalEdition.TicketManagementSystem.Services;
 
 namespace MLMConquerorGlobalEdition.TicketManagementSystem.Features.UpdateTicket;
@@ -11,12 +12,14 @@ public class UpdateTicketHandler : IRequestHandler<UpdateTicketCommand, Result<b
     private readonly AppDbContext _db;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _dateTime;
+    private readonly IPushNotificationService _push;
 
-    public UpdateTicketHandler(AppDbContext db, ICurrentUserService currentUser, IDateTimeProvider dateTime)
+    public UpdateTicketHandler(AppDbContext db, ICurrentUserService currentUser, IDateTimeProvider dateTime, IPushNotificationService push)
     {
         _db = db;
         _currentUser = currentUser;
         _dateTime = dateTime;
+        _push = push;
     }
 
     public async Task<Result<bool>> Handle(UpdateTicketCommand request, CancellationToken ct)
@@ -31,6 +34,8 @@ public class UpdateTicketHandler : IRequestHandler<UpdateTicketCommand, Result<b
         if (ticket is null)
             return Result<bool>.Failure("TICKET_NOT_FOUND", "Ticket not found.");
 
+        var statusChanged = request.Request.Status.HasValue && request.Request.Status.Value != ticket.Status;
+
         if (request.Request.Status.HasValue)
             ticket.Status = request.Request.Status.Value;
 
@@ -44,6 +49,16 @@ public class UpdateTicketHandler : IRequestHandler<UpdateTicketCommand, Result<b
         ticket.LastUpdateBy = _currentUser.UserId;
 
         await _db.SaveChangesAsync(ct);
+
+        if (statusChanged && !string.IsNullOrEmpty(ticket.MemberId))
+        {
+            _ = _push.SendAsync(
+                ticket.MemberId,
+                NotificationEvents.TicketStatusChanged,
+                "Ticket Updated",
+                $"Your ticket #{ticket.Id[..8]} status changed to {ticket.Status}.",
+                ct);
+        }
 
         return Result<bool>.Success(true);
     }

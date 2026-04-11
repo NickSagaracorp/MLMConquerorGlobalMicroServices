@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Support;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
+using IPushNotificationService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IPushNotificationService;
 using MLMConquerorGlobalEdition.TicketManagementSystem.Services;
 
 namespace MLMConquerorGlobalEdition.TicketManagementSystem.Features.ResolveTicket;
@@ -12,12 +13,14 @@ public class ResolveTicketHandler : IRequestHandler<ResolveTicketCommand, Result
     private readonly AppDbContext _db;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _dateTime;
+    private readonly IPushNotificationService _push;
 
-    public ResolveTicketHandler(AppDbContext db, ICurrentUserService currentUser, IDateTimeProvider dateTime)
+    public ResolveTicketHandler(AppDbContext db, ICurrentUserService currentUser, IDateTimeProvider dateTime, IPushNotificationService push)
     {
         _db = db;
         _currentUser = currentUser;
         _dateTime = dateTime;
+        _push = push;
     }
 
     public async Task<Result<bool>> Handle(ResolveTicketCommand request, CancellationToken ct)
@@ -57,6 +60,16 @@ public class ResolveTicketHandler : IRequestHandler<ResolveTicketCommand, Result
         }
 
         await _db.SaveChangesAsync(ct);
+
+        if (!string.IsNullOrEmpty(ticket.MemberId))
+        {
+            _ = _push.SendAsync(
+                ticket.MemberId,
+                NotificationEvents.TicketStatusChanged,
+                "Ticket Resolved",
+                $"Your ticket #{ticket.Id[..8]} has been resolved.",
+                ct);
+        }
 
         return Result<bool>.Success(true);
     }

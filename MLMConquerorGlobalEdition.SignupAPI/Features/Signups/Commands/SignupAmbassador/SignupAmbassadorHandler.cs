@@ -25,15 +25,18 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
     private readonly AppDbContext                 _db;
     private readonly IDateTimeProvider            _dateTime;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IPushNotificationService     _push;
 
     public SignupAmbassadorHandler(
         AppDbContext db,
         IDateTimeProvider dateTime,
-        UserManager<ApplicationUser> userManager)
+        UserManager<ApplicationUser> userManager,
+        IPushNotificationService push)
     {
         _db          = db;
         _dateTime    = dateTime;
         _userManager = userManager;
+        _push        = push;
     }
 
     public async Task<Result<SignupResponse>> Handle(SignupAmbassadorCommand command, CancellationToken ct)
@@ -162,6 +165,24 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
         await _db.MembershipSubscriptions.AddAsync(subscription, ct);
         await _db.GenealogyTree.AddAsync(genealogyNode, ct);
         await _db.SaveChangesAsync(ct);
+
+        // Notify all uplines in the enrollment tree (genealogy)
+        if (sponsorNode is not null)
+        {
+            var uplineIds = sponsorNode.HierarchyPath
+                .Split('/', StringSplitOptions.RemoveEmptyEntries)
+                .ToList();
+
+            foreach (var uplineId in uplineIds)
+            {
+                _ = _push.SendAsync(
+                    uplineId,
+                    NotificationEvents.DownlineEnrolled,
+                    "New Enrollment in Your Team",
+                    $"A new ambassador has enrolled in your downline.",
+                    ct);
+            }
+        }
 
         var appUser = new ApplicationUser
         {

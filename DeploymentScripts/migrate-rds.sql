@@ -6373,3 +6373,173 @@ END;
 COMMIT;
 GO
 
+
+BEGIN TRANSACTION;
+GO
+
+-- Migration: 20260411013728_AddEmailTemplates
+-- Note: Schema DDL is included in AddCountries migration (same EF batch)
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260411013728_AddEmailTemplates'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260411013728_AddEmailTemplates', N'10.0.5');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+GO
+
+-- Migration: 20260411014909_AddCountries
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260411014909_AddCountries'
+)
+BEGIN
+    CREATE TABLE [Countries] (
+        [Id]                  int           NOT NULL IDENTITY,
+        [Iso2]                nchar(2)      NOT NULL,
+        [Iso3]                nchar(3)      NOT NULL,
+        [NameEn]              nvarchar(100) NOT NULL,
+        [NameNative]          nvarchar(100) NOT NULL,
+        [DefaultLanguageCode] nvarchar(10)  NOT NULL,
+        [FlagEmoji]           nvarchar(10)  NOT NULL,
+        [PhoneCode]           nvarchar(10)  NULL,
+        [IsActive]            bit           NOT NULL,
+        [SortOrder]           int           NOT NULL,
+        [CreationDate]        datetime2     NOT NULL,
+        [CreatedBy]           nvarchar(100) NOT NULL,
+        [LastUpdateDate]      datetime2     NULL,
+        [LastUpdateBy]        nvarchar(100) NULL,
+        CONSTRAINT [PK_Countries] PRIMARY KEY ([Id])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260411014909_AddCountries'
+)
+BEGIN
+    CREATE TABLE [EmailTemplates] (
+        [Id]            int            NOT NULL IDENTITY,
+        [Name]          nvarchar(200)  NOT NULL,
+        [EventType]     nvarchar(100)  NOT NULL,
+        [Category]      nvarchar(100)  NOT NULL,
+        [Description]   nvarchar(500)  NULL,
+        [IsActive]      bit            NOT NULL,
+        [CreationDate]  datetime2      NOT NULL,
+        [CreatedBy]     nvarchar(100)  NOT NULL,
+        [LastUpdateDate] datetime2     NULL,
+        [LastUpdateBy]  nvarchar(100)  NULL,
+        CONSTRAINT [PK_EmailTemplates] PRIMARY KEY ([Id])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260411014909_AddCountries'
+)
+BEGIN
+    CREATE TABLE [EmailTemplateLocalizations] (
+        [Id]              int            NOT NULL IDENTITY,
+        [EmailTemplateId] int            NOT NULL,
+        [LanguageCode]    nvarchar(10)   NOT NULL,
+        [Subject]         nvarchar(500)  NOT NULL,
+        [HtmlBody]        nvarchar(max)  NOT NULL,
+        [TextBody]        nvarchar(max)  NULL,
+        [CreationDate]    datetime2      NOT NULL,
+        [CreatedBy]       nvarchar(100)  NOT NULL,
+        [LastUpdateDate]  datetime2      NULL,
+        [LastUpdateBy]    nvarchar(100)  NULL,
+        CONSTRAINT [PK_EmailTemplateLocalizations] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_EmailTemplateLocalizations_EmailTemplates_EmailTemplateId]
+            FOREIGN KEY ([EmailTemplateId]) REFERENCES [EmailTemplates] ([Id]) ON DELETE CASCADE
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260411014909_AddCountries'
+)
+BEGIN
+    CREATE TABLE [EmailTemplateVariables] (
+        [Id]              int            NOT NULL IDENTITY,
+        [EmailTemplateId] int            NOT NULL,
+        [Name]            nvarchar(100)  NOT NULL,
+        [Description]     nvarchar(500)  NULL,
+        [IsRequired]      bit            NOT NULL,
+        [CreationDate]    datetime2      NOT NULL,
+        [CreatedBy]       nvarchar(100)  NOT NULL,
+        [LastUpdateDate]  datetime2      NULL,
+        [LastUpdateBy]    nvarchar(100)  NULL,
+        CONSTRAINT [PK_EmailTemplateVariables] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_EmailTemplateVariables_EmailTemplates_EmailTemplateId]
+            FOREIGN KEY ([EmailTemplateId]) REFERENCES [EmailTemplates] ([Id]) ON DELETE CASCADE
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260411014909_AddCountries'
+)
+BEGIN
+    CREATE INDEX [IX_Countries_IsActive] ON [Countries] ([IsActive]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260411014909_AddCountries'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_Countries_Iso2] ON [Countries] ([Iso2]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260411014909_AddCountries'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_Countries_Iso3] ON [Countries] ([Iso3]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260411014909_AddCountries'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_EmailTemplateLocalizations_EmailTemplateId_LanguageCode]
+        ON [EmailTemplateLocalizations] ([EmailTemplateId], [LanguageCode]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260411014909_AddCountries'
+)
+BEGIN
+    CREATE INDEX [IX_EmailTemplates_EventType] ON [EmailTemplates] ([EventType]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260411014909_AddCountries'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_EmailTemplateVariables_EmailTemplateId_Name]
+        ON [EmailTemplateVariables] ([EmailTemplateId], [Name]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260411014909_AddCountries'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260411014909_AddCountries', N'10.0.5');
+END;
+
+COMMIT;
+GO

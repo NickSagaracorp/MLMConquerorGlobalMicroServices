@@ -5,6 +5,7 @@ using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Domain.Exceptions;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
+using IPushNotificationService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IPushNotificationService;
 using MLMConquerorGlobalEdition.SignupAPI.Services;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Features.Placement.Commands.PlaceMember;
@@ -13,11 +14,13 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<boo
 {
     private readonly AppDbContext _db;
     private readonly IDateTimeProvider _dateTime;
+    private readonly IPushNotificationService _push;
 
-    public PlaceMemberHandler(AppDbContext db, IDateTimeProvider dateTime)
+    public PlaceMemberHandler(AppDbContext db, IDateTimeProvider dateTime, IPushNotificationService push)
     {
         _db = db;
         _dateTime = dateTime;
+        _push = push;
     }
 
     public async Task<Result<bool>> Handle(PlaceMemberCommand command, CancellationToken ct)
@@ -73,6 +76,30 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<boo
         await _db.DualTeamTree.AddAsync(node, ct);
         await _db.PlacementLogs.AddAsync(log, ct);
         await _db.SaveChangesAsync(ct);
+
+        // Notify the placed member
+        _ = _push.SendAsync(
+            command.MemberId,
+            NotificationEvents.PlacementCompleted,
+            "Placement Completed",
+            $"You have been placed in the {command.Side} position of your team.",
+            ct);
+
+        // Notify all uplines in the dual team hierarchy
+        var uplineIds = parentPath
+            .Split('/', StringSplitOptions.RemoveEmptyEntries)
+            .Where(id => id != command.MemberId)
+            .ToList();
+
+        foreach (var uplineId in uplineIds)
+        {
+            _ = _push.SendAsync(
+                uplineId,
+                NotificationEvents.DownlinePlaced,
+                "New Team Placement",
+                $"A new member has been placed in your downline ({command.Side} leg).",
+                ct);
+        }
 
         return Result<bool>.Success(true);
     }

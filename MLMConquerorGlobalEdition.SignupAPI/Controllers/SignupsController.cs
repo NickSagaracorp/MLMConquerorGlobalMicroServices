@@ -10,6 +10,7 @@ using MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Queries.GetMembership
 using MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Queries.GetProducts;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Queries.ValidateReplicateSite;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Queries.ValidateSponsor;
+using MLMConquerorGlobalEdition.SignupAPI.Features.Countries;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Controllers;
 
@@ -97,5 +98,13 @@ public class SignupsController : ControllerBase
     {
         var result = await _mediator.Send(new GetProductsQuery(), ct);
         return Ok(ApiResponse<IEnumerable<ProductDto>>.Ok(result.Value!));
+    }
+
+    [HttpGet("countries")]
+    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+    public async Task<IActionResult> GetCountries(CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetCountriesQuery(), ct);
+        return Ok(ApiResponse<List<CountryLookupDto>>.Ok(result.Value!));
     }
 }

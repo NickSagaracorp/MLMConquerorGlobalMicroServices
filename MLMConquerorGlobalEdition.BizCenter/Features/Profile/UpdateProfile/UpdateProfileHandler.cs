@@ -4,6 +4,7 @@ using MLMConquerorGlobalEdition.BizCenter.DTOs.Profile;
 using MLMConquerorGlobalEdition.BizCenter.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
+using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Features.Profile.UpdateProfile;
 
@@ -12,12 +13,14 @@ public class UpdateProfileHandler : IRequestHandler<UpdateProfileCommand, Result
     private readonly AppDbContext _db;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _dateTime;
+    private readonly ICacheService _cache;
 
-    public UpdateProfileHandler(AppDbContext db, ICurrentUserService currentUser, IDateTimeProvider dateTime)
+    public UpdateProfileHandler(AppDbContext db, ICurrentUserService currentUser, IDateTimeProvider dateTime, ICacheService cache)
     {
         _db = db;
         _currentUser = currentUser;
         _dateTime = dateTime;
+        _cache = cache;
     }
 
     public async Task<Result<ProfileDto>> Handle(UpdateProfileCommand command, CancellationToken ct)
@@ -46,6 +49,7 @@ public class UpdateProfileHandler : IRequestHandler<UpdateProfileCommand, Result
         member.LastUpdateBy = _currentUser.UserId;
 
         await _db.SaveChangesAsync(ct);
+        await _cache.RemoveAsync(CacheKeys.MemberProfile(memberId), ct);
 
         var dto = new ProfileDto
         {

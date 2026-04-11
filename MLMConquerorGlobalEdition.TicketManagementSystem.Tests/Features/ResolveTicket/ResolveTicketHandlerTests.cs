@@ -1,4 +1,5 @@
 using MLMConquerorGlobalEdition.Domain.Entities.Support;
+using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.TicketManagementSystem.DTOs;
 using MLMConquerorGlobalEdition.TicketManagementSystem.Features.ResolveTicket;
 using MLMConquerorGlobalEdition.TicketManagementSystem.Services;
@@ -35,6 +36,14 @@ public class ResolveTicketHandlerTests
         return m;
     }
 
+    private static Mock<IPushNotificationService> NullPush()
+    {
+        var m = new Mock<IPushNotificationService>();
+        m.Setup(p => p.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        return m;
+    }
+
     private static Ticket BuildTicket(string id = "TKT-001", string memberId = "AMB-001") => new()
     {
         Id = id,
@@ -55,7 +64,7 @@ public class ResolveTicketHandlerTests
     public async Task Resolve_WhenTicketNotFound_ReturnsTicketNotFoundFailure()
     {
         await using var db = InMemoryDbHelper.Create();
-        var handler = new ResolveTicketHandler(db, MemberUser().Object, Clock().Object);
+        var handler = new ResolveTicketHandler(db, MemberUser().Object, Clock().Object, NullPush().Object);
 
         var result = await handler.Handle(
             new ResolveTicketCommand("TKT-GHOST", new ResolveTicketRequest()),
@@ -72,7 +81,7 @@ public class ResolveTicketHandlerTests
         await db.Tickets.AddAsync(BuildTicket("TKT-001", "AMB-OTHER"));
         await db.SaveChangesAsync();
 
-        var handler = new ResolveTicketHandler(db, MemberUser("AMB-001").Object, Clock().Object);
+        var handler = new ResolveTicketHandler(db, MemberUser("AMB-001").Object, Clock().Object, NullPush().Object);
 
         var result = await handler.Handle(
             new ResolveTicketCommand("TKT-001", new ResolveTicketRequest()),
@@ -89,7 +98,7 @@ public class ResolveTicketHandlerTests
         await db.Tickets.AddAsync(BuildTicket("TKT-001", "AMB-001"));
         await db.SaveChangesAsync();
 
-        var handler = new ResolveTicketHandler(db, MemberUser("AMB-001").Object, Clock().Object);
+        var handler = new ResolveTicketHandler(db, MemberUser("AMB-001").Object, Clock().Object, NullPush().Object);
 
         var result = await handler.Handle(
             new ResolveTicketCommand("TKT-001", new ResolveTicketRequest()),
@@ -108,7 +117,7 @@ public class ResolveTicketHandlerTests
         await db.Tickets.AddAsync(BuildTicket("TKT-001", "AMB-001"));
         await db.SaveChangesAsync();
 
-        var handler = new ResolveTicketHandler(db, AdminUser().Object, Clock().Object);
+        var handler = new ResolveTicketHandler(db, AdminUser().Object, Clock().Object, NullPush().Object);
 
         await handler.Handle(
             new ResolveTicketCommand("TKT-001", new ResolveTicketRequest
@@ -128,7 +137,7 @@ public class ResolveTicketHandlerTests
         await db.Tickets.AddAsync(BuildTicket("TKT-001", "AMB-001"));
         await db.SaveChangesAsync();
 
-        var handler = new ResolveTicketHandler(db, MemberUser("AMB-001").Object, Clock().Object);
+        var handler = new ResolveTicketHandler(db, MemberUser("AMB-001").Object, Clock().Object, NullPush().Object);
 
         await handler.Handle(
             new ResolveTicketCommand("TKT-001", new ResolveTicketRequest { ResolutionNotes = null }),
@@ -144,7 +153,7 @@ public class ResolveTicketHandlerTests
         await db.Tickets.AddAsync(BuildTicket("TKT-001", "AMB-OTHER"));
         await db.SaveChangesAsync();
 
-        var handler = new ResolveTicketHandler(db, AdminUser().Object, Clock().Object);
+        var handler = new ResolveTicketHandler(db, AdminUser().Object, Clock().Object, NullPush().Object);
 
         var result = await handler.Handle(
             new ResolveTicketCommand("TKT-001", new ResolveTicketRequest()),

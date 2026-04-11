@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
+using MLMConquerorGlobalEdition.Domain.Entities.Email;
 using MLMConquerorGlobalEdition.Domain.Entities.Events;
 using MLMConquerorGlobalEdition.Domain.Entities.General;
 using MLMConquerorGlobalEdition.Domain.Entities.Loyalty;
@@ -23,6 +24,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     public DbSet<GeneralAuditTracking> AuditTracking => Set<GeneralAuditTracking>();
     public DbSet<ErrorLog> ErrorLogs => Set<ErrorLog>();
     public DbSet<ErrorMessage> ErrorMessages => Set<ErrorMessage>();
+    public DbSet<Country> Countries => Set<Country>();
 
     public DbSet<MemberProfile> MemberProfiles => Set<MemberProfile>();
     public DbSet<MemberStatusHistory> MemberStatusHistories => Set<MemberStatusHistory>();
@@ -72,6 +74,10 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
 
     public DbSet<CorporateEvent> CorporateEvents => Set<CorporateEvent>();
     public DbSet<CorporatePromo> CorporatePromos => Set<CorporatePromo>();
+
+    public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
+    public DbSet<EmailTemplateLocalization> EmailTemplateLocalizations => Set<EmailTemplateLocalization>();
+    public DbSet<EmailTemplateVariable> EmailTemplateVariables => Set<EmailTemplateVariable>();
 
     public DbSet<Ticket> Tickets => Set<Ticket>();
     public DbSet<TicketComment> TicketComments => Set<TicketComment>();

@@ -6,6 +6,7 @@ using MLMConquerorGlobalEdition.AdminAPI.Mappings;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
+using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 
@@ -15,8 +16,13 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 public class RankDefinitionsController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly ICacheService _cache;
 
-    public RankDefinitionsController(AppDbContext db) => _db = db;
+    public RankDefinitionsController(AppDbContext db, ICacheService cache)
+    {
+        _db = db;
+        _cache = cache;
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetAll(CancellationToken ct = default)
@@ -44,6 +50,7 @@ public class RankDefinitionsController : ControllerBase
         entity.CreatedBy = User.Identity?.Name ?? "admin";
         await _db.RankDefinitions.AddAsync(entity, ct);
         await _db.SaveChangesAsync(ct);
+        await _cache.RemoveAsync(CacheKeys.RankDefinitions, ct);
         return CreatedAtAction(nameof(GetById), new { id = entity.Id }, ApiResponse<RankDefinitionDto>.Ok(entity.ToDto()));
     }
 
@@ -57,6 +64,7 @@ public class RankDefinitionsController : ControllerBase
         dto.ApplyTo(entity);
         entity.LastUpdateBy = User.Identity?.Name ?? "admin";
         await _db.SaveChangesAsync(ct);
+        await _cache.RemoveAsync(CacheKeys.RankDefinitions, ct);
         return Ok(ApiResponse<RankDefinitionDto>.Ok(entity.ToDto()));
     }
 
@@ -70,6 +78,7 @@ public class RankDefinitionsController : ControllerBase
         entity.Status = RankDefinitionStatus.Inactive;
         entity.LastUpdateBy = User.Identity?.Name ?? "admin";
         await _db.SaveChangesAsync(ct);
+        await _cache.RemoveAsync(CacheKeys.RankDefinitions, ct);
         return Ok(ApiResponse<object>.Ok(new { }, "Rank definition deactivated."));
     }
 

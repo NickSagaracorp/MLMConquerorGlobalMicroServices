@@ -6,6 +6,8 @@ using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Domain.Exceptions;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
+using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
+using IPushNotificationService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IPushNotificationService;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Features.Tokens.DistributeToken;
 
@@ -14,12 +16,21 @@ public class DistributeTokenHandler : IRequestHandler<DistributeTokenCommand, Re
     private readonly AppDbContext _db;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _dateTime;
+    private readonly ICacheService _cache;
+    private readonly IPushNotificationService _push;
 
-    public DistributeTokenHandler(AppDbContext db, ICurrentUserService currentUser, IDateTimeProvider dateTime)
+    public DistributeTokenHandler(
+        AppDbContext db,
+        ICurrentUserService currentUser,
+        IDateTimeProvider dateTime,
+        ICacheService cache,
+        IPushNotificationService push)
     {
         _db = db;
         _currentUser = currentUser;
         _dateTime = dateTime;
+        _cache = cache;
+        _push = push;
     }
 
     public async Task<Result<bool>> Handle(DistributeTokenCommand command, CancellationToken ct)
@@ -109,6 +120,19 @@ public class DistributeTokenHandler : IRequestHandler<DistributeTokenCommand, Re
         }
 
         await _db.SaveChangesAsync(ct);
+
+        // Invalidate token balance caches for both parties
+        await Task.WhenAll(
+            _cache.RemoveAsync(CacheKeys.MemberTokenBalances(memberId), ct),
+            _cache.RemoveAsync(CacheKeys.MemberTokenBalances(req.RecipientMemberId), ct));
+
+        // Notify recipient
+        _ = _push.SendAsync(
+            req.RecipientMemberId,
+            NotificationEvents.TokenReceived,
+            "Tokens Received",
+            $"You have received {req.Quantity} token(s).",
+            ct);
 
         return Result<bool>.Success(true);
     }

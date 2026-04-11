@@ -15,7 +15,9 @@ using MLMConquerorGlobalEdition.Repository.Services;
 using MLMConquerorGlobalEdition.SharedKernel.Behaviors;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using IErrorTrackingService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IErrorTrackingService;
+using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
 using IPushNotificationService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IPushNotificationService;
+using CacheService = MLMConquerorGlobalEdition.SharedKernel.Services.CacheService;
 using MLMConquerorGlobalEdition.SharedKernel.Logging;
 using MLMConquerorGlobalEdition.SignupAPI.Jobs;
 using MLMConquerorGlobalEdition.SignupAPI.Middleware;
@@ -78,6 +80,14 @@ builder.Services.AddScoped<IJwtService, JwtService>();
 
 // Error Tracking
 builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
+
+// Redis distributed cache + ICacheService
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration.GetConnectionString("Redis")
+        ?? "localhost:6379";
+});
+builder.Services.AddSingleton<ICacheService, CacheService>();
 
 // Firebase push notifications
 builder.Services.AddSingleton<IPushNotificationService, FirebasePushNotificationService>();
@@ -192,6 +202,7 @@ using (var scope = app.Services.CreateScope())
     await db.Database.MigrateAsync();
     await RolesSeeder.SeedAsync(roleManager, seedLogger);
     await RootAmbassadorSeeder.SeedAsync(db, userManager, config, seedLogger);
+    await CountriesSeeder.SeedAsync(db, seedLogger);
 }
 
 app.UseStaticFiles();
