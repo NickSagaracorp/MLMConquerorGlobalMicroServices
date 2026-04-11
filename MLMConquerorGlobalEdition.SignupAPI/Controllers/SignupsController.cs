@@ -94,9 +94,12 @@ public class SignupsController : ControllerBase
     }
 
     [HttpGet("products")]
-    public async Task<IActionResult> GetProducts(CancellationToken ct)
+    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+    public async Task<IActionResult> GetProducts(
+        [FromQuery] string? countryIso2 = null,
+        CancellationToken ct = default)
     {
-        var result = await _mediator.Send(new GetProductsQuery(), ct);
+        var result = await _mediator.Send(new GetProductsQuery(countryIso2), ct);
         return Ok(ApiResponse<IEnumerable<ProductDto>>.Ok(result.Value!));
     }
 

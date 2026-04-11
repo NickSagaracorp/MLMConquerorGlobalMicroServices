@@ -25,6 +25,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     public DbSet<ErrorLog> ErrorLogs => Set<ErrorLog>();
     public DbSet<ErrorMessage> ErrorMessages => Set<ErrorMessage>();
     public DbSet<Country> Countries => Set<Country>();
+    public DbSet<CountryProduct> CountryProducts => Set<CountryProduct>();
 
     public DbSet<MemberProfile> MemberProfiles => Set<MemberProfile>();
     public DbSet<MemberStatusHistory> MemberStatusHistories => Set<MemberStatusHistory>();

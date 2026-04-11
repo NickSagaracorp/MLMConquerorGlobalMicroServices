@@ -6543,3 +6543,77 @@ END;
 
 COMMIT;
 GO
+
+BEGIN TRANSACTION;
+GO
+
+-- Migration: 20260411020839_AddCountryProductMapping
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260411020839_AddCountryProductMapping'
+)
+BEGIN
+    CREATE TABLE [CountryProducts] (
+        [Id]            int            NOT NULL IDENTITY,
+        [CountryId]     int            NOT NULL,
+        [ProductId]     nvarchar(450)  NOT NULL,
+        [IsActive]      bit            NOT NULL,
+        [CreationDate]  datetime2      NOT NULL,
+        [CreatedBy]     nvarchar(100)  NOT NULL,
+        [LastUpdateDate] datetime2     NULL,
+        [LastUpdateBy]  nvarchar(100)  NULL,
+        CONSTRAINT [PK_CountryProducts] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_CountryProducts_Countries_CountryId]
+            FOREIGN KEY ([CountryId]) REFERENCES [Countries] ([Id]) ON DELETE NO ACTION,
+        CONSTRAINT [FK_CountryProducts_Products_ProductId]
+            FOREIGN KEY ([ProductId]) REFERENCES [Products] ([Id]) ON DELETE NO ACTION
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260411020839_AddCountryProductMapping'
+)
+BEGIN
+    CREATE INDEX [IX_CountryProducts_CountryId]
+        ON [CountryProducts] ([CountryId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260411020839_AddCountryProductMapping'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_CountryProducts_CountryId_ProductId]
+        ON [CountryProducts] ([CountryId], [ProductId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260411020839_AddCountryProductMapping'
+)
+BEGIN
+    CREATE INDEX [IX_CountryProducts_IsActive]
+        ON [CountryProducts] ([IsActive]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260411020839_AddCountryProductMapping'
+)
+BEGIN
+    CREATE INDEX [IX_CountryProducts_ProductId]
+        ON [CountryProducts] ([ProductId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260411020839_AddCountryProductMapping'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260411020839_AddCountryProductMapping', N'10.0.5');
+END;
+
+COMMIT;
+GO

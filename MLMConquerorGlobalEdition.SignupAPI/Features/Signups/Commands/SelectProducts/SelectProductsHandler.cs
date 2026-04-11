@@ -9,6 +9,7 @@ namespace MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Commands.SelectPr
 
 /// <summary>
 /// Phase 2 of the signup wizard — add or replace the product selection on a pending order.
+/// Validates that selected products are allowed for the member's country when mappings exist.
 /// </summary>
 public class SelectProductsHandler : IRequestHandler<SelectProductsCommand, Result<bool>>
 {
@@ -35,6 +36,38 @@ public class SelectProductsHandler : IRequestHandler<SelectProductsCommand, Resu
 
         if (member is null)
             return Result<bool>.Failure("MEMBER_NOT_FOUND", "Associated member not found.");
+
+        // Resolve country-product restrictions (Iso2 stored in MemberProfile.Country)
+        var iso2 = member.Country?.Trim().ToUpperInvariant();
+        if (!string.IsNullOrEmpty(iso2))
+        {
+            var countryId = await _db.Countries
+                .AsNoTracking()
+                .Where(c => c.Iso2 == iso2)
+                .Select(c => (int?)c.Id)
+                .FirstOrDefaultAsync(ct);
+
+            if (countryId is not null)
+            {
+                var allowedProductIds = await _db.CountryProducts
+                    .AsNoTracking()
+                    .Where(cp => cp.CountryId == countryId && cp.IsActive)
+                    .Select(cp => cp.ProductId)
+                    .ToListAsync(ct);
+
+                if (allowedProductIds.Count > 0)
+                {
+                    var disallowed = command.Request.ProductIds
+                        .Where(id => !allowedProductIds.Contains(id))
+                        .ToList();
+
+                    if (disallowed.Count > 0)
+                        return Result<bool>.Failure(
+                            "PRODUCT_NOT_ALLOWED_IN_COUNTRY",
+                            $"The following products are not available for your country: {string.Join(", ", disallowed)}.");
+                }
+            }
+        }
 
         var products = await _db.Products
             .AsNoTracking()
