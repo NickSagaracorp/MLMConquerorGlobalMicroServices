@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Identity;
 using MLMConquerorGlobalEdition.Repository.Identity;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
-using MLMConquerorGlobalEdition.Signups.Features.Auth.Commands.RefreshToken;
-using MLMConquerorGlobalEdition.Signups.Tests.Helpers;
+using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.RefreshToken;
+using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace MLMConquerorGlobalEdition.Signups.Tests.Features.Auth;
+namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Features.Auth;
 
 public class RefreshTokenHandlerTests
 {

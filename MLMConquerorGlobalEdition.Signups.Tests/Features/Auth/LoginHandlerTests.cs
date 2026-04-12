@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Identity;
 using MLMConquerorGlobalEdition.Repository.Identity;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
-using MLMConquerorGlobalEdition.Signups.DTOs.Auth;
-using MLMConquerorGlobalEdition.Signups.Features.Auth.Commands.Login;
-using MLMConquerorGlobalEdition.Signups.Tests.Helpers;
+using MLMConquerorGlobalEdition.SignupAPI.DTOs.Auth;
+using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Login;
+using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
 
-namespace MLMConquerorGlobalEdition.Signups.Tests.Features.Auth;
+namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Features.Auth;
 
 public class LoginHandlerTests
 {

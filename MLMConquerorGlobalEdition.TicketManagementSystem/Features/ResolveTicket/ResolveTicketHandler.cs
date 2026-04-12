@@ -67,7 +67,7 @@ public class ResolveTicketHandler : IRequestHandler<ResolveTicketCommand, Result
                 ticket.MemberId,
                 NotificationEvents.TicketStatusChanged,
                 "Ticket Resolved",
-                $"Your ticket #{ticket.Id[..8]} has been resolved.",
+                $"Your ticket #{ticket.Id[..Math.Min(8, ticket.Id.Length)]} has been resolved.",
                 ct);
         }
 

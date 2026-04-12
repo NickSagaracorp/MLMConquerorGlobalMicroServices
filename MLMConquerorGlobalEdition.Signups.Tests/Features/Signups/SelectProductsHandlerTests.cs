@@ -3,11 +3,11 @@ using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
-using MLMConquerorGlobalEdition.Signups.DTOs;
-using MLMConquerorGlobalEdition.Signups.Features.Signups.Commands.SelectProducts;
-using MLMConquerorGlobalEdition.Signups.Tests.Helpers;
+using MLMConquerorGlobalEdition.SignupAPI.DTOs;
+using MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Commands.SelectProducts;
+using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
 
-namespace MLMConquerorGlobalEdition.Signups.Tests.Features.Signups;
+namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Features.Signups;
 
 public class SelectProductsHandlerTests
 {

@@ -1,9 +1,10 @@
 using MLMConquerorGlobalEdition.Domain.Entities.Support;
-using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.TicketManagementSystem.DTOs;
 using MLMConquerorGlobalEdition.TicketManagementSystem.Features.ResolveTicket;
-using MLMConquerorGlobalEdition.TicketManagementSystem.Services;
 using MLMConquerorGlobalEdition.TicketManagementSystem.Tests.Helpers;
+using ICurrentUserService  = MLMConquerorGlobalEdition.TicketManagementSystem.Services.ICurrentUserService;
+using IDateTimeProvider     = MLMConquerorGlobalEdition.TicketManagementSystem.Services.IDateTimeProvider;
+using IPushNotificationService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IPushNotificationService;
 
 namespace MLMConquerorGlobalEdition.TicketManagementSystem.Tests.Features.ResolveTicket;
 

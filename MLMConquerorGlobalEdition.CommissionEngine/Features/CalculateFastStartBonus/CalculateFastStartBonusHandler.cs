@@ -94,10 +94,22 @@ public class CalculateFastStartBonusHandler
 
             if (commType is null) { currentMemberId = sponsorMemberId; continue; }
 
+            // Resolve the sponsor profile to get their UserId (Guid), used as the countdown key
+            var sponsorProfile = await _db.MemberProfiles
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.MemberId == sponsorMemberId, ct);
+
+            if (sponsorProfile is null)
+            {
+                skipped.Add($"Level {level}: sponsor profile not found for {sponsorMemberId}.");
+                currentMemberId = sponsorMemberId;
+                continue;
+            }
+
             // Determine which FSB window the sponsor is currently in
             var countdown = await _db.CommissionCountDowns
                 .AsNoTracking()
-                .FirstOrDefaultAsync(c => c.MemberId.ToString() == sponsorMemberId, ct);
+                .FirstOrDefaultAsync(c => c.MemberId == sponsorProfile.UserId, ct);
 
             if (countdown is null)
             {

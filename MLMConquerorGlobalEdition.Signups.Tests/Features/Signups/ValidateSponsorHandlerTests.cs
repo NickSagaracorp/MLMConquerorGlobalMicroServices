@@ -1,9 +1,9 @@
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Enums;
-using MLMConquerorGlobalEdition.Signups.Features.Signups.Queries.ValidateSponsor;
-using MLMConquerorGlobalEdition.Signups.Tests.Helpers;
+using MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Queries.ValidateSponsor;
+using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
 
-namespace MLMConquerorGlobalEdition.Signups.Tests.Features.Signups;
+namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Features.Signups;
 
 public class ValidateSponsorHandlerTests
 {

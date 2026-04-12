@@ -1,23 +1,30 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using Microsoft.Extensions.Configuration;
-using MLMConquerorGlobalEdition.Signups.Services;
+using MLMConquerorGlobalEdition.SignupAPI.Services;
 
-namespace MLMConquerorGlobalEdition.Signups.Tests.Services;
+namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Services;
 
 public class JwtServiceTests
 {
+    private static string GeneratePrivateKeyBase64()
+    {
+        using var rsa = RSA.Create(2048);
+        return Convert.ToBase64String(rsa.ExportPkcs8PrivateKey());
+    }
+
     private static IConfiguration BuildConfig(
         int accessExpiryMinutes = 60,
         int refreshExpiryDays = 30)
     {
         var data = new Dictionary<string, string?>
         {
-            ["Jwt:Key"]                     = "super-secret-key-for-unit-tests-1234567890!",
-            ["Jwt:Issuer"]                  = "MLMConqueror",
-            ["Jwt:Audience"]                = "MLMConquerorUsers",
-            ["Jwt:AccessTokenExpiryMinutes"] = accessExpiryMinutes.ToString(),
-            ["Jwt:RefreshTokenExpiryDays"]  = refreshExpiryDays.ToString()
+            ["Jwt:PrivateKeyBase64"]          = GeneratePrivateKeyBase64(),
+            ["Jwt:Issuer"]                    = "MLMConqueror",
+            ["Jwt:Audience"]                  = "MLMConquerorUsers",
+            ["Jwt:AccessTokenExpiryMinutes"]  = accessExpiryMinutes.ToString(),
+            ["Jwt:RefreshTokenExpiryDays"]    = refreshExpiryDays.ToString()
         };
         return new ConfigurationBuilder()
             .AddInMemoryCollection(data)
@@ -32,12 +39,13 @@ public class JwtServiceTests
             {
                 ["Jwt:Issuer"]   = "MLMConqueror",
                 ["Jwt:Audience"] = "MLMConquerorUsers"
+                // Jwt:PrivateKeyBase64 intentionally omitted
             })
             .Build();
 
         Action act = () => _ = new JwtService(config);
 
-        act.Should().Throw<InvalidOperationException>().WithMessage("*Jwt:Key*");
+        act.Should().Throw<InvalidOperationException>().WithMessage("*PrivateKeyBase64*");
     }
 
     [Fact]

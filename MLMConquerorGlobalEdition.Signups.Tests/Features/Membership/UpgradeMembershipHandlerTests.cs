@@ -3,10 +3,10 @@ using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Domain.Exceptions;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
-using MLMConquerorGlobalEdition.Signups.Features.Membership.Commands.UpgradeMembership;
-using MLMConquerorGlobalEdition.Signups.Tests.Helpers;
+using MLMConquerorGlobalEdition.SignupAPI.Features.Membership.Commands.UpgradeMembership;
+using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
 
-namespace MLMConquerorGlobalEdition.Signups.Tests.Features.Membership;
+namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Features.Membership;
 
 public class UpgradeMembershipHandlerTests
 {

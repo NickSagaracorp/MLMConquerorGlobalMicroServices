@@ -57,7 +57,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("CommissionCategories");
+                    b.ToTable("CommissionCategories", (string)null);
 
                     b.HasData(
                         new
@@ -221,7 +221,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .IsUnique()
                         .HasFilter("[SourceOrderId] IS NOT NULL");
 
-                    b.ToTable("CommissionEarnings");
+                    b.ToTable("CommissionEarnings", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Commission.CommissionOperationType", b =>
@@ -254,7 +254,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("CommissionOperationType");
+                    b.ToTable("CommissionOperationType", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Commission.CommissionType", b =>
@@ -378,7 +378,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("CommissionCategoryId");
 
-                    b.ToTable("CommissionTypes");
+                    b.ToTable("CommissionTypes", (string)null);
 
                     b.HasData(
                         new
@@ -2131,7 +2131,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("MemberId1");
 
-                    b.ToTable("CommissionCountDowns");
+                    b.ToTable("CommissionCountDowns", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Commission.MemberCommissionCountDownHistory", b =>
@@ -2183,7 +2183,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("MemberId1");
 
-                    b.ToTable("CommissionCountDownHistories");
+                    b.ToTable("CommissionCountDownHistories", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Email.EmailTemplate", b =>
@@ -2235,7 +2235,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("EventType");
 
-                    b.ToTable("EmailTemplates");
+                    b.ToTable("EmailTemplates", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Email.EmailTemplateLocalization", b =>
@@ -2286,7 +2286,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasIndex("EmailTemplateId", "LanguageCode")
                         .IsUnique();
 
-                    b.ToTable("EmailTemplateLocalizations");
+                    b.ToTable("EmailTemplateLocalizations", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Email.EmailTemplateVariable", b =>
@@ -2332,7 +2332,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasIndex("EmailTemplateId", "Name")
                         .IsUnique();
 
-                    b.ToTable("EmailTemplateVariables");
+                    b.ToTable("EmailTemplateVariables", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Events.CorporateEvent", b =>
@@ -2386,7 +2386,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("CorporateEvents");
+                    b.ToTable("CorporateEvents", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Events.CorporatePromo", b =>
@@ -2440,7 +2440,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("CorporatePromos");
+                    b.ToTable("CorporatePromos", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.General.CompanyInfo", b =>
@@ -2502,7 +2502,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("CompanyInfo");
+                    b.ToTable("CompanyInfo", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.General.Country", b =>
@@ -2580,7 +2580,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasIndex("Iso3")
                         .IsUnique();
 
-                    b.ToTable("Countries");
+                    b.ToTable("Countries", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.General.CountryProduct", b =>
@@ -2628,7 +2628,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasIndex("CountryId", "ProductId")
                         .IsUnique();
 
-                    b.ToTable("CountryProducts");
+                    b.ToTable("CountryProducts", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.General.ErrorLog", b =>
@@ -2705,7 +2705,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ErrorLogs");
+                    b.ToTable("ErrorLogs", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.General.ErrorMessage", b =>
@@ -2752,7 +2752,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasIndex("ErrorCode", "Language")
                         .IsUnique();
 
-                    b.ToTable("ErrorMessages");
+                    b.ToTable("ErrorMessages", (string)null);
 
                     b.HasData(
                         new
@@ -3332,7 +3332,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AuditTracking");
+                    b.ToTable("AuditTracking", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Loyalty.LoyaltyPoints", b =>
@@ -3405,7 +3405,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("MemberProfileId");
 
-                    b.ToTable("LoyaltyPoints");
+                    b.ToTable("LoyaltyPoints", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Member.MemberFcmToken", b =>
@@ -3447,7 +3447,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("MemberFcmTokens");
+                    b.ToTable("MemberFcmTokens", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Member.MemberIdentificationType", b =>
@@ -3483,7 +3483,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("MemberIdentificationTypes");
+                    b.ToTable("MemberIdentificationTypes", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Member.MemberProfile", b =>
@@ -3637,7 +3637,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("MemberProfiles");
+                    b.ToTable("MemberProfiles", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Member.MemberProfileNotificationTracking", b =>
@@ -3693,7 +3693,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("MemberProfileId");
 
-                    b.ToTable("MemberNotifications");
+                    b.ToTable("MemberNotifications", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Member.MemberStatisticEntity", b =>
@@ -3762,7 +3762,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("MemberStatistics");
+                    b.ToTable("MemberStatistics", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Member.MemberStatusHistory", b =>
@@ -3803,7 +3803,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("MemberProfileId");
 
-                    b.ToTable("MemberStatusHistories");
+                    b.ToTable("MemberStatusHistories", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Membership.MembershipLevel", b =>
@@ -3856,7 +3856,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("MembershipLevels");
+                    b.ToTable("MembershipLevels", (string)null);
 
                     b.HasData(
                         new
@@ -3955,7 +3955,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("MembershipLevelId");
 
-                    b.ToTable("MembershipLevelBenefits");
+                    b.ToTable("MembershipLevelBenefits", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Membership.MembershipSubscription", b =>
@@ -4039,7 +4039,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("MembershipLevelId");
 
-                    b.ToTable("MembershipSubscriptions");
+                    b.ToTable("MembershipSubscriptions", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Orders.OrderDetail", b =>
@@ -4078,7 +4078,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("OrdersId");
 
-                    b.ToTable("OrderDetails");
+                    b.ToTable("OrderDetails", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Orders.Orders", b =>
@@ -4135,7 +4135,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Orders");
+                    b.ToTable("Orders", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Orders.PaymentHistory", b =>
@@ -4202,7 +4202,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("OrdersId");
 
-                    b.ToTable("PaymentHistories");
+                    b.ToTable("PaymentHistories", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Orders.Product", b =>
@@ -4312,7 +4312,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("MembershipLevelId");
 
-                    b.ToTable("Products");
+                    b.ToTable("Products", (string)null);
 
                     b.HasData(
                         new
@@ -4529,7 +4529,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasIndex("ProductId")
                         .IsUnique();
 
-                    b.ToTable("ProductCommissions");
+                    b.ToTable("ProductCommissions", (string)null);
 
                     b.HasData(
                         new
@@ -4653,7 +4653,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("ProductCommissionPromos");
+                    b.ToTable("ProductCommissionPromos", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Orders.ProductLoyaltyPointsSetting", b =>
@@ -4696,7 +4696,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasIndex("ProductId")
                         .IsUnique();
 
-                    b.ToTable("ProductLoyaltySettings");
+                    b.ToTable("ProductLoyaltySettings", (string)null);
 
                     b.HasData(
                         new
@@ -4781,7 +4781,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("RankDefinitionId");
 
-                    b.ToTable("MemberRankHistories");
+                    b.ToTable("MemberRankHistories", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Rank.RankDefinition", b =>
@@ -4826,7 +4826,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("RankDefinitions");
+                    b.ToTable("RankDefinitions", (string)null);
 
                     b.HasData(
                         new
@@ -5078,7 +5078,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("IsProcessed", "TriggerDate");
 
-                    b.ToTable("RankEvaluationQueue");
+                    b.ToTable("RankEvaluationQueue", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Rank.RankRequirement", b =>
@@ -5172,7 +5172,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("RankDefinitionId");
 
-                    b.ToTable("RankRequirements");
+                    b.ToTable("RankRequirements", (string)null);
 
                     b.HasData(
                         new
@@ -5724,7 +5724,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("TeamId");
 
-                    b.ToTable("CannedResponses");
+                    b.ToTable("CannedResponses", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Support.KbArticleVersion", b =>
@@ -5764,7 +5764,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("ArticleId");
 
-                    b.ToTable("KbArticleVersions");
+                    b.ToTable("KbArticleVersions", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Support.KnowledgeBaseArticle", b =>
@@ -5858,7 +5858,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("Visibility", "CategoryId");
 
-                    b.ToTable("KbArticles");
+                    b.ToTable("KbArticles", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Support.SlaBreach", b =>
@@ -5909,7 +5909,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("TicketId");
 
-                    b.ToTable("SlaBreaches");
+                    b.ToTable("SlaBreaches", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Support.SlaPolicy", b =>
@@ -6018,7 +6018,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("SlaPolicies");
+                    b.ToTable("SlaPolicies", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Support.SupportAgent", b =>
@@ -6109,7 +6109,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("SupportAgents");
+                    b.ToTable("SupportAgents", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Support.SupportTeam", b =>
@@ -6156,7 +6156,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("SupportTeams");
+                    b.ToTable("SupportTeams", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Support.Ticket", b =>
@@ -6317,7 +6317,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("Status", "LastUpdateDate");
 
-                    b.ToTable("Tickets");
+                    b.ToTable("Tickets", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Support.TicketAttachment", b =>
@@ -6358,7 +6358,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("TicketId");
 
-                    b.ToTable("TicketAttachments");
+                    b.ToTable("TicketAttachments", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Support.TicketCategory", b =>
@@ -6420,7 +6420,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("ParentCategoryId");
 
-                    b.ToTable("TicketCategories");
+                    b.ToTable("TicketCategories", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Support.TicketComment", b =>
@@ -6464,7 +6464,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("TicketId", "CreationDate");
 
-                    b.ToTable("TicketComments");
+                    b.ToTable("TicketComments", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Support.TicketHistory", b =>
@@ -6516,7 +6516,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("TicketId", "CreationDate");
 
-                    b.ToTable("TicketHistories");
+                    b.ToTable("TicketHistories", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Support.TicketMetricsDaily", b =>
@@ -6607,7 +6607,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasIndex("Date")
                         .IsUnique();
 
-                    b.ToTable("TicketMetrics");
+                    b.ToTable("TicketMetrics", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Support.TicketSequence", b =>
@@ -6621,7 +6621,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Date");
 
-                    b.ToTable("TicketSequences");
+                    b.ToTable("TicketSequences", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Tokens.TokenBalance", b =>
@@ -6671,7 +6671,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("MemberProfileId");
 
-                    b.ToTable("TokenBalances");
+                    b.ToTable("TokenBalances", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Tokens.TokenTransaction", b =>
@@ -6724,7 +6724,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("MemberId", "CreationDate");
 
-                    b.ToTable("TokenTransactions");
+                    b.ToTable("TokenTransactions", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Tokens.TokenType", b =>
@@ -6769,7 +6769,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("TokenTypes");
+                    b.ToTable("TokenTypes", (string)null);
 
                     b.HasData(
                         new
@@ -7721,7 +7721,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasIndex("TokenTypeId", "CommissionTypeId")
                         .IsUnique();
 
-                    b.ToTable("TokenTypeCommissions");
+                    b.ToTable("TokenTypeCommissions", (string)null);
 
                     b.HasData(
                         new
@@ -9625,7 +9625,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasIndex("TokenTypeId", "ProductId")
                         .IsUnique();
 
-                    b.ToTable("TokenTypeProducts");
+                    b.ToTable("TokenTypeProducts", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Tree.DualTeamEntity", b =>
@@ -9687,7 +9687,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("MemberId");
 
-                    b.ToTable("DualTeamTree");
+                    b.ToTable("DualTeamTree", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Tree.GenealogyEntity", b =>
@@ -9741,7 +9741,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("MemberId", "CreationDate");
 
-                    b.ToTable("GenealogyTree");
+                    b.ToTable("GenealogyTree", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Tree.GhostPointEntity", b =>
@@ -9801,7 +9801,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("MemberId");
 
-                    b.ToTable("GhostPoints");
+                    b.ToTable("GhostPoints", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Tree.PlacementLog", b =>
@@ -9845,7 +9845,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("PlacementLogs");
+                    b.ToTable("PlacementLogs", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Wallet.MemberCreditCard", b =>
@@ -9924,7 +9924,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("CreditCards");
+                    b.ToTable("CreditCards", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Wallet.MemberProfilesWallet", b =>
@@ -9981,7 +9981,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Wallets");
+                    b.ToTable("Wallets", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Wallet.MemberProfilesWalletHistory", b =>
@@ -10021,7 +10021,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("WalletHistories");
+                    b.ToTable("WalletHistories", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Repository.Identity.ApplicationUser", b =>

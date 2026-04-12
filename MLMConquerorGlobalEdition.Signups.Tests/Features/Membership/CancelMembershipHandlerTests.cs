@@ -4,11 +4,11 @@ using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
-using MLMConquerorGlobalEdition.Signups.Features.Membership.Commands.CancelMembership;
-using MLMConquerorGlobalEdition.Signups.Services;
-using MLMConquerorGlobalEdition.Signups.Tests.Helpers;
+using MLMConquerorGlobalEdition.SignupAPI.Features.Membership.Commands.CancelMembership;
+using MLMConquerorGlobalEdition.SignupAPI.Services;
+using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
 
-namespace MLMConquerorGlobalEdition.Signups.Tests.Features.Membership;
+namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Features.Membership;
 
 public class CancelMembershipHandlerTests
 {

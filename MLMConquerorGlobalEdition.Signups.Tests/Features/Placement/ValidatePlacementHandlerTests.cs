@@ -2,10 +2,10 @@ using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
-using MLMConquerorGlobalEdition.Signups.Features.Placement.Queries.ValidatePlacement;
-using MLMConquerorGlobalEdition.Signups.Tests.Helpers;
+using MLMConquerorGlobalEdition.SignupAPI.Features.Placement.Queries.ValidatePlacement;
+using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
 
-namespace MLMConquerorGlobalEdition.Signups.Tests.Features.Placement;
+namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Features.Placement;
 
 public class ValidatePlacementHandlerTests
 {

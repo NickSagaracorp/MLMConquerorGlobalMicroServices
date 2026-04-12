@@ -6,12 +6,12 @@ using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Identity;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
-using MLMConquerorGlobalEdition.Signups.DTOs;
-using MLMConquerorGlobalEdition.Signups.Features.Signups.Commands.CompleteSignup;
-using MLMConquerorGlobalEdition.Signups.Services;
-using MLMConquerorGlobalEdition.Signups.Tests.Helpers;
+using MLMConquerorGlobalEdition.SignupAPI.DTOs;
+using MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Commands.CompleteSignup;
+using MLMConquerorGlobalEdition.SignupAPI.Services;
+using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
 
-namespace MLMConquerorGlobalEdition.Signups.Tests.Features.Signups;
+namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Features.Signups;
 
 public class CompleteSignupHandlerTests
 {
@@ -178,6 +178,20 @@ public class CompleteSignupHandlerTests
         var member = BuildMember("AMB-002");
         var order  = BuildPendingOrder("ORD-002", "AMB-002"); // no OrderDetails
 
+        // A product must exist in the catalog so the handler considers the catalog active
+        await db.Products.AddAsync(new Product
+        {
+            Id             = "P-CATALOG",
+            Name           = "Ambassador Pack",
+            Description    = "Default pack",
+            ImageUrl       = "https://cdn.example.com/pack.png",
+            MonthlyFee     = 80,
+            SetupFee       = 0,
+            IsActive       = true,
+            CreatedBy      = "seed",
+            CreationDate   = FixedNow,
+            LastUpdateDate = FixedNow
+        });
         await db.MemberProfiles.AddAsync(member);
         await db.Orders.AddAsync(order);
         await db.SaveChangesAsync();

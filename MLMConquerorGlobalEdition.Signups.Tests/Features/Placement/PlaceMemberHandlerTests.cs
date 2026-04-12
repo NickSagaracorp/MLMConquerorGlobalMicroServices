@@ -3,10 +3,11 @@ using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Domain.Exceptions;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
-using MLMConquerorGlobalEdition.Signups.Features.Placement.Commands.PlaceMember;
-using MLMConquerorGlobalEdition.Signups.Tests.Helpers;
+using MLMConquerorGlobalEdition.SignupAPI.Features.Placement.Commands.PlaceMember;
+using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
+using IPushNotificationService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IPushNotificationService;
 
-namespace MLMConquerorGlobalEdition.Signups.Tests.Features.Placement;
+namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Features.Placement;
 
 public class PlaceMemberHandlerTests
 {
@@ -17,6 +18,15 @@ public class PlaceMemberHandlerTests
         var mock = new Mock<IDateTimeProvider>();
         mock.Setup(d => d.Now).Returns(now);
         return mock;
+    }
+
+    private static Mock<IPushNotificationService> NullPush()
+    {
+        var m = new Mock<IPushNotificationService>();
+        m.Setup(p => p.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                                 It.IsAny<string>(), It.IsAny<CancellationToken>()))
+         .Returns(Task.CompletedTask);
+        return m;
     }
 
     private static MemberProfile BuildMember(string memberId, DateTime enrollDate) => new()
@@ -35,7 +45,7 @@ public class PlaceMemberHandlerTests
     public async Task Handle_WhenMemberNotFound_ReturnsFailure()
     {
         await using var db = InMemoryDbHelper.Create();
-        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object);
+        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object);
 
         var result = await handler.Handle(
             new PlaceMemberCommand("NON-EXISTENT", "AMB-000001", "Left"), CancellationToken.None);
@@ -52,7 +62,7 @@ public class PlaceMemberHandlerTests
         await db.MemberProfiles.AddAsync(BuildMember("AMB-000002", enrollDate));
         await db.SaveChangesAsync();
 
-        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object);
+        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object);
 
         Func<Task> act = () => handler.Handle(
             new PlaceMemberCommand("AMB-000002", "AMB-000001", "Left"), CancellationToken.None);
@@ -68,7 +78,7 @@ public class PlaceMemberHandlerTests
         await db.MemberProfiles.AddAsync(BuildMember("AMB-000002", enrollDate));
         await db.SaveChangesAsync();
 
-        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object);
+        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object);
 
         var result = await handler.Handle(
             new PlaceMemberCommand("AMB-000002", "NON-EXISTENT-PARENT", "Left"), CancellationToken.None);
@@ -99,7 +109,7 @@ public class PlaceMemberHandlerTests
         });
         await db.SaveChangesAsync();
 
-        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object);
+        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object);
 
         var result = await handler.Handle(
             new PlaceMemberCommand("AMB-000002", "AMB-000001", "Left"), CancellationToken.None);
@@ -129,7 +139,7 @@ public class PlaceMemberHandlerTests
         });
         await db.SaveChangesAsync();
 
-        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object);
+        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object);
 
         var result = await handler.Handle(
             new PlaceMemberCommand("AMB-000002", "AMB-000001", "Right"), CancellationToken.None);
@@ -162,7 +172,7 @@ public class PlaceMemberHandlerTests
         );
         await db.SaveChangesAsync();
 
-        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object);
+        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object);
 
         var result = await handler.Handle(
             new PlaceMemberCommand("AMB-000002", "AMB-000001", "Left"), CancellationToken.None);

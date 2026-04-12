@@ -2,10 +2,10 @@ using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Domain.Exceptions;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
-using MLMConquerorGlobalEdition.Signups.Features.Placement.Commands.UnplaceMember;
-using MLMConquerorGlobalEdition.Signups.Tests.Helpers;
+using MLMConquerorGlobalEdition.SignupAPI.Features.Placement.Commands.UnplaceMember;
+using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
 
-namespace MLMConquerorGlobalEdition.Signups.Tests.Features.Placement;
+namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Features.Placement;
 
 public class UnplaceMemberHandlerTests
 {

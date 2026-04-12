@@ -3,7 +3,9 @@
   <Project Path="MLMConquerorGlobalEdition.AdminAPI/MLMConquerorGlobalEdition.AdminAPI.csproj" />
   <Project Path="MLMConquerorGlobalEdition.Billing/MLMConquerorGlobalEdition.Billing.csproj" />
   <Project Path="MLMConquerorGlobalEdition.BizCenter/MLMConquerorGlobalEdition.BizCenter.csproj" />
+  <Project Path="MLMConquerorGlobalEdition.BizCenter.Tests/MLMConquerorGlobalEdition.BizCenter.Tests.csproj" />
   <Project Path="MLMConquerorGlobalEdition.CommissionEngine/MLMConquerorGlobalEdition.CommissionEngine.csproj" />
+  <Project Path="MLMConquerorGlobalEdition.CommissionEngine.Tests/MLMConquerorGlobalEdition.CommissionEngine.Tests.csproj" />
   <Project Path="MLMConquerorGlobalEdition.Domain.Tests/MLMConquerorGlobalEdition.Domain.Tests.csproj" />
   <Project Path="MLMConquerorGlobalEdition.Domain/MLMConquerorGlobalEdition.Domain.csproj" />
   <Project Path="MLMConquerorGlobalEdition.RankEngine/MLMConquerorGlobalEdition.RankEngine.csproj" />
@@ -15,6 +17,7 @@
   <Project Path="MLMConquerorGlobalEdition.Signups/MLMConquerorGlobalEdition.Signups.csproj" />
   <Project Path="MLMConquerorGlobalEdition.Signups.Client/MLMConquerorGlobalEdition.Signups.Client.csproj" />
   <Project Path="MLMConquerorGlobalEdition.TicketManagementSystem/MLMConquerorGlobalEdition.TicketManagementSystem.csproj" />
+  <Project Path="MLMConquerorGlobalEdition.TicketManagementSystem.Tests/MLMConquerorGlobalEdition.TicketManagementSystem.Tests.csproj" />
   <Project Path="MLMConquerorGlobalEdition.SharedComponents/MLMConquerorGlobalEdition.SharedComponents.csproj" />
   <Project Path="MLMConquerorGlobalEdition.BizCenterApp/MLMConquerorGlobalEdition.BizCenterApp.csproj" />
   <Project Path="MLMConquerorGlobalEdition.AdminApp/MLMConquerorGlobalEdition.AdminApp.csproj" />

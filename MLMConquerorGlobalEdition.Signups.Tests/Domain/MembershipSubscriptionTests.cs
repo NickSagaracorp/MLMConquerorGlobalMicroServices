@@ -2,7 +2,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Domain.Exceptions;
 
-namespace MLMConquerorGlobalEdition.Signups.Tests.Domain;
+namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Domain;
 
 public class MembershipSubscriptionTests
 {

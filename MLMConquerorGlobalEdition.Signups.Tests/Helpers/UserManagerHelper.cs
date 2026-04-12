@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using MLMConquerorGlobalEdition.Repository.Identity;
 
-namespace MLMConquerorGlobalEdition.Signups.Tests.Helpers;
+namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
 
 /// <summary>
 /// Factory for a Moq-based <see cref="UserManager{TUser}"/>.

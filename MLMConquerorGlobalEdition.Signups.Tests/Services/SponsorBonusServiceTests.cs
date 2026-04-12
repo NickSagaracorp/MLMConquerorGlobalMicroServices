@@ -1,10 +1,10 @@
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Enums;
-using MLMConquerorGlobalEdition.Signups.Services;
-using MLMConquerorGlobalEdition.Signups.Tests.Helpers;
+using MLMConquerorGlobalEdition.SignupAPI.Services;
+using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
 
-namespace MLMConquerorGlobalEdition.Signups.Tests.Services;
+namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Services;
 
 public class SponsorBonusServiceTests
 {

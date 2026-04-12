@@ -52,18 +52,19 @@ public class CalculatePresidentialBonusHandler
                 "ALREADY_CALCULATED",
                 $"Presidential Bonus for {monthStart:yyyy-MM} was already calculated.");
 
-        // Get all ambassador member IDs with their highest achieved rank sort order
-        var memberRanks = await _db.MemberRankHistories
+        // Get all rank histories with their definitions; group in memory to avoid
+        // EF translation issues with navigation properties inside GroupBy projections.
+        var rankHistories = await _db.MemberRankHistories
             .AsNoTracking()
             .Include(h => h.RankDefinition)
             .Where(h => !h.IsDeleted)
+            .ToListAsync(ct);
+
+        var memberRanks = rankHistories
             .GroupBy(h => h.MemberId)
-            .Select(g => new
-            {
-                MemberId = g.Key,
-                HighestSortOrder = g.Max(h => h.RankDefinition!.SortOrder)
-            })
-            .ToDictionaryAsync(x => x.MemberId, x => x.HighestSortOrder, ct);
+            .ToDictionary(
+                g => g.Key,
+                g => g.Max(h => h.RankDefinition?.SortOrder ?? 0));
 
         // Total month network volume (sum of all completed orders this month)
         var monthEnd = monthStart.AddMonths(1);
