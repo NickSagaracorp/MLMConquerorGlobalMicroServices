@@ -19,6 +19,9 @@ using MLMConquerorGlobalEdition.RankEngine.Jobs;
 using MLMConquerorGlobalEdition.RankEngine.Mappings;
 using MLMConquerorGlobalEdition.RankEngine.Middleware;
 using MLMConquerorGlobalEdition.RankEngine.Services;
+using MLMConquerorGlobalEdition.Repository.Seeders;
+using IEmailService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IEmailService;
+using NullEmailService = MLMConquerorGlobalEdition.SharedKernel.Services.NullEmailService;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -53,6 +56,7 @@ builder.Services.AddStackExchangeRedisCache(options =>
 builder.Services.AddSingleton<ICacheService, CacheService>();
 
 builder.Services.AddSingleton<IPushNotificationService, FirebasePushNotificationService>();
+builder.Services.AddTransient<IEmailService, NullEmailService>();
 
 builder.Services.AddScoped<RankEvaluationSweepJob>();
 builder.Services.AddScoped<ProcessRankQueueJob>();
@@ -141,11 +145,13 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Apply pending EF migrations automatically on startup (idempotent).
+// Apply pending EF migrations and seed baseline data on startup (idempotent).
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var db     = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     await db.Database.MigrateAsync();
+    await CompanyInfoSeeder.SeedAsync(db, logger);
 }
 
 app.UseMiddleware<DomainExceptionMiddleware>();

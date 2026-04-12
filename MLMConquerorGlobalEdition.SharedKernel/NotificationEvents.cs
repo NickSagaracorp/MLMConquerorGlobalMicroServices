@@ -18,4 +18,6 @@ public static class NotificationEvents
     public const string PlacementCompleted   = "PLACEMENT_COMPLETED";
     public const string DownlinePlaced       = "DOWNLINE_PLACED";
     public const string DownlineEnrolled     = "DOWNLINE_ENROLLED";
+    /// <summary>Sent to every upline (enrollment + dual team, deduplicated) when a downline ambassador achieves a new rank.</summary>
+    public const string UplineRankAchieved   = "UPLINE_RANK_ACHIEVED";
 }

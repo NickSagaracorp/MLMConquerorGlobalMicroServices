@@ -15,11 +15,14 @@ using FluentValidation;
 using MLMConquerorGlobalEdition.SharedKernel.Behaviors;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SharedKernel.Logging;
+using MLMConquerorGlobalEdition.Repository.Seeders;
 using ICacheService         = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
+using IEmailService         = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IEmailService;
 using IErrorTrackingService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IErrorTrackingService;
 using ICurrentUserService   = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICurrentUserService;
 using IDateTimeProvider     = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IDateTimeProvider;
 using CacheService          = MLMConquerorGlobalEdition.SharedKernel.Services.CacheService;
+using NullEmailService      = MLMConquerorGlobalEdition.SharedKernel.Services.NullEmailService;
 using JwtService            = MLMConquerorGlobalEdition.AdminAPI.Services.JwtService;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -65,6 +68,7 @@ builder.Services.AddStackExchangeRedisCache(options =>
     options.Configuration = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
 });
 builder.Services.AddSingleton<ICacheService, CacheService>();
+builder.Services.AddTransient<IEmailService, NullEmailService>();
 
 builder.Services.AddControllers();
 
@@ -163,12 +167,13 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Apply pending EF migrations automatically on startup (idempotent).
-// Lets any developer get a stable DB with zero manual steps.
+// Apply pending EF migrations and seed baseline data on startup (idempotent).
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var db     = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     await db.Database.MigrateAsync();
+    await CompanyInfoSeeder.SeedAsync(db, logger);
 }
 
 if (!app.Environment.IsDevelopment())

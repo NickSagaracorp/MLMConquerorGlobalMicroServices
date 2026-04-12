@@ -78,6 +78,7 @@ builder.Services.AddHangfireServer(options =>
 });
 
 builder.Services.AddControllers();
+builder.Services.AddHttpClient("certificates");
 
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
