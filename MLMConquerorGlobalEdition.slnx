@@ -9,6 +9,7 @@
   <Project Path="MLMConquerorGlobalEdition.Domain.Tests/MLMConquerorGlobalEdition.Domain.Tests.csproj" />
   <Project Path="MLMConquerorGlobalEdition.Domain/MLMConquerorGlobalEdition.Domain.csproj" />
   <Project Path="MLMConquerorGlobalEdition.RankEngine/MLMConquerorGlobalEdition.RankEngine.csproj" />
+  <Project Path="MLMConquerorGlobalEdition.RankEngine.Tests/MLMConquerorGlobalEdition.RankEngine.Tests.csproj" />
   <Project Path="MLMConquerorGlobalEdition.Repository/MLMConquerorGlobalEdition.Repository.csproj" />
   <Project Path="MLMConquerorGlobalEdition.SharedAPICenter/MLMConquerorGlobalEdition.SharedAPICenter.csproj" />
   <Project Path="MLMConquerorGlobalEdition.SharedKernel/MLMConquerorGlobalEdition.SharedKernel.csproj" />
