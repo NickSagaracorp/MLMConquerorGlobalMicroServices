@@ -1,11 +1,11 @@
-@page "/ambassador-join"
-@page "/ambassador-join/{SponsorSlug}"
+@page "/member-join"
+@page "/member-join/{SponsorSlug}"
 @rendermode InteractiveAuto
 @inject IHttpClientFactory HttpFactory
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 
-<div class="theme-ambassador">
+<div class="theme-member">
 
 <!-- ── HEADER ─────────────────────────────────────────────────────────────── -->
 <header class="enroll-header py-2 px-3">
@@ -33,7 +33,7 @@
             }
         </div>
         <div class="sponsor-info">
-            <p class="sponsor-label">Your Sponsor</p>
+            <p class="sponsor-label">Invited by</p>
             <p class="sponsor-name">@(_sponsor?.DisplayName ?? SponsorSlug)</p>
             @if (!string.IsNullOrEmpty(_sponsor?.ReplicateSiteSlug))
             {
@@ -61,53 +61,13 @@
                 <div class="section-body text-center py-5">
                     <i class="ri-checkbox-circle-fill success-check"></i>
                     <h3 class="mt-3 mb-2">Welcome, @_completedEmail!</h3>
-                    <p class="text-muted mb-4">Your account is active. Access your BizCenter to get started.</p>
-                    <a href="/login" class="btn btn-enroll px-5">Go to BizCenter</a>
+                    <p class="text-muted mb-4">Your membership is active. Enjoy your exclusive benefits.</p>
+                    <a href="/login" class="btn btn-enroll px-5">Access My Account</a>
                 </div>
             </div>
         }
         else
         {
-
-        <!-- ── ENROLLMENT ─────────────────────────────────────────────────── -->
-        @if (_enrollmentProduct is not null)
-        {
-        <div class="section-card">
-            <div class="section-head">
-                <div class="section-icon"><i class="ri-award-line"></i></div>
-                <div>
-                    <h5 class="mb-0 fw-bold">Enrollment</h5>
-                    <small class="text-muted">You are enrolling as a Lifestyle Ambassador.</small>
-                </div>
-            </div>
-            <div class="section-body">
-                <label class="plan-card is-checked">
-                    <input type="checkbox" class="plan-card__radio" checked disabled />
-                    <div class="plan-card__body @(_enrollmentProduct.ThemeClass)">
-                        <div class="plan-card__header">
-                            <div class="flex-1">
-                                <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
-                                    <p class="plan-card__title mb-0">@_enrollmentProduct.Name</p>
-                                    <span class="plan-selected-chip"><i class="ri-check-fill"></i> Included</span>
-                                </div>
-                                <p class="plan-card__subtitle">One-time enrollment fee</p>
-                            </div>
-                            @if (!string.IsNullOrEmpty(_enrollmentProduct.ImageUrl))
-                            {
-                                <img src="@_enrollmentProduct.ImageUrl" alt="@_enrollmentProduct.Name"
-                                     class="plan-card__img" onerror="this.style.display='none'" />
-                            }
-                        </div>
-                        @if (!string.IsNullOrEmpty(_enrollmentProduct.Description))
-                        {
-                            <div class="plan-card__desc">@((MarkupString)_enrollmentProduct.Description)</div>
-                        }
-                        <span class="price-chip">@_enrollmentProduct.Price.ToString("C")</span>
-                    </div>
-                </label>
-            </div>
-        </div>
-        }
 
         <!-- ── SELECT MEMBERSHIP ──────────────────────────────────────────── -->
         <div class="section-card">
@@ -115,7 +75,7 @@
                 <div class="section-icon"><i class="ri-vip-crown-line"></i></div>
                 <div>
                     <h5 class="mb-0 fw-bold">Select your membership</h5>
-                    <small class="text-muted">Choose the plan that unlocks your full benefits.</small>
+                    <small class="text-muted">Choose the plan that matches your travel lifestyle.</small>
                 </div>
             </div>
             <div class="section-body">
@@ -156,12 +116,12 @@
             </div>
         </div>
 
-        <!-- ── PERSONAL / BUSINESS INFO ───────────────────────────────────── -->
+        <!-- ── PERSONAL INFO ──────────────────────────────────────────────── -->
         <div class="section-card">
             <div class="section-head">
                 <div class="section-icon"><i class="ri-user-3-line"></i></div>
                 <div>
-                    <h5 class="mb-0 fw-bold">Personal / Business Info</h5>
+                    <h5 class="mb-0 fw-bold">Personal Information</h5>
                     <small class="text-muted">Your details stay private and secure.</small>
                 </div>
             </div>
@@ -181,50 +141,7 @@
                             <label>Last Name *</label>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="form-floating">
-                            <input type="date" class="form-control" @bind="_dateOfBirth" max="@_maxDob" />
-                            <label>Date of Birth *</label>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-floating">
-                            <input type="text" class="form-control" placeholder="SSN (optional)" @bind="_ssn" />
-                            <label>SSN</label>
-                        </div>
-                    </div>
                 </div>
-
-                <hr class="my-4" />
-
-                <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-                    <div>
-                        <p class="mb-0 fw-semibold">Enrolling as a business?</p>
-                        <small class="text-muted">Toggle to add company details.</small>
-                    </div>
-                    <div class="form-check form-switch m-0">
-                        <input class="form-check-input" type="checkbox" @bind="_showBusiness" />
-                        <label class="form-check-label">Yes</label>
-                    </div>
-                </div>
-
-                @if (_showBusiness)
-                {
-                    <div class="row g-3 mt-2">
-                        <div class="col-md-8">
-                            <div class="form-floating">
-                                <input type="text" class="form-control" placeholder="Business Name" @bind="_businessName" />
-                                <label>Business Name</label>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-floating">
-                                <input type="text" class="form-control" placeholder="EIN" @bind="_ein" />
-                                <label>EIN</label>
-                            </div>
-                        </div>
-                    </div>
-                }
             </div>
         </div>
 
@@ -402,32 +319,16 @@
             </div>
         </div>
 
-        <!-- ── WEBSITE NAME & PASSWORD ────────────────────────────────────── -->
+        <!-- ── PASSWORD ───────────────────────────────────────────────────── -->
         <div class="section-card">
             <div class="section-head">
-                <div class="section-icon"><i class="ri-global-line"></i></div>
+                <div class="section-icon"><i class="ri-lock-password-line"></i></div>
                 <div>
-                    <h5 class="mb-0 fw-bold">Your Website & Password</h5>
-                    <small class="text-muted">Choose a unique website name and secure password.</small>
+                    <h5 class="mb-0 fw-bold">Create your Password</h5>
+                    <small class="text-muted">Choose a strong, secure password.</small>
                 </div>
             </div>
             <div class="section-body">
-                <div class="row g-3">
-                    <div class="col-12">
-                        <label class="form-label text-secondary small">Website URL</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light">mlmconqueror.com/</span>
-                            <input type="text" class="form-control" placeholder="yourname"
-                                   maxlength="30" autocomplete="off"
-                                   value="@_siteHandle" @oninput="OnHandleInput" />
-                        </div>
-                        <div class="d-flex gap-3 mt-1 align-items-center">
-                            <small class="text-muted">Letters and numbers only.</small>
-                            <small class="fw-semibold @_slugStatusClass">@_slugStatusMsg</small>
-                        </div>
-                    </div>
-                </div>
-                <hr class="my-4" />
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label text-secondary small">Password *</label>
@@ -537,7 +438,7 @@
                                 <input type="@(_showCcNum ? "text" : "password")" class="form-control"
                                        inputmode="numeric" placeholder="1234 5678 9012 3456"
                                        value="@_ccNumber" @oninput="e => _ccNumber = e.Value?.ToString() ?? string.Empty" />
-                                <span class="input-group-text bg-light" id="ccBrand">@DetectCardBrand()</span>
+                                <span class="input-group-text bg-light">@DetectCardBrand()</span>
                                 <button class="btn btn-outline-secondary" type="button" @onclick="() => _showCcNum = !_showCcNum">
                                     <i class="@(_showCcNum ? "ri-eye-off-line" : "ri-eye-line")"></i>
                                 </button>
@@ -583,7 +484,7 @@
 
                 @if (_paymentTab == "token")
                 {
-                    <p class="text-muted small mb-2">Enter the token provided by your sponsor. Tokens are non-refundable.</p>
+                    <p class="text-muted small mb-2">Enter the token provided by your ambassador. Tokens are non-refundable.</p>
                     <div class="row g-3">
                         <div class="col-md-6">
                             <div class="form-floating">
@@ -610,12 +511,12 @@
                 </div>
 
                 <div class="form-check mb-3">
-                    <input class="form-check-input" type="checkbox" id="agreeTerms" @bind="_agreedTerms" />
-                    <label class="form-check-label small" for="agreeTerms">
+                    <input class="form-check-input" type="checkbox" id="agreeTermsMember" @bind="_agreedTerms" />
+                    <label class="form-check-label small" for="agreeTermsMember">
                         I have read and agree to the
-                        <a href="#" target="_blank" rel="noopener">Independent Lifestyle Ambassador Agreement</a>,
-                        <a href="#" target="_blank" rel="noopener">Policies &amp; Procedures</a>, and
-                        <a href="#" target="_blank" rel="noopener">Compensation Plan</a>. I confirm I am at least 18 years old.
+                        <a href="#" target="_blank" rel="noopener">Member Agreement</a>,
+                        <a href="#" target="_blank" rel="noopener">Privacy Policy</a>, and
+                        <a href="#" target="_blank" rel="noopener">Terms of Service</a>.
                     </label>
                 </div>
 
@@ -648,13 +549,6 @@
                 Order Summary
             </div>
             <div class="pricing-sidebar__body">
-                @if (_enrollmentProduct is not null)
-                {
-                    <div class="pricing-sidebar__line">
-                        <span class="label">@_enrollmentProduct.Name</span>
-                        <span class="amount">@_enrollmentProduct.Price.ToString("C")</span>
-                    </div>
-                }
                 @{
                     var selectedProduct = _membershipProducts.FirstOrDefault(p => p.Id == _selectedMembershipProductId);
                 }
@@ -741,7 +635,7 @@
     </div>
 </footer>
 
-</div><!-- /.theme-ambassador -->
+</div><!-- /.theme-member -->
 
 @code {
     [Parameter] public string? SponsorSlug { get; set; }
@@ -755,19 +649,12 @@
 
     // ── API data ──────────────────────────────────────────────────────────────
     private SponsorModel?      _sponsor;
-    private ProductModel?      _enrollmentProduct;
     private List<ProductModel> _membershipProducts          = new();
     private string             _selectedMembershipProductId = string.Empty;
 
     // ── Personal info ─────────────────────────────────────────────────────────
-    private string   _firstName   = string.Empty;
-    private string   _lastName    = string.Empty;
-    private DateTime _dateOfBirth = DateTime.Today.AddYears(-25);
-    private string   _ssn         = string.Empty;
-    private bool     _showBusiness;
-    private string   _businessName = string.Empty;
-    private string   _ein          = string.Empty;
-    private string   _maxDob       = DateTime.Today.AddYears(-18).ToString("yyyy-MM-dd");
+    private string _firstName = string.Empty;
+    private string _lastName  = string.Empty;
 
     // ── Contact info ──────────────────────────────────────────────────────────
     private string _waCountryCode   = "+1";
@@ -777,43 +664,39 @@
     private string _email           = string.Empty;
     private string _email2          = string.Empty;
     private bool   _emailMismatch;
-    private string _address   = string.Empty;
-    private string _city      = string.Empty;
-    private string _country   = string.Empty;
+    private string _address    = string.Empty;
+    private string _city       = string.Empty;
+    private string _country    = string.Empty;
     private string _postalCode = string.Empty;
     private string _province   = string.Empty;
-    private bool   _billingSame   = true;
-    private string _billAddress   = string.Empty;
-    private string _billCity      = string.Empty;
-    private string _billCountry   = string.Empty;
-    private string _billPostal    = string.Empty;
-    private string _billProvince  = string.Empty;
+    private bool   _billingSame    = true;
+    private string _billAddress    = string.Empty;
+    private string _billCity       = string.Empty;
+    private string _billCountry    = string.Empty;
+    private string _billPostal     = string.Empty;
+    private string _billProvince   = string.Empty;
 
-    // ── Website & password ────────────────────────────────────────────────────
-    private string  _siteHandle      = string.Empty;
-    private string  _slugStatusClass = string.Empty;
-    private string  _slugStatusMsg   = string.Empty;
-    private System.Threading.Timer? _slugTimer;
-    private string  _password   = string.Empty;
-    private string  _password2  = string.Empty;
-    private bool    _showPwd;
-    private bool    _showPwd2;
-    private string  _copyBtnText = "Copy";
+    // ── Password ──────────────────────────────────────────────────────────────
+    private string _password    = string.Empty;
+    private string _password2   = string.Empty;
+    private bool   _showPwd;
+    private bool   _showPwd2;
+    private string _copyBtnText = "Copy";
 
     // ── Payment ───────────────────────────────────────────────────────────────
-    private string _paymentTab    = "card";
-    private string _couponCode    = string.Empty;
-    private string _couponMsg     = string.Empty;
+    private string _paymentTab     = "card";
+    private string _couponCode     = string.Empty;
+    private string _couponMsg      = string.Empty;
     private string _couponMsgClass = string.Empty;
-    private string _ccFirst   = string.Empty;
-    private string _ccLast    = string.Empty;
-    private string _ccNumber  = string.Empty;
-    private string _ccCvv     = string.Empty;
+    private string _ccFirst    = string.Empty;
+    private string _ccLast     = string.Empty;
+    private string _ccNumber   = string.Empty;
+    private string _ccCvv      = string.Empty;
     private int    _ccExpMonth;
     private int    _ccExpYear;
     private bool   _showCcNum;
     private bool   _showCcv;
-    private string _payToken  = string.Empty;
+    private string _payToken   = string.Empty;
     private bool   _agreedTerms;
 
     // ── Static data ───────────────────────────────────────────────────────────
@@ -885,10 +768,8 @@
     {
         get
         {
-            decimal total = _enrollmentProduct?.Price ?? 0m;
             var m = _membershipProducts.FirstOrDefault(p => p.Id == _selectedMembershipProductId);
-            if (m is not null) total += m.Price;
-            return total;
+            return m?.Price ?? 0m;
         }
     }
 
@@ -914,12 +795,15 @@
 
         try
         {
-            var r = await api.GetFromJsonAsync<ApiWrapper<List<ProductModel>>>(
-                "api/v1/signups/products");
+            var iso2 = string.Empty; // could detect from browser geolocation later
+            var url  = string.IsNullOrEmpty(iso2)
+                ? "api/v1/signups/products"
+                : $"api/v1/signups/products?countryIso2={iso2}";
+
+            var r = await api.GetFromJsonAsync<ApiWrapper<List<ProductModel>>>(url);
             if (r?.Success == true && r.Data is not null)
             {
-                _enrollmentProduct  = r.Data.FirstOrDefault(p => p.CorporateFee);
-                _membershipProducts = r.Data.Where(p => p.JoinPageMembership).ToList();
+                _membershipProducts = r.Data.Where(p => p.JoinPageMembership && !p.CorporateFee).ToList();
                 if (_membershipProducts.Count > 0)
                     _selectedMembershipProductId = _membershipProducts[0].Id;
             }
@@ -928,10 +812,7 @@
     }
 
     // ── Event handlers ────────────────────────────────────────────────────────
-    private void SelectMembership(string productId)
-    {
-        _selectedMembershipProductId = productId;
-    }
+    private void SelectMembership(string productId) => _selectedMembershipProductId = productId;
 
     private void OnEmailInput(ChangeEventArgs e)
     {
@@ -956,53 +837,20 @@
         _billProvince = _province;
     }
 
-    private void OnHandleInput(ChangeEventArgs e)
-    {
-        var raw   = e.Value?.ToString() ?? string.Empty;
-        var clean = System.Text.RegularExpressions.Regex.Replace(raw.ToLowerInvariant(), "[^a-z0-9]", "");
-        _siteHandle = clean;
-        _slugTimer?.Dispose();
-
-        if (string.IsNullOrEmpty(clean)) { _slugStatusMsg = string.Empty; return; }
-
-        _slugStatusMsg   = "Checking…";
-        _slugStatusClass = string.Empty;
-
-        _slugTimer = new System.Threading.Timer(async _ =>
-        {
-            await InvokeAsync(async () =>
-            {
-                try
-                {
-                    var api  = HttpFactory.CreateClient("SignupsInternal");
-                    var resp = await api.PostAsJsonAsync("api/v1/signups/validate-replicate-site",
-                        new { ReplicateSiteSlug = clean });
-                    var b = await resp.Content.ReadFromJsonAsync<ApiWrapper<bool>>();
-                    if (b?.Success == true)
-                    { _slugStatusMsg = "✓ Available"; _slugStatusClass = "slug-ok"; }
-                    else
-                    { _slugStatusMsg = "Unavailable — try another"; _slugStatusClass = "slug-err"; }
-                }
-                catch { _slugStatusMsg = "Could not verify"; _slugStatusClass = "text-warning"; }
-                StateHasChanged();
-            });
-        }, null, 500, System.Threading.Timeout.Infinite);
-    }
-
-    private void OnPasswordInput(ChangeEventArgs e) => _password  = e.Value?.ToString() ?? string.Empty;
+    private void OnPasswordInput(ChangeEventArgs e)  => _password  = e.Value?.ToString() ?? string.Empty;
     private void OnPassword2Input(ChangeEventArgs e) => _password2 = e.Value?.ToString() ?? string.Empty;
 
     private void GeneratePassword()
     {
         const string pool = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*_+";
-        var rng = new Random();
+        var rng   = new Random();
         var chars = new char[14];
         chars[0] = "abcdefghijklmnopqrstuvwxyz"[rng.Next(26)];
         chars[1] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[rng.Next(26)];
         chars[2] = "0123456789"[rng.Next(10)];
         chars[3] = "!@#$%^&*_+"[rng.Next(10)];
         for (int i = 4; i < 14; i++) chars[i] = pool[rng.Next(pool.Length)];
-        var pwd = new string(chars.OrderBy(_ => rng.Next()).ToArray());
+        var pwd   = new string(chars.OrderBy(_ => rng.Next()).ToArray());
         _password  = pwd;
         _password2 = pwd;
     }
@@ -1074,8 +922,6 @@
             { _error = "Email addresses do not match."; return; }
         if (string.IsNullOrEmpty(_selectedMembershipProductId))
             { _error = "Please select a membership plan."; return; }
-        if (_dateOfBirth == default || _dateOfBirth > DateTime.Today.AddYears(-18))
-            { _error = "You must be at least 18 years old."; return; }
         if (string.IsNullOrWhiteSpace(_password))
             { _error = "Password is required."; return; }
         if (_password != _password2)
@@ -1089,25 +935,21 @@
                 ? null
                 : $"{_cellCountryCode}{_cellPhone}";
 
-            var r1 = await api.PostAsJsonAsync("api/v1/signups/ambassador", new
+            var r1 = await api.PostAsJsonAsync("api/v1/signups/member", new
             {
                 SponsorMemberId   = _sponsor?.MemberId ?? SponsorSlug,
                 FirstName         = _firstName,
                 LastName          = _lastName,
-                DateOfBirth       = _dateOfBirth,
                 Email             = _email,
                 Password          = _password,
                 ConfirmPassword   = _password2,
                 Phone             = phone,
                 WhatsApp          = string.IsNullOrWhiteSpace(_whatsApp) ? null : $"{_waCountryCode}{_whatsApp}",
-                BusinessName      = _showBusiness ? _businessName : null,
-                ShowBusinessName  = _showBusiness && !string.IsNullOrWhiteSpace(_businessName),
                 Country           = _country,
                 State             = _province,
                 City              = _city,
                 Address           = _address,
                 ZipCode           = _postalCode,
-                ReplicateSiteSlug = _siteHandle,
                 MembershipLevelId = _membershipProducts
                     .FirstOrDefault(p => p.Id == _selectedMembershipProductId)
                     ?.MembershipLevelId ?? 0
@@ -1121,14 +963,10 @@
             }
             _signupId = b1.Data.SignupId;
 
-            var productIds = new List<string>();
-            if (_enrollmentProduct is not null) productIds.Add(_enrollmentProduct.Id);
-            if (!string.IsNullOrEmpty(_selectedMembershipProductId)) productIds.Add(_selectedMembershipProductId);
-
-            if (productIds.Count > 0)
+            if (!string.IsNullOrEmpty(_selectedMembershipProductId))
             {
                 var r2 = await api.PostAsJsonAsync($"api/v1/signups/{_signupId}/select-products",
-                    new { ProductIds = productIds });
+                    new { ProductIds = new[] { _selectedMembershipProductId } });
                 var b2 = await r2.Content.ReadFromJsonAsync<ApiWrapper<bool>>();
                 if (b2?.Success != true)
                 { _error = b2?.Message ?? "Product selection failed."; return; }

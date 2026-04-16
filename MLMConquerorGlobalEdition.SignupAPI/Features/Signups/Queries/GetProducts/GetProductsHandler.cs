@@ -27,7 +27,16 @@ public class GetProductsHandler : IRequestHandler<GetProductsQuery, Result<IEnum
             ? "signup:products:all"
             : $"signup:products:{iso2}";
 
-        var cached = await _cache.GetAsync<List<ProductDto>>(cacheKey, ct);
+        List<ProductDto>? cached = null;
+        try
+        {
+            cached = await _cache.GetAsync<List<ProductDto>>(cacheKey, ct);
+        }
+        catch
+        {
+            // Cache unavailable — fall through to database
+        }
+
         if (cached is not null)
             return Result<IEnumerable<ProductDto>>.Success(cached);
 
@@ -62,38 +71,44 @@ public class GetProductsHandler : IRequestHandler<GetProductsQuery, Result<IEnum
                             Id                 = p.Id,
                             Name               = p.Name,
                             Description        = p.Description,
+                            ImageUrl           = p.ImageUrl,
+                            ThemeClass         = p.ThemeClass,
                             Price              = p.SetupFee > 0 ? p.SetupFee : p.MonthlyFee,
                             Sku                = p.OldSystemProductId > 0 ? p.OldSystemProductId.ToString() : null,
                             CorporateFee       = p.CorporateFee,
-                            JoinPageMembership = p.JoinPageMembership
+                            JoinPageMembership = p.JoinPageMembership,
+                            MembershipLevelId  = p.MembershipLevelId
                         })
                         .ToListAsync(ct);
 
-                    await _cache.SetAsync(cacheKey, products, Ttl, ct);
+                    try { await _cache.SetAsync(cacheKey, products, Ttl, ct); } catch { /* cache write is best-effort */ }
                     return Result<IEnumerable<ProductDto>>.Success(products);
                 }
                 // Country exists but has no mappings → fall through to default list
             }
         }
 
-        // Default: all active JoinPageMembership products
+        // Default: all active products shown on the join page (membership plans + corporate fee)
         products = await _db.Products
             .AsNoTracking()
-            .Where(p => p.IsActive && !p.IsDeleted && p.JoinPageMembership)
+            .Where(p => p.IsActive && !p.IsDeleted && (p.JoinPageMembership || p.CorporateFee))
             .OrderBy(p => p.Name)
             .Select(p => new ProductDto
             {
                 Id                 = p.Id,
                 Name               = p.Name,
                 Description        = p.Description,
+                ImageUrl           = p.ImageUrl,
+                ThemeClass         = p.ThemeClass,
                 Price              = p.SetupFee > 0 ? p.SetupFee : p.MonthlyFee,
                 Sku                = p.OldSystemProductId > 0 ? p.OldSystemProductId.ToString() : null,
                 CorporateFee       = p.CorporateFee,
-                JoinPageMembership = p.JoinPageMembership
+                JoinPageMembership = p.JoinPageMembership,
+                MembershipLevelId  = p.MembershipLevelId
             })
             .ToListAsync(ct);
 
-        await _cache.SetAsync(cacheKey, products, Ttl, ct);
+        try { await _cache.SetAsync(cacheKey, products, Ttl, ct); } catch { /* cache write is best-effort */ }
         return Result<IEnumerable<ProductDto>>.Success(products);
     }
 }

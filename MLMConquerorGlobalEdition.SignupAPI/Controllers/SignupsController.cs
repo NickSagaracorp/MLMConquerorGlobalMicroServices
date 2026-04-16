@@ -100,6 +100,8 @@ public class SignupsController : ControllerBase
         CancellationToken ct = default)
     {
         var result = await _mediator.Send(new GetProductsQuery(countryIso2), ct);
+        if (!result.IsSuccess)
+            return StatusCode(500, ApiResponse<IEnumerable<ProductDto>>.Fail(result.ErrorCode!, result.Error!));
         return Ok(ApiResponse<IEnumerable<ProductDto>>.Ok(result.Value!));
     }
 

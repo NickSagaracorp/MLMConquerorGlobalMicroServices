@@ -1,10 +1,12 @@
 using System.Security.Cryptography;
+using System.Text.Json.Serialization;
 using Amazon.S3;
 using AspNetCoreRateLimit;
 using Hangfire;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -107,7 +109,25 @@ builder.Services.AddHangfireServer(options =>
 });
 
 // Controllers only — no Blazor
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(opts =>
+        opts.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+// Return ApiResponse<T> on model-binding failures instead of ValidationProblemDetails
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = ctx =>
+    {
+        var errors = ctx.ModelState.Values
+            .SelectMany(v => v.Errors)
+            .Select(e => e.ErrorMessage)
+            .ToArray();
+        var response = MLMConquerorGlobalEdition.SharedKernel.ApiResponse<object>
+            .Fail("VALIDATION_ERROR", string.Join("; ", errors));
+        response.Errors = errors;
+        return new BadRequestObjectResult(response);
+    };
+});
 
 // CORS — allow Signups frontend origin
 builder.Services.AddCors(options =>
@@ -203,6 +223,7 @@ using (var scope = app.Services.CreateScope())
     await RolesSeeder.SeedAsync(roleManager, seedLogger);
     await RootAmbassadorSeeder.SeedAsync(db, userManager, config, seedLogger);
     await CountriesSeeder.SeedAsync(db, seedLogger);
+    await ProductsSeeder.SeedAsync(db, seedLogger);
 }
 
 app.UseStaticFiles();

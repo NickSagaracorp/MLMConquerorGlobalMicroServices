@@ -11,7 +11,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveWebAssemblyComponents();
 
 // HTTP client to call SignupAPI
-builder.Services.AddHttpClient("SignupAPI", client =>
+builder.Services.AddHttpClient("SignupsInternal", client =>
 {
     client.BaseAddress = new Uri(
         builder.Configuration["SignupApiBaseUrl"] ?? "https://localhost:7148");

@@ -9,17 +9,21 @@ public class S3FileService : IS3FileService
     private readonly string _bucketName;
     private readonly string _bucketRegion;
 
+    private readonly bool _isConfigured;
+
     public S3FileService(IAmazonS3 s3, IConfiguration configuration)
     {
         _s3 = s3;
-        _bucketName = configuration["AWS:S3:BucketName"]
-            ?? throw new InvalidOperationException("AWS:S3:BucketName is not configured.");
-        _bucketRegion = configuration["AWS:S3:Region"]
-            ?? throw new InvalidOperationException("AWS:S3:Region is not configured.");
+        _bucketName   = configuration["AWS:S3:BucketName"] ?? string.Empty;
+        _bucketRegion = configuration["AWS:S3:Region"]     ?? "us-east-1";
+        _isConfigured = !string.IsNullOrEmpty(_bucketName);
     }
 
     public async Task<string> UploadAsync(string key, Stream content, string contentType, CancellationToken ct = default)
     {
+        if (!_isConfigured)
+            return string.Empty;   // S3 not wired — skip upload in dev/local environments
+
         var request = new PutObjectRequest
         {
             BucketName = _bucketName,
