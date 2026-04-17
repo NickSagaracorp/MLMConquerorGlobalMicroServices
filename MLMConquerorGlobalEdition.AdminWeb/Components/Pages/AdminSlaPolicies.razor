@@ -2,6 +2,7 @@
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin,SupportManager,IT")]
 @inject IHttpClientFactory HttpClientFactory
+@using Syncfusion.Blazor.RichTextEditor
 
 <PageTitle>SLA Policies — Admin</PageTitle>
 
@@ -118,7 +119,9 @@
                         </div>
                         <div class="col-12">
                             <label class="form-label fw-semibold">Description</label>
-                            <textarea class="form-control" rows="2" @bind="_form.Description" placeholder="Optional description…"></textarea>
+                            <SfRichTextEditor @bind-Value="_form.Description" Height="200" Placeholder="Optional description…">
+                                <RichTextEditorToolbarSettings Items="@_rteToolbar" />
+                            </SfRichTextEditor>
                         </div>
 
                         <div class="col-12"><hr class="mt-1 mb-0" /><p class="fw-semibold mt-2 mb-1 text-primary">First Response Time (minutes)</p></div>
@@ -220,6 +223,24 @@
 }
 
 @code {
+    private static readonly List<ToolbarItemModel> _rteToolbar = new()
+    {
+        new() { Command = ToolbarCommand.Bold },
+        new() { Command = ToolbarCommand.Italic },
+        new() { Command = ToolbarCommand.Underline },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.Formats },
+        new() { Command = ToolbarCommand.Alignments },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.OrderedList },
+        new() { Command = ToolbarCommand.UnorderedList },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.CreateLink },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.Undo },
+        new() { Command = ToolbarCommand.Redo }
+    };
+
     private List<SlaPolicyDto> _items = new();
     private bool _loading = true;
     private bool _saving;

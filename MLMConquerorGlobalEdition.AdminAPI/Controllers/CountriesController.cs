@@ -27,6 +27,7 @@ public class CountriesController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll(
         [FromQuery] bool? isActive = null,
+        [FromQuery] int? regionId = null,
         [FromQuery] PagedRequest? request = null,
         CancellationToken ct = default)
     {
@@ -36,6 +37,11 @@ public class CountriesController : ControllerBase
         if (isActive.HasValue)
             query = query.Where(x => x.IsActive == isActive.Value);
 
+        if (regionId.HasValue)
+            query = regionId.Value == 0
+                ? query.Where(x => x.RegionId == null)          // unassigned
+                : query.Where(x => x.RegionId == regionId.Value);
+
         var total = await query.CountAsync(ct);
         var items = await query
             .OrderBy(x => x.SortOrder).ThenBy(x => x.NameEn)
@@ -44,7 +50,8 @@ public class CountriesController : ControllerBase
             .Select(x => new CountryDto(
                 x.Id, x.Iso2, x.Iso3, x.NameEn, x.NameNative,
                 x.DefaultLanguageCode, x.FlagEmoji, x.PhoneCode,
-                x.IsActive, x.SortOrder))
+                x.IsActive, x.SortOrder, x.RegionId,
+                x.Region != null ? x.Region.Name : null))
             .ToListAsync(ct);
 
         return Ok(ApiResponse<PagedResult<CountryDto>>.Ok(new PagedResult<CountryDto>
@@ -58,6 +65,7 @@ public class CountriesController : ControllerBase
     public async Task<IActionResult> GetById(int id, CancellationToken ct = default)
     {
         var entity = await _db.Countries.AsNoTracking()
+            .Include(x => x.Region)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
 
         if (entity is null)
@@ -164,15 +172,19 @@ public class CountriesController : ControllerBase
         if (!countryExists)
             return NotFound(ApiResponse<object>.Fail("COUNTRY_NOT_FOUND", $"Country '{id}' not found."));
 
-        var mappings = await _db.CountryProducts
+        var raw = await _db.CountryProducts
             .AsNoTracking()
             .Where(cp => cp.CountryId == id)
             .Join(_db.Products.AsNoTracking(),
                 cp => cp.ProductId,
                 p  => p.Id,
-                (cp, p) => new CountryProductDto(cp.Id, p.Id, p.Name, cp.IsActive))
+                (cp, p) => new { cp.Id, ProductId = cp.ProductId, ProductName = p.Name, cp.IsActive })
             .OrderBy(x => x.ProductName)
             .ToListAsync(ct);
+
+        var mappings = raw
+            .Select(x => new CountryProductDto(x.Id, x.ProductId, x.ProductName, x.IsActive))
+            .ToList();
 
         return Ok(ApiResponse<IEnumerable<CountryProductDto>>.Ok(mappings));
     }
@@ -287,24 +299,53 @@ public class CountriesController : ControllerBase
         return Ok(ApiResponse<object>.Ok(new { countryId = id, productId, removed = true }));
     }
 
+    // ── Country → Region assignment ───────────────────────────────────────
+
+    [HttpPatch("{id:int}/region")]
+    public async Task<IActionResult> AssignRegion(
+        int id, [FromBody] AssignRegionRequest request, CancellationToken ct = default)
+    {
+        var entity = await _db.Countries.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (entity is null)
+            return NotFound(ApiResponse<object>.Fail("COUNTRY_NOT_FOUND", $"Country '{id}' not found."));
+
+        if (request.RegionId.HasValue)
+        {
+            var regionExists = await _db.Regions.AnyAsync(x => x.Id == request.RegionId.Value, ct);
+            if (!regionExists)
+                return NotFound(ApiResponse<object>.Fail("REGION_NOT_FOUND", $"Region '{request.RegionId}' not found."));
+        }
+
+        entity.RegionId       = request.RegionId;
+        entity.LastUpdateBy   = User.Identity?.Name ?? "admin";
+        entity.LastUpdateDate = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(ct);
+        await _cache.RemoveAsync(CacheKey, ct);
+
+        return Ok(ApiResponse<object>.Ok(new { id, regionId = entity.RegionId }));
+    }
+
     // ── Private helpers ────────────────────────────────────────────────────
 
     private static CountryDto ToDto(Country x) => new(
         x.Id, x.Iso2, x.Iso3, x.NameEn, x.NameNative,
         x.DefaultLanguageCode, x.FlagEmoji, x.PhoneCode,
-        x.IsActive, x.SortOrder);
+        x.IsActive, x.SortOrder, x.RegionId, x.Region?.Name);
 
     // ── DTOs ──────────────────────────────────────────────────────────────
 
     public record CountryDto(
         int Id, string Iso2, string Iso3, string NameEn, string NameNative,
         string DefaultLanguageCode, string FlagEmoji, string? PhoneCode,
-        bool IsActive, int SortOrder);
+        bool IsActive, int SortOrder, int? RegionId, string? RegionName);
 
     public record CountryFormDto(
         string Iso2, string Iso3, string NameEn, string NameNative,
         string DefaultLanguageCode, string FlagEmoji, string? PhoneCode,
         bool IsActive, int SortOrder);
+
+    public record AssignRegionRequest(int? RegionId);
 
     public record CountryProductDto(int MappingId, string ProductId, string ProductName, bool IsActive);
 

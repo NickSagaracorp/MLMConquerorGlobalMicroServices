@@ -1,0 +1,600 @@
+@page "/admin/config/countries"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+<PageTitle>Countries — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Configuration", "/admin/config/products"), new("Countries") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-earth-line me-2 text-primary"></i>Countries
+        </h6>
+        <button class="btn btn-primary btn-sm" @onclick="OpenCreate">
+            <i class="ri-add-line me-1"></i>New Country
+        </button>
+    </div>
+
+    @* ── Active/Inactive filter bar ── *@
+    <div class="card-header border-top-0 pt-0 pb-2 d-flex gap-2">
+        <button class="btn btn-sm @(_activeFilter == null ? "btn-dark" : "btn-outline-secondary")"
+                @onclick="() => SetFilter(null)">All</button>
+        <button class="btn btn-sm @(_activeFilter == true ? "btn-success" : "btn-outline-success")"
+                @onclick="() => SetFilter(true)">Active Only</button>
+        <button class="btn btn-sm @(_activeFilter == false ? "btn-secondary" : "btn-outline-secondary")"
+                @onclick="() => SetFilter(false)">Inactive Only</button>
+    </div>
+
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="CountryDto" DataSource="@_items"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true"
+                    GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="50" PageSizes="@(new int[] { 50, 100, 250, 500 })" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+
+                    <GridColumn HeaderText="Flag" Width="60" TextAlign="TextAlign.Center" AllowFiltering="false" AllowSorting="false">
+                        <Template>
+                            <span style="font-size:1.35rem;">@(((CountryDto)context).FlagEmoji)</span>
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn Field="@nameof(CountryDto.Iso2)" HeaderText="ISO2" Width="80" TextAlign="TextAlign.Center" />
+
+                    <GridColumn Field="@nameof(CountryDto.Iso3)" HeaderText="ISO3" Width="80" TextAlign="TextAlign.Center" />
+
+                    <GridColumn Field="@nameof(CountryDto.NameEn)" HeaderText="Name" Width="200" />
+
+                    <GridColumn Field="@nameof(CountryDto.NameNative)" HeaderText="Native Name" Width="160" />
+
+                    <GridColumn Field="@nameof(CountryDto.PhoneCode)" HeaderText="Phone Code" Width="110" TextAlign="TextAlign.Center">
+                        <Template>
+                            <span class="text-muted small">@(((CountryDto)context).PhoneCode ?? "—")</span>
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Region" Width="150" AllowSorting="true" AllowFiltering="true">
+                        <Template>
+                            @{
+                                var c = (CountryDto)context;
+                                if (c.RegionName is not null)
+                                {
+                                    <span class="badge bg-info-subtle text-info fw-semibold">
+                                        <i class="ri-map-2-line me-1"></i>@c.RegionName
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">— unassigned —</span>
+                                }
+                            }
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Status" Width="110" TextAlign="TextAlign.Center">
+                        <Template>
+                            <span class="badge @ActiveBadge(((CountryDto)context).IsActive)">
+                                @(((CountryDto)context).IsActive ? "Active" : "Inactive")
+                            </span>
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Actions" Width="160" TextAlign="TextAlign.Center" AllowFiltering="false" AllowSorting="false">
+                        <Template>
+                            @{
+                                var c = (CountryDto)context;
+                            }
+                            <button class="btn btn-sm btn-outline-info py-0 me-1"
+                                    title="Product Mappings"
+                                    @onclick="() => OpenProducts(c)">
+                                <i class="ri-price-tag-3-line"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary py-0 me-1"
+                                    title="Edit"
+                                    @onclick="() => OpenEdit(c)">
+                                <i class="ri-edit-line"></i>
+                            </button>
+                            <button class="btn btn-sm @(c.IsActive ? "btn-outline-warning" : "btn-outline-success") py-0"
+                                    title="@(c.IsActive ? "Deactivate" : "Activate")"
+                                    @onclick="() => ToggleActive(c)"
+                                    disabled="@_toggling">
+                                <i class="@(c.IsActive ? "ri-toggle-line" : "ri-toggle-fill")"></i>
+                            </button>
+                        </Template>
+                    </GridColumn>
+
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+@* ══════════════════════════════════════════════ *@
+@* Create / Edit Modal                           *@
+@* ══════════════════════════════════════════════ *@
+
+@if (_showForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">
+                        @(_editId is null ? "New Country" : "Edit Country")
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseForm"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold">ISO2 <span class="text-danger">*</span></label>
+                            <input class="form-control text-uppercase"
+                                   maxlength="2"
+                                   placeholder="US"
+                                   value="@_form.Iso2"
+                                   @oninput="e => _form.Iso2 = ((string?)e.Value ?? string.Empty).ToUpperInvariant()" />
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold">ISO3 <span class="text-danger">*</span></label>
+                            <input class="form-control text-uppercase"
+                                   maxlength="3"
+                                   placeholder="USA"
+                                   value="@_form.Iso3"
+                                   @oninput="e => _form.Iso3 = ((string?)e.Value ?? string.Empty).ToUpperInvariant()" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Name (EN) <span class="text-danger">*</span></label>
+                            <input class="form-control" @bind="_form.NameEn" placeholder="United States" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Native Name <span class="text-danger">*</span></label>
+                            <input class="form-control" @bind="_form.NameNative" placeholder="United States" />
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Default Language Code <span class="text-danger">*</span></label>
+                            <input class="form-control" @bind="_form.DefaultLanguageCode" placeholder="en" />
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Flag Emoji</label>
+                            <input class="form-control" @bind="_form.FlagEmoji" placeholder="🇺🇸" />
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Phone Code</label>
+                            <input class="form-control" @bind="_form.PhoneCode" placeholder="+1" />
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Sort Order</label>
+                            <input class="form-control" type="number" @bind="_form.SortOrder" />
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">
+                                <i class="ri-map-2-line me-1 text-info"></i>Billing Region
+                            </label>
+                            <select class="form-select"
+                                    value="@(_form.RegionId?.ToString() ?? "")"
+                                    @onchange="e => _form.RegionId = string.IsNullOrEmpty(e.Value?.ToString()) ? null : int.Parse(e.Value.ToString()!)">
+                                <option value="">— None / Unassigned —</option>
+                                @foreach (var r in _regions)
+                                {
+                                    <option value="@r.Id">@r.Name (@r.Code)</option>
+                                }
+                            </select>
+                            <div class="form-text">Links this country to a billing region for payment gateway routing.</div>
+                        </div>
+
+                        <div class="col-12 mt-1">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="chkIsActive" @bind="_form.IsActive" />
+                                <label class="form-check-label" for="chkIsActive">Active</label>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                    <button class="btn btn-primary" @onclick="Save" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        @(_editId is null ? "Create" : "Save Changes")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ══════════════════════════════════════════════ *@
+@* Product Mappings Modal                        *@
+@* ══════════════════════════════════════════════ *@
+
+@if (_showProducts)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">
+                        <i class="ri-price-tag-3-line me-2 text-info"></i>
+                        Products for @_productsCountry?.NameEn (@_productsCountry?.Iso2)
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseProducts"></button>
+                </div>
+                <div class="modal-body">
+                    @if (_loadingProducts)
+                    {
+                        <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+                    }
+                    else if (_allProducts.Count == 0)
+                    {
+                        <p class="text-muted text-center py-3">No products available.</p>
+                    }
+                    else
+                    {
+                        <p class="text-muted small mb-3">
+                            Select which products are available for signup in this country.
+                        </p>
+                        <div class="row g-2">
+                            @foreach (var p in _allProducts)
+                            {
+                                <div class="col-md-6">
+                                    <div class="form-check border rounded px-3 py-2">
+                                        <input class="form-check-input"
+                                               type="checkbox"
+                                               id="prod_@p.Id"
+                                               checked="@_selectedProductIds.Contains(p.Id)"
+                                               @onchange="e => ToggleProductSelection(p.Id, (bool)(e.Value ?? false))" />
+                                        <label class="form-check-label w-100" for="prod_@p.Id">
+                                            <span class="fw-semibold">@p.Name</span>
+                                            <span class="d-block text-muted small mt-1">
+                                                @if (p.JoinPageMembership) { <span class="badge bg-info text-dark me-1">Membership</span> }
+                                                @if (p.CorporateFee) { <span class="badge bg-warning text-dark me-1">Corporate Fee</span> }
+                                                @if (!p.IsActive) { <span class="badge bg-secondary">Inactive</span> }
+                                            </span>
+                                        </label>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseProducts">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SaveProductMappings" disabled="@_savingProducts">
+                        @if (_savingProducts) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Save Mappings
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+
+    // ── State ────────────────────────────────────────────────────────────────
+    private List<CountryDto> _items = new();
+    private List<RegionOption> _regions = new();
+    private bool _loading = true;
+    private bool _saving;
+    private bool _toggling;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private bool? _activeFilter = null;
+
+    // ── Create / Edit form ───────────────────────────────────────────────────
+    private bool _showForm;
+    private int? _editId;
+    private int? _originalRegionId;
+    private CountryFormModel _form = new();
+
+    // ── Product mappings modal ───────────────────────────────────────────────
+    private bool _showProducts;
+    private bool _loadingProducts;
+    private bool _savingProducts;
+    private CountryDto? _productsCountry;
+    private List<ProductDto> _allProducts = new();
+    private HashSet<string> _selectedProductIds = new();
+
+    // ── Lifecycle ────────────────────────────────────────────────────────────
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(LoadAsync(), LoadRegionsAsync());
+    }
+
+    // ── Load countries ────────────────────────────────────────────────────────
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+        try
+        {
+            var url = _activeFilter.HasValue
+                ? $"api/v1/admin/countries?pageSize=500&isActive={_activeFilter.Value.ToString().ToLowerInvariant()}"
+                : "api/v1/admin/countries?pageSize=500";
+
+            var resp = await Http.GetFromJsonAsync<ApiResp<PagedResult<CountryDto>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+                _items = resp.Data.Items.ToList();
+        }
+        catch (Exception ex) { ShowAlert($"Error loading countries: {ex.Message}", isError: true); }
+        finally { _loading = false; }
+    }
+
+    // ── Load regions (for dropdown) ──────────────────────────────────────────
+    private async Task LoadRegionsAsync()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<IEnumerable<RegionOption>>>("api/v1/admin/regions?isActive=true");
+            if (resp?.Success == true && resp.Data is not null)
+                _regions = resp.Data.ToList();
+        }
+        catch { /* non-critical — dropdown will just be empty */ }
+    }
+
+    // ── Filter bar ───────────────────────────────────────────────────────────
+    private async Task SetFilter(bool? value)
+    {
+        _activeFilter = value;
+        await LoadAsync();
+    }
+
+    // ── Create / Edit modal ──────────────────────────────────────────────────
+    private void OpenCreate()
+    {
+        _editId = null;
+        _originalRegionId = null;
+        _form = new CountryFormModel { IsActive = true, SortOrder = 0 };
+        _showForm = true;
+    }
+
+    private void OpenEdit(CountryDto c)
+    {
+        _editId = c.Id;
+        _originalRegionId = c.RegionId;
+        _form = new CountryFormModel
+        {
+            Iso2 = c.Iso2,
+            Iso3 = c.Iso3,
+            NameEn = c.NameEn,
+            NameNative = c.NameNative,
+            DefaultLanguageCode = c.DefaultLanguageCode,
+            FlagEmoji = c.FlagEmoji,
+            PhoneCode = c.PhoneCode,
+            IsActive = c.IsActive,
+            SortOrder = c.SortOrder,
+            RegionId = c.RegionId
+        };
+        _showForm = true;
+    }
+
+    private void CloseForm() { _showForm = false; _editId = null; }
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(_form.Iso2) || _form.Iso2.Length != 2)
+        { ShowAlert("ISO2 must be exactly 2 characters.", isError: true); return; }
+
+        if (string.IsNullOrWhiteSpace(_form.Iso3) || _form.Iso3.Length != 3)
+        { ShowAlert("ISO3 must be exactly 3 characters.", isError: true); return; }
+
+        if (string.IsNullOrWhiteSpace(_form.NameEn))
+        { ShowAlert("Name (EN) is required.", isError: true); return; }
+
+        if (string.IsNullOrWhiteSpace(_form.NameNative))
+        { ShowAlert("Native Name is required.", isError: true); return; }
+
+        if (string.IsNullOrWhiteSpace(_form.DefaultLanguageCode))
+        { ShowAlert("Default Language Code is required.", isError: true); return; }
+
+        _saving = true;
+        try
+        {
+            HttpResponseMessage response;
+            int savedId;
+
+            if (_editId is null)
+            {
+                response = await Http.PostAsJsonAsync("api/v1/admin/countries", new
+                {
+                    _form.Iso2, _form.Iso3, _form.NameEn, _form.NameNative,
+                    _form.DefaultLanguageCode, _form.FlagEmoji, _form.PhoneCode,
+                    _form.IsActive, _form.SortOrder
+                });
+
+                if (!response.IsSuccessStatusCode)
+                { ShowAlert($"Save failed ({response.StatusCode}).", isError: true); return; }
+
+                var created = await response.Content.ReadFromJsonAsync<ApiResp<CountryDto>>();
+                savedId = created?.Data?.Id ?? 0;
+            }
+            else
+            {
+                response = await Http.PutAsJsonAsync($"api/v1/admin/countries/{_editId}", new
+                {
+                    _form.Iso2, _form.Iso3, _form.NameEn, _form.NameNative,
+                    _form.DefaultLanguageCode, _form.FlagEmoji, _form.PhoneCode,
+                    _form.IsActive, _form.SortOrder
+                });
+
+                if (!response.IsSuccessStatusCode)
+                { ShowAlert($"Save failed ({response.StatusCode}).", isError: true); return; }
+
+                savedId = _editId.Value;
+            }
+
+            // Assign / update region if it changed
+            if (savedId > 0 && _form.RegionId != _originalRegionId)
+            {
+                await Http.PatchAsJsonAsync(
+                    $"api/v1/admin/countries/{savedId}/region",
+                    new { regionId = _form.RegionId });
+            }
+
+            ShowAlert(_editId is null ? "Country created successfully." : "Country updated successfully.", isError: false);
+            CloseForm();
+            await LoadAsync();
+        }
+        catch (Exception ex) { ShowAlert($"Error: {ex.Message}", isError: true); }
+        finally { _saving = false; }
+    }
+
+    // ── Toggle Active ────────────────────────────────────────────────────────
+    private async Task ToggleActive(CountryDto c)
+    {
+        _toggling = true;
+        try
+        {
+            var request = new HttpRequestMessage(HttpMethod.Patch, $"api/v1/admin/countries/{c.Id}/toggle-active");
+            var response = await Http.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                ShowAlert($"{c.NameEn} {(c.IsActive ? "deactivated" : "activated")} successfully.", isError: false);
+                await LoadAsync();
+            }
+            else
+            {
+                ShowAlert($"Toggle failed ({response.StatusCode}).", isError: true);
+            }
+        }
+        catch (Exception ex) { ShowAlert($"Error: {ex.Message}", isError: true); }
+        finally { _toggling = false; }
+    }
+
+    // ── Product Mappings modal ────────────────────────────────────────────────
+    private async Task OpenProducts(CountryDto c)
+    {
+        _productsCountry = c;
+        _showProducts = true;
+        _loadingProducts = true;
+        _selectedProductIds = new HashSet<string>();
+        StateHasChanged();
+
+        try
+        {
+            var productsTask = Http.GetFromJsonAsync<ApiResp<PagedResult<ProductDto>>>("api/v1/admin/products?pageSize=100");
+            var mappingsTask = Http.GetFromJsonAsync<ApiResp<IEnumerable<CountryProductDto>>>($"api/v1/admin/countries/{c.Id}/products");
+
+            await Task.WhenAll(productsTask, mappingsTask);
+
+            var productsResp = await productsTask;
+            var mappingsResp = await mappingsTask;
+
+            _allProducts = productsResp?.Success == true && productsResp.Data is not null
+                ? productsResp.Data.Items
+                    .Where(p => p.JoinPageMembership || p.CorporateFee)
+                    .ToList()
+                : new List<ProductDto>();
+
+            if (mappingsResp?.Success == true && mappingsResp.Data is not null)
+                _selectedProductIds = mappingsResp.Data.Select(m => m.ProductId).ToHashSet();
+        }
+        catch (Exception ex) { ShowAlert($"Error loading products: {ex.Message}", isError: true); _showProducts = false; }
+        finally { _loadingProducts = false; }
+    }
+
+    private void CloseProducts()
+    {
+        _showProducts = false;
+        _productsCountry = null;
+        _allProducts = new();
+        _selectedProductIds = new();
+    }
+
+    private void ToggleProductSelection(string productId, bool selected)
+    {
+        if (selected) _selectedProductIds.Add(productId);
+        else _selectedProductIds.Remove(productId);
+    }
+
+    private async Task SaveProductMappings()
+    {
+        if (_productsCountry is null) return;
+        _savingProducts = true;
+        try
+        {
+            var response = await Http.PutAsJsonAsync(
+                $"api/v1/admin/countries/{_productsCountry.Id}/products",
+                new { productIds = _selectedProductIds.ToArray() }
+            );
+
+            if (response.IsSuccessStatusCode)
+            {
+                ShowAlert($"Product mappings for {_productsCountry.NameEn} saved.", isError: false);
+                CloseProducts();
+            }
+            else
+            {
+                ShowAlert($"Save failed ({response.StatusCode}).", isError: true);
+            }
+        }
+        catch (Exception ex) { ShowAlert($"Error: {ex.Message}", isError: true); }
+        finally { _savingProducts = false; }
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    private void ShowAlert(string message, bool isError)
+    {
+        _alertMsg = message;
+        _alertIsError = isError;
+    }
+
+    private static string ActiveBadge(bool isActive) => isActive ? "bg-success" : "bg-secondary";
+
+    // ── Form model ───────────────────────────────────────────────────────────
+    private class CountryFormModel
+    {
+        public string Iso2 { get; set; } = string.Empty;
+        public string Iso3 { get; set; } = string.Empty;
+        public string NameEn { get; set; } = string.Empty;
+        public string NameNative { get; set; } = string.Empty;
+        public string DefaultLanguageCode { get; set; } = string.Empty;
+        public string FlagEmoji { get; set; } = string.Empty;
+        public string? PhoneCode { get; set; }
+        public bool IsActive { get; set; } = true;
+        public int SortOrder { get; set; }
+        public int? RegionId { get; set; }
+    }
+
+    // ── DTOs ─────────────────────────────────────────────────────────────────
+    private record CountryDto(
+        int Id, string Iso2, string Iso3, string NameEn, string NameNative,
+        string DefaultLanguageCode, string FlagEmoji, string? PhoneCode,
+        bool IsActive, int SortOrder, int? RegionId, string? RegionName);
+
+    private record RegionOption(int Id, string Name, string Code);
+
+    private record CountryProductDto(int MappingId, string ProductId, string ProductName, bool IsActive);
+
+    private record ProductDto(string Id, string Name, bool IsActive, bool JoinPageMembership, bool CorporateFee);
+
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+
+    private record PagedResult<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize);
+}

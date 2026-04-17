@@ -267,6 +267,39 @@ public class GetCeoDashboardHandler : IRequestHandler<GetCeoDashboardQuery, Resu
             .Select(x => new MembersByCountryItem(x.CountryName!, x.ActiveCount))
             .ToList();
 
+        // Members grouped by billing region (via MemberProfile.Country → Countries.NameEn → Countries.RegionId)
+        var membersByRegionRaw = await (
+            from m in _db.MemberProfiles.AsNoTracking()
+            join c in _db.Countries.AsNoTracking() on m.Country equals c.NameEn
+            where !m.IsDeleted && m.Status == MemberAccountStatus.Active
+            group m by c.RegionId into g
+            select new { RegionId = g.Key, Count = g.Count() }
+        ).ToListAsync(ct);
+
+        var allRegions = await _db.Regions
+            .AsNoTracking()
+            .OrderBy(r => r.SortOrder).ThenBy(r => r.Name)
+            .Select(r => new { r.Id, r.Name, r.Code, CountryCount = r.Countries.Count(c => c.IsActive) })
+            .ToListAsync(ct);
+
+        var regionCountLookup = membersByRegionRaw
+            .Where(x => x.RegionId.HasValue)
+            .ToDictionary(x => x.RegionId!.Value, x => x.Count);
+
+        var membersInRegions = regionCountLookup.Values.Sum();
+        var unassignedRegionCount = activeMembers - membersInRegions;
+
+        var membersByRegion = allRegions
+            .Select(r => new MembersByRegionItem(
+                r.Name, r.Code,
+                regionCountLookup.TryGetValue(r.Id, out var rc) ? rc : 0,
+                r.CountryCount))
+            .OrderByDescending(x => x.ActiveCount)
+            .ToList();
+
+        if (unassignedRegionCount > 0)
+            membersByRegion.Add(new MembersByRegionItem("Unassigned", null, unassignedRegionCount, 0));
+
         var membershipBreakdown = await (
             from s in _db.MembershipSubscriptions.AsNoTracking()
             join ml in _db.MembershipLevels.AsNoTracking() on s.MembershipLevelId equals ml.Id
@@ -314,6 +347,7 @@ public class GetCeoDashboardHandler : IRequestHandler<GetCeoDashboardQuery, Resu
             AmbassadorsByLevel       = ambassadorsByLevel,
             MonthlySignups           = monthlySignups,
             MembersByCountry         = membersByCountry,
+            MembersByRegion          = membersByRegion,
             LastBillingRun           = lastBillingRun,
         };
 

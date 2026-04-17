@@ -174,6 +174,7 @@ using (var scope = app.Services.CreateScope())
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     await db.Database.MigrateAsync();
     await CompanyInfoSeeder.SeedAsync(db, logger);
+    await CountryProductDefaultSeeder.SeedAsync(db, logger);
 }
 
 if (!app.Environment.IsDevelopment())

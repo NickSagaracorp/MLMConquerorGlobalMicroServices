@@ -13,4 +13,7 @@ public class Country : AuditChangesIntKey
     public string? PhoneCode { get; set; }
     public bool IsActive { get; set; } = false;
     public int SortOrder { get; set; } = 0;
+
+    public int? RegionId { get; set; }
+    public Region? Region { get; set; }
 }

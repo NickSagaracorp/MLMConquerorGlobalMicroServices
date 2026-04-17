@@ -93,7 +93,7 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
                 MembershipLevelId  = 2,
                 OldSystemProductId = 2,
                 ThemeClass   = "theme-product-vip",
-                CorporateFee = false, JoinPageMembership = false,
+                CorporateFee = false, JoinPageMembership = true,
                 IsActive = true, IsDeleted = false,
                 CreationDate = SeedDate, CreatedBy = "seed",
                 LastUpdateDate = SeedDate

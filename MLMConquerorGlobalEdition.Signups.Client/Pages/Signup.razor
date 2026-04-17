@@ -11,9 +11,21 @@
 <header class="enroll-header py-2 px-3">
     <div class="container d-flex align-items-center justify-content-between flex-wrap gap-2">
         <span class="brand-name">MLM Conqueror</span>
-        <div class="d-flex align-items-center gap-1 secure-badge">
-            <span>Secure Enrollment</span>
-            <i class="ri-lock-2-line fs-5"></i>
+        <div class="d-flex align-items-center gap-2">
+            @if (!string.IsNullOrEmpty(_country))
+            {
+                <button type="button" class="btn btn-sm btn-outline-light d-flex align-items-center gap-1"
+                        @onclick="() => { _showCountryModal = true; _countrySearch = string.Empty; }"
+                        style="font-size:0.8rem;">
+                    <span>@(_countryData.FirstOrDefault(x => x.NameEn == _country)?.FlagEmoji ?? "🌐")</span>
+                    <span>@_country</span>
+                    <i class="ri-arrow-down-s-line"></i>
+                </button>
+            }
+            <div class="d-flex align-items-center gap-1 secure-badge">
+                <span>Secure Enrollment</span>
+                <i class="ri-lock-2-line fs-5"></i>
+            </div>
         </div>
     </div>
 </header>
@@ -67,6 +79,17 @@
             </div>
         }
         else
+        {
+        @if (_productsLoading)
+        {
+            <div class="section-card">
+                <div class="section-body text-center py-5">
+                    <div class="spinner-border text-primary mb-3"></div>
+                    <p class="text-muted">Loading available plans for @_country…</p>
+                </div>
+            </div>
+        }
+        else if (_productsLoaded)
         {
 
         <!-- ── ENROLLMENT ─────────────────────────────────────────────────── -->
@@ -153,6 +176,13 @@
                         </div>
                     </label>
                 }
+                <!-- No-membership option -->
+                <div class="text-center mt-3">
+                    <button type="button" class="btn btn-link btn-sm text-muted"
+                            @onclick="() => _showNoMemberModal = true">
+                        Continue without a membership plan
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -242,24 +272,86 @@
                     <div class="col-md-6">
                         <label class="form-label text-secondary small">WhatsApp</label>
                         <div class="input-group country-line">
-                            <select class="form-select country-code" @bind="_waCountryCode">
-                                @foreach (var c in _countryCodes)
+                            <div class="phone-picker">
+                                @{ var waCt = _countryData.FirstOrDefault(x => x.PhoneCode == _waCountryCode); }
+                                <button type="button" class="phone-picker-btn"
+                                        @onclick="() => { _showWaPicker = !_showWaPicker; _waPickerSearch = string.Empty; _showCellPicker = false; }">
+                                    <img class="phone-picker-flag"
+                                         src="https://flagcdn.com/w40/@((waCt?.Iso2 ?? "us").ToLower()).png"
+                                         alt="@(waCt?.Iso2 ?? "")"
+                                         onerror="this.style.display='none'" />
+                                    <span>@_waCountryCode</span>
+                                    <i class="ri-arrow-down-s-line"></i>
+                                </button>
+                                @if (_showWaPicker)
                                 {
-                                    <option value="@c.Code">@c.Flag @c.Code</option>
+                                    <div class="phone-picker-dropdown">
+                                        <input class="phone-picker-search" placeholder="🔍 Search…"
+                                               @bind="_waPickerSearch" @bind:event="oninput" />
+                                        <div class="phone-picker-list">
+                                            @foreach (var c in _countryData.Where(x => x.PhoneCode != null &&
+                                                (string.IsNullOrEmpty(_waPickerSearch) ||
+                                                 x.NameEn.Contains(_waPickerSearch, StringComparison.OrdinalIgnoreCase) ||
+                                                 x.PhoneCode!.Contains(_waPickerSearch))))
+                                            {
+                                                <button type="button"
+                                                        class="phone-picker-option @(_waCountryCode == c.PhoneCode ? "is-selected" : "")"
+                                                        @onclick="() => { _waCountryCode = c.PhoneCode!; _showWaPicker = false; }">
+                                                    <img class="phone-picker-option-flag"
+                                                         src="https://flagcdn.com/w40/@(c.Iso2.ToLower()).png"
+                                                         alt="@c.Iso2"
+                                                         onerror="this.style.display='none'" />
+                                                    <span>@c.NameEn</span>
+                                                    <span class="phone-picker-code">@c.PhoneCode</span>
+                                                </button>
+                                            }
+                                        </div>
+                                    </div>
                                 }
-                            </select>
+                            </div>
                             <input type="tel" class="form-control" placeholder="9XXXXXXXX" @bind="_whatsApp" />
                         </div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label text-secondary small">Cell Phone</label>
                         <div class="input-group country-line">
-                            <select class="form-select country-code" @bind="_cellCountryCode">
-                                @foreach (var c in _countryCodes)
+                            <div class="phone-picker">
+                                @{ var cellCt = _countryData.FirstOrDefault(x => x.PhoneCode == _cellCountryCode); }
+                                <button type="button" class="phone-picker-btn"
+                                        @onclick="() => { _showCellPicker = !_showCellPicker; _cellPickerSearch = string.Empty; _showWaPicker = false; }">
+                                    <img class="phone-picker-flag"
+                                         src="https://flagcdn.com/w40/@((cellCt?.Iso2 ?? "us").ToLower()).png"
+                                         alt="@(cellCt?.Iso2 ?? "")"
+                                         onerror="this.style.display='none'" />
+                                    <span>@_cellCountryCode</span>
+                                    <i class="ri-arrow-down-s-line"></i>
+                                </button>
+                                @if (_showCellPicker)
                                 {
-                                    <option value="@c.Code">@c.Flag @c.Code</option>
+                                    <div class="phone-picker-dropdown">
+                                        <input class="phone-picker-search" placeholder="🔍 Search…"
+                                               @bind="_cellPickerSearch" @bind:event="oninput" />
+                                        <div class="phone-picker-list">
+                                            @foreach (var c in _countryData.Where(x => x.PhoneCode != null &&
+                                                (string.IsNullOrEmpty(_cellPickerSearch) ||
+                                                 x.NameEn.Contains(_cellPickerSearch, StringComparison.OrdinalIgnoreCase) ||
+                                                 x.PhoneCode!.Contains(_cellPickerSearch))))
+                                            {
+                                                <button type="button"
+                                                        class="phone-picker-option @(_cellCountryCode == c.PhoneCode ? "is-selected" : "")"
+                                                        @onclick="() => { _cellCountryCode = c.PhoneCode!; _showCellPicker = false; }">
+                                                    <img class="phone-picker-option-flag"
+                                                         src="https://flagcdn.com/w40/@(c.Iso2.ToLower()).png"
+                                                         alt="@c.Iso2"
+                                                         onerror="this.style.display='none'" />
+                                                    <span>@c.NameEn</span>
+                                                    <span class="phone-picker-code">@c.PhoneCode</span>
+                                                </button>
+                                            }
+                                        </div>
+                                    </div>
                                 }
-                            </select>
+                            </div>
                             <input type="tel" class="form-control" placeholder="9XXXXXXXX" @bind="_cellPhone" />
                         </div>
                     </div>
@@ -293,17 +385,25 @@
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="form-floating">
-                            <select class="form-select"
-                                    value="@_country"
-                                    @onchange="e => { _country = e.Value?.ToString() ?? string.Empty; _province = string.Empty; }">
-                                <option value="">— Select Country —</option>
-                                @foreach (var ct in _countryList)
+                        <div class="country-select-wrap">
+                            <button type="button" class="country-select-btn"
+                                    @onclick="() => { _showCountryModal = true; _countrySearch = string.Empty; }">
+                                @if (!string.IsNullOrEmpty(_country))
                                 {
-                                    <option value="@ct.Code">@ct.Name</option>
+                                    var selCt = _countryData.FirstOrDefault(x => x.NameEn == _country);
+                                    <img class="country-select-flag"
+                                         src="https://flagcdn.com/w40/@((selCt?.Iso2 ?? "").ToLower()).png"
+                                         alt="@_country"
+                                         onerror="this.style.display='none'" />
+                                    <span>@_country</span>
                                 }
-                            </select>
-                            <label>Country *</label>
+                                else
+                                {
+                                    <span class="placeholder-text">— Select Country —</span>
+                                }
+                                <i class="ri-arrow-down-s-line country-select-chevron"></i>
+                            </button>
+                            <span class="country-select-label">Country *</span>
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -316,7 +416,7 @@
                         <div class="form-floating">
                             <select class="form-select" @bind="_province">
                                 <option value="">— State —</option>
-                                @foreach (var pr in GetProvinces(_country))
+                                @foreach (var pr in GetProvinces(_countryIso2))
                                 {
                                     <option value="@pr">@pr</option>
                                 }
@@ -368,15 +468,25 @@
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="form-floating">
-                                <select class="form-select" @bind="_billCountry">
-                                    <option value="">— Country —</option>
-                                    @foreach (var ct in _countryList)
+                            <div class="country-select-wrap">
+                                <button type="button" class="country-select-btn"
+                                        @onclick="() => { _showBillCountryModal = true; _billCountrySearch = string.Empty; }">
+                                    @if (!string.IsNullOrEmpty(_billCountry))
                                     {
-                                        <option value="@ct.Code">@ct.Name</option>
+                                        var selBillCt = _countryData.FirstOrDefault(x => x.NameEn == _billCountry);
+                                        <img class="country-select-flag"
+                                             src="https://flagcdn.com/w40/@((selBillCt?.Iso2 ?? "").ToLower()).png"
+                                             alt="@_billCountry"
+                                             onerror="this.style.display='none'" />
+                                        <span>@_billCountry</span>
                                     }
-                                </select>
-                                <label>Country</label>
+                                    else
+                                    {
+                                        <span class="placeholder-text">— Country —</span>
+                                    }
+                                    <i class="ri-arrow-down-s-line country-select-chevron"></i>
+                                </button>
+                                <span class="country-select-label">Country</span>
                             </div>
                         </div>
                         <div class="col-md-3">
@@ -389,7 +499,7 @@
                             <div class="form-floating">
                                 <select class="form-select" @bind="_billProvince">
                                     <option value="">— State —</option>
-                                    @foreach (var pr in GetProvinces(_billCountry))
+                                    @foreach (var pr in GetProvinces(_billCountryIso2))
                                     {
                                         <option value="@pr">@pr</option>
                                     }
@@ -637,6 +747,7 @@
             </div>
         </div>
 
+        } <!-- end _productsLoaded -->
         } <!-- end !_success -->
     </div>
 
@@ -690,6 +801,156 @@
     </div>
 
 </div><!-- /.signup-layout -->
+
+@* ── Country Picker Modal ─────────────────────────────────────────────────── *@
+@if (_showCountryModal)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.6); z-index:2000;">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-4 shadow-lg">
+                <div class="modal-header border-0 pb-0">
+                    <div class="w-100 text-center">
+                        <h5 class="modal-title fw-bold mb-1">
+                            <i class="ri-earth-line me-2 text-primary"></i>Select Your Country
+                        </h5>
+                        <p class="text-muted small mb-0">Choose the country where you will be enrolling.</p>
+                    </div>
+                    @if (!string.IsNullOrEmpty(_country))
+                    {
+                        <button type="button" class="btn-close position-absolute top-0 end-0 mt-3 me-3"
+                                @onclick="() => _showCountryModal = false"></button>
+                    }
+                </div>
+                <div class="modal-body pt-3">
+                    <div class="mb-3">
+                        <input class="form-control" placeholder="🔍 Search country…"
+                               @bind="_countrySearch" @bind:event="oninput" />
+                    </div>
+                    @{
+                        var filtered = _countryData
+                            .Where(c => string.IsNullOrEmpty(_countrySearch) ||
+                                        c.NameEn.Contains(_countrySearch, StringComparison.OrdinalIgnoreCase))
+                            .ToList();
+                    }
+                    @if (!filtered.Any())
+                    {
+                        <p class="text-center text-muted py-4">No countries found matching "@_countrySearch".</p>
+                    }
+                    else
+                    {
+                        <div class="country-grid">
+                            @foreach (var ct in filtered)
+                            {
+                                <button type="button"
+                                        class="country-item @(_country == ct.NameEn ? "is-selected" : "")"
+                                        @onclick="() => OnCountryModalSelect(ct)">
+                                    <img class="country-flag"
+                                         src="https://flagcdn.com/w40/@(ct.Iso2.ToLower()).png"
+                                         alt="@ct.NameEn"
+                                         onerror="this.style.display='none'" />
+                                    <span class="country-item-name">@ct.NameEn</span>
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ── Picker backdrop (closes phone pickers on outside click) ─────────────── *@
+@if (_showWaPicker || _showCellPicker)
+{
+    <div class="picker-backdrop" @onclick="() => { _showWaPicker = false; _showCellPicker = false; }"></div>
+}
+
+@* ── Billing Country Picker Modal ─────────────────────────────────────────── *@
+@if (_showBillCountryModal)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.6); z-index:2000;">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-4 shadow-lg">
+                <div class="modal-header border-0 pb-0">
+                    <div class="w-100 text-center">
+                        <h5 class="modal-title fw-bold mb-1">
+                            <i class="ri-earth-line me-2 text-primary"></i>Select Billing Country
+                        </h5>
+                        <p class="text-muted small mb-0">Choose the country for your billing address.</p>
+                    </div>
+                    <button type="button" class="btn-close position-absolute top-0 end-0 mt-3 me-3"
+                            @onclick="() => _showBillCountryModal = false"></button>
+                </div>
+                <div class="modal-body pt-3">
+                    <div class="mb-3">
+                        <input class="form-control" placeholder="🔍 Search country…"
+                               @bind="_billCountrySearch" @bind:event="oninput" />
+                    </div>
+                    @{
+                        var billFiltered = _countryData
+                            .Where(c => string.IsNullOrEmpty(_billCountrySearch) ||
+                                        c.NameEn.Contains(_billCountrySearch, StringComparison.OrdinalIgnoreCase))
+                            .ToList();
+                    }
+                    @if (!billFiltered.Any())
+                    {
+                        <p class="text-center text-muted py-4">No countries found matching "@_billCountrySearch".</p>
+                    }
+                    else
+                    {
+                        <div class="country-grid">
+                            @foreach (var ct in billFiltered)
+                            {
+                                <button type="button"
+                                        class="country-item @(_billCountry == ct.NameEn ? "is-selected" : "")"
+                                        @onclick="() => { _billCountry = ct.NameEn; _billCountryIso2 = ct.Iso2; _billProvince = string.Empty; _showBillCountryModal = false; _billCountrySearch = string.Empty; }">
+                                    <img class="country-flag"
+                                         src="https://flagcdn.com/w40/@(ct.Iso2.ToLower()).png"
+                                         alt="@ct.NameEn"
+                                         onerror="this.style.display='none'" />
+                                    <span class="country-item-name">@ct.NameEn</span>
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ── No-Membership Confirmation Modal ──────────────────────────────────────── *@
+@if (_showNoMemberModal)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.5); z-index:2001;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 rounded-4 shadow-lg">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title fw-bold text-warning">
+                        <i class="ri-error-warning-line me-2"></i>No Membership Selected
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="() => _showNoMemberModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <p>You are choosing to enroll <strong>without a membership plan</strong>.</p>
+                    <div class="alert alert-warning">
+                        <i class="ri-alert-line me-2"></i>
+                        <strong>Important:</strong> Enrolling without a membership level makes you <strong>ineligible to earn commissions</strong> until you activate a membership.
+                    </div>
+                    <p class="text-muted small">You can always add a membership later from your BizCenter.</p>
+                </div>
+                <div class="modal-footer border-0">
+                    <button class="btn btn-secondary" @onclick="() => _showNoMemberModal = false">
+                        Go Back — Choose a Plan
+                    </button>
+                    <button class="btn btn-warning" @onclick="() => { _selectedMembershipProductId = null; _skipMembershipValidation = true; _showNoMemberModal = false; }">
+                        Continue Without Membership
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 <!-- ── FOOTER ─────────────────────────────────────────────────────────────── -->
 <footer class="join-footer">
@@ -756,8 +1017,8 @@
     // ── API data ──────────────────────────────────────────────────────────────
     private SponsorModel?      _sponsor;
     private ProductModel?      _enrollmentProduct;
-    private List<ProductModel> _membershipProducts          = new();
-    private string             _selectedMembershipProductId = string.Empty;
+    private List<ProductModel> _membershipProducts           = new();
+    private string?            _selectedMembershipProductId  = string.Empty;
 
     // ── Personal info ─────────────────────────────────────────────────────────
     private string   _firstName   = string.Empty;
@@ -816,28 +1077,28 @@
     private string _payToken  = string.Empty;
     private bool   _agreedTerms;
 
-    // ── Static data ───────────────────────────────────────────────────────────
-    private record CountryCode(string Flag, string Code);
-    private record CountryItem(string Code, string Name);
+    // ── Country data (loaded from API) ───────────────────────────────────────
+    private List<CountryLookupDto> _countryData = new();
+    private string _countryIso2     = string.Empty;
+    private string _billCountryIso2 = string.Empty;
 
-    private static readonly List<CountryCode> _countryCodes = new()
-    {
-        new("🇺🇸", "+1"),   new("🇬🇧", "+44"),  new("🇧🇷", "+55"),  new("🇪🇸", "+34"),
-        new("🇫🇷", "+33"),  new("🇵🇹", "+351"), new("🇲🇽", "+52"),  new("🇦🇷", "+54"),
-        new("🇨🇱", "+56"),  new("🇨🇴", "+57"),  new("🇩🇪", "+49"),  new("🇮🇹", "+39"),
-        new("🇳🇱", "+31"),  new("🇷🇺", "+7"),   new("🇵🇱", "+48"),
-    };
+    // ── Phone pickers ────────────────────────────────────────────────────────
+    private bool   _showWaPicker      = false;
+    private string _waPickerSearch    = string.Empty;
+    private bool   _showCellPicker    = false;
+    private string _cellPickerSearch  = string.Empty;
 
-    private static readonly List<CountryItem> _countryList = new()
-    {
-        new("US","United States"),  new("CA","Canada"),         new("GB","United Kingdom"),
-        new("BR","Brazil"),         new("MX","Mexico"),         new("AR","Argentina"),
-        new("CO","Colombia"),       new("CL","Chile"),          new("PE","Peru"),
-        new("VE","Venezuela"),      new("PT","Portugal"),       new("ES","Spain"),
-        new("FR","France"),         new("DE","Germany"),        new("IT","Italy"),
-        new("NL","Netherlands"),    new("PL","Poland"),         new("RU","Russia"),
-        new("AU","Australia"),      new("NZ","New Zealand"),
-    };
+    // ── Country modal ────────────────────────────────────────────────────────
+    private bool   _showCountryModal  = true;  // shown immediately on load
+    private string _countrySearch     = string.Empty;
+
+    // ── Billing country modal ─────────────────────────────────────────────────
+    private bool   _showBillCountryModal = false;
+    private string _billCountrySearch    = string.Empty;
+    private bool   _productsLoading   = false;
+    private bool   _productsLoaded    = false;
+    private bool   _showNoMemberModal = false;
+    private bool   _skipMembershipValidation = false;
 
     // ── Computed ──────────────────────────────────────────────────────────────
     private string SponsorInitials
@@ -897,6 +1158,24 @@
     {
         var api = HttpFactory.CreateClient("SignupsInternal");
 
+        // Load countries first (needed to populate dropdowns)
+        try
+        {
+            var cr = await api.GetFromJsonAsync<ApiWrapper<List<CountryLookupDto>>>("api/v1/signups/countries");
+            if (cr?.Success == true && cr.Data is not null)
+            {
+                _countryData = cr.Data;
+                // Default phone code to US if available
+                var us = _countryData.FirstOrDefault(x => x.Iso2 == "US");
+                if (us?.PhoneCode is not null)
+                {
+                    _waCountryCode   = us.PhoneCode;
+                    _cellCountryCode = us.PhoneCode;
+                }
+            }
+        }
+        catch { }
+
         if (!string.IsNullOrWhiteSpace(SponsorSlug))
         {
             try
@@ -911,20 +1190,66 @@
             }
             catch { }
         }
+        // Products are NOT loaded here — they load after country selection via OnCountryModalSelect.
+    }
 
+    private void OnCountryChange(ChangeEventArgs e)
+    {
+        var nameEn = e.Value?.ToString() ?? string.Empty;
+        _country  = nameEn;
+        _province = string.Empty;
+        var ct = _countryData.FirstOrDefault(x => x.NameEn == nameEn);
+        _countryIso2 = ct?.Iso2 ?? string.Empty;
+        // Phone codes are updated but products are not reloaded from the dropdown —
+        // product reloading is triggered exclusively from the country modal.
+        if (ct?.PhoneCode is not null)
+        {
+            _waCountryCode   = ct.PhoneCode;
+            _cellCountryCode = ct.PhoneCode;
+        }
+    }
+
+    private async Task OnCountryModalSelect(CountryLookupDto ct)
+    {
+        _country     = ct.NameEn;
+        _countryIso2 = ct.Iso2;
+        _province    = string.Empty;
+        if (ct.PhoneCode is not null)
+        {
+            _waCountryCode   = ct.PhoneCode;
+            _cellCountryCode = ct.PhoneCode;
+        }
+        _showCountryModal = false;
+        _countrySearch    = string.Empty;
+        await ReloadProductsAsync();
+    }
+
+    private async Task ReloadProductsAsync()
+    {
+        _productsLoading = true;
+        _productsLoaded  = false;
+        StateHasChanged();
         try
         {
-            var r = await api.GetFromJsonAsync<ApiWrapper<List<ProductModel>>>(
-                "api/v1/signups/products");
+            var api = HttpFactory.CreateClient("SignupsInternal");
+            var url = string.IsNullOrEmpty(_countryIso2)
+                ? "api/v1/signups/products"
+                : $"api/v1/signups/products?countryIso2={_countryIso2}";
+            var r = await api.GetFromJsonAsync<ApiWrapper<List<ProductModel>>>(url);
             if (r?.Success == true && r.Data is not null)
             {
                 _enrollmentProduct  = r.Data.FirstOrDefault(p => p.CorporateFee);
                 _membershipProducts = r.Data.Where(p => p.JoinPageMembership).ToList();
-                if (_membershipProducts.Count > 0)
+                if (_membershipProducts.Count > 0 && !_membershipProducts.Any(p => p.Id == _selectedMembershipProductId))
                     _selectedMembershipProductId = _membershipProducts[0].Id;
             }
         }
         catch { }
+        finally
+        {
+            _productsLoading = false;
+            _productsLoaded  = true;
+        }
     }
 
     // ── Event handlers ────────────────────────────────────────────────────────
@@ -949,11 +1274,12 @@
 
     private void CopyContactToBilling()
     {
-        _billAddress  = _address;
-        _billCity     = _city;
-        _billCountry  = _country;
-        _billPostal   = _postalCode;
-        _billProvince = _province;
+        _billAddress     = _address;
+        _billCity        = _city;
+        _billCountry     = _country;
+        _billCountryIso2 = _countryIso2;
+        _billPostal      = _postalCode;
+        _billProvince    = _province;
     }
 
     private void OnHandleInput(ChangeEventArgs e)
@@ -1072,7 +1398,7 @@
             { _error = "Email is required."; return; }
         if (!_email.Equals(_email2, StringComparison.OrdinalIgnoreCase))
             { _error = "Email addresses do not match."; return; }
-        if (string.IsNullOrEmpty(_selectedMembershipProductId))
+        if (string.IsNullOrEmpty(_selectedMembershipProductId) && !_skipMembershipValidation)
             { _error = "Please select a membership plan."; return; }
         if (_dateOfBirth == default || _dateOfBirth > DateTime.Today.AddYears(-18))
             { _error = "You must be at least 18 years old."; return; }
@@ -1169,6 +1495,7 @@
 
     // ── Local models ──────────────────────────────────────────────────────────
     private record ApiWrapper<T>(bool Success, T? Data, string? Message, List<string>? Errors);
+    private record CountryLookupDto(string Iso2, string Iso3, string NameEn, string NameNative, string DefaultLanguageCode, string FlagEmoji, string? PhoneCode, bool IsActive);
     private record SponsorModel(string MemberId, string DisplayName, string FullName,
         string? ReplicateSiteSlug, string? PhotoUrl);
     private record MembershipLevelModel(int Id, string Name, string? Description,

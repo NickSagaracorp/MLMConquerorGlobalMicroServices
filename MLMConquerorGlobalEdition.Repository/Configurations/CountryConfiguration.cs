@@ -22,5 +22,6 @@ public class CountryConfiguration : IEntityTypeConfiguration<Country>
         builder.HasIndex(x => x.Iso2).IsUnique();
         builder.HasIndex(x => x.Iso3).IsUnique();
         builder.HasIndex(x => x.IsActive);
+        builder.HasIndex(x => x.RegionId);
     }
 }

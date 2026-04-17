@@ -2,6 +2,8 @@
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @inject HttpClient Http
+@inject IJSRuntime JS
+@using static MLMConquerorGlobalEdition.AdminWeb.Components.Pages.BinaryTreeNode
 
 <PageTitle>Binary Tree — Admin</PageTitle>
 
@@ -27,6 +29,14 @@
             <option value="5">5 Levels</option>
         </select>
     </div>
+    @if (_root is not null)
+    {
+        <div class="col-md-4 text-end">
+            <button class="btn btn-sm btn-outline-secondary" title="Reset zoom" @onclick="ResetZoom">
+                <i class="ri-fullscreen-line me-1"></i>Reset Zoom
+            </button>
+        </div>
+    }
 </div>
 
 @if (_alertMsg is not null)
@@ -40,18 +50,18 @@
 {
     <div class="row g-3 mb-3">
         <div class="col-md-6">
-            <div class="card bg-primary text-white border-0 rounded-3">
+            <div class="card border-0 rounded-3" style="background:#1976d2;color:#fff;">
                 <div class="card-body text-center py-3">
                     <div class="fs-4 fw-bold">@_root.LeftPoints.ToString("N2")</div>
-                    <div>Left Leg Points &bull; @_root.LeftCount members</div>
+                    <div class="small">Left Leg Points &bull; @_root.LeftCount members</div>
                 </div>
             </div>
         </div>
         <div class="col-md-6">
-            <div class="card bg-info text-dark border-0 rounded-3">
+            <div class="card border-0 rounded-3" style="background:#0097a7;color:#fff;">
                 <div class="card-body text-center py-3">
                     <div class="fs-4 fw-bold">@_root.RightPoints.ToString("N2")</div>
-                    <div>Right Leg Points &bull; @_root.RightCount members</div>
+                    <div class="small">Right Leg Points &bull; @_root.RightCount members</div>
                 </div>
             </div>
         </div>
@@ -60,15 +70,21 @@
     <div class="card border-0 shadow-sm">
         <div class="card-header py-3">
             <h6 class="card-title mb-0 fw-semibold">
-                <i class="ri-node-tree me-2 text-primary"></i>Binary Tree — Root: <code>@_root.MemberId</code> @_root.FullName
-                <button class="btn btn-sm btn-outline-secondary ms-3" @onclick="() => { _rootMemberId = _root.MemberId; LoadTree(); }">
-                    <i class="ri-refresh-line"></i>
-                </button>
+                <i class="ri-node-tree me-2 text-primary"></i>Binary Tree &mdash; Root:
+                <code>@_root.MemberId</code> @_root.FullName
             </h6>
         </div>
-        <div class="card-body overflow-auto p-3">
-            <div style="min-width: 800px;">
-                @RenderNode(_root, 0)
+        <div class="card-body p-0">
+            <div class="genealogy-body genealogy-scroll" id="genealogy-body">
+                <div class="tree-zoom-container" id="tree-zoom-container">
+                    <div class="genealogy-tree">
+                        <CascadingValue Value="@_drillIntoCallback" Name="DrillInto">
+                            <CascadingValue Value="@_openPlacementCallback" Name="OpenPlacement">
+                                <BinaryTreeNode Node="@_root" IsRoot="true" />
+                            </CascadingValue>
+                        </CascadingValue>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -78,126 +94,350 @@ else if (!_loading && _searched)
     <div class="alert alert-warning">No binary tree data found for this member.</div>
 }
 
+<!-- ===== Placement Modal ===== -->
+@if (_showPlacementModal)
+{
+    <div class="bt-modal-backdrop" @onclick="CloseModal">
+        <div class="bt-modal" @onclick:stopPropagation="true">
+            <div class="bt-modal-header">
+                <div>
+                    <h6 class="mb-0 fw-semibold">
+                        <i class="ri-user-add-line me-2 text-primary"></i>Place Member
+                    </h6>
+                    <small class="text-muted">
+                        Under <strong>@_placementParentId</strong> &mdash;
+                        <span class="badge @(_placementSide == "Left" ? "bg-primary" : "bg-info text-dark")">
+                            @_placementSide Slot
+                        </span>
+                    </small>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary" @onclick="CloseModal">
+                    <i class="ri-close-line"></i>
+                </button>
+            </div>
+            <div class="bt-modal-body">
+                @if (_placementLoading)
+                {
+                    <div class="text-center py-4">
+                        <div class="spinner-border spinner-border-sm text-primary"></div>
+                        <div class="small text-muted mt-2">Loading eligible members…</div>
+                    </div>
+                }
+                else if (_eligibleMembers.Count == 0)
+                {
+                    <div class="alert alert-info mb-0">
+                        <i class="ri-information-line me-1"></i>
+                        No members eligible for placement under this node.
+                    </div>
+                }
+                else
+                {
+                    <div class="small text-muted mb-2">@_eligibleMembers.Count eligible member(s)</div>
+                    @foreach (var m in _eligibleMembers)
+                    {
+                        <div class="bt-candidate @(_placingMemberId == m.MemberId ? "bt-candidate-placing" : "")">
+                            <div class="bt-candidate-info">
+                                <div class="fw-semibold">@m.FullName</div>
+                                <div class="small text-muted"><code>@m.MemberId</code> &bull; Enrolled @m.EnrolledAt.ToString("MMM dd")</div>
+                                <div class="small mt-1 d-flex gap-2 flex-wrap">
+                                    @if (m.IsAlreadyPlaced && m.CanCorrect)
+                                    {
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="ri-restart-line me-1"></i>Re-place &bull; @m.CorrectionHoursRemaining.ToString("N1")h left &bull; @m.PlacementOpportunitiesUsed/2 used
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success">
+                                            <i class="ri-map-pin-add-line me-1"></i>Ready to place
+                                        </span>
+                                    }
+                                    <span class="badge bg-light text-dark border">
+                                        @m.DaysRemainingInWindow days left in window
+                                    </span>
+                                </div>
+                            </div>
+                            <button class="btn btn-sm btn-primary ms-2"
+                                    disabled="@(_placingMemberId is not null)"
+                                    @onclick="() => ExecutePlacement(m.MemberId)">
+                                @if (_placingMemberId == m.MemberId)
+                                { <span class="spinner-border spinner-border-sm"></span> }
+                                else
+                                { <i class="ri-check-line"></i> }
+                            </button>
+                        </div>
+                    }
+                }
+                @if (_placementError is not null)
+                {
+                    <div class="alert alert-danger mt-3 mb-0 py-2 small">
+                        <i class="ri-error-warning-line me-1"></i>@_placementError
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+<!-- ===== Styles ===== -->
+<style>
+    .genealogy-scroll::-webkit-scrollbar { width: 5px; height: 8px; }
+    .genealogy-scroll::-webkit-scrollbar-track { border-radius: 10px; background: #f0f0f0; }
+    .genealogy-scroll::-webkit-scrollbar-thumb { background: #999; border-radius: 10px; }
+    .genealogy-scroll::-webkit-scrollbar-thumb:hover { background: #555; }
+
+    .genealogy-body {
+        white-space: nowrap;
+        overflow: hidden;
+        position: relative;
+        width: 100%;
+        height: 78vh;
+        text-align: center;
+        background: linear-gradient(180deg, #f8f9fb, #eef1f4);
+        border-radius: 0 0 10px 10px;
+        padding: 12px;
+        cursor: grab;
+    }
+    .genealogy-body.dragging { cursor: grabbing; }
+    .tree-zoom-container { transform-origin: 0 0; transition: transform .15s ease-out; display: inline-block; }
+
+    .genealogy-tree ul {
+        padding-top: 16px; position: relative;
+        display: flex; justify-content: center; flex-wrap: nowrap; gap: 24px;
+    }
+    .genealogy-tree li { list-style: none; text-align: center; position: relative; padding: 16px 8px 0 8px; }
+    .genealogy-tree li::before,
+    .genealogy-tree li::after { content: ''; position: absolute; top: 0; border-top: 2px dashed #c9c9c9; width: 50%; height: 16px; }
+    .genealogy-tree li::before { right: 50%; }
+    .genealogy-tree li::after  { left: 50%; border-left: 2px dashed #c9c9c9; }
+    .genealogy-tree li:only-child::after,
+    .genealogy-tree li:only-child::before { display: none; }
+    .genealogy-tree li:only-child { padding-top: 0; }
+    .genealogy-tree ul ul::before { content: ''; position: absolute; top: 0; left: 50%; border-left: 2px dashed #c9c9c9; width: 0; height: 16px; }
+
+    .member-view-box {
+        display: inline-block; text-align: center; border-radius: 10px;
+        background: #fff; box-shadow: 0 6px 18px rgba(0,0,0,.07);
+        padding: 8px 10px; width: 140px;
+        transition: transform .18s ease, box-shadow .18s ease;
+        user-select: none; cursor: pointer;
+    }
+    .member-view-box:hover { transform: translateY(-3px); box-shadow: 0 10px 22px rgba(0,0,0,.12); }
+
+    .member-header {
+        font-weight: 600; color: #fff; border-radius: 8px 8px 0 0;
+        padding: 5px 8px; font-size: 12px; line-height: 1.1;
+        display: flex; align-items: center; justify-content: center; min-height: 24px;
+    }
+    .member-view-box.status-qualified   .member-header { background: #2ecc71; }
+    .member-view-box.status-unqualified .member-header { background: #7d2a3b; }
+
+    .member-image { position: relative; margin-top: 6px; }
+    .member-image i { font-size: 44px; color: #94a3b8; display: block; line-height: 1; }
+    .member-footer { margin-top: 6px; }
+    .member-footer .points { font-weight: 700; font-size: 13px; color: #222; }
+    .member-footer .member-id { font-size: 11px; color: #6b7280; }
+    .member-rank { font-size: 10px; background: #e8f0fe; color: #1a56db; border-radius: 4px; padding: 1px 5px; display: inline-block; margin-top: 2px; }
+
+    .placeholder-node {
+        width: 66px; height: 66px; border: 2px dashed #cfd6df; border-radius: 50%;
+        display: grid; place-items: center; font-size: 22px; color: #7b8794;
+        background: #fafbff; margin: 0 auto; transition: .15s; cursor: pointer;
+    }
+    .placeholder-node:hover { transform: translateY(-1px); border-color: #1976d2; color: #1976d2; background: #e8f0fe; }
+
+    .leg-label { font-size: 10px; font-weight: 700; letter-spacing: .05em; padding: 2px 7px; border-radius: 4px; margin-bottom: 4px; display: inline-block; }
+    .leg-label.left  { background: #dbeafe; color: #1d4ed8; }
+    .leg-label.right { background: #ccfbf1; color: #0f766e; }
+
+    .bt-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1050; display: flex; align-items: center; justify-content: center; }
+    .bt-modal { background: #fff; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.25); width: 480px; max-width: 96vw; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; }
+    .bt-modal-header { padding: 16px 20px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .bt-modal-body { padding: 16px 20px; overflow-y: auto; flex: 1; }
+    .bt-candidate { display: flex; align-items: center; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 8px; transition: border-color .15s, background .15s; }
+    .bt-candidate:hover { border-color: #93c5fd; background: #f8faff; }
+    .bt-candidate-placing { opacity: .6; }
+    .bt-candidate-info { flex: 1; min-width: 0; }
+
+    @@media (max-width: 480px) {
+        .member-view-box { width: 126px; padding: 7px 8px; }
+        .placeholder-node { width: 60px; height: 60px; }
+    }
+</style>
+
 @code {
-    private string _rootMemberId = string.Empty;
-    private int _depth = 3;
-    private bool _loading;
-    private bool _searched;
+    [Parameter, SupplyParameterFromQuery(Name = "memberId")]
+    public string? MemberId { get; set; }
+
+    private string  _rootMemberId = string.Empty;
+    private int     _depth        = 3;
+    private bool    _loading;
+    private bool    _searched;
     private string? _alertMsg;
-    private bool _alertIsError;
+    private bool    _alertIsError;
     private BinaryNodeDto? _root;
+
+    // Callbacks passed down via CascadingValue
+    private Func<string, Task>?          _drillIntoCallback;
+    private Func<string, string, Task>?  _openPlacementCallback;
+
+    // Placement modal state
+    private bool    _showPlacementModal;
+    private bool    _placementLoading;
+    private string  _placementParentId = string.Empty;
+    private string  _placementSide     = string.Empty;
+    private List<PendingPlacementDto> _eligibleMembers = new();
+    private string? _placingMemberId;
+    private string? _placementError;
+
+    protected override void OnInitialized()
+    {
+        _drillIntoCallback       = DrillInto;
+        _openPlacementCallback   = OpenPlacementModal;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(MemberId))
+        {
+            _rootMemberId = MemberId;
+            await LoadTree();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await JS.InvokeVoidAsync("BinaryTree.initZoomPan", "genealogy-body", "tree-zoom-container");
+    }
 
     private async Task LoadTree()
     {
-        if (string.IsNullOrWhiteSpace(_rootMemberId)) { _alertMsg = "Please enter a Member ID."; _alertIsError = false; return; }
+        if (string.IsNullOrWhiteSpace(_rootMemberId))
+        { _alertMsg = "Please select or enter a Member ID."; _alertIsError = false; return; }
+
         _loading = true; _searched = true; _root = null; StateHasChanged();
         try
         {
             var resp = await Http.GetFromJsonAsync<ApiResp<BinaryNodeDto>>(
                 $"api/v1/admin/network/binary-tree?memberId={Uri.EscapeDataString(_rootMemberId)}&depth={_depth}");
             if (resp?.Success == true && resp.Data is not null)
-            { _root = resp.Data; _alertMsg = null; }
-            else
-            { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "No data found."; _alertIsError = true; }
+            {
+                _root = resp.Data; _alertMsg = null;
+                await Task.Yield();
+                await JS.InvokeVoidAsync("BinaryTree.resetZoom", "tree-zoom-container");
+            }
+            else { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "No data found."; _alertIsError = true; }
         }
         catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
         finally { _loading = false; }
     }
 
-    private RenderFragment RenderNode(BinaryNodeDto node, int level) => builder =>
+    private async Task DrillInto(string memberId)
     {
-        // Render as a flex row: left subtree | node card | right subtree
-        builder.OpenElement(0, "div");
-        builder.AddAttribute(1, "class", "d-flex flex-column align-items-center");
-        builder.AddAttribute(2, "style", "width:100%;");
+        _rootMemberId = memberId;
+        await LoadTree();
+    }
 
-        // Node card
-        builder.OpenElement(3, "div");
-        builder.AddAttribute(4, "class", "card border-0 shadow-sm mb-2 text-center");
-        builder.AddAttribute(5, "style", "min-width:140px;max-width:180px;cursor:pointer;");
-        builder.AddAttribute(6, "onclick", EventCallback.Factory.Create(this, async () =>
+    private async Task OpenPlacementModal(string parentMemberId, string side)
+    {
+        _placementParentId  = parentMemberId;
+        _placementSide      = side;
+        _showPlacementModal = true;
+        _eligibleMembers    = new();
+        _placementError     = null;
+        _placingMemberId    = null;
+        _placementLoading   = true;
+        StateHasChanged();
+        try
         {
-            _rootMemberId = node.MemberId;
-            await LoadTree();
-        }));
-
-        builder.OpenElement(7, "div");
-        builder.AddAttribute(8, "class", $"card-body p-2 {(level == 0 ? "bg-primary text-white" : "bg-light")}");
-        builder.AddContent(9, $"[{node.MemberId}]");
-        builder.OpenElement(10, "div");
-        builder.AddAttribute(11, "class", "small fw-semibold");
-        builder.AddContent(12, node.FullName);
-        builder.CloseElement();
-        if (!string.IsNullOrWhiteSpace(node.RankName))
-        {
-            builder.OpenElement(13, "span");
-            builder.AddAttribute(14, "class", "badge bg-secondary mt-1");
-            builder.AddContent(15, node.RankName);
-            builder.CloseElement();
-        }
-        builder.CloseElement(); // card-body
-        builder.CloseElement(); // card
-
-        // Children row
-        if (node.Left is not null || node.Right is not null)
-        {
-            builder.OpenElement(16, "div");
-            builder.AddAttribute(17, "class", "d-flex w-100 gap-2 justify-content-center");
-
-            // Left
-            builder.OpenElement(18, "div");
-            builder.AddAttribute(19, "class", "flex-fill d-flex flex-column align-items-center");
-            builder.OpenElement(20, "span");
-            builder.AddAttribute(21, "class", "badge bg-primary mb-1");
-            builder.AddContent(22, "L");
-            builder.CloseElement();
-            if (node.Left is not null)
-                builder.AddContent(23, RenderNode(node.Left, level + 1));
+            var resp = await Http.GetFromJsonAsync<ApiResp<IEnumerable<PendingPlacementDto>>>(
+                $"api/v1/admin/placement/pending?sponsorId={Uri.EscapeDataString(parentMemberId)}");
+            if (resp?.Success == true && resp.Data is not null)
+                _eligibleMembers = resp.Data
+                    .Where(m => !m.IsBlocked && !m.IsWindowExpired && (!m.IsAlreadyPlaced || m.CanCorrect))
+                    .ToList();
             else
-            {
-                builder.OpenElement(24, "div");
-                builder.AddAttribute(25, "class", "card border-dashed border-secondary text-center");
-                builder.AddAttribute(26, "style", "min-width:100px;opacity:.4;");
-                builder.OpenElement(27, "div");
-                builder.AddAttribute(28, "class", "card-body p-2 small text-muted");
-                builder.AddContent(29, "Empty");
-                builder.CloseElement();
-                builder.CloseElement();
-            }
-            builder.CloseElement(); // left
-
-            // Right
-            builder.OpenElement(30, "div");
-            builder.AddAttribute(31, "class", "flex-fill d-flex flex-column align-items-center");
-            builder.OpenElement(32, "span");
-            builder.AddAttribute(33, "class", "badge bg-info text-dark mb-1");
-            builder.AddContent(34, "R");
-            builder.CloseElement();
-            if (node.Right is not null)
-                builder.AddContent(35, RenderNode(node.Right, level + 1));
-            else
-            {
-                builder.OpenElement(36, "div");
-                builder.AddAttribute(37, "class", "card border-dashed border-secondary text-center");
-                builder.AddAttribute(38, "style", "min-width:100px;opacity:.4;");
-                builder.OpenElement(39, "div");
-                builder.AddAttribute(40, "class", "card-body p-2 small text-muted");
-                builder.AddContent(41, "Empty");
-                builder.CloseElement();
-                builder.CloseElement();
-            }
-            builder.CloseElement(); // right
-
-            builder.CloseElement(); // children row
+                _placementError = resp?.Errors?.FirstOrDefault() ?? "Failed to load eligible members.";
         }
+        catch (Exception ex) { _placementError = $"Error: {ex.Message}"; }
+        finally { _placementLoading = false; StateHasChanged(); }
+    }
 
-        builder.CloseElement(); // outer div
-    };
+    private async Task ExecutePlacement(string memberToPlaceId)
+    {
+        _placingMemberId = memberToPlaceId; _placementError = null; StateHasChanged();
+        try
+        {
+            using var response = await Http.PostAsJsonAsync("api/v1/admin/placement",
+                new { MemberToPlaceId = memberToPlaceId, TargetParentMemberId = _placementParentId, Side = _placementSide });
+            var resp = await response.Content.ReadFromJsonAsync<ApiResp<string>>();
+            if (resp?.Success == true) { CloseModal(); await LoadTree(); }
+            else _placementError = resp?.Errors?.FirstOrDefault() ?? "Placement failed.";
+        }
+        catch (Exception ex) { _placementError = $"Error: {ex.Message}"; }
+        finally { _placingMemberId = null; StateHasChanged(); }
+    }
 
-    private record BinaryNodeDto(
-        string MemberId, string FullName, string? RankName,
-        decimal LeftPoints, decimal RightPoints,
-        int LeftCount, int RightCount,
-        BinaryNodeDto? Left, BinaryNodeDto? Right);
+    private void CloseModal() { _showPlacementModal = false; _placementError = null; _placingMemberId = null; }
+
+    private async Task ResetZoom() => await JS.InvokeVoidAsync("BinaryTree.resetZoom", "tree-zoom-container");
+
+    private record PendingPlacementDto(
+        string MemberId, string FullName, DateTime EnrolledAt,
+        int DaysRemainingInWindow, int PlacementOpportunitiesUsed,
+        bool IsAlreadyPlaced, bool CanCorrect, double CorrectionHoursRemaining,
+        bool IsBlocked, bool IsWindowExpired, string PlacementStatus);
+
     private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
 }
+
+<!-- ===== Zoom/Pan JS ===== -->
+<script>
+(function () {
+    "use strict";
+    window.BinaryTree = window.BinaryTree || {};
+
+    window.BinaryTree.initZoomPan = function (bodyId, containerId) {
+        const body = document.getElementById(bodyId);
+        const container = document.getElementById(containerId);
+        if (!body || !container) return;
+        let scale = 1, originX = 0, originY = 0, startX = 0, startY = 0, isDragging = false;
+        function applyTransform() {
+            container.style.transform = "translate("+originX+"px,"+originY+"px) scale("+scale+")";
+        }
+        body.addEventListener("wheel", function(e) {
+            e.preventDefault();
+            const r = body.getBoundingClientRect();
+            const mx = e.clientX - r.left, my = e.clientY - r.top;
+            const d = e.deltaY > 0 ? -0.1 : 0.1;
+            const ns = Math.min(Math.max(scale + d, 0.2), 3);
+            const ratio = ns / scale;
+            originX = mx - ratio*(mx - originX);
+            originY = my - ratio*(my - originY);
+            scale = ns; applyTransform();
+        }, { passive: false });
+        body.addEventListener("pointerdown", function(e) {
+            if (e.button !== 0) return;
+            isDragging = true; startX = e.clientX - originX; startY = e.clientY - originY;
+            body.setPointerCapture(e.pointerId); body.classList.add("dragging");
+        });
+        body.addEventListener("pointermove", function(e) {
+            if (!isDragging) return;
+            originX = e.clientX - startX; originY = e.clientY - startY;
+            container.style.transition = "none"; applyTransform();
+        });
+        function stopDrag() {
+            if (!isDragging) return; isDragging = false;
+            body.classList.remove("dragging"); container.style.transition = "transform .15s ease-out";
+        }
+        body.addEventListener("pointerup", stopDrag);
+        body.addEventListener("pointercancel", stopDrag);
+    };
+
+    window.BinaryTree.resetZoom = function (containerId) {
+        const c = document.getElementById(containerId);
+        if (c) c.style.transform = "translate(0,0) scale(1)";
+    };
+})();
+</script>

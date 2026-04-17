@@ -224,6 +224,7 @@ using (var scope = app.Services.CreateScope())
     await RootAmbassadorSeeder.SeedAsync(db, userManager, config, seedLogger);
     await CountriesSeeder.SeedAsync(db, seedLogger);
     await ProductsSeeder.SeedAsync(db, seedLogger);
+    await CountryProductDefaultSeeder.SeedAsync(db, seedLogger);
 }
 
 app.UseStaticFiles();

@@ -4,6 +4,7 @@ using MLMConquerorGlobalEdition.Repository.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MLMConquerorGlobalEdition.Repository.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260416145120_SetVipJoinPageMembership")]
+    partial class SetVipJoinPageMembership
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2567,9 +2570,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
-                    b.Property<int?>("RegionId")
-                        .HasColumnType("int");
-
                     b.Property<int>("SortOrder")
                         .HasColumnType("int");
 
@@ -2582,8 +2582,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("Iso3")
                         .IsUnique();
-
-                    b.HasIndex("RegionId");
 
                     b.ToTable("Countries");
                 });
@@ -3338,106 +3336,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("AuditTracking");
-                });
-
-            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.General.Region", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<DateTime>("CreationDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("LastUpdateBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<DateTime?>("LastUpdateDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
-
-                    b.HasIndex("IsActive");
-
-                    b.ToTable("Regions");
-                });
-
-            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.General.RegionGateway", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<DateTime>("CreationDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("GatewayType")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("LastUpdateBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<DateTime?>("LastUpdateDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("Priority")
-                        .HasColumnType("int");
-
-                    b.Property<int>("RegionId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IsActive");
-
-                    b.HasIndex("RegionId");
-
-                    b.HasIndex("RegionId", "GatewayType")
-                        .IsUnique();
-
-                    b.ToTable("RegionGateways");
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Loyalty.LoyaltyPoints", b =>
@@ -10425,16 +10323,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Navigation("EmailTemplate");
                 });
 
-            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.General.Country", b =>
-                {
-                    b.HasOne("MLMConquerorGlobalEdition.Domain.Entities.General.Region", "Region")
-                        .WithMany("Countries")
-                        .HasForeignKey("RegionId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Region");
-                });
-
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.General.CountryProduct", b =>
                 {
                     b.HasOne("MLMConquerorGlobalEdition.Domain.Entities.General.Country", "Country")
@@ -10452,17 +10340,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Navigation("Country");
 
                     b.Navigation("Product");
-                });
-
-            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.General.RegionGateway", b =>
-                {
-                    b.HasOne("MLMConquerorGlobalEdition.Domain.Entities.General.Region", "Region")
-                        .WithMany("Gateways")
-                        .HasForeignKey("RegionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Region");
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Loyalty.LoyaltyPoints", b =>
@@ -10810,13 +10687,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Navigation("Localizations");
 
                     b.Navigation("Variables");
-                });
-
-            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.General.Region", b =>
-                {
-                    b.Navigation("Countries");
-
-                    b.Navigation("Gateways");
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Member.MemberProfile", b =>

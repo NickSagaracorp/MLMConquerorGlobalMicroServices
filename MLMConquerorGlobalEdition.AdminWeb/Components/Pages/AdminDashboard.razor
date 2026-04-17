@@ -816,7 +816,69 @@ else if (_data is not null)
         </div>
     </div>
 
-    <!-- ══ ROW 7 — WORLD MAP: ACTIVE MEMBERS BY COUNTRY ════════════════════ -->
+    <!-- ══ ROW 7 — MEMBERS BY BILLING REGION ════════════════════════════════ -->
+    @if (_data.MembersByRegion.Any())
+    {
+        <div class="row g-3 mt-1 mb-2">
+            <div class="col-12">
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <div class="kpi-icon violet" style="width:28px;height:28px;font-size:.9rem;border-radius:7px;"><i class="ri-map-2-line"></i></div>
+                        <h6 class="flex-grow-1">Active Members by Billing Region</h6>
+                        <span class="pill pill-teal">@_data.MembersByRegion.Count(x => x.RegionCode != null) regions</span>
+                        <span class="pill pill-green">@_data.MembersByRegion.Sum(x => x.ActiveCount).ToString("N0") members</span>
+                    </div>
+                    <div class="panel-body">
+                        @{
+                            var regionTotal = _data.MembersByRegion.Sum(x => x.ActiveCount);
+                            var regionMax   = _data.MembersByRegion.Count > 0 ? _data.MembersByRegion.Max(x => x.ActiveCount) : 1;
+                            string[] regionColors = [ "#00BFA5","#2563eb","#d97706","#dc2626","#7c3aed","#0dcaf0","#fd7e14" ];
+                        }
+                        <div class="row g-3">
+                            @foreach (var (reg, idx) in _data.MembersByRegion.Select((x, i) => (x, i)))
+                            {
+                                var color  = reg.RegionCode is not null ? regionColors[idx % regionColors.Length] : "#8695AA";
+                                var pct    = regionTotal > 0 ? reg.ActiveCount * 100 / regionTotal : 0;
+                                var barPct = regionMax > 0 ? reg.ActiveCount * 100 / regionMax : 0;
+                                <div class="col-12 col-md-6 col-xl-4">
+                                    <div style="background:#f8fafc;border-radius:12px;padding:16px;border-left:4px solid @color;">
+                                        <div class="d-flex align-items-start justify-content-between mb-2">
+                                            <div>
+                                                <span style="font-size:13px;font-weight:700;color:#374151;">@reg.RegionName</span>
+                                                @if (reg.RegionCode is not null)
+                                                {
+                                                    <span class="pill pill-gray ms-1" style="font-size:10px;vertical-align:middle;">@reg.RegionCode</span>
+                                                }
+                                            </div>
+                                            <div class="text-end ms-2">
+                                                <div style="font-size:1.4rem;font-weight:700;color:@color;letter-spacing:-.02em;line-height:1.1;">@reg.ActiveCount.ToString("N0")</div>
+                                                <div class="kpi-sub">@pct% of total</div>
+                                            </div>
+                                        </div>
+                                        <div class="progress mb-2" style="height:5px;">
+                                            <div class="progress-bar" style="width:@barPct%;background:@color;transition:width .4s;"></div>
+                                        </div>
+                                        <div class="d-flex gap-3 flex-wrap" style="font-size:11px;color:#8695AA;">
+                                            @if (reg.ActiveCountryCount > 0)
+                                            {
+                                                <span><i class="ri-flag-line me-1"></i>@reg.ActiveCountryCount @(reg.ActiveCountryCount == 1 ? "country" : "countries")</span>
+                                            }
+                                            @if (reg.ActiveCount > 0 && regionTotal > 0)
+                                            {
+                                                <span><i class="ri-group-line me-1"></i>@reg.ActiveCount active</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- ══ ROW 8 — WORLD MAP: ACTIVE MEMBERS BY COUNTRY ════════════════════ -->
     <div class="row g-3 mt-1 mb-4">
         <div class="col-12">
             <div class="panel-card">
@@ -993,12 +1055,14 @@ else if (_data is not null)
         public List<AmbassadorsByLevelItem> AmbassadorsByLevel { get; set; } = new();
         public List<MonthlySignupItem> MonthlySignups { get; set; } = new();
         public List<MembersByCountryItem> MembersByCountry { get; set; } = new();
+        public List<MembersByRegionItem> MembersByRegion { get; set; } = new();
         public BillingRunDto? LastBillingRun { get; set; }
     }
     private record MembershipBreakdownItem(string LevelName, int ActiveCount, bool IsFree);
     private record AmbassadorsByLevelItem(string LevelName, int Count, bool IsFree);
     private record MonthlySignupItem(int Month, string MembershipLevel, string Status, int Count);
     private record MembersByCountryItem(string CountryName, int ActiveCount);
+    private record MembersByRegionItem(string RegionName, string? RegionCode, int ActiveCount, int ActiveCountryCount);
     private class BillingRunDto
     {
         public DateTime RunDate { get; set; }

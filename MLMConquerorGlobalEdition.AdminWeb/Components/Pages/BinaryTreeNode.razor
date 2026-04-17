@@ -1,0 +1,112 @@
+@* Recursive child component for AdminBinaryTree.
+   Each instance renders one node + always-visible L/R children slots.
+   Callbacks are received as CascadingParameters to avoid prop-drilling
+   through every level of recursion. *@
+
+@if (Node is null) { return; }
+
+<ul>
+    <li>
+        <!-- Member card — click to drill in -->
+        <div class="member-view-box @StatusClass()" @onclick="OnCardClick">
+            <div class="member-header">@Node.FullName</div>
+            <div class="member-image">
+                <i class="ri-user-3-line"></i>
+            </div>
+            <div class="member-footer">
+                @if (IsRoot)
+                {
+                    <div class="points">L: @Node.LeftPoints.ToString("N0") / R: @Node.RightPoints.ToString("N0")</div>
+                }
+                else
+                {
+                    <div class="member-id">@Node.MemberId</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Node.RankName))
+                {
+                    <span class="member-rank">@Node.RankName</span>
+                }
+            </div>
+        </div>
+
+        <!-- Always show both L/R slots -->
+        <ul>
+            <li>
+                <span class="leg-label left">L</span>
+                @if (Node.Left is not null)
+                {
+                    <BinaryTreeNode Node="@Node.Left" IsRoot="false" />
+                }
+                else
+                {
+                    <ul>
+                        <li>
+                            <div class="placeholder-node" title="Place a member here"
+                                 @onclick="OnLeftSlotClick">+</div>
+                        </li>
+                    </ul>
+                }
+            </li>
+            <li>
+                <span class="leg-label right">R</span>
+                @if (Node.Right is not null)
+                {
+                    <BinaryTreeNode Node="@Node.Right" IsRoot="false" />
+                }
+                else
+                {
+                    <ul>
+                        <li>
+                            <div class="placeholder-node" title="Place a member here"
+                                 @onclick="OnRightSlotClick">+</div>
+                        </li>
+                    </ul>
+                }
+            </li>
+        </ul>
+    </li>
+</ul>
+
+@code {
+    [Parameter, EditorRequired] public BinaryNodeDto? Node { get; set; }
+    [Parameter] public bool IsRoot { get; set; }
+
+    [CascadingParameter(Name = "DrillInto")]
+    public Func<string, Task>? DrillInto { get; set; }
+
+    [CascadingParameter(Name = "OpenPlacement")]
+    public Func<string, string, Task>? OpenPlacement { get; set; }
+
+    private async Task OnCardClick()
+    {
+        if (Node is not null && DrillInto is not null)
+            await DrillInto(Node.MemberId);
+    }
+
+    private async Task OnLeftSlotClick()
+    {
+        if (Node is not null && OpenPlacement is not null)
+            await OpenPlacement(Node.MemberId, "Left");
+    }
+
+    private async Task OnRightSlotClick()
+    {
+        if (Node is not null && OpenPlacement is not null)
+            await OpenPlacement(Node.MemberId, "Right");
+    }
+
+    private string StatusClass() =>
+        !string.IsNullOrWhiteSpace(Node?.RankName) ? "status-qualified" : "status-unqualified";
+
+    // ── Shared DTO (public so AdminBinaryTree.razor can use it too) ───────────
+    public record BinaryNodeDto(
+        string MemberId,
+        string FullName,
+        string? RankName,
+        decimal LeftPoints,
+        decimal RightPoints,
+        int LeftCount,
+        int RightCount,
+        BinaryNodeDto? Left,
+        BinaryNodeDto? Right);
+}

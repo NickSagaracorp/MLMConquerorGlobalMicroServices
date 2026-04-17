@@ -16,6 +16,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\MLMConquerorGlobalEdition.AdminWeb.Client\MLMConquerorGlobalEdition.AdminWeb.Client.csproj" />
+    <ProjectReference Include="..\MLMConquerorGlobalEdition.Domain\MLMConquerorGlobalEdition.Domain.csproj" />
     <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedComponents\MLMConquerorGlobalEdition.SharedComponents.csproj" />
     <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel\MLMConquerorGlobalEdition.SharedKernel.csproj" />
   </ItemGroup>

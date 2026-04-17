@@ -256,9 +256,9 @@
         try
         {
             var http = HttpClientFactory.CreateClient("HelpdeskApi");
-            var resp = await http.GetFromJsonAsync<ApiResp<IEnumerable<KbArticleSummaryDto>>>("api/v1/kb/search?query=&page=1&pageSize=500");
-            if (resp?.Success == true && resp.Data is not null)
-                _items = resp.Data.ToList();
+            var resp = await http.GetFromJsonAsync<ApiResp<PagedData<KbArticleSummaryDto>>>("api/v1/kb/search?q=&page=1&pageSize=500");
+            if (resp?.Success == true && resp.Data?.Items is not null)
+                _items = resp.Data.Items.ToList();
             else { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load articles."; _alertIsError = true; }
         }
         catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
@@ -385,6 +385,7 @@
     }
 
     private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record PagedData<T>(IEnumerable<T>? Items, int TotalCount, int Page, int PageSize);
 
     private class KbArticleSummaryDto
     {

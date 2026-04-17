@@ -45,6 +45,7 @@ public class CeoDashboardDto
     public List<AmbassadorsByLevelItem> AmbassadorsByLevel { get; set; } = new();
     public List<MonthlySignupItem> MonthlySignups { get; set; } = new();
     public List<MembersByCountryItem> MembersByCountry { get; set; } = new();
+    public List<MembersByRegionItem> MembersByRegion { get; set; } = new();
     public BillingRunDto? LastBillingRun { get; set; }
 }
 
@@ -75,6 +76,12 @@ public record MonthlySignupItem(
 public record MembersByCountryItem(
     string CountryName,
     int ActiveCount);
+
+public record MembersByRegionItem(
+    string RegionName,
+    string? RegionCode,
+    int ActiveCount,
+    int ActiveCountryCount);
 
 public class BillingRunDto
 {

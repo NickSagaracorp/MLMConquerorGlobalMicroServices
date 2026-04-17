@@ -577,6 +577,68 @@ html, body {
 .theme-ambassador .form-switch .form-check-input:checked { background-color: var(--ambassador-primary); }
 .theme-member    .form-switch .form-check-input:checked { background-color: var(--member-primary); }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   COUNTRY PICKER MODAL
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Fluid grid: auto-fills as many columns as fit, min 130px each */
+.country-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 4px;
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.country-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border: 1.5px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+    text-align: left;
+    font-size: 0.83rem;
+    color: #374151;
+    overflow: hidden;
+    width: 100%;
+}
+
+.country-item:hover {
+    background: #f0f4ff;
+    border-color: #c5d5ff;
+}
+
+.country-item.is-selected {
+    background: #eff3ff;
+    border-color: #4f6ef7;
+    color: #2d4bd6;
+    font-weight: 600;
+}
+
+.country-flag {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 1px rgba(0,0,0,.08);
+}
+
+.country-item-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
 /* Phone country prefix */
 .country-line .country-code {
     max-width: 130px;
@@ -587,6 +649,165 @@ html, body {
 .country-line .form-control {
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
+}
+
+/* ── Phone country picker (flag image + code dropdown) ───────────────────── */
+.phone-picker {
+    position: relative;
+}
+
+.phone-picker-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 38px;
+    padding: 0 10px;
+    border: 1px solid #dee2e6;
+    border-right: none;
+    border-top-left-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    background: #fff;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #374151;
+    min-width: 96px;
+    white-space: nowrap;
+    transition: background 0.12s;
+}
+.phone-picker-btn:hover  { background: #f8f9fa; }
+.phone-picker-btn:focus  { outline: none; box-shadow: 0 0 0 2px rgba(79,110,247,.2); }
+
+.phone-picker-flag {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 1px rgba(0,0,0,.08);
+}
+
+.phone-picker-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 1050;
+    width: 280px;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.14);
+    padding: 8px;
+}
+
+.phone-picker-search {
+    display: block;
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    margin-bottom: 6px;
+    outline: none;
+}
+.phone-picker-search:focus { border-color: #4f6ef7; box-shadow: 0 0 0 2px rgba(79,110,247,.15); }
+
+.phone-picker-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.phone-picker-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    color: #374151;
+    background: transparent;
+    border: none;
+    width: 100%;
+    text-align: left;
+}
+.phone-picker-option:hover      { background: #f0f4ff; }
+.phone-picker-option.is-selected { background: #eff3ff; color: #2d4bd6; font-weight: 600; }
+
+.phone-picker-option-flag {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 1px rgba(0,0,0,.07);
+}
+
+.phone-picker-code {
+    margin-left: auto;
+    color: #6b7280;
+    font-size: 0.78rem;
+    flex-shrink: 0;
+}
+
+/* ── Country select button (replaces <select> for country fields) ────────── */
+.country-select-wrap {
+    position: relative;
+}
+
+.country-select-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    height: 58px;
+    padding: 1.2rem 0.75rem 0.25rem;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #374151;
+    text-align: left;
+    transition: border-color 0.15s;
+    overflow: hidden;
+}
+.country-select-btn:hover { border-color: #adb5bd; }
+.country-select-btn:focus { outline: none; border-color: #4f6ef7; box-shadow: 0 0 0 2px rgba(79,110,247,.15); }
+.country-select-btn .placeholder-text { color: #9ca3af; }
+
+.country-select-flag {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 1px rgba(0,0,0,.08);
+}
+
+.country-select-label {
+    position: absolute;
+    top: 8px;
+    left: 13px;
+    font-size: 0.72rem;
+    color: #6c757d;
+    pointer-events: none;
+    line-height: 1;
+}
+
+.country-select-chevron {
+    margin-left: auto;
+    color: #6b7280;
+    flex-shrink: 0;
+}
+
+/* picker backdrop */
+.picker-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1040;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

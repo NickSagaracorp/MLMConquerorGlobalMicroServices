@@ -1,0 +1,421 @@
+@page "/admin/config/regions"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+@inject NavigationManager Nav
+@using MLMConquerorGlobalEdition.Domain.Enums
+
+<PageTitle>Regions — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem>
+    { new("Admin Dashboard", "/admin"), new("Configuration", "/admin/config/products"), new("Regions") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-map-2-line me-2 text-primary"></i>Billing Regions
+        </h6>
+        <button class="btn btn-primary btn-sm" @onclick="OpenCreate">
+            <i class="ri-add-line me-1"></i>New Region
+        </button>
+    </div>
+
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="RegionDto" DataSource="@_items"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true"
+                    GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="25" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+
+                    <GridColumn Field="@nameof(RegionDto.Code)" HeaderText="Code" Width="100" />
+                    <GridColumn Field="@nameof(RegionDto.Name)" HeaderText="Name" Width="180" />
+
+                    <GridColumn HeaderText="Gateways" Width="220" AllowFiltering="false" AllowSorting="false">
+                        <Template>
+                            @{
+                                var r = (RegionDto)context;
+                                if (r.Gateways.Any())
+                                {
+                                    @foreach (var g in r.Gateways.OrderBy(x => x.Priority))
+                                    {
+                                        <span class="badge bg-info-subtle text-info me-1">
+                                            @g.GatewayName <small class="text-muted">#@g.Priority</small>
+                                        </span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">— none configured —</span>
+                                }
+                            }
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn Field="@nameof(RegionDto.ActiveCountryCount)" HeaderText="Countries" Width="100"
+                                TextAlign="TextAlign.Center" />
+
+                    <GridColumn Field="@nameof(RegionDto.SortOrder)" HeaderText="Order" Width="80"
+                                TextAlign="TextAlign.Center" />
+
+                    <GridColumn HeaderText="Active" Width="90" TextAlign="TextAlign.Center"
+                                AllowFiltering="false" AllowSorting="false">
+                        <Template>
+                            @{
+                                var r = (RegionDto)context;
+                                <span class="badge @(r.IsActive ? "bg-success" : "bg-secondary")">
+                                    @(r.IsActive ? "Active" : "Inactive")
+                                </span>
+                            }
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Actions" Width="160" TextAlign="TextAlign.Center"
+                                AllowFiltering="false" AllowSorting="false">
+                        <Template>
+                            @{
+                                var r = (RegionDto)context;
+                                <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => OpenEdit(r)">
+                                    <i class="ri-edit-line"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenGateways(r)">
+                                    <i class="ri-bank-card-line"></i>
+                                </button>
+                                <button class="btn btn-sm @(r.IsActive ? "btn-outline-warning" : "btn-outline-success")"
+                                        @onclick="() => ToggleActive(r)">
+                                    <i class="@(r.IsActive ? "ri-pause-line" : "ri-play-line")"></i>
+                                </button>
+                            }
+                        </Template>
+                    </GridColumn>
+
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+@* ── Create / Edit Region Modal ──────────────────────────────────────────── *@
+@if (_showFormModal)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.4);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-semibold">
+                        <i class="ri-map-2-line me-2 text-primary"></i>@(_editId is null ? "New Region" : "Edit Region")
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseModals"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Name *</label>
+                        <input class="form-control" @bind="_formName" placeholder="e.g. Latin America" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Code *</label>
+                        <input class="form-control text-uppercase" @bind="_formCode" placeholder="e.g. LATAM" maxlength="20" />
+                        <div class="form-text">Short unique identifier (letters/numbers, auto-uppercased).</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Description</label>
+                        <textarea class="form-control" @bind="_formDescription" rows="2"
+                                  placeholder="Optional notes about this region"></textarea>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Sort Order</label>
+                            <input type="number" class="form-control" @bind="_formSortOrder" min="0" />
+                        </div>
+                        <div class="col-6 d-flex align-items-end">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" @bind="_formIsActive" id="chkActive" />
+                                <label class="form-check-label" for="chkActive">Active</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="CloseModals">Cancel</button>
+                    <button class="btn btn-primary btn-sm" @onclick="SaveForm" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ── Gateway Management Modal ────────────────────────────────────────────── *@
+@if (_showGatewayModal && _selectedRegion is not null)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.4);">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-semibold">
+                        <i class="ri-bank-card-line me-2 text-primary"></i>
+                        Gateways — @_selectedRegion.Name (@_selectedRegion.Code)
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseModals"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">
+                        Select which payment gateways are available for this region and set their priority
+                        (1 = primary, higher = fallback). Actual charge routing is handled by the Billing service.
+                    </p>
+
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Gateway</th>
+                                    <th style="width:80px" class="text-center">Enabled</th>
+                                    <th style="width:120px" class="text-center">Priority</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var gw in _gatewayEntries)
+                                {
+                                    <tr>
+                                        <td>
+                                            <span class="fw-semibold">@gw.GatewayType.ToString()</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <input type="checkbox" class="form-check-input"
+                                                   checked="@gw.IsActive"
+                                                   @onchange="e => gw.IsActive = (bool)(e.Value ?? false)" />
+                                        </td>
+                                        <td class="text-center">
+                                            <input type="number" class="form-control form-control-sm text-center"
+                                                   min="1" max="99"
+                                                   value="@gw.Priority"
+                                                   @onchange="e => { if (int.TryParse(e.Value?.ToString(), out var v)) gw.Priority = v; }" />
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="CloseModals">Cancel</button>
+                    <button class="btn btn-primary btn-sm" @onclick="SaveGateways" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Save Gateways
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+
+    // ── State ─────────────────────────────────────────────────────────────
+    private List<RegionDto>  _items  = new();
+    private bool             _loading = true;
+    private string?          _alertMsg;
+    private bool             _alertIsError;
+    private bool             _saving;
+
+    // ── Form modal ────────────────────────────────────────────────────────
+    private bool    _showFormModal;
+    private int?    _editId;
+    private string  _formName        = string.Empty;
+    private string  _formCode        = string.Empty;
+    private string? _formDescription;
+    private bool    _formIsActive    = true;
+    private int     _formSortOrder   = 0;
+
+    // ── Gateway modal ─────────────────────────────────────────────────────
+    private bool              _showGatewayModal;
+    private RegionDto?        _selectedRegion;
+    private List<GatewayEntry> _gatewayEntries = new();
+
+    // ── All available WalletType values ──────────────────────────────────
+    private static readonly WalletType[] AllGatewayTypes =
+        Enum.GetValues<WalletType>();
+
+    // ── Init ──────────────────────────────────────────────────────────────
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<RegionDto>>>("api/v1/admin/regions");
+            _items = resp?.Data ?? new();
+        }
+        catch { ShowAlert("Failed to load regions.", true); }
+        finally { _loading = false; }
+    }
+
+    // ── CRUD ──────────────────────────────────────────────────────────────
+    private void OpenCreate()
+    {
+        _editId          = null;
+        _formName        = string.Empty;
+        _formCode        = string.Empty;
+        _formDescription = null;
+        _formIsActive    = true;
+        _formSortOrder   = 0;
+        _showFormModal   = true;
+    }
+
+    private void OpenEdit(RegionDto r)
+    {
+        _editId          = r.Id;
+        _formName        = r.Name;
+        _formCode        = r.Code;
+        _formDescription = r.Description;
+        _formIsActive    = r.IsActive;
+        _formSortOrder   = r.SortOrder;
+        _showFormModal   = true;
+    }
+
+    private async Task SaveForm()
+    {
+        if (string.IsNullOrWhiteSpace(_formName) || string.IsNullOrWhiteSpace(_formCode))
+        {
+            ShowAlert("Name and Code are required.", true);
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            var body = new
+            {
+                Name        = _formName.Trim(),
+                Code        = _formCode.Trim().ToUpperInvariant(),
+                Description = _formDescription?.Trim(),
+                IsActive    = _formIsActive,
+                SortOrder   = _formSortOrder
+            };
+
+            HttpResponseMessage resp;
+            if (_editId is null)
+                resp = await Http.PostAsJsonAsync("api/v1/admin/regions", body);
+            else
+                resp = await Http.PutAsJsonAsync($"api/v1/admin/regions/{_editId}", body);
+
+            if (resp.IsSuccessStatusCode)
+            {
+                ShowAlert(_editId is null ? "Region created." : "Region updated.", false);
+                CloseModals();
+                await LoadAsync();
+            }
+            else
+            {
+                var err = await resp.Content.ReadFromJsonAsync<ApiWrapper<object>>();
+                ShowAlert(err?.Message ?? "Error saving region.", true);
+            }
+        }
+        catch { ShowAlert("Unexpected error.", true); }
+        finally { _saving = false; }
+    }
+
+    private async Task ToggleActive(RegionDto r)
+    {
+        var resp = await Http.PatchAsync($"api/v1/admin/regions/{r.Id}/toggle-active", null);
+        if (resp.IsSuccessStatusCode)
+        {
+            ShowAlert($"Region '{r.Name}' {(r.IsActive ? "deactivated" : "activated")}.", false);
+            await LoadAsync();
+        }
+        else
+            ShowAlert("Failed to toggle active status.", true);
+    }
+
+    // ── Gateways ──────────────────────────────────────────────────────────
+    private void OpenGateways(RegionDto r)
+    {
+        _selectedRegion = r;
+
+        // Build the full list of gateway entries — one per WalletType
+        var existing = r.Gateways.ToDictionary(g => g.GatewayType, g => g);
+        _gatewayEntries = AllGatewayTypes
+            .Select((wt, idx) => existing.TryGetValue(wt, out var e)
+                ? new GatewayEntry { GatewayType = wt, IsActive = e.IsActive, Priority = e.Priority }
+                : new GatewayEntry { GatewayType = wt, IsActive = false, Priority = idx + 1 })
+            .ToList();
+
+        _showGatewayModal = true;
+    }
+
+    private async Task SaveGateways()
+    {
+        if (_selectedRegion is null) return;
+        _saving = true;
+        try
+        {
+            var payload = _gatewayEntries
+                .Where(g => g.IsActive)
+                .Select(g => new { GatewayType = (int)g.GatewayType, g.Priority, g.IsActive })
+                .ToList();
+
+            var resp = await Http.PutAsJsonAsync(
+                $"api/v1/admin/regions/{_selectedRegion.Id}/gateways", payload);
+
+            if (resp.IsSuccessStatusCode)
+            {
+                ShowAlert($"Gateways saved for '{_selectedRegion.Name}'.", false);
+                CloseModals();
+                await LoadAsync();
+            }
+            else
+                ShowAlert("Failed to save gateways.", true);
+        }
+        catch { ShowAlert("Unexpected error.", true); }
+        finally { _saving = false; }
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+    private void CloseModals()
+    {
+        _showFormModal    = false;
+        _showGatewayModal = false;
+        _selectedRegion   = null;
+    }
+
+    private void ShowAlert(string msg, bool isError)
+    {
+        _alertMsg     = msg;
+        _alertIsError = isError;
+    }
+
+    // ── Local models ──────────────────────────────────────────────────────
+    private record ApiWrapper<T>(bool Success, T? Data, string? Message);
+
+    private record RegionDto(
+        int Id, string Name, string Code, string? Description,
+        bool IsActive, int SortOrder,
+        List<RegionGatewayDto> Gateways,
+        int ActiveCountryCount);
+
+    private record RegionGatewayDto(
+        int Id, WalletType GatewayType, string GatewayName, int Priority, bool IsActive);
+
+    private class GatewayEntry
+    {
+        public WalletType GatewayType { get; set; }
+        public bool       IsActive    { get; set; }
+        public int        Priority    { get; set; }
+    }
+}

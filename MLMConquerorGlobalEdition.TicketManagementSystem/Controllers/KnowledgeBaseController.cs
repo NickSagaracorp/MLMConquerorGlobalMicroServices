@@ -17,7 +17,7 @@ public class KnowledgeBaseController : ControllerBase
     public KnowledgeBaseController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet("search")]
-    public async Task<IActionResult> Search([FromQuery] string q, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
+    public async Task<IActionResult> Search([FromQuery] string q = "", [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
         var result = await _mediator.Send(new SearchKnowledgeBaseQuery(q, page, pageSize), ct);
         if (!result.IsSuccess) return BadRequest(ApiResponse<object>.Fail(result.ErrorCode!, result.Error!, HttpContext.TraceIdentifier));
