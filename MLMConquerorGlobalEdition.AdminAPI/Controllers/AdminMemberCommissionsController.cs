@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.Domain.Entities.Commission;
+using MLMConquerorGlobalEdition.Domain.Entities.Membership;
+using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
@@ -166,7 +169,8 @@ public class AdminMemberCommissionsController : ControllerBase
         var baseQuery = _db.CommissionEarnings
             .AsNoTracking()
             .Where(c => c.BeneficiaryMemberId == memberId
-                     && c.PaymentDate.Date == targetPaymentDate);
+                     && c.PaymentDate.Date == targetPaymentDate
+                     && c.Status != CommissionEarningStatus.Cancelled);
 
         if (earnedDate.HasValue)
             baseQuery = baseQuery.Where(c => c.EarnedDate.Date == earnedDate.Value.Date);
@@ -180,6 +184,7 @@ public class AdminMemberCommissionsController : ControllerBase
                 {
                     c.SourceMemberId,
                     c.SourceOrderId,
+                    c.Notes,
                     c.Amount,
                     TypeName = ct2.Name,
                     TypeDesc = ct2.Description
@@ -218,7 +223,11 @@ public class AdminMemberCommissionsController : ControllerBase
         var items = raw.Select(x =>
         {
             string detail;
-            if (x.SourceOrderId != null)
+            if (!string.IsNullOrWhiteSpace(x.Notes))
+            {
+                detail = x.Notes;
+            }
+            else if (x.SourceOrderId != null)
             {
                 var orderRef = orderNumbers.TryGetValue(x.SourceOrderId, out var no) ? no : x.SourceOrderId;
                 var name = x.SourceMemberId != null && memberNames.TryGetValue(x.SourceMemberId, out var fullName)
@@ -356,19 +365,129 @@ public class AdminMemberCommissionsController : ControllerBase
     [HttpGet("fast-start-bonus/summary")]
     public async Task<IActionResult> GetFastStartBonusSummary(string memberId, CancellationToken ct = default)
     {
-        var summary = await _db.CommissionEarnings
+        var now = DateTime.UtcNow;
+
+        // 1. Eligible sponsored members — only active Elite/Turbo memberships count
+        var eligibleMemberIds = await _db.MembershipSubscriptions
             .AsNoTracking()
-            .Where(c => c.BeneficiaryMemberId == memberId)
+            .Where(s => s.SubscriptionStatus == MembershipStatus.Active)
+            .Join(
+                _db.MembershipLevels.Where(l => l.Name.Contains("Elite") || l.Name.Contains("Turbo")),
+                s => s.MembershipLevelId,
+                l => l.Id,
+                (s, _) => s.MemberId)
+            .ToHashSetAsync(ct);
+
+        var sponsoredEnrollments = await _db.MemberProfiles
+            .AsNoTracking()
+            .Where(m => m.SponsorMemberId == memberId && eligibleMemberIds.Contains(m.MemberId))
+            .Select(m => m.EnrollDate)
+            .ToListAsync(ct);
+
+        // 2. FSB earnings — carry EarnedDate for dynamic window recalculation
+        var fsbEarnings = await _db.CommissionEarnings
+            .AsNoTracking()
+            .Where(c => c.BeneficiaryMemberId == memberId && c.Status != CommissionEarningStatus.Cancelled)
             .Join(
                 _db.CommissionTypes.Where(t => t.CommissionCategoryId == FastStartBonusCategoryId),
                 c   => c.CommissionTypeId,
                 ct2 => ct2.Id,
-                (c, _) => c.Amount)
-            .GroupBy(_ => 1)
-            .Select(g => new BonusSummaryDto { Count = g.Count(), TotalAmount = g.Sum() })
+                (c, ct2) => new { ct2.TriggerOrder, c.EarnedDate, c.Amount })
+            .ToListAsync(ct);
+
+        var earnByOrder = fsbEarnings
+            .GroupBy(x => x.TriggerOrder)
+            .ToDictionary(g => g.Key, g => (
+                EarnedDate: g.Min(x => x.EarnedDate),
+                Amount:     g.Sum(x => x.Amount)));
+
+        // 3. Countdown record
+        var memberUserId = await _db.MemberProfiles
+            .AsNoTracking()
+            .Where(m => m.MemberId == memberId)
+            .Select(m => m.UserId)
             .FirstOrDefaultAsync(ct);
 
-        return Ok(ApiResponse<BonusSummaryDto>.Ok(summary ?? new BonusSummaryDto()));
+        var countdown = memberUserId != default
+            ? await _db.CommissionCountDowns
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.MemberId == memberUserId, ct)
+            : null;
+
+        if (countdown is null)
+            return Ok(ApiResponse<FsbSummaryDto>.Ok(new FsbSummaryDto
+            {
+                Count       = fsbEarnings.Count,
+                TotalAmount = fsbEarnings.Sum(x => x.Amount)
+            }));
+
+        // 4. Determine FSB1 normal vs extended earned
+        var w1NormalEnd = countdown.FastStartBonus1End;
+        var w1ExtEnd    = countdown.FastStartBonus1ExtendedEnd;
+
+        earnByOrder.TryGetValue(1, out var fsb1Earn);
+        var fsb1NormalEarned   = fsb1Earn != default && fsb1Earn.EarnedDate <= w1NormalEnd;
+        var fsb1ExtendedEarned = fsb1Earn != default && fsb1Earn.EarnedDate > w1NormalEnd && fsb1Earn.EarnedDate <= w1ExtEnd;
+
+        earnByOrder.TryGetValue(2, out var fsb2Earn);
+        earnByOrder.TryGetValue(3, out var fsb3Earn);
+
+        // 5. Dynamic W2/W3 dates — start the moment the previous FSB was earned
+        var w2Start = fsb1NormalEarned ? fsb1Earn.EarnedDate         : countdown.FastStartBonus2Start;
+        var w2End   = fsb1NormalEarned ? fsb1Earn.EarnedDate.AddDays(7) : countdown.FastStartBonus2End;
+        var w3Start = fsb2Earn != default ? fsb2Earn.EarnedDate         : countdown.FastStartBonus3Start;
+        var w3End   = fsb2Earn != default ? fsb2Earn.EarnedDate.AddDays(7) : countdown.FastStartBonus3End;
+
+        // 6. Mode flags
+        var isExtendedMode     = now > w1NormalEnd && !fsb1NormalEarned;
+        var isDisqualifiedW2W3 = fsb1ExtendedEarned;
+
+        // 7. Build windows
+        FsbWindowDto Build(int num, bool isPromo, DateTime start, DateTime end, decimal amount, bool hidden)
+        {
+            var isCompleted    = amount > 0; // earned = completed regardless of whether window has closed
+            var isExpired      = !isCompleted && now > end;
+            var isActive       = !isCompleted && !isExpired && now >= start;
+            var sponsoredCount = sponsoredEnrollments.Count(d => d >= start && d <= end);
+            return new FsbWindowDto
+            {
+                WindowNumber   = num,
+                IsPromo        = isPromo,
+                Amount         = amount,
+                IsCompleted    = isCompleted,
+                IsActive       = isActive,
+                StartDate      = start,
+                EndDate        = end,
+                SponsoredCount = sponsoredCount,
+                IsHidden       = hidden
+            };
+        }
+
+        var windows = new List<FsbWindowDto>
+        {
+            Build(1, false, countdown.FastStartBonus1Start, w1NormalEnd,
+                fsb1NormalEarned ? fsb1Earn.Amount : 0m, hidden: false),
+
+            Build(2, false, w2Start, w2End,
+                fsb2Earn != default ? fsb2Earn.Amount : 0m,
+                hidden: isExtendedMode || isDisqualifiedW2W3),
+
+            Build(3, false, w3Start, w3End,
+                fsb3Earn != default ? fsb3Earn.Amount : 0m,
+                hidden: isExtendedMode || isDisqualifiedW2W3),
+
+            Build(1, true, countdown.FastStartBonus1ExtendedStart, w1ExtEnd,
+                fsb1ExtendedEarned ? fsb1Earn.Amount : 0m, hidden: false),
+        };
+
+        return Ok(ApiResponse<FsbSummaryDto>.Ok(new FsbSummaryDto
+        {
+            Count              = fsbEarnings.Count,
+            TotalAmount        = fsbEarnings.Sum(x => x.Amount),
+            Windows            = windows,
+            IsExtendedMode     = isExtendedMode,
+            IsDisqualifiedW2W3 = isDisqualifiedW2W3
+        }));
     }
 
     /// <summary>GET /fast-start-bonus — paged earnings.</summary>
@@ -391,6 +510,7 @@ public class AdminMemberCommissionsController : ControllerBase
                 (c, ct2) => new EarningItemDto
                 {
                     CommissionTypeName = ct2.Name,
+                    Description        = c.Notes,
                     Amount             = c.Amount,
                     Status             = c.Status.ToString(),
                     EarnedDate         = c.EarnedDate,
@@ -647,6 +767,226 @@ public class AdminMemberCommissionsController : ControllerBase
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Fast Start Bonus — Admin Backfill
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// POST /fast-start-bonus/backfill — manually trigger FSB for a member who already has 2+
+    /// Elite/Turbo sponsors in an open window but whose commission was never recorded.
+    /// Idempotent: skips if earning already exists for the window.
+    /// </summary>
+    [HttpPost("fast-start-bonus/backfill")]
+    public async Task<IActionResult> BackfillFastStartBonus(
+        string memberId,
+        [FromQuery] bool force  = false,
+        [FromQuery] int? window = null,
+        CancellationToken ct    = default)
+    {
+        var now = DateTime.UtcNow;
+
+        // 1. Resolve UserId for countdown lookup
+        var memberUserId = await _db.MemberProfiles
+            .AsNoTracking()
+            .Where(m => m.MemberId == memberId)
+            .Select(m => m.UserId)
+            .FirstOrDefaultAsync(ct);
+
+        if (memberUserId == default)
+            return NotFound(ApiResponse<object>.Fail("MEMBER_NOT_FOUND", "Member profile not found."));
+
+        var countdown = await _db.CommissionCountDowns
+            .FirstOrDefaultAsync(c => c.MemberId == memberUserId, ct);
+
+        if (countdown is null)
+            return NotFound(ApiResponse<object>.Fail("COUNTDOWN_NOT_FOUND", "No FSB countdown record found for this member."));
+
+        // If FSB3 dates were never written (e.g. FSB2 was backfilled against old code),
+        // derive them from the FSB2 earning record so window=3 backfill works correctly.
+        if (countdown.FastStartBonus3Start == default)
+        {
+            var fsb2TypeId = await _db.CommissionTypes.AsNoTracking()
+                .Where(t => t.IsActive && t.IsPaidOnSignup && !t.IsSponsorBonus && t.TriggerOrder == 2)
+                .Select(t => t.Id)
+                .FirstOrDefaultAsync(ct);
+
+            if (fsb2TypeId > 0)
+            {
+                var fsb2Earned = await _db.CommissionEarnings.AsNoTracking()
+                    .Where(e => e.BeneficiaryMemberId == memberId
+                             && e.CommissionTypeId == fsb2TypeId
+                             && e.Status != CommissionEarningStatus.Cancelled)
+                    .Select(e => (DateTime?)e.EarnedDate)
+                    .FirstOrDefaultAsync(ct);
+
+                if (fsb2Earned.HasValue)
+                {
+                    countdown.FastStartBonus3Start = fsb2Earned.Value;
+                    countdown.FastStartBonus3End   = fsb2Earned.Value.AddDays(7);
+                }
+            }
+        }
+
+        // 2. Determine active window — iterate in priority order, skip already-earned ones.
+        // W1 and W2 can overlap in time, so we cannot rely on an if/else date chain.
+        // ?window=N overrides auto-detection (admin bypass for testing).
+        var candidates = new (int TriggerOrder, DateTime Start, DateTime End)[]
+        {
+            (1, countdown.FastStartBonus1Start,         countdown.FastStartBonus1End),
+            (1, countdown.FastStartBonus1ExtendedStart, countdown.FastStartBonus1ExtendedEnd),
+            (2, countdown.FastStartBonus2Start,         countdown.FastStartBonus2End),
+            (3, countdown.FastStartBonus3Start,         countdown.FastStartBonus3End),
+        };
+
+        int activeWindow = 0;
+        DateTime windowStart = default, windowEnd = default;
+
+        foreach (var c2 in candidates)
+        {
+            if (window.HasValue && c2.TriggerOrder != window.Value) continue;
+            if (!window.HasValue && (now < c2.Start || now > c2.End)) continue;
+
+            var ct2 = await _db.CommissionTypes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.IsActive && t.IsPaidOnSignup && !t.IsSponsorBonus
+                                       && t.TriggerOrder == c2.TriggerOrder, ct);
+            if (ct2 is null) continue;
+
+            var earned = await _db.CommissionEarnings
+                .AnyAsync(e => e.BeneficiaryMemberId == memberId
+                            && e.CommissionTypeId == ct2.Id
+                            && e.Status != CommissionEarningStatus.Cancelled, ct);
+            if (earned && !force) continue;
+
+            activeWindow = c2.TriggerOrder;
+            windowStart  = c2.Start;
+            windowEnd    = c2.End;
+            break;
+        }
+
+        if (activeWindow == 0)
+            return Ok(ApiResponse<object>.Ok(new { message = "No eligible FSB window found — all windows are closed, expired, or already earned." }));
+
+        // 3. Get FSB CommissionType for this window
+        var commType = await _db.CommissionTypes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.IsActive && t.IsPaidOnSignup && !t.IsSponsorBonus
+                                   && t.TriggerOrder == activeWindow, ct);
+
+        if (commType is null)
+            return Ok(ApiResponse<object>.Ok(new { message = $"No active FSB CommissionType found for window {activeWindow}." }));
+
+        // 4. Idempotency check — if force=true, cancel existing wrong record and recreate
+        var existingEarning = await _db.CommissionEarnings
+            .FirstOrDefaultAsync(e => e.BeneficiaryMemberId == memberId
+                                   && e.CommissionTypeId == commType.Id
+                                   && e.Status != CommissionEarningStatus.Cancelled, ct);
+
+        if (existingEarning is not null && !force)
+            return Ok(ApiResponse<object>.Ok(new { message = $"FSB Window {activeWindow} already recorded (${existingEarning.Amount}). Use ?force=true to correct it." }));
+
+        if (existingEarning is not null && force)
+        {
+            existingEarning.Status        = CommissionEarningStatus.Cancelled;
+            existingEarning.Notes         = $"[CORRECTED] {existingEarning.Notes}";
+            existingEarning.LastUpdateDate = now;
+            existingEarning.LastUpdateBy  = User.Identity?.Name ?? "admin-backfill";
+        }
+
+        // 5. Get the 2 Elite/Turbo (LevelId 3 or 4) sponsored members in this window
+        int[] eligibleLevelIds = [3, 4];
+
+        var eligibleSponsors = await _db.MemberProfiles
+            .AsNoTracking()
+            .Where(m => m.SponsorMemberId == memberId
+                     && m.EnrollDate >= windowStart && m.EnrollDate <= windowEnd)
+            .Join(
+                _db.MembershipSubscriptions.AsNoTracking()
+                    .Where(s => s.SubscriptionStatus == MembershipStatus.Active
+                             && eligibleLevelIds.Contains(s.MembershipLevelId)),
+                m => m.MemberId,
+                s => s.MemberId,
+                (m, _) => new { m.MemberId, m.FirstName, m.LastName, m.EnrollDate })
+            .OrderBy(x => x.EnrollDate)
+            .Take(2)
+            .ToListAsync(ct);
+
+        if (eligibleSponsors.Count < 2)
+            return Ok(ApiResponse<object>.Ok(new
+            {
+                message        = $"Not enough Elite/Turbo sponsors in window {activeWindow}. Found: {eligibleSponsors.Count}, required: 2.",
+                eligibleCount  = eligibleSponsors.Count
+            }));
+
+        // 6. Build Notes showing both member names for commission detail display
+        var m1 = eligibleSponsors[0];
+        var m2 = eligibleSponsors[1];
+        var notes = $"{m1.FirstName} {m1.LastName} ({m1.MemberId}) — {m2.FirstName} {m2.LastName} ({m2.MemberId})";
+
+        // Pay half now; the remaining half fires on rebilling
+        var amount = (commType.FixedAmount ?? 0m) / 2m;
+
+        var sourceMemberId = m2.MemberId;
+        // When force=true we may be re-inserting after cancelling the original — use a unique synthetic ID
+        // to avoid the (SourceOrderId, CommissionTypeId) unique index violation.
+        var sourceOrderId = force
+            ? $"BACKFILL-{Guid.NewGuid():N}"
+            : await _db.Orders
+                .AsNoTracking()
+                .Where(o => o.MemberId == sourceMemberId && o.Status == Domain.Entities.Orders.OrderStatus.Completed)
+                .OrderByDescending(o => o.CreationDate)
+                .Select(o => o.Id)
+                .FirstOrDefaultAsync(ct) ?? $"ADMIN-BACKFILL-{memberId}-W{activeWindow}";
+
+        await _db.CommissionEarnings.AddAsync(new CommissionEarning
+        {
+            BeneficiaryMemberId = memberId,
+            SourceMemberId      = sourceMemberId,
+            SourceOrderId       = sourceOrderId,
+            CommissionTypeId    = commType.Id,
+            Amount              = amount,
+            Status              = CommissionEarningStatus.Pending,
+            EarnedDate          = now,
+            PaymentDate         = now.AddDays(commType.PaymentDelayDays),
+            PeriodDate          = now.Date,
+            Notes               = notes,
+            CreatedBy           = User.Identity?.Name ?? "admin-backfill",
+            CreationDate        = now,
+            LastUpdateDate      = now
+        }, ct);
+
+        // 7. Advance next window dates
+        if (activeWindow == 1)
+        {
+            countdown.FastStartBonus2Start = now;
+            countdown.FastStartBonus2End   = now.AddDays(7);
+            countdown.LastUpdateDate       = now;
+            countdown.LastUpdateBy         = User.Identity?.Name ?? "admin-backfill";
+        }
+        else if (activeWindow == 2)
+        {
+            countdown.FastStartBonus3Start = now;
+            countdown.FastStartBonus3End   = now.AddDays(7);
+            countdown.LastUpdateDate       = now;
+            countdown.LastUpdateBy         = User.Identity?.Name ?? "admin-backfill";
+        }
+
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(ApiResponse<object>.Ok(new
+        {
+            message      = $"FSB Window {activeWindow} commission recorded successfully.",
+            window       = activeWindow,
+            amount,
+            eligibleCount = eligibleSponsors.Count,
+            notes,
+            nextW2Start  = activeWindow == 1 ? (DateTime?)countdown.FastStartBonus2Start : null,
+            nextW2End    = activeWindow == 1 ? (DateTime?)countdown.FastStartBonus2End   : null,
+            nextW3Start  = activeWindow == 2 ? (DateTime?)countdown.FastStartBonus3Start : null,
+            nextW3End    = activeWindow == 2 ? (DateTime?)countdown.FastStartBonus3End   : null
+        }));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Nested DTOs
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -710,9 +1050,32 @@ public class AdminMemberCommissionsController : ControllerBase
         public decimal TotalAmount { get; set; }
     }
 
+    public class FsbSummaryDto
+    {
+        public int                 Count              { get; set; }
+        public decimal             TotalAmount        { get; set; }
+        public List<FsbWindowDto>? Windows            { get; set; }
+        public bool                IsExtendedMode     { get; set; }
+        public bool                IsDisqualifiedW2W3 { get; set; }
+    }
+
+    public class FsbWindowDto
+    {
+        public int       WindowNumber   { get; set; }
+        public bool      IsPromo        { get; set; }
+        public decimal   Amount         { get; set; }
+        public bool      IsCompleted    { get; set; }
+        public bool      IsActive       { get; set; }
+        public DateTime? StartDate      { get; set; }
+        public DateTime? EndDate        { get; set; }
+        public int       SponsoredCount { get; set; }
+        public bool      IsHidden       { get; set; }
+    }
+
     public class EarningItemDto
     {
         public string   CommissionTypeName { get; set; } = string.Empty;
+        public string?  Description        { get; set; }
         public decimal  Amount             { get; set; }
         public string   Status             { get; set; } = string.Empty;
         public DateTime EarnedDate         { get; set; }

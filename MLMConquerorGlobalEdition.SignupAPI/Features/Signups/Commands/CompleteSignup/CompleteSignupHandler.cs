@@ -24,6 +24,7 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
     private readonly IDateTimeProvider            _dateTime;
     private readonly IS3FileService               _s3;
     private readonly ISponsorBonusService         _sponsorBonus;
+    private readonly IFastStartBonusService       _fastStartBonus;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IJwtService                  _jwtService;
 
@@ -32,15 +33,17 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
         IDateTimeProvider dateTime,
         IS3FileService s3,
         ISponsorBonusService sponsorBonus,
+        IFastStartBonusService fastStartBonus,
         UserManager<ApplicationUser> userManager,
         IJwtService jwtService)
     {
-        _db           = db;
-        _dateTime     = dateTime;
-        _s3           = s3;
-        _sponsorBonus = sponsorBonus;
-        _userManager  = userManager;
-        _jwtService   = jwtService;
+        _db             = db;
+        _dateTime       = dateTime;
+        _s3             = s3;
+        _sponsorBonus   = sponsorBonus;
+        _fastStartBonus = fastStartBonus;
+        _userManager    = userManager;
+        _jwtService     = jwtService;
     }
 
     public async Task<Result<SignupResponse>> Handle(CompleteSignupCommand command, CancellationToken ct)
@@ -194,6 +197,10 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
         await _sponsorBonus.ComputeAsync(
             member.SponsorMemberId, member.MemberId, order.Id,
             order.TotalAmount, member.Email, now, ct);
+
+        await _fastStartBonus.ComputeAsync(
+            member.SponsorMemberId, member.MemberId, order.Id,
+            now, member.Email, ct);
 
         await _db.SaveChangesAsync(ct);
 

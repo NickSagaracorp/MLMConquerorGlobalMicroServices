@@ -36,6 +36,7 @@ public class GetCommissionsBreakdownHandler : IRequestHandler<GetCommissionsBrea
                 {
                     c.SourceMemberId,
                     c.SourceOrderId,
+                    c.Notes,
                     c.Amount,
                     TypeName = ct2.Name,
                     TypeDesc = ct2.Description
@@ -74,7 +75,12 @@ public class GetCommissionsBreakdownHandler : IRequestHandler<GetCommissionsBrea
         var items = raw.Select(x =>
         {
             string detail;
-            if (x.SourceOrderId != null)
+            if (!string.IsNullOrWhiteSpace(x.Notes))
+            {
+                // Notes stores human-readable detail (e.g. FSB "Member1 — Member2" format)
+                detail = x.Notes;
+            }
+            else if (x.SourceOrderId != null)
             {
                 var orderRef = orderNumbers.TryGetValue(x.SourceOrderId, out var no) ? no : x.SourceOrderId;
                 var name = x.SourceMemberId != null && memberNames.TryGetValue(x.SourceMemberId, out var fullName)

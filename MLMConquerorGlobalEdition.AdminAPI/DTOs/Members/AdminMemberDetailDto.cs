@@ -18,4 +18,8 @@ public class AdminMemberDetailDto
     public int EnrollmentTeamSize { get; set; }
     public decimal CurrentMonthIncome { get; set; }
     public decimal CurrentYearIncome { get; set; }
+    public string? CurrentRank { get; set; }
+    public int? CurrentRankId { get; set; }
+    public string? LifetimeRank { get; set; }
+    public int? LifetimeRankId { get; set; }
 }

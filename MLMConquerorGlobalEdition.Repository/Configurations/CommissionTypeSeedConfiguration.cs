@@ -56,6 +56,44 @@ namespace MLMConquerorGlobalEdition.Repository.Configurations;
 /// │ 44  │ Reversal – Builder Bonus Turbo VIP     │ Cat 5 · reverses ID 36      │
 /// │ 45  │ Reversal – Builder Bonus Turbo Elite   │ Cat 5 · reverses ID 37      │
 /// │ 46  │ Reversal – Builder Bonus Turbo Turbo   │ Cat 5 · reverses ID 38      │
+/// │ 47  │ BB Elite – Silver (rank 1)             │ Cat 6 · LifeTimeRank=1      │
+/// │ 48  │ BB Elite – Gold (rank 2)               │ Cat 6 · LifeTimeRank=2      │
+/// │ 49  │ BB Elite – Platinum (rank 3)           │ Cat 6 · LifeTimeRank=3      │
+/// │ 50  │ BB Elite – Titanium (rank 4)           │ Cat 6 · LifeTimeRank=4      │
+/// │ 51  │ BB Elite – Jade (rank 5)               │ Cat 6 · LifeTimeRank=5      │
+/// │ 52  │ BB Elite – Pearl (rank 6)              │ Cat 6 · LifeTimeRank=6      │
+/// │ 53  │ BB Elite – Emerald (rank 7)            │ Cat 6 · LifeTimeRank=7      │
+/// │ 54  │ BB Elite – Ruby (rank 8)               │ Cat 6 · LifeTimeRank=8      │
+/// │ 55  │ BB Elite – Sapphire (rank 9)           │ Cat 6 · LifeTimeRank=9      │
+/// │ 56  │ BB Elite – Diamond (rank 10)           │ Cat 6 · LifeTimeRank=10     │
+/// │ 57  │ BB Elite – Double Diamond (rank 11)    │ Cat 6 · LifeTimeRank=11     │
+/// │ 58  │ BB Elite – Triple Diamond (rank 12)    │ Cat 6 · LifeTimeRank=12     │
+/// │ 59  │ BB Elite – Blue Diamond (rank 13)      │ Cat 6 · LifeTimeRank=13     │
+/// │ 60  │ BB Elite – Black Diamond (rank 14)     │ Cat 6 · LifeTimeRank=14     │
+/// │ 61  │ BB Elite – Royal (rank 15)             │ Cat 6 · LifeTimeRank=15     │
+/// │ 62  │ BB Elite – Double Royal (rank 16)      │ Cat 6 · LifeTimeRank=16     │
+/// │ 63  │ BB Elite – Triple Royal (rank 17)      │ Cat 6 · LifeTimeRank=17     │
+/// │ 64  │ BB Elite – Blue Royal (rank 18)        │ Cat 6 · LifeTimeRank=18     │
+/// │ 65  │ BB Elite – Black Royal (rank 19)       │ Cat 6 · LifeTimeRank=19     │
+/// │ 66  │ BB Turbo – Silver (rank 1)             │ Cat 7 · LifeTimeRank=1      │
+/// │ 67  │ BB Turbo – Gold (rank 2)               │ Cat 7 · LifeTimeRank=2      │
+/// │ 68  │ BB Turbo – Platinum (rank 3)           │ Cat 7 · LifeTimeRank=3      │
+/// │ 69  │ BB Turbo – Titanium (rank 4)           │ Cat 7 · LifeTimeRank=4      │
+/// │ 70  │ BB Turbo – Jade (rank 5)               │ Cat 7 · LifeTimeRank=5      │
+/// │ 71  │ BB Turbo – Pearl (rank 6)              │ Cat 7 · LifeTimeRank=6      │
+/// │ 72  │ BB Turbo – Emerald (rank 7)            │ Cat 7 · LifeTimeRank=7      │
+/// │ 73  │ BB Turbo – Ruby (rank 8)               │ Cat 7 · LifeTimeRank=8      │
+/// │ 74  │ BB Turbo – Sapphire (rank 9)           │ Cat 7 · LifeTimeRank=9      │
+/// │ 75  │ BB Turbo – Diamond (rank 10)           │ Cat 7 · LifeTimeRank=10     │
+/// │ 76  │ BB Turbo – Double Diamond (rank 11)    │ Cat 7 · LifeTimeRank=11     │
+/// │ 77  │ BB Turbo – Triple Diamond (rank 12)    │ Cat 7 · LifeTimeRank=12     │
+/// │ 78  │ BB Turbo – Blue Diamond (rank 13)      │ Cat 7 · LifeTimeRank=13     │
+/// │ 79  │ BB Turbo – Black Diamond (rank 14)     │ Cat 7 · LifeTimeRank=14     │
+/// │ 80  │ BB Turbo – Royal (rank 15)             │ Cat 7 · LifeTimeRank=15     │
+/// │ 81  │ BB Turbo – Double Royal (rank 16)      │ Cat 7 · LifeTimeRank=16     │
+/// │ 82  │ BB Turbo – Triple Royal (rank 17)      │ Cat 7 · LifeTimeRank=17     │
+/// │ 83  │ BB Turbo – Blue Royal (rank 18)        │ Cat 7 · LifeTimeRank=18     │
+/// │ 84  │ BB Turbo – Black Royal (rank 19)       │ Cat 7 · LifeTimeRank=19     │
 /// └─────┴────────────────────────────────────────┴──────────────────────────── │
 ///
 /// TeamPoints for DTR Silver/Gold/Platinum = Enrollment Team points (ET-based ranks).
@@ -525,7 +563,62 @@ public class CommissionTypeSeedConfiguration : IEntityTypeConfiguration<Commissi
                 PaymentDelayDays = 0,
                 IsActive = true, IsRealTime = true,
                 CreationDate = SeedDate, CreatedBy = "seed"
-            }
+            },
+
+            // ═══════════════════════════════════════════════════════════════════
+            // CATEGORY 6 — BUILDER BONUS ELITE (Per-Rank Tier, IDs 47-65)
+            // One entry per rank. LifeTimeRank = RankDefinition.Id (= SortOrder).
+            // Sponsor must hold at least that rank to receive this tier of bonus.
+            // LevelNo = 3 (Elite membership product). Amounts default 0 — set via admin.
+            // IsSponsorBonus = true; engine selects the highest qualifying tier.
+            // ═══════════════════════════════════════════════════════════════════
+
+            new CommissionType { Id = 47, CommissionCategoryId = 6, Name = "Builder Bonus Elite – Silver",         Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Silver (1).",         Percentage = 0m, FixedAmount = 10m,  PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 3, LifeTimeRank = 1,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 48, CommissionCategoryId = 6, Name = "Builder Bonus Elite – Gold",           Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Gold (2).",           Percentage = 0m, FixedAmount = 20m,  PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 3, LifeTimeRank = 2,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 49, CommissionCategoryId = 6, Name = "Builder Bonus Elite – Platinum",       Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Platinum (3).",       Percentage = 0m, FixedAmount = 30m,  PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 3, LifeTimeRank = 3,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 50, CommissionCategoryId = 6, Name = "Builder Bonus Elite – Titanium",       Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Titanium (4).",       Percentage = 0m, FixedAmount = 40m,  PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 3, LifeTimeRank = 4,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 51, CommissionCategoryId = 6, Name = "Builder Bonus Elite – Jade",           Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Jade (5).",           Percentage = 0m, FixedAmount = 50m,  PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 3, LifeTimeRank = 5,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 52, CommissionCategoryId = 6, Name = "Builder Bonus Elite – Pearl",          Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Pearl (6).",          Percentage = 0m, FixedAmount = 60m,  PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 3, LifeTimeRank = 6,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 53, CommissionCategoryId = 6, Name = "Builder Bonus Elite – Emerald",        Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Emerald (7).",        Percentage = 0m, FixedAmount = 65m,  PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 3, LifeTimeRank = 7,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 54, CommissionCategoryId = 6, Name = "Builder Bonus Elite – Ruby",           Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Ruby (8).",           Percentage = 0m, FixedAmount = 70m,  PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 3, LifeTimeRank = 8,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 55, CommissionCategoryId = 6, Name = "Builder Bonus Elite – Sapphire",       Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Sapphire (9).",       Percentage = 0m, FixedAmount = 75m,  PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 3, LifeTimeRank = 9,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 56, CommissionCategoryId = 6, Name = "Builder Bonus Elite – Diamond",        Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Diamond (10).",        Percentage = 0m, FixedAmount = 80m,  PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 3, LifeTimeRank = 10, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 57, CommissionCategoryId = 6, Name = "Builder Bonus Elite – Double Diamond",  Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Double Diamond (11).",  Percentage = 0m, FixedAmount = 85m,  PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 3, LifeTimeRank = 11, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 58, CommissionCategoryId = 6, Name = "Builder Bonus Elite – Triple Diamond",  Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Triple Diamond (12).",  Percentage = 0m, FixedAmount = 90m,  PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 3, LifeTimeRank = 12, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 59, CommissionCategoryId = 6, Name = "Builder Bonus Elite – Blue Diamond",    Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Blue Diamond (13).",    Percentage = 0m, FixedAmount = 95m,  PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 3, LifeTimeRank = 13, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 60, CommissionCategoryId = 6, Name = "Builder Bonus Elite – Black Diamond",   Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Black Diamond (14).",   Percentage = 0m, FixedAmount = 100m, PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 3, LifeTimeRank = 14, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 61, CommissionCategoryId = 6, Name = "Builder Bonus Elite – Royal",           Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Royal (15).",           Percentage = 0m, FixedAmount = 105m, PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 3, LifeTimeRank = 15, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 62, CommissionCategoryId = 6, Name = "Builder Bonus Elite – Double Royal",    Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Double Royal (16).",    Percentage = 0m, FixedAmount = 110m, PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 3, LifeTimeRank = 16, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 63, CommissionCategoryId = 6, Name = "Builder Bonus Elite – Triple Royal",    Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Triple Royal (17).",    Percentage = 0m, FixedAmount = 115m, PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 3, LifeTimeRank = 17, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 64, CommissionCategoryId = 6, Name = "Builder Bonus Elite – Blue Royal",      Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Blue Royal (18).",      Percentage = 0m, FixedAmount = 120m, PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 3, LifeTimeRank = 18, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 65, CommissionCategoryId = 6, Name = "Builder Bonus Elite – Black Royal",     Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Black Royal (19).",     Percentage = 0m, FixedAmount = 125m, PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 3, LifeTimeRank = 19, CreationDate = SeedDate, CreatedBy = "seed" },
+
+            // ═══════════════════════════════════════════════════════════════════
+            // CATEGORY 7 — BUILDER BONUS TURBO (Per-Rank Tier, IDs 66-84)
+            // One entry per rank. LifeTimeRank = RankDefinition.Id (= SortOrder).
+            // LevelNo = 4 (Turbo membership product). Amounts default 0 — set via admin.
+            // IsSponsorBonus = true; engine selects the highest qualifying tier.
+            // ═══════════════════════════════════════════════════════════════════
+
+            new CommissionType { Id = 66, CommissionCategoryId = 7, Name = "Builder Bonus Turbo – Silver",         Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Silver (1).",         Percentage = 0m, FixedAmount = 20m,  PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 4, LifeTimeRank = 1,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 67, CommissionCategoryId = 7, Name = "Builder Bonus Turbo – Gold",           Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Gold (2).",           Percentage = 0m, FixedAmount = 40m,  PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 4, LifeTimeRank = 2,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 68, CommissionCategoryId = 7, Name = "Builder Bonus Turbo – Platinum",       Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Platinum (3).",       Percentage = 0m, FixedAmount = 60m,  PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 4, LifeTimeRank = 3,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 69, CommissionCategoryId = 7, Name = "Builder Bonus Turbo – Titanium",       Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Titanium (4).",       Percentage = 0m, FixedAmount = 80m,  PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 4, LifeTimeRank = 4,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 70, CommissionCategoryId = 7, Name = "Builder Bonus Turbo – Jade",           Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Jade (5).",           Percentage = 0m, FixedAmount = 100m, PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 4, LifeTimeRank = 5,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 71, CommissionCategoryId = 7, Name = "Builder Bonus Turbo – Pearl",          Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Pearl (6).",          Percentage = 0m, FixedAmount = 120m, PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 4, LifeTimeRank = 6,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 72, CommissionCategoryId = 7, Name = "Builder Bonus Turbo – Emerald",        Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Emerald (7).",        Percentage = 0m, FixedAmount = 130m, PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 4, LifeTimeRank = 7,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 73, CommissionCategoryId = 7, Name = "Builder Bonus Turbo – Ruby",           Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Ruby (8).",           Percentage = 0m, FixedAmount = 140m, PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 4, LifeTimeRank = 8,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 74, CommissionCategoryId = 7, Name = "Builder Bonus Turbo – Sapphire",       Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Sapphire (9).",       Percentage = 0m, FixedAmount = 150m, PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 4, LifeTimeRank = 9,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 75, CommissionCategoryId = 7, Name = "Builder Bonus Turbo – Diamond",        Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Diamond (10).",        Percentage = 0m, FixedAmount = 160m, PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 4, LifeTimeRank = 10, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 76, CommissionCategoryId = 7, Name = "Builder Bonus Turbo – Double Diamond",  Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Double Diamond (11).",  Percentage = 0m, FixedAmount = 170m, PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 4, LifeTimeRank = 11, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 77, CommissionCategoryId = 7, Name = "Builder Bonus Turbo – Triple Diamond",  Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Triple Diamond (12).",  Percentage = 0m, FixedAmount = 180m, PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 4, LifeTimeRank = 12, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 78, CommissionCategoryId = 7, Name = "Builder Bonus Turbo – Blue Diamond",    Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Blue Diamond (13).",    Percentage = 0m, FixedAmount = 190m, PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 4, LifeTimeRank = 13, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 79, CommissionCategoryId = 7, Name = "Builder Bonus Turbo – Black Diamond",   Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Black Diamond (14).",   Percentage = 0m, FixedAmount = 200m, PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 4, LifeTimeRank = 14, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 80, CommissionCategoryId = 7, Name = "Builder Bonus Turbo – Royal",           Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Royal (15).",           Percentage = 0m, FixedAmount = 210m, PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 4, LifeTimeRank = 15, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 81, CommissionCategoryId = 7, Name = "Builder Bonus Turbo – Double Royal",    Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Double Royal (16).",    Percentage = 0m, FixedAmount = 220m, PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 4, LifeTimeRank = 16, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 82, CommissionCategoryId = 7, Name = "Builder Bonus Turbo – Triple Royal",    Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Triple Royal (17).",    Percentage = 0m, FixedAmount = 230m, PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 4, LifeTimeRank = 17, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 83, CommissionCategoryId = 7, Name = "Builder Bonus Turbo – Blue Royal",      Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Blue Royal (18).",      Percentage = 0m, FixedAmount = 240m, PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 4, LifeTimeRank = 18, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = 84, CommissionCategoryId = 7, Name = "Builder Bonus Turbo – Black Royal",     Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Black Royal (19).",     Percentage = 0m, FixedAmount = 250m, PaymentDelayDays = 4, IsActive = true, IsRealTime = true, IsPaidOnSignup = true, IsSponsorBonus = true, LevelNo = 4, LifeTimeRank = 19, CreationDate = SeedDate, CreatedBy = "seed" }
         );
     }
 }

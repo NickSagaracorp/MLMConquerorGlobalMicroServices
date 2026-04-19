@@ -117,6 +117,25 @@ else
                             <dd class="col-5 fw-semibold">@_member.EnrollmentPoints</dd>
                             <dt class="col-7 text-muted">Enroll Team Size</dt>
                             <dd class="col-5 fw-semibold">@_member.EnrollmentTeamSize</dd>
+                            <dt class="col-7 text-muted">Current Rank</dt>
+                            <dd class="col-5 fw-semibold">
+                                @if (!string.IsNullOrEmpty(_member.CurrentRank))
+                                {
+                                    <span class="badge bg-info text-dark">@_member.CurrentRank</span>
+                                }
+                                else { <span class="text-muted">—</span> }
+                            </dd>
+                            <dt class="col-7 text-muted">Lifetime Rank</dt>
+                            <dd class="col-5 fw-semibold">
+                                @if (!string.IsNullOrEmpty(_member.LifetimeRank))
+                                {
+                                    <span class="badge bg-primary">@_member.LifetimeRank</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </dd>
                         </dl>
                     </div>
                 </div>
@@ -275,11 +294,57 @@ else
     }
     else if (_activeTab == "ranks")
     {
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <h5 class="fw-semibold border-bottom pb-3 mb-4">Set Lifetime Rank</h5>
+                <div class="row g-3" style="max-width:440px;">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Current Rank</label>
+                        <p class="mb-1">
+                            @if (!string.IsNullOrEmpty(_member?.CurrentRank))
+                            {
+                                <span class="badge bg-info text-dark fs-13">@_member.CurrentRank</span>
+                            }
+                            else { <span class="text-muted">— No rank assigned</span> }
+                        </p>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Lifetime Rank (Highest Ever)</label>
+                        <p class="mb-1">
+                            @if (!string.IsNullOrEmpty(_member?.LifetimeRank))
+                            {
+                                <span class="badge bg-primary fs-13">@_member.LifetimeRank</span>
+                            }
+                            else { <span class="text-muted">— No rank assigned</span> }
+                        </p>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">New Rank</label>
+                        <select class="form-select" @bind="_newRankId" disabled="@(_rankDefs.Count == 0)">
+                            <option value="0">— Select a rank —</option>
+                            @foreach (var r in _rankDefs)
+                            {
+                                <option value="@r.Id">@r.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <button class="btn btn-primary" @onclick="SaveRank" disabled="@(_savingRank || _newRankId == 0)">
+                            @if (_savingRank) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                            Set Rank
+                        </button>
+                        @if (_rankMsg is not null)
+                        {
+                            <span class="ms-3 @(_rankError ? "text-danger" : "text-success") small">@_rankMsg</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
         <div class="card border-0 shadow-sm">
-            <div class="card-body p-4 text-center py-5">
+            <div class="card-body p-4 text-center py-4">
                 <i class="ri-award-line fs-2 text-primary d-block mb-3"></i>
-                <p class="text-muted mb-3">View rank history and progress for this member.</p>
-                <a href="/admin/config/ranks/dashboard?memberId=@MemberId" class="btn btn-primary btn-sm">
+                <a href="/admin/config/ranks/dashboard?memberId=@MemberId" class="btn btn-outline-primary btn-sm">
                     <i class="ri-external-link-line me-1"></i>View Rank Dashboard
                 </a>
             </div>
@@ -397,6 +462,13 @@ else
     private string? _statusMsg;
     private bool _statusError;
 
+    // Rank state
+    private List<RankDefItem> _rankDefs = new();
+    private int    _newRankId  = 0;
+    private bool   _savingRank = false;
+    private string? _rankMsg;
+    private bool    _rankError;
+
     private record TabItem(string Key, string Label, string Icon);
 
     private readonly List<TabItem> _tabs = new()
@@ -422,12 +494,44 @@ else
             var resp = await Http.GetFromJsonAsync<ApiResp<MemberDetailDto>>($"api/v1/admin/members/{MemberId}");
             if (resp?.Success == true)
             {
-                _member = resp.Data;
+                _member    = resp.Data;
                 _newStatus = _member?.Status ?? "Active";
             }
         }
         catch { }
         finally { _loading = false; }
+
+        try
+        {
+            var rankResp = await Http.GetFromJsonAsync<ApiResp<List<RankDefItem>>>("api/v1/admin/rank-definitions");
+            if (rankResp?.Success == true && rankResp.Data is not null)
+                _rankDefs = rankResp.Data;
+        }
+        catch { }
+    }
+
+    private async Task SaveRank()
+    {
+        if (_newRankId == 0) return;
+        _savingRank = true; _rankMsg = null;
+        try
+        {
+            var resp = await Http.PutAsJsonAsync(
+                $"api/v1/admin/members/{MemberId}/ranks/lifetime",
+                new { RankDefinitionId = _newRankId });
+
+            if (resp.IsSuccessStatusCode)
+            {
+                var selected = _rankDefs.FirstOrDefault(r => r.Id == _newRankId);
+                _rankMsg = $"Rank updated to '{selected?.Name}'."; _rankError = false;
+                if (_member is not null)
+                    _member = _member with { LifetimeRank = selected?.Name, LifetimeRankId = _newRankId };
+                _newRankId = 0;
+            }
+            else { _rankMsg = $"Failed ({resp.StatusCode})."; _rankError = true; }
+        }
+        catch (Exception ex) { _rankMsg = ex.Message; _rankError = true; }
+        finally { _savingRank = false; }
     }
 
     private async Task SaveStatus()
@@ -478,7 +582,16 @@ else
         string? Phone, string Country, string Status, string MemberType,
         DateTime EnrollDate, string? SponsorMemberId, DateTime CreationDate,
         int DualTeamPoints, int EnrollmentPoints, int DualTeamSize, int EnrollmentTeamSize,
-        decimal CurrentMonthIncome, decimal CurrentYearIncome);
+        decimal CurrentMonthIncome, decimal CurrentYearIncome,
+        string? CurrentRank, int? CurrentRankId,
+        string? LifetimeRank, int? LifetimeRankId);
 
     private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+
+    private class RankDefItem
+    {
+        public int    Id        { get; set; }
+        public string Name      { get; set; } = string.Empty;
+        public int    SortOrder { get; set; }
+    }
 }

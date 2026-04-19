@@ -26,6 +26,38 @@ public class GetMemberHandler : IRequestHandler<GetMemberQuery, Result<AdminMemb
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.MemberId == request.MemberId, cancellationToken);
 
+        var allRankHistory = await _db.MemberRankHistories
+            .AsNoTracking()
+            .Where(r => r.MemberId == request.MemberId)
+            .Join(_db.RankDefinitions,
+                  h => h.RankDefinitionId,
+                  d => d.Id,
+                  (h, d) => new { h.RankDefinitionId, d.Name, d.SortOrder, h.AchievedAt })
+            .ToListAsync(cancellationToken);
+
+        var currentRank  = allRankHistory.OrderByDescending(r => r.AchievedAt).FirstOrDefault();
+        var lifetimeRank = allRankHistory.OrderByDescending(r => r.SortOrder).FirstOrDefault();
+
+        // Default to first rank (lowest SortOrder) when member has no rank history
+        string? currentRankName  = currentRank?.Name;
+        int?    currentRankId    = currentRank?.RankDefinitionId;
+        string? lifetimeRankName = lifetimeRank?.Name;
+        int?    lifetimeRankId   = lifetimeRank?.RankDefinitionId;
+
+        if (currentRank is null)
+        {
+            var defaultRank = await _db.RankDefinitions
+                .AsNoTracking()
+                .OrderBy(r => r.SortOrder)
+                .Select(r => new { r.Id, r.Name })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            currentRankName  = defaultRank?.Name;
+            currentRankId    = defaultRank?.Id;
+            lifetimeRankName = defaultRank?.Name;
+            lifetimeRankId   = defaultRank?.Id;
+        }
+
         var dto = new AdminMemberDetailDto
         {
             MemberId = member.MemberId,
@@ -43,7 +75,11 @@ public class GetMemberHandler : IRequestHandler<GetMemberQuery, Result<AdminMemb
             DualTeamSize = stats?.DualTeamSize ?? 0,
             EnrollmentTeamSize = stats?.EnrollmentTeamSize ?? 0,
             CurrentMonthIncome = stats?.CurrentMonthIncomeGrowth ?? 0,
-            CurrentYearIncome = stats?.CurrentYearIncomeGrowth ?? 0
+            CurrentYearIncome = stats?.CurrentYearIncomeGrowth ?? 0,
+            CurrentRank    = currentRankName,
+            CurrentRankId  = currentRankId,
+            LifetimeRank   = lifetimeRankName,
+            LifetimeRankId = lifetimeRankId
         };
 
         return Result<AdminMemberDetailDto>.Success(dto);

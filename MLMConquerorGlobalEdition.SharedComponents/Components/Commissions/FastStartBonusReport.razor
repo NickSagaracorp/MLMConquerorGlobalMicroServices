@@ -27,7 +27,7 @@
         @if (!_summaryLoading)
         {
             <div class="fsb-row">
-                @foreach (var win in (_fsbTab == "promo" ? _promoWindows : _normalWindows))
+                @foreach (var win in (_fsbTab == "promo" ? _promoWindows : _normalWindows).Where(w => !w.IsHidden))
                 {
                     var w = win;
                     var fsbCardClass = w.State switch
@@ -50,12 +50,21 @@
                             <div class="fsb-bottom">
                                 <div class="fsb-icons-area d-flex align-items-center" style="@(w.State == FsbState.Locked ? "opacity:.7;filter:grayscale(.4);" : "")">
                                     @{
-                                        var slot1Class = w.State == FsbState.Complete ? "fsb-person-big active-green"
-                                                       : w.State == FsbState.Active   ? "fsb-person-big active-blue"
-                                                       : w.State == FsbState.Locked   ? "fsb-person-big locked"
-                                                       :                                "fsb-person-big inactive";
-                                        var slot2Class = w.State == FsbState.Complete ? "fsb-person-big active-green"
-                                                       : "fsb-person-big inactive";
+                                        string SlotClass(int slotIndex)
+                                        {
+                                            if (w.State == FsbState.Locked)
+                                                return "fsb-person-big locked";
+
+                                            var filled = w.SponsoredCount >= slotIndex;
+                                            if (!filled)
+                                                return "fsb-person-big inactive";
+
+                                            return w.State == FsbState.Complete
+                                                ? "fsb-person-big active-green"
+                                                : "fsb-person-big active-blue";
+                                        }
+                                        var slot1Class = SlotClass(1);
+                                        var slot2Class = SlotClass(2);
                                     }
                                     <div class="@slot1Class"><i class="ri-user-fill" aria-hidden="true"></i></div>
                                     <div class="@slot2Class"><i class="ri-user-fill" aria-hidden="true"></i></div>
@@ -248,6 +257,8 @@
     private int     _page = 1, _pageSize = 20, _total;
     private int     _count;
     private decimal _totalAmount;
+    private bool    _isExtendedMode;
+    private bool    _isDisqualifiedW2W3;
     private string    _search  = string.Empty;
     private DateTime? _from;
     private DateTime? _to;
@@ -366,14 +377,19 @@
                 $"{ApiBaseUrl}/fast-start-bonus/summary");
             if (resp?.Success == true && resp.Data is not null)
             {
-                _count         = resp.Data.Count;
-                _totalAmount   = resp.Data.TotalAmount;
-                _normalWindows = BuildWindowCards(resp.Data.Windows, isPromo: false);
-                _promoWindows  = BuildWindowCards(resp.Data.Windows, isPromo: true);
+                _count              = resp.Data.Count;
+                _totalAmount        = resp.Data.TotalAmount;
+                _normalWindows      = BuildWindowCards(resp.Data.Windows, isPromo: false);
+                _promoWindows       = BuildWindowCards(resp.Data.Windows, isPromo: true);
+                _isExtendedMode     = resp.Data.IsExtendedMode;
+                _isDisqualifiedW2W3 = resp.Data.IsDisqualifiedW2W3;
             }
         }
         catch { /* silently degrade */ }
         finally { _summaryLoading = false; }
+
+        if (HasActiveWindows)
+            StartCountdownTimer();
     }
 
     private static List<FsbWindowCard> BuildWindowCards(List<FsbWindowData>? windows, bool isPromo)
@@ -386,15 +402,17 @@
                 ? new FsbWindowCard { Title = $"FAST START BONUS {i}", State = FsbState.Locked }
                 : new FsbWindowCard
                 {
-                    Title        = $"FAST START BONUS {i}",
-                    WindowNumber = i,
-                    IsPromo      = isPromo,
-                    Amount       = win.Amount,
-                    StartDate    = win.StartDate,
-                    EndDate      = win.EndDate,
-                    State        = win.IsCompleted ? FsbState.Complete
-                                 : win.IsActive    ? FsbState.Active
-                                 :                   FsbState.Locked
+                    Title          = $"FAST START BONUS {i}",
+                    WindowNumber   = i,
+                    IsPromo        = isPromo,
+                    Amount         = win.Amount,
+                    StartDate      = win.StartDate,
+                    EndDate        = win.EndDate,
+                    SponsoredCount = win.SponsoredCount,
+                    IsHidden       = win.IsHidden,
+                    State          = win.IsCompleted ? FsbState.Complete
+                                   : win.IsActive    ? FsbState.Active
+                                   :                   FsbState.Locked
                 });
         }
         return result;
@@ -445,13 +463,15 @@
 
     private class FsbWindowCard
     {
-        public string    Title        { get; set; } = string.Empty;
-        public int       WindowNumber { get; set; }
-        public bool      IsPromo      { get; set; }
-        public FsbState  State        { get; set; } = FsbState.Locked;
-        public decimal   Amount       { get; set; }
-        public DateTime? StartDate    { get; set; }
-        public DateTime? EndDate      { get; set; }
+        public string    Title          { get; set; } = string.Empty;
+        public int       WindowNumber   { get; set; }
+        public bool      IsPromo        { get; set; }
+        public FsbState  State          { get; set; } = FsbState.Locked;
+        public decimal   Amount         { get; set; }
+        public DateTime? StartDate      { get; set; }
+        public DateTime? EndDate        { get; set; }
+        public int       SponsoredCount { get; set; }
+        public bool      IsHidden       { get; set; }
     }
 
     // ── Private DTOs ─────────────────────────────────────────────────────────
@@ -461,20 +481,24 @@
 
     private class BonusSummary
     {
-        public int                  Count       { get; set; }
-        public decimal              TotalAmount { get; set; }
-        public List<FsbWindowData>? Windows     { get; set; }
+        public int                  Count             { get; set; }
+        public decimal              TotalAmount       { get; set; }
+        public List<FsbWindowData>? Windows           { get; set; }
+        public bool                 IsExtendedMode    { get; set; }
+        public bool                 IsDisqualifiedW2W3 { get; set; }
     }
 
     private class FsbWindowData
     {
-        public int       WindowNumber { get; set; }
-        public bool      IsPromo      { get; set; }
-        public decimal   Amount       { get; set; }
-        public bool      IsCompleted  { get; set; }
-        public bool      IsActive     { get; set; }
-        public DateTime? StartDate    { get; set; }
-        public DateTime? EndDate      { get; set; }
+        public int       WindowNumber   { get; set; }
+        public bool      IsPromo        { get; set; }
+        public decimal   Amount         { get; set; }
+        public bool      IsCompleted    { get; set; }
+        public bool      IsActive       { get; set; }
+        public DateTime? StartDate      { get; set; }
+        public DateTime? EndDate        { get; set; }
+        public int       SponsoredCount { get; set; }
+        public bool      IsHidden       { get; set; }
     }
 
     private class EarningItem

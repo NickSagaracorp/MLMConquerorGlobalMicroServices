@@ -76,6 +76,7 @@ builder.Services.AddSingleton<IAmazonS3>(_ =>
 });
 builder.Services.AddScoped<IS3FileService, S3FileService>();
 builder.Services.AddScoped<ISponsorBonusService, SponsorBonusService>();
+builder.Services.AddScoped<IFastStartBonusService, FastStartBonusService>();
 
 // JWT Service
 builder.Services.AddScoped<IJwtService, JwtService>();
@@ -96,6 +97,7 @@ builder.Services.AddSingleton<IPushNotificationService, FirebasePushNotification
 
 // HangFire
 builder.Services.AddScoped<ProcessScheduledCancellationsJob>();
+builder.Services.AddScoped<BuilderBonusSweepJob>();
 builder.Services.AddHangfire(cfg => cfg
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
     .UseSimpleAssemblyNameTypeSerializer()
@@ -243,6 +245,18 @@ RecurringJob.AddOrUpdate<ProcessScheduledCancellationsJob>(
     "process-scheduled-cancellations",
     job => job.ExecuteAsync(CancellationToken.None),
     "0 1 * * *",
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+RecurringJob.AddOrUpdate<FastStartBonusSweepJob>(
+    "fsb-sweep",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "*/5 * * * *",
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+RecurringJob.AddOrUpdate<BuilderBonusSweepJob>(
+    "builder-bonus-sweep",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "*/10 * * * *",
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
 app.MapGet("/health", async (AppDbContext db, CancellationToken ct) =>

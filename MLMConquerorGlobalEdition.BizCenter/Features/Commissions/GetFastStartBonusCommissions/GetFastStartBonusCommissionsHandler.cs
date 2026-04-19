@@ -38,14 +38,15 @@ public class GetFastStartBonusCommissionsHandler : IRequestHandler<GetFastStartB
                 cat => cat.Id,
                 (x, cat) => new CommissionEarningDto
                 {
-                    Id = x.Earning.Id,
+                    Id                 = x.Earning.Id,
                     CommissionTypeName = x.CommType.Name,
-                    CategoryName = cat.Name,
-                    Amount = x.Earning.Amount,
-                    Status = x.Earning.Status.ToString(),
-                    EarnedDate = x.Earning.EarnedDate,
-                    PaymentDate = x.Earning.PaymentDate,
-                    PeriodDate = x.Earning.PeriodDate
+                    CategoryName       = cat.Name,
+                    Description        = x.Earning.Notes,
+                    Amount             = x.Earning.Amount,
+                    Status             = x.Earning.Status.ToString(),
+                    EarnedDate         = x.Earning.EarnedDate,
+                    PaymentDate        = x.Earning.PaymentDate,
+                    PeriodDate         = x.Earning.PeriodDate
                 });
 
         var totalCount = await query.CountAsync(ct);

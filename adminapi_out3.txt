@@ -1,0 +1,1335 @@
+Using launch settings from MLMConquerorGlobalEdition.AdminAPI\Properties\launchSettings.json...
+[2026-04-19 14:13:59.585 WRN] Microsoft.EntityFrameworkCore.Model.Validation: Entity 'Product' has a global query filter defined and is the required end of a relationship with the entity 'CountryProduct'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+[2026-04-19 14:13:59.589 WRN] Microsoft.EntityFrameworkCore.Model.Validation: Entity 'Product' has a global query filter defined and is the required end of a relationship with the entity 'ProductCommission'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+[2026-04-19 14:13:59.589 WRN] Microsoft.EntityFrameworkCore.Model.Validation: Entity 'Product' has a global query filter defined and is the required end of a relationship with the entity 'ProductCommissionPromo'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+[2026-04-19 14:13:59.589 WRN] Microsoft.EntityFrameworkCore.Model.Validation: Entity 'KnowledgeBaseArticle' has a global query filter defined and is the required end of a relationship with the entity 'KbArticleVersion'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+[2026-04-19 14:13:59.590 WRN] Microsoft.EntityFrameworkCore.Model.Validation: Entity 'Ticket' has a global query filter defined and is the required end of a relationship with the entity 'SlaBreach'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+[2026-04-19 14:13:59.590 WRN] Microsoft.EntityFrameworkCore.Model.Validation: Entity 'Ticket' has a global query filter defined and is the required end of a relationship with the entity 'TicketComment'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+[2026-04-19 14:13:59.590 WRN] Microsoft.EntityFrameworkCore.Model.Validation: Entity 'Ticket' has a global query filter defined and is the required end of a relationship with the entity 'TicketHistory'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+[2026-04-19 14:13:59.707 WRN] Microsoft.EntityFrameworkCore.Model.Validation: The foreign key property 'MemberCommissionCountDown.MemberId1' was created in shadow state because a conflicting property with the simple name 'MemberId' exists in the entity type, but is either not mapped, is already used for another relationship, or is incompatible with the associated primary key type. See https://aka.ms/efcore-relationships for information on mapping relationships in EF Core.
+[2026-04-19 14:13:59.707 WRN] Microsoft.EntityFrameworkCore.Model.Validation: The foreign key property 'MemberCommissionCountDownHistory.MemberId1' was created in shadow state because a conflicting property with the simple name 'MemberId' exists in the entity type, but is either not mapped, is already used for another relationship, or is incompatible with the associated primary key type. See https://aka.ms/efcore-relationships for information on mapping relationships in EF Core.
+[2026-04-19 14:13:59.707 WRN] Microsoft.EntityFrameworkCore.Model.Validation: The foreign key property 'MembershipSubscription.LastOrderId1' was created in shadow state because a conflicting property with the simple name 'LastOrderId' exists in the entity type, but is either not mapped, is already used for another relationship, or is incompatible with the associated primary key type. See https://aka.ms/efcore-relationships for information on mapping relationships in EF Core.
+[2026-04-19 14:13:59.708 WRN] Microsoft.EntityFrameworkCore.Model.Validation: The foreign key property 'ProductCommissionPromo.CorporatePromoId1' was created in shadow state because a conflicting property with the simple name 'CorporatePromoId' exists in the entity type, but is either not mapped, is already used for another relationship, or is incompatible with the associated primary key type. See https://aka.ms/efcore-relationships for information on mapping relationships in EF Core.
+[2026-04-19 14:13:59.743 WRN] Microsoft.EntityFrameworkCore.Model.Validation: No store type was specified for the decimal property 'PointsEarned' on entity type 'LoyaltyPoints'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+[2026-04-19 14:13:59.743 WRN] Microsoft.EntityFrameworkCore.Model.Validation: No store type was specified for the decimal property 'CurrentMonthIncomeGrowth' on entity type 'MemberStatisticEntity'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+[2026-04-19 14:13:59.743 WRN] Microsoft.EntityFrameworkCore.Model.Validation: No store type was specified for the decimal property 'CurrentWeekIncomeGrowth' on entity type 'MemberStatisticEntity'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+[2026-04-19 14:13:59.744 WRN] Microsoft.EntityFrameworkCore.Model.Validation: No store type was specified for the decimal property 'CurrentYearIncomeGrowth' on entity type 'MemberStatisticEntity'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+[2026-04-19 14:13:59.744 WRN] Microsoft.EntityFrameworkCore.Model.Validation: No store type was specified for the decimal property 'UnitPrice' on entity type 'OrderDetail'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+[2026-04-19 14:13:59.744 WRN] Microsoft.EntityFrameworkCore.Model.Validation: No store type was specified for the decimal property 'TotalAmount' on entity type 'Orders'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+[2026-04-19 14:13:59.744 WRN] Microsoft.EntityFrameworkCore.Model.Validation: No store type was specified for the decimal property 'Amount' on entity type 'PaymentHistory'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+[2026-04-19 14:14:00.387 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (19ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:14:00.395 INF] Microsoft.EntityFrameworkCore.Migrations: Acquiring an exclusive lock for migration application. See https://aka.ms/efcore-docs-migrations-lock for more information if this takes too long.
+[2026-04-19 14:14:00.415 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (17ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+DECLARE @result int;
+EXEC @result = sp_getapplock @Resource = '__EFMigrationsLock', @LockOwner = 'Session', @LockMode = 'Exclusive';
+SELECT @result
+[2026-04-19 14:14:00.460 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+IF OBJECT_ID(N'[__EFMigrationsHistory]') IS NULL
+BEGIN
+    CREATE TABLE [__EFMigrationsHistory] (
+        [MigrationId] nvarchar(150) NOT NULL,
+        [ProductVersion] nvarchar(32) NOT NULL,
+        CONSTRAINT [PK___EFMigrationsHistory] PRIMARY KEY ([MigrationId])
+    );
+END;
+[2026-04-19 14:14:00.474 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:14:00.476 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+[2026-04-19 14:14:00.482 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [MigrationId], [ProductVersion]
+FROM [__EFMigrationsHistory]
+ORDER BY [MigrationId];
+[2026-04-19 14:14:00.490 INF] Microsoft.EntityFrameworkCore.Migrations: No migrations were applied. The database is already up to date.
+[2026-04-19 14:14:00.494 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+DECLARE @result int;
+EXEC @result = sp_releaseapplock @Resource = '__EFMigrationsLock', @LockOwner = 'Session';
+SELECT @result
+[2026-04-19 14:14:00.646 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT CASE
+    WHEN EXISTS (
+        SELECT 1
+        FROM [CompanyInfo] AS [c]) THEN CAST(1 AS bit)
+    ELSE CAST(0 AS bit)
+END
+[2026-04-19 14:14:00.672 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Iso2]
+FROM [Countries] AS [c]
+[2026-04-19 14:14:00.742 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (12ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Id], [c].[CreatedBy], [c].[CreationDate], [c].[DefaultLanguageCode], [c].[FlagEmoji], [c].[IsActive], [c].[Iso2], [c].[Iso3], [c].[LastUpdateBy], [c].[LastUpdateDate], [c].[NameEn], [c].[NameNative], [c].[PhoneCode], [c].[RegionId], [c].[SortOrder]
+FROM [Countries] AS [c]
+WHERE [c].[Iso2] IN (N'ZA', N'SR', N'KE', N'BW', N'DZ', N'AO', N'BJ', N'BF', N'BI', N'CM', N'TD', N'KM', N'CG', N'CI', N'DJ', N'CD', N'EG', N'GQ', N'GA', N'GH', N'GN', N'GW', N'MG', N'ML', N'MR', N'MU', N'MA', N'NA', N'NG', N'RW', N'SN', N'SL', N'TG', N'TN', N'UG', N'ZM', N'ZW', N'TZ', N'CV', N'SC', N'DM', N'GY', N'LC', N'PR', N'NE', N'TT', N'BZ', N'PH') AND [c].[IsActive] = CAST(0 AS bit)
+[2026-04-19 14:14:00.768 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (13ms) [Parameters=[@vipId='?' (Size = 450), @eliteId='?' (Size = 450), @turboId='?' (Size = 450), @subscriptionId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT [p].[Id]
+FROM [Products] AS [p]
+WHERE [p].[IsDeleted] = CAST(0 AS bit) AND [p].[Id] IN (@vipId, @eliteId, @turboId, @subscriptionId) AND [p].[IsDeleted] = CAST(0 AS bit)
+[2026-04-19 14:14:00.776 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Id], [c].[Iso2]
+FROM [Countries] AS [c]
+WHERE [c].[IsActive] = CAST(1 AS bit)
+[2026-04-19 14:14:00.789 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT DISTINCT [c].[CountryId]
+FROM [CountryProducts] AS [c]
+[2026-04-19 14:14:00.792 INF] Program: [CountryProductDefaultSeeder] All active countries already have mappings.
+[2026-04-19 14:14:00.902 WRN] Microsoft.AspNetCore.StaticFiles.StaticFileMiddleware: The WebRootPath was not found: C:\Users\sagar\source\repos\ClaudeRepository\MLMConquerorGlobalEdition.AdminAPI\wwwroot. Static files may be unavailable.
+[2026-04-19 14:14:00.959 INF] Microsoft.Hosting.Lifetime: Now listening on: https://localhost:7002
+[2026-04-19 14:14:00.959 INF] Microsoft.Hosting.Lifetime: Now listening on: http://localhost:5002
+[2026-04-19 14:14:00.960 INF] Microsoft.Hosting.Lifetime: Application started. Press Ctrl+C to shut down.
+[2026-04-19 14:14:00.960 INF] Microsoft.Hosting.Lifetime: Hosting environment: Development
+[2026-04-19 14:14:00.960 INF] Microsoft.Hosting.Lifetime: Content root path: C:\Users\sagar\source\repos\ClaudeRepository\MLMConquerorGlobalEdition.AdminAPI
+[2026-04-19 14:14:02.111 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:14:06.483 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:14:10.784 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:14:15.079 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:14:19.398 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:14:23.658 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:14:27.931 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:14:32.212 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:14:36.553 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:14:40.870 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:14:45.185 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:14:49.507 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:14:53.888 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:14:56.043 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (7ms) [Parameters=[@normalizedEmail='?' (Size = 256)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(2) [a].[Id], [a].[AccessFailedCount], [a].[ConcurrencyStamp], [a].[CreatedBy], [a].[CreationDate], [a].[Email], [a].[EmailConfirmed], [a].[IsActive], [a].[LastLoginAt], [a].[LockoutEnabled], [a].[LockoutEnd], [a].[MemberProfileId], [a].[NormalizedEmail], [a].[NormalizedUserName], [a].[PasswordHash], [a].[PhoneNumber], [a].[PhoneNumberConfirmed], [a].[RefreshToken], [a].[RefreshTokenExpiry], [a].[SecurityStamp], [a].[TwoFactorEnabled], [a].[UserName]
+FROM [AspNetUsers] AS [a]
+WHERE [a].[NormalizedEmail] = @normalizedEmail
+[2026-04-19 14:14:56.364 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (6ms) [Parameters=[@userId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT [a0].[Name]
+FROM [AspNetUserRoles] AS [a]
+INNER JOIN [AspNetRoles] AS [a0] ON [a].[RoleId] = [a0].[Id]
+WHERE [a].[UserId] = @userId
+[2026-04-19 14:14:56.448 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (5ms) [Parameters=[@normalizedUserName='?' (Size = 256)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(1) [a].[Id], [a].[AccessFailedCount], [a].[ConcurrencyStamp], [a].[CreatedBy], [a].[CreationDate], [a].[Email], [a].[EmailConfirmed], [a].[IsActive], [a].[LastLoginAt], [a].[LockoutEnabled], [a].[LockoutEnd], [a].[MemberProfileId], [a].[NormalizedEmail], [a].[NormalizedUserName], [a].[PasswordHash], [a].[PhoneNumber], [a].[PhoneNumberConfirmed], [a].[RefreshToken], [a].[RefreshTokenExpiry], [a].[SecurityStamp], [a].[TwoFactorEnabled], [a].[UserName]
+FROM [AspNetUsers] AS [a]
+WHERE [a].[NormalizedUserName] = @normalizedUserName
+[2026-04-19 14:14:56.469 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@normalizedEmail='?' (Size = 256)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(2) [a].[Id], [a].[AccessFailedCount], [a].[ConcurrencyStamp], [a].[CreatedBy], [a].[CreationDate], [a].[Email], [a].[EmailConfirmed], [a].[IsActive], [a].[LastLoginAt], [a].[LockoutEnabled], [a].[LockoutEnd], [a].[MemberProfileId], [a].[NormalizedEmail], [a].[NormalizedUserName], [a].[PasswordHash], [a].[PhoneNumber], [a].[PhoneNumberConfirmed], [a].[RefreshToken], [a].[RefreshTokenExpiry], [a].[SecurityStamp], [a].[TwoFactorEnabled], [a].[UserName]
+FROM [AspNetUsers] AS [a]
+WHERE [a].[NormalizedEmail] = @normalizedEmail
+[2026-04-19 14:14:56.656 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (21ms) [Parameters=[@p21='?' (Size = 450), @p0='?' (DbType = Int32), @p1='?' (Size = 4000), @p22='?' (Size = 4000), @p2='?' (Size = 4000), @p3='?' (DbType = DateTime2), @p4='?' (Size = 256), @p5='?' (DbType = Boolean), @p6='?' (DbType = Boolean), @p7='?' (DbType = DateTime2), @p8='?' (DbType = Boolean), @p9='?' (DbType = DateTimeOffset), @p10='?' (Size = 4000), @p11='?' (Size = 256), @p12='?' (Size = 256), @p13='?' (Size = 4000), @p14='?' (Size = 4000), @p15='?' (DbType = Boolean), @p16='?' (Size = 4000), @p17='?' (DbType = DateTime2), @p18='?' (Size = 4000), @p19='?' (DbType = Boolean), @p20='?' (Size = 256)], CommandType='Text', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+UPDATE [AspNetUsers] SET [AccessFailedCount] = @p0, [ConcurrencyStamp] = @p1, [CreatedBy] = @p2, [CreationDate] = @p3, [Email] = @p4, [EmailConfirmed] = @p5, [IsActive] = @p6, [LastLoginAt] = @p7, [LockoutEnabled] = @p8, [LockoutEnd] = @p9, [MemberProfileId] = @p10, [NormalizedEmail] = @p11, [NormalizedUserName] = @p12, [PasswordHash] = @p13, [PhoneNumber] = @p14, [PhoneNumberConfirmed] = @p15, [RefreshToken] = @p16, [RefreshTokenExpiry] = @p17, [SecurityStamp] = @p18, [TwoFactorEnabled] = @p19, [UserName] = @p20
+OUTPUT 1
+WHERE [Id] = @p21 AND [ConcurrencyStamp] = @p22;
+[2026-04-19 14:14:57.180 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (9ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [m].[Status], COUNT(*) AS [Count]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit)
+GROUP BY [m].[Status]
+[2026-04-19 14:14:57.207 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (6ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [m].[MemberType] AS [Type], COUNT(*) AS [Count]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit)
+GROUP BY [m].[MemberType]
+[2026-04-19 14:14:57.227 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (5ms) [Parameters=[@today='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @today
+[2026-04-19 14:14:57.240 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (4ms) [Parameters=[@last7Days='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @last7Days
+[2026-04-19 14:14:57.254 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (6ms) [Parameters=[@startOfMonth='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @startOfMonth
+[2026-04-19 14:14:57.268 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (5ms) [Parameters=[@startOfLastMonth='?' (DbType = DateTime2), @startOfMonth='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @startOfLastMonth AND [m].[EnrollDate] < @startOfMonth
+[2026-04-19 14:14:57.310 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (7ms) [Parameters=[@startOfMonth='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COALESCE(SUM([o].[TotalAmount]), 0.0)
+FROM [Orders] AS [o]
+WHERE [o].[OrderDate] >= @startOfMonth AND [o].[Status] <> 5
+[2026-04-19 14:14:57.341 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (14ms) [Parameters=[@startOfLastMonth='?' (DbType = DateTime2), @startOfMonth='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COALESCE(SUM([o].[TotalAmount]), 0.0)
+FROM [Orders] AS [o]
+WHERE [o].[OrderDate] >= @startOfLastMonth AND [o].[OrderDate] < @startOfMonth AND [o].[Status] <> 5
+[2026-04-19 14:14:57.365 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (10ms) [Parameters=[@startOfYear='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COALESCE(SUM([o].[TotalAmount]), 0.0)
+FROM [Orders] AS [o]
+WHERE [o].[OrderDate] >= @startOfYear AND [o].[Status] <> 5
+[2026-04-19 14:14:57.381 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (5ms) [Parameters=[@startOfMonth='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [Orders] AS [o]
+WHERE [o].[OrderDate] >= @startOfMonth AND [o].[Status] <> 5
+[2026-04-19 14:14:57.391 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COALESCE(SUM([c].[Amount]), 0.0)
+FROM [CommissionEarnings] AS [c]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[Status] = 2
+[2026-04-19 14:14:57.406 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (8ms) [Parameters=[@startOfMonth='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COALESCE(SUM([c].[Amount]), 0.0)
+FROM [CommissionEarnings] AS [c]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[Status] = 2 AND [c].[EarnedDate] >= @startOfMonth
+[2026-04-19 14:14:57.414 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COALESCE(SUM([c].[Amount]), 0.0)
+FROM [CommissionEarnings] AS [c]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[Status] = 1
+[2026-04-19 14:14:57.429 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MembershipSubscriptions] AS [m]
+WHERE [m].[SubscriptionStatus] = 1
+[2026-04-19 14:14:57.441 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (3ms) [Parameters=[@now='?' (DbType = DateTime2), @next30Days='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MembershipSubscriptions] AS [m]
+WHERE [m].[SubscriptionStatus] = 1 AND [m].[RenewalDate] IS NOT NULL AND [m].[RenewalDate] >= @now AND [m].[RenewalDate] <= @next30Days
+[2026-04-19 14:14:57.451 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (3ms) [Parameters=[@startOfMonth='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MembershipSubscriptions] AS [m]
+WHERE [m].[SubscriptionStatus] = 4 AND [m].[CancellationDate] IS NOT NULL AND [m].[CancellationDate] >= @startOfMonth
+[2026-04-19 14:14:57.468 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (6ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [Tickets] AS [t]
+WHERE [t].[IsDeleted] = CAST(0 AS bit) AND [t].[Status] = 1
+[2026-04-19 14:14:57.478 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [Tickets] AS [t]
+WHERE [t].[IsDeleted] = CAST(0 AS bit) AND [t].[Status] = 2
+[2026-04-19 14:14:57.490 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [Tickets] AS [t]
+WHERE [t].[IsDeleted] = CAST(0 AS bit) AND [t].[Priority] = 4 AND [t].[Status] <> 4 AND [t].[Status] <> 5
+[2026-04-19 14:14:57.500 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (4ms) [Parameters=[@startOfMonth='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [Tickets] AS [t]
+WHERE [t].[IsDeleted] = CAST(0 AS bit) AND [t].[Status] = 4 AND [t].[CreationDate] >= @startOfMonth
+[2026-04-19 14:14:57.509 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [TokenTransactions] AS [t]
+WHERE [t].[ReferenceId] IS NOT NULL
+[2026-04-19 14:14:57.517 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [TokenTransactions] AS [t]
+WHERE [t].[ReferenceId] IS NOT NULL AND [t].[UsedAt] IS NOT NULL
+[2026-04-19 14:14:57.527 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [PaymentHistories] AS [p]
+WHERE [p].[TransactionStatus] = 1
+[2026-04-19 14:14:57.533 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [PaymentHistories] AS [p]
+WHERE [p].[TransactionStatus] = 4
+[2026-04-19 14:14:57.567 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (5ms) [Parameters=[@p='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(@p) [m].[MemberId], [m].[FirstName] + N' ' + [m].[LastName], CASE [m].[MemberType]
+    WHEN 0 THEN N'Ambassador'
+    WHEN 1 THEN N'ExternalMember'
+    ELSE CAST([m].[MemberType] AS nvarchar(max))
+END, CASE [m].[Status]
+    WHEN 1 THEN N'Active'
+    WHEN 2 THEN N'Inactive'
+    WHEN 3 THEN N'Suspended'
+    WHEN 4 THEN N'Terminated'
+    WHEN 5 THEN N'Pending'
+    ELSE CAST([m].[Status] AS nvarchar(max))
+END, [m].[EnrollDate], [m].[SponsorMemberId]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit)
+ORDER BY [m].[EnrollDate] DESC
+[2026-04-19 14:14:57.581 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT MAX([p].[ProcessedAt])
+FROM [PaymentHistories] AS [p]
+WHERE [p].[ProcessedAt] IS NOT NULL
+[2026-04-19 14:14:57.598 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (4ms) [Parameters=[@runDate='?' (DbType = DateTime2), @runDateEnd='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[Id], [m0].[Name] AS [LevelName], [m0].[RenewalPrice]
+FROM [MembershipSubscriptions] AS [m]
+INNER JOIN [MembershipLevels] AS [m0] ON [m].[MembershipLevelId] = [m0].[Id]
+WHERE [m].[IsAutoRenew] = CAST(1 AS bit) AND [m].[RenewalDate] IS NOT NULL AND [m].[RenewalDate] >= @runDate AND [m].[RenewalDate] < @runDateEnd
+[2026-04-19 14:14:57.616 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (6ms) [Parameters=[@runDate='?' (DbType = DateTime2), @runDateEnd='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[Id] AS [SubId], [m0].[Name] AS [LevelName], [m0].[RenewalPrice], [p].[TransactionStatus], [p].[Amount]
+FROM [PaymentHistories] AS [p]
+INNER JOIN [Orders] AS [o] ON [p].[OrderId] = [o].[Id]
+INNER JOIN [MembershipSubscriptions] AS [m] ON [o].[MembershipSubscriptionId] = [m].[Id]
+INNER JOIN [MembershipLevels] AS [m0] ON [m].[MembershipLevelId] = [m0].[Id]
+WHERE [p].[ProcessedAt] IS NOT NULL AND [p].[ProcessedAt] >= @runDate AND [p].[ProcessedAt] < @runDateEnd AND [o].[MembershipSubscriptionId] IS NOT NULL
+[2026-04-19 14:14:57.642 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (7ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [m1].[Name], COUNT(*), [m1].[IsFree]
+FROM [MemberProfiles] AS [m]
+INNER JOIN [MembershipSubscriptions] AS [m0] ON [m].[MemberId] = [m0].[MemberId]
+INNER JOIN [MembershipLevels] AS [m1] ON [m0].[MembershipLevelId] = [m1].[Id]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[MemberType] = 0 AND [m].[Status] = 1 AND [m].[IsDeleted] = CAST(0 AS bit) AND [m0].[SubscriptionStatus] = 1
+GROUP BY [m1].[Name], [m1].[IsFree]
+ORDER BY COUNT(*) DESC
+[2026-04-19 14:14:57.673 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (10ms) [Parameters=[@startOfYear='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT [s].[Month], [s].[Name], CASE [s].[Status]
+    WHEN 1 THEN N'Active'
+    WHEN 2 THEN N'Inactive'
+    WHEN 3 THEN N'Suspended'
+    WHEN 4 THEN N'Terminated'
+    WHEN 5 THEN N'Pending'
+    ELSE CAST([s].[Status] AS nvarchar(max))
+END, COUNT(*)
+FROM (
+    SELECT [m].[Status], [m1].[Name], DATEPART(month, [m].[EnrollDate]) AS [Month]
+    FROM [MemberProfiles] AS [m]
+    INNER JOIN [MembershipSubscriptions] AS [m0] ON [m].[MemberId] = [m0].[MemberId]
+    INNER JOIN [MembershipLevels] AS [m1] ON [m0].[MembershipLevelId] = [m1].[Id]
+    WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @startOfYear AND [m].[IsDeleted] = CAST(0 AS bit) AND [m0].[SubscriptionStatus] = 1
+) AS [s]
+GROUP BY [s].[Month], [s].[Name], [s].[Status]
+[2026-04-19 14:14:57.685 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [m].[Country] AS [CountryName], COUNT(*) AS [ActiveCount]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[IsDeleted] = CAST(0 AS bit) AND [m].[Status] = 1 AND [m].[Country] <> N''
+GROUP BY [m].[Country]
+ORDER BY COUNT(*) DESC
+[2026-04-19 14:14:57.703 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (6ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [c].[RegionId], COUNT(*) AS [Count]
+FROM [MemberProfiles] AS [m]
+INNER JOIN [Countries] AS [c] ON [m].[Country] = [c].[NameEn]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[IsDeleted] = CAST(0 AS bit) AND [m].[Status] = 1
+GROUP BY [c].[RegionId]
+[2026-04-19 14:14:57.726 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (9ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [r].[Id], [r].[Name], [r].[Code], (
+    SELECT COUNT(*)
+    FROM [Countries] AS [c]
+    WHERE [r].[Id] = [c].[RegionId] AND [c].[IsActive] = CAST(1 AS bit)) AS [CountryCount]
+FROM [Regions] AS [r]
+ORDER BY [r].[SortOrder], [r].[Name]
+[2026-04-19 14:14:57.743 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (5ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [m0].[Name], COUNT(*), [m0].[IsFree]
+FROM [MembershipSubscriptions] AS [m]
+INNER JOIN [MembershipLevels] AS [m0] ON [m].[MembershipLevelId] = [m0].[Id]
+WHERE [m].[SubscriptionStatus] = 1
+GROUP BY [m0].[Name], [m0].[IsFree]
+ORDER BY COUNT(*) DESC
+[2026-04-19 14:14:58.174 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:14:59.750 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit)
+[2026-04-19 14:14:59.773 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (6ms) [Parameters=[@p='?' (DbType = Int32), @p1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[MemberId], [m].[FirstName], [m].[LastName], [m].[Phone], [m].[Country], CASE [m].[Status]
+    WHEN 1 THEN N'Active'
+    WHEN 2 THEN N'Inactive'
+    WHEN 3 THEN N'Suspended'
+    WHEN 4 THEN N'Terminated'
+    WHEN 5 THEN N'Pending'
+    ELSE CAST([m].[Status] AS nvarchar(max))
+END AS [Status], CASE [m].[MemberType]
+    WHEN 0 THEN N'Ambassador'
+    WHEN 1 THEN N'ExternalMember'
+    ELSE CAST([m].[MemberType] AS nvarchar(max))
+END AS [MemberType], [m].[EnrollDate], [m].[SponsorMemberId], [m].[CreationDate]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit)
+ORDER BY [m].[CreationDate] DESC
+OFFSET @p ROWS FETCH NEXT @p1 ROWS ONLY
+[2026-04-19 14:15:02.456 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:15:03.335 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (3ms) [Parameters=[@request_MemberId='?' (Size = 20)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(1) [m].[Id], [m].[ActiveMembershipId], [m].[Address], [m].[BinaryNodeId], [m].[BusinessName], [m].[City], [m].[Country], [m].[CreatedBy], [m].[CreationDate], [m].[DateOfBirth], [m].[DeletedAt], [m].[DeletedBy], [m].[Email], [m].[EnrollDate], [m].[EnrollmentNodeId], [m].[FirstName], [m].[IsDeleted], [m].[IsEmailPublic], [m].[IsNamePublic], [m].[IsPhonePublic], [m].[LastName], [m].[LastUpdateBy], [m].[LastUpdateDate], [m].[MemberId], [m].[MemberType], [m].[Phone], [m].[ProfilePhotoUrl], [m].[ReplicateSiteSlug], [m].[RowVersion], [m].[ShowBusinessName], [m].[SponsorMemberId], [m].[State], [m].[Status], [m].[UserId], [m].[WhatsApp], [m].[ZipCode]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[MemberId] = @request_MemberId
+[2026-04-19 14:15:03.351 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@request_MemberId='?' (Size = 4000)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(1) [m].[Id], [m].[CreatedBy], [m].[CreationDate], [m].[CurrentMonthIncomeGrowth], [m].[CurrentWeekIncomeGrowth], [m].[CurrentYearIncomeGrowth], [m].[DualTeamPoints], [m].[DualTeamPointsGrowth], [m].[DualTeamSize], [m].[DualteamGrowth], [m].[EnrollmentPoints], [m].[EnrollmentTeamGrowth], [m].[EnrollmentTeamPointsGrowth], [m].[EnrollmentTeamSize], [m].[ExternalCustomerPoints], [m].[MemberId], [m].[PersonalPoints], [m].[QualifiedSponsoredExternalCustomers], [m].[QualifiedSponsoredMembers]
+FROM [MemberStatistics] AS [m]
+WHERE [m].[MemberId] = @request_MemberId
+[2026-04-19 14:15:04.810 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (6ms) [Parameters=[@memberId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Amount], [c].[Status], [c].[EarnedDate]
+FROM [CommissionEarnings] AS [c]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId
+[2026-04-19 14:15:04.837 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (7ms) [Parameters=[@memberId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT DATEPART(year, [c].[EarnedDate]) AS [Year], DATEPART(month, [c].[EarnedDate]) AS [Month], [c].[Amount]
+FROM [CommissionEarnings] AS [c]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = 2
+[2026-04-19 14:15:04.843 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+[2026-04-19 14:15:04.854 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+[2026-04-19 14:15:04.859 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32), @p='?' (DbType = Int32), @p3='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Id], [c0].[Name] AS [CommissionTypeName], [c1].[Name] AS [CategoryName], [c].[Amount], CASE [c].[Status]
+    WHEN 1 THEN N'Pending'
+    WHEN 2 THEN N'Paid'
+    WHEN 3 THEN N'Cancelled'
+    ELSE CAST([c].[Status] AS nvarchar(max))
+END AS [Status], [c].[EarnedDate], [c].[PaymentDate]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+ORDER BY [c].[EarnedDate] DESC
+OFFSET @p ROWS FETCH NEXT @p3 ROWS ONLY
+[2026-04-19 14:15:04.859 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32), @p='?' (DbType = Int32), @p3='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Id], [c0].[Name] AS [CommissionTypeName], [c1].[Name] AS [CategoryName], [c].[Amount], CASE [c].[Status]
+    WHEN 1 THEN N'Pending'
+    WHEN 2 THEN N'Paid'
+    WHEN 3 THEN N'Cancelled'
+    ELSE CAST([c].[Status] AS nvarchar(max))
+END AS [Status], [c].[EarnedDate], [c].[PaymentDate]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+ORDER BY [c].[EarnedDate] DESC
+OFFSET @p ROWS FETCH NEXT @p3 ROWS ONLY
+[2026-04-19 14:15:05.900 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (7ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [m].[MemberId]
+FROM [MembershipSubscriptions] AS [m]
+INNER JOIN (
+    SELECT [m0].[Id]
+    FROM [MembershipLevels] AS [m0]
+    WHERE [m0].[Name] LIKE N'%Elite%' OR [m0].[Name] LIKE N'%Turbo%'
+) AS [m1] ON [m].[MembershipLevelId] = [m1].[Id]
+WHERE [m].[SubscriptionStatus] = 1
+[2026-04-19 14:15:05.901 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (11ms) [Parameters=[@memberId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [CommissionEarnings] AS [c]
+INNER JOIN (
+    SELECT [c0].[Id]
+    FROM [CommissionTypes] AS [c0]
+    WHERE [c0].[CommissionCategoryId] = 2
+) AS [c1] ON [c].[CommissionTypeId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId
+[2026-04-19 14:15:05.946 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (15ms) [Parameters=[@memberId='?' (Size = 450), @p='?' (DbType = Int32), @p2='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [c1].[Name] AS [CommissionTypeName], [c].[Amount], CASE [c].[Status]
+    WHEN 1 THEN N'Pending'
+    WHEN 2 THEN N'Paid'
+    WHEN 3 THEN N'Cancelled'
+    ELSE CAST([c].[Status] AS nvarchar(max))
+END AS [Status], [c].[EarnedDate], [c].[PaymentDate]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN (
+    SELECT [c0].[Id], [c0].[Name]
+    FROM [CommissionTypes] AS [c0]
+    WHERE [c0].[CommissionCategoryId] = 2
+) AS [c1] ON [c].[CommissionTypeId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId
+ORDER BY [c].[EarnedDate] DESC
+OFFSET @p ROWS FETCH NEXT @p2 ROWS ONLY
+[2026-04-19 14:15:05.956 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (9ms) [Parameters=[@memberId='?' (Size = 4000), @eligibleMemberIds1='?' (Size = 20), @eligibleMemberIds2='?' (Size = 20), @eligibleMemberIds3='?' (Size = 20), @eligibleMemberIds4='?' (Size = 20), @eligibleMemberIds5='?' (Size = 20), @eligibleMemberIds6='?' (Size = 20), @eligibleMemberIds7='?' (Size = 20), @eligibleMemberIds8='?' (Size = 20), @eligibleMemberIds9='?' (Size = 20), @eligibleMemberIds10='?' (Size = 20)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[EnrollDate]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[SponsorMemberId] = @memberId AND [m].[MemberId] IN (@eligibleMemberIds1, @eligibleMemberIds2, @eligibleMemberIds3, @eligibleMemberIds4, @eligibleMemberIds5, @eligibleMemberIds6, @eligibleMemberIds7, @eligibleMemberIds8, @eligibleMemberIds9, @eligibleMemberIds10)
+[2026-04-19 14:15:05.986 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (12ms) [Parameters=[@memberId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT [c1].[TriggerOrder], [c].[EarnedDate], [c].[Amount]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN (
+    SELECT [c0].[Id], [c0].[TriggerOrder]
+    FROM [CommissionTypes] AS [c0]
+    WHERE [c0].[CommissionCategoryId] = 2
+) AS [c1] ON [c].[CommissionTypeId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] <> 3
+[2026-04-19 14:15:06.037 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (6ms) [Parameters=[@memberId='?' (Size = 20)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(1) [m].[UserId]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[MemberId] = @memberId
+[2026-04-19 14:15:06.067 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (5ms) [Parameters=[@memberUserId='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(1) [c].[Id], [c].[CreatedBy], [c].[CreationDate], [c].[DeletedAt], [c].[DeletedBy], [c].[FastStartBonus1End], [c].[FastStartBonus1ExtendedEnd], [c].[FastStartBonus1ExtendedStart], [c].[FastStartBonus1Start], [c].[FastStartBonus2End], [c].[FastStartBonus2Start], [c].[FastStartBonus3End], [c].[FastStartBonus3Start], [c].[IsDeleted], [c].[LastUpdateBy], [c].[LastUpdateDate], [c].[MemberId], [c].[MemberId1], [c].[RowVersion]
+FROM [CommissionCountDowns] AS [c]
+WHERE [c].[MemberId] = @memberUserId
+[2026-04-19 14:15:06.760 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:15:11.063 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:15:15.403 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:15:19.711 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:15:24.057 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:15:28.370 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:15:32.718 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:15:37.048 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:15:41.377 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:15:45.688 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:15:50.019 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:15:54.350 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:15:58.653 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:16:02.992 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:16:07.311 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:16:11.632 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:16:15.953 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:16:20.263 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:16:24.591 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:16:28.926 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:16:33.260 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:16:37.583 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:16:41.914 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:16:46.195 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:16:50.545 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:16:54.917 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:16:59.248 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:17:03.568 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:17:07.858 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:17:12.184 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:17:16.560 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:17:18.062 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:17:20.862 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:17:25.202 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:17:29.562 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:17:33.868 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:17:38.169 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:17:42.498 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:17:46.873 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:17:51.211 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:17:55.546 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:17:59.888 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:18:04.265 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:18:08.601 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:18:12.883 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:18:14.436 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (12ms) [Parameters=[@memberId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Amount], [c].[Status], [c].[EarnedDate]
+FROM [CommissionEarnings] AS [c]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId
+[2026-04-19 14:18:14.438 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (14ms) [Parameters=[@memberId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT DATEPART(year, [c].[EarnedDate]) AS [Year], DATEPART(month, [c].[EarnedDate]) AS [Month], [c].[Amount]
+FROM [CommissionEarnings] AS [c]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = 2
+[2026-04-19 14:18:14.447 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+[2026-04-19 14:18:14.447 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+[2026-04-19 14:18:14.451 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (3ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32), @p='?' (DbType = Int32), @p3='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Id], [c0].[Name] AS [CommissionTypeName], [c1].[Name] AS [CategoryName], [c].[Amount], CASE [c].[Status]
+    WHEN 1 THEN N'Pending'
+    WHEN 2 THEN N'Paid'
+    WHEN 3 THEN N'Cancelled'
+    ELSE CAST([c].[Status] AS nvarchar(max))
+END AS [Status], [c].[EarnedDate], [c].[PaymentDate]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+ORDER BY [c].[EarnedDate] DESC
+OFFSET @p ROWS FETCH NEXT @p3 ROWS ONLY
+[2026-04-19 14:18:14.451 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32), @p='?' (DbType = Int32), @p3='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Id], [c0].[Name] AS [CommissionTypeName], [c1].[Name] AS [CategoryName], [c].[Amount], CASE [c].[Status]
+    WHEN 1 THEN N'Pending'
+    WHEN 2 THEN N'Paid'
+    WHEN 3 THEN N'Cancelled'
+    ELSE CAST([c].[Status] AS nvarchar(max))
+END AS [Status], [c].[EarnedDate], [c].[PaymentDate]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+ORDER BY [c].[EarnedDate] DESC
+OFFSET @p ROWS FETCH NEXT @p3 ROWS ONLY
+[2026-04-19 14:18:17.302 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:18:19.596 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (14ms) [Parameters=[@memberId='?' (Size = 450), @targetPaymentDate='?' (DbType = DateTime2), @earnedDate_Value_Date='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT [c].[SourceMemberId], [c].[SourceOrderId], [c].[Amount], [c0].[Name] AS [TypeName], [c0].[Description] AS [TypeDesc]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND CONVERT(date, [c].[PaymentDate]) = @targetPaymentDate AND CONVERT(date, [c].[EarnedDate]) = @earnedDate_Value_Date
+ORDER BY [c0].[Name]
+[2026-04-19 14:18:19.624 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (4ms) [Parameters=[@sourceOrderIds1='?' (Size = 450), @sourceOrderIds2='?' (Size = 450), @sourceOrderIds3='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT [o].[Id], COALESCE([o].[OrderNo], [o].[Id]) AS [Display]
+FROM [Orders] AS [o]
+WHERE [o].[Id] IN (@sourceOrderIds1, @sourceOrderIds2, @sourceOrderIds3)
+[2026-04-19 14:18:19.642 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (8ms) [Parameters=[@sourceIds1='?' (Size = 20), @sourceIds2='?' (Size = 20), @sourceIds3='?' (Size = 20)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[MemberId], [m].[FirstName] + N' ' + [m].[LastName] AS [FullName]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[MemberId] IN (@sourceIds1, @sourceIds2, @sourceIds3)
+[2026-04-19 14:18:21.572 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:18:23.571 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@memberId='?' (Size = 450), @targetPaymentDate='?' (DbType = DateTime2), @earnedDate_Value_Date='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT [c].[SourceMemberId], [c].[SourceOrderId], [c].[Amount], [c0].[Name] AS [TypeName], [c0].[Description] AS [TypeDesc]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND CONVERT(date, [c].[PaymentDate]) = @targetPaymentDate AND CONVERT(date, [c].[EarnedDate]) = @earnedDate_Value_Date
+ORDER BY [c0].[Name]
+[2026-04-19 14:18:23.577 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (5ms) [Parameters=[@sourceOrderIds1='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT [o].[Id], COALESCE([o].[OrderNo], [o].[Id]) AS [Display]
+FROM [Orders] AS [o]
+WHERE [o].[Id] = @sourceOrderIds1
+[2026-04-19 14:18:23.585 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (7ms) [Parameters=[@sourceIds1='?' (Size = 20)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[MemberId], [m].[FirstName] + N' ' + [m].[LastName] AS [FullName]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[MemberId] = @sourceIds1
+[2026-04-19 14:18:25.892 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:18:30.229 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:18:34.526 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:18:38.864 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:18:43.174 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:18:47.501 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:18:51.808 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:18:56.086 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:18:59.745 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (14ms) [Parameters=[@memberId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [CommissionEarnings] AS [c]
+INNER JOIN (
+    SELECT [c0].[Id]
+    FROM [CommissionTypes] AS [c0]
+    WHERE [c0].[CommissionCategoryId] = 2
+) AS [c1] ON [c].[CommissionTypeId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId
+[2026-04-19 14:18:59.746 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (14ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [m].[MemberId]
+FROM [MembershipSubscriptions] AS [m]
+INNER JOIN (
+    SELECT [m0].[Id]
+    FROM [MembershipLevels] AS [m0]
+    WHERE [m0].[Name] LIKE N'%Elite%' OR [m0].[Name] LIKE N'%Turbo%'
+) AS [m1] ON [m].[MembershipLevelId] = [m1].[Id]
+WHERE [m].[SubscriptionStatus] = 1
+[2026-04-19 14:18:59.762 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (14ms) [Parameters=[@memberId='?' (Size = 4000), @eligibleMemberIds1='?' (Size = 20), @eligibleMemberIds2='?' (Size = 20), @eligibleMemberIds3='?' (Size = 20), @eligibleMemberIds4='?' (Size = 20), @eligibleMemberIds5='?' (Size = 20), @eligibleMemberIds6='?' (Size = 20), @eligibleMemberIds7='?' (Size = 20), @eligibleMemberIds8='?' (Size = 20), @eligibleMemberIds9='?' (Size = 20), @eligibleMemberIds10='?' (Size = 20)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[EnrollDate]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[SponsorMemberId] = @memberId AND [m].[MemberId] IN (@eligibleMemberIds1, @eligibleMemberIds2, @eligibleMemberIds3, @eligibleMemberIds4, @eligibleMemberIds5, @eligibleMemberIds6, @eligibleMemberIds7, @eligibleMemberIds8, @eligibleMemberIds9, @eligibleMemberIds10)
+[2026-04-19 14:18:59.763 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (16ms) [Parameters=[@memberId='?' (Size = 450), @p='?' (DbType = Int32), @p2='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [c1].[Name] AS [CommissionTypeName], [c].[Amount], CASE [c].[Status]
+    WHEN 1 THEN N'Pending'
+    WHEN 2 THEN N'Paid'
+    WHEN 3 THEN N'Cancelled'
+    ELSE CAST([c].[Status] AS nvarchar(max))
+END AS [Status], [c].[EarnedDate], [c].[PaymentDate]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN (
+    SELECT [c0].[Id], [c0].[Name]
+    FROM [CommissionTypes] AS [c0]
+    WHERE [c0].[CommissionCategoryId] = 2
+) AS [c1] ON [c].[CommissionTypeId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId
+ORDER BY [c].[EarnedDate] DESC
+OFFSET @p ROWS FETCH NEXT @p2 ROWS ONLY
+[2026-04-19 14:18:59.784 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (19ms) [Parameters=[@memberId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT [c1].[TriggerOrder], [c].[EarnedDate], [c].[Amount]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN (
+    SELECT [c0].[Id], [c0].[TriggerOrder]
+    FROM [CommissionTypes] AS [c0]
+    WHERE [c0].[CommissionCategoryId] = 2
+) AS [c1] ON [c].[CommissionTypeId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] <> 3
+[2026-04-19 14:18:59.790 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (5ms) [Parameters=[@memberId='?' (Size = 20)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(1) [m].[UserId]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[MemberId] = @memberId
+[2026-04-19 14:18:59.796 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (4ms) [Parameters=[@memberUserId='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(1) [c].[Id], [c].[CreatedBy], [c].[CreationDate], [c].[DeletedAt], [c].[DeletedBy], [c].[FastStartBonus1End], [c].[FastStartBonus1ExtendedEnd], [c].[FastStartBonus1ExtendedStart], [c].[FastStartBonus1Start], [c].[FastStartBonus2End], [c].[FastStartBonus2Start], [c].[FastStartBonus3End], [c].[FastStartBonus3Start], [c].[IsDeleted], [c].[LastUpdateBy], [c].[LastUpdateDate], [c].[MemberId], [c].[MemberId1], [c].[RowVersion]
+FROM [CommissionCountDowns] AS [c]
+WHERE [c].[MemberId] = @memberUserId
+[2026-04-19 14:19:00.405 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:19:04.771 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:19:09.123 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:19:13.441 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:19:17.752 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:19:22.125 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:19:26.442 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:19:30.733 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:19:34.990 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:19:39.286 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:19:43.583 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:19:47.887 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:19:52.188 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:19:56.493 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:20:00.798 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:20:05.127 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:20:09.431 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:20:13.752 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:20:18.071 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:20:22.457 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:20:26.827 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:20:31.163 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:20:35.505 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:20:39.850 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:20:44.191 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:20:48.517 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:20:52.894 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:20:57.217 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:21:01.520 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:21:05.871 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:21:10.251 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:21:14.590 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:21:18.966 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:21:23.329 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:21:27.675 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:21:32.000 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:21:36.306 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:21:40.648 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:21:45.019 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:21:49.375 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:21:53.669 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:21:58.042 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:22:02.346 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:22:06.674 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:22:11.036 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:22:15.341 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:22:19.676 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:22:24.006 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:22:28.345 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:22:32.656 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:22:37.030 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:22:41.373 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:22:45.671 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:22:47.206 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (3ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+[2026-04-19 14:22:47.209 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+[2026-04-19 14:22:47.212 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (9ms) [Parameters=[@memberId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Amount], [c].[Status], [c].[EarnedDate]
+FROM [CommissionEarnings] AS [c]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId
+[2026-04-19 14:22:47.212 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32), @p='?' (DbType = Int32), @p3='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Id], [c0].[Name] AS [CommissionTypeName], [c1].[Name] AS [CategoryName], [c].[Amount], CASE [c].[Status]
+    WHEN 1 THEN N'Pending'
+    WHEN 2 THEN N'Paid'
+    WHEN 3 THEN N'Cancelled'
+    ELSE CAST([c].[Status] AS nvarchar(max))
+END AS [Status], [c].[EarnedDate], [c].[PaymentDate]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+ORDER BY [c].[EarnedDate] DESC
+OFFSET @p ROWS FETCH NEXT @p3 ROWS ONLY
+[2026-04-19 14:22:47.215 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (12ms) [Parameters=[@memberId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT DATEPART(year, [c].[EarnedDate]) AS [Year], DATEPART(month, [c].[EarnedDate]) AS [Month], [c].[Amount]
+FROM [CommissionEarnings] AS [c]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = 2
+[2026-04-19 14:22:47.225 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32), @p='?' (DbType = Int32), @p3='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Id], [c0].[Name] AS [CommissionTypeName], [c1].[Name] AS [CategoryName], [c].[Amount], CASE [c].[Status]
+    WHEN 1 THEN N'Pending'
+    WHEN 2 THEN N'Paid'
+    WHEN 3 THEN N'Cancelled'
+    ELSE CAST([c].[Status] AS nvarchar(max))
+END AS [Status], [c].[EarnedDate], [c].[PaymentDate]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+ORDER BY [c].[EarnedDate] DESC
+OFFSET @p ROWS FETCH NEXT @p3 ROWS ONLY
+[2026-04-19 14:22:49.981 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:22:51.390 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (15ms) [Parameters=[@memberId='?' (Size = 450), @targetPaymentDate='?' (DbType = DateTime2), @earnedDate_Value_Date='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT [c].[SourceMemberId], [c].[SourceOrderId], [c].[Amount], [c0].[Name] AS [TypeName], [c0].[Description] AS [TypeDesc]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND CONVERT(date, [c].[PaymentDate]) = @targetPaymentDate AND CONVERT(date, [c].[EarnedDate]) = @earnedDate_Value_Date
+ORDER BY [c0].[Name]
+[2026-04-19 14:22:51.394 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (4ms) [Parameters=[@sourceOrderIds1='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT [o].[Id], COALESCE([o].[OrderNo], [o].[Id]) AS [Display]
+FROM [Orders] AS [o]
+WHERE [o].[Id] = @sourceOrderIds1
+[2026-04-19 14:22:51.402 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (7ms) [Parameters=[@sourceIds1='?' (Size = 20)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[MemberId], [m].[FirstName] + N' ' + [m].[LastName] AS [FullName]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[MemberId] = @sourceIds1
+[2026-04-19 14:22:54.271 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:22:58.601 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:23:02.963 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:23:07.294 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:23:11.585 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:23:15.883 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:23:20.171 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:23:24.483 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:23:28.771 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:23:33.141 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:23:37.500 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:23:41.855 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:23:46.212 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:23:50.529 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:23:54.866 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:23:59.188 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:24:03.493 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:24:07.794 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:24:12.094 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:24:16.413 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:24:20.739 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:24:25.055 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:24:29.374 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:24:33.697 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:24:38.015 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:24:42.303 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:24:46.580 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:24:50.878 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:24:55.198 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:24:59.491 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:25:03.811 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:25:08.158 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:25:12.475 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:25:16.779 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:25:18.554 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (6ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit)
+[2026-04-19 14:25:18.561 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (6ms) [Parameters=[@p='?' (DbType = Int32), @p1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[MemberId], [m].[FirstName], [m].[LastName], [m].[Phone], [m].[Country], CASE [m].[Status]
+    WHEN 1 THEN N'Active'
+    WHEN 2 THEN N'Inactive'
+    WHEN 3 THEN N'Suspended'
+    WHEN 4 THEN N'Terminated'
+    WHEN 5 THEN N'Pending'
+    ELSE CAST([m].[Status] AS nvarchar(max))
+END AS [Status], CASE [m].[MemberType]
+    WHEN 0 THEN N'Ambassador'
+    WHEN 1 THEN N'ExternalMember'
+    ELSE CAST([m].[MemberType] AS nvarchar(max))
+END AS [MemberType], [m].[EnrollDate], [m].[SponsorMemberId], [m].[CreationDate]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit)
+ORDER BY [m].[CreationDate] DESC
+OFFSET @p ROWS FETCH NEXT @p1 ROWS ONLY
+[2026-04-19 14:25:21.078 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:25:25.377 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:25:29.722 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:25:34.062 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:25:35.747 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MembershipSubscriptions] AS [m]
+[2026-04-19 14:25:35.787 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (9ms) [Parameters=[@p='?' (DbType = Int32), @p1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [m1].[Id], [m1].[MemberId], [m1].[MembershipLevelId], [m0].[Name] AS [MembershipLevelName], CASE [m1].[SubscriptionStatus]
+    WHEN 1 THEN N'Active'
+    WHEN 2 THEN N'Pending'
+    WHEN 3 THEN N'OnHold'
+    WHEN 4 THEN N'Cancelled'
+    WHEN 5 THEN N'Expired'
+    ELSE CAST([m1].[SubscriptionStatus] AS nvarchar(max))
+END AS [Status], CASE [m1].[ChangeReason]
+    WHEN 0 THEN N'New'
+    WHEN 1 THEN N'Upgrade'
+    WHEN 2 THEN N'Downgrade'
+    WHEN 3 THEN N'Renewal'
+    WHEN 4 THEN N'Cancellation'
+    WHEN 5 THEN N'AdminOverride'
+    ELSE CAST([m1].[ChangeReason] AS nvarchar(max))
+END AS [ChangeReason], [m1].[StartDate], [m1].[EndDate] AS [ExpirationDate], [m1].[IsAutoRenew], [m1].[IsFree], [m1].[CreationDate]
+FROM (
+    SELECT [m].[Id], [m].[ChangeReason], [m].[CreationDate], [m].[EndDate], [m].[IsAutoRenew], [m].[IsFree], [m].[MemberId], [m].[MembershipLevelId], [m].[StartDate], [m].[SubscriptionStatus]
+    FROM [MembershipSubscriptions] AS [m]
+    ORDER BY [m].[CreationDate] DESC
+    OFFSET @p ROWS FETCH NEXT @p1 ROWS ONLY
+) AS [m1]
+INNER JOIN [MembershipLevels] AS [m0] ON [m1].[MembershipLevelId] = [m0].[Id]
+ORDER BY [m1].[CreationDate] DESC
+[2026-04-19 14:25:38.382 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:25:42.709 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:25:46.053 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (9ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit)
+[2026-04-19 14:25:46.062 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (8ms) [Parameters=[@p='?' (DbType = Int32), @p1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[MemberId], [m].[FirstName], [m].[LastName], [m].[Phone], [m].[Country], CASE [m].[Status]
+    WHEN 1 THEN N'Active'
+    WHEN 2 THEN N'Inactive'
+    WHEN 3 THEN N'Suspended'
+    WHEN 4 THEN N'Terminated'
+    WHEN 5 THEN N'Pending'
+    ELSE CAST([m].[Status] AS nvarchar(max))
+END AS [Status], CASE [m].[MemberType]
+    WHEN 0 THEN N'Ambassador'
+    WHEN 1 THEN N'ExternalMember'
+    ELSE CAST([m].[MemberType] AS nvarchar(max))
+END AS [MemberType], [m].[EnrollDate], [m].[SponsorMemberId], [m].[CreationDate]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit)
+ORDER BY [m].[CreationDate] DESC
+OFFSET @p ROWS FETCH NEXT @p1 ROWS ONLY
+[2026-04-19 14:25:47.027 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:25:51.308 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:25:55.609 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:25:57.331 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (6ms) [Parameters=[@request_MemberId='?' (Size = 20)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(1) [m].[Id], [m].[ActiveMembershipId], [m].[Address], [m].[BinaryNodeId], [m].[BusinessName], [m].[City], [m].[Country], [m].[CreatedBy], [m].[CreationDate], [m].[DateOfBirth], [m].[DeletedAt], [m].[DeletedBy], [m].[Email], [m].[EnrollDate], [m].[EnrollmentNodeId], [m].[FirstName], [m].[IsDeleted], [m].[IsEmailPublic], [m].[IsNamePublic], [m].[IsPhonePublic], [m].[LastName], [m].[LastUpdateBy], [m].[LastUpdateDate], [m].[MemberId], [m].[MemberType], [m].[Phone], [m].[ProfilePhotoUrl], [m].[ReplicateSiteSlug], [m].[RowVersion], [m].[ShowBusinessName], [m].[SponsorMemberId], [m].[State], [m].[Status], [m].[UserId], [m].[WhatsApp], [m].[ZipCode]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[MemberId] = @request_MemberId
+[2026-04-19 14:25:57.336 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (4ms) [Parameters=[@request_MemberId='?' (Size = 4000)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(1) [m].[Id], [m].[CreatedBy], [m].[CreationDate], [m].[CurrentMonthIncomeGrowth], [m].[CurrentWeekIncomeGrowth], [m].[CurrentYearIncomeGrowth], [m].[DualTeamPoints], [m].[DualTeamPointsGrowth], [m].[DualTeamSize], [m].[DualteamGrowth], [m].[EnrollmentPoints], [m].[EnrollmentTeamGrowth], [m].[EnrollmentTeamPointsGrowth], [m].[EnrollmentTeamSize], [m].[ExternalCustomerPoints], [m].[MemberId], [m].[PersonalPoints], [m].[QualifiedSponsoredExternalCustomers], [m].[QualifiedSponsoredMembers]
+FROM [MemberStatistics] AS [m]
+WHERE [m].[MemberId] = @request_MemberId
+[2026-04-19 14:25:59.017 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (8ms) [Parameters=[@memberId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Amount], [c].[Status], [c].[EarnedDate]
+FROM [CommissionEarnings] AS [c]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId
+[2026-04-19 14:25:59.025 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+[2026-04-19 14:25:59.028 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32), @p='?' (DbType = Int32), @p3='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Id], [c0].[Name] AS [CommissionTypeName], [c1].[Name] AS [CategoryName], [c].[Amount], CASE [c].[Status]
+    WHEN 1 THEN N'Pending'
+    WHEN 2 THEN N'Paid'
+    WHEN 3 THEN N'Cancelled'
+    ELSE CAST([c].[Status] AS nvarchar(max))
+END AS [Status], [c].[EarnedDate], [c].[PaymentDate]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+ORDER BY [c].[EarnedDate] DESC
+OFFSET @p ROWS FETCH NEXT @p3 ROWS ONLY
+[2026-04-19 14:25:59.032 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+[2026-04-19 14:25:59.035 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32), @p='?' (DbType = Int32), @p3='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Id], [c0].[Name] AS [CommissionTypeName], [c1].[Name] AS [CategoryName], [c].[Amount], CASE [c].[Status]
+    WHEN 1 THEN N'Pending'
+    WHEN 2 THEN N'Paid'
+    WHEN 3 THEN N'Cancelled'
+    ELSE CAST([c].[Status] AS nvarchar(max))
+END AS [Status], [c].[EarnedDate], [c].[PaymentDate]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+ORDER BY [c].[EarnedDate] DESC
+OFFSET @p ROWS FETCH NEXT @p3 ROWS ONLY
+[2026-04-19 14:25:59.039 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (8ms) [Parameters=[@memberId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT DATEPART(year, [c].[EarnedDate]) AS [Year], DATEPART(month, [c].[EarnedDate]) AS [Month], [c].[Amount]
+FROM [CommissionEarnings] AS [c]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = 2
+[2026-04-19 14:25:59.929 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:26:04.254 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:26:04.872 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (17ms) [Parameters=[@memberId='?' (Size = 450), @targetPaymentDate='?' (DbType = DateTime2), @earnedDate_Value_Date='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT [c].[SourceMemberId], [c].[SourceOrderId], [c].[Amount], [c0].[Name] AS [TypeName], [c0].[Description] AS [TypeDesc]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND CONVERT(date, [c].[PaymentDate]) = @targetPaymentDate AND CONVERT(date, [c].[EarnedDate]) = @earnedDate_Value_Date
+ORDER BY [c0].[Name]
+[2026-04-19 14:26:04.877 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (3ms) [Parameters=[@sourceOrderIds1='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT [o].[Id], COALESCE([o].[OrderNo], [o].[Id]) AS [Display]
+FROM [Orders] AS [o]
+WHERE [o].[Id] = @sourceOrderIds1
+[2026-04-19 14:26:04.882 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (4ms) [Parameters=[@sourceIds1='?' (Size = 20)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[MemberId], [m].[FirstName] + N' ' + [m].[LastName] AS [FullName]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[MemberId] = @sourceIds1
+[2026-04-19 14:26:08.572 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:26:12.983 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:26:17.337 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:26:21.642 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:26:26.022 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:26:30.423 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:26:34.748 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:26:39.075 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:26:43.377 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:26:47.728 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:26:52.050 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:26:56.389 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:27:00.728 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:27:05.050 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:27:09.383 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:27:13.743 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:27:18.072 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:27:22.398 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:27:26.691 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:27:30.976 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:27:35.282 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:27:39.602 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:27:43.902 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:27:48.264 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:27:52.591 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:27:56.898 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:28:01.224 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:28:05.562 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:28:09.871 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:28:14.158 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:28:18.458 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:28:22.783 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:28:27.130 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:28:31.455 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:28:35.768 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:28:40.103 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:28:44.426 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:28:48.735 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:28:53.056 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:28:57.378 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:29:01.710 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:29:06.013 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:29:10.336 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:29:14.629 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:29:18.929 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:29:23.245 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:29:27.579 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:29:31.875 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:29:36.215 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:29:40.501 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:29:44.834 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:29:49.128 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:29:53.455 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:29:57.776 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:30:02.112 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:30:06.440 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:30:10.750 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:30:15.040 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:30:19.342 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:30:23.634 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:30:27.993 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:30:32.325 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:30:36.681 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:30:40.976 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:30:45.332 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:30:49.676 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:30:53.972 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:30:58.344 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:31:02.650 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:31:06.961 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:31:11.288 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:31:15.599 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:31:19.940 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:31:24.245 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:31:28.544 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:31:32.871 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:31:37.199 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:31:41.536 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:31:45.858 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:31:50.165 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:31:54.459 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:31:58.808 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:32:03.201 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:32:07.590 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:32:11.885 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:32:16.208 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:32:20.552 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:32:24.908 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:32:29.296 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:32:33.617 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:32:37.953 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:32:42.248 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:32:46.549 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:32:50.802 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:32:55.110 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:32:59.452 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:33:03.740 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:33:08.034 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:33:12.340 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:33:16.699 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:33:21.041 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:33:25.380 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:33:29.691 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:33:34.027 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:33:38.366 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:33:42.671 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:33:46.969 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:33:51.314 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:33:55.637 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:33:59.961 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:34:04.355 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:34:08.662 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:34:13.007 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:34:17.573 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:34:21.902 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:34:26.191 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:34:30.552 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:34:34.905 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:34:39.289 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:34:43.603 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:34:47.917 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:34:52.270 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:34:56.592 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:35:00.910 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:35:05.246 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:35:09.547 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:35:13.868 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-19 14:35:18.165 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
