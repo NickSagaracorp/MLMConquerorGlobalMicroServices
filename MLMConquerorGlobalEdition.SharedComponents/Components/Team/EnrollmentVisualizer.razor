@@ -1,51 +1,514 @@
 @inject HttpClient Http
+@using System.Net.Http.Json
 
-<BreadcrumbNav Items="@_breadcrumb" />
+@if (ShowBreadcrumb) { <BreadcrumbNav Items="@_breadcrumb" /> }
 
-<div class="card">
-    <div class="card-header py-3">
-        <h6 class="card-title mb-0 fw-semibold">Enrollment Tree Visualizer</h6>
-    </div>
-    <div class="card-body">
-        <LoadingSpinner IsLoading="@_isLoading" />
-        @if (!_isLoading)
-        {
-            <div class="tree-visualizer text-center py-5 border rounded bg-light">
-                <i class="ri-organization-chart display-4 text-muted opacity-50"></i>
-                <p class="text-muted mt-2">Genealogy tree visualizer — rendered via JS interop</p>
-                <small class="text-muted">@_nodes.Count nodes loaded for MemberId: @MemberProfileId</small>
+@* ── Resume stats cards ──────────────────────────────────────────────────── *@
+<div class="card bg-white border-0 rounded-3 mb-4">
+    <div class="card bg-white border-0 rounded-3 mb-4">
+        <div class="card-body p-4" style="padding-bottom: 0 !important;">
+            <div class="mb-3 mb-lg-4"><h3 class="mb-0">Resume</h3></div>
+            <div class="row">
+                <div class="col-xxl-3 col-xl-3 col-sm-6">
+                    <div class="card bg-primary bg-opacity-10 border-primary border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0">
+                                    <i class="ri-group-line fs-40 text-primary"></i>
+                                </div>
+                                <div class="flex-grow-1 ms-2">
+                                    <span>Total Members</span>
+                                    <h3 class="fs-20 mt-1 mb-0">
+                                        @if (_statsLoading) { <span class="placeholder col-4"></span> }
+                                        else { @(_stats?.TotalMembers.ToString("N0") ?? "0") }
+                                    </h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xxl-3 col-xl-3 col-sm-6">
+                    <div class="card bg-success bg-opacity-10 border-success border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0">
+                                    <i class="ri-checkbox-circle-line fs-40 text-success"></i>
+                                </div>
+                                <div class="flex-grow-1 ms-2">
+                                    <span>Total Qualified Members</span>
+                                    <h3 class="fs-20 mt-1 mb-0">
+                                        @if (_statsLoading) { <span class="placeholder col-4"></span> }
+                                        else { @(_stats?.TotalQualified.ToString("N0") ?? "0") }
+                                    </h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xxl-3 col-xl-3 col-sm-6">
+                    <div class="card bg-danger bg-opacity-10 border-danger border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0">
+                                    <i class="ri-close-circle-line fs-40 text-danger"></i>
+                                </div>
+                                <div class="flex-grow-1 ms-2">
+                                    <span>Total Unqualified Members</span>
+                                    <h3 class="fs-20 mt-1 mb-0">
+                                        @if (_statsLoading) { <span class="placeholder col-4"></span> }
+                                        else { @(_stats?.TotalUnqualified.ToString("N0") ?? "0") }
+                                    </h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xxl-3 col-xl-3 col-sm-6">
+                    <div class="card bg-dark bg-opacity-10 border-dark border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0">
+                                    <i class="ri-forbid-line fs-40 text-dark"></i>
+                                </div>
+                                <div class="flex-grow-1 ms-2">
+                                    <span>Total Cancelled Members</span>
+                                    <h3 class="fs-20 mt-1 mb-0">
+                                        @if (_statsLoading) { <span class="placeholder col-4"></span> }
+                                        else { @(_stats?.TotalCancelled.ToString("N0") ?? "0") }
+                                    </h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-        }
+        </div>
     </div>
 </div>
 
-@code {
-    [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+@* ── Enrollment Tree card ─────────────────────────────────────────────────── *@
+<div class="card bg-white border-0 rounded-3 mb-4">
+    <div class="card bg-white border-0 rounded-3 mb-4">
+        <div class="card-body p-4" style="padding-bottom: 0 !important;">
 
-    private bool _isLoading = true;
-    private List<object> _nodes = new();
+            @* Header: title + legend *@
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                <h3 class="mb-0">Enrollment Team</h3>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="legend-chip"><span class="legend-dot dot-q"></span>Qualified</div>
+                    <div class="legend-chip"><span class="legend-dot dot-u"></span>Unqualified</div>
+                    <div class="legend-chip"><span class="legend-dot dot-c"></span>Cancelled</div>
+                </div>
+            </div>
+
+            @* Search + show cancelled toggle *@
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                <div class="position-relative table-src-form me-0">
+                    <input type="text"
+                           class="form-control"
+                           placeholder="Search here"
+                           value="@_search"
+                           @oninput="OnSearchInput" />
+                    <i class="ri-search-line position-absolute top-50 start-0 translate-middle-y"></i>
+                </div>
+                <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" id="et-toggle-cancelled"
+                           checked="@_showCancelled"
+                           @onchange="OnShowCancelledChanged" />
+                    <label class="form-check-label" for="et-toggle-cancelled">Show Cancelled</label>
+                </div>
+            </div>
+
+            @* Tree body *@
+            @if (_treeLoading)
+            {
+                <LoadingSpinner IsLoading="true" />
+            }
+            else if (_treeError is not null)
+            {
+                <div class="alert alert-danger">@_treeError</div>
+            }
+            else
+            {
+                <div class="tree-viewport">
+                    <ul id="enrollTree" class="enroll-tree list-unstyled mb-0" role="tree">
+                        @if (!_flatVisible.Any())
+                        {
+                            <li class="py-4 text-center text-muted">No members to display.</li>
+                        }
+                        else
+                        {
+                            @foreach (var node in _flatVisible)
+                            {
+                                var n = node; @* capture for lambda *@
+                                <li class="node" data-lvl="@n.Level" style="--lvl:@n.Level" role="treeitem"
+                                    aria-expanded="@(n.HasChildren ? n.IsExpanded.ToString().ToLower() : null)">
+                                    <div class="node-row">
+
+                                        @* Caret / expand button *@
+                                        @if (!n.HasChildren)
+                                        {
+                                            <button type="button" class="caret" disabled aria-label="No children">
+                                                <i class="ri-arrow-right-s-line"></i>
+                                            </button>
+                                        }
+                                        else if (n.IsLoading)
+                                        {
+                                            <button type="button" class="caret" disabled aria-label="Loading">
+                                                <span class="spinner-border spinner-border-sm" role="status" style="width:14px;height:14px;"></span>
+                                            </button>
+                                        }
+                                        else if (n.IsExpanded)
+                                        {
+                                            <button type="button" class="caret" aria-label="Collapse"
+                                                    @onclick="() => CollapseNode(n)">
+                                                <i class="ri-arrow-up-s-line"></i>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="caret" aria-label="Expand"
+                                                    @onclick="() => ExpandNodeAsync(n)">
+                                                <i class="ri-arrow-down-s-line"></i>
+                                            </button>
+                                        }
+
+                                        @* Avatar initial *@
+                                        <div class="ev-avatar" aria-hidden="true">
+                                            @(n.FullName.Length > 0 ? n.FullName[0].ToString().ToUpper() : "?")
+                                        </div>
+
+                                        @* Name chip with status *@
+                                        <span class="name-chip @n.StatusCode.ToLower()" title="@n.FullName">
+                                            @n.FullName
+                                            <small>• @StatusLabel(n.StatusCode)</small>
+                                        </span>
+
+                                        @* Points badge *@
+                                        <span class="badge-points" aria-label="@n.Points points">
+                                            @n.Points.ToString("N0") pts
+                                        </span>
+                                    </div>
+                                </li>
+                            }
+                        }
+                    </ul>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    :root {
+        --q: #1aa06d;
+        --u: #7a2131;
+        --c: #9aa0a6;
+        --ink: #0b0f16;
+        --mut: #6b7280;
+        --line: rgba(17,24,39,.08);
+    }
+    .enroll-tree { border-top: 1px solid var(--line); position: relative; isolation: isolate; }
+    .node { position: relative; padding-left: calc(16px + var(--lvl,0)*22px); }
+    .node::before { z-index: 0; position: absolute; content: ""; left: calc(8px + var(--lvl,0)*22px); top: 4px; bottom: -1px; width: 2px; border-left: 2px dashed var(--line); }
+    .node[data-lvl="0"]::before { display: none; }
+    .node-row { display: flex; align-items: center; gap: 12px; padding: 10px 6px; border-bottom: 1px solid var(--line); position: relative; z-index: 1; }
+    .caret { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid transparent; color: #64748b; cursor: pointer; flex: 0 0 auto; background: transparent; padding: 0; }
+    .caret:hover { border-color: var(--line); background: #f8fafc; }
+    .caret[disabled] { opacity: .4; cursor: default; pointer-events: none; }
+    .ev-avatar { width: 36px; height: 36px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,.08); font-size: 14px; font-weight: 700; color: #605DFF; flex-shrink: 0; }
+    .name-chip { display: inline-flex; align-items: center; gap: 8px; line-height: 1; padding: 6px 10px; border-radius: 999px; font-weight: 600; color: var(--ink); background: #f5f7fb; max-width: min(520px, 68vw); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .name-chip small { font-weight: 500; color: var(--mut); }
+    .name-chip.q { background: color-mix(in oklab, var(--q) 16%, white); border: 1px solid color-mix(in oklab, var(--q) 35%, white); }
+    .name-chip.u { background: color-mix(in oklab, var(--u) 16%, white); border: 1px solid color-mix(in oklab, var(--u) 35%, white); }
+    .name-chip.c { background: color-mix(in oklab, var(--c) 22%, white); border: 1px solid color-mix(in oklab, var(--c) 40%, white); }
+    .badge-points { margin-left: auto; font-weight: 700; font-size: 12px; background: #eef2ff; color: #3730a3; border: 1px solid #e0e7ff; padding: 6px 10px; border-radius: 10px; position: relative; z-index: 1; }
+    .legend-chip { display: inline-flex; align-items: center; gap: 8px; color: var(--mut); font-size: 13px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-q { background: var(--q); }
+    .dot-u { background: var(--u); }
+    .dot-c { background: var(--c); }
+    .tree-viewport { position: relative; overflow: hidden; }
+</style>
+
+@code {
+    // ── Parameters ──────────────────────────────────────────────────────────
+    /// <summary>The member whose enrollment subtree is visualized.</summary>
+    [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+    [Parameter] public string ApiBaseUrl    { get; set; } = "api/v1/bizcenter/team/enrollment/visualizer";
+    [Parameter] public bool   ShowBreadcrumb{ get; set; } = true;
+
+    // ── State ────────────────────────────────────────────────────────────────
+    private bool   _statsLoading = true;
+    private bool   _treeLoading  = true;
+    private string? _treeError;
+    private string? _search;
+    private bool   _showCancelled = false;
+
+    private StatsDto?          _stats;
+    private List<TreeNode>     _allRootNodes = new();
+    private List<TreeNode>     _flatVisible  = new();
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
         new("Dashboard", "/dashboard"),
-        new("Enrollment Visualizer")
+        new("Enrollment Team"),
+        new("Visualizer")
     };
 
+    // ── Lifecycle ────────────────────────────────────────────────────────────
     protected override async Task OnParametersSetAsync()
     {
         if (string.IsNullOrEmpty(MemberProfileId)) return;
-        _isLoading = true; StateHasChanged();
-        try
-        {
-            // Loads all enrollment tree nodes (no paging) for tree visualizer
-            var response = await Http.GetFromJsonAsync<ApiResponse<List<object>>>(
-                "api/v1/bizcenter/team/all-members");
-            if (response?.Success == true && response.Data is not null)
-                _nodes = response.Data;
-        }
-        catch { /* silently degrade */ }
-        finally { _isLoading = false; }
+
+        _statsLoading = true;
+        _treeLoading  = true;
+        _treeError    = null;
+        StateHasChanged();
+
+        await Task.WhenAll(LoadStatsAsync(), LoadRootNodesAsync());
     }
 
-    private class ApiResponse<T> { public bool Success { get; set; } public T? Data { get; set; } }
+    // ── Data load: stats ─────────────────────────────────────────────────────
+    private async Task LoadStatsAsync()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<StatsDto>>(
+                $"{ApiBaseUrl}/stats");
+            _stats = resp?.Success == true ? resp.Data : new StatsDto();
+        }
+        catch
+        {
+            _stats = new StatsDto();
+        }
+        finally
+        {
+            _statsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    // ── Data load: root nodes (direct children of current member) ────────────
+    private async Task LoadRootNodesAsync()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<NodeDto>>>(
+                $"{ApiBaseUrl}/children/{Uri.EscapeDataString(MemberProfileId)}");
+
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _allRootNodes = resp.Data
+                    .Select(d => MapToTreeNode(d, level: 0))
+                    .ToList();
+            }
+            else
+            {
+                _allRootNodes = new();
+            }
+
+            RebuildVisible();
+        }
+        catch (Exception ex)
+        {
+            _treeError = $"Failed to load tree: {ex.Message}";
+        }
+        finally
+        {
+            _treeLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    // ── Expand node: lazy-load children and insert into flat list ───────────
+    private async Task ExpandNodeAsync(TreeNode node)
+    {
+        if (node.IsLoading || node.IsExpanded) return;
+
+        // If already loaded, just show children again
+        if (node.ChildrenLoaded && node.Children is not null)
+        {
+            node.IsExpanded = true;
+            InsertChildrenIntoVisible(node);
+            StateHasChanged();
+            return;
+        }
+
+        node.IsLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<NodeDto>>>(
+                $"{ApiBaseUrl}/children/{Uri.EscapeDataString(node.MemberId)}");
+
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                node.Children = resp.Data
+                    .Select(d => MapToTreeNode(d, level: node.Level + 1))
+                    .ToList();
+            }
+            else
+            {
+                node.Children = new();
+            }
+
+            node.ChildrenLoaded = true;
+            node.IsExpanded     = true;
+            InsertChildrenIntoVisible(node);
+        }
+        catch
+        {
+            // Silently degrade: mark node as having no children so caret disables
+            node.HasChildren    = false;
+            node.ChildrenLoaded = true;
+        }
+        finally
+        {
+            node.IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    // ── Collapse node: remove all descendants from flat list ────────────────
+    private void CollapseNode(TreeNode node)
+    {
+        node.IsExpanded = false;
+        RemoveDescendantsFromVisible(node);
+        StateHasChanged();
+    }
+
+    private void RemoveDescendantsFromVisible(TreeNode node)
+    {
+        if (node.Children is null) return;
+        foreach (var child in node.Children)
+        {
+            _flatVisible.Remove(child);
+            if (child.IsExpanded)
+            {
+                child.IsExpanded = false;
+                RemoveDescendantsFromVisible(child);
+            }
+        }
+    }
+
+    // ── Insert a node's children into _flatVisible after the parent ─────────
+    private void InsertChildrenIntoVisible(TreeNode node)
+    {
+        if (node.Children is null) return;
+        var insertIndex = _flatVisible.IndexOf(node) + 1;
+        if (insertIndex <= 0) return;
+        foreach (var child in node.Children)
+        {
+            // Apply current show-cancelled filter at expansion time
+            if (!_showCancelled && child.StatusCode == "C") continue;
+            _flatVisible.Insert(insertIndex++, child);
+        }
+    }
+
+    // ── Rebuild flat visible list (search / filter change) ──────────────────
+    private void RebuildVisible()
+    {
+        // Reset all expanded states so the tree collapses cleanly on filter
+        foreach (var n in _allRootNodes)
+        {
+            n.IsExpanded     = false;
+            n.Children       = null;
+            n.ChildrenLoaded = false;
+        }
+
+        var q = (_search ?? "").Trim().ToLower();
+
+        _flatVisible = _allRootNodes
+            .Where(n => _showCancelled || n.StatusCode != "C")
+            .Where(n => string.IsNullOrEmpty(q) || n.FullName.ToLower().Contains(q))
+            .ToList();
+    }
+
+    // ── Search debounce ──────────────────────────────────────────────────────
+    private System.Threading.CancellationTokenSource? _searchCts;
+
+    private async Task OnSearchInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _search = e.Value?.ToString();
+        _searchCts?.Cancel();
+        _searchCts = new System.Threading.CancellationTokenSource();
+        var token = _searchCts.Token;
+
+        try
+        {
+            await Task.Delay(350, token);
+            if (!token.IsCancellationRequested)
+            {
+                RebuildVisible();
+                StateHasChanged();
+            }
+        }
+        catch (TaskCanceledException) { /* debounced */ }
+    }
+
+    private void OnShowCancelledChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _showCancelled = e.Value is bool b && b;
+        RebuildVisible();
+        StateHasChanged();
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    private static string StatusLabel(string code) => code switch
+    {
+        "Q" => "Qualified",
+        "U" => "Unqualified",
+        _   => "Cancelled"
+    };
+
+    private static TreeNode MapToTreeNode(NodeDto d, int level) => new()
+    {
+        MemberId    = d.MemberId,
+        FullName    = d.FullName,
+        StatusCode  = d.StatusCode,
+        Points      = d.Points,
+        HasChildren = d.HasChildren,
+        Level       = level
+    };
+
+    // ── Private view model ───────────────────────────────────────────────────
+    private class TreeNode
+    {
+        public string       MemberId       { get; set; } = string.Empty;
+        public string       FullName       { get; set; } = string.Empty;
+        public string       StatusCode     { get; set; } = "Q";
+        public int          Points         { get; set; }
+        public bool         HasChildren    { get; set; }
+        public int          Level          { get; set; }
+        public bool         IsExpanded     { get; set; }
+        public bool         IsLoading      { get; set; }
+        public bool         ChildrenLoaded { get; set; }
+        public List<TreeNode>? Children    { get; set; }
+    }
+
+    // ── Local deserialization types ──────────────────────────────────────────
+    private class ApiWrapper<T>
+    {
+        public bool Success { get; set; }
+        public T?   Data    { get; set; }
+    }
+
+    private class StatsDto
+    {
+        public int TotalMembers     { get; set; }
+        public int TotalQualified   { get; set; }
+        public int TotalUnqualified { get; set; }
+        public int TotalCancelled   { get; set; }
+    }
+
+    private class NodeDto
+    {
+        public string MemberId    { get; set; } = string.Empty;
+        public string FullName    { get; set; } = string.Empty;
+        public string StatusCode  { get; set; } = "Q";
+        public int    Points      { get; set; }
+        public bool   HasChildren { get; set; }
+    }
 }

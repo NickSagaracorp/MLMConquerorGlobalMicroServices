@@ -1,0 +1,8 @@
+@page "/team/enrollment/visualizer"
+@rendermode InteractiveAuto
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject IViewContextService ViewContext
+
+<PageTitle>Enrollment Team — Visualizer</PageTitle>
+
+<EnrollmentVisualizer MemberProfileId="@ViewContext.ViewingMemberId" />

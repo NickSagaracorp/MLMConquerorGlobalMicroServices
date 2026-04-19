@@ -1,0 +1,8 @@
+@page "/commissions/boost"
+@rendermode InteractiveServer
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Ambassador")]
+@inject IViewContextService ViewContext
+
+<PageTitle>Boost Bonus</PageTitle>
+
+<BoostBonusReport MemberProfileId="@ViewContext.ViewingMemberId" />

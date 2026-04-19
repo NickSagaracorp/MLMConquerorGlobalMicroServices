@@ -1,0 +1,182 @@
+@inject HttpClient Http
+@inject IViewContextService ViewContext
+@inject NavigationManager Nav
+
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Inputs
+
+@if (ShowBreadcrumb) { <BreadcrumbNav Items="@_breadcrumb" /> }
+
+<div class="card bg-white border-0 rounded-3 mb-4">
+    <div class="card-body p-0">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-3">
+            <div class="d-flex align-items-center gap-2">
+                <SfTextBox Placeholder="Search name, ID…"
+                           @bind-Value="_search"
+                           CssClass="form-control form-control-sm"
+                           style="min-width:240px" />
+                <button class="btn btn-primary btn-sm" @onclick="SearchAsync">
+                    <i class="ri-search-line me-1"></i>Search
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" @onclick="ClearAsync">
+                    <i class="ri-refresh-line"></i>
+                </button>
+            </div>
+            <small class="text-muted">@_totalCount customers</small>
+        </div>
+
+        @if (_isLoading)
+        {
+            <LoadingSpinner IsLoading="true" />
+        }
+        else if (_error is not null)
+        {
+            <div class="alert alert-danger m-3">@_error</div>
+        }
+        else
+        {
+            <SfGrid TValue="CustomerDto" DataSource="@_items"
+                    AllowPaging="true" AllowSorting="true" AllowResizing="true"
+                    AllowFiltering="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="20" PageSizes="@(new int[]{20,50,100})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+
+                    <GridColumn HeaderText="Join Date" Width="115" TextAlign="TextAlign.Center">
+                        <Template>@(((CustomerDto)context).EnrollDate.ToString("MM/dd/yyyy"))</Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="ID" Width="120">
+                        <Template><code class="text-primary">@(((CustomerDto)context).MemberId)</code></Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Name" Width="160">
+                        <Template>@(((CustomerDto)context).FullName)</Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Email" Width="200">
+                        <Template>@(((CustomerDto)context).Email)</Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Phone" Width="140">
+                        <Template>@(((CustomerDto)context).Phone ?? "—")</Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Level" Width="80" TextAlign="TextAlign.Center">
+                        <Template><span class="badge bg-secondary">L@(((CustomerDto)context).Level)</span></Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Country" Width="100">
+                        <Template>@(((CustomerDto)context).Country)</Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Sponsor" Width="150">
+                        <Template>
+                            @{ var c = (CustomerDto)context; }
+                            @(c.SponsorFullName ?? c.SponsorMemberId ?? "—")
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Biz Status" Width="110" TextAlign="TextAlign.Center">
+                        <Template><StatusBadge Status="@(((CustomerDto)context).AccountStatus)" /></Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Membership Status" Width="140" TextAlign="TextAlign.Center">
+                        <Template><StatusBadge Status="@(((CustomerDto)context).MembershipStatus)" /></Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Membership" Width="200">
+                        <Template>@(((CustomerDto)context).MembershipLevel ?? "—")</Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Points" Width="100" TextAlign="TextAlign.Right">
+                        <Template>@(((CustomerDto)context).PersonalPoints.ToString("N0"))</Template>
+                    </GridColumn>
+
+                    @if (ViewContext.IsAdminContext)
+                    {
+                        <GridColumn HeaderText="" Width="80" TextAlign="TextAlign.Center">
+                            <Template>
+                                <button class="btn btn-xs btn-outline-secondary"
+                                        @onclick="@(() => Nav.NavigateTo($"/admin/members/{((CustomerDto)context).MemberId}"))"
+                                        title="View in Admin">
+                                    <i class="ri-eye-line"></i>
+                                </button>
+                            </Template>
+                        </GridColumn>
+                    }
+
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+    [Parameter] public string ApiBaseUrl     { get; set; } = "api/v1/bizcenter/team/enrollment";
+    [Parameter] public bool   ShowBreadcrumb { get; set; } = true;
+
+    private bool    _isLoading  = true;
+    private string? _error;
+    private int     _totalCount;
+    private string? _search;
+    private List<CustomerDto> _items = new();
+
+    private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
+    {
+        new("Dashboard", "/dashboard"),
+        new("Enrollment Team"),
+        new("Customers")
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(MemberProfileId))
+            await LoadAsync();
+    }
+
+    private async Task SearchAsync() => await LoadAsync();
+    private async Task ClearAsync()  { _search = null; await LoadAsync(); }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true; _error = null; StateHasChanged();
+        try
+        {
+            var url = $"{ApiBaseUrl}/customers?page=1&pageSize=200";
+            if (!string.IsNullOrWhiteSpace(_search))
+                url += $"&search={Uri.EscapeDataString(_search)}";
+
+            var resp = await Http.GetFromJsonAsync<ApiResp<PagedData<CustomerDto>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _items      = resp.Data.Items;
+                _totalCount = resp.Data.TotalCount;
+            }
+            else { _error = resp?.Errors?.FirstOrDefault() ?? "Failed to load customers."; }
+        }
+        catch (Exception ex) { _error = $"API error: {ex.Message}"; }
+        finally { _isLoading = false; }
+    }
+
+    private class ApiResp<T>  { public bool Success { get; set; } public T? Data { get; set; } public IEnumerable<string>? Errors { get; set; } }
+    private class PagedData<T>{ public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
+
+    public class CustomerDto
+    {
+        public string   MemberId         { get; set; } = string.Empty;
+        public string   FullName         { get; set; } = string.Empty;
+        public string   Email            { get; set; } = string.Empty;
+        public string?  Phone            { get; set; }
+        public string   Country          { get; set; } = string.Empty;
+        public int      Level            { get; set; }
+        public DateTime EnrollDate       { get; set; }
+        public string?  SponsorMemberId  { get; set; }
+        public string?  SponsorFullName  { get; set; }
+        public string   AccountStatus    { get; set; } = string.Empty;
+        public string   MembershipStatus { get; set; } = string.Empty;
+        public string?  MembershipLevel  { get; set; }
+        public int      PersonalPoints   { get; set; }
+    }
+}

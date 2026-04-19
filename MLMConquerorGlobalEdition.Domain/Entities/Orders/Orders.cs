@@ -6,6 +6,7 @@ public class Orders : AuditChangesStringKey
 {
     public string MemberId { get; set; } = string.Empty;
     public string? MembershipSubscriptionId { get; set; }   // links order ↔ subscription
+    public string? OrderNo { get; set; }                     // human-readable: TAE0418XY
     public decimal TotalAmount { get; set; }
     public OrderStatus Status { get; set; } = OrderStatus.Pending;
     public DateTime OrderDate { get; set; }

@@ -1,0 +1,8 @@
+@page "/commissions/car-bonus"
+@rendermode InteractiveServer
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Ambassador")]
+@inject IViewContextService ViewContext
+
+<PageTitle>Car Bonus</PageTitle>
+
+<CarBonusReport MemberProfileId="@ViewContext.ViewingMemberId" />

@@ -1,0 +1,10 @@
+@page "/team/dual-tree"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject IViewContextService ViewContext
+
+<PageTitle>Dual Team Visualizer</PageTitle>
+
+<DualTeamBinaryTree MemberProfileId="@ViewContext.ViewingMemberId"
+                    ApiBaseUrl="api/v1/bizcenter/team"
+                    ShowBreadcrumb="true" />

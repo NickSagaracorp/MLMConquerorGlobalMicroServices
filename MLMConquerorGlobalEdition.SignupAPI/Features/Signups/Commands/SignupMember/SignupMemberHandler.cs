@@ -88,10 +88,15 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
         };
 
         var orderId = Guid.NewGuid().ToString();
+        string orderNo;
+        do { orderNo = OrderNumberHelper.Generate(membershipLevel.Name, now); }
+        while (await _db.Orders.AnyAsync(o => o.OrderNo == orderNo, ct));
+
         var order = new Orders
         {
             Id             = orderId,
             MemberId       = memberId,
+            OrderNo        = orderNo,
             TotalAmount    = 0,
             Status         = OrderStatus.Pending,
             OrderDate      = now,

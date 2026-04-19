@@ -1,0 +1,547 @@
+@inject HttpClient Http
+@using System.Net.Http.Json
+
+@if (ShowBreadcrumb) { <BreadcrumbNav Items="@_breadcrumb" /> }
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   SECTION 1 — Rank cards
+   ══════════════════════════════════════════════════════════════════════════ *@
+<div class="row g-4 mb-4">
+    @* Actual Rank *@
+    <div class="col-12 col-md-6">
+        <div class="card border-0 rounded-3 bg-danger bg-opacity-10 border-danger border-opacity-10 h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="flex-shrink-0">
+                        <i class="ri-medal-line fs-40 text-danger"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        @if (_rankLoading)
+                        {
+                            <div class="spinner-border spinner-border-sm text-danger"></div>
+                        }
+                        else
+                        {
+                            <span class="text-muted fs-13">Actual Rank</span>
+                            <h4 class="fw-bold mb-2 mt-1">@(_rankData?.CurrentRankName ?? "—")</h4>
+                            <div class="d-flex gap-3 flex-wrap mt-auto">
+                                <div>
+                                    <span class="fs-12 text-muted d-block">Dual Team Pts Required</span>
+                                    <span class="fw-semibold text-danger">@(_rankData?.CurrentRankDualTeamPoints.ToString("N0") ?? "—")</span>
+                                </div>
+                                <div>
+                                    <span class="fs-12 text-muted d-block">Enrollment Pts Required</span>
+                                    <span class="fw-semibold text-danger">@(_rankData?.CurrentRankEnrollmentPoints.ToString("N0") ?? "—")</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Next Rank *@
+    <div class="col-12 col-md-6">
+        <div class="card border-0 rounded-3 bg-success bg-opacity-10 border-success border-opacity-10 h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="flex-shrink-0">
+                        <i class="ri-award-line fs-40 text-success"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        @if (_rankLoading)
+                        {
+                            <div class="spinner-border spinner-border-sm text-success"></div>
+                        }
+                        else
+                        {
+                            <span class="text-muted fs-13">Next Rank</span>
+                            <h4 class="fw-bold mb-2 mt-1">@(_rankData?.NextRankName ?? "—")</h4>
+                            <div class="d-flex gap-3 flex-wrap mt-auto">
+                                <div>
+                                    <span class="fs-12 text-muted d-block">Dual Team Pts Required</span>
+                                    <span class="fw-semibold text-success">@(_rankData?.NextRankDualTeamPoints.ToString("N0") ?? "—")</span>
+                                </div>
+                                <div>
+                                    <span class="fs-12 text-muted d-block">Enrollment Pts Required</span>
+                                    <span class="fw-semibold text-success">@(_rankData?.NextRankEnrollmentPoints.ToString("N0") ?? "—")</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   SECTION 2 — Dual Team Points + Residuals Earning cards
+   ══════════════════════════════════════════════════════════════════════════ *@
+<div class="row g-4 mb-4">
+    @* Total Dual Team Points *@
+    <div class="col-12 col-md-6">
+        <div class="card bg-white border-0 rounded-3 h-100">
+            <div class="card-body p-4">
+                <h5 class="fw-semibold border-bottom pb-3 mb-3">Total Dual Team Points</h5>
+                @if (_residualLoading)
+                {
+                    <LoadingSpinner IsLoading="true" />
+                }
+                else
+                {
+                    <ul class="list-unstyled mb-0">
+                        <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <span class="d-flex align-items-center gap-2">
+                                <span class="badge" style="background:#605DFF;width:10px;height:10px;border-radius:50%;padding:0;display:inline-block"></span>
+                                Left Leg
+                            </span>
+                            <span class="fw-semibold">@(_residualSummary?.LeftLegPoints.ToString("N0") ?? "—")</span>
+                        </li>
+                        <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <span class="d-flex align-items-center gap-2">
+                                <span class="badge" style="background:#4299e1;width:10px;height:10px;border-radius:50%;padding:0;display:inline-block"></span>
+                                Right Leg
+                            </span>
+                            <span class="fw-semibold">@(_residualSummary?.RightLegPoints.ToString("N0") ?? "—")</span>
+                        </li>
+                        <li class="d-flex justify-content-between align-items-center py-2">
+                            <span class="fw-semibold">Total</span>
+                            <span class="fw-bold text-primary fs-16">
+                                @((_residualSummary is not null ? _residualSummary.LeftLegPoints + _residualSummary.RightLegPoints : 0).ToString("N0"))
+                            </span>
+                        </li>
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* Daily Residuals Earning — chart placeholder *@
+    <div class="col-12 col-md-6">
+        <div class="card bg-white border-0 rounded-3 h-100">
+            <div class="card-body p-4">
+                <h5 class="fw-semibold border-bottom pb-3 mb-3">Daily Residuals Earning</h5>
+                <span class="text-muted fs-13 d-block mb-3">Last 6 months</span>
+                <div class="d-flex flex-column align-items-center justify-content-center py-4 text-muted"
+                     style="min-height:120px;background:#f8f9fb;border-radius:10px;border:2px dashed #dde1e7">
+                    <i class="ri-bar-chart-2-line fs-2 mb-2 text-primary opacity-50"></i>
+                    <span class="fs-13">Chart coming soon</span>
+                    <span class="fs-12 text-muted mt-1">Historical residuals data will display here</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   SECTION 3 — Dual Team Members table (direct members with donut)
+   ══════════════════════════════════════════════════════════════════════════ *@
+<div class="card bg-white border-0 rounded-3 mb-4">
+    <div class="card-body p-0">
+        <div class="p-4 border-bottom">
+            <h5 class="fw-semibold mb-0">Dual Team Members</h5>
+        </div>
+        @if (_membersLoading)
+        {
+            <LoadingSpinner IsLoading="true" />
+        }
+        else if (_membersError is not null)
+        {
+            <div class="alert alert-danger m-3">@_membersError</div>
+        }
+        else
+        {
+            <div class="default-table-area style-two default-table-width">
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>Ambassador</th>
+                                <th>Qualification Points</th>
+                                <th>Current Rank (Eligible Pts)</th>
+                                <th>Next Rank (Eligible Pts)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!_members.Any())
+                            {
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">No team members found.</td>
+                                </tr>
+                            }
+                            @foreach (var m in _members)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div style="width:36px;height:36px;border-radius:50%;background:#605DFF22;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                                <span style="font-size:13px;font-weight:700;color:#605DFF">
+                                                    @(m.FullName.Length > 0 ? m.FullName[0].ToString().ToUpper() : "?")
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <span class="fw-medium d-block">@m.FullName</span>
+                                                <span class="badge @(m.Leg == "Left" ? "bg-primary bg-opacity-10 text-primary" : "bg-info bg-opacity-10 text-info") p-1 fs-11 fw-normal">
+                                                    @m.Leg Side
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-body fw-semibold">@m.QualificationPoints.ToString("N0")</td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            @RenderDonut(m.CurrentRankEligiblePct, m.CurrentRankEligiblePoints)
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            @RenderDonut(m.NextRankEligiblePct, m.NextRankEligiblePoints)
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   SECTION 4 — Daily Residuals table with date filter
+   ══════════════════════════════════════════════════════════════════════════ *@
+<div class="card bg-white border-0 rounded-3 mb-4">
+    <div class="card-body p-0">
+
+        @* Search + date filter header *@
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
+            <div class="position-relative table-src-form me-0">
+                <input type="text"
+                       class="form-control"
+                       placeholder="Search here"
+                       value="@_residualSearch"
+                       @oninput="OnResidualSearchInput" />
+                <i class="ri-search-line position-absolute top-50 start-0 translate-middle-y"></i>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <div>
+                    <label class="form-label fs-12 mb-1 fw-medium">From</label>
+                    <input type="date" class="form-control form-control-sm"
+                           value="@_fromDate"
+                           @onchange="OnFromDateChange" />
+                </div>
+                <div>
+                    <label class="form-label fs-12 mb-1 fw-medium">To</label>
+                    <input type="date" class="form-control form-control-sm"
+                           value="@_toDate"
+                           @onchange="OnToDateChange" />
+                </div>
+            </div>
+        </div>
+
+        @if (_residualsLoading)
+        {
+            <LoadingSpinner IsLoading="true" />
+        }
+        else if (_residualsError is not null)
+        {
+            <div class="alert alert-danger m-3">@_residualsError</div>
+        }
+        else
+        {
+            <div class="default-table-area style-two default-table-width">
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>Earned Date</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Eligible Points</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!_residuals.Any())
+                            {
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">No residual earnings to display.</td>
+                                </tr>
+                            }
+                            @foreach (var r in _residuals)
+                            {
+                                <tr>
+                                    <td class="text-body">@r.EarnedDate.ToString("MMM dd, yyyy")</td>
+                                    <td class="text-body fw-semibold text-success">$@r.Amount.ToString("F2")</td>
+                                    <td>@RenderResidualStatusBadge(r.Status)</td>
+                                    <td class="text-body">@r.EligiblePoints.ToString("N0")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @* Pagination *@
+                <div class="p-4 pt-lg-4">
+                    <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
+                        <span class="fs-12 fw-medium">Showing @_residuals.Count of @_residualTotal Results</span>
+                        @if (_residualTotalPages > 1)
+                        {
+                            <nav>
+                                <ul class="pagination mb-0 justify-content-center">
+                                    <li class="page-item @(_residualPage <= 1 ? "disabled" : "")">
+                                        <button class="page-link icon" @onclick="() => LoadResidualsAsync(_residualPage - 1)">
+                                            <i class="ri-arrow-left-s-line"></i>
+                                        </button>
+                                    </li>
+                                    @for (var pg = 1; pg <= _residualTotalPages; pg++)
+                                    {
+                                        var p = pg;
+                                        <li class="page-item @(p == _residualPage ? "active" : "")">
+                                            <button class="page-link" @onclick="() => LoadResidualsAsync(p)">@p</button>
+                                        </li>
+                                    }
+                                    <li class="page-item @(_residualPage >= _residualTotalPages ? "disabled" : "")">
+                                        <button class="page-link icon" @onclick="() => LoadResidualsAsync(_residualPage + 1)">
+                                            <i class="ri-arrow-right-s-line"></i>
+                                        </button>
+                                    </li>
+                                </ul>
+                            </nav>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    // ── Parameters ───────────────────────────────────────────────────────────
+    [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+    [Parameter] public string ApiBaseUrl      { get; set; } = "api/v1/bizcenter";
+    [Parameter] public bool   ShowBreadcrumb  { get; set; } = true;
+
+    // ── Section 1 state — ranks ───────────────────────────────────────────────
+    private bool              _rankLoading  = true;
+    private RankDashboardDto? _rankData;
+
+    // ── Section 2 state — points summary ─────────────────────────────────────
+    private bool               _residualLoading  = true;
+    private ResidualSummaryDto? _residualSummary;
+
+    // ── Section 3 state — members table ──────────────────────────────────────
+    private bool                  _membersLoading = true;
+    private string?               _membersError;
+    private List<TeamMemberRowDto> _members       = new();
+
+    // ── Section 4 state — residuals table ────────────────────────────────────
+    private bool              _residualsLoading   = true;
+    private string?           _residualsError;
+    private List<DualResidualDto> _residuals      = new();
+    private string?           _residualSearch;
+    private string?           _fromDate;
+    private string?           _toDate;
+    private int               _residualPage       = 1;
+    private int               _residualTotal;
+    private int               _residualTotalPages;
+    private const int         ResidualPageSize    = 10;
+
+    private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
+    {
+        new("Dashboard", "/dashboard"),
+        new("Dual Team"),
+        new("Residuals")
+    };
+
+    // ── Lifecycle ────────────────────────────────────────────────────────────
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(MemberProfileId))
+        {
+            await Task.WhenAll(
+                LoadRankDataAsync(),
+                LoadResidualSummaryAsync(),
+                LoadMembersAsync(),
+                LoadResidualsAsync(1));
+        }
+    }
+
+    // ── Data loaders ─────────────────────────────────────────────────────────
+
+    private async Task LoadRankDataAsync()
+    {
+        _rankLoading = true;
+        StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<RankDashboardDto>>(
+                $"{ApiBaseUrl}/ranks/dashboard");
+            _rankData = resp?.Success == true ? resp.Data : null;
+        }
+        catch { /* degrade silently */ }
+        finally { _rankLoading = false; }
+    }
+
+    private async Task LoadResidualSummaryAsync()
+    {
+        _residualLoading = true;
+        StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<ResidualSummaryDto>>(
+                $"{ApiBaseUrl}/team/dual-tree/stats/{MemberProfileId}");
+            _residualSummary = resp?.Success == true ? resp.Data : null;
+        }
+        catch { /* degrade silently */ }
+        finally { _residualLoading = false; }
+    }
+
+    private async Task LoadMembersAsync()
+    {
+        _membersLoading = true;
+        _membersError   = null;
+        StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<PagedData<TeamMemberRowDto>>>(
+                $"{ApiBaseUrl}/team/members?page=1&pageSize=10");
+            if (resp?.Success == true && resp.Data is not null)
+                _members = resp.Data.Items;
+            else
+                _membersError = "Failed to load team members.";
+        }
+        catch (Exception ex)
+        {
+            _membersError = $"API error: {ex.Message}";
+        }
+        finally { _membersLoading = false; }
+    }
+
+    private async Task LoadResidualsAsync(int page)
+    {
+        _residualPage    = page;
+        _residualsLoading = true;
+        _residualsError   = null;
+        StateHasChanged();
+        try
+        {
+            var url = $"{ApiBaseUrl}/commissions/dual-residual?page={page}&pageSize={ResidualPageSize}";
+            if (!string.IsNullOrWhiteSpace(_residualSearch))
+                url += $"&search={Uri.EscapeDataString(_residualSearch)}";
+            if (!string.IsNullOrWhiteSpace(_fromDate))
+                url += $"&from={Uri.EscapeDataString(_fromDate)}";
+            if (!string.IsNullOrWhiteSpace(_toDate))
+                url += $"&to={Uri.EscapeDataString(_toDate)}";
+
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<PagedData<DualResidualDto>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _residuals          = resp.Data.Items;
+                _residualTotal      = resp.Data.TotalCount;
+                _residualTotalPages = (int)Math.Ceiling((double)_residualTotal / ResidualPageSize);
+            }
+            else
+            {
+                _residualsError = "Failed to load residual earnings.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _residualsError = $"API error: {ex.Message}";
+        }
+        finally { _residualsLoading = false; }
+    }
+
+    // ── Search / filter handlers ──────────────────────────────────────────────
+    private System.Threading.CancellationTokenSource? _searchCts;
+
+    private async Task OnResidualSearchInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _residualSearch = e.Value?.ToString();
+        _searchCts?.Cancel();
+        _searchCts = new System.Threading.CancellationTokenSource();
+        var token = _searchCts.Token;
+        try
+        {
+            await Task.Delay(350, token);
+            if (!token.IsCancellationRequested)
+                await LoadResidualsAsync(1);
+        }
+        catch (TaskCanceledException) { /* debounced */ }
+    }
+
+    private async Task OnFromDateChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _fromDate = e.Value?.ToString();
+        await LoadResidualsAsync(1);
+    }
+
+    private async Task OnToDateChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _toDate = e.Value?.ToString();
+        await LoadResidualsAsync(1);
+    }
+
+    // ── Render helpers ───────────────────────────────────────────────────────
+    private RenderFragment RenderDonut(int pct, int value) => __builder =>
+    {
+        <div style="position:relative;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:conic-gradient(#605DFF @(pct)%, #ECEEF2 @(pct)%)">
+            <div style="position:absolute;width:80%;height:80%;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+                <p class="text-body fw-semibold mb-0" style="font-size:11px">@value</p>
+            </div>
+        </div>
+    };
+
+    private RenderFragment RenderResidualStatusBadge(string status) => __builder =>
+    {
+        var cls = status?.ToLower() switch
+        {
+            "paid"      => "success",
+            "pending"   => "warning",
+            "cancelled" => "danger",
+            _           => "secondary"
+        };
+        <span class="badge bg-@cls bg-opacity-10 text-@cls p-2 fs-12 fw-normal">@(status ?? "—")</span>
+    };
+
+    // ── DTOs ─────────────────────────────────────────────────────────────────
+    private class ApiWrapper<T> { public bool Success { get; set; } public T? Data { get; set; } }
+    private class PagedData<T>  { public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
+
+    private class RankDashboardDto
+    {
+        public string CurrentRankName              { get; set; } = string.Empty;
+        public string NextRankName                 { get; set; } = string.Empty;
+        public int    CurrentRankDualTeamPoints    { get; set; }
+        public int    CurrentRankEnrollmentPoints  { get; set; }
+        public int    NextRankDualTeamPoints       { get; set; }
+        public int    NextRankEnrollmentPoints     { get; set; }
+    }
+
+    private class ResidualSummaryDto
+    {
+        public int LeftLegPoints  { get; set; }
+        public int RightLegPoints { get; set; }
+    }
+
+    private class TeamMemberRowDto
+    {
+        public string MemberId                { get; set; } = string.Empty;
+        public string FullName                { get; set; } = string.Empty;
+        public string Leg                     { get; set; } = string.Empty;
+        public int    QualificationPoints     { get; set; }
+        public int    CurrentRankEligiblePoints { get; set; }
+        public int    CurrentRankEligiblePct  { get; set; }
+        public int    NextRankEligiblePoints  { get; set; }
+        public int    NextRankEligiblePct     { get; set; }
+    }
+
+    private record DualResidualDto(
+        DateTime EarnedDate,
+        decimal  Amount,
+        string   Status,
+        int      EligiblePoints);
+}

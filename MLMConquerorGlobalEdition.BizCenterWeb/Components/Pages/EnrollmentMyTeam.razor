@@ -1,0 +1,8 @@
+@page "/team/enrollment/my-team"
+@rendermode InteractiveAuto
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject IViewContextService ViewContext
+
+<PageTitle>Enrollment Team — My Team</PageTitle>
+
+<EnrollmentTeamMyTeam MemberProfileId="@ViewContext.ViewingMemberId" />

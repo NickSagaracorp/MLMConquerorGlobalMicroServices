@@ -5,7 +5,13 @@ using MLMConquerorGlobalEdition.BizCenter.DTOs.Teams;
 using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetAllTeamMembers;
 using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetDualTree;
 using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetEnrollmentTeam;
+using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetEnrollmentMyTeam;
+using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetBranchDetail;
+using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetEnrollmentBranches;
+using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetEnrollmentCustomers;
 using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetTeamMembers;
+using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetVisualizerStats;
+using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetVisualizerChildren;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Controllers;
@@ -57,5 +63,83 @@ public class TeamController : ControllerBase
         if (!result.IsSuccess)
             return BadRequest(ApiResponse<PagedResult<TeamMemberDto>>.Fail(result.ErrorCode!, result.Error!));
         return Ok(ApiResponse<PagedResult<TeamMemberDto>>.Ok(result.Value!));
+    }
+
+    /// <summary>GET /api/v1/bizcenter/team/enrollment/my-team — full enriched enrollment team list</summary>
+    [HttpGet("enrollment/my-team")]
+    public async Task<IActionResult> GetEnrollmentMyTeam(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(
+            new GetEnrollmentMyTeamQuery(page, pageSize, search, from, to), ct);
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<PagedResult<EnrollmentMyTeamMemberDto>>
+                .Fail(result.ErrorCode!, result.Error!));
+        return Ok(ApiResponse<PagedResult<EnrollmentMyTeamMemberDto>>.Ok(result.Value!));
+    }
+
+    /// <summary>GET /api/v1/bizcenter/team/enrollment/branches — direct sponsored branches with points and rank eligibility</summary>
+    [HttpGet("enrollment/branches")]
+    public async Task<IActionResult> GetEnrollmentBranches(
+        [FromQuery] string? search = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new GetEnrollmentBranchesQuery(search, page, pageSize), ct);
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<EnrollmentBranchesResultDto>.Fail(result.ErrorCode!, result.Error!));
+        return Ok(ApiResponse<EnrollmentBranchesResultDto>.Ok(result.Value!));
+    }
+
+    /// <summary>GET /api/v1/bizcenter/team/enrollment/branches/{branchMemberId}/detail — full downline of a branch</summary>
+    [HttpGet("enrollment/branches/{branchMemberId}/detail")]
+    public async Task<IActionResult> GetBranchDetail(string branchMemberId, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetBranchDetailQuery(branchMemberId), ct);
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<BranchDetailDto>.Fail(result.ErrorCode!, result.Error!));
+        return Ok(ApiResponse<BranchDetailDto>.Ok(result.Value!));
+    }
+
+    /// <summary>GET /api/v1/bizcenter/team/enrollment/customers — ExternalMember type only</summary>
+    [HttpGet("enrollment/customers")]
+    public async Task<IActionResult> GetEnrollmentCustomers(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null,
+        CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(
+            new GetEnrollmentCustomersQuery(page, pageSize, search), ct);
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<PagedResult<EnrollmentCustomerDto>>
+                .Fail(result.ErrorCode!, result.Error!));
+        return Ok(ApiResponse<PagedResult<EnrollmentCustomerDto>>.Ok(result.Value!));
+    }
+
+    /// <summary>GET /api/v1/bizcenter/team/enrollment/visualizer/stats — downline status counts for the tree visualizer</summary>
+    [HttpGet("enrollment/visualizer/stats")]
+    public async Task<IActionResult> GetVisualizerStats(CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetVisualizerStatsQuery(), ct);
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<EnrollmentVisualizerStatsDto>.Fail(result.ErrorCode!, result.Error!));
+        return Ok(ApiResponse<EnrollmentVisualizerStatsDto>.Ok(result.Value!));
+    }
+
+    /// <summary>GET /api/v1/bizcenter/team/enrollment/visualizer/children/{parentMemberId} — direct children for lazy tree expansion</summary>
+    [HttpGet("enrollment/visualizer/children/{parentMemberId}")]
+    public async Task<IActionResult> GetVisualizerChildren(string parentMemberId, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetVisualizerChildrenQuery(parentMemberId), ct);
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<IEnumerable<EnrollmentVisualizerNodeDto>>.Fail(result.ErrorCode!, result.Error!));
+        return Ok(ApiResponse<IEnumerable<EnrollmentVisualizerNodeDto>>.Ok(result.Value!));
     }
 }

@@ -1,0 +1,7 @@
+@page "/team/enrollment/customers"
+@attribute [Authorize(Roles = "Ambassador,ExternalMember")]
+@inject IViewContextService ViewContext
+
+<PageTitle>Enrollment Team — Customers</PageTitle>
+
+<EnrollmentTeamCustomers MemberProfileId="@ViewContext.ViewingMemberId" />

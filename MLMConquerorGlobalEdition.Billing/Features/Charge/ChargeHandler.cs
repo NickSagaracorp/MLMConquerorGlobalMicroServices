@@ -67,9 +67,14 @@ public class ChargeHandler : IRequestHandler<ChargeCommand, Result<ChargeRespons
         else
         {
             var now = _dateTime.Now;
+            string orderNo;
+            do { orderNo = OrderNumberHelper.Generate(req.Description ?? "Order", now); }
+            while (await _db.Orders.AnyAsync(o => o.OrderNo == orderNo, ct));
+
             var newOrder = new Orders
             {
                 MemberId = req.MemberId,
+                OrderNo = orderNo,
                 TotalAmount = req.Amount,
                 Status = OrderStatus.Processing,
                 OrderDate = now,

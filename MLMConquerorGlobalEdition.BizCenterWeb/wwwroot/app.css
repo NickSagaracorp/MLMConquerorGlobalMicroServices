@@ -1,60 +1,353 @@
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
-a, .btn-link {
-    color: #006bb7;
-}
-
-.btn-primary {
-    color: #fff;
-    background-color: #1b6ec2;
-    border-color: #1861ac;
-}
-
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
-}
-
-.content {
-    padding-top: 1.1rem;
-}
-
-h1:focus {
-    outline: none;
-}
-
+/* ── Blazor form validation ── */
 .valid.modified:not([type=checkbox]) {
     outline: 1px solid #26b050;
 }
-
 .invalid {
     outline: 1px solid #e50000;
 }
-
 .validation-message {
     color: #e50000;
 }
 
+/* ── Blazor reconnect / error ── */
 .blazor-error-boundary {
-    background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIG92ZXJmbG93PSJoaWRkZW4iPjxkZWZzPjxjbGlwUGF0aCBpZD0iY2xpcDAiPjxyZWN0IHg9IjIzNSIgeT0iNTEiIHdpZHRoPSI1NiIgaGVpZ2h0PSI0OSIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMCkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMzUgLTUxKSI+PHBhdGggZD0iTTI2My41MDYgNTFDMjY0LjcxNyA1MSAyNjUuODEzIDUxLjQ4MzcgMjY2LjYwNiA1Mi4yNjU4TDI2Ny4wNTIgNTIuNzk4NyAyNjcuNTM5IDUzLjYyODMgMjkwLjE4NSA5Mi4xODMxIDI5MC41NDUgOTIuNzk1IDI5MC42NTYgOTIuOTk2QzI5MC44NzcgOTMuNTEzIDI5MSA5NC4wODE1IDI5MSA5NC42NzgyIDI5MSA5Ny4wNjUxIDI4OS4wMzggOTkgMjg2LjYxNyA5OUwyNDAuMzgzIDk5QzIzNy45NjMgOTkgMjM2IDk3LjA2NTEgMjM2IDk0LjY3ODIgMjM2IDk0LjM3OTkgMjM2LjAzMSA5NC4wODg2IDIzNi4wODkgOTMuODA3MkwyMzYuMzM4IDkzLjAxNjIgMjM2Ljg1OCA5Mi4xMzE0IDI1OS40NzMgNTMuNjI5NCAyNTkuOTYxIDUyLjc5ODUgMjYwLjQwNyA1Mi4yNjU4QzI2MS4yIDUxLjQ4MzcgMjYyLjI5NiA1MSAyNjMuNTA2IDUxWk0yNjMuNTg2IDY2LjAxODNDMjYwLjczNyA2Ni4wMTgzIDI1OS4zMTMgNjcuMTI0NSAyNTkuMzEzIDY5LjMzNyAyNTkuMzEzIDY5LjYxMDIgMjU5LjMzMiA2OS44NjA4IDI1OS4zNzEgNzAuMDg4N0wyNjEuNzk1IDg0LjAxNjEgMjY1LjM4IDg0LjAxNjEgMjY3LjgyMSA2OS43NDc1QzI2Ny44NiA2OS43MzA5IDI2Ny44NzkgNjkuNTg3NyAyNjcuODc5IDY5LjMxNzkgMjY3Ljg3OSA2Ny4xMTgyIDI2Ni40NDggNjYuMDE4MyAyNjMuNTg2IDY2LjAxODNaTTI2My41NzYgODYuMDU0N0MyNjEuMDQ5IDg2LjA1NDcgMjU5Ljc4NiA4Ny4zMDA1IDI1OS43ODYgODkuNzkyMSAyNTkuNzg2IDkyLjI4MzcgMjYxLjA0OSA5My41Mjk1IDI2My41NzYgOTMuNTI5NSAyNjYuMTE2IDkzLjUyOTUgMjY3LjM4NyA5Mi4yODM3IDI2Ny4zODcgODkuNzkyMSAyNjcuMzg3IDg3LjMwMDUgMjY2LjExNiA4Ni4wNTQ3IDI2My41NzYgODYuMDU0N1oiIGZpbGw9IiNGRkU1MDAiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjwvZz48L3N2Zz4=) no-repeat 1rem/1.8rem, #b32121;
+    background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIG92ZXJmbG93PSJoaWRkZW4iPjxkZWZzPjxjbGlwUGF0aCBpZD0iY2xpcDAiPjxyZWN0IHg9IjIzNSIgeT0iNTEiIHdpZHRoPSI1NiIgaGVpZ2h0PSI0OSIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMCkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMzUgLTUxKSI+PHBhdGggZD0iTTI2My41MDYgNTFDMjY0LjcxNyA1MSAyNjUuODEzIDUxLjQ4MzcgMjY2LjYwNiA1Mi4yNjU4TDI2Ny4wNTIgNTIuNzk4NyAyNjcuNTM5IDUzLjYyODMgMjkwLjE4NSA5Mi4xODMxIDI5MC41NDUgOTIuNzkgMjkwLjY1NiA5Mi45OTZDMjkwLjg3NyA5My41MTMgMjkxIDk0LjA4MTUgMjkxIDk0LjY3ODIgMjkxIDk3LjA2NTEgMjg5LjAzOCA5OSAyODYuNjE3IDk5TDI0MC4zODMgOTlDMjM3Ljk2MyA5OSAyMzYgOTcuMDY1MSAyMzYgOTQuNjc4MiAyMzYgOTQuMzc5OSAyMzYuMDMxIDk0LjA4ODYgMjM2LjA4OSA5My44MDcyTDIzNi4zMzggOTMuMDE2MiAyMzYuODU4IDkyLjEzMTQgMjU5LjQ3MyA1My42Mjk0IDI1OS45NjEgNTIuNzk4NSAyNjAuNDA3IDUyLjI2NThDMjYxLjIgNTEuNDgzNyAyNjIuMjk2IDUxIDI2My41MDYgNTFaTTI2My41ODYgNjYuMDE4M0MyNjAuNzM3IDY2LjAxODMgMjU5LjMxMyA2Ny4xMjQ1IDI1OS4zMTMgNjkuMzM3IDI1OS4zMTMgNjkuNjEwMiAyNTkuMzMyIDY5Ljg2MDggMjU5LjM3MSA3MC4wODg3TDI2MS43OTUgODQuMDE2MSAyNjUuMzggODQuMDE2MSAyNjcuODIxIDY5Ljc0NzVDMjY3Ljg2IDY5LjczMDkgMjY3Ljg3OSA2OS41ODc3IDI2Ny44NzkgNjkuMzE3OSAyNjcuODc5IDY3LjExODIgMjY2LjQ0OCA2Ni4wMTgzIDI2My41ODYgNjYuMDE4M1pNMjYzLjU3NiA4Ni4wNTQ3QzI2MS4wNDkgODYuMDU0NyAyNTkuNzg2IDg3LjMwMDUgMjU5Ljc4NiA4OS43OTIxIDI1OS43ODYgOTIuMjgzNyAyNjEuMDQ5IDkzLjUyOTUgMjYzLjU3NiA5My41Mjk1IDI2Ni4xMTYgOTMuNTI5NSAyNjcuMzg3IDkyLjI4MzcgMjY3LjM4NyA4OS43OTIxIDI2Ny4zODcgODcuMzAwNSAyNjYuMTE2IDg2LjA1NDcgMjYzLjU3NiA4Ni4wNTQ3WiIgZmlsbD0iI0ZGRTUwMCIgZmlsbC1ydWxlPSJldmVub2RkIi8+PC9nPjwvc3ZnPg==) no-repeat 1rem/1.8rem, #b32121;
     padding: 1rem 1rem 1rem 3.7rem;
     color: white;
 }
-
-    .blazor-error-boundary::after {
-        content: "An error has occurred."
-    }
-
-.darker-border-checkbox.form-check-input {
-    border-color: #929292;
+.blazor-error-boundary::after {
+    content: "An error has occurred."
 }
 
-.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
+.form-floating > .form-control-plaintext::placeholder,
+.form-floating > .form-control::placeholder {
     color: var(--bs-secondary-color);
     text-align: end;
 }
-
-.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
+.form-floating > .form-control-plaintext:focus::placeholder,
+.form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+/* =========================================================
+   MATERIAL SYMBOLS hardening
+   The Google Fonts CDN stylesheet is loaded in App.razor and provides
+   the full glyph set. These rules prevent the literal ligature text
+   ("search", "done_all", "person", etc.) from overflowing its container
+   during the brief window where the font is still loading or the URL
+   is unreachable. They also restore standard icon sizing/weight so
+   SfGrid cells, search fields and stat-card icons stay aligned.
+   ========================================================= */
+.material-symbols-outlined,
+i.material-symbols-outlined,
+em.material-symbols-outlined {
+    font-family: 'Material Symbols Outlined', 'Segoe UI Symbol' !important;
+    /* neutralize user-agent italic from <i>/<em> and inherited bold */
+    font-style: normal !important;
+    font-weight: normal !important;
+    font-feature-settings: 'liga';
+    -webkit-font-feature-settings: 'liga';
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow: hidden;          /* clip literal ligature text during FOUT */
+    vertical-align: middle;
+    white-space: nowrap;        /* prevent search input icon from wrapping "se ar c h" */
+    text-transform: none;
+    letter-spacing: normal;
+    direction: ltr;
+}
+
+/* Search inputs inside list grids (.table-src-form).
+   The icon must be absolutely positioned INSIDE the relative form so it
+   overlays the input's left padding — otherwise it flows inline, its
+   width is forced to 20px, overflow:hidden clips the word and we see
+   "se ar c h" stacked vertically. */
+.table-src-form {
+    position: relative;
+}
+
+    .table-src-form > .material-symbols-outlined,
+    .table-src-form > i.material-symbols-outlined {
+        position: absolute;
+        top: 50%;
+        left: 10px;
+        transform: translateY(-50%);
+        width: 20px;
+        height: 20px;
+        max-width: 20px;
+        font-size: 20px;
+        line-height: 1;
+        color: var(--bs-secondary-color, #6c757d);
+        pointer-events: none;
+        z-index: 2;
+    }
+
+    .table-src-form > .form-control {
+        padding-left: 38px;
+    }
+
+/* =========================================================
+   FAST START BONUS — strip cards (horizontal layout)
+   Used by: SharedComponents/Components/Commissions/FastStartBonusReport.razor
+   ========================================================= */
+.fsb-row {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 1.5rem;
+}
+
+.fsb-card-wrap {
+    /* Force 3 equal columns on the same row. min-width:0 lets flex items
+       shrink below their intrinsic content size (prevents timer/title from
+       forcing a wrap). Falls back to wrap on small viewports via media query. */
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+@media (max-width: 767.98px) {
+    .fsb-row {
+        flex-wrap: wrap;
+        gap: 1.25rem;
+    }
+
+    .fsb-card-wrap {
+        flex: 1 1 100%;
+    }
+}
+
+.fsb-card {
+    border-radius: .75rem;
+    box-shadow: 0 16px 32px rgba(0, 0, 0, .06);
+    padding: 1.25rem 1.5rem;
+    color: #fff;
+    position: relative;
+    min-height: 160px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.fsb-topline {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 1rem;
+    margin-bottom: .5rem;
+}
+
+.fsb-title {
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: .02em;
+}
+
+.fsb-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: .5rem;
+}
+
+.fsb-timer {
+    font-size: 1.9rem;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+    text-shadow: 0 0 10px rgba(255, 255, 255, .25);
+}
+
+.fsb-sub {
+    font-size: .85rem;
+    opacity: .9;
+}
+
+/* Card states */
+.fsb-complete {
+    background: linear-gradient(90deg, #0c8c2c 0%, #4ade80 100%);
+}
+
+.fsb-active {
+    background: radial-gradient(circle at 0% 0%, #1a1fff 0%, #5b5bff 60%, #4f46e5 100%);
+}
+
+.fsb-locked {
+    background: radial-gradient(circle at 50% 0%, #1f2937 0%, #111827 70%);
+}
+
+/* Icon area. z-index:2 keeps the person circles rendered ABOVE the
+   locked overlay (.fsb-black-layer at z-index:1) so the circles are
+   never caught by the overlay's blur / dimming. */
+.fsb-icons-area {
+    gap: .9rem;
+    position: relative;
+    z-index: 2;
+}
+
+.fsb-person-big {
+    position: relative;
+    width: 56px;
+    height: 56px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, .06);
+    border: 2px dashed rgba(255, 255, 255, .45);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .05);
+    /* Remixicon is a normal icon font — override any inherited Material
+       Symbols "overflow:hidden" from the global rule so the glyph renders
+       in full without being clipped inside the 56px circle. */
+    overflow: visible;
+}
+
+    .fsb-person-big i {
+        font-size: 28px;
+        line-height: 1;
+        color: rgba(255, 255, 255, .55);
+        /* Remixicon reset: neutralise Material-Symbols global rule that
+           applies overflow:hidden / font-feature-settings:'liga'. */
+        font-family: 'remixicon' !important;
+        font-style: normal !important;
+        font-weight: normal !important;
+        overflow: visible;
+        vertical-align: middle;
+    }
+
+    /* Filled (green/blue) */
+    .fsb-person-big.active-green,
+    .fsb-person-big.active-blue {
+        border: 0;
+        box-shadow: 0 10px 22px rgba(0, 0, 0, .20), inset 0 0 0 1px rgba(255, 255, 255, .10);
+    }
+
+    .fsb-person-big.active-green {
+        background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+    }
+
+    .fsb-person-big.active-blue {
+        background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+    }
+
+        .fsb-person-big.active-green i,
+        .fsb-person-big.active-blue i {
+            color: #fff;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, .25);
+        }
+
+        /* Confirmation badge (✓) on filled icons */
+        .fsb-person-big.active-green::after,
+        .fsb-person-big.active-blue::after {
+            content: "✓";
+            position: absolute;
+            right: -4px;
+            bottom: -4px;
+            width: 18px;
+            height: 18px;
+            border-radius: 999px;
+            background: #fff;
+            color: #16a34a;
+            font-weight: 900;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, .25);
+        }
+
+    /* Empty state */
+    .fsb-person-big.inactive {
+        border-style: dashed;
+        border-color: rgba(255, 255, 255, .55);
+        background: rgba(255, 255, 255, .04);
+    }
+
+        .fsb-person-big.inactive i {
+            color: rgba(255, 255, 255, .45);
+        }
+
+        /* Diagonal bar reinforcing "empty" */
+        .fsb-person-big.inactive::before {
+            content: "";
+            position: absolute;
+            width: 26px;
+            height: 2px;
+            background: rgba(255, 255, 255, .35);
+            transform: rotate(-35deg);
+            border-radius: 2px;
+        }
+
+    /* Locked state */
+    .fsb-person-big.locked {
+        background: rgba(15, 23, 42, .35);
+        border: 2px dashed rgba(148, 163, 184, .45);
+    }
+
+        .fsb-person-big.locked i {
+            color: rgba(203, 213, 225, .55);
+        }
+
+/* Pulse animation on empty slot when FSB is active */
+.fsb-active .fsb-person-big.inactive {
+    animation: fsbPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes fsbPulse {
+    0%, 100% {
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .10), 0 0 0 0 rgba(255, 255, 255, .0);
+    }
+
+    50% {
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .10), 0 0 0 8px rgba(255, 255, 255, .10);
+    }
+}
+
+/* Overlay for locked FSB window.
+   z-index:1 positions it between the card background and the person icons
+   (.fsb-icons-area at z-index:2) so the circles stay crisp and readable.
+   backdrop-filter removed so the visible icons above are not affected. */
+.fsb-black-layer {
+    position: absolute;
+    inset: 0;
+    border-radius: .75rem;
+    background: rgba(0, 0, 0, .55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    z-index: 1;
+    pointer-events: none;
+}
+
+    .fsb-black-layer i {
+        margin-right: .4rem;
+    }
+
+/* Footer line under each FSB card */
+.fsb-footerline {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    font-size: .9rem;
+    font-weight: bold;
+    margin-top: .5rem;
+    opacity: 1;
+}
+
+    .fsb-footerline.completed {
+        color: #16a34a;
+    }
+
+    .fsb-footerline.available {
+        color: #60a5fa;
+    }
+
+    .fsb-footerline.locked {
+        color: #000;
+    }

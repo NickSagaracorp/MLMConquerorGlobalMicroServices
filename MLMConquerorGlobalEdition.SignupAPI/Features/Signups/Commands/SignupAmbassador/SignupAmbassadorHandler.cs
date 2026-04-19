@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
@@ -108,10 +109,15 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
         };
 
         var orderId = Guid.NewGuid().ToString();
+        string orderNo;
+        do { orderNo = OrderNumberHelper.Generate(membershipLevel.Name, now); }
+        while (await _db.Orders.AnyAsync(o => o.OrderNo == orderNo, ct));
+
         var order = new Orders
         {
             Id             = orderId,
             MemberId       = memberId,
+            OrderNo        = orderNo,
             TotalAmount    = 0,
             Status         = OrderStatus.Pending,
             OrderDate      = now,
@@ -161,10 +167,30 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
             LastUpdateDate = now
         };
 
+        // FSB countdown windows:
+        //   Normal W1: 7d  | Extended W1 (promo): 14d | W2: 7d (after W1) | W3: 7d (after W2)
+        var fsbCountdown = new MemberCommissionCountDown
+        {
+            MemberId                     = member.UserId,
+            Member                       = member,
+            FastStartBonus1Start         = now,
+            FastStartBonus1End           = now.AddDays(7),
+            FastStartBonus1ExtendedStart = now,
+            FastStartBonus1ExtendedEnd   = now.AddDays(14),
+            FastStartBonus2Start         = now.AddDays(7),
+            FastStartBonus2End           = now.AddDays(14),
+            FastStartBonus3Start         = now.AddDays(14),
+            FastStartBonus3End           = now.AddDays(21),
+            CreatedBy                    = req.Email,
+            CreationDate                 = now,
+            LastUpdateDate               = now
+        };
+
         await _db.MemberProfiles.AddAsync(member, ct);
         await _db.Orders.AddAsync(order, ct);
         await _db.MembershipSubscriptions.AddAsync(subscription, ct);
         await _db.GenealogyTree.AddAsync(genealogyNode, ct);
+        await _db.CommissionCountDowns.AddAsync(fsbCountdown, ct);
 
         // Queue rank re-evaluation for every genealogy upline of the sponsor
         if (sponsorNode is not null)

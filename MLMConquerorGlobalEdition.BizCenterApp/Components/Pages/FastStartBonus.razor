@@ -1,0 +1,8 @@
+@page "/commissions/fast-start"
+@rendermode InteractiveAuto
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Ambassador")]
+@inject IViewContextService ViewContext
+
+<PageTitle>Fast Start Bonus</PageTitle>
+
+<FastStartBonusReport MemberProfileId="@ViewContext.ViewingMemberId" />

@@ -1,132 +1,514 @@
-@inject IViewContextService ViewContext
 @inject HttpClient Http
-
-@using MLMConquerorGlobalEdition.SharedComponents.Constants
+@using System.Net.Http.Json
 
 <BreadcrumbNav Items="@_breadcrumb" />
 
-<div class="row g-3 mb-4">
-    <div class="col-12 col-md-8">
-        <div class="card">
-            <div class="card-header py-3">
-                <h6 class="card-title mb-0 fw-semibold">Token Transactions</h6>
-            </div>
-            <div class="card-body p-0">
-                <LoadingSpinner IsLoading="@_isLoading" />
-                @if (!_isLoading)
-                {
-                    <div class="table-responsive">
-                        <table class="table table-hover table-sm mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Token Type</th>
-                                    <th>Type</th>
-                                    <th>Token Code</th>
-                                    <th>Amount</th>
-                                    <th>Status</th>
-                                    <th>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @if (!_items.Any())
-                                {
-                                    <tr><td colspan="6" class="text-center text-muted py-4">No data available.</td></tr>
-                                }
-                                @foreach (var t in _items)
-                                {
-                                    <tr>
-                                        <td>@t.TokenTypeName</td>
-                                        <td><StatusBadge Status="@t.TransactionType" /></td>
-                                        <td>
-                                            @if (!string.IsNullOrWhiteSpace(t.TokenCode))
-                                            {
-                                                <span class="font-monospace fw-bold @(t.IsUsed ? "text-muted text-decoration-line-through" : "text-primary")">
-                                                    @t.TokenCode
-                                                </span>
-                                            }
-                                            else
-                                            {
-                                                <span class="text-muted small">—</span>
-                                            }
-                                        </td>
-                                        <td>
-                                            <span class="fw-semibold @(t.Amount > 0 ? "text-success" : "text-danger")">
-                                                @(t.Amount > 0 ? "+" : "")@t.Amount
-                                            </span>
-                                        </td>
-                                        <td>
-                                            @if (!string.IsNullOrWhiteSpace(t.TokenCode))
-                                            {
-                                                @if (t.IsUsed)
-                                                {
-                                                    <span class="badge bg-secondary">Used</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="badge bg-success">Available</span>
-                                                }
-                                            }
-                                        </td>
-                                        <td><span class="small text-muted">@t.OccurredAt.ToString("MMM dd, yyyy")</span></td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                    @if (_total > _pageSize)
-                    {
-                        var totalPages = (int)Math.Ceiling((double)_total / _pageSize);
-                        <div class="d-flex justify-content-center py-3">
-                            <nav>
-                                <ul class="pagination pagination-sm mb-0">
-                                    <li class="page-item @(_page <= 1 ? "disabled" : "")">
-                                        <button class="page-link" @onclick="() => ChangePage(_page - 1)">&#x2039;</button>
-                                    </li>
-                                    @for (var pg = 1; pg <= totalPages; pg++)
-                                    {
-                                        var p = pg;
-                                        <li class="page-item @(p == _page ? "active" : "")">
-                                            <button class="page-link" @onclick="() => ChangePage(p)">@p</button>
-                                        </li>
-                                    }
-                                    <li class="page-item @(_page >= totalPages ? "disabled" : "")">
-                                        <button class="page-link" @onclick="() => ChangePage(_page + 1)">&#x203A;</button>
-                                    </li>
-                                </ul>
-                            </nav>
+<!-- Tokens Resume -->
+<div class="row justify-content-center">
+    <div class="col-xxl-12 col-lg-12">
+        <div class="card bg-white border-0 rounded-3 mb-4">
+            <div class="card-body p-4" style="padding-bottom: 0 !important;">
+                <div class="mb-3 mb-lg-4">
+                    <h3 class="mb-0">Tokens Resume</h3>
+                </div>
+                <div class="row">
+                    <div class="col-xxl-4 col-xl-4 col-sm-4">
+                        <div class="card bg-primary bg-opacity-10 border-primary border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                            <div class="card-body p-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <i class="material-symbols-outlined fs-40 text-primary">content_paste</i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-2">
+                                        <span>Total Tokens</span>
+                                        @if (_summaryLoading) { <span class="placeholder col-6 d-block mt-1"></span> }
+                                        else { <h3 class="fs-20 mt-1 mb-0">@_totalTokens</h3> }
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    }
-                }
-            </div>
-        </div>
-    </div>
-    <div class="col-12 col-md-4">
-        <TokenBalanceWidget MemberProfileId="@MemberProfileId" />
-
-        <div class="card mt-3">
-            <div class="card-body">
-                <h6 class="fw-semibold mb-3">Quick Actions</h6>
-                <div class="d-grid gap-2">
-                    <button class="btn btn-outline-primary btn-sm" @onclick="() => _showDistributeModal = true">
-                        <i class="ri-share-line me-1"></i>Distribute Token
-                    </button>
-                    <button class="btn btn-outline-secondary btn-sm" @onclick="() => _showPurchaseModal = true">
-                        <i class="ri-shopping-cart-line me-1"></i>Purchase Tokens
-                    </button>
+                    </div>
+                    <div class="col-xxl-4 col-xl-4 col-sm-4">
+                        <div class="card bg-info bg-opacity-10 border-info border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                            <div class="card-body p-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <i class="material-symbols-outlined fs-40 text-info">done_all</i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-2">
+                                        <span>Total Used</span>
+                                        @if (_summaryLoading) { <span class="placeholder col-6 d-block mt-1"></span> }
+                                        else { <h3 class="fs-20 mt-1 mb-0">@_totalUsed</h3> }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xxl-4 col-xl-4 col-sm-4">
+                        <div class="card bg-success bg-opacity-10 border-success border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                            <div class="card-body p-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <i class="material-symbols-outlined fs-40 text-success">lock_open_right</i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-2">
+                                        <span>Total Available</span>
+                                        @if (_summaryLoading) { <span class="placeholder col-6 d-block mt-1"></span> }
+                                        else { <h3 class="fs-20 mt-1 mb-0">@_totalAvailable</h3> }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Purchase -->
+<div class="card bg-white border-0 rounded-3 mb-4">
+    <div class="card-body p-0">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
+            <div class="mb-4" style="width: 100% !important;">
+                <h4 class="fs-14 mb-0">Note: Tokens may be used to pay for enrollments, Biz Center fees and Travel Advantage™. Once purchased, you may distribute tokens to your team. Token purchases are limited to 10 per month and are non-refundable.</h4>
+            </div>
+            <div>
+                <div class="dropdown d-inline-block">
+                    <button class="btn btn-primary text-white py-2 px-3 dropdown-toggle" type="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                        Amount: <span>@_purchaseAmount Tokens</span>
+                    </button>
+                    <ul class="dropdown-menu bg-primary">
+                        @for (var n = 1; n <= 10; n++)
+                        {
+                            var amount = n;
+                            <li><a class="dropdown-item text-white" href="javascript:void(0);" @onclick="() => _purchaseAmount = amount">@amount</a></li>
+                        }
+                    </ul>
+                </div>
+
+                <div class="dropdown d-inline-block">
+                    <button class="btn btn-primary text-white py-2 px-3 dropdown-toggle" type="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                        @(_purchaseTokenTypeId == null ? "Token Type" : _purchaseTokenTypeName)
+                    </button>
+                    <ul class="dropdown-menu bg-primary">
+                        @foreach (var tt in _tokenTypes)
+                        {
+                            <li><a class="dropdown-item text-white" href="javascript:void(0);" @onclick="() => SelectPurchaseType(tt)">@tt.Name</a></li>
+                        }
+                    </ul>
+                </div>
+            </div>
+
+            <button class="btn btn-outline-primary d-flex align-items-center gap-1 hover-bg" @onclick="PurchaseTokensAsync">
+                <i class="ri-coins-fill fw-medium fs-18 me-1"></i>
+                <span>Buy Now</span>
+            </button>
+        </div>
+
+        <ul class="nav nav-tabs bg-transparent border-bottom gap-2 gap-sm-5 p-4" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_payTab == "commissions" ? "active" : "")"
+                        type="button" @onclick='() => _payTab = "commissions"'>Commissions</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_payTab == "ewallet" ? "active" : "")"
+                        type="button" @onclick='() => _payTab = "ewallet"'>eWallet</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_payTab == "creditcard" ? "active" : "")"
+                        type="button" @onclick='() => _payTab = "creditcard"'>Credit Card</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_payTab == "crypto" ? "active" : "")"
+                        type="button" @onclick='() => _payTab = "crypto"'>Crypto</button>
+            </li>
+        </ul>
+
+        <div class="tab-content p-4 pt-0">
+            @if (_payTab == "commissions")
+            {
+                <div class="col-xxl-12 col-xl-12 col-sm-12 pt-4">
+                    <div class="card bg-danger bg-opacity-10 border-danger border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0">
+                                    <i class="material-symbols-outlined fs-40 text-danger">paid</i>
+                                </div>
+                                <div class="flex-grow-1 ms-2">
+                                    <span>Your commission balance is</span>
+                                    @if (_balanceLoading) { <span class="placeholder col-6 d-block mt-1"></span> }
+                                    else { <h3 class="fs-20 mt-1 mb-0">@_commissionBalance.ToString("C")</h3> }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            @if (_payTab == "ewallet")
+            {
+                <div class="col-xxl-12 col-xl-12 col-sm-12 pt-4">
+                    <div class="card bg-success bg-opacity-10 border-success border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0">
+                                    <i class="material-symbols-outlined fs-40 text-success">paid</i>
+                                </div>
+                                <div class="flex-grow-1 ms-2">
+                                    <span>Your eWallet balance is</span>
+                                    @if (_balanceLoading) { <span class="placeholder col-6 d-block mt-1"></span> }
+                                    else { <h3 class="fs-20 mt-1 mb-0">@_eWalletBalance.ToString("C")</h3> }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            @if (_payTab == "creditcard")
+            {
+                <div class="col-xxl-12 col-xl-12 col-sm-12 pt-4">
+                    <div class="card bg-white border-0 rounded-3 mb-4 stats-box style-three">
+                        <div class="card-body p-4">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom pb-4 mb-4">
+                                <h4 class="fs-18 mb-0">Credit Card</h4>
+                                <button class="btn btn-outline-primary d-flex align-items-center gap-1 hover-bg">
+                                    <i class="ri-add-fill fw-medium fs-18 me-1"></i>
+                                    <span>Add New Card</span>
+                                </button>
+                            </div>
+                            @if (_cardsLoading)
+                            {
+                                <LoadingSpinner IsLoading="true" />
+                            }
+                            else if (!_creditCards.Any())
+                            {
+                                <p class="text-muted text-center py-3">No credit cards on file.</p>
+                            }
+                            else
+                            {
+                                <div class="row g-4">
+                                    @foreach (var card in _creditCards)
+                                    {
+                                        <div class="col-lg-4 col-md-4">
+                                            <div class="bg-img p-4 rounded-3 @(_selectedCardId == card.Id ? "is-selected" : "")"
+                                                 style="background-image: url(_content/MLMConquerorGlobalEdition.SharedComponents/img/debit-card-2.jpg); cursor:pointer;"
+                                                 tabindex="0" @onclick="() => _selectedCardId = card.Id">
+                                                <div class="d-flex align-content-center justify-content-between">
+                                                    <div>
+                                                        <span class="text-white fs-12 fw-medium d-block mb-12">Credit Card</span>
+                                                    </div>
+                                                    <i class="ri-visa-fill fs-35 text-white lh-1"></i>
+                                                </div>
+                                                <h3 class="fw-semibold text-white mb-12 d-flex gap-1 lh-1" style="margin-top: 40px;">
+                                                    <span>****</span><span>****</span><span>****</span><span>@card.LastFour</span>
+                                                </h3>
+                                                <div class="d-flex align-content-center justify-content-between">
+                                                    <span class="text-white">@card.HolderName</span>
+                                                    <span class="text-white fs-12">EXP : @card.ExpiryDisplay</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+            @if (_payTab == "crypto")
+            {
+                <div class="col-xxl-12 col-xl-12 col-sm-12 pt-4">
+                    <div class="card bg-opacity-10 border-white border-opacity-10 rounded-3 mb-4 stats-box style-three" style="background-color: #53647B;">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center text-center">
+                                <span class="text-white fw-semibold fs-16">Powered by NowPayments</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Tokens Table -->
+<div class="card bg-white border-0 rounded-3 mb-4">
+    <div class="card-body p-0">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
+            <form class="position-relative table-src-form me-0">
+                <input type="text" class="form-control" placeholder="Search here"
+                       value="@_search"
+                       @oninput="OnSearchInput" />
+                <i class="material-symbols-outlined position-absolute top-50 start-0 translate-middle-y">search</i>
+            </form>
+            <div class="d-flex gap-2">
+                <input class="form-control" style="max-width:140px"
+                       type="date"
+                       value="@(_from?.ToString("yyyy-MM-dd"))"
+                       @onchange="OnFromChange" />
+                <input class="form-control" style="max-width:140px"
+                       type="date"
+                       value="@(_to?.ToString("yyyy-MM-dd"))"
+                       @onchange="OnToChange" />
+            </div>
+        </div>
+
+        <LoadingSpinner IsLoading="@_isLoading" />
+        @if (!_isLoading)
+        {
+            <div class="default-table-area style-two default-table-width">
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th scope="col">Date</th>
+                                <th scope="col">Owner</th>
+                                <th scope="col">Token Code</th>
+                                <th scope="col">Type</th>
+                                <th scope="col">Use Date</th>
+                                <th scope="col">Used By</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in _items)
+                            {
+                                <tr>
+                                    <td class="text-body">@item.OccurredAt.ToString("MM/dd/yyyy")</td>
+                                    <td class="text-body">
+                                        @if (!string.IsNullOrWhiteSpace(item.OwnerAvatarUrl))
+                                        {
+                                            <img src="@item.OwnerAvatarUrl" class="wh-34 lh-34 rounded-circle border border-1 border-color-white" alt="user" />
+                                        }
+                                        else
+                                        {
+                                            <span class="wh-34 lh-34 rounded-circle bg-primary d-inline-flex align-items-center justify-content-center text-white fs-12 fw-medium me-1">@(item.OwnerName?.FirstOrDefault())</span>
+                                        }
+                                        @item.OwnerName
+                                    </td>
+                                    <td class="text-body">
+                                        @if (!string.IsNullOrWhiteSpace(item.TokenCode))
+                                        {
+                                            <span class="font-monospace">@item.TokenCode</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                    <td class="text-body">@item.TokenTypeName</td>
+                                    <td>
+                                        @if (item.UsedAt.HasValue)
+                                        {
+                                            <span class="badge bg-primary bg-opacity-10 text-primary p-2 fs-12 fw-normal">@item.UsedAt.Value.ToString("MM/dd/yyyy")</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">Available</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrWhiteSpace(item.UsedByName))
+                                        {
+                                            @if (!string.IsNullOrWhiteSpace(item.UsedByAvatarUrl))
+                                            {
+                                                <img src="@item.UsedByAvatarUrl" class="wh-34 lh-34 rounded-circle border border-1 border-color-white" alt="user" />
+                                            }
+                                            else
+                                            {
+                                                <span class="wh-34 lh-34 rounded-circle bg-success d-inline-flex align-items-center justify-content-center text-white fs-12 fw-medium me-1">@(item.UsedByName.FirstOrDefault())</span>
+                                            }
+                                            @item.UsedByName
+                                        }
+                                        else if (item.DistributedCount > 0)
+                                        {
+                                            <a href="javascript:void(0);" class="wh-34 lh-34 rounded-circle bg-success d-inline-block text-center text-decoration-none text-white fs-12 fw-medium border border-1 border-color-white" style="line-height:34px;">+@item.DistributedCount</a>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                            @if (!_items.Any())
+                            {
+                                <tr><td colspan="6" class="text-center text-muted py-4">No data available.</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="p-4 pt-lg-4">
+                    <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
+                        <span class="fs-12 fw-medium">Showing @_items.Count of @_total Results</span>
+                        @if (_total > _pageSize)
+                        {
+                            var totalPages = (int)Math.Ceiling((double)_total / _pageSize);
+                            <nav aria-label="Tokens pagination">
+                                <ul class="pagination mb-0 justify-content-center">
+                                    <li class="page-item @(_page <= 1 ? "disabled" : "")">
+                                        <button type="button" class="page-link icon" @onclick="() => LoadPageAsync(_page - 1)" aria-label="Previous">
+                                            <i class="material-symbols-outlined">keyboard_arrow_left</i>
+                                        </button>
+                                    </li>
+                                    @for (var pg = 1; pg <= totalPages; pg++)
+                                    {
+                                        var p = pg;
+                                        <li class="page-item @(p == _page ? "active" : "")">
+                                            <button type="button" class="page-link" @onclick="() => LoadPageAsync(p)">@p</button>
+                                        </li>
+                                    }
+                                    <li class="page-item @(_page >= totalPages ? "disabled" : "")">
+                                        <button type="button" class="page-link icon" @onclick="() => LoadPageAsync(_page + 1)" aria-label="Next">
+                                            <i class="material-symbols-outlined">keyboard_arrow_right</i>
+                                        </button>
+                                    </li>
+                                </ul>
+                            </nav>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Distribution -->
+<div class="card bg-white border-0 rounded-3 mb-4">
+    <div class="card-body p-0">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
+            <h4 class="fs-18 mb-0">Distribution</h4>
+
+            <button class="btn btn-outline-primary d-flex align-items-center gap-1 hover-bg" @onclick="DistributeTokensAsync">
+                <i class="ri-token-swap-fill fw-medium fs-18 me-1"></i>
+                <span>Distribute</span>
+            </button>
+
+            <div class="mb-4" style="width: 100% !important;">
+                <h4 class="fs-14 mb-0">Note: You may distribute tokens to your team and members. All token distributions are final.</h4>
+            </div>
+
+            <div class="col-xxl-12 col-xl-12 col-lg-12 col-md-12 col-sm-12">
+                <div class="dropdown d-inline-block" style="float: left;">
+                    <button class="btn btn-primary text-white py-2 px-3 dropdown-toggle" type="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                        Amount: <span>@_distributeAmount Tokens</span>
+                    </button>
+                    <ul class="dropdown-menu bg-primary">
+                        @for (var n = 1; n <= 10; n++)
+                        {
+                            var amount = n;
+                            <li><a class="dropdown-item text-white" href="javascript:void(0);" @onclick="() => _distributeAmount = amount">@amount</a></li>
+                        }
+                    </ul>
+                </div>
+
+                <div class="dropdown d-inline-block" style="float: right;">
+                    <button class="btn btn-primary text-white py-2 px-3 dropdown-toggle" type="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                        @(_distributeTokenTypeId == null ? "Token Type" : _distributeTokenTypeName)
+                    </button>
+                    <ul class="dropdown-menu bg-primary">
+                        @foreach (var tt in _tokenTypes)
+                        {
+                            <li><a class="dropdown-item text-white" href="javascript:void(0);" @onclick="() => SelectDistributeType(tt)">@tt.Name</a></li>
+                        }
+                    </ul>
+                </div>
+            </div>
+
+            <div class="col-xxl-12 col-xl-12 col-lg-12 col-md-12 col-sm-12" style="clear:both;">
+                <div class="position-relative" style="width: 100%;">
+                    <label class="form-label small mb-1">Member</label>
+                    @if (_selectedMember is null)
+                    {
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="ri-search-line"></i></span>
+                            <input type="text" class="form-control" placeholder="Search member..."
+                                   autocomplete="off"
+                                   value="@_memberSearchInput"
+                                   @oninput="OnMemberSearchInput" />
+                        </div>
+                        @if (_memberResults.Any())
+                        {
+                            <div class="dropdown-menu w-100 shadow mt-1 show" style="max-height:260px; overflow:auto; z-index:1060;">
+                                @foreach (var m in _memberResults)
+                                {
+                                    <button type="button" class="dropdown-item d-flex align-items-center gap-2" @onclick="() => SelectMember(m)">
+                                        <span class="wh-34 lh-34 rounded-circle bg-primary d-inline-flex align-items-center justify-content-center text-white fs-12 fw-medium flex-shrink-0">@(m.FullName.FirstOrDefault())</span>
+                                        <span>@m.FullName</span>
+                                    </button>
+                                }
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="mt-2">
+                            <span class="chip">
+                                <span style="width:22px;height:22px;border-radius:50%;background:#e2e8f0;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;margin-right:.35rem;">@(_selectedMember.FullName.FirstOrDefault())</span>
+                                <span>@_selectedMember.FullName</span>
+                            </span>
+                            <button type="button" class="btn btn-sm btn-link text-secondary ms-1 p-0" @onclick="ClearMember">Clear</button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .chip {
+        display: inline-flex;
+        align-items: center;
+        padding: .35rem .55rem;
+        border-radius: 999px;
+        background: #f1f5f9;
+        margin: .2rem;
+        font-size: .85rem;
+        font-weight: 600;
+        color: #334155;
+    }
+    .nav-tabs .nav-link.active {
+        color: #4936F5 !important;
+    }
+    #creditcard .bg-img.is-selected {
+        transform: translateY(-2px);
+        border: 2px solid #4936F5;
+        box-shadow: 0 8px 22px rgba(73,54,245,.25);
+    }
+</style>
+
 @code {
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+    [Parameter] public string ApiBaseUrl { get; set; } = "api/v1/bizcenter";
 
-    private bool _isLoading = true;
-    private int  _page = 1, _pageSize = 20, _total;
-    private bool _showDistributeModal;
-    private bool _showPurchaseModal;
-    private List<TokenTransactionDto> _items = new();
+    private bool _summaryLoading = true;
+    private bool _balanceLoading = true;
+    private bool _cardsLoading   = true;
+    private bool _isLoading      = true;
+
+    private int     _totalTokens, _totalUsed, _totalAvailable;
+    private decimal _commissionBalance, _eWalletBalance;
+    private int     _page = 1, _pageSize = 20, _total;
+    private string  _search = string.Empty;
+    private DateTime? _from, _to;
+    private string  _payTab = "commissions";
+
+    private int     _purchaseAmount  = 1;
+    private string? _purchaseTokenTypeId;
+    private string  _purchaseTokenTypeName = string.Empty;
+
+    private int     _distributeAmount  = 1;
+    private string? _distributeTokenTypeId;
+    private string  _distributeTokenTypeName = string.Empty;
+
+    private string  _memberSearchInput = string.Empty;
+    private string? _selectedCardId;
+
+    private List<TokenItem>    _items       = new();
+    private List<CreditCard>   _creditCards = new();
+    private List<TokenType>    _tokenTypes  = new();
+    private List<MemberResult> _memberResults = new();
+    private MemberResult?      _selectedMember;
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
@@ -137,37 +519,208 @@
     protected override async Task OnParametersSetAsync()
     {
         if (string.IsNullOrEmpty(MemberProfileId)) return;
+        await Task.WhenAll(
+            LoadSummaryAsync(),
+            LoadBalancesAsync(),
+            LoadCreditCardsAsync(),
+            LoadTokenTypesAsync(),
+            LoadPageAsync(1));
+    }
+
+    private void OnSearchInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _search = e.Value?.ToString() ?? string.Empty;
+        _page   = 1;
+    }
+
+    private async Task OnFromChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _from = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : (DateTime?)null;
         await LoadPageAsync(1);
     }
 
-    private async Task ChangePage(int page) => await LoadPageAsync(page);
+    private async Task OnToChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _to = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : (DateTime?)null;
+        await LoadPageAsync(1);
+    }
+
+    private async Task OnMemberSearchInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _memberSearchInput = e.Value?.ToString() ?? string.Empty;
+        if (_memberSearchInput.Length < 2) { _memberResults.Clear(); return; }
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<MemberResult>>>(
+                $"{ApiBaseUrl}/team/members?search={Uri.EscapeDataString(_memberSearchInput)}&pageSize=10");
+            _memberResults = resp?.Success == true && resp.Data is not null ? resp.Data : new();
+        }
+        catch { _memberResults.Clear(); }
+    }
+
+    private void SelectMember(MemberResult m)
+    {
+        _selectedMember    = m;
+        _memberSearchInput = string.Empty;
+        _memberResults.Clear();
+    }
+
+    private void ClearMember()
+    {
+        _selectedMember    = null;
+        _memberSearchInput = string.Empty;
+        _memberResults.Clear();
+    }
+
+    private void SelectPurchaseType(TokenType tt)
+    {
+        _purchaseTokenTypeId   = tt.Id;
+        _purchaseTokenTypeName = tt.Name;
+    }
+
+    private void SelectDistributeType(TokenType tt)
+    {
+        _distributeTokenTypeId   = tt.Id;
+        _distributeTokenTypeName = tt.Name;
+    }
+
+    private async Task LoadSummaryAsync()
+    {
+        _summaryLoading = true;
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<TokenSummary>>($"{ApiBaseUrl}/tokens/summary");
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _totalTokens    = resp.Data.TotalTokens;
+                _totalUsed      = resp.Data.TotalUsed;
+                _totalAvailable = resp.Data.TotalAvailable;
+            }
+        }
+        catch { /* silently degrade */ }
+        finally { _summaryLoading = false; }
+    }
+
+    private async Task LoadBalancesAsync()
+    {
+        _balanceLoading = true;
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<BalancesDto>>($"{ApiBaseUrl}/wallet/balances");
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _commissionBalance = resp.Data.CommissionBalance;
+                _eWalletBalance    = resp.Data.EWalletBalance;
+            }
+        }
+        catch { /* silently degrade */ }
+        finally { _balanceLoading = false; }
+    }
+
+    private async Task LoadCreditCardsAsync()
+    {
+        _cardsLoading = true;
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<CreditCard>>>($"{ApiBaseUrl}/billing/credit-cards");
+            if (resp?.Success == true && resp.Data is not null)
+                _creditCards = resp.Data;
+        }
+        catch { /* silently degrade */ }
+        finally { _cardsLoading = false; }
+    }
+
+    private async Task LoadTokenTypesAsync()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<TokenType>>>($"{ApiBaseUrl}/tokens/types");
+            if (resp?.Success == true && resp.Data is not null)
+                _tokenTypes = resp.Data;
+        }
+        catch { /* silently degrade */ }
+    }
 
     private async Task LoadPageAsync(int page)
     {
         _page = page; _isLoading = true; StateHasChanged();
         try
         {
-            var response = await Http.GetFromJsonAsync<ApiResponse<PagedData<TokenTransactionDto>>>(
-                $"api/v1/bizcenter/tokens?page={page}&pageSize={_pageSize}");
-            if (response?.Success == true && response.Data is not null)
+            var url = $"{ApiBaseUrl}/tokens?page={page}&pageSize={_pageSize}";
+            if (!string.IsNullOrWhiteSpace(_search)) url += $"&search={Uri.EscapeDataString(_search)}";
+            if (_from.HasValue) url += $"&from={_from.Value:yyyy-MM-dd}";
+            if (_to.HasValue)   url += $"&to={_to.Value:yyyy-MM-dd}";
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<PagedData<TokenItem>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
             {
-                _items = response.Data.Items;
-                _total = response.Data.TotalCount;
+                _items = resp.Data.Items;
+                _total = resp.Data.TotalCount;
             }
         }
         catch { /* silently degrade */ }
         finally { _isLoading = false; }
     }
 
-    private class ApiResponse<T> { public bool Success { get; set; } public T? Data { get; set; } }
-    private class PagedData<T>   { public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
+    private async Task PurchaseTokensAsync()
+    {
+        if (_purchaseTokenTypeId is null) return;
+        try
+        {
+            var payload = new { TokenTypeId = _purchaseTokenTypeId, Amount = _purchaseAmount, PaymentMethod = _payTab, CreditCardId = _selectedCardId };
+            await Http.PostAsJsonAsync($"{ApiBaseUrl}/tokens/purchase", payload);
+            await Task.WhenAll(LoadSummaryAsync(), LoadPageAsync(1));
+        }
+        catch { /* silently degrade */ }
+    }
 
-    public record TokenTransactionDto(
-        string    TokenTypeName,
-        string    TransactionType,
-        string?   TokenCode,
-        bool      IsUsed,
-        int       Amount,
-        DateTime  OccurredAt,
-        string?   Notes);
+    private async Task DistributeTokensAsync()
+    {
+        if (_distributeTokenTypeId is null || _selectedMember is null) return;
+        try
+        {
+            var payload = new { TokenTypeId = _distributeTokenTypeId, Amount = _distributeAmount, TargetMemberId = _selectedMember.Id };
+            await Http.PostAsJsonAsync($"{ApiBaseUrl}/tokens/distribute", payload);
+            ClearMember();
+            await Task.WhenAll(LoadSummaryAsync(), LoadPageAsync(1));
+        }
+        catch { /* silently degrade */ }
+    }
+
+    private class ApiWrapper<T> { public bool Success { get; set; } public T? Data { get; set; } }
+    private class PagedData<T>  { public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
+    private class TokenSummary  { public int TotalTokens { get; set; } public int TotalUsed { get; set; } public int TotalAvailable { get; set; } }
+    private class BalancesDto   { public decimal CommissionBalance { get; set; } public decimal EWalletBalance { get; set; } }
+
+    private class TokenType
+    {
+        public string Id   { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+    }
+
+    private class CreditCard
+    {
+        public string Id            { get; set; } = string.Empty;
+        public string LastFour      { get; set; } = string.Empty;
+        public string HolderName    { get; set; } = string.Empty;
+        public string ExpiryDisplay { get; set; } = string.Empty;
+    }
+
+    private class MemberResult
+    {
+        public string Id       { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+    }
+
+    private class TokenItem
+    {
+        public string    TokenTypeName    { get; set; } = string.Empty;
+        public string?   TokenCode        { get; set; }
+        public string?   OwnerName        { get; set; }
+        public string?   OwnerAvatarUrl   { get; set; }
+        public string?   UsedByName       { get; set; }
+        public string?   UsedByAvatarUrl  { get; set; }
+        public int       DistributedCount { get; set; }
+        public DateTime  OccurredAt       { get; set; }
+        public DateTime? UsedAt           { get; set; }
+    }
 }

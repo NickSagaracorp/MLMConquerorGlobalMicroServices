@@ -2094,6 +2094,12 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<DateTime>("FastStartBonus1End")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime>("FastStartBonus1ExtendedEnd")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("FastStartBonus1ExtendedStart")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("FastStartBonus1Start")
                         .HasColumnType("datetime2");
 
@@ -4228,6 +4234,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.Property<DateTime>("OrderDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("OrderNo")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<byte[]>("RowVersion")
                         .HasColumnType("varbinary(max)");

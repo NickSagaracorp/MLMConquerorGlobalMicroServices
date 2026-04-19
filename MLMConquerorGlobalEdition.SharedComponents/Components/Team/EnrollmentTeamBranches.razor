@@ -1,140 +1,561 @@
 @inject HttpClient Http
 @inject IViewContextService ViewContext
 @inject NavigationManager Nav
+@using System.Net.Http.Json
 
-@using MLMConquerorGlobalEdition.SharedComponents.Constants
+@if (ShowBreadcrumb) { <BreadcrumbNav Items="@_breadcrumb" /> }
 
-<BreadcrumbNav Items="@_breadcrumb" />
-
-<div class="card">
-    <div class="card-header py-3">
-        <h6 class="card-title mb-0 fw-semibold">Enrollment Team — Branches</h6>
-    </div>
-    <div class="card-body p-0">
-        <LoadingSpinner IsLoading="@_isLoading" />
-        @if (!_isLoading)
-        {
-            <div class="table-responsive">
-                <table class="table table-hover table-sm mb-0">
-                    <thead>
-                        <tr>
-                            <th>Member ID</th>
-                            <th>Name</th>
-                            <th>Level</th>
-                            <th>Sponsor</th>
-                            <th>Points</th>
-                            <th>Enrolled</th>
-                            <th>Status</th>
-                            @if (ViewContext.IsAdminContext)
-                            {
-                                <th class="text-center">Actions</th>
-                            }
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (!_items.Any())
-                        {
-                            <tr><td colspan="8" class="text-center text-muted py-4">No data available.</td></tr>
-                        }
-                        @foreach (var m in _items)
-                        {
-                            <tr>
-                                <td><code>@m.MemberId</code></td>
-                                <td>@m.FullName</td>
-                                <td><span class="badge bg-secondary">L@m.Level</span></td>
-                                <td><code>@m.SponsorMemberId</code></td>
-                                <td>@m.Points.ToString("N0")</td>
-                                <td>@m.EnrolledAt.ToString("MMM dd, yyyy")</td>
-                                <td><StatusBadge Status="@m.Status" /></td>
-                                @if (ViewContext.IsAdminContext)
-                                {
-                                    <td class="text-center">
-                                        <button class="btn btn-xs btn-outline-secondary"
-                                                @onclick="@(() => Nav.NavigateTo($"/admin/members/{m.MemberId}"))"
-                                                title="View as Admin">
-                                            <i class="ri-eye-line"></i>
-                                        </button>
-                                    </td>
-                                }
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+@* ── Summary stats cards ─────────────────────────────────────────────────── *@
+@if (_result is not null)
+{
+    <div class="card bg-white border-0 rounded-3 mb-4">
+        <div class="card bg-white border-0 rounded-3 mb-4">
+        <div class="card-body p-4" style="padding-bottom:0 !important">
+            <div class="mb-3 mb-lg-4">
+                <h3 class="mb-0">Current Progress: @_currentMonthName</h3>
             </div>
-            @if (_total > _pageSize)
-            {
-                var totalPages = (int)Math.Ceiling((double)_total / _pageSize);
-                <div class="d-flex justify-content-center py-3">
-                    <nav>
-                        <ul class="pagination pagination-sm mb-0">
-                            <li class="page-item @(_page <= 1 ? "disabled" : "")">
-                                <button class="page-link" @onclick="() => ChangePage(_page - 1)">&#x2039;</button>
-                            </li>
-                            @for (var pg = 1; pg <= totalPages; pg++)
-                            {
-                                var p = pg;
-                                <li class="page-item @(p == _page ? "active" : "")">
-                                    <button class="page-link" @onclick="() => ChangePage(p)">@p</button>
-                                </li>
-                            }
-                            <li class="page-item @(_page >= totalPages ? "disabled" : "")">
-                                <button class="page-link" @onclick="() => ChangePage(_page + 1)">&#x203A;</button>
-                            </li>
-                        </ul>
-                    </nav>
+            <div class="row">
+                <div class="col-xxl-4 col-xl-4 col-sm-4">
+                    <div class="card border-0 rounded-3 mb-4 stats-box style-three" style="background-color:rgb(96,93,255)">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0">
+                                    <i class="ri-bar-chart-box-line fs-40 text-white"></i>
+                                </div>
+                                <div class="flex-grow-1 ms-2">
+                                    <span class="text-white">Total Points</span>
+                                    <h3 class="fs-20 mt-1 mb-0 text-white">@_result.TotalPoints.ToString("N0")</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            }
+                <div class="col-xxl-4 col-xl-4 col-sm-4">
+                    <div class="card bg-danger bg-opacity-10 border-danger border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0">
+                                    <i class="ri-close-circle-line fs-40 text-danger"></i>
+                                </div>
+                                <div class="flex-grow-1 ms-2">
+                                    <span>Total Eligible Points (Current Rank)</span>
+                                    <h3 class="fs-20 mt-1 mb-0">@_result.TotalEligibleCurrentRank.ToString("N0")</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xxl-4 col-xl-4 col-sm-4">
+                    <div class="card bg-success bg-opacity-10 border-success border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0">
+                                    <i class="ri-checkbox-circle-line fs-40 text-success"></i>
+                                </div>
+                                <div class="flex-grow-1 ms-2">
+                                    <span>Total Eligible Points (Next Rank)</span>
+                                    <h3 class="fs-20 mt-1 mb-0">@_result.TotalEligibleNextRank.ToString("N0")</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div>
+    </div>
+}
+
+@* ── Table card ───────────────────────────────────────────────────────────── *@
+<div class="card bg-white border-0 rounded-3 mb-4">
+    <div class="card-body p-0">
+
+        @* Search bar *@
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
+            <div class="position-relative table-src-form me-0">
+                <input type="text"
+                       class="form-control"
+                       placeholder="Search here"
+                       value="@_search"
+                       @oninput="OnSearchInput" />
+                <i class="ri-search-line position-absolute top-50 start-0 translate-middle-y"></i>
+            </div>
+        </div>
+
+        @if (_isLoading)
+        {
+            <LoadingSpinner IsLoading="true" />
+        }
+        else if (_error is not null)
+        {
+            <div class="alert alert-danger m-3">@_error</div>
+        }
+        else
+        {
+            <div class="default-table-area style-two default-table-width">
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>Ambassador</th>
+                                <th>Total Points</th>
+                                <th>Eligible Points (Current Rank)</th>
+                                <th>Eligible Points (Next Rank)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!_branches.Any())
+                            {
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">No records to display.</td>
+                                </tr>
+                            }
+                            @foreach (var b in _branches)
+                            {
+                                var branch = b;
+                                <tr class="cursor" style="cursor:pointer" @onclick="() => OpenBranchDetail(branch)">
+                                    <td class="text-body">@b.FullName</td>
+                                    <td class="text-body">@b.TotalPoints.ToString("N0")</td>
+                                    <td class="text-body">
+                                        @RenderDonut(b.EligibleCurrentPct, b.EligibleCurrentRank)
+                                    </td>
+                                    <td class="text-body">
+                                        @RenderDonut(b.EligibleNextPct, b.EligibleNextRank)
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @* Pagination *@
+                <div class="p-4 pt-lg-4">
+                    <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
+                        <span class="fs-12 fw-medium">Showing @_branches.Count of @_total Results</span>
+                        @if (_totalPages > 1)
+                        {
+                            <nav>
+                                <ul class="pagination mb-0 justify-content-center">
+                                    <li class="page-item @(_page <= 1 ? "disabled" : "")">
+                                        <button class="page-link icon" @onclick="() => LoadAsync(_page - 1)">
+                                            <i class="ri-arrow-left-s-line"></i>
+                                        </button>
+                                    </li>
+                                    @for (var pg = 1; pg <= _totalPages; pg++)
+                                    {
+                                        var p = pg;
+                                        <li class="page-item @(p == _page ? "active" : "")">
+                                            <button class="page-link" @onclick="() => LoadAsync(p)">@p</button>
+                                        </li>
+                                    }
+                                    <li class="page-item @(_page >= _totalPages ? "disabled" : "")">
+                                        <button class="page-link icon" @onclick="() => LoadAsync(_page + 1)">
+                                            <i class="ri-arrow-right-s-line"></i>
+                                        </button>
+                                    </li>
+                                </ul>
+                            </nav>
+                        }
+                    </div>
+                </div>
+            </div>
         }
     </div>
 </div>
 
-@code {
-    [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+@* ── Branch Detail Modal ──────────────────────────────────────────────────── *@
+@if (_detail is not null || _detailLoading)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.5)">
+        <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+            <div class="modal-content p-4 p-md-5">
 
-    private bool _isLoading = true;
-    private int  _page = 1, _pageSize = 20, _total;
-    private List<BranchMemberDto> _items = new();
+                @if (_detailLoading)
+                {
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status"></div>
+                    </div>
+                }
+                else if (_detail is not null)
+                {
+                    <div class="modal-header p-0 border-0">
+                        <div>
+                            <h3 class="mb-0">@_detail.BranchMemberName</h3>
+                            <h5 class="mb-0">@_detail.TotalPoints.ToString("N0") Points</h5>
+                        </div>
+                        <button type="button" class="btn-close ms-auto" @onclick="CloseModal"></button>
+                    </div>
+
+                    <style>
+                        .branch-nav-tabs .nav-link.active { color: #4936F5 !important; }
+                    </style>
+
+                    <ul class="nav nav-tabs branch-nav-tabs bg-transparent border-bottom gap-2 gap-sm-5 p-4" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_activeTab == "ambassadors" ? "active" : "")"
+                                    @onclick='() => _activeTab = "ambassadors"'>
+                                Ambassadors (@_detail.Ambassadors.Count)
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_activeTab == "customers" ? "active" : "")"
+                                    @onclick='() => _activeTab = "customers"'>
+                                Only Customers (@_detail.Customers.Count)
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="modal-body p-0 pt-4">
+                        @if (_activeTab == "ambassadors")
+                        {
+                            <div class="card bg-white border-0 rounded-3 mb-4">
+                                <div class="card-body p-0">
+                                    <div class="default-table-area style-two default-table-width">
+                                        <div class="table-responsive">
+                                            <table class="table align-middle">
+                                                <thead>
+                                                    <tr>
+                                                        <th>#</th>
+                                                        <th>Level</th>
+                                                        <th>Name</th>
+                                                        <th>Biz Center Status</th>
+                                                        <th>Membership Status</th>
+                                                        <th>Qualified</th>
+                                                        <th>Membership</th>
+                                                        <th>Points</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @if (!_detail.Ambassadors.Any())
+                                                    {
+                                                        <tr><td colspan="8" class="text-center text-muted py-3">No ambassadors in this branch.</td></tr>
+                                                    }
+                                                    @foreach (var a in _detail.Ambassadors)
+                                                    {
+                                                        <tr>
+                                                            <td class="text-body">@a.SeqNo</td>
+                                                            <td class="text-body">@a.Level</td>
+                                                            <td>
+                                                                <div class="d-flex align-items-center">
+                                                                    <div style="width:30px;height:30px;border-radius:50%;background:#605DFF22;display:flex;align-items:center;justify-content:center;margin-right:8px;flex-shrink:0;">
+                                                                        <span style="font-size:12px;font-weight:600;color:#605DFF">@(a.FullName.Length > 0 ? a.FullName[0].ToString().ToUpper() : "?")</span>
+                                                                    </div>
+                                                                    <span>@a.FullName</span>
+                                                                </div>
+                                                            </td>
+                                                            <td>@StatusBadge(a.AccountStatus)</td>
+                                                            <td>@StatusBadge(a.MembershipStatus)</td>
+                                                            <td>@QualifiedBadge(a.IsQualified)</td>
+                                                            <td class="text-body">@(a.MembershipLevelName ?? "—")</td>
+                                                            <td>@PointsBadge(a.EnrollmentPoints)</td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="card bg-white border-0 rounded-3 mb-4">
+                                <div class="card-body p-0">
+                                    <div class="default-table-area style-two default-table-width">
+                                        <div class="table-responsive">
+                                            <table class="table align-middle">
+                                                <thead>
+                                                    <tr>
+                                                        <th>#</th>
+                                                        <th>Level</th>
+                                                        <th>Name</th>
+                                                        <th>Status</th>
+                                                        <th>Membership</th>
+                                                        <th>Points</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @if (!_detail.Customers.Any())
+                                                    {
+                                                        <tr><td colspan="6" class="text-center text-muted py-3">No customers in this branch.</td></tr>
+                                                    }
+                                                    @foreach (var c in _detail.Customers)
+                                                    {
+                                                        <tr>
+                                                            <td class="text-body">@c.SeqNo</td>
+                                                            <td class="text-body">@c.Level</td>
+                                                            <td>
+                                                                <div class="d-flex align-items-center">
+                                                                    <div style="width:30px;height:30px;border-radius:50%;background:#605DFF22;display:flex;align-items:center;justify-content:center;margin-right:8px;flex-shrink:0;">
+                                                                        <span style="font-size:12px;font-weight:600;color:#605DFF">@(c.FullName.Length > 0 ? c.FullName[0].ToString().ToUpper() : "?")</span>
+                                                                    </div>
+                                                                    <span>@c.FullName</span>
+                                                                </div>
+                                                            </td>
+                                                            <td>@StatusBadge(c.MembershipStatus)</td>
+                                                            <td class="text-body">@(c.MembershipLevelName ?? "—")</td>
+                                                            <td>@PointsBadge(c.EnrollmentPoints)</td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="modal-footer border-0 p-0">
+                        <button type="button" class="btn btn-info text-white px-3" @onclick="CloseModal">OK</button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    // ── Parameters ───────────────────────────────────────────────────────────
+    [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+    [Parameter] public string ApiBaseUrl      { get; set; } = "api/v1/bizcenter/team/enrollment";
+    [Parameter] public bool   ShowBreadcrumb  { get; set; } = true;
+
+    // ── State ────────────────────────────────────────────────────────────────
+    private bool    _isLoading  = true;
+    private string? _error;
+    private string? _search;
+    private int     _page       = 1;
+    private int     _total;
+    private int     _totalPages;
+    private const int PageSize  = 20;
+
+    private BranchesResultDto?    _result;
+    private List<BranchRowDto>    _branches = new();
+
+    private string _currentMonthName = DateTime.Now.ToString("MMMM");
+
+    // ── Modal state ──────────────────────────────────────────────────────────
+    private BranchDetailDto? _detail;
+    private bool   _detailLoading;
+    private string _activeTab = "ambassadors";
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
         new("Dashboard", "/dashboard"),
-        new("Enrollment Team")
+        new("Enrollment Team"),
+        new("Branches")
     };
 
+    // ── Lifecycle ────────────────────────────────────────────────────────────
     protected override async Task OnParametersSetAsync()
     {
-        if (string.IsNullOrEmpty(MemberProfileId)) return;
-        await LoadPageAsync(1);
+        if (!string.IsNullOrEmpty(MemberProfileId))
+            await LoadAsync(1);
     }
 
-    private async Task ChangePage(int page) => await LoadPageAsync(page);
-
-    private async Task LoadPageAsync(int page)
+    // ── Data loading ─────────────────────────────────────────────────────────
+    private async Task LoadAsync(int page)
     {
-        _page = page; _isLoading = true; StateHasChanged();
+        _page      = page;
+        _isLoading = true;
+        _error     = null;
+        StateHasChanged();
+
         try
         {
-            var response = await Http.GetFromJsonAsync<ApiResponse<PagedData<BranchMemberDto>>>(
-                $"api/v1/bizcenter/team/enrollment?page={page}&pageSize={_pageSize}");
-            if (response?.Success == true && response.Data is not null)
+            var url = $"{ApiBaseUrl}/branches?page={page}&pageSize={PageSize}";
+            if (!string.IsNullOrWhiteSpace(_search))
+                url += $"&search={Uri.EscapeDataString(_search)}";
+
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<BranchesResultDto>>(url);
+            if (resp?.Success == true && resp.Data is not null)
             {
-                _items = response.Data.Items;
-                _total = response.Data.TotalCount;
+                _result     = resp.Data;
+                _branches   = resp.Data.Branches.Items;
+                _total      = resp.Data.Branches.TotalCount;
+                _totalPages = (int)Math.Ceiling((double)_total / PageSize);
+            }
+            else
+            {
+                _error = "Failed to load branches.";
             }
         }
-        catch { /* silently degrade */ }
-        finally { _isLoading = false; }
+        catch (Exception ex)
+        {
+            _error = $"API error: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
     }
 
-    private class ApiResponse<T> { public bool Success { get; set; } public T? Data { get; set; } }
-    private class PagedData<T>   { public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
+    // ── Search with debounce ─────────────────────────────────────────────────
+    private System.Threading.CancellationTokenSource? _searchCts;
 
-    public record BranchMemberDto(
-        string   MemberId,
-        string   FullName,
-        int      Level,
-        string   SponsorMemberId,
-        decimal  Points,
-        DateTime EnrolledAt,
-        string   Status);
+    private async Task OnSearchInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _search = e.Value?.ToString();
+        _searchCts?.Cancel();
+        _searchCts = new System.Threading.CancellationTokenSource();
+        var token = _searchCts.Token;
+
+        try
+        {
+            await Task.Delay(350, token);
+            if (!token.IsCancellationRequested)
+                await LoadAsync(1);
+        }
+        catch (TaskCanceledException) { /* debounced */ }
+    }
+
+    // ── Row click: load branch detail ────────────────────────────────────────
+    private async Task OpenBranchDetail(BranchRowDto branch)
+    {
+        _detail        = null;
+        _detailLoading = true;
+        _activeTab     = "ambassadors";
+        StateHasChanged();
+
+        try
+        {
+            var url  = $"{ApiBaseUrl}/branches/{Uri.EscapeDataString(branch.MemberId)}/detail";
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<BranchDetailDto>>(url);
+            _detail = resp?.Success == true ? resp.Data : null;
+            if (_detail is null)
+                _detail = new BranchDetailDto
+                {
+                    BranchMemberId   = branch.MemberId,
+                    BranchMemberName = branch.FullName,
+                    TotalPoints      = branch.TotalPoints
+                };
+        }
+        catch
+        {
+            _detail = new BranchDetailDto
+            {
+                BranchMemberId   = branch.MemberId,
+                BranchMemberName = branch.FullName,
+                TotalPoints      = branch.TotalPoints
+            };
+        }
+        finally
+        {
+            _detailLoading = false;
+        }
+    }
+
+    private void CloseModal()
+    {
+        _detail        = null;
+        _detailLoading = false;
+    }
+
+    // ── Donut circle render fragment ─────────────────────────────────────────
+    private RenderFragment RenderDonut(int pct, int value) => __builder =>
+    {
+        <div style="position:relative;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:conic-gradient(#605DFF @(pct)%, #ECEEF2 @(pct)%)">
+            <div style="position:absolute;width:80%;height:80%;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+                <p class="text-body fw-semibold" style="font-size:12px;margin:0">@value</p>
+            </div>
+        </div>
+    };
+
+    // ── Badge render fragments ───────────────────────────────────────────────
+    private RenderFragment StatusBadge(string status) => __builder =>
+    {
+        var (cls, label) = status?.ToLower() switch
+        {
+            "active"    => ("success", "Active"),
+            "suspended" => ("warning", "Suspended"),
+            "cancelled" => ("danger",  "Cancelled"),
+            "inactive"  => ("warning", "Inactive"),
+            "none"      => ("secondary","None"),
+            _           => ("secondary", status ?? "—")
+        };
+        <span class="badge bg-@cls bg-opacity-10 text-@cls p-2 fs-12 fw-normal">@label</span>
+    };
+
+    private RenderFragment QualifiedBadge(bool isQualified) => __builder =>
+    {
+        if (isQualified)
+        {
+            <span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">Qualified</span>
+        }
+        else
+        {
+            <span class="badge bg-warning bg-opacity-10 text-warning p-2 fs-12 fw-normal">Unqualified</span>
+        }
+    };
+
+    private RenderFragment PointsBadge(int pts) => __builder =>
+    {
+        var cls = pts > 0 ? "success" : "danger";
+        <span class="badge bg-@cls bg-opacity-10 text-@cls p-2 fs-12 fw-normal">@pts Points</span>
+    };
+
+    // ── Local deserialization types ──────────────────────────────────────────
+
+    private class ApiWrapper<T>
+    {
+        public bool Success { get; set; }
+        public T?   Data    { get; set; }
+    }
+
+    private class BranchesResultDto
+    {
+        public int             TotalPoints              { get; set; }
+        public int             TotalEligibleCurrentRank { get; set; }
+        public int             TotalEligibleNextRank    { get; set; }
+        public BranchPageDto   Branches                 { get; set; } = new();
+    }
+
+    private class BranchPageDto
+    {
+        public List<BranchRowDto> Items      { get; set; } = new();
+        public int                TotalCount { get; set; }
+    }
+
+    private class BranchRowDto
+    {
+        public string MemberId            { get; set; } = string.Empty;
+        public string FullName            { get; set; } = string.Empty;
+        public int    TotalPoints         { get; set; }
+        public int    EligibleCurrentRank { get; set; }
+        public int    EligibleNextRank    { get; set; }
+        public int    EligibleCurrentPct  { get; set; }
+        public int    EligibleNextPct     { get; set; }
+    }
+
+    private class BranchDetailDto
+    {
+        public string BranchMemberId    { get; set; } = string.Empty;
+        public string BranchMemberName  { get; set; } = string.Empty;
+        public int    TotalPoints       { get; set; }
+        public List<BranchAmbassadorItemDto> Ambassadors { get; set; } = new();
+        public List<BranchCustomerItemDto>   Customers   { get; set; } = new();
+    }
+
+    private class BranchAmbassadorItemDto
+    {
+        public int     SeqNo              { get; set; }
+        public int     Level              { get; set; }
+        public string  FullName           { get; set; } = string.Empty;
+        public string  AccountStatus      { get; set; } = string.Empty;
+        public string  MembershipStatus   { get; set; } = string.Empty;
+        public bool    IsQualified        { get; set; }
+        public string? MembershipLevelName{ get; set; }
+        public int     EnrollmentPoints   { get; set; }
+    }
+
+    private class BranchCustomerItemDto
+    {
+        public int     SeqNo              { get; set; }
+        public int     Level              { get; set; }
+        public string  FullName           { get; set; } = string.Empty;
+        public string  MembershipStatus   { get; set; } = string.Empty;
+        public string? MembershipLevelName{ get; set; }
+        public int     EnrollmentPoints   { get; set; }
+    }
 }

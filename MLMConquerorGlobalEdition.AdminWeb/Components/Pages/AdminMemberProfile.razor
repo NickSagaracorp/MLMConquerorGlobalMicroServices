@@ -4,6 +4,9 @@
 @inject HttpClient Http
 @inject NavigationManager Nav
 
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Inputs
+
 <PageTitle>Member Profile — Admin</PageTitle>
 
 <BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Members", "/admin/members"), new(@MemberId) })" />
@@ -58,8 +61,9 @@ else
     <div class="d-flex flex-wrap gap-2 mb-4">
         @foreach (var tab in _tabs)
         {
-            <button class="btn @(_activeTab == tab.Key ? "btn-primary" : "btn-outline-primary") py-2 px-3 fw-medium"
-                    @onclick="() => _activeTab = tab.Key">
+            var tk = tab.Key;
+            <button class="btn @(_activeTab == tk ? "btn-primary" : "btn-outline-primary") py-2 px-3 fw-medium"
+                    @onclick="() => OnTabClick(tk)">
                 <i class="@tab.Icon me-1"></i>@tab.Label
             </button>
         }
@@ -162,17 +166,112 @@ else
             </div>
         </div>
     }
+    else if (_activeTab == "enrollment")
+    {
+        <!-- Enrollment Team sub-tabs -->
+        <div class="d-flex gap-2 mb-3 border-bottom pb-2">
+            <button class="btn @(_enrollSub == "myteam"    ? "btn-primary" : "btn-outline-secondary") btn-sm"
+                    @onclick='() => _enrollSub = "myteam"'>
+                <i class="ri-group-line me-1"></i>My Team
+            </button>
+            <button class="btn @(_enrollSub == "branches"  ? "btn-primary" : "btn-outline-secondary") btn-sm"
+                    @onclick='() => _enrollSub = "branches"'>
+                <i class="ri-git-branch-line me-1"></i>Branches
+            </button>
+            <button class="btn @(_enrollSub == "customers" ? "btn-primary" : "btn-outline-secondary") btn-sm"
+                    @onclick='() => _enrollSub = "customers"'>
+                <i class="ri-user-heart-line me-1"></i>Customers
+            </button>
+            <button class="btn @(_enrollSub == "visualizer" ? "btn-primary" : "btn-outline-secondary") btn-sm"
+                    @onclick='() => _enrollSub = "visualizer"'>
+                <i class="ri-organization-chart me-1"></i>Visualizer
+            </button>
+        </div>
+
+        @if (_enrollSub == "myteam")
+        {
+            <EnrollmentTeamMyTeam    MemberProfileId="@MemberId"
+                                     ApiBaseUrl="@($"api/v1/admin/members/{MemberId}/team/enrollment")"
+                                     ShowBreadcrumb="false" />
+        }
+        else if (_enrollSub == "branches")
+        {
+            <EnrollmentTeamBranches  MemberProfileId="@MemberId"
+                                     ApiBaseUrl="@($"api/v1/admin/members/{MemberId}/team/enrollment")"
+                                     ShowBreadcrumb="false" />
+        }
+        else if (_enrollSub == "customers")
+        {
+            <EnrollmentTeamCustomers MemberProfileId="@MemberId"
+                                     ApiBaseUrl="@($"api/v1/admin/members/{MemberId}/team/enrollment")"
+                                     ShowBreadcrumb="false" />
+        }
+        else if (_enrollSub == "visualizer")
+        {
+            <EnrollmentVisualizer    MemberProfileId="@MemberId"
+                                     ApiBaseUrl="@($"api/v1/admin/members/{MemberId}/team/enrollment/visualizer")"
+                                     ShowBreadcrumb="false" />
+        }
+    }
+
     else if (_activeTab == "commissions")
     {
-        <div class="card border-0 shadow-sm">
-            <div class="card-body p-4 text-center py-5">
-                <i class="ri-money-dollar-circle-line fs-2 text-primary d-block mb-3"></i>
-                <p class="text-muted mb-3">View commission earnings for this member.</p>
-                <a href="/admin/commissions?memberId=@MemberId" class="btn btn-primary btn-sm">
-                    <i class="ri-external-link-line me-1"></i>View Commissions
-                </a>
-            </div>
+        <!-- Commission sub-tabs -->
+        <div class="d-flex gap-2 mb-3 border-bottom pb-2">
+            <button class="btn @(_commSub == "overview"     ? "btn-primary" : "btn-outline-secondary") btn-sm"
+                    @onclick='() => _commSub = "overview"'>
+                <i class="ri-money-dollar-circle-line me-1"></i>Overview
+            </button>
+            <button class="btn @(_commSub == "faststart"    ? "btn-primary" : "btn-outline-secondary") btn-sm"
+                    @onclick='() => _commSub = "faststart"'>
+                <i class="ri-trophy-line me-1"></i>Fast Start
+            </button>
+            <button class="btn @(_commSub == "presidential" ? "btn-primary" : "btn-outline-secondary") btn-sm"
+                    @onclick='() => _commSub = "presidential"'>
+                <i class="ri-award-line me-1"></i>Presidential
+            </button>
+            <button class="btn @(_commSub == "boost"        ? "btn-primary" : "btn-outline-secondary") btn-sm"
+                    @onclick='() => _commSub = "boost"'>
+                <i class="ri-medal-line me-1"></i>Boost
+            </button>
+            <button class="btn @(_commSub == "carbonus"     ? "btn-primary" : "btn-outline-secondary") btn-sm"
+                    @onclick='() => _commSub = "carbonus"'>
+                <i class="ri-car-line me-1"></i>Car Bonus
+            </button>
         </div>
+
+        @if (_commSub == "overview")
+        {
+            <CommissionsDashboard MemberProfileId="@MemberId"
+                                  ApiBaseUrl="@($"api/v1/admin/members/{MemberId}/commissions")"
+                                  ShowBreadcrumb="false"
+                                  IsAdminView="true" />
+        }
+        else if (_commSub == "faststart")
+        {
+            <FastStartBonusReport MemberProfileId="@MemberId"
+                                  ApiBaseUrl="@($"api/v1/admin/members/{MemberId}/commissions")"
+                                  ShowBreadcrumb="false" />
+        }
+        else if (_commSub == "presidential")
+        {
+            <PresidentialBonusReport MemberProfileId="@MemberId"
+                                     ApiBaseUrl="@($"api/v1/admin/members/{MemberId}/commissions")"
+                                     ShowBreadcrumb="false" />
+        }
+        else if (_commSub == "boost")
+        {
+            <BoostBonusReport MemberProfileId="@MemberId"
+                              ApiBaseUrl="@($"api/v1/admin/members/{MemberId}/commissions")"
+                              ShowBreadcrumb="false" />
+        }
+        else if (_commSub == "carbonus")
+        {
+            <CarBonusReport MemberProfileId="@MemberId"
+                            ApiBaseUrl="@($"api/v1/admin/members/{MemberId}/commissions")"
+                            TeamApiBaseUrl="@($"api/v1/admin/members/{MemberId}/team")"
+                            ShowBreadcrumb="false" />
+        }
     }
     else if (_activeTab == "ranks")
     {
@@ -206,6 +305,43 @@ else
             </div>
         </div>
     }
+    else if (_activeTab == "dualteam")
+    {
+        <!-- Dual Team sub-tabs -->
+        <div class="d-flex gap-2 mb-3 border-bottom pb-2">
+            <button class="btn @(_dualSub == "myteam" ? "btn-primary" : "btn-outline-secondary") btn-sm"
+                    @onclick='() => _dualSub = "myteam"'>
+                <i class="ri-group-line me-1"></i>My Team
+            </button>
+            <button class="btn @(_dualSub == "visualizer" ? "btn-primary" : "btn-outline-secondary") btn-sm"
+                    @onclick='() => _dualSub = "visualizer"'>
+                <i class="ri-share-circle-line me-1"></i>Visualizer
+            </button>
+            <button class="btn @(_dualSub == "residuals" ? "btn-primary" : "btn-outline-secondary") btn-sm"
+                    @onclick='() => _dualSub = "residuals"'>
+                <i class="ri-money-dollar-circle-line me-1"></i>Residuals
+            </button>
+        </div>
+
+        @if (_dualSub == "myteam")
+        {
+            <DualTeamMyTeam MemberProfileId="@MemberId"
+                            ApiBaseUrl="@($"api/v1/admin/members/{MemberId}/team")"
+                            ShowBreadcrumb="false" />
+        }
+        else if (_dualSub == "visualizer")
+        {
+            <DualTeamBinaryTree MemberProfileId="@MemberId"
+                                ApiBaseUrl="@($"api/v1/admin/members/{MemberId}/team")"
+                                ShowBreadcrumb="false" />
+        }
+        else if (_dualSub == "residuals")
+        {
+            <DualTeamResiduals MemberProfileId="@MemberId"
+                               ApiBaseUrl="@($"api/v1/admin/members/{MemberId}")"
+                               ShowBreadcrumb="false" />
+        }
+    }
     else if (_activeTab == "placement")
     {
         <div class="card border-0 shadow-sm">
@@ -232,15 +368,8 @@ else
     }
     else if (_activeTab == "tokens")
     {
-        <div class="card border-0 shadow-sm">
-            <div class="card-body p-4 text-center py-5">
-                <i class="ri-token-swap-line fs-2 text-primary d-block mb-3"></i>
-                <p class="text-muted mb-3">View token balance and history for this member.</p>
-                <a href="/admin/tokens/distribute?memberId=@MemberId" class="btn btn-primary btn-sm">
-                    <i class="ri-external-link-line me-1"></i>Distribute Tokens
-                </a>
-            </div>
-        </div>
+        <TokensPage MemberProfileId="@MemberId"
+                    ApiBaseUrl="@($"api/v1/admin/members/{MemberId}")" />
     }
     else if (_activeTab == "tickets")
     {
@@ -272,15 +401,17 @@ else
 
     private readonly List<TabItem> _tabs = new()
     {
-        new("profile",    "Profile",     "ri-user-line"),
-        new("status",     "Status",      "ri-toggle-line"),
-        new("network",    "Network",     "ri-node-tree"),
-        new("placement",  "Placement",   "ri-user-add-line"),
-        new("commissions","Commissions", "ri-money-dollar-circle-line"),
-        new("ranks",      "Ranks",       "ri-award-line"),
-        new("orders",     "Orders",      "ri-shopping-bag-line"),
-        new("tokens",     "Tokens",      "ri-token-swap-line"),
-        new("tickets",    "Tickets",     "ri-customer-service-2-line"),
+        new("profile",    "Profile",         "ri-user-line"),
+        new("status",     "Status",          "ri-toggle-line"),
+        new("enrollment", "Enrollment Team", "ri-organization-chart"),
+        new("network",    "Network",         "ri-node-tree"),
+        new("dualteam",   "Dual Team",       "ri-share-circle-line"),
+        new("placement",  "Placement",       "ri-user-add-line"),
+        new("commissions","Commissions",     "ri-money-dollar-circle-line"),
+        new("ranks",      "Ranks",           "ri-award-line"),
+        new("orders",     "Orders",          "ri-shopping-bag-line"),
+        new("tokens",     "Tokens",          "ri-token-swap-line"),
+        new("tickets",    "Tickets",         "ri-customer-service-2-line"),
     };
 
     protected override async Task OnInitializedAsync()
@@ -326,6 +457,21 @@ else
         "Suspended" => "bg-warning text-dark",
         _           => "bg-secondary"
     };
+
+    // ── Enrollment Team state ──────────────────────────────────────────────
+    private string _enrollSub = "myteam";
+
+    // ── Dual Team state ────────────────────────────────────────────────────
+    private string _dualSub = "myteam";
+
+    // ── Commissions state ──────────────────────────────────────────────────
+    private string _commSub = "overview";
+
+    private Task OnTabClick(string tabKey)
+    {
+        _activeTab = tabKey;
+        return Task.CompletedTask;
+    }
 
     private record MemberDetailDto(
         string MemberId, string FirstName, string LastName,

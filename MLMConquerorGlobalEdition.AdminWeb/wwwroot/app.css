@@ -54,6 +54,63 @@ a, .btn-link {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   MATERIAL SYMBOLS hardening
+   The Google Fonts CDN stylesheet is loaded in App.razor and provides
+   the full glyph set. These rules prevent the literal ligature text
+   ("search", "done_all", "person", etc.) from overflowing its container
+   during the brief window where the font is still loading or the URL
+   is unreachable.
+   ═══════════════════════════════════════════════════════════════ */
+.material-symbols-outlined,
+i.material-symbols-outlined,
+em.material-symbols-outlined {
+    font-family: 'Material Symbols Outlined', 'Segoe UI Symbol' !important;
+    /* neutralize user-agent italic from <i>/<em> and inherited bold */
+    font-style: normal !important;
+    font-weight: normal !important;
+    font-feature-settings: 'liga';
+    -webkit-font-feature-settings: 'liga';
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow: hidden;          /* clip literal ligature text during FOUT */
+    vertical-align: middle;
+    white-space: nowrap;        /* prevent search input icon from wrapping "se ar c h" */
+    text-transform: none;
+    letter-spacing: normal;
+    direction: ltr;
+}
+
+/* Search inputs inside list grids (.table-src-form).
+   The icon must be absolutely positioned INSIDE the relative form so it
+   overlays the input's left padding — otherwise it flows inline, its
+   width is forced to 20px, overflow:hidden clips the word and we see
+   "se ar c h" stacked vertically. */
+.table-src-form {
+    position: relative;
+}
+
+    .table-src-form > .material-symbols-outlined,
+    .table-src-form > i.material-symbols-outlined {
+        position: absolute;
+        top: 50%;
+        left: 10px;
+        transform: translateY(-50%);
+        width: 20px;
+        height: 20px;
+        max-width: 20px;
+        font-size: 20px;
+        line-height: 1;
+        color: var(--bs-secondary-color, #6c757d);
+        pointer-events: none;
+        z-index: 2;
+    }
+
+    .table-src-form > .form-control {
+        padding-left: 38px;
+    }
+
+/* ═══════════════════════════════════════════════════════════════
    DASHBOARD CARD DESIGN SYSTEM
    ═══════════════════════════════════════════════════════════════ */
 
@@ -263,3 +320,257 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+/* =========================================================
+   FAST START BONUS — strip cards (horizontal layout)
+   Used by: SharedComponents/Components/Commissions/FastStartBonusReport.razor
+   ========================================================= */
+.fsb-row {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 1.5rem;
+}
+
+.fsb-card-wrap {
+    /* Force 3 equal columns on the same row. min-width:0 lets flex items
+       shrink below their intrinsic content size (prevents timer/title from
+       forcing a wrap). Falls back to wrap on small viewports via media query. */
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+@media (max-width: 767.98px) {
+    .fsb-row {
+        flex-wrap: wrap;
+        gap: 1.25rem;
+    }
+
+    .fsb-card-wrap {
+        flex: 1 1 100%;
+    }
+}
+
+.fsb-card {
+    border-radius: .75rem;
+    box-shadow: 0 16px 32px rgba(0, 0, 0, .06);
+    padding: 1.25rem 1.5rem;
+    color: #fff;
+    position: relative;
+    min-height: 160px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.fsb-topline {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 1rem;
+    margin-bottom: .5rem;
+}
+
+.fsb-title {
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: .02em;
+}
+
+.fsb-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: .5rem;
+}
+
+.fsb-timer {
+    font-size: 1.9rem;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+    text-shadow: 0 0 10px rgba(255, 255, 255, .25);
+}
+
+.fsb-sub {
+    font-size: .85rem;
+    opacity: .9;
+}
+
+/* Card states */
+.fsb-complete {
+    background: linear-gradient(90deg, #0c8c2c 0%, #4ade80 100%);
+}
+
+.fsb-active {
+    background: radial-gradient(circle at 0% 0%, #1a1fff 0%, #5b5bff 60%, #4f46e5 100%);
+}
+
+.fsb-locked {
+    background: radial-gradient(circle at 50% 0%, #1f2937 0%, #111827 70%);
+}
+
+/* Icon area. z-index:2 keeps the person circles rendered ABOVE the
+   locked overlay (.fsb-black-layer at z-index:1) so the circles are
+   never caught by the overlay's blur / dimming. */
+.fsb-icons-area {
+    gap: .9rem;
+    position: relative;
+    z-index: 2;
+}
+
+.fsb-person-big {
+    position: relative;
+    width: 56px;
+    height: 56px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, .06);
+    border: 2px dashed rgba(255, 255, 255, .45);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .05);
+    /* Remixicon is a normal icon font — override any inherited Material
+       Symbols "overflow:hidden" from the global rule so the glyph renders
+       in full without being clipped inside the 56px circle. */
+    overflow: visible;
+}
+
+    .fsb-person-big i {
+        font-size: 28px;
+        line-height: 1;
+        color: rgba(255, 255, 255, .55);
+        /* Remixicon reset: neutralise Material-Symbols global rule that
+           applies overflow:hidden / font-feature-settings:'liga'. */
+        font-family: 'remixicon' !important;
+        font-style: normal !important;
+        font-weight: normal !important;
+        overflow: visible;
+        vertical-align: middle;
+    }
+
+    .fsb-person-big.active-green,
+    .fsb-person-big.active-blue {
+        border: 0;
+        box-shadow: 0 10px 22px rgba(0, 0, 0, .20), inset 0 0 0 1px rgba(255, 255, 255, .10);
+    }
+
+    .fsb-person-big.active-green {
+        background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+    }
+
+    .fsb-person-big.active-blue {
+        background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+    }
+
+        .fsb-person-big.active-green i,
+        .fsb-person-big.active-blue i {
+            color: #fff;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, .25);
+        }
+
+        .fsb-person-big.active-green::after,
+        .fsb-person-big.active-blue::after {
+            content: "✓";
+            position: absolute;
+            right: -4px;
+            bottom: -4px;
+            width: 18px;
+            height: 18px;
+            border-radius: 999px;
+            background: #fff;
+            color: #16a34a;
+            font-weight: 900;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, .25);
+        }
+
+    .fsb-person-big.inactive {
+        border-style: dashed;
+        border-color: rgba(255, 255, 255, .55);
+        background: rgba(255, 255, 255, .04);
+    }
+
+        .fsb-person-big.inactive i {
+            color: rgba(255, 255, 255, .45);
+        }
+
+        .fsb-person-big.inactive::before {
+            content: "";
+            position: absolute;
+            width: 26px;
+            height: 2px;
+            background: rgba(255, 255, 255, .35);
+            transform: rotate(-35deg);
+            border-radius: 2px;
+        }
+
+    .fsb-person-big.locked {
+        background: rgba(15, 23, 42, .35);
+        border: 2px dashed rgba(148, 163, 184, .45);
+    }
+
+        .fsb-person-big.locked i {
+            color: rgba(203, 213, 225, .55);
+        }
+
+.fsb-active .fsb-person-big.inactive {
+    animation: fsbPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes fsbPulse {
+    0%, 100% {
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .10), 0 0 0 0 rgba(255, 255, 255, .0);
+    }
+
+    50% {
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .10), 0 0 0 8px rgba(255, 255, 255, .10);
+    }
+}
+
+/* Overlay for locked FSB window.
+   z-index:1 positions it between the card background and the person icons
+   (.fsb-icons-area at z-index:2) so the circles stay crisp and readable.
+   backdrop-filter removed so the visible icons above are not affected. */
+.fsb-black-layer {
+    position: absolute;
+    inset: 0;
+    border-radius: .75rem;
+    background: rgba(0, 0, 0, .55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    z-index: 1;
+    pointer-events: none;
+}
+
+    .fsb-black-layer i {
+        margin-right: .4rem;
+    }
+
+.fsb-footerline {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    font-size: .9rem;
+    font-weight: bold;
+    margin-top: .5rem;
+    opacity: 1;
+}
+
+    .fsb-footerline.completed {
+        color: #16a34a;
+    }
+
+    .fsb-footerline.available {
+        color: #60a5fa;
+    }
+
+    .fsb-footerline.locked {
+        color: #000;
+    }

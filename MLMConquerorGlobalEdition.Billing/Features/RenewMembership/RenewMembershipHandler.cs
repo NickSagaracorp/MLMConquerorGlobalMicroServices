@@ -84,10 +84,15 @@ public class RenewMembershipHandler : IRequestHandler<RenewMembershipCommand, Re
         }
 
         // Create renewal order
+        string orderNo;
+        do { orderNo = OrderNumberHelper.Generate(subscription.MembershipLevel.Name, Now); }
+        while (await _db.Orders.AnyAsync(o => o.OrderNo == orderNo, ct));
+
         var order = new Orders
         {
             MemberId = req.MemberId,
             MembershipSubscriptionId = subscription.Id,
+            OrderNo = orderNo,
             TotalAmount = renewalPrice,
             Status = OrderStatus.Processing,
             OrderDate = Now,

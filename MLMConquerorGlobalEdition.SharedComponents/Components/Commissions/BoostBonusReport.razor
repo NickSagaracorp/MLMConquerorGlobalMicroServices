@@ -1,79 +1,360 @@
 @inject HttpClient Http
+@using System.Net.Http.Json
 
-<BreadcrumbNav Items="@_breadcrumb" />
+@if (ShowBreadcrumb)
+{
+    <BreadcrumbNav Items="@_breadcrumb" />
+}
 
-<div class="card">
-    <div class="card-header py-3">
-        <h6 class="card-title mb-0 fw-semibold">Boost Bonus History</h6>
+<!-- Current Week Stats Card (Gold + Platinum) -->
+<div class="row justify-content-center">
+    <div class="col-xxl-12 col-lg-12">
+        <div class="card bg-white border-0 rounded-3 mb-4">
+            <div class="card-body p-4" style="padding-bottom: 0 !important;">
+                <div class="mb-3 mb-lg-4">
+                    <h3 class="mb-0">Boost Bonus: @(_weekStats?.WeekLabel ?? "Loading...")</h3>
+                </div>
+                <LoadingSpinner IsLoading="@_weekLoading" />
+                @if (!_weekLoading && _weekStats is not null)
+                {
+                    <div class="row">
+                        <div class="col-xxl-6 col-xl-6 col-sm-6">
+                            <div class="card bg-gold bg-opacity-10 border-gold border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                                <div class="card-body p-4">
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-shrink-0">
+                                            <i class="material-symbols-outlined fs-40 text-black">rewarded_ads</i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-2">
+                                            <span>Gold</span>
+                                            <h3 class="fs-20 mt-1 mb-0">@_weekStats.GoldCount/@_weekStats.GoldTarget</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xxl-6 col-xl-6 col-sm-6">
+                            <div class="card bg-platinum bg-opacity-10 border-platinum border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                                <div class="card-body p-4">
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-shrink-0">
+                                            <i class="material-symbols-outlined fs-40 text-black">diamond</i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-2">
+                                            <span>Platinum</span>
+                                            <h3 class="fs-20 mt-1 mb-0">@_weekStats.PlatinumCount/@_weekStats.PlatinumTarget</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
     </div>
+</div>
+
+<!-- Enrollments Section -->
+<div class="row justify-content-center">
+    <div class="col-xxl-12 col-lg-12">
+        <div class="card bg-white border-0 rounded-3 mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+                    <h3 class="mb-0">Enrollments</h3>
+                    <div class="position-relative">
+                        <select class="form-select form-control w-auto bg-border-color border-color bg-transparent" aria-label="Week select"
+                                value="@_selectedWeek"
+                                @onchange="OnWeekChange">
+                            @if (_availableWeeks.Any())
+                            {
+                                @foreach (var wk in _availableWeeks)
+                                {
+                                    <option value="@wk.Value">@wk.Label</option>
+                                }
+                            }
+                            else
+                            {
+                                <option value="current">Current Week</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <ul class="nav nav-tabs bg-transparent border-bottom gap-2 gap-sm-5 pb-4" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_enrollmentTab == "gold" ? "active" : "")"
+                                type="button"
+                                @onclick='() => _enrollmentTab = "gold"'>
+                            GOLD (@_goldEnrollments.Count)
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_enrollmentTab == "platinum" ? "active" : "")"
+                                type="button"
+                                @onclick='() => _enrollmentTab = "platinum"'>
+                            PLATINUM (@_platinumEnrollments.Count)
+                        </button>
+                    </li>
+                </ul>
+
+                <LoadingSpinner IsLoading="@_enrollmentLoading" />
+                @if (!_enrollmentLoading)
+                {
+                    <div class="default-table-area style-two campaigns-table">
+                        <div class="table-responsive">
+                            <table class="table align-middle border-0">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Member</th>
+                                        <th>Email</th>
+                                        <th>Leg</th>
+                                        <th>Enrollment Date</th>
+                                        <th>Rebilling</th>
+                                        <th>Points</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var en in (_enrollmentTab == "platinum" ? _platinumEnrollments : _goldEnrollments))
+                                    {
+                                        var memberBorderClass = en.IsRebillingActive ? "border-success" : "border-danger";
+                                        var rebillingBgClass  = en.IsRebillingActive  ? "bg-success bg-opacity-10 rounded-2 text-success-emphasis"
+                                                              : en.IsRebillingPending ? "bg-warning bg-opacity-10 rounded-2 text-warning-emphasis"
+                                                              : "bg-danger bg-opacity-10 rounded-2 text-danger-emphasis";
+                                        var pointsBgClass = en.IsRebillingActive ? "bg-success bg-opacity-10 rounded-2 text-success-emphasis"
+                                                          : en.IsRebillingPending ? "bg-warning bg-opacity-10 rounded-2 text-warning-emphasis"
+                                                          : "bg-danger bg-opacity-10 rounded-2 text-danger-emphasis";
+                                        <tr>
+                                            <td>@en.MemberId</td>
+                                            <td>
+                                                <div class="border-start border-2 @memberBorderClass ps-3 py-2">
+                                                    <h4 class="fs-14 fw-semibold mb-1">@en.MemberName</h4>
+                                                    <span class="fs-12">@en.MembershipType</span>
+                                                </div>
+                                            </td>
+                                            <td>@(string.IsNullOrEmpty(en.Email) ? "-" : en.Email)</td>
+                                            <td>
+                                                <div class="border-start border-2 @memberBorderClass ps-3 py-2">
+                                                    <h4 class="fs-14 fw-semibold mb-1">@(string.IsNullOrEmpty(en.LegName) ? "-" : en.LegName)</h4>
+                                                </div>
+                                            </td>
+                                            <td>@en.EnrollmentDate.ToString("MM/dd/yyyy")</td>
+                                            <td>
+                                                @if (en.NextRebillingDate.HasValue)
+                                                {
+                                                    <span class="d-inline-block py-1 px-2 @rebillingBgClass">
+                                                        @en.NextRebillingDate.Value.ToString("MMM d'th', yyyy")
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <span class="d-inline-block py-1 px-2 @pointsBgClass">@en.Points Points</span>
+                                            </td>
+                                        </tr>
+                                    }
+                                    @if (!(_enrollmentTab == "platinum" ? _platinumEnrollments : _goldEnrollments).Any())
+                                    {
+                                        <tr><td colspan="7" class="text-center text-muted py-4">No enrollments for this period.</td></tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Member Summary Cards -->
+<div class="row justify-content-center">
+    <div class="col-xxl-12 col-lg-12">
+        <div class="card bg-white border-0 rounded-3 mb-4">
+            <div class="card-body p-4" style="padding-bottom: 0 !important;">
+                <div class="row">
+                    <div class="col-xxl-4 col-xl-4 col-sm-4">
+                        <div class="card bg-primary bg-opacity-10 border-primary border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                            <div class="card-body p-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <i class="material-symbols-outlined fs-40 text-primary">group</i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-2">
+                                        <span>Total Members</span>
+                                        @if (_memberLoading) { <h3 class="fs-20 mt-1 mb-0"><span class="placeholder col-6"></span></h3> }
+                                        else { <h3 class="fs-20 mt-1 mb-0">@(_memberSummary?.TotalMembers ?? 0)</h3> }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xxl-4 col-xl-4 col-sm-4">
+                        <div class="card bg-success bg-opacity-10 border-success border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                            <div class="card-body p-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <i class="material-symbols-outlined fs-40 text-success">paid</i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-2">
+                                        <span>Active Rebilling</span>
+                                        @if (_memberLoading) { <h3 class="fs-20 mt-1 mb-0"><span class="placeholder col-6"></span></h3> }
+                                        else { <h3 class="fs-20 mt-1 mb-0">@(_memberSummary?.ActiveRebilling ?? 0)</h3> }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xxl-4 col-xl-4 col-sm-4">
+                        <div class="card bg-danger bg-opacity-10 border-danger border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                            <div class="card-body p-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <i class="material-symbols-outlined fs-40 text-danger">person_cancel</i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-2">
+                                        <span>Inactive Rebilling</span>
+                                        @if (_memberLoading) { <h3 class="fs-20 mt-1 mb-0"><span class="placeholder col-6"></span></h3> }
+                                        else { <h3 class="fs-20 mt-1 mb-0">@(_memberSummary?.InactiveRebilling ?? 0)</h3> }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Earnings Table -->
+<div class="card bg-white border-0 rounded-3 mb-4">
     <div class="card-body p-0">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
+            <form class="position-relative table-src-form me-0">
+                <input type="text" class="form-control" placeholder="Search here"
+                       value="@_search"
+                       @oninput="OnSearchInput" />
+                <i class="material-symbols-outlined position-absolute top-50 start-0 translate-middle-y">search</i>
+            </form>
+            <div class="d-flex gap-2">
+                <input class="form-control" style="max-width:140px"
+                       type="date"
+                       value="@(_from?.ToString("yyyy-MM-dd"))"
+                       @onchange="OnFromChange" />
+                <input class="form-control" style="max-width:140px"
+                       type="date"
+                       value="@(_to?.ToString("yyyy-MM-dd"))"
+                       @onchange="OnToChange" />
+            </div>
+        </div>
+
         <LoadingSpinner IsLoading="@_isLoading" />
         @if (!_isLoading)
         {
-            <div class="table-responsive">
-                <table class="table table-hover table-sm mb-0">
-                    <thead>
-                        <tr>
-                            <th>Period</th>
-                            <th>Team Volume</th>
-                            <th>Boost %</th>
-                            <th>Amount</th>
-                            <th>Payment Date</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (!_items.Any())
-                        {
-                            <tr><td colspan="6" class="text-center text-muted py-4">No data available.</td></tr>
-                        }
-                        @foreach (var b in _items)
-                        {
+            <div class="default-table-area style-two default-table-width">
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
                             <tr>
-                                <td>@b.Period</td>
-                                <td>@b.TeamVolume.ToString("N0")</td>
-                                <td>@b.BoostPct%</td>
-                                <td><span class="fw-semibold">@b.Amount.ToString("C")</span></td>
-                                <td>@(b.PaymentDate?.ToString("MMM dd, yyyy") ?? "—")</td>
-                                <td><StatusBadge Status="@b.Status" /></td>
+                                <th scope="col">Earned Date</th>
+                                <th scope="col">Amount</th>
+                                <th scope="col">Eligible Points</th>
+                                <th scope="col">Paid</th>
                             </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-            @if (_total > _pageSize)
-            {
-                var totalPages = (int)Math.Ceiling((double)_total / _pageSize);
-                <div class="d-flex justify-content-center py-3">
-                    <nav>
-                        <ul class="pagination pagination-sm mb-0">
-                            <li class="page-item @(_page <= 1 ? "disabled" : "")">
-                                <button class="page-link" @onclick="() => ChangePage(_page - 1)">&#x2039;</button>
-                            </li>
-                            @for (var pg = 1; pg <= totalPages; pg++)
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Filtered)
                             {
-                                var p = pg;
-                                <li class="page-item @(p == _page ? "active" : "")">
-                                    <button class="page-link" @onclick="() => ChangePage(p)">@p</button>
-                                </li>
+                                var paidBadgeClass = item.Status?.ToLower() switch
+                                {
+                                    "paid"    => "badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal",
+                                    "pending" => "badge bg-warning bg-opacity-10 text-warning p-2 fs-12 fw-normal",
+                                    _         => "badge bg-secondary bg-opacity-10 text-secondary p-2 fs-12 fw-normal"
+                                };
+                                <tr>
+                                    <td class="text-body">@item.EarnedDate.ToString("MM/dd/yyyy")</td>
+                                    <td class="text-body">@item.Amount.ToString("C")</td>
+                                    <td class="text-body">-</td>
+                                    <td><span class="@paidBadgeClass">@item.Status</span></td>
+                                </tr>
                             }
-                            <li class="page-item @(_page >= totalPages ? "disabled" : "")">
-                                <button class="page-link" @onclick="() => ChangePage(_page + 1)">&#x203A;</button>
-                            </li>
-                        </ul>
-                    </nav>
+                            @if (!Filtered.Any())
+                            {
+                                <tr><td colspan="4" class="text-center text-muted py-4">No data available.</td></tr>
+                            }
+                        </tbody>
+                    </table>
                 </div>
-            }
+                <div class="p-4 pt-lg-4">
+                    <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
+                        <span class="fs-12 fw-medium">Showing @Filtered.Count() of @_total Results</span>
+                        @if (_total > _pageSize)
+                        {
+                            var totalPages = (int)Math.Ceiling((double)_total / _pageSize);
+                            <nav aria-label="Boost Bonus pagination">
+                                <ul class="pagination mb-0 justify-content-center">
+                                    <li class="page-item @(_page <= 1 ? "disabled" : "")">
+                                        <button type="button" class="page-link icon" @onclick="() => LoadPageAsync(_page - 1)" aria-label="Previous">
+                                            <i class="material-symbols-outlined">keyboard_arrow_left</i>
+                                        </button>
+                                    </li>
+                                    @for (var pg = 1; pg <= totalPages; pg++)
+                                    {
+                                        var p = pg;
+                                        <li class="page-item @(p == _page ? "active" : "")">
+                                            <button type="button" class="page-link" @onclick="() => LoadPageAsync(p)">@p</button>
+                                        </li>
+                                    }
+                                    <li class="page-item @(_page >= totalPages ? "disabled" : "")">
+                                        <button type="button" class="page-link icon" @onclick="() => LoadPageAsync(_page + 1)" aria-label="Next">
+                                            <i class="material-symbols-outlined">keyboard_arrow_right</i>
+                                        </button>
+                                    </li>
+                                </ul>
+                            </nav>
+                        }
+                    </div>
+                </div>
+            </div>
         }
     </div>
 </div>
 
 @code {
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+    [Parameter] public string ApiBaseUrl    { get; set; } = "api/v1/bizcenter/commissions";
+    [Parameter] public bool   ShowBreadcrumb { get; set; } = true;
 
-    private bool _isLoading = true;
+    private bool _isLoading          = true;
+    private bool _weekLoading        = true;
+    private bool _memberLoading      = true;
+    private bool _enrollmentLoading  = false;
     private int  _page = 1, _pageSize = 20, _total;
-    private List<BoostBonusDto> _items = new();
+
+    private string    _search = string.Empty;
+    private DateTime? _from;
+    private DateTime? _to;
+
+    // Enrollment tab state
+    private string _enrollmentTab  = "gold";
+    private string _selectedWeek   = "current";
+    private List<WeekOption>      _availableWeeks       = new();
+    private List<EnrollmentItem>  _goldEnrollments      = new();
+    private List<EnrollmentItem>  _platinumEnrollments  = new();
+
+    private WeekStatsData?    _weekStats;
+    private MemberSummData?   _memberSummary;
+    private List<EarningItem> _items = new();
+
+    private List<EarningItem> Filtered =>
+        _items.Where(x => string.IsNullOrWhiteSpace(_search)
+                       || x.CommissionTypeName.Contains(_search, StringComparison.OrdinalIgnoreCase))
+              .ToList();
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
@@ -85,36 +366,149 @@
     protected override async Task OnParametersSetAsync()
     {
         if (string.IsNullOrEmpty(MemberProfileId)) return;
+        await Task.WhenAll(LoadWeekStatsAsync(), LoadMemberSummaryAsync(), LoadPageAsync(1), LoadEnrollmentsAsync());
+    }
+
+    private void OnSearchInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _search = e.Value?.ToString() ?? string.Empty;
+        _page   = 1;
+    }
+
+    private async Task OnFromChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _from = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : (DateTime?)null;
         await LoadPageAsync(1);
     }
 
-    private async Task ChangePage(int page) => await LoadPageAsync(page);
+    private async Task OnToChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _to = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : (DateTime?)null;
+        await LoadPageAsync(1);
+    }
+
+    private async Task LoadWeekStatsAsync()
+    {
+        _weekLoading = true;
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<WeekStatsData>>(
+                $"{ApiBaseUrl}/boost-bonus/week-stats");
+            if (resp?.Success == true) _weekStats = resp.Data;
+        }
+        catch { /* silently degrade */ }
+        finally { _weekLoading = false; }
+    }
+
+    private async Task LoadMemberSummaryAsync()
+    {
+        _memberLoading = true;
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<MemberSummData>>(
+                $"{ApiBaseUrl}/boost-bonus/summary");
+            if (resp?.Success == true) _memberSummary = resp.Data;
+        }
+        catch { /* silently degrade */ }
+        finally { _memberLoading = false; }
+    }
 
     private async Task LoadPageAsync(int page)
     {
         _page = page; _isLoading = true; StateHasChanged();
         try
         {
-            var response = await Http.GetFromJsonAsync<ApiResponse<PagedData<BoostBonusDto>>>(
-                $"api/v1/bizcenter/commissions/boost-bonus?page={page}&pageSize={_pageSize}");
-            if (response?.Success == true && response.Data is not null)
+            var url = $"{ApiBaseUrl}/boost-bonus?page={page}&pageSize={_pageSize}";
+            if (_from.HasValue) url += $"&from={_from.Value:yyyy-MM-dd}";
+            if (_to.HasValue)   url += $"&to={_to.Value:yyyy-MM-dd}";
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<PagedData<EarningItem>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
             {
-                _items = response.Data.Items;
-                _total = response.Data.TotalCount;
+                _items = resp.Data.Items;
+                _total = resp.Data.TotalCount;
             }
         }
         catch { /* silently degrade */ }
         finally { _isLoading = false; }
     }
 
-    private class ApiResponse<T> { public bool Success { get; set; } public T? Data { get; set; } }
-    private class PagedData<T>   { public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
+    private async Task LoadEnrollmentsAsync()
+    {
+        _enrollmentLoading = true;
+        StateHasChanged();
+        try
+        {
+            var url  = $"{ApiBaseUrl}/boost-bonus/enrollments?week={_selectedWeek}";
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<EnrollmentResponse>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _availableWeeks      = resp.Data.AvailableWeeks ?? new();
+                _goldEnrollments     = resp.Data.GoldEnrollments ?? new();
+                _platinumEnrollments = resp.Data.PlatinumEnrollments ?? new();
+            }
+        }
+        catch { /* silently degrade */ }
+        finally { _enrollmentLoading = false; }
+    }
 
-    public record BoostBonusDto(
-        string    Period,
-        decimal   TeamVolume,
-        decimal   BoostPct,
-        decimal   Amount,
-        DateTime? PaymentDate,
-        string    Status);
+    private async Task OnWeekChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _selectedWeek = e.Value?.ToString() ?? "current";
+        await LoadEnrollmentsAsync();
+    }
+
+    private class ApiWrapper<T> { public bool Success { get; set; } public T? Data { get; set; } }
+    private class PagedData<T>  { public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
+
+    private class WeekStatsData
+    {
+        public string WeekLabel      { get; set; } = string.Empty;
+        public int    GoldCount      { get; set; }
+        public int    GoldTarget     { get; set; }
+        public int    PlatinumCount  { get; set; }
+        public int    PlatinumTarget { get; set; }
+    }
+
+    private class MemberSummData
+    {
+        public int TotalMembers      { get; set; }
+        public int ActiveRebilling   { get; set; }
+        public int InactiveRebilling { get; set; }
+    }
+
+    private class EarningItem
+    {
+        public string   CommissionTypeName { get; set; } = string.Empty;
+        public decimal  Amount             { get; set; }
+        public string   Status             { get; set; } = string.Empty;
+        public DateTime EarnedDate         { get; set; }
+        public DateTime PaymentDate        { get; set; }
+    }
+
+    private class EnrollmentResponse
+    {
+        public List<WeekOption>?     AvailableWeeks      { get; set; }
+        public List<EnrollmentItem>? GoldEnrollments     { get; set; }
+        public List<EnrollmentItem>? PlatinumEnrollments { get; set; }
+    }
+
+    private class WeekOption
+    {
+        public string Value { get; set; } = string.Empty;
+        public string Label { get; set; } = string.Empty;
+    }
+
+    private class EnrollmentItem
+    {
+        public string   MemberId           { get; set; } = string.Empty;
+        public string   MemberName         { get; set; } = string.Empty;
+        public string   MembershipType     { get; set; } = string.Empty;
+        public string   Email              { get; set; } = string.Empty;
+        public string   LegName            { get; set; } = string.Empty;
+        public DateTime EnrollmentDate     { get; set; }
+        public DateTime? NextRebillingDate { get; set; }
+        public bool     IsRebillingActive  { get; set; }
+        public bool     IsRebillingPending { get; set; }
+        public int      Points             { get; set; }
+    }
 }

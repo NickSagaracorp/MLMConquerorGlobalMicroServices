@@ -1,79 +1,294 @@
 @inject HttpClient Http
+@using System.Net.Http.Json
+@implements IDisposable
 
-<BreadcrumbNav Items="@_breadcrumb" />
+@if (ShowBreadcrumb)
+{
+    <BreadcrumbNav Items="@_breadcrumb" />
+}
 
-<div class="card">
-    <div class="card-header py-3">
-        <h6 class="card-title mb-0 fw-semibold">Fast Start Bonus History</h6>
-    </div>
-    <div class="card-body p-0">
-        <LoadingSpinner IsLoading="@_isLoading" />
-        @if (!_isLoading)
+<!-- FSB Windows Section -->
+<div class="row justify-content-center mt-4 mb-4" id="faststart-section">
+    <div class="col-lg-12">
+        <ul class="nav nav-tabs bg-transparent border-bottom gap-2 gap-sm-5 p-4" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_fsbTab == "normal" ? "active" : "")"
+                        type="button"
+                        @onclick='() => _fsbTab = "normal"'>Normal</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_fsbTab == "promo" ? "active" : "")"
+                        type="button"
+                        @onclick='() => _fsbTab = "promo"'>Promo 2025</button>
+            </li>
+        </ul>
+
+        <LoadingSpinner IsLoading="@_summaryLoading" />
+        @if (!_summaryLoading)
         {
-            <div class="table-responsive">
-                <table class="table table-hover table-sm mb-0">
-                    <thead>
-                        <tr>
-                            <th>Window</th>
-                            <th>Source Member</th>
-                            <th>Amount</th>
-                            <th>Earned Date</th>
-                            <th>Payment Date</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (!_items.Any())
-                        {
-                            <tr><td colspan="6" class="text-center text-muted py-4">No data available.</td></tr>
-                        }
-                        @foreach (var f in _items)
-                        {
-                            <tr>
-                                <td>Window @f.WindowNumber</td>
-                                <td>@f.SourceMemberId</td>
-                                <td><span class="fw-semibold">@f.Amount.ToString("C")</span></td>
-                                <td>@f.EarnedDate.ToString("MMM dd, yyyy")</td>
-                                <td>@(f.PaymentDate?.ToString("MMM dd, yyyy") ?? "—")</td>
-                                <td><StatusBadge Status="@f.Status" /></td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-            @if (_total > _pageSize)
-            {
-                var totalPages = (int)Math.Ceiling((double)_total / _pageSize);
-                <div class="d-flex justify-content-center py-3">
-                    <nav>
-                        <ul class="pagination pagination-sm mb-0">
-                            <li class="page-item @(_page <= 1 ? "disabled" : "")">
-                                <button class="page-link" @onclick="() => ChangePage(_page - 1)">&#x2039;</button>
-                            </li>
-                            @for (var pg = 1; pg <= totalPages; pg++)
+            <div class="fsb-row">
+                @foreach (var win in (_fsbTab == "promo" ? _promoWindows : _normalWindows))
+                {
+                    var w = win;
+                    var fsbCardClass = w.State switch
+                    {
+                        FsbState.Complete => "fsb-card fsb-complete",
+                        FsbState.Active   => "fsb-card fsb-active",
+                        _                 => "fsb-card fsb-locked position-relative"
+                    };
+                    var footerClass = w.State switch
+                    {
+                        FsbState.Complete => "fsb-footerline completed",
+                        FsbState.Active   => "fsb-footerline available",
+                        _                 => "fsb-footerline locked"
+                    };
+                    <div class="fsb-card-wrap cursor" @onclick="() => OpenFsbModal(w)">
+                        <div class="@fsbCardClass">
+                            <div class="fsb-topline">
+                                <div class="fsb-title">@w.Title</div>
+                            </div>
+                            <div class="fsb-bottom">
+                                <div class="fsb-icons-area d-flex align-items-center" style="@(w.State == FsbState.Locked ? "opacity:.7;filter:grayscale(.4);" : "")">
+                                    @{
+                                        var slot1Class = w.State == FsbState.Complete ? "fsb-person-big active-green"
+                                                       : w.State == FsbState.Active   ? "fsb-person-big active-blue"
+                                                       : w.State == FsbState.Locked   ? "fsb-person-big locked"
+                                                       :                                "fsb-person-big inactive";
+                                        var slot2Class = w.State == FsbState.Complete ? "fsb-person-big active-green"
+                                                       : "fsb-person-big inactive";
+                                    }
+                                    <div class="@slot1Class"><i class="ri-user-fill" aria-hidden="true"></i></div>
+                                    <div class="@slot2Class"><i class="ri-user-fill" aria-hidden="true"></i></div>
+                                </div>
+                                <div class="fsb-timer">@GetTimerDisplay(w)</div>
+                            </div>
+                            @if (w.State == FsbState.Locked)
                             {
-                                var p = pg;
-                                <li class="page-item @(p == _page ? "active" : "")">
-                                    <button class="page-link" @onclick="() => ChangePage(p)">@p</button>
-                                </li>
+                                <div class="fsb-black-layer"><i class="ri-lock-line" aria-hidden="true"></i>Locked &mdash; Coming Soon</div>
                             }
-                            <li class="page-item @(_page >= totalPages ? "disabled" : "")">
-                                <button class="page-link" @onclick="() => ChangePage(_page + 1)">&#x203A;</button>
-                            </li>
-                        </ul>
-                    </nav>
-                </div>
-            }
+                        </div>
+                        <div class="@footerClass">
+                            <span>@(w.StartDate.HasValue ? w.StartDate.Value.ToString("MM/dd/yyyy HH:mm:ss") : "--")</span>
+                            <span>@(w.EndDate.HasValue ? w.EndDate.Value.ToString("MM/dd/yyyy HH:mm:ss") : "--")</span>
+                        </div>
+                    </div>
+                }
+            </div>
         }
     </div>
 </div>
 
+<!-- Earnings History Table -->
+<div class="card bg-white border-0 rounded-3 mb-4">
+    <div class="card-body p-0">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
+            <h3 class="mb-0">History</h3>
+        </div>
+
+        <ul class="nav nav-tabs bg-transparent border-bottom gap-2 gap-sm-5 p-4" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_histTab == "normal" ? "active" : "")"
+                        type="button"
+                        @onclick='() => { _histTab = "normal"; }'>Normal</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_histTab == "promo" ? "active" : "")"
+                        type="button"
+                        @onclick='() => { _histTab = "promo"; }'>Promo 2025</button>
+            </li>
+        </ul>
+
+        <LoadingSpinner IsLoading="@_isLoading" />
+        @if (!_isLoading)
+        {
+            <div class="default-table-area style-two default-table-width">
+                <div class="table-responsive">
+                    <table class="table align-middle border-0">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Description</th>
+                                <th>Earned Date</th>
+                                <th>Payment Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Filtered)
+                            {
+                                var statusBadgeClass = item.Status?.ToLower() switch
+                                {
+                                    "paid"    => "badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal",
+                                    "pending" => "badge bg-warning bg-opacity-10 text-warning p-2 fs-12 fw-normal",
+                                    _         => "badge bg-secondary bg-opacity-10 text-secondary p-2 fs-12 fw-normal"
+                                };
+                                <tr>
+                                    <td class="text-body">@item.CommissionTypeName</td>
+                                    <td class="text-body">@(item.Description ?? "-")</td>
+                                    <td class="text-body">@item.EarnedDate.ToString("MM/dd/yyyy")</td>
+                                    <td class="text-body">@item.PaymentDate.ToString("MM/dd/yyyy")</td>
+                                    <td><span class="@statusBadgeClass">@item.Status</span></td>
+                                </tr>
+                            }
+                            @if (!Filtered.Any())
+                            {
+                                <tr><td colspan="5" class="text-center text-muted py-4">No data available.</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="p-4 pt-lg-4">
+                    <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
+                        <span class="fs-12 fw-medium">Showing @Filtered.Count() of @_total Results</span>
+                        @if (_total > _pageSize)
+                        {
+                            var totalPages = (int)Math.Ceiling((double)_total / _pageSize);
+                            <nav aria-label="FSB History pagination">
+                                <ul class="pagination mb-0 justify-content-center">
+                                    <li class="page-item @(_page <= 1 ? "disabled" : "")">
+                                        <button type="button" class="page-link icon" @onclick="() => LoadPageAsync(_page - 1)" aria-label="Previous">
+                                            <i class="material-symbols-outlined">keyboard_arrow_left</i>
+                                        </button>
+                                    </li>
+                                    @for (var pg = 1; pg <= totalPages; pg++)
+                                    {
+                                        var p = pg;
+                                        <li class="page-item @(p == _page ? "active" : "")">
+                                            <button type="button" class="page-link" @onclick="() => LoadPageAsync(p)">@p</button>
+                                        </li>
+                                    }
+                                    <li class="page-item @(_page >= totalPages ? "disabled" : "")">
+                                        <button type="button" class="page-link icon" @onclick="() => LoadPageAsync(_page + 1)" aria-label="Next">
+                                            <i class="material-symbols-outlined">keyboard_arrow_right</i>
+                                        </button>
+                                    </li>
+                                </ul>
+                            </nav>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- FSB Member Modal -->
+@if (_modalOpen)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width:90%">
+            <div class="modal-content p-4 p-md-5">
+                <div class="modal-header p-0 border-0">
+                    <h3 class="mb-0">@_modalTitle</h3>
+                    <button type="button" class="btn-close" @onclick="() => _modalOpen = false"></button>
+                </div>
+                <div class="modal-body p-0 pt-4">
+                    <div class="card bg-white border-0 rounded-3 mb-4">
+                        <div class="card-body p-0">
+                            <LoadingSpinner IsLoading="@_modalLoading" />
+                            @if (!_modalLoading)
+                            {
+                                <div class="default-table-area style-two default-table-width">
+                                    <div class="table-responsive">
+                                        <table class="table align-middle">
+                                            <thead>
+                                                <tr>
+                                                    <th scope="col">Name</th>
+                                                    <th scope="col">Enroll Date</th>
+                                                    <th scope="col">Service</th>
+                                                    <th scope="col">Renewal Date</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @if (!_modalMembers.Any())
+                                                {
+                                                    <tr><td colspan="4" class="text-center text-muted py-4">No members enrolled in this window yet.</td></tr>
+                                                }
+                                                @foreach (var m in _modalMembers)
+                                                {
+                                                    <tr>
+                                                        <td>
+                                                            <div class="d-flex align-items-center">
+                                                                <i class="material-symbols-outlined me-2 text-muted">account_circle</i>
+                                                                <span>@m.FullName</span>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-body">@m.EnrollDate.ToString("MM/dd/yyyy HH:mm:ss")</td>
+                                                        <td class="text-body">@m.ServiceName</td>
+                                                        <td>
+                                                            <span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">
+                                                                @m.RenewalDate.ToString("MM/dd/yyyy HH:mm:ss")
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-0">
+                    <button type="button" class="btn btn-info text-white px-3" @onclick="() => _modalOpen = false">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+    [Parameter] public string ApiBaseUrl    { get; set; } = "api/v1/bizcenter/commissions";
+    [Parameter] public bool   ShowBreadcrumb { get; set; } = true;
 
-    private bool _isLoading = true;
-    private int  _page = 1, _pageSize = 20, _total;
-    private List<FsbEarningDto> _items = new();
+    private bool    _isLoading      = true;
+    private bool    _summaryLoading = true;
+    private int     _page = 1, _pageSize = 20, _total;
+    private int     _count;
+    private decimal _totalAmount;
+    private string    _search  = string.Empty;
+    private DateTime? _from;
+    private DateTime? _to;
+    private string _fsbTab  = "normal";
+    private string _histTab = "normal";
+    private List<EarningItem> _items = new();
+
+    // Countdown timer (fires every second for active windows)
+    private System.Threading.Timer? _countdownTimer;
+
+    // FSB window cards
+    private List<FsbWindowCard> _normalWindows = new()
+    {
+        new FsbWindowCard { Title = "FAST START BONUS 1", State = FsbState.Locked },
+        new FsbWindowCard { Title = "FAST START BONUS 2", State = FsbState.Locked },
+        new FsbWindowCard { Title = "FAST START BONUS 3", State = FsbState.Locked },
+    };
+    private List<FsbWindowCard> _promoWindows = new()
+    {
+        new FsbWindowCard { Title = "FAST START BONUS 1", State = FsbState.Locked },
+        new FsbWindowCard { Title = "FAST START BONUS 2", State = FsbState.Locked },
+        new FsbWindowCard { Title = "FAST START BONUS 3", State = FsbState.Locked },
+    };
+
+    // Modal state
+    private bool   _modalOpen    = false;
+    private bool   _modalLoading = false;
+    private string _modalTitle   = string.Empty;
+    private List<FsbMemberItem> _modalMembers = new();
+
+    private bool HasActiveWindows =>
+        _normalWindows.Any(w => w.State == FsbState.Active) ||
+        _promoWindows.Any(w  => w.State == FsbState.Active);
+
+    private IEnumerable<EarningItem> Filtered =>
+        _items.Where(x =>
+            (_histTab == "promo"
+                ? x.CommissionTypeName.Contains("promo", StringComparison.OrdinalIgnoreCase)
+                : !x.CommissionTypeName.Contains("promo", StringComparison.OrdinalIgnoreCase))
+            && (string.IsNullOrWhiteSpace(_search)
+                || x.CommissionTypeName.Contains(_search, StringComparison.OrdinalIgnoreCase)));
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
@@ -82,39 +297,201 @@
         new("Fast Start Bonus")
     };
 
+    // Returns display string for the fsb-timer element
+    private string GetTimerDisplay(FsbWindowCard win)
+    {
+        if (win.State == FsbState.Complete)
+            return win.Amount > 0 ? win.Amount.ToString("C") : "COMPLETED!";
+
+        if (win.State == FsbState.Active && win.EndDate.HasValue)
+            return FmtDHMS(win.EndDate.Value - DateTime.UtcNow);
+
+        if (win.State == FsbState.Locked && win.StartDate.HasValue)
+            return FmtDHMS(win.StartDate.Value - DateTime.UtcNow);
+
+        return "--D --H --M --S";
+    }
+
+    private static string FmtDHMS(TimeSpan remaining)
+    {
+        if (remaining.TotalSeconds <= 0) return "COMPLETED!";
+        return $"{(int)remaining.TotalDays}D {remaining.Hours}H {remaining.Minutes}M {remaining.Seconds}S";
+    }
+
     protected override async Task OnParametersSetAsync()
     {
         if (string.IsNullOrEmpty(MemberProfileId)) return;
+        await Task.WhenAll(LoadSummaryAsync(), LoadPageAsync(1));
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && HasActiveWindows)
+            StartCountdownTimer();
+    }
+
+    private void StartCountdownTimer()
+    {
+        _countdownTimer?.Dispose();
+        _countdownTimer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+
+    private void OnSearchInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _search = e.Value?.ToString() ?? string.Empty;
+        _page   = 1;
+    }
+
+    private async Task OnFromChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _from = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : (DateTime?)null;
         await LoadPageAsync(1);
     }
 
-    private async Task ChangePage(int page) => await LoadPageAsync(page);
+    private async Task OnToChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _to = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : (DateTime?)null;
+        await LoadPageAsync(1);
+    }
+
+    private async Task LoadSummaryAsync()
+    {
+        _summaryLoading = true;
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<BonusSummary>>(
+                $"{ApiBaseUrl}/fast-start-bonus/summary");
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _count         = resp.Data.Count;
+                _totalAmount   = resp.Data.TotalAmount;
+                _normalWindows = BuildWindowCards(resp.Data.Windows, isPromo: false);
+                _promoWindows  = BuildWindowCards(resp.Data.Windows, isPromo: true);
+            }
+        }
+        catch { /* silently degrade */ }
+        finally { _summaryLoading = false; }
+    }
+
+    private static List<FsbWindowCard> BuildWindowCards(List<FsbWindowData>? windows, bool isPromo)
+    {
+        var result = new List<FsbWindowCard>();
+        for (int i = 1; i <= 3; i++)
+        {
+            var win = windows?.FirstOrDefault(w => w.WindowNumber == i && w.IsPromo == isPromo);
+            result.Add(win is null
+                ? new FsbWindowCard { Title = $"FAST START BONUS {i}", State = FsbState.Locked }
+                : new FsbWindowCard
+                {
+                    Title        = $"FAST START BONUS {i}",
+                    WindowNumber = i,
+                    IsPromo      = isPromo,
+                    Amount       = win.Amount,
+                    StartDate    = win.StartDate,
+                    EndDate      = win.EndDate,
+                    State        = win.IsCompleted ? FsbState.Complete
+                                 : win.IsActive    ? FsbState.Active
+                                 :                   FsbState.Locked
+                });
+        }
+        return result;
+    }
 
     private async Task LoadPageAsync(int page)
     {
         _page = page; _isLoading = true; StateHasChanged();
         try
         {
-            var response = await Http.GetFromJsonAsync<ApiResponse<PagedData<FsbEarningDto>>>(
-                $"api/v1/bizcenter/commissions/fast-start-bonus?page={page}&pageSize={_pageSize}");
-            if (response?.Success == true && response.Data is not null)
+            var url = $"{ApiBaseUrl}/fast-start-bonus?page={page}&pageSize={_pageSize}";
+            if (_from.HasValue) url += $"&from={_from.Value:yyyy-MM-dd}";
+            if (_to.HasValue)   url += $"&to={_to.Value:yyyy-MM-dd}";
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<PagedData<EarningItem>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
             {
-                _items = response.Data.Items;
-                _total = response.Data.TotalCount;
+                _items = resp.Data.Items;
+                _total = resp.Data.TotalCount;
             }
         }
         catch { /* silently degrade */ }
         finally { _isLoading = false; }
     }
 
-    private class ApiResponse<T> { public bool Success { get; set; } public T? Data { get; set; } }
-    private class PagedData<T>   { public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
+    private async Task OpenFsbModal(FsbWindowCard win)
+    {
+        _modalTitle   = $"{win.Title}{(win.IsPromo ? " — Promo 2025" : " — Normal")}";
+        _modalOpen    = true;
+        _modalLoading = true;
+        _modalMembers = new();
+        StateHasChanged();
+        try
+        {
+            var url  = $"{ApiBaseUrl}/fast-start-bonus/{win.WindowNumber}/members?isPromo={win.IsPromo}";
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<FsbMemberItem>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+                _modalMembers = resp.Data;
+        }
+        catch { /* silently degrade */ }
+        finally { _modalLoading = false; }
+    }
 
-    public record FsbEarningDto(
-        int       WindowNumber,
-        string    SourceMemberId,
-        decimal   Amount,
-        DateTime  EarnedDate,
-        DateTime? PaymentDate,
-        string    Status);
+    public void Dispose() => _countdownTimer?.Dispose();
+
+    // ── Enums & view models ──────────────────────────────────────────────────
+
+    private enum FsbState { Locked, Active, Complete }
+
+    private class FsbWindowCard
+    {
+        public string    Title        { get; set; } = string.Empty;
+        public int       WindowNumber { get; set; }
+        public bool      IsPromo      { get; set; }
+        public FsbState  State        { get; set; } = FsbState.Locked;
+        public decimal   Amount       { get; set; }
+        public DateTime? StartDate    { get; set; }
+        public DateTime? EndDate      { get; set; }
+    }
+
+    // ── Private DTOs ─────────────────────────────────────────────────────────
+
+    private class ApiWrapper<T> { public bool Success { get; set; } public T? Data { get; set; } }
+    private class PagedData<T>  { public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
+
+    private class BonusSummary
+    {
+        public int                  Count       { get; set; }
+        public decimal              TotalAmount { get; set; }
+        public List<FsbWindowData>? Windows     { get; set; }
+    }
+
+    private class FsbWindowData
+    {
+        public int       WindowNumber { get; set; }
+        public bool      IsPromo      { get; set; }
+        public decimal   Amount       { get; set; }
+        public bool      IsCompleted  { get; set; }
+        public bool      IsActive     { get; set; }
+        public DateTime? StartDate    { get; set; }
+        public DateTime? EndDate      { get; set; }
+    }
+
+    private class EarningItem
+    {
+        public string   CommissionTypeName { get; set; } = string.Empty;
+        public string?  Description        { get; set; }
+        public decimal  Amount             { get; set; }
+        public string   Status             { get; set; } = string.Empty;
+        public DateTime EarnedDate         { get; set; }
+        public DateTime PaymentDate        { get; set; }
+    }
+
+    private class FsbMemberItem
+    {
+        public string   FullName    { get; set; } = string.Empty;
+        public DateTime EnrollDate  { get; set; }
+        public string   ServiceName { get; set; } = string.Empty;
+        public DateTime RenewalDate { get; set; }
+    }
 }

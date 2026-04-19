@@ -1,0 +1,10 @@
+@page "/team/residuals"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject IViewContextService ViewContext
+
+<PageTitle>Dual Team Residuals</PageTitle>
+
+<DualTeamResiduals MemberProfileId="@ViewContext.ViewingMemberId"
+                   ApiBaseUrl="api/v1/bizcenter"
+                   ShowBreadcrumb="true" />

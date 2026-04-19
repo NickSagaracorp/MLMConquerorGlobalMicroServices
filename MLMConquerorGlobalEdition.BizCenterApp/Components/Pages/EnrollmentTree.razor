@@ -1,5 +1,8 @@
 @page "/team/enrollment"
-@attribute [Authorize(Roles = "Ambassador")]
-@inject IViewContextService ViewContext
+@attribute [Authorize(Roles = "Ambassador,ExternalMember")]
+@inject NavigationManager Nav
 
-<EnrollmentTeamBranches MemberProfileId="@ViewContext.ViewingMemberId" />
+@code {
+    protected override void OnInitialized()
+        => Nav.NavigateTo("/team/enrollment/my-team", replace: true);
+}

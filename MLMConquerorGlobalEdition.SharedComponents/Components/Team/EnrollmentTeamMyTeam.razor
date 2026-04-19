@@ -1,0 +1,418 @@
+@inject HttpClient Http
+@inject IViewContextService ViewContext
+@inject NavigationManager Nav
+
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Calendars
+@using Syncfusion.Blazor.Inputs
+
+@if (ShowBreadcrumb) { <BreadcrumbNav Items="@_breadcrumb" /> }
+
+<!-- Toolbar: search + date range -->
+<div class="card bg-white border-0 rounded-3 mb-4">
+    <div class="card-body p-0">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-3">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <div class="position-relative" style="min-width:240px">
+                    <SfTextBox Placeholder="Search name, ID, email…"
+                               @bind-Value="_search"
+                               CssClass="form-control form-control-sm" />
+                </div>
+                <SfDateRangePicker TValue="DateTime?" Placeholder="Join Date range"
+                                   CssClass="form-control form-control-sm"
+                                   Style="min-width:220px"
+                                   @bind-StartDate="_from"
+                                   @bind-EndDate="_to" />
+                <button class="btn btn-primary btn-sm" @onclick="SearchAsync">
+                    <i class="ri-search-line me-1"></i>Search
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" @onclick="ClearAsync">
+                    <i class="ri-refresh-line"></i>
+                </button>
+            </div>
+            <small class="text-muted">@_totalCount members</small>
+        </div>
+
+        @if (_isLoading)
+        {
+            <LoadingSpinner IsLoading="true" />
+        }
+        else if (_error is not null)
+        {
+            <div class="alert alert-danger m-3">@_error</div>
+        }
+        else
+        {
+            <SfGrid TValue="EnrollmentMyTeamMemberDto" DataSource="@_items"
+                    AllowPaging="true" AllowSorting="true" AllowResizing="true"
+                    AllowFiltering="true" GridLines="GridLine.Horizontal">
+                <GridEvents TValue="EnrollmentMyTeamMemberDto" RowSelected="OnRowSelected" />
+                <GridPageSettings PageSize="20" PageSizes="@(new int[]{20,50,100})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+
+                    <GridColumn HeaderText="Join Date" Width="115" TextAlign="TextAlign.Center">
+                        <Template>
+                            @(((EnrollmentMyTeamMemberDto)context).EnrollDate.ToString("MM/dd/yyyy"))
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="ID" Width="120">
+                        <Template>
+                            <code class="text-primary">@(((EnrollmentMyTeamMemberDto)context).MemberId)</code>
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Name" Width="160">
+                        <Template>
+                            @(((EnrollmentMyTeamMemberDto)context).FullName)
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Email" Width="200">
+                        <Template>
+                            @(((EnrollmentMyTeamMemberDto)context).Email)
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Phone" Width="140">
+                        <Template>
+                            @(((EnrollmentMyTeamMemberDto)context).Phone ?? "—")
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Level" Width="80" TextAlign="TextAlign.Center">
+                        <Template>
+                            <span class="badge bg-secondary">L@(((EnrollmentMyTeamMemberDto)context).Level)</span>
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Country" Width="100">
+                        <Template>
+                            @(((EnrollmentMyTeamMemberDto)context).Country)
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Sponsor" Width="150">
+                        <Template>
+                            @{ var m = (EnrollmentMyTeamMemberDto)context; }
+                            @(m.SponsorFullName ?? m.SponsorMemberId ?? "—")
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Dual Upline" Width="150">
+                        <Template>
+                            @{ var m2 = (EnrollmentMyTeamMemberDto)context; }
+                            @(m2.DualUplineFullName ?? m2.DualUplineMemberId ?? "—")
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Biz Status" Width="110" TextAlign="TextAlign.Center">
+                        <Template>
+                            <StatusBadge Status="@(((EnrollmentMyTeamMemberDto)context).AccountStatus)" />
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Membership Status" Width="140" TextAlign="TextAlign.Center">
+                        <Template>
+                            <StatusBadge Status="@(((EnrollmentMyTeamMemberDto)context).MembershipStatus)" />
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Qualified" Width="110" TextAlign="TextAlign.Center">
+                        <Template>
+                            @{ var isQ = ((EnrollmentMyTeamMemberDto)context).IsQualified; }
+                            <span class="badge @(isQ ? "bg-success bg-opacity-10 text-success" : "bg-warning bg-opacity-10 text-warning") p-2 fs-12 fw-normal">
+                                @(isQ ? "Qualified" : "Unqualified")
+                            </span>
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Membership" Width="200">
+                        <Template>
+                            @(((EnrollmentMyTeamMemberDto)context).MembershipLevelName ?? "—")
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Rank" Width="130">
+                        <Template>
+                            @(((EnrollmentMyTeamMemberDto)context).CurrentRankName ?? "—")
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Rank Date" Width="110" TextAlign="TextAlign.Center">
+                        <Template>
+                            @{ var rd = ((EnrollmentMyTeamMemberDto)context).RankDate; }
+                            @(rd.HasValue ? rd.Value.ToString("MM/dd/yyyy") : "—")
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Lifetime Rank" Width="130">
+                        <Template>
+                            @(((EnrollmentMyTeamMemberDto)context).LifetimeRankName ?? "—")
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Next Rank %" Width="100" TextAlign="TextAlign.Center">
+                        <Template>
+                            @{ var pct = ((EnrollmentMyTeamMemberDto)context).NextRankPercent; }
+                            <div style="position:relative;width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:conic-gradient(#605DFF @(pct)%, #ECEEF2 @(pct)%);margin:auto">
+                                <div style="position:absolute;width:80%;height:80%;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+                                    <span style="font-size:11px;font-weight:600">@(pct)%</span>
+                                </div>
+                            </div>
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Qual. Points" Width="115" TextAlign="TextAlign.Right">
+                        <Template>
+                            @(((EnrollmentMyTeamMemberDto)context).QualificationPoints.ToString("N0"))
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Enroll. Points" Width="120" TextAlign="TextAlign.Right">
+                        <Template>
+                            @(((EnrollmentMyTeamMemberDto)context).EnrollmentTeamPoints.ToString("N0"))
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Left Points" Width="110" TextAlign="TextAlign.Right">
+                        <Template>
+                            @(((EnrollmentMyTeamMemberDto)context).LeftTeamPoints.ToString("N0"))
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn HeaderText="Right Points" Width="110" TextAlign="TextAlign.Right">
+                        <Template>
+                            @(((EnrollmentMyTeamMemberDto)context).RightTeamPoints.ToString("N0"))
+                        </Template>
+                    </GridColumn>
+
+                    @if (ViewContext.IsAdminContext)
+                    {
+                        <GridColumn HeaderText="" Width="80" TextAlign="TextAlign.Center">
+                            <Template>
+                                <button class="btn btn-xs btn-outline-secondary"
+                                        @onclick="@(() => Nav.NavigateTo($"/admin/members/{((EnrollmentMyTeamMemberDto)context).MemberId}"))"
+                                        title="View in Admin">
+                                    <i class="ri-eye-line"></i>
+                                </button>
+                            </Template>
+                        </GridColumn>
+                    }
+
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+@if (_selected is not null)
+{
+    <div class="offcanvas-backdrop fade show" @onclick="() => _selected = null"></div>
+    <div class="offcanvas offcanvas-end show" style="visibility:visible" tabindex="-1" aria-labelledby="mm-offcanvas-title">
+        <div class="offcanvas-header border-bottom p-4">
+            <h5 class="offcanvas-title fs-18 mb-0" id="mm-offcanvas-title">@_selected.FullName</h5>
+            <button type="button" class="btn-close" @onclick="() => _selected = null" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body p-4">
+            <div class="form-group mb-4">
+                <strong>ID:</strong> <code class="text-primary">@_selected.MemberId</code>
+            </div>
+            <div class="form-group mb-4">
+                <strong>Join Date:</strong> @_selected.EnrollDate.ToString("MM/dd/yyyy")
+            </div>
+            <div class="form-group mb-4">
+                <strong>Email:</strong> @_selected.Email
+            </div>
+            <div class="form-group mb-4">
+                <strong>Phone:</strong> @(_selected.Phone ?? "—")
+            </div>
+            <div class="form-group mb-4">
+                <strong>Level:</strong> <span class="badge bg-secondary">L@(_selected.Level)</span>
+            </div>
+            <div class="form-group mb-4">
+                <strong>Country:</strong> @_selected.Country
+            </div>
+            <div class="form-group mb-4">
+                <strong>Sponsor:</strong> @(_selected.SponsorFullName ?? _selected.SponsorMemberId ?? "—")
+            </div>
+            <div class="form-group mb-4">
+                <strong>Dual Team Upline:</strong> @(_selected.DualUplineFullName ?? _selected.DualUplineMemberId ?? "—")
+            </div>
+
+            <div class="form-group mb-4">
+                <strong>Biz Center Status:</strong>
+                <StatusBadge Status="@_selected.AccountStatus" />
+            </div>
+            <div class="form-group mb-4">
+                <strong>Membership Status:</strong>
+                <StatusBadge Status="@_selected.MembershipStatus" />
+            </div>
+            <div class="form-group mb-4">
+                <strong>Qualified:</strong>
+                <span class="badge @(_selected.IsQualified ? "bg-success bg-opacity-10 text-success" : "bg-warning bg-opacity-10 text-warning") p-2 fs-12 fw-normal">
+                    @(_selected.IsQualified ? "Qualified" : "Unqualified")
+                </span>
+            </div>
+
+            <div class="form-group mb-4">
+                <strong>Membership:</strong> @(_selected.MembershipLevelName ?? "—")
+            </div>
+            <div class="form-group mb-4">
+                <strong>Rank:</strong> @(_selected.CurrentRankName ?? "—")
+            </div>
+            <div class="form-group mb-4">
+                <strong>Rank Date:</strong> @(_selected.RankDate.HasValue ? _selected.RankDate.Value.ToString("MM/dd/yyyy") : "—")
+            </div>
+            <div class="form-group mb-4">
+                <strong>Lifetime Rank:</strong> @(_selected.LifetimeRankName ?? "—")
+            </div>
+            <div class="form-group mb-4">
+                <strong>Next Rank %:</strong> @(_selected.NextRankPercent)%
+            </div>
+
+            <div class="form-group mb-4">
+                <strong>Qualification Points:</strong> @(_selected.QualificationPoints.ToString("N0"))
+            </div>
+            <div class="form-group mb-4">
+                <strong>Enrollment Team Points:</strong> @(_selected.EnrollmentTeamPoints.ToString("N0"))
+            </div>
+            <div class="form-group mb-4">
+                <strong>Left Team Points:</strong> @(_selected.LeftTeamPoints.ToString("N0"))
+            </div>
+            <div class="form-group mb-4">
+                <strong>Right Team Points:</strong> @(_selected.RightTeamPoints.ToString("N0"))
+            </div>
+
+            @if (_selected.MembershipStatus == "Cancelled")
+            {
+                <div class="form-group mb-4">
+                    <strong>Cancellation Date:</strong>
+                    @(_selected.CancellationDate.HasValue ? _selected.CancellationDate.Value.ToString("MM/dd/yyyy") : "—")
+                </div>
+            }
+            else if (_selected.MembershipStatus == "Suspended")
+            {
+                <div class="form-group mb-4">
+                    <strong>Suspension Date:</strong>
+                    @(_selected.SuspensionDate.HasValue ? _selected.SuspensionDate.Value.ToString("MM/dd/yyyy") : "—")
+                </div>
+            }
+
+            @if (!_selected.IsQualified)
+            {
+                <div class="form-group mb-4">
+                    <strong>Last Payment Date:</strong>
+                    @(_selected.LastPaymentDate.HasValue ? _selected.LastPaymentDate.Value.ToString("MM/dd/yyyy") : "—")
+                </div>
+            }
+
+            <div class="form-group d-flex gap-3">
+                <button type="button" class="btn btn-primary text-white fw-semibold py-2 px-2 px-sm-3"
+                        @onclick="() => _selected = null">
+                    <span class="py-sm-1 d-block">
+                        <i class="ri-close-line text-white"></i>
+                        <span>Close</span>
+                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+    [Parameter] public string ApiBaseUrl     { get; set; } = "api/v1/bizcenter/team/enrollment";
+    [Parameter] public bool   ShowBreadcrumb { get; set; } = true;
+
+    private bool   _isLoading  = true;
+    private string? _error;
+    private int    _totalCount;
+    private EnrollmentMyTeamMemberDto? _selected;
+    private int    _page       = 1;
+    private const int PageSize = 20;
+    private string? _search;
+    private DateTime? _from;
+    private DateTime? _to;
+    private List<EnrollmentMyTeamMemberDto> _items = new();
+
+    private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
+    {
+        new("Dashboard", "/dashboard"),
+        new("Enrollment Team"),
+        new("My Team")
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(MemberProfileId))
+            await LoadAsync(1);
+    }
+
+    private void OnRowSelected(RowSelectEventArgs<EnrollmentMyTeamMemberDto> args)
+        => _selected = args.Data;
+
+    private async Task SearchAsync() => await LoadAsync(1);
+
+    private async Task ClearAsync()
+    {
+        _search = null; _from = null; _to = null;
+        await LoadAsync(1);
+    }
+
+    private async Task LoadAsync(int page)
+    {
+        _page = page; _isLoading = true; _error = null; StateHasChanged();
+        try
+        {
+            var url = $"{ApiBaseUrl}/my-team?page={page}&pageSize={PageSize}";
+            if (!string.IsNullOrWhiteSpace(_search)) url += $"&search={Uri.EscapeDataString(_search)}";
+            if (_from.HasValue)  url += $"&from={_from.Value:yyyy-MM-dd}";
+            if (_to.HasValue)    url += $"&to={_to.Value:yyyy-MM-dd}";
+
+            var resp = await Http.GetFromJsonAsync<ApiResp<PagedData<EnrollmentMyTeamMemberDto>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _items      = resp.Data.Items;
+                _totalCount = resp.Data.TotalCount;
+            }
+            else { _error = resp?.Errors?.FirstOrDefault() ?? "Failed to load team."; }
+        }
+        catch (Exception ex) { _error = $"API error: {ex.Message}"; }
+        finally { _isLoading = false; }
+    }
+
+    private class ApiResp<T>  { public bool Success { get; set; } public T? Data { get; set; } public IEnumerable<string>? Errors { get; set; } }
+    private class PagedData<T>{ public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
+
+    public class EnrollmentMyTeamMemberDto
+    {
+        public string    MemberId            { get; set; } = string.Empty;
+        public string    FullName            { get; set; } = string.Empty;
+        public string    Email               { get; set; } = string.Empty;
+        public string?   Phone               { get; set; }
+        public string    Country             { get; set; } = string.Empty;
+        public int       Level               { get; set; }
+        public DateTime  EnrollDate          { get; set; }
+        public string?   SponsorMemberId     { get; set; }
+        public string?   SponsorFullName     { get; set; }
+        public string?   DualUplineMemberId  { get; set; }
+        public string?   DualUplineFullName  { get; set; }
+        public string    AccountStatus       { get; set; } = string.Empty;
+        public string    MembershipStatus    { get; set; } = string.Empty;
+        public bool      IsQualified         { get; set; }
+        public string?   MembershipLevelName { get; set; }
+        public string?   CurrentRankName     { get; set; }
+        public DateTime? RankDate            { get; set; }
+        public string?   LifetimeRankName    { get; set; }
+        public int       NextRankPercent     { get; set; }
+        public int       QualificationPoints    { get; set; }
+        public int       EnrollmentTeamPoints   { get; set; }
+        public decimal   LeftTeamPoints         { get; set; }
+        public decimal   RightTeamPoints        { get; set; }
+        public DateTime? SuspensionDate         { get; set; }
+        public DateTime? CancellationDate       { get; set; }
+        public DateTime? LastPaymentDate        { get; set; }
+    }
+}

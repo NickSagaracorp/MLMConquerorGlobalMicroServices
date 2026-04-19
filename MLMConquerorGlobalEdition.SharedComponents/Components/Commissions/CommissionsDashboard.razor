@@ -1,44 +1,839 @@
 @inject IViewContextService ViewContext
 @inject HttpClient Http
+@using System.Net.Http.Json
 
-@if (!ViewContext.IsInAnyRole(AppRoles.Ambassador) && !ViewContext.IsAdminContext)
+@if (!IsAdminView && !ViewContext.IsInAnyRole(AppRoles.Ambassador) && !ViewContext.IsAdminContext)
 {
     <div class="alert alert-warning">Commissions are only available for Ambassadors.</div>
     return;
 }
 
-<BreadcrumbNav Items="@_breadcrumb" />
+@if (ShowBreadcrumb)
+{
+    <BreadcrumbNav Items="@_breadcrumb" />
+}
 
-<!-- KPI Row -->
-<div class="row g-3 mb-4">
-    <div class="col-12 col-sm-6 col-xl-3">
-        <StatCard Title="Total Earned" Value="@_totalEarned" Icon="ri-money-dollar-circle-line" Color="primary" />
-    </div>
-    <div class="col-12 col-sm-6 col-xl-3">
-        <StatCard Title="Pending Payout" Value="@_pendingPayout" Icon="ri-time-line" Color="warning" />
-    </div>
-    <div class="col-12 col-sm-6 col-xl-3">
-        <StatCard Title="Paid This Month" Value="@_paidThisMonth" Icon="ri-check-double-line" Color="success" />
-    </div>
-    <div class="col-12 col-sm-6 col-xl-3">
-        <StatCard Title="Cancelled" Value="@_cancelled" Icon="ri-close-circle-line" Color="danger" />
+<!-- Summary Cards -->
+<div class="row justify-content-center">
+    <div class="col-xxl-12 col-lg-12">
+        <div class="card bg-white border-0 rounded-3 mb-4">
+            <div class="card-body p-4" style="padding-bottom: 0 !important;">
+                <div class="mb-3 mb-lg-4">
+                    <h3 class="mb-0">Resume</h3>
+                </div>
+                <div class="row">
+                    <div class="col-xxl-4 col-xl-4 col-sm-4">
+                        <div class="card bg-primary bg-opacity-10 border-primary border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                            <div class="card-body p-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <i class="material-symbols-outlined fs-40 text-primary">hourglass_bottom</i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-2">
+                                        <span>Pending</span>
+                                        @if (_summaryLoading) { <h3 class="fs-20 mt-1 mb-0"><span class="placeholder col-6"></span></h3> }
+                                        else { <h3 class="fs-20 mt-1 mb-0">@_summary.PendingTotal.ToString("C")</h3> }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xxl-4 col-xl-4 col-sm-4">
+                        <div class="card bg-danger bg-opacity-10 border-danger border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                            <div class="card-body p-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <i class="material-symbols-outlined fs-40 text-danger">paid</i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-2">
+                                        <span>Paid</span>
+                                        @if (_summaryLoading) { <h3 class="fs-20 mt-1 mb-0"><span class="placeholder col-6"></span></h3> }
+                                        else { <h3 class="fs-20 mt-1 mb-0">@_summary.PaidTotal.ToString("C")</h3> }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xxl-4 col-xl-4 col-sm-4">
+                        <div class="card bg-success bg-opacity-10 border-success border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                            <div class="card-body p-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <i class="material-symbols-outlined fs-40 text-success">history</i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-2">
+                                        <span>History (Current Year)</span>
+                                        @if (_summaryLoading) { <h3 class="fs-20 mt-1 mb-0"><span class="placeholder col-6"></span></h3> }
+                                        else { <h3 class="fs-20 mt-1 mb-0">@_summary.CurrentYearTotal.ToString("C")</h3> }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
-<!-- Earnings Table -->
-<CommissionEarningsTable MemberProfileId="@MemberProfileId" />
+<!-- Pending Table -->
+<div class="card bg-white border-0 rounded-3 mb-4">
+    <div class="card-body p-0">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
+            <div style="width: 100%;">
+                <h3 class="mb-4">Pending</h3>
+            </div>
+            <form class="position-relative table-src-form me-0">
+                <input type="text" class="form-control" placeholder="Search here"
+                       value="@_pendingSearch"
+                       @oninput="OnPendingSearchInput" />
+                <i class="material-symbols-outlined position-absolute top-50 start-0 translate-middle-y">search</i>
+            </form>
+            <div class="d-flex gap-2">
+                <input class="form-control" style="max-width:140px"
+                       type="date"
+                       value="@(_pendingFrom?.ToString("yyyy-MM-dd"))"
+                       @onchange="OnPendingFromChange" />
+                <input class="form-control" style="max-width:140px"
+                       type="date"
+                       value="@(_pendingTo?.ToString("yyyy-MM-dd"))"
+                       @onchange="OnPendingToChange" />
+            </div>
+        </div>
+
+        <LoadingSpinner IsLoading="@_pendingLoading" />
+        @if (!_pendingLoading)
+        {
+            <div class="default-table-area style-two default-table-width">
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th scope="col">Earned Date</th>
+                                <th scope="col">Payment Date</th>
+                                <th scope="col">Amount</th>
+                                <th scope="col">Detail</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var group in PendingGrouped)
+                            {
+                                <tr>
+                                    <td class="text-body">@group.EarnedDate!.Value.ToString("MM/dd/yyyy")</td>
+                                    <td class="text-body">@group.PaymentDate.ToString("MM/dd/yyyy")</td>
+                                    <td>
+                                        <span class="badge @(group.TotalAmount >= 0 ? "bg-success bg-opacity-10 text-success" : "bg-danger bg-opacity-10 text-danger") p-2 fs-12 fw-normal">
+                                            @group.TotalAmount.ToString("C")
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-1">
+                                            <button class="ps-0 border-0 bg-transparent lh-1 position-relative top-2"
+                                                    type="button"
+                                                    @onclick="() => OpenDetailModal(group.PaymentDate, group.EarnedDate)">
+                                                <i class="material-symbols-outlined fs-16 text-primary">content_paste</i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                            @if (!PendingGrouped.Any())
+                            {
+                                <tr><td colspan="4" class="text-center text-muted py-4">No pending commissions.</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="p-4 pt-lg-4">
+                    <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
+                        <span class="fs-12 fw-medium">Showing @PendingGrouped.Count() of @_pendingTotal Results</span>
+                        @if (_pendingTotal > _pageSize)
+                        {
+                            var pendingTotalPages = (int)Math.Ceiling((double)_pendingTotal / _pageSize);
+                            <nav aria-label="Pending pagination">
+                                <ul class="pagination mb-0 justify-content-center">
+                                    <li class="page-item @(_pendingPage <= 1 ? "disabled" : "")">
+                                        <button type="button" class="page-link icon" @onclick="() => LoadPendingAsync(_pendingPage - 1)" aria-label="Previous">
+                                            <i class="material-symbols-outlined">keyboard_arrow_left</i>
+                                        </button>
+                                    </li>
+                                    @for (var pg = 1; pg <= pendingTotalPages; pg++)
+                                    {
+                                        var p = pg;
+                                        <li class="page-item @(p == _pendingPage ? "active" : "")">
+                                            <button type="button" class="page-link" @onclick="() => LoadPendingAsync(p)">@p</button>
+                                        </li>
+                                    }
+                                    <li class="page-item @(_pendingPage >= pendingTotalPages ? "disabled" : "")">
+                                        <button type="button" class="page-link icon" @onclick="() => LoadPendingAsync(_pendingPage + 1)" aria-label="Next">
+                                            <i class="material-symbols-outlined">keyboard_arrow_right</i>
+                                        </button>
+                                    </li>
+                                </ul>
+                            </nav>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Paid Table -->
+<div class="card bg-white border-0 rounded-3 mb-4">
+    <div class="card-body p-0">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
+            <div style="width: 100%;">
+                <h3 class="mb-4">Paid</h3>
+            </div>
+            <form class="position-relative table-src-form me-0">
+                <input type="text" class="form-control" placeholder="Search here"
+                       value="@_paidSearch"
+                       @oninput="OnPaidSearchInput" />
+                <i class="material-symbols-outlined position-absolute top-50 start-0 translate-middle-y">search</i>
+            </form>
+            <div class="d-flex gap-2">
+                <input class="form-control" style="max-width:140px"
+                       type="date"
+                       value="@(_paidFrom?.ToString("yyyy-MM-dd"))"
+                       @onchange="OnPaidFromChange" />
+                <input class="form-control" style="max-width:140px"
+                       type="date"
+                       value="@(_paidTo?.ToString("yyyy-MM-dd"))"
+                       @onchange="OnPaidToChange" />
+            </div>
+        </div>
+
+        <LoadingSpinner IsLoading="@_paidLoading" />
+        @if (!_paidLoading)
+        {
+            <div class="default-table-area style-two default-table-width">
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th scope="col">Payment Date</th>
+                                <th scope="col">Amount</th>
+                                <th scope="col">Detail</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var group in PaidGrouped)
+                            {
+                                <tr>
+                                    <td class="text-body">@group.PaymentDate.ToString("MM/dd/yyyy")</td>
+                                    <td>
+                                        <span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">
+                                            @group.TotalAmount.ToString("C")
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-1">
+                                            <button class="ps-0 border-0 bg-transparent lh-1 position-relative top-2"
+                                                    type="button"
+                                                    @onclick="() => OpenDetailModal(group.PaymentDate, null)">
+                                                <i class="material-symbols-outlined fs-16 text-primary">content_paste</i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                            @if (!PaidGrouped.Any())
+                            {
+                                <tr><td colspan="3" class="text-center text-muted py-4">No paid commissions.</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="p-4 pt-lg-4">
+                    <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
+                        <span class="fs-12 fw-medium">Showing @PaidGrouped.Count() of @_paidTotal Results</span>
+                        @if (_paidTotal > _pageSize)
+                        {
+                            var paidTotalPages = (int)Math.Ceiling((double)_paidTotal / _pageSize);
+                            <nav aria-label="Paid pagination">
+                                <ul class="pagination mb-0 justify-content-center">
+                                    <li class="page-item @(_paidPage <= 1 ? "disabled" : "")">
+                                        <button type="button" class="page-link icon" @onclick="() => LoadPaidAsync(_paidPage - 1)" aria-label="Previous">
+                                            <i class="material-symbols-outlined">keyboard_arrow_left</i>
+                                        </button>
+                                    </li>
+                                    @for (var pg = 1; pg <= paidTotalPages; pg++)
+                                    {
+                                        var p = pg;
+                                        <li class="page-item @(p == _paidPage ? "active" : "")">
+                                            <button type="button" class="page-link" @onclick="() => LoadPaidAsync(p)">@p</button>
+                                        </li>
+                                    }
+                                    <li class="page-item @(_paidPage >= paidTotalPages ? "disabled" : "")">
+                                        <button type="button" class="page-link icon" @onclick="() => LoadPaidAsync(_paidPage + 1)" aria-label="Next">
+                                            <i class="material-symbols-outlined">keyboard_arrow_right</i>
+                                        </button>
+                                    </li>
+                                </ul>
+                            </nav>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- History Section -->
+<div class="card bg-white border-0 rounded-3 mb-4">
+    <div class="card-body p-0">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
+            <h3 class="mb-0">History</h3>
+            <button class="btn btn-outline-primary d-flex align-items-center gap-1 hover-bg"
+                    type="button">
+                <i class="ri-download-2-fill fw-medium fs-18 me-1"></i>
+                <span>Download Yearly Report (@(_historyYears.FirstOrDefault(y => y.Year == _selectedHistoryYear)?.TotalIncome.ToString("C") ?? "$0.00"))</span>
+            </button>
+        </div>
+
+        <LoadingSpinner IsLoading="@_historyLoading" />
+        @if (!_historyLoading && _historyYears.Any())
+        {
+            <ul class="nav nav-tabs bg-transparent border-bottom gap-2 gap-sm-5 p-4" role="tablist">
+                @foreach (var yr in _historyYears)
+                {
+                    var y = yr;
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_selectedHistoryYear == y.Year ? "active" : "")"
+                                type="button"
+                                @onclick="() => _selectedHistoryYear = y.Year">
+                            @y.Year
+                        </button>
+                    </li>
+                }
+            </ul>
+
+            @if (ActiveHistoryYear is not null)
+            {
+                <div class="default-table-area style-two default-table-width">
+                    <div class="table-responsive">
+                        <table class="table align-middle border-0">
+                            <thead>
+                                <tr>
+                                    <th>Month</th>
+                                    <th>Income</th>
+                                    <th>Detail</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var mo in ActiveHistoryYear.Months)
+                                {
+                                    var m = mo;
+                                    <tr>
+                                        <td class="text-body">@m.MonthName</td>
+                                        <td>
+                                            <span class="badge @(m.TotalIncome >= 0 ? "bg-success bg-opacity-10 text-success" : "bg-danger bg-opacity-10 text-danger") p-2 fs-12 fw-normal">
+                                                @m.TotalIncome.ToString("C")
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-1">
+                                                <button class="ps-0 border-0 bg-transparent lh-1 position-relative top-2"
+                                                        type="button"
+                                                        @onclick="() => OpenHistoryModal(ActiveHistoryYear.Year, m.MonthNo, m.MonthName, m.TotalIncome)">
+                                                    <i class="material-symbols-outlined fs-16 text-primary">content_paste</i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        }
+        else if (!_historyLoading)
+        {
+            <p class="text-muted text-center py-3 px-4">No commission history available.</p>
+        }
+    </div>
+</div>
+
+<!-- Commission Detail Modal -->
+@if (_detailModalOpen)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width:75%">
+            <div class="modal-content p-4 p-md-5">
+                <div class="modal-header p-0 border-0">
+                    <h3 class="mb-0">Commissions (@_detailTitle)</h3>
+                    <button type="button" class="btn-close" @onclick="() => _detailModalOpen = false"></button>
+                </div>
+                <div class="modal-body p-0 pt-4">
+                    <div class="card bg-white border-0 rounded-3 mb-4">
+                        <div class="card-body p-0">
+                            <LoadingSpinner IsLoading="@_detailLoading" />
+                            @if (!_detailLoading)
+                            {
+                                <div class="default-table-area style-two default-table-width">
+                                    <div class="table-responsive">
+                                        <table class="table align-middle">
+                                            <thead>
+                                                <tr>
+                                                    <th scope="col">Commission Type</th>
+                                                    <th scope="col">Detail</th>
+                                                    <th scope="col">Amount</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @if (!_detailItems.Any())
+                                                {
+                                                    <tr><td colspan="3" class="text-center text-muted py-4">No breakdown data.</td></tr>
+                                                }
+                                                @foreach (var d in _detailItems)
+                                                {
+                                                    <tr>
+                                                        <td class="text-body">@d.CommissionTypeName</td>
+                                                        <td class="text-body">@d.Detail</td>
+                                                        <td>
+                                                            <span class="badge @(d.Amount >= 0 ? "bg-success bg-opacity-10 text-success" : "bg-danger bg-opacity-10 text-danger") p-2 fs-12 fw-normal">
+                                                                @d.Amount.ToString("C")
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-0">
+                    <button type="button" class="btn btn-success text-white px-3" @onclick="() => _detailModalOpen = false">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- History Detail Modal -->
+@if (_historyModalOpen)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width:90%">
+            <div class="modal-content p-4 p-md-5">
+                <div class="modal-header p-0 border-0">
+                    <h3 class="mb-0">History</h3>
+                    <button type="button" class="btn-close" @onclick="() => _historyModalOpen = false"></button>
+                </div>
+                <div class="modal-body p-0 pt-4">
+                    <div class="card bg-white border-0 rounded-3 mb-4">
+                        <div class="card-body p-0">
+                            @{
+                                var histGroupTotal = _historyDetailGroups
+                                    .Where(g => g.CommissionTypeName == _selectedHistoryType)
+                                    .SelectMany(g => g.Items)
+                                    .Sum(i => i.Amount);
+                                var histGroupBadgeClass = histGroupTotal >= 0
+                                    ? "badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal"
+                                    : "badge bg-danger bg-opacity-10 text-danger p-2 fs-12 fw-normal";
+                            }
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
+                                <h3 class="mb-0">@_selectedHistoryType</h3>
+                                <h3 class="mb-0 @histGroupBadgeClass">@histGroupTotal.ToString("C")</h3>
+                            </div>
+
+                            <ul class="nav nav-tabs bg-transparent border-bottom gap-2 gap-sm-5 p-4" role="tablist">
+                                @foreach (var grp in _historyDetailGroups)
+                                {
+                                    var g = grp;
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_selectedHistoryType == g.CommissionTypeName ? "active" : "")"
+                                                type="button"
+                                                @onclick="() => _selectedHistoryType = g.CommissionTypeName">
+                                            @g.CommissionTypeName
+                                        </button>
+                                    </li>
+                                }
+                            </ul>
+
+                            <LoadingSpinner IsLoading="@_historyDetailLoading" />
+                            @if (!_historyDetailLoading && ActiveHistoryGroup is not null)
+                            {
+                                <div class="default-table-area style-two default-table-width">
+                                    <div class="table-responsive">
+                                        <table class="table align-middle border-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Earned Date</th>
+                                                    <th>Payment Date</th>
+                                                    <th>Detail</th>
+                                                    <th>Amount</th>
+                                                    <th>Frequency</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var i in ActiveHistoryGroup.Items)
+                                                {
+                                                    <tr>
+                                                        <td class="text-body">@i.EarnedDate.ToString("MM/dd/yyyy")</td>
+                                                        <td class="text-body">@i.PaymentDate.ToString("MM/dd/yyyy")</td>
+                                                        <td class="text-body">@i.Detail</td>
+                                                        <td>
+                                                            <span class="badge @(i.Amount >= 0 ? "bg-success bg-opacity-10 text-success" : "bg-danger bg-opacity-10 text-danger") p-2 fs-12 fw-normal">
+                                                                @i.Amount.ToString("C")
+                                                            </span>
+                                                        </td>
+                                                        <td class="text-body">@(string.IsNullOrEmpty(i.Frequency) ? "-" : i.Frequency)</td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            }
+                            else if (!_historyDetailLoading)
+                            {
+                                <p class="text-muted text-center py-3 px-4">No data for this period.</p>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-0">
+                    <button type="button" class="btn btn-success text-white px-3" @onclick="() => _historyModalOpen = false">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+    [Parameter] public string ApiBaseUrl    { get; set; } = "api/v1/bizcenter/commissions";
+    [Parameter] public bool   ShowBreadcrumb { get; set; } = true;
+    [Parameter] public bool   IsAdminView    { get; set; } = false;
 
-    private string _totalEarned   = "$0.00";
-    private string _pendingPayout = "$0.00";
-    private string _paidThisMonth = "$0.00";
-    private string _cancelled     = "$0.00";
+    // ── Loading flags ─────────────────────────────────────────────────────────
+    private bool _summaryLoading = true;
+    private bool _pendingLoading = true;
+    private bool _paidLoading    = true;
+    private bool _historyLoading = true;
+
+    // ── Pagination ────────────────────────────────────────────────────────────
+    private const int _pageSize = 20;
+    private int _pendingPage = 1, _pendingTotal;
+    private int _paidPage    = 1, _paidTotal;
+
+    // ── Filter state ──────────────────────────────────────────────────────────
+    private string    _pendingSearch = string.Empty;
+    private DateTime? _pendingFrom;
+    private DateTime? _pendingTo;
+    private string    _paidSearch    = string.Empty;
+    private DateTime? _paidFrom;
+    private DateTime? _paidTo;
+
+    // ── Data ──────────────────────────────────────────────────────────────────
+    private CommissionSummaryData           _summary      = new();
+    private List<CommissionEarningItem>     _pendingItems = new();
+    private List<CommissionEarningItem>     _paidItems    = new();
+    private List<CommissionHistoryYearItem> _historyYears = new();
+    private int _selectedHistoryYear;
+
+    // ── Computed helpers — group by (EarnedDate+PaymentDate) for pending, PaymentDate for paid ──
+    private IEnumerable<CommissionGroupedItem> PendingGrouped =>
+        _pendingItems
+            .Where(x => string.IsNullOrWhiteSpace(_pendingSearch)
+                     || x.CommissionTypeName.Contains(_pendingSearch, StringComparison.OrdinalIgnoreCase))
+            .GroupBy(x => (x.EarnedDate.Date, x.PaymentDate.Date))
+            .Select(g => new CommissionGroupedItem
+            {
+                EarnedDate  = g.Key.Item1,
+                PaymentDate = g.Key.Item2,
+                TotalAmount = g.Sum(x => x.Amount)
+            })
+            .OrderByDescending(x => x.EarnedDate);
+
+    private IEnumerable<CommissionGroupedItem> PaidGrouped =>
+        _paidItems
+            .Where(x => string.IsNullOrWhiteSpace(_paidSearch)
+                     || x.CommissionTypeName.Contains(_paidSearch, StringComparison.OrdinalIgnoreCase))
+            .GroupBy(x => x.PaymentDate.Date)
+            .Select(g => new CommissionGroupedItem
+            {
+                EarnedDate  = null,
+                PaymentDate = g.Key,
+                TotalAmount = g.Sum(x => x.Amount)
+            })
+            .OrderByDescending(x => x.PaymentDate);
+
+    private CommissionHistoryYearItem? ActiveHistoryYear =>
+        _historyYears.FirstOrDefault(y => y.Year == _selectedHistoryYear);
+
+    // ── Detail modal ──────────────────────────────────────────────────────────
+    private bool   _detailModalOpen = false;
+    private bool   _detailLoading   = false;
+    private string _detailTitle     = string.Empty;
+    private List<CommissionBreakdownItem> _detailItems = new();
+
+    // ── History detail modal ──────────────────────────────────────────────────
+    private bool   _historyModalOpen      = false;
+    private bool   _historyDetailLoading  = false;
+    private string _historyModalTitle     = string.Empty;
+    private string _selectedHistoryType   = string.Empty;
+    private List<CommissionMonthGroupItem> _historyDetailGroups = new();
+
+    private CommissionMonthGroupItem? ActiveHistoryGroup =>
+        _historyDetailGroups.FirstOrDefault(g => g.CommissionTypeName == _selectedHistoryType);
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
         new("Dashboard", "/dashboard"),
         new("Commissions")
     };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(MemberProfileId)) return;
+        await Task.WhenAll(
+            LoadSummaryAsync(),
+            LoadPendingAsync(1),
+            LoadPaidAsync(1),
+            LoadHistoryAsync());
+    }
+
+    // ── Input event handlers ──────────────────────────────────────────────────
+
+    private void OnPendingSearchInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _pendingSearch = e.Value?.ToString() ?? string.Empty;
+        _pendingPage   = 1;
+    }
+
+    private async Task OnPendingFromChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _pendingFrom = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : (DateTime?)null;
+        await LoadPendingAsync(1);
+    }
+
+    private async Task OnPendingToChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _pendingTo = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : (DateTime?)null;
+        await LoadPendingAsync(1);
+    }
+
+    private void OnPaidSearchInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _paidSearch = e.Value?.ToString() ?? string.Empty;
+        _paidPage   = 1;
+    }
+
+    private async Task OnPaidFromChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _paidFrom = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : (DateTime?)null;
+        await LoadPaidAsync(1);
+    }
+
+    private async Task OnPaidToChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _paidTo = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : (DateTime?)null;
+        await LoadPaidAsync(1);
+    }
+
+    // ── Loaders ───────────────────────────────────────────────────────────────
+
+    private async Task LoadSummaryAsync()
+    {
+        _summaryLoading = true;
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<CommissionSummaryData>>(
+                $"{ApiBaseUrl}/summary");
+            if (resp?.Success == true && resp.Data is not null)
+                _summary = resp.Data;
+        }
+        catch { /* silently degrade */ }
+        finally { _summaryLoading = false; }
+    }
+
+    private async Task LoadPendingAsync(int page)
+    {
+        _pendingPage    = page;
+        _pendingLoading = true;
+        StateHasChanged();
+        try
+        {
+            var url  = BuildPagedUrl(ApiBaseUrl, page, _pageSize, "Pending", _pendingFrom, _pendingTo);
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<PagedData<CommissionEarningItem>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _pendingItems = resp.Data.Items;
+                _pendingTotal = resp.Data.TotalCount;
+            }
+        }
+        catch { /* silently degrade */ }
+        finally { _pendingLoading = false; }
+    }
+
+    private async Task LoadPaidAsync(int page)
+    {
+        _paidPage    = page;
+        _paidLoading = true;
+        StateHasChanged();
+        try
+        {
+            var url  = BuildPagedUrl(ApiBaseUrl, page, _pageSize, "Paid", _paidFrom, _paidTo);
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<PagedData<CommissionEarningItem>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _paidItems = resp.Data.Items;
+                _paidTotal = resp.Data.TotalCount;
+            }
+        }
+        catch { /* silently degrade */ }
+        finally { _paidLoading = false; }
+    }
+
+    private async Task LoadHistoryAsync()
+    {
+        _historyLoading = true;
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<CommissionHistoryYearItem>>>(
+                $"{ApiBaseUrl}/history");
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _historyYears        = resp.Data;
+                _selectedHistoryYear = _historyYears.FirstOrDefault()?.Year ?? DateTime.UtcNow.Year;
+            }
+        }
+        catch { /* silently degrade */ }
+        finally { _historyLoading = false; }
+    }
+
+    private async Task OpenDetailModal(DateTime paymentDate, DateTime? earnedDate)
+    {
+        _detailTitle = earnedDate.HasValue
+            ? $"{earnedDate.Value:MMM dd, yyyy} — {paymentDate:MMM dd, yyyy}"
+            : paymentDate.ToString("MMM dd, yyyy");
+        _detailModalOpen = true;
+        _detailLoading   = true;
+        _detailItems     = new();
+        StateHasChanged();
+        try
+        {
+            var url = $"{ApiBaseUrl}/breakdown?paymentDate={paymentDate:yyyy-MM-dd}";
+            if (earnedDate.HasValue)
+                url += $"&earnedDate={earnedDate.Value:yyyy-MM-dd}";
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<CommissionBreakdownItem>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+                _detailItems = resp.Data;
+        }
+        catch { /* silently degrade */ }
+        finally { _detailLoading = false; }
+    }
+
+    private async Task OpenHistoryModal(int year, int monthNo, string monthName, decimal total)
+    {
+        _historyModalTitle     = $"{monthName} {year} — {total:C}";
+        _historyModalOpen      = true;
+        _historyDetailLoading  = true;
+        _historyDetailGroups   = new();
+        _selectedHistoryType   = string.Empty;
+        StateHasChanged();
+        try
+        {
+            var url  = $"{ApiBaseUrl}/month-breakdown?year={year}&month={monthNo}";
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<CommissionMonthGroupItem>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _historyDetailGroups = resp.Data;
+                _selectedHistoryType = _historyDetailGroups.FirstOrDefault()?.CommissionTypeName ?? string.Empty;
+            }
+        }
+        catch { /* silently degrade */ }
+        finally { _historyDetailLoading = false; }
+    }
+
+    private static string BuildPagedUrl(string baseUrl, int page, int pageSize, string status, DateTime? from, DateTime? to)
+    {
+        var url = $"{baseUrl}?page={page}&pageSize={pageSize}&status={status}";
+        if (from.HasValue) url += $"&from={from.Value:yyyy-MM-dd}";
+        if (to.HasValue)   url += $"&to={to.Value:yyyy-MM-dd}";
+        return url;
+    }
+
+    // ── Private DTOs ──────────────────────────────────────────────────────────
+
+    private class CommissionGroupedItem
+    {
+        public DateTime? EarnedDate  { get; set; }
+        public DateTime  PaymentDate { get; set; }
+        public decimal   TotalAmount { get; set; }
+    }
+
+    private class ApiWrapper<T>
+    {
+        public bool Success { get; set; }
+        public T?   Data    { get; set; }
+    }
+
+    private class PagedData<T>
+    {
+        public List<T> Items      { get; set; } = new();
+        public int     TotalCount { get; set; }
+    }
+
+    private class CommissionSummaryData
+    {
+        public decimal PendingTotal     { get; set; }
+        public decimal PaidTotal        { get; set; }
+        public decimal CurrentYearTotal { get; set; }
+    }
+
+    private class CommissionEarningItem
+    {
+        public string   Id                 { get; set; } = string.Empty;
+        public string   CommissionTypeName { get; set; } = string.Empty;
+        public string   CategoryName       { get; set; } = string.Empty;
+        public decimal  Amount             { get; set; }
+        public string   Status             { get; set; } = string.Empty;
+        public DateTime EarnedDate         { get; set; }
+        public DateTime PaymentDate        { get; set; }
+    }
+
+    private class CommissionHistoryYearItem
+    {
+        public int                              Year        { get; set; }
+        public decimal                          TotalIncome { get; set; }
+        public List<CommissionHistoryMonthItem> Months      { get; set; } = new();
+    }
+
+    private class CommissionHistoryMonthItem
+    {
+        public int     MonthNo     { get; set; }
+        public string  MonthName   { get; set; } = string.Empty;
+        public decimal TotalIncome { get; set; }
+    }
+
+    private class CommissionBreakdownItem
+    {
+        public string  CommissionTypeName { get; set; } = string.Empty;
+        public string  Detail             { get; set; } = string.Empty;
+        public decimal Amount             { get; set; }
+    }
+
+    private class CommissionMonthGroupItem
+    {
+        public string                       CommissionTypeName { get; set; } = string.Empty;
+        public List<CommissionMonthRowItem> Items              { get; set; } = new();
+    }
+
+    private class CommissionMonthRowItem
+    {
+        public DateTime EarnedDate  { get; set; }
+        public DateTime PaymentDate { get; set; }
+        public string   Detail      { get; set; } = string.Empty;
+        public decimal  Amount      { get; set; }
+        public string   Status      { get; set; } = string.Empty;
+        public string   Frequency   { get; set; } = string.Empty;
+    }
 }

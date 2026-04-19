@@ -1,0 +1,8 @@
+@page "/commissions/presidential"
+@rendermode InteractiveServer
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Ambassador")]
+@inject IViewContextService ViewContext
+
+<PageTitle>Presidential Bonus</PageTitle>
+
+<PresidentialBonusReport MemberProfileId="@ViewContext.ViewingMemberId" />

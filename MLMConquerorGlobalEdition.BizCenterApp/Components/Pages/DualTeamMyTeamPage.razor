@@ -1,0 +1,10 @@
+@page "/team/dual-myteam"
+@rendermode @(new InteractiveAutoRenderMode(prerender: false))
+@attribute [Authorize(Roles = "Ambassador,ExternalMember")]
+@inject IViewContextService ViewContext
+
+<PageTitle>My Dual Team</PageTitle>
+
+<DualTeamMyTeam MemberProfileId="@ViewContext.ViewingMemberId"
+                ApiBaseUrl="api/v1/bizcenter/team"
+                ShowBreadcrumb="true" />

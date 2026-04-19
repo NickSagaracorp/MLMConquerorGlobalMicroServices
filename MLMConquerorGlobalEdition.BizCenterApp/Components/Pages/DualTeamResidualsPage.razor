@@ -1,0 +1,10 @@
+@page "/team/residuals"
+@rendermode @(new InteractiveAutoRenderMode(prerender: false))
+@attribute [Authorize(Roles = "Ambassador,ExternalMember")]
+@inject IViewContextService ViewContext
+
+<PageTitle>Dual Team Residuals</PageTitle>
+
+<DualTeamResiduals MemberProfileId="@ViewContext.ViewingMemberId"
+                   ApiBaseUrl="api/v1/bizcenter"
+                   ShowBreadcrumb="true" />

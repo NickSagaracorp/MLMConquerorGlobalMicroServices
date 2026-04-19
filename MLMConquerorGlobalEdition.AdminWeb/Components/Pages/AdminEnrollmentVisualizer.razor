@@ -1,0 +1,55 @@
+@page "/admin/network/enrollment-visualizer"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin")]
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Team
+
+<PageTitle>Enrollment Visualizer — Admin</PageTitle>
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <h4 class="fw-bold mb-0">
+        <i class="ri-organization-chart me-2 text-primary"></i>Enrollment Team Visualizer
+    </h4>
+</div>
+
+<div class="card border-0 rounded-3 mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Root Member ID</label>
+                <input class="form-control" @bind="_inputMemberId" @bind:event="oninput"
+                       placeholder="e.g. AMB-000001"
+                       @onkeydown="OnKeyDown" />
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-primary w-100" @onclick="LoadVisualizer"
+                        disabled="@(string.IsNullOrWhiteSpace(_inputMemberId))">
+                    Load Tree
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (_activeMemberId is not null)
+{
+    <EnrollmentVisualizer MemberProfileId="@_activeMemberId"
+                          ApiBaseUrl="@($"api/v1/admin/members/{_activeMemberId}/team/enrollment/visualizer")"
+                          ShowBreadcrumb="false" />
+}
+
+@code {
+    private string  _inputMemberId  = string.Empty;
+    private string? _activeMemberId;
+
+    private void LoadVisualizer()
+    {
+        var id = _inputMemberId.Trim();
+        if (string.IsNullOrEmpty(id)) return;
+        _activeMemberId = id;
+    }
+
+    private void OnKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") LoadVisualizer();
+    }
+}

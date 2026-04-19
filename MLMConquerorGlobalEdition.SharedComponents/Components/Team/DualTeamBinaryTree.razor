@@ -1,103 +1,503 @@
-@inject IViewContextService ViewContext
 @inject HttpClient Http
+@inject NavigationManager Nav
+@using System.Net.Http.Json
 
-@using MLMConquerorGlobalEdition.SharedComponents.Constants
+@if (ShowBreadcrumb) { <BreadcrumbNav Items="@_breadcrumb" /> }
 
-@if (!ViewContext.IsInAnyRole(AppRoles.Ambassador) && !ViewContext.IsAdminContext)
-{
-    <div class="alert alert-warning">Dual Team Tree is only available for Ambassadors.</div>
-    return;
-}
+<style>
+    .genealogy-body {
+        white-space: nowrap;
+        overflow: auto;
+        position: relative;
+        background: linear-gradient(180deg, #f8f9fb, #eef1f4);
+        border-radius: 10px;
+        padding: 20px;
+        min-height: 400px;
+        text-align: center;
+    }
+    .genealogy-tree ul {
+        padding-top: 16px;
+        position: relative;
+        display: flex;
+        justify-content: center;
+        gap: 24px;
+        list-style: none;
+        padding-left: 0;
+    }
+    .genealogy-tree li {
+        list-style: none;
+        text-align: center;
+        position: relative;
+        padding: 16px 8px 0 8px;
+    }
+    .genealogy-tree li::before,
+    .genealogy-tree li::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        border-top: 2px dashed #c9c9c9;
+        width: 50%;
+        height: 16px;
+    }
+    .genealogy-tree li::before { right: 50%; }
+    .genealogy-tree li::after  { left: 50%; border-left: 2px dashed #c9c9c9; }
+    .genealogy-tree li:only-child::after,
+    .genealogy-tree li:only-child::before { display: none; }
+    .genealogy-tree li:only-child { padding-top: 0; }
+    .genealogy-tree ul ul::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%;
+        border-left: 2px dashed #c9c9c9;
+        width: 0;
+        height: 16px;
+    }
+    .member-view-box {
+        display: inline-block;
+        text-align: center;
+        border-radius: 10px;
+        background: #fff;
+        box-shadow: 0 6px 18px rgba(0,0,0,.07);
+        padding: 8px 10px;
+        width: 140px;
+    }
+    .member-header {
+        font-weight: 600;
+        color: #fff;
+        border-radius: 8px 8px 0 0;
+        padding: 5px 8px;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 24px;
+    }
+    .status-qualified   .member-header { background: #2ecc71; }
+    .status-unqualified .member-header { background: #7d2a3b; }
+    .status-cancelled   .member-header { background: #9aa0a6; }
+    .member-avatar {
+        width: 66px;
+        height: 66px;
+        border-radius: 50%;
+        background: #605DFF;
+        color: #fff;
+        font-weight: 700;
+        font-size: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 6px auto 0;
+        box-shadow: 0 2px 6px rgba(0,0,0,.15);
+        cursor: pointer;
+        transition: transform .15s;
+    }
+    .member-avatar:hover { transform: scale(1.06); }
+    .member-footer {
+        margin-top: 6px;
+        font-weight: 700;
+        font-size: 13px;
+        color: #222;
+    }
+    .placeholder-node {
+        width: 66px;
+        height: 66px;
+        border: 2px dashed #cfd6df;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-size: 22px;
+        color: #7b8794;
+        background: #fafbff;
+        margin: 6px auto 0;
+    }
+</style>
 
-<BreadcrumbNav Items="@_breadcrumb" />
+<div class="card bg-white border-0 rounded-3 mb-4">
+    <div class="card-body p-4">
 
-<div class="card">
-    <div class="card-header d-flex align-items-center justify-content-between py-3">
-        <h6 class="card-title mb-0 fw-semibold">Dual Team Binary Tree</h6>
-        <AdminOnlyWrapper Permission="@Permissions.GhostPoints.Add">
-            <button class="btn btn-sm btn-outline-secondary" @onclick="() => _showGhostPointModal = true">
-                <i class="ri-ghost-line me-1"></i>Add Ghost Points
-            </button>
-        </AdminOnlyWrapper>
-    </div>
-    <div class="card-body">
-        <LoadingSpinner IsLoading="@_isLoading" />
-
-        @if (!_isLoading)
-        {
-            <div class="tree-stats row g-3 mb-4">
-                <div class="col-12 col-sm-6">
-                    <StatCard Title="Left Leg Points" Value="@_leftPoints.ToString("N0")" Icon="ri-arrow-left-circle-line" Color="primary" />
-                </div>
-                <div class="col-12 col-sm-6">
-                    <StatCard Title="Right Leg Points" Value="@_rightPoints.ToString("N0")" Icon="ri-arrow-right-circle-line" Color="info" />
+        @* ── Leg stats ─────────────────────────────────────────────────────── *@
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-sm-6">
+                <div class="card border-0 rounded-3" style="background:rgb(96,93,255)">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <i class="ri-arrow-left-circle-line fs-40 text-white"></i>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <span class="text-white opacity-75 fs-13">Left Leg Points</span>
+                                <h3 class="fs-22 mt-1 mb-0 text-white fw-bold">
+                                    @if (_statsLoading)
+                                    {
+                                        <span class="spinner-border spinner-border-sm"></span>
+                                    }
+                                    else
+                                    {
+                                        @_leftLegPoints.ToString("N0")
+                                    }
+                                </h3>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
+            <div class="col-12 col-sm-6">
+                <div class="card border-0 rounded-3" style="background:#4299e1">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <i class="ri-arrow-right-circle-line fs-40 text-white"></i>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <span class="text-white opacity-75 fs-13">Right Leg Points</span>
+                                <h3 class="fs-22 mt-1 mb-0 text-white fw-bold">
+                                    @if (_statsLoading)
+                                    {
+                                        <span class="spinner-border spinner-border-sm"></span>
+                                    }
+                                    else
+                                    {
+                                        @_rightLegPoints.ToString("N0")
+                                    }
+                                </h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-            <!-- Tree visualization placeholder -->
-            <div class="tree-container text-center py-5 border rounded bg-light">
-                <i class="ri-node-tree display-4 text-muted opacity-50"></i>
-                <p class="text-muted mt-2">Binary tree visualization — rendered via JS interop (ApexCharts tree / custom SVG)</p>
-                <small class="text-muted">Nodes: @_treeNodes.Count loaded</small>
+        @* ── Legend ────────────────────────────────────────────────────────── *@
+        <div class="d-flex gap-3 mb-3 flex-wrap">
+            <span class="d-flex align-items-center gap-2 fs-13">
+                <span style="width:12px;height:12px;border-radius:50%;background:#2ecc71;display:inline-block"></span>
+                Qualified
+            </span>
+            <span class="d-flex align-items-center gap-2 fs-13">
+                <span style="width:12px;height:12px;border-radius:50%;background:#7d2a3b;display:inline-block"></span>
+                Unqualified
+            </span>
+            <span class="d-flex align-items-center gap-2 fs-13">
+                <span style="width:12px;height:12px;border-radius:50%;background:#9aa0a6;display:inline-block"></span>
+                Cancelled / Inactive
+            </span>
+        </div>
+
+        @* ── Breadcrumb trail when navigated deep ─────────────────────────── *@
+        @if (_navStack.Count > 0)
+        {
+            <div class="d-flex align-items-center gap-1 flex-wrap mb-3">
+                <button class="btn btn-outline-secondary btn-sm" @onclick="NavigateToRoot">
+                    <i class="ri-home-line me-1"></i>Root
+                </button>
+                @foreach (var (nodeId, name) in _navStack)
+                {
+                    var nid = nodeId;
+                    <i class="ri-arrow-right-s-line text-muted"></i>
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="() => NavigateTo(nid)">@name</button>
+                }
             </div>
         }
+
+        @* ── Tree ──────────────────────────────────────────────────────────── *@
+        @if (_treeLoading)
+        {
+            <LoadingSpinner IsLoading="true" />
+        }
+        else if (_treeError is not null)
+        {
+            <div class="alert alert-danger">@_treeError</div>
+        }
+        else if (_rootNode is not null)
+        {
+            <div class="genealogy-body">
+                <div class="genealogy-tree">
+                    <ul>
+                        <li>
+                            @RenderNode(_rootNode, 0)
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="ri-share-circle-line fs-2 d-block mb-2"></i>
+                No tree data available.
+            </div>
+        }
+
     </div>
 </div>
 
-@if (_showGhostPointModal)
-{
-    <ConfirmModal IsVisible="true"
-                  Title="Add Ghost Points"
-                  Message="Ghost point entry form — to be expanded with a full form component."
-                  ConfirmLabel="Add"
-                  ConfirmColor="secondary"
-                  OnConfirm="@(() => _showGhostPointModal = false)"
-                  OnCancel="@(() => _showGhostPointModal = false)" />
-}
-
 @code {
+    // ── Parameters ───────────────────────────────────────────────────────────
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+    [Parameter] public string ApiBaseUrl      { get; set; } = "api/v1/bizcenter/team";
+    [Parameter] public bool   ShowBreadcrumb  { get; set; } = true;
 
-    private bool    _isLoading  = true;
-    private decimal _leftPoints;
-    private decimal _rightPoints;
-    private bool    _showGhostPointModal;
-    private List<DualTeamNodeDto> _treeNodes = new();
+    // ── State ────────────────────────────────────────────────────────────────
+    private bool   _treeLoading  = true;
+    private bool   _statsLoading = true;
+    private string? _treeError;
+    private string _currentRootId = string.Empty;
+
+    private DualTreeNodeDto?      _rootNode;
+    private int                   _leftLegPoints;
+    private int                   _rightLegPoints;
+
+    // Navigation breadcrumb stack: list of (memberId, displayName)
+    private List<(string Id, string Name)> _navStack = new();
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
         new("Dashboard", "/dashboard"),
-        new("Dual Team Tree")
+        new("Dual Team"),
+        new("Visualizer")
     };
 
+    // ── Lifecycle ────────────────────────────────────────────────────────────
     protected override async Task OnParametersSetAsync()
     {
-        if (string.IsNullOrEmpty(MemberProfileId)) return;
-        _isLoading = true;
+        if (!string.IsNullOrEmpty(MemberProfileId) && _currentRootId != MemberProfileId)
+        {
+            _currentRootId = MemberProfileId;
+            _navStack.Clear();
+            await Task.WhenAll(LoadNodeAsync(_currentRootId), LoadStatsAsync(_currentRootId));
+        }
+    }
+
+    // ── Data loading ─────────────────────────────────────────────────────────
+    private async Task LoadNodeAsync(string memberId)
+    {
+        _treeLoading = true;
+        _treeError   = null;
         StateHasChanged();
         try
         {
-            var response = await Http.GetFromJsonAsync<ApiResponse<DualTreeResponseDto>>(
-                "api/v1/bizcenter/team/dual-tree");
-            if (response?.Success == true && response.Data is not null)
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<DualTreeNodeDto>>(
+                $"{ApiBaseUrl}/dual-tree/node/{Uri.EscapeDataString(memberId)}");
+            _rootNode = resp?.Success == true ? resp.Data : null;
+            if (_rootNode is null) _treeError = "Failed to load tree node.";
+        }
+        catch (Exception ex)
+        {
+            _treeError = $"API error: {ex.Message}";
+        }
+        finally
+        {
+            _treeLoading = false;
+        }
+    }
+
+    private async Task LoadStatsAsync(string memberId)
+    {
+        _statsLoading = true;
+        StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<DualTreeStatsDto>>(
+                $"{ApiBaseUrl}/dual-tree/stats/{Uri.EscapeDataString(memberId)}");
+            if (resp?.Success == true && resp.Data is not null)
             {
-                _treeNodes   = response.Data.Nodes;
-                _leftPoints  = response.Data.LeftLegPoints;
-                _rightPoints = response.Data.RightLegPoints;
+                _leftLegPoints  = resp.Data.LeftLegPoints;
+                _rightLegPoints = resp.Data.RightLegPoints;
             }
         }
-        catch { /* silently degrade */ }
-        finally { _isLoading = false; }
+        catch { /* stats are supplemental — degrade silently */ }
+        finally
+        {
+            _statsLoading = false;
+        }
     }
 
-    private class ApiResponse<T> { public bool Success { get; set; } public T? Data { get; set; } }
-
-    private class DualTreeResponseDto
+    // ── Navigation ───────────────────────────────────────────────────────────
+    private async Task DrillIntoNode(DualTreeChildDto child)
     {
-        public decimal              LeftLegPoints  { get; set; }
-        public decimal              RightLegPoints { get; set; }
-        public List<DualTeamNodeDto> Nodes         { get; set; } = new();
+        if (_rootNode is not null)
+            _navStack.Add((_rootNode.MemberId, _rootNode.FullName));
+
+        _currentRootId = child.MemberId;
+        await LoadNodeAsync(child.MemberId);
     }
 
-    public record DualTeamNodeDto(string MemberId, string? ParentMemberId, string Side, decimal Points);
+    private async Task NavigateTo(string memberId)
+    {
+        // Pop stack back to this entry
+        var idx = _navStack.FindIndex(x => x.Id == memberId);
+        if (idx >= 0) _navStack = _navStack.Take(idx).ToList();
+        _currentRootId = memberId;
+        await LoadNodeAsync(memberId);
+    }
+
+    private async Task NavigateToRoot()
+    {
+        _navStack.Clear();
+        _currentRootId = MemberProfileId;
+        await Task.WhenAll(LoadNodeAsync(MemberProfileId), LoadStatsAsync(MemberProfileId));
+    }
+
+    // ── Tree rendering (recursive up to 3 levels) ────────────────────────────
+    private RenderFragment RenderNode(DualTreeNodeDto node, int depth) => __builder =>
+    {
+        var statusClass = ResolveStatusClass(node.StatusCode);
+        <div class="member-view-box @statusClass">
+            <div class="member-header">@node.StatusCode</div>
+            <div class="member-avatar" title="@node.FullName — Click to drill in"
+                 @onclick="() => { }">
+                @(node.FullName.Length > 0 ? node.FullName[0].ToString().ToUpper() : "?")
+            </div>
+            <div class="member-footer" style="white-space:normal;word-break:break-word">@node.FullName</div>
+            <div style="font-size:11px;color:#888;margin-top:2px">@node.Points.ToString("N0") pts</div>
+        </div>
+
+        @* Render children if within depth limit *@
+        @if (depth < 2)
+        {
+            var hasLeft  = node.LeftChild  is not null;
+            var hasRight = node.RightChild is not null;
+
+            @if (hasLeft || hasRight)
+            {
+                <ul>
+                    @* Left slot *@
+                    <li>
+                        @if (node.LeftChild is not null)
+                        {
+                            var left = node.LeftChild;
+                            @RenderChildNode(left, depth + 1)
+                        }
+                        else
+                        {
+                            @RenderEmptySlot("L")
+                        }
+                    </li>
+                    @* Right slot *@
+                    <li>
+                        @if (node.RightChild is not null)
+                        {
+                            var right = node.RightChild;
+                            @RenderChildNode(right, depth + 1)
+                        }
+                        else
+                        {
+                            @RenderEmptySlot("R")
+                        }
+                    </li>
+                </ul>
+            }
+        }
+        else if (depth == 2)
+        {
+            @* At max depth — show expand buttons if children exist *@
+            var hasChildren = node.LeftChild is not null || node.RightChild is not null;
+            @if (hasChildren)
+            {
+                var n = node;
+                <div style="margin-top:8px">
+                    <button class="btn btn-outline-primary btn-sm" style="font-size:11px"
+                            @onclick="async () => await DrillIntoNode(new DualTreeChildDto(n.MemberId, n.FullName, n.StatusCode, n.Points, n.LeftChild is not null, n.RightChild is not null))">
+                        <i class="ri-expand-diagonal-line me-1"></i>Expand
+                    </button>
+                </div>
+            }
+        }
+    };
+
+    private RenderFragment RenderChildNode(DualTreeChildDto child, int depth) => __builder =>
+    {
+        var statusClass = ResolveStatusClass(child.StatusCode);
+        <div class="member-view-box @statusClass">
+            <div class="member-header">@child.StatusCode</div>
+            <div class="member-avatar" title="@child.FullName — Click to drill in"
+                 @onclick="async () => await DrillIntoNode(child)">
+                @(child.FullName.Length > 0 ? child.FullName[0].ToString().ToUpper() : "?")
+            </div>
+            <div class="member-footer" style="white-space:normal;word-break:break-word">@child.FullName</div>
+            <div style="font-size:11px;color:#888;margin-top:2px">@child.Points.ToString("N0") pts</div>
+        </div>
+
+        @* Recurse if not at max depth and child has children *@
+        @if (depth < 2 && (child.HasLeft || child.HasRight))
+        {
+            <ul>
+                <li>
+                    @if (child.HasLeft)
+                    {
+                        @RenderEmptySlot("L")
+                    }
+                    else
+                    {
+                        @RenderEmptySlot("L")
+                    }
+                </li>
+                <li>
+                    @if (child.HasRight)
+                    {
+                        @RenderEmptySlot("R")
+                    }
+                    else
+                    {
+                        @RenderEmptySlot("R")
+                    }
+                </li>
+            </ul>
+        }
+    };
+
+    private RenderFragment RenderEmptySlot(string side) => __builder =>
+    {
+        <div class="member-view-box" style="opacity:.65">
+            <div class="member-header" style="background:#b0b8c1">@side Empty</div>
+            <div class="placeholder-node" title="No member placed here">
+                <i class="ri-add-line"></i>
+            </div>
+            <div class="member-footer" style="color:#b0b8c1;font-size:12px">Open Slot</div>
+        </div>
+    };
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    private static string ResolveStatusClass(string statusCode) =>
+        statusCode?.ToLower() switch
+        {
+            "qualified"             => "status-qualified",
+            "active-qualified"      => "status-qualified",
+            "unqualified"           => "status-unqualified",
+            "active-unqualified"    => "status-unqualified",
+            "active"                => "status-unqualified",
+            "inactive"              => "status-cancelled",
+            "suspended"             => "status-cancelled",
+            "terminated"            => "status-cancelled",
+            "cancelled"             => "status-cancelled",
+            _                       => "status-unqualified"
+        };
+
+    // ── DTOs ─────────────────────────────────────────────────────────────────
+    private class ApiWrapper<T> { public bool Success { get; set; } public T? Data { get; set; } }
+
+    private class DualTreeNodeDto
+    {
+        public string           MemberId   { get; set; } = string.Empty;
+        public string           FullName   { get; set; } = string.Empty;
+        public string           StatusCode { get; set; } = string.Empty;
+        public int              Points     { get; set; }
+        public DualTreeChildDto? LeftChild  { get; set; }
+        public DualTreeChildDto? RightChild { get; set; }
+    }
+
+    private record DualTreeChildDto(
+        string MemberId,
+        string FullName,
+        string StatusCode,
+        int    Points,
+        bool   HasLeft,
+        bool   HasRight);
+
+    private class DualTreeStatsDto
+    {
+        public int LeftLegPoints  { get; set; }
+        public int RightLegPoints { get; set; }
+    }
 }

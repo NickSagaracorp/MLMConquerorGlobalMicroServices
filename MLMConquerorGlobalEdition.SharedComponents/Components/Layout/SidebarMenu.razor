@@ -49,25 +49,62 @@
                     <span class="menu-text">Presidential Bonus</span>
                 </a>
             </li>
+            <li class="menu-item @IsActive("/commissions/car-bonus")">
+                <a href="/commissions/car-bonus" class="menu-link">
+                    <i class="menu-icon ri-car-line"></i>
+                    <span class="menu-text">Car Bonus</span>
+                </a>
+            </li>
         }
 
         <!-- Team -->
         <li class="menu-header small text-uppercase"><span>Team</span></li>
 
+        <!-- Enrollment Team (4 sub-items) -->
+        <li class="menu-item @(IsEnrollmentActive() ? "active open" : "")">
+            <a href="javascript:void(0);" class="menu-link menu-toggle" @onclick="ToggleEnrollment">
+                <i class="menu-icon ri-organization-chart"></i>
+                <span class="menu-text">Enrollment Team</span>
+                <span class="badge bg-label-primary rounded-pill ms-auto">4</span>
+            </a>
+            <ul class="menu-sub @(_enrollmentOpen ? "" : "d-none")">
+                <li class="menu-item @IsActive("/team/enrollment/my-team")">
+                    <a href="/team/enrollment/my-team" class="menu-link">My Team</a>
+                </li>
+                <li class="menu-item @IsActive("/team/enrollment/visualizer")">
+                    <a href="/team/enrollment/visualizer" class="menu-link">Visualizer</a>
+                </li>
+                <li class="menu-item @IsActive("/team/enrollment/branches")">
+                    <a href="/team/enrollment/branches" class="menu-link">Branches</a>
+                </li>
+                <li class="menu-item @IsActive("/team/enrollment/customers")">
+                    <a href="/team/enrollment/customers" class="menu-link">Customers</a>
+                </li>
+            </ul>
+        </li>
+
+        <!-- Dual Team (3 sub-items) — Ambassador only -->
         @if (ViewContext.IsInAnyRole(AppRoles.Ambassador) || ViewContext.IsAdminContext)
         {
-            <li class="menu-item @IsActive("/team/dual-tree")">
-                <a href="/team/dual-tree" class="menu-link">
+            <li class="menu-item @(IsDualTeamActive() ? "active open" : "")">
+                <a href="javascript:void(0);" class="menu-link menu-toggle" @onclick="ToggleDualTeam">
                     <i class="menu-icon ri-node-tree"></i>
-                    <span class="menu-text">Dual Team Tree</span>
+                    <span class="menu-text">Dual Team</span>
+                    <span class="badge bg-label-primary rounded-pill ms-auto">3</span>
                 </a>
+                <ul class="menu-sub @(_dualTeamOpen ? "" : "d-none")">
+                    <li class="menu-item @IsActive("/team/dual-myteam")">
+                        <a href="/team/dual-myteam" class="menu-link">My Dual Team</a>
+                    </li>
+                    <li class="menu-item @IsActive("/team/dual-tree")">
+                        <a href="/team/dual-tree" class="menu-link">Visualizer</a>
+                    </li>
+                    <li class="menu-item @IsActive("/team/residuals")">
+                        <a href="/team/residuals" class="menu-link">Residuals</a>
+                    </li>
+                </ul>
             </li>
-            <li class="menu-item @IsActive("/team/dual-myteam")">
-                <a href="/team/dual-myteam" class="menu-link">
-                    <i class="menu-icon ri-group-line"></i>
-                    <span class="menu-text">My Dual Team</span>
-                </a>
-            </li>
+
             <li class="menu-item @IsActive("/team/placement")">
                 <a href="/team/placement" class="menu-link">
                     <i class="menu-icon ri-user-add-line"></i>
@@ -75,12 +112,6 @@
                 </a>
             </li>
         }
-        <li class="menu-item @IsActive("/team/enrollment")">
-            <a href="/team/enrollment" class="menu-link">
-                <i class="menu-icon ri-organization-chart"></i>
-                <span class="menu-text">Enrollment Tree</span>
-            </a>
-        </li>
 
         <!-- Tokens & Loyalty -->
         <li class="menu-header small text-uppercase"><span>Tokens &amp; Loyalty</span></li>
@@ -135,6 +166,25 @@
 </aside>
 
 @code {
+    private bool _enrollmentOpen;
+    private bool _dualTeamOpen;
+
+    protected override void OnInitialized()
+    {
+        // Auto-open the active submenu on first render
+        _enrollmentOpen = IsEnrollmentActive();
+        _dualTeamOpen   = IsDualTeamActive();
+    }
+
     private string IsActive(string href)
-        => Nav.Uri.EndsWith(href, StringComparison.OrdinalIgnoreCase) ? "active" : string.Empty;
+        => Nav.Uri.Contains(href, StringComparison.OrdinalIgnoreCase) ? "active" : string.Empty;
+
+    private bool IsEnrollmentActive()
+        => Nav.Uri.Contains("/team/enrollment", StringComparison.OrdinalIgnoreCase);
+
+    private bool IsDualTeamActive()
+        => Nav.Uri.Contains("/team/dual", StringComparison.OrdinalIgnoreCase);
+
+    private void ToggleEnrollment() => _enrollmentOpen = !_enrollmentOpen;
+    private void ToggleDualTeam()   => _dualTeamOpen   = !_dualTeamOpen;
 }
