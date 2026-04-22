@@ -72,27 +72,27 @@
                 <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250,500,1000})" />
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
                 <GridColumns>
-                    <GridColumn HeaderText="Member ID" Width="130">
+                    <GridColumn Field="@nameof(SubscriptionDto.MemberId)" HeaderText="Member ID" Width="130" AllowFiltering="true">
                         <Template>
                             <a href="/admin/members/@(((SubscriptionDto)context).MemberId)" target="_blank" class="text-primary fw-semibold"><code>@(((SubscriptionDto)context).MemberId)</code></a>
                         </Template>
                     </GridColumn>
-                    <GridColumn Field="@nameof(SubscriptionDto.MembershipLevelName)" HeaderText="Level" Width="160" />
-                    <GridColumn HeaderText="Status" Width="120">
+                    <GridColumn Field="@nameof(SubscriptionDto.MembershipLevelName)" HeaderText="Level" Width="160" AllowFiltering="true" />
+                    <GridColumn Field="@nameof(SubscriptionDto.Status)" HeaderText="Status" Width="120" AllowFiltering="true">
                         <Template>
                             <span class="badge @StatusBadge(((SubscriptionDto)context).Status)">@(((SubscriptionDto)context).Status)</span>
                         </Template>
                     </GridColumn>
-                    <GridColumn Field="@nameof(SubscriptionDto.StartDate)" HeaderText="Start" Width="120" Format="yyyy-MM-dd" Type="ColumnType.Date" />
-                    <GridColumn Field="@nameof(SubscriptionDto.ExpirationDate)" HeaderText="Expires" Width="120" Format="yyyy-MM-dd" Type="ColumnType.Date" />
-                    <GridColumn HeaderText="Auto-Renew" Width="110" TextAlign="TextAlign.Center">
+                    <GridColumn Field="@nameof(SubscriptionDto.StartDate)" HeaderText="Start" Width="120" Format="yyyy-MM-dd" Type="ColumnType.Date" AllowFiltering="true" />
+                    <GridColumn Field="@nameof(SubscriptionDto.ExpirationDate)" HeaderText="Expires" Width="120" Format="yyyy-MM-dd" Type="ColumnType.Date" AllowFiltering="true" />
+                    <GridColumn Field="@nameof(SubscriptionDto.IsAutoRenew)" HeaderText="Auto-Renew" Width="110" TextAlign="TextAlign.Center" AllowFiltering="true" DisplayAsCheckBox="false">
                         <Template>
                             <span class="badge @BoolBadge(((SubscriptionDto)context).IsAutoRenew)">
                                 @(((SubscriptionDto)context).IsAutoRenew ? "Yes" : "No")
                             </span>
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="Reason" Width="130">
+                    <GridColumn Field="@nameof(SubscriptionDto.ChangeReason)" HeaderText="Reason" Width="130" AllowFiltering="true">
                         <Template>
                             <span class="text-muted small">@(((SubscriptionDto)context).ChangeReason)</span>
                         </Template>

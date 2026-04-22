@@ -1,6 +1,12 @@
 @inject HttpClient Http
 @using System.Net.Http.Json
 
+<style>
+    .row-click {
+        cursor: pointer;
+    }
+</style>
+
 @if (ShowBreadcrumb)
 {
     <BreadcrumbNav Items="@_breadcrumb" />
@@ -16,11 +22,11 @@
                 </div>
                 <div class="row">
                     <div class="col-xxl-4 col-xl-4 col-sm-4">
-                        <div class="card bg-primary bg-opacity-10 border-primary border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                        <div class="card rounded-3 mb-4 stats-box style-three" style="background-color: #EDE9FE; border: 1px solid #C4B5FD;">
                             <div class="card-body p-4">
                                 <div class="d-flex align-items-center">
                                     <div class="flex-shrink-0">
-                                        <i class="material-symbols-outlined fs-40 text-primary">functions</i>
+                                        <i class="material-symbols-outlined fs-40" style="color: #4338CA;">functions</i>
                                     </div>
                                     <div class="flex-grow-1 ms-2">
                                         <span>Total Points</span>
@@ -73,23 +79,12 @@
 <div class="card bg-white border-0 rounded-3 mb-4">
     <div class="card-body p-0">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
-            <h3 class="mb-0">Ambassador Breakdown</h3>
             <form class="position-relative table-src-form me-0">
                 <input type="text" class="form-control" placeholder="Search here"
                        value="@_ambassadorSearch"
                        @oninput="OnAmbassadorSearchInput" />
                 <i class="material-symbols-outlined position-absolute top-50 start-0 translate-middle-y">search</i>
             </form>
-            <div class="d-flex gap-2">
-                <input class="form-control" style="max-width:140px"
-                       type="date"
-                       value="@(_ambassadorFrom?.ToString("yyyy-MM-dd"))"
-                       @onchange="OnAmbassadorFromChange" />
-                <input class="form-control" style="max-width:140px"
-                       type="date"
-                       value="@(_ambassadorTo?.ToString("yyyy-MM-dd"))"
-                       @onchange="OnAmbassadorToChange" />
-            </div>
         </div>
 
         <LoadingSpinner IsLoading="@_ambassadorLoading" />
@@ -106,13 +101,14 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var amb in AmbassadorFiltered)
+                            @foreach (var amb in AmbassadorPaged)
                             {
                                 var pct = amb.TotalPoints > 0
                                     ? (int)Math.Min(100, Math.Round(amb.EligiblePoints / (double)amb.TotalPoints * 100))
                                     : 0;
-                                <tr>
-                                    <td class="text-body">@amb.AmbassadorName</td>
+                                var ambLocal = amb;
+                                <tr class="row-click" @onclick="() => OpenBranchModalAsync(ambLocal)">
+                                    <td class="text-primary fw-medium" style="cursor:pointer;">@amb.AmbassadorName</td>
                                     <td class="text-body">@amb.TotalPoints.ToString("N0")</td>
                                     <td>
                                         <div style="position:relative;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:conic-gradient(#605DFF @(pct)%, #ECEEF2 @(pct)%);">
@@ -130,16 +126,51 @@
                         </tbody>
                     </table>
                 </div>
+                @if (AmbassadorFiltered.Any())
+                {
+                    <div class="p-4 pt-lg-4">
+                        <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
+                            <span class="fs-12 fw-medium">Showing @AmbassadorPaged.Count() of @AmbassadorFiltered.Count Results</span>
+                            @if (AmbassadorFiltered.Count > _ambassadorPageSize)
+                            {
+                                var totalAmbPages = (int)Math.Ceiling((double)AmbassadorFiltered.Count / _ambassadorPageSize);
+                                <nav aria-label="Ambassador pagination">
+                                    <ul class="pagination mb-0 justify-content-center">
+                                        <li class="page-item @(_ambassadorPage <= 1 ? "disabled" : "")">
+                                            <button type="button" class="page-link icon" @onclick="() => GoToAmbassadorPage(_ambassadorPage - 1)" aria-label="Previous">
+                                                <i class="material-symbols-outlined">keyboard_arrow_left</i>
+                                            </button>
+                                        </li>
+                                        @for (var pg = 1; pg <= totalAmbPages; pg++)
+                                        {
+                                            var p = pg;
+                                            <li class="page-item @(p == _ambassadorPage ? "active" : "")">
+                                                <button type="button" class="page-link" @onclick="() => GoToAmbassadorPage(p)">@p</button>
+                                            </li>
+                                        }
+                                        <li class="page-item @(_ambassadorPage >= totalAmbPages ? "disabled" : "")">
+                                            <button type="button" class="page-link icon" @onclick="() => GoToAmbassadorPage(_ambassadorPage + 1)" aria-label="Next">
+                                                <i class="material-symbols-outlined">keyboard_arrow_right</i>
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </nav>
+                            }
+                        </div>
+                    </div>
+                }
             </div>
         }
     </div>
 </div>
 
-<!-- Car Bonus History Table -->
+<!-- History Table -->
 <div class="card bg-white border-0 rounded-3 mb-4">
     <div class="card-body p-0">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
-            <h3 class="mb-0">Car Bonus History</h3>
+            <div class="mb-3 mb-lg-4 w-100">
+                <h3 class="mb-0">History</h3>
+            </div>
             <form class="position-relative table-src-form me-0">
                 <input type="text" class="form-control" placeholder="Search here"
                        value="@_search"
@@ -184,7 +215,7 @@
                                 <tr>
                                     <td class="text-body">@item.EarnedDate.ToString("MM/dd/yyyy")</td>
                                     <td class="text-body">@item.Amount.ToString("C")</td>
-                                    <td class="text-body">0</td>
+                                    <td class="text-body">@item.EligiblePoints.ToString("N0")</td>
                                     <td><span class="@statusBadgeClass">@item.Status</span></td>
                                 </tr>
                             }
@@ -230,6 +261,74 @@
     </div>
 </div>
 
+<!-- Branch Detail Modal -->
+@if (_branchModalVisible)
+{
+    <div class="modal-backdrop fade show"></div>
+}
+<div class="modal fade @(_branchModalVisible ? "show" : "")" id="branchModal" tabindex="-1" aria-hidden="@(!_branchModalVisible)"
+     style="display: @(_branchModalVisible ? "block" : "none");"
+     role="dialog">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <div>
+                    <div class="text-primary fw-semibold small d-flex align-items-center">
+                        <i class="ri-share-forward-line me-1"></i> Enrollment Team • Branch
+                    </div>
+                    <h5 class="modal-title mt-1">@_branchModalTitle</h5>
+                    <div class="text-secondary small">Total Points: @_branchModalTotalPoints</div>
+                </div>
+                <button type="button" class="btn-close" aria-label="Close" @onclick="CloseBranchModal"></button>
+            </div>
+
+            <div class="modal-body pt-2">
+                @if (_branchLoading)
+                {
+                    <div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></div>
+                }
+                else if (!_branchDetail.Members.Any())
+                {
+                    <p class="text-muted text-center py-4">No members found in this branch.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Order No</th>
+                                    <th>Full Name</th>
+                                    <th>Membership Level</th>
+                                    <th>Expiration Date</th>
+                                    <th class="text-end">Points</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var m in _branchDetail.Members)
+                                {
+                                    <tr>
+                                        <td class="text-muted fs-13">@m.OrderNo</td>
+                                        <td class="fw-medium">@m.FullName</td>
+                                        <td>@m.MembershipLevel</td>
+                                        <td class="text-muted fs-13">@(m.ExpirationDate.HasValue ? m.ExpirationDate.Value.ToString("MM/dd/yyyy") : "—")</td>
+                                        <td class="text-end fw-semibold text-primary">@m.Points</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-light" @onclick="CloseBranchModal">Close</button>
+                <button type="button" class="btn btn-primary">Export list</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @code {
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
     [Parameter] public string ApiBaseUrl     { get; set; } = "api/v1/bizcenter/commissions";
@@ -244,18 +343,25 @@
     private DateTime? _to;
     private List<EarningItem> _items = new();
 
-    // Stat cards state — mapped from car-bonus stats endpoint
+    // Stat cards state
     private bool    _statsLoading     = true;
     private decimal _totalPoints;
     private decimal _eligiblePoints;
     private int     _progressPercent;
 
-    // Ambassador breakdown state
+    // Ambassador breakdown state (client-side paging)
     private bool    _ambassadorLoading = true;
-    private string    _ambassadorSearch = string.Empty;
-    private DateTime? _ambassadorFrom;
-    private DateTime? _ambassadorTo;
+    private string  _ambassadorSearch  = string.Empty;
+    private int     _ambassadorPage    = 1;
+    private int     _ambassadorPageSize = 10;
     private List<AmbassadorBreakdownItem> _ambassadorItems = new();
+
+    // Branch modal state
+    private bool             _branchModalVisible;
+    private bool             _branchLoading;
+    private string           _branchModalTitle       = string.Empty;
+    private string           _branchModalTotalPoints = "0";
+    private BranchDetailDto  _branchDetail           = new();
 
     private List<EarningItem> Filtered =>
         _items.Where(x => string.IsNullOrWhiteSpace(_search)
@@ -266,6 +372,11 @@
         _ambassadorItems.Where(x => string.IsNullOrWhiteSpace(_ambassadorSearch)
                                  || x.AmbassadorName.Contains(_ambassadorSearch, StringComparison.OrdinalIgnoreCase))
                         .ToList();
+
+    private IEnumerable<AmbassadorBreakdownItem> AmbassadorPaged =>
+        AmbassadorFiltered
+            .Skip((_ambassadorPage - 1) * _ambassadorPageSize)
+            .Take(_ambassadorPageSize);
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
@@ -300,23 +411,57 @@
         await LoadPageAsync(1);
     }
 
-    // ── Ambassador breakdown input handlers ───────────────────────────────────
+    // ── Ambassador breakdown handlers ─────────────────────────────────────────
 
     private void OnAmbassadorSearchInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
         _ambassadorSearch = e.Value?.ToString() ?? string.Empty;
+        _ambassadorPage   = 1;
     }
 
-    private async Task OnAmbassadorFromChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    private void GoToAmbassadorPage(int page)
     {
-        _ambassadorFrom = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : (DateTime?)null;
-        await LoadAmbassadorBreakdownAsync();
+        var total     = AmbassadorFiltered.Count;
+        var totalPg   = (int)Math.Ceiling((double)total / _ambassadorPageSize);
+        if (page < 1 || (totalPg > 0 && page > totalPg)) return;
+        _ambassadorPage = page;
     }
 
-    private async Task OnAmbassadorToChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    // ── Branch modal handlers ─────────────────────────────────────────────────
+
+    private async Task OpenBranchModalAsync(AmbassadorBreakdownItem amb)
     {
-        _ambassadorTo = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : (DateTime?)null;
-        await LoadAmbassadorBreakdownAsync();
+        _branchModalTitle       = amb.AmbassadorName;
+        _branchModalTotalPoints = amb.TotalPoints.ToString("N0");
+        _branchDetail           = new BranchDetailDto();
+        _branchModalVisible     = true;
+        _branchLoading          = true;
+        StateHasChanged();
+
+        try
+        {
+            var url  = $"{ApiBaseUrl}/car-bonus/ambassadors/{amb.MemberId}/branch";
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<BranchDetailDto>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _branchDetail = resp.Data;
+            }
+        }
+        catch
+        {
+            // Silently degrade — endpoint may not exist yet; leave empty list.
+            _branchDetail = new BranchDetailDto();
+        }
+        finally
+        {
+            _branchLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CloseBranchModal()
+    {
+        _branchModalVisible = false;
     }
 
     // ── Loaders ───────────────────────────────────────────────────────────────
@@ -345,9 +490,7 @@
         StateHasChanged();
         try
         {
-            var url = $"{ApiBaseUrl}/car-bonus/ambassadors";
-            if (_ambassadorFrom.HasValue) url += $"?from={_ambassadorFrom.Value:yyyy-MM-dd}";
-            if (_ambassadorTo.HasValue)   url += (_ambassadorFrom.HasValue ? "&" : "?") + $"to={_ambassadorTo.Value:yyyy-MM-dd}";
+            var url  = $"{ApiBaseUrl}/car-bonus/ambassadors";
             var resp = await Http.GetFromJsonAsync<ApiWrapper<List<AmbassadorBreakdownItem>>>(url);
             if (resp?.Success == true && resp.Data is not null)
                 _ambassadorItems = resp.Data;
@@ -389,9 +532,24 @@
 
     private class AmbassadorBreakdownItem
     {
+        public string  MemberId        { get; set; } = string.Empty;
         public string  AmbassadorName  { get; set; } = string.Empty;
         public decimal TotalPoints     { get; set; }
         public int     EligiblePoints  { get; set; }
+    }
+
+    private class BranchDetailDto
+    {
+        public List<BranchMemberDto> Members { get; set; } = new();
+    }
+
+    private class BranchMemberDto
+    {
+        public string    OrderNo         { get; set; } = string.Empty;
+        public string    FullName        { get; set; } = string.Empty;
+        public string    MembershipLevel { get; set; } = string.Empty;
+        public DateTime? ExpirationDate  { get; set; }
+        public int       Points          { get; set; }
     }
 
     private class EarningItem
@@ -401,5 +559,6 @@
         public string   Status             { get; set; } = string.Empty;
         public DateTime EarnedDate         { get; set; }
         public DateTime PaymentDate        { get; set; }
+        public int      EligiblePoints     { get; set; }
     }
 }

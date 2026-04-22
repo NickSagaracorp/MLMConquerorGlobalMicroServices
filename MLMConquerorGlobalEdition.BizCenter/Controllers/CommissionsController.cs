@@ -5,7 +5,10 @@ using MLMConquerorGlobalEdition.BizCenter.DTOs.Commissions;
 using MLMConquerorGlobalEdition.BizCenter.Features.Commissions.GetBoostBonusCommissions;
 using MLMConquerorGlobalEdition.BizCenter.Features.Commissions.GetBoostBonusMemberSummary;
 using MLMConquerorGlobalEdition.BizCenter.Features.Commissions.GetBoostBonusWeekStats;
+using MLMConquerorGlobalEdition.BizCenter.Features.Commissions.GetCarBonusAmbassadors;
+using MLMConquerorGlobalEdition.BizCenter.Features.Commissions.GetCarBonusBranch;
 using MLMConquerorGlobalEdition.BizCenter.Features.Commissions.GetCarBonusCommissions;
+using MLMConquerorGlobalEdition.BizCenter.Features.Commissions.GetCarBonusStats;
 using MLMConquerorGlobalEdition.BizCenter.Features.Commissions.GetCommissions;
 using MLMConquerorGlobalEdition.BizCenter.Features.Commissions.GetCommissionsBreakdown;
 using MLMConquerorGlobalEdition.BizCenter.Features.Commissions.GetCommissionsHistory;
@@ -169,6 +172,41 @@ public class CommissionsController : ControllerBase
         if (!result.IsSuccess)
             return BadRequest(ApiResponse<CommissionBonusSummaryDto>.Fail(result.ErrorCode!, result.Error!));
         return Ok(ApiResponse<CommissionBonusSummaryDto>.Ok(result.Value!));
+    }
+
+    /// <summary>GET /api/v1/bizcenter/commissions/car-bonus/stats — current month progress</summary>
+    [HttpGet("car-bonus/stats")]
+    public async Task<IActionResult> GetCarBonusStats(CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new GetCarBonusStatsQuery(), ct);
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<CarBonusStatsDto>.Fail(result.ErrorCode!, result.Error!));
+        return Ok(ApiResponse<CarBonusStatsDto>.Ok(result.Value!));
+    }
+
+    /// <summary>GET /api/v1/bizcenter/commissions/car-bonus/ambassadors — downline breakdown</summary>
+    [HttpGet("car-bonus/ambassadors")]
+    public async Task<IActionResult> GetCarBonusAmbassadors(
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to   = null,
+        CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new GetCarBonusAmbassadorsQuery(from, to), ct);
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<List<CarBonusAmbassadorDto>>.Fail(result.ErrorCode!, result.Error!));
+        return Ok(ApiResponse<List<CarBonusAmbassadorDto>>.Ok(result.Value!));
+    }
+
+    /// <summary>GET /api/v1/bizcenter/commissions/car-bonus/ambassadors/{memberId}/branch — branch member breakdown</summary>
+    [HttpGet("car-bonus/ambassadors/{memberId}/branch")]
+    public async Task<IActionResult> GetCarBonusBranch(
+        [FromRoute] string memberId,
+        CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new GetCarBonusBranchQuery(memberId), ct);
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<CarBonusBranchDto>.Fail(result.ErrorCode!, result.Error!));
+        return Ok(ApiResponse<CarBonusBranchDto>.Ok(result.Value!));
     }
 
     /// <summary>GET /api/v1/bizcenter/commissions/car-bonus — paged earnings</summary>

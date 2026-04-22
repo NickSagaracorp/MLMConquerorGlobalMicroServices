@@ -1,4 +1,4 @@
-using MLMConquerorGlobalEdition.CommissionEngine.Features.CalculateDailyResidual;
+﻿using MLMConquerorGlobalEdition.CommissionEngine.Features.CalculateDailyResidual;
 using MLMConquerorGlobalEdition.CommissionEngine.Services;
 using MLMConquerorGlobalEdition.CommissionEngine.Tests.Helpers;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
@@ -49,7 +49,7 @@ public class CalculateDailyResidualHandlerTests
     };
 
     private static CommissionType BuildResidualType(int id, int teamPoints = 100,
-        decimal? fixedAmount = 50, bool isEnrollmentBased = false) => new()
+        decimal? Amount = 50, bool isEnrollmentBased = false) => new()
     {
         Id               = id,
         Name             = $"DTR-{teamPoints}",
@@ -57,7 +57,7 @@ public class CalculateDailyResidualHandlerTests
         ResidualBased    = true,
         IsPaidOnSignup   = false,
         TeamPoints       = teamPoints,
-        FixedAmount      = fixedAmount,
+        Amount      = Amount,
         Percentage       = 0,
         IsEnrollmentBased = isEnrollmentBased,
         PaymentDelayDays  = 0,
@@ -114,7 +114,7 @@ public class CalculateDailyResidualHandlerTests
     public async Task Handle_WhenAmbassadorMeetsThreshold_CreatesEarning()
     {
         await using var db = InMemoryDbHelper.Create();
-        await db.CommissionTypes.AddAsync(BuildResidualType(id: 1, teamPoints: 100, fixedAmount: 50));
+        await db.CommissionTypes.AddAsync(BuildResidualType(id: 1, teamPoints: 100, Amount: 50));
         await db.MemberProfiles.AddAsync(BuildAmbassador("AMB-001"));
         await db.MemberStatistics.AddAsync(BuildStats("AMB-001", dualTeamPoints: 200));
         await db.SaveChangesAsync();
@@ -133,7 +133,7 @@ public class CalculateDailyResidualHandlerTests
     public async Task Handle_WhenAmbassadorBelowThreshold_SkipsEarning()
     {
         await using var db = InMemoryDbHelper.Create();
-        await db.CommissionTypes.AddAsync(BuildResidualType(id: 1, teamPoints: 500, fixedAmount: 50));
+        await db.CommissionTypes.AddAsync(BuildResidualType(id: 1, teamPoints: 500, Amount: 50));
         await db.MemberProfiles.AddAsync(BuildAmbassador("AMB-001"));
         await db.MemberStatistics.AddAsync(BuildStats("AMB-001", dualTeamPoints: 100));
         await db.SaveChangesAsync();
@@ -153,8 +153,8 @@ public class CalculateDailyResidualHandlerTests
         await using var db = InMemoryDbHelper.Create();
         // Two tiers: Silver=100pts/$30, Gold=300pts/$60. Ambassador has 350 points → pays Gold.
         await db.CommissionTypes.AddRangeAsync(
-            BuildResidualType(id: 1, teamPoints: 100, fixedAmount: 30),
-            BuildResidualType(id: 2, teamPoints: 300, fixedAmount: 60));
+            BuildResidualType(id: 1, teamPoints: 100, Amount: 30),
+            BuildResidualType(id: 2, teamPoints: 300, Amount: 60));
         await db.MemberProfiles.AddAsync(BuildAmbassador("AMB-001"));
         await db.MemberStatistics.AddAsync(BuildStats("AMB-001", dualTeamPoints: 350));
         await db.SaveChangesAsync();
@@ -174,7 +174,7 @@ public class CalculateDailyResidualHandlerTests
     public async Task Handle_ExcludesNonAmbassadorMembers()
     {
         await using var db = InMemoryDbHelper.Create();
-        await db.CommissionTypes.AddAsync(BuildResidualType(id: 1, teamPoints: 100, fixedAmount: 50));
+        await db.CommissionTypes.AddAsync(BuildResidualType(id: 1, teamPoints: 100, Amount: 50));
         var externalMember = BuildAmbassador("EXT-001");
         externalMember.MemberType = MemberType.ExternalMember;
         await db.MemberProfiles.AddAsync(externalMember);
@@ -190,3 +190,4 @@ public class CalculateDailyResidualHandlerTests
         result.Value!.RecordsCreated.Should().Be(0);
     }
 }
+

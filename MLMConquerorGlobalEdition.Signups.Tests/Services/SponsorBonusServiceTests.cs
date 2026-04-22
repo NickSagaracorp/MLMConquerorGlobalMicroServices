@@ -1,4 +1,4 @@
-using MLMConquerorGlobalEdition.Domain.Entities.Commission;
+﻿using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.SignupAPI.Services;
@@ -45,19 +45,21 @@ public class SponsorBonusServiceTests
         MLMConquerorGlobalEdition.Repository.Context.AppDbContext db,
         int id,
         int levelNo,
-        decimal? fixedAmount = null,
+        decimal? Amount = null,
         decimal percentage = 0m,
         int paymentDelayDays = 7,
-        int reverseId = 0)
+        int reverseId = 0,
+        int commissionCategoryId = 1)
     {
         await db.CommissionTypes.AddAsync(new CommissionType
         {
             Id = id,
             Name = $"Sponsor Bonus L{levelNo}",
+            CommissionCategoryId = commissionCategoryId,
             IsActive = true,
             IsSponsorBonus = true,
             LevelNo = levelNo,
-            FixedAmount = fixedAmount,
+            Amount = Amount,
             Percentage = percentage,
             PaymentDelayDays = paymentDelayDays,
             ReverseId = reverseId,
@@ -95,7 +97,7 @@ public class SponsorBonusServiceTests
         // MembershipLevelId = 1 (Lifestyle Ambassador) — no bonus
         await using var db = InMemoryDbHelper.Create();
         await SeedProductAndOrderDetail(db, "order-001", "prod-001", membershipLevelId: 1);
-        await SeedCommissionType(db, 1, levelNo: 1, fixedAmount: 20m);
+        await SeedCommissionType(db, 1, levelNo: 1, Amount: 20m);
 
         var service = new SponsorBonusService(db);
         await service.ComputeAsync("AMB-SPONSOR", "MBR-001", "order-001", 99m, "seed", FixedNow, CancellationToken.None);
@@ -121,7 +123,7 @@ public class SponsorBonusServiceTests
     {
         await using var db = InMemoryDbHelper.Create();
         await SeedProductAndOrderDetail(db, "order-001", "prod-001", membershipLevelId: 2);
-        await SeedCommissionType(db, 10, levelNo: 2, fixedAmount: 40m);
+        await SeedCommissionType(db, 10, levelNo: 2, Amount: 40m);
 
         // Pre-existing earning for same order + type + beneficiary
         await db.CommissionEarnings.AddAsync(new CommissionEarning
@@ -150,7 +152,7 @@ public class SponsorBonusServiceTests
     {
         await using var db = InMemoryDbHelper.Create();
         await SeedProductAndOrderDetail(db, "order-001", "prod-001", membershipLevelId: 2);
-        await SeedCommissionType(db, 10, levelNo: 2, fixedAmount: 40m, paymentDelayDays: 7);
+        await SeedCommissionType(db, 10, levelNo: 2, Amount: 40m, paymentDelayDays: 7);
 
         var service = new SponsorBonusService(db);
         await service.ComputeAsync("AMB-SPONSOR", "MBR-001", "order-001", 99m, "seed", FixedNow, CancellationToken.None);
@@ -170,7 +172,7 @@ public class SponsorBonusServiceTests
     {
         await using var db = InMemoryDbHelper.Create();
         await SeedProductAndOrderDetail(db, "order-001", "prod-001", membershipLevelId: 2);
-        await SeedCommissionType(db, 10, levelNo: 2, fixedAmount: null, percentage: 20m); // 20%
+        await SeedCommissionType(db, 10, levelNo: 2, Amount: null, percentage: 20m); // 20%
 
         var service = new SponsorBonusService(db);
         // order total = 100m, 20% = 20m
@@ -197,7 +199,7 @@ public class SponsorBonusServiceTests
     public async Task TryReverseAsync_WhenNoMatchingEarning_DoesNothing()
     {
         await using var db = InMemoryDbHelper.Create();
-        await SeedCommissionType(db, 10, levelNo: 2, fixedAmount: 40m);
+        await SeedCommissionType(db, 10, levelNo: 2, Amount: 40m);
 
         var service = new SponsorBonusService(db);
         await service.TryReverseAsync("MBR-001", "order-999", null, FixedNow, "actor", CancellationToken.None);
@@ -209,7 +211,7 @@ public class SponsorBonusServiceTests
     public async Task TryReverseAsync_WhenPendingEarning_CancelsItInPlace()
     {
         await using var db = InMemoryDbHelper.Create();
-        await SeedCommissionType(db, 10, levelNo: 2, fixedAmount: 40m);
+        await SeedCommissionType(db, 10, levelNo: 2, Amount: 40m);
 
         var earning = new CommissionEarning
         {
@@ -240,7 +242,7 @@ public class SponsorBonusServiceTests
     {
         await using var db = InMemoryDbHelper.Create();
         // Sponsor bonus type (ID=10) with reverse type (ID=11)
-        await SeedCommissionType(db, 10, levelNo: 2, fixedAmount: 40m, reverseId: 11);
+        await SeedCommissionType(db, 10, levelNo: 2, Amount: 40m, reverseId: 11);
         await db.CommissionTypes.AddAsync(new CommissionType
         {
             Id = 11,
@@ -278,14 +280,14 @@ public class SponsorBonusServiceTests
         reversal.Amount.Should().Be(-40m);
         reversal.Status.Should().Be(CommissionEarningStatus.Pending);
         reversal.BeneficiaryMemberId.Should().Be("AMB-SPONSOR");
-        reversal.Notes.Should().Contain("Reversal of sponsor bonus");
+        reversal.Notes.Should().Contain("Reversal of earning");
     }
 
     [Fact]
     public async Task TryReverseAsync_WhenPaidEarningAndReversalAlreadyExists_IsIdempotent()
     {
         await using var db = InMemoryDbHelper.Create();
-        await SeedCommissionType(db, 10, levelNo: 2, fixedAmount: 40m, reverseId: 11);
+        await SeedCommissionType(db, 10, levelNo: 2, Amount: 40m, reverseId: 11);
         await db.CommissionTypes.AddAsync(new CommissionType
         {
             Id = 11, Name = "Reversal", IsActive = true, IsSponsorBonus = false,
@@ -334,7 +336,7 @@ public class SponsorBonusServiceTests
     public async Task TryReverseAsync_WhenAlreadyCancelledEarning_DoesNothing()
     {
         await using var db = InMemoryDbHelper.Create();
-        await SeedCommissionType(db, 10, levelNo: 2, fixedAmount: 40m);
+        await SeedCommissionType(db, 10, levelNo: 2, Amount: 40m);
 
         // Earning already cancelled
         await db.CommissionEarnings.AddAsync(new CommissionEarning
@@ -360,3 +362,4 @@ public class SponsorBonusServiceTests
         db.CommissionEarnings.Single().Status.Should().Be(CommissionEarningStatus.Cancelled);
     }
 }
+

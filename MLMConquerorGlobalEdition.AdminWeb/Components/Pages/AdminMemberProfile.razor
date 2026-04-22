@@ -350,6 +350,155 @@ else
             </div>
         </div>
     }
+    else if (_activeTab == "membership")
+    {
+        @if (_membershipLoading)
+        {
+            <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+        }
+        else if (_membershipError is not null)
+        {
+            <div class="alert alert-danger">@_membershipError</div>
+        }
+        else if (_membership is null)
+        {
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4 text-center py-5">
+                    <i class="ri-vip-crown-line fs-2 text-muted d-block mb-3"></i>
+                    <p class="text-muted mb-0">No membership found.</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            <!-- Membership summary card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between flex-wrap gap-3 align-items-start mb-4">
+                        <div>
+                            <h5 class="fw-semibold mb-2">
+                                <i class="ri-vip-crown-line text-primary me-2"></i>
+                                Membership Details
+                            </h5>
+                            <div class="d-flex flex-wrap gap-2 align-items-center">
+                                <span class="badge bg-primary fs-13">@(_membership.MembershipLevelName ?? "—")</span>
+                                <span class="badge @MembershipStatusBadge(_membership.Status) fs-13">@_membership.Status</span>
+                                @if (_membership.IsFree)
+                                {
+                                    <span class="badge bg-info text-dark fs-13">
+                                        <i class="ri-gift-line me-1"></i>Free
+                                    </span>
+                                }
+                                @if (_membership.IsAutoRenew)
+                                {
+                                    <span class="badge bg-success fs-13">
+                                        <i class="ri-refresh-line me-1"></i>Auto-Renew
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary fs-13">
+                                        <i class="ri-close-circle-line me-1"></i>No Auto-Renew
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6 col-lg-4">
+                            <div class="border rounded p-3 h-100">
+                                <small class="text-muted d-block mb-1">Start Date</small>
+                                <span class="fw-semibold">@_membership.StartDate.ToString("yyyy-MM-dd")</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="border rounded p-3 h-100">
+                                <small class="text-muted d-block mb-1">End Date</small>
+                                <span class="fw-semibold">
+                                    @(_membership.EndDate.HasValue ? _membership.EndDate.Value.ToString("yyyy-MM-dd") : "No expiry")
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="border rounded p-3 h-100">
+                                <small class="text-muted d-block mb-1">Renewal Date</small>
+                                <span class="fw-semibold">
+                                    @(_membership.RenewalDate.HasValue ? _membership.RenewalDate.Value.ToString("yyyy-MM-dd") : "—")
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="border rounded p-3 h-100">
+                                <small class="text-muted d-block mb-1">Change Reason</small>
+                                <span class="fw-semibold">@(_membership.ChangeReason ?? "—")</span>
+                            </div>
+                        </div>
+                        @if (_membership.HoldDate.HasValue)
+                        {
+                            <div class="col-md-6 col-lg-4">
+                                <div class="border rounded p-3 h-100">
+                                    <small class="text-muted d-block mb-1">Hold Date</small>
+                                    <span class="fw-semibold text-warning">@_membership.HoldDate.Value.ToString("yyyy-MM-dd")</span>
+                                </div>
+                            </div>
+                        }
+                        @if (_membership.CancellationDate.HasValue)
+                        {
+                            <div class="col-md-6 col-lg-4">
+                                <div class="border rounded p-3 h-100">
+                                    <small class="text-muted d-block mb-1">Cancellation Date</small>
+                                    <span class="fw-semibold text-danger">@_membership.CancellationDate.Value.ToString("yyyy-MM-dd")</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Related Orders -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <h5 class="fw-semibold border-bottom pb-3 mb-3">
+                        <i class="ri-shopping-bag-line text-primary me-2"></i>
+                        Related Orders
+                    </h5>
+                    @if (_membership.Orders is null || _membership.Orders.Count == 0)
+                    {
+                        <p class="text-muted text-center py-4 mb-0">No related orders found.</p>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Order No</th>
+                                        <th>Date</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                        <th>Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var ord in _membership.Orders)
+                                    {
+                                        <tr>
+                                            <td class="fw-semibold"><code>@ord.OrderNo</code></td>
+                                            <td>@ord.OrderDate.ToString("yyyy-MM-dd")</td>
+                                            <td class="fw-semibold text-success">$@ord.TotalAmount.ToString("F2")</td>
+                                            <td><span class="badge @OrderStatusBadge(ord.Status)">@ord.Status</span></td>
+                                            <td>@(string.IsNullOrWhiteSpace(ord.Notes) ? "—" : ord.Notes)</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
     else if (_activeTab == "network")
     {
         <div class="card border-0 shadow-sm">
@@ -398,6 +547,8 @@ else
         {
             <DualTeamBinaryTree MemberProfileId="@MemberId"
                                 ApiBaseUrl="@($"api/v1/admin/members/{MemberId}/team")"
+                                PlacementApiBaseUrl="api/v1/admin/placement"
+                                AllowUnplacement="true"
                                 ShowBreadcrumb="false" />
         }
         else if (_dualSub == "residuals")
@@ -481,6 +632,7 @@ else
         new("placement",  "Placement",       "ri-user-add-line"),
         new("commissions","Commissions",     "ri-money-dollar-circle-line"),
         new("ranks",      "Ranks",           "ri-award-line"),
+        new("membership", "Membership",      "ri-vip-crown-line"),
         new("orders",     "Orders",          "ri-shopping-bag-line"),
         new("tokens",     "Tokens",          "ri-token-swap-line"),
         new("tickets",    "Tickets",         "ri-customer-service-2-line"),
@@ -571,11 +723,97 @@ else
     // ── Commissions state ──────────────────────────────────────────────────
     private string _commSub = "overview";
 
-    private Task OnTabClick(string tabKey)
+    private async Task OnTabClick(string tabKey)
     {
         _activeTab = tabKey;
-        return Task.CompletedTask;
+
+        // Lazy-load tab-specific data on first activation
+        if (tabKey == "membership" && _membership is null && !_membershipLoaded)
+        {
+            await LoadMembershipAsync();
+        }
     }
+
+    // ── Membership tab state ──────────────────────────────────────────────
+    private MembershipDetailDto? _membership;
+    private bool                 _membershipLoading = false;
+    private bool                 _membershipLoaded  = false;
+    private string?              _membershipError;
+    private string               _memberId => MemberId;
+
+    private async Task LoadMembershipAsync()
+    {
+        _membershipLoading = true;
+        _membershipError   = null;
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<MembershipDetailDto>>(
+                $"api/v1/admin/members/{_memberId}/membership");
+            if (resp?.Success == true)
+            {
+                _membership = resp.Data;
+            }
+            else
+            {
+                _membershipError = resp?.Errors?.FirstOrDefault() ?? "Unable to load membership.";
+            }
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            _membership = null; // no membership found -> empty state
+        }
+        catch (Exception ex)
+        {
+            _membershipError = ex.Message;
+        }
+        finally
+        {
+            _membershipLoading = false;
+            _membershipLoaded  = true;
+        }
+    }
+
+    private static string MembershipStatusBadge(string? status) => status switch
+    {
+        "Active"    => "bg-success",
+        "Cancelled" => "bg-danger",
+        "Expired"   => "bg-warning text-dark",
+        "Pending"   => "bg-secondary",
+        _           => "bg-secondary"
+    };
+
+    private static string OrderStatusBadge(string? status) => status switch
+    {
+        "Completed" => "bg-success",
+        "Pending"   => "bg-warning text-dark",
+        "Failed"    => "bg-danger",
+        "Refunded"  => "bg-info text-dark",
+        "Cancelled" => "bg-secondary",
+        _           => "bg-secondary"
+    };
+
+    private record MembershipDetailDto(
+        string    SubscriptionId,
+        int       MembershipLevelId,
+        string?   MembershipLevelName,
+        string    Status,
+        string?   ChangeReason,
+        DateTime  StartDate,
+        DateTime? EndDate,
+        DateTime? RenewalDate,
+        DateTime? HoldDate,
+        DateTime? CancellationDate,
+        bool      IsFree,
+        bool      IsAutoRenew,
+        List<MembershipOrderDto>? Orders);
+
+    private record MembershipOrderDto(
+        string    OrderId,
+        string    OrderNo,
+        DateTime  OrderDate,
+        decimal   TotalAmount,
+        string    Status,
+        string?   Notes);
 
     private record MemberDetailDto(
         string MemberId, string FirstName, string LastName,

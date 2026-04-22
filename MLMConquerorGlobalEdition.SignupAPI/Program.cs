@@ -77,6 +77,7 @@ builder.Services.AddSingleton<IAmazonS3>(_ =>
 builder.Services.AddScoped<IS3FileService, S3FileService>();
 builder.Services.AddScoped<ISponsorBonusService, SponsorBonusService>();
 builder.Services.AddScoped<IFastStartBonusService, FastStartBonusService>();
+builder.Services.AddScoped<IEncryptionService, EncryptionService>();
 
 // JWT Service
 builder.Services.AddScoped<IJwtService, JwtService>();
@@ -98,6 +99,7 @@ builder.Services.AddSingleton<IPushNotificationService, FirebasePushNotification
 // HangFire
 builder.Services.AddScoped<ProcessScheduledCancellationsJob>();
 builder.Services.AddScoped<BuilderBonusSweepJob>();
+builder.Services.AddScoped<FastStartBonusSweepJob>();
 builder.Services.AddHangfire(cfg => cfg
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
     .UseSimpleAssemblyNameTypeSerializer()

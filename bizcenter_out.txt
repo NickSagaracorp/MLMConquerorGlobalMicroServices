@@ -1,0 +1,74 @@
+Using launch settings from C:\Users\sagar\source\repos\ClaudeRepository\MLMConquerorGlobalEdition.BizCenter\Properties\launchSettings.json...
+Building...
+[2026-04-21 01:02:23.584 WRN] Microsoft.EntityFrameworkCore.Model.Validation: Entity 'Product' has a global query filter defined and is the required end of a relationship with the entity 'CountryProduct'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+[2026-04-21 01:02:23.595 WRN] Microsoft.EntityFrameworkCore.Model.Validation: Entity 'Product' has a global query filter defined and is the required end of a relationship with the entity 'ProductCommission'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+[2026-04-21 01:02:23.595 WRN] Microsoft.EntityFrameworkCore.Model.Validation: Entity 'Product' has a global query filter defined and is the required end of a relationship with the entity 'ProductCommissionPromo'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+[2026-04-21 01:02:23.595 WRN] Microsoft.EntityFrameworkCore.Model.Validation: Entity 'KnowledgeBaseArticle' has a global query filter defined and is the required end of a relationship with the entity 'KbArticleVersion'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+[2026-04-21 01:02:23.595 WRN] Microsoft.EntityFrameworkCore.Model.Validation: Entity 'Ticket' has a global query filter defined and is the required end of a relationship with the entity 'SlaBreach'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+[2026-04-21 01:02:23.596 WRN] Microsoft.EntityFrameworkCore.Model.Validation: Entity 'Ticket' has a global query filter defined and is the required end of a relationship with the entity 'TicketComment'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+[2026-04-21 01:02:23.596 WRN] Microsoft.EntityFrameworkCore.Model.Validation: Entity 'Ticket' has a global query filter defined and is the required end of a relationship with the entity 'TicketHistory'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+[2026-04-21 01:02:24.006 WRN] Microsoft.EntityFrameworkCore.Model.Validation: The foreign key property 'MemberCommissionCountDown.MemberId1' was created in shadow state because a conflicting property with the simple name 'MemberId' exists in the entity type, but is either not mapped, is already used for another relationship, or is incompatible with the associated primary key type. See https://aka.ms/efcore-relationships for information on mapping relationships in EF Core.
+[2026-04-21 01:02:24.007 WRN] Microsoft.EntityFrameworkCore.Model.Validation: The foreign key property 'MemberCommissionCountDownHistory.MemberId1' was created in shadow state because a conflicting property with the simple name 'MemberId' exists in the entity type, but is either not mapped, is already used for another relationship, or is incompatible with the associated primary key type. See https://aka.ms/efcore-relationships for information on mapping relationships in EF Core.
+[2026-04-21 01:02:24.007 WRN] Microsoft.EntityFrameworkCore.Model.Validation: The foreign key property 'MembershipSubscription.LastOrderId1' was created in shadow state because a conflicting property with the simple name 'LastOrderId' exists in the entity type, but is either not mapped, is already used for another relationship, or is incompatible with the associated primary key type. See https://aka.ms/efcore-relationships for information on mapping relationships in EF Core.
+[2026-04-21 01:02:24.007 WRN] Microsoft.EntityFrameworkCore.Model.Validation: The foreign key property 'ProductCommissionPromo.CorporatePromoId1' was created in shadow state because a conflicting property with the simple name 'CorporatePromoId' exists in the entity type, but is either not mapped, is already used for another relationship, or is incompatible with the associated primary key type. See https://aka.ms/efcore-relationships for information on mapping relationships in EF Core.
+[2026-04-21 01:02:24.090 WRN] Microsoft.EntityFrameworkCore.Model.Validation: No store type was specified for the decimal property 'PointsEarned' on entity type 'LoyaltyPoints'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+[2026-04-21 01:02:24.091 WRN] Microsoft.EntityFrameworkCore.Model.Validation: No store type was specified for the decimal property 'CurrentMonthIncomeGrowth' on entity type 'MemberStatisticEntity'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+[2026-04-21 01:02:24.091 WRN] Microsoft.EntityFrameworkCore.Model.Validation: No store type was specified for the decimal property 'CurrentWeekIncomeGrowth' on entity type 'MemberStatisticEntity'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+[2026-04-21 01:02:24.091 WRN] Microsoft.EntityFrameworkCore.Model.Validation: No store type was specified for the decimal property 'CurrentYearIncomeGrowth' on entity type 'MemberStatisticEntity'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+[2026-04-21 01:02:24.092 WRN] Microsoft.EntityFrameworkCore.Model.Validation: No store type was specified for the decimal property 'UnitPrice' on entity type 'OrderDetail'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+[2026-04-21 01:02:24.092 WRN] Microsoft.EntityFrameworkCore.Model.Validation: No store type was specified for the decimal property 'TotalAmount' on entity type 'Orders'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+[2026-04-21 01:02:24.092 WRN] Microsoft.EntityFrameworkCore.Model.Validation: No store type was specified for the decimal property 'Amount' on entity type 'PaymentHistory'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+[2026-04-21 01:02:27.607 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (151ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-21 01:02:27.647 INF] Microsoft.EntityFrameworkCore.Migrations: Acquiring an exclusive lock for migration application. See https://aka.ms/efcore-docs-migrations-lock for more information if this takes too long.
+[2026-04-21 01:02:28.114 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (461ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+DECLARE @result int;
+EXEC @result = sp_getapplock @Resource = '__EFMigrationsLock', @LockOwner = 'Session', @LockMode = 'Exclusive';
+SELECT @result
+[2026-04-21 01:02:28.334 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (15ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+IF OBJECT_ID(N'[__EFMigrationsHistory]') IS NULL
+BEGIN
+    CREATE TABLE [__EFMigrationsHistory] (
+        [MigrationId] nvarchar(150) NOT NULL,
+        [ProductVersion] nvarchar(32) NOT NULL,
+        CONSTRAINT [PK___EFMigrationsHistory] PRIMARY KEY ([MigrationId])
+    );
+END;
+[2026-04-21 01:02:28.435 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (29ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-21 01:02:28.469 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (32ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+[2026-04-21 01:02:28.501 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (26ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [MigrationId], [ProductVersion]
+FROM [__EFMigrationsHistory]
+ORDER BY [MigrationId];
+[2026-04-21 01:02:28.527 INF] Microsoft.EntityFrameworkCore.Migrations: No migrations were applied. The database is already up to date.
+[2026-04-21 01:02:28.564 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (20ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+DECLARE @result int;
+EXEC @result = sp_releaseapplock @Resource = '__EFMigrationsLock', @LockOwner = 'Session';
+SELECT @result
+[2026-04-21 01:02:29.685 INF] Microsoft.Hosting.Lifetime: Now listening on: https://localhost:7003
+[2026-04-21 01:02:29.685 INF] Microsoft.Hosting.Lifetime: Now listening on: http://localhost:5003
+[2026-04-21 01:02:29.697 INF] Hangfire.BackgroundJobServer: Starting Hangfire Server using job storage: 'In-Memory Storage'
+[2026-04-21 01:02:29.698 INF] Hangfire.BackgroundJobServer: Using the following options for Hangfire Server:
+    Worker count: 5
+    Listening queues: 'default'
+    Shutdown timeout: 00:00:15
+    Schedule polling interval: 00:00:15
+[2026-04-21 01:02:29.735 INF] Microsoft.Hosting.Lifetime: Application started. Press Ctrl+C to shut down.
+[2026-04-21 01:02:29.736 INF] Microsoft.Hosting.Lifetime: Hosting environment: Development
+[2026-04-21 01:02:29.736 INF] Microsoft.Hosting.Lifetime: Content root path: C:\Users\sagar\source\repos\ClaudeRepository\MLMConquerorGlobalEdition.BizCenter
+[2026-04-21 01:02:29.737 INF] Hangfire.Server.BackgroundServerProcess: Server jarvis2_0:20892:a2575cef successfully announced in 3.0832 ms
+[2026-04-21 01:02:29.746 INF] Hangfire.Server.BackgroundServerProcess: Server jarvis2_0:20892:a2575cef is starting the registered dispatchers: ServerWatchdog, ServerJobCancellationWatcher, Worker, DelayedJobScheduler, RecurringJobScheduler...
+[2026-04-21 01:02:29.801 INF] Hangfire.Server.BackgroundServerProcess: Server jarvis2_0:20892:a2575cef all the dispatchers started
+[2026-04-21 05:01:41.434 INF] MLMConquerorGlobalEdition.BizCenter.Jobs.ExpiredTokenCleanupJob: ExpiredTokenCleanupJob: starting at 04/21/2026 01:01:41.
+[2026-04-21 05:01:42.156 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (26ms) [Parameters=[@expiryThreshold='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT [t].[Id], [t].[CreatedBy], [t].[CreationDate], [t].[DistributedToMemberId], [t].[GeneratedPdfUrl], [t].[MemberId], [t].[Notes], [t].[Quantity], [t].[ReferenceId], [t].[TokenTypeId], [t].[TransactionType], [t].[UsedAt], [t].[UsedByMemberId]
+FROM [TokenTransactions] AS [t]
+WHERE [t].[TransactionType] NOT IN (4, 3, 6) AND [t].[CreationDate] <= @expiryThreshold
+[2026-04-21 05:01:42.161 INF] MLMConquerorGlobalEdition.BizCenter.Jobs.ExpiredTokenCleanupJob: ExpiredTokenCleanupJob: no tokens to expire.
+[2026-04-21 11:23:22.912 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (4ms) [Parameters=[@windowCutoff='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[Id], [m].[ActiveMembershipId], [m].[Address], [m].[BinaryNodeId], [m].[BusinessName], [m].[City], [m].[Country], [m].[CreatedBy], [m].[CreationDate], [m].[DateOfBirth], [m].[DeletedAt], [m].[DeletedBy], [m].[Email], [m].[EnrollDate], [m].[EnrollmentNodeId], [m].[FirstName], [m].[IsDeleted], [m].[IsEmailPublic], [m].[IsNamePublic], [m].[IsPhonePublic], [m].[LastName], [m].[LastUpdateBy], [m].[LastUpdateDate], [m].[MemberId], [m].[MemberType], [m].[Phone], [m].[ProfilePhotoUrl], [m].[ReplicateSiteSlug], [m].[RowVersion], [m].[ShowBusinessName], [m].[SponsorMemberId], [m].[SsnEncrypted], [m].[State], [m].[Status], [m].[UserId], [m].[WhatsApp], [m].[ZipCode]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] <= @windowCutoff AND [m].[SponsorMemberId] IS NOT NULL
+[2026-04-21 11:23:22.913 INF] MLMConquerorGlobalEdition.BizCenter.Jobs.AutoPlacementJob: AutoPlacementJob: no unplaced members found at 04/21/2026 07:23:22

@@ -39,8 +39,20 @@
                     <GridColumn HeaderText="Name" Width="200">
                         <Template><span class="fw-semibold">@(((CommissionTypeDto)context).Name)</span>@if(!string.IsNullOrWhiteSpace(((CommissionTypeDto)context).Description)){<text><br/><small class="text-muted">@(((CommissionTypeDto)context).Description)</small></text>}</Template>
                     </GridColumn>
-                    <GridColumn HeaderText="%" Width="90" TextAlign="TextAlign.Right">
+                    <GridColumn HeaderText="%" Width="80" TextAlign="TextAlign.Right">
                         <Template>@(((CommissionTypeDto)context).Percentage.ToString("F2"))%</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Amount" Width="100" TextAlign="TextAlign.Right">
+                        <Template>@(((CommissionTypeDto)context).Amount.HasValue ? ((CommissionTypeDto)context).Amount!.Value.ToString("C") : "—")</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Promo" Width="100" TextAlign="TextAlign.Right">
+                        <Template>
+                            @if (((CommissionTypeDto)context).AmountPromo is > 0)
+                            {
+                                <span class="badge bg-warning text-dark">@(((CommissionTypeDto)context).AmountPromo!.Value.ToString("C"))</span>
+                            }
+                            else { <text>—</text> }
+                        </Template>
                     </GridColumn>
                     <GridColumn Field="@nameof(CommissionTypeDto.PaymentDelayDays)" HeaderText="Delay(d)" Width="100" TextAlign="TextAlign.Center" />
                     <GridColumn HeaderText="Real-Time" Width="100" TextAlign="TextAlign.Center">
@@ -101,6 +113,14 @@
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Percentage (%)</label>
                             <input type="number" step="0.01" class="form-control" @bind="_form.Percentage" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Amount ($)</label>
+                            <input type="number" step="0.01" class="form-control" @bind="_form.Amount" placeholder="Leave blank for % only" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Promo Amount ($) <small class="text-warning fw-normal">Active when &gt; 0</small></label>
+                            <input type="number" step="0.01" class="form-control" @bind="_form.AmountPromo" placeholder="Clear to end promo" />
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Payment Delay (days)</label>
@@ -217,7 +237,8 @@
         _form = new CommissionTypeFormModel
         {
             CommissionCategoryId = ct.CommissionCategoryId, Name = ct.Name, Description = ct.Description,
-            Percentage = ct.Percentage, PaymentDelayDays = ct.PaymentDelayDays, IsRealTime = ct.IsRealTime,
+            Percentage = ct.Percentage, Amount = ct.Amount, AmountPromo = ct.AmountPromo,
+            PaymentDelayDays = ct.PaymentDelayDays, IsRealTime = ct.IsRealTime,
             IsPaidOnSignup = ct.IsPaidOnSignup, IsPaidOnRenewal = ct.IsPaidOnRenewal,
             Cummulative = ct.Cummulative, TriggerOrder = ct.TriggerOrder, LevelNo = ct.LevelNo,
             PersonalPoints = ct.PersonalPoints, TeamPoints = ct.TeamPoints, ResidualBased = ct.ResidualBased
@@ -245,7 +266,8 @@
                 response = await Http.PutAsJsonAsync($"api/v1/admin/commission-types/{_editId}", new
                 {
                     _form.CommissionCategoryId, _form.Name, _form.Description,
-                    _form.Percentage, _form.PaymentDelayDays, IsActive = _editIsActive,
+                    _form.Percentage, _form.Amount, _form.AmountPromo,
+                    _form.PaymentDelayDays, IsActive = _editIsActive,
                     _form.IsRealTime, _form.IsPaidOnSignup, _form.IsPaidOnRenewal,
                     _form.Cummulative, _form.TriggerOrder, _form.LevelNo,
                     _form.PersonalPoints, _form.TeamPoints, _form.ResidualBased
@@ -280,6 +302,8 @@
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
         public decimal Percentage { get; set; }
+        public decimal? Amount { get; set; }
+        public decimal? AmountPromo { get; set; }
         public int PaymentDelayDays { get; set; }
         public bool IsRealTime { get; set; }
         public bool IsPaidOnSignup { get; set; }
@@ -296,7 +320,8 @@
 
     private record CommissionTypeDto(
         int Id, int CommissionCategoryId, string Name, string? Description,
-        decimal Percentage, int PaymentDelayDays, bool IsActive, bool IsRealTime,
+        decimal Percentage, decimal? Amount, decimal? AmountPromo,
+        int PaymentDelayDays, bool IsActive, bool IsRealTime,
         bool IsPaidOnSignup, bool IsPaidOnRenewal, bool Cummulative, int TriggerOrder,
         int NewMembers, int DaysAfterJoining, int MembersRebill, int LifeTimeRank,
         int CurrentRank, int LevelNo, bool ResidualBased, int ResidualOverCommissionType,

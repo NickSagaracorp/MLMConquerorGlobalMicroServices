@@ -197,6 +197,39 @@
             </Authorized>
         </AuthorizeView>
 
+        <AuthorizeView Roles="SuperAdmin,Admin,IT,ContentManager">
+            <Authorized>
+                @* ── Marketing ── *@
+                <li class="menu-item open @(IsSection("/admin/document-types","/admin/marketing-documents","/admin/s3-config") ? "active" : "")">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="ri-megaphone-line menu-icon"></i>
+                        <span class="title">Marketing</span>
+                    </a>
+                    <ul class="menu-sub">
+                        <li class="menu-item @IsActive("/admin/document-types")">
+                            <a href="/admin/document-types" class="menu-link @IsActive("/admin/document-types")">
+                                <span class="title">Document Types</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/marketing-documents")">
+                            <a href="/admin/marketing-documents" class="menu-link @IsActive("/admin/marketing-documents")">
+                                <span class="title">Marketing Documents</span>
+                            </a>
+                        </li>
+                        <AuthorizeView Roles="SuperAdmin">
+                            <Authorized Context="superCtx">
+                                <li class="menu-item @IsActive("/admin/s3-config")">
+                                    <a href="/admin/s3-config" class="menu-link @IsActive("/admin/s3-config")">
+                                        <span class="title">S3 Config</span>
+                                    </a>
+                                </li>
+                            </Authorized>
+                        </AuthorizeView>
+                    </ul>
+                </li>
+            </Authorized>
+        </AuthorizeView>
+
         <AuthorizeView Roles="SuperAdmin,Admin,IT">
             <Authorized>
                 @* ── Configuration ── *@

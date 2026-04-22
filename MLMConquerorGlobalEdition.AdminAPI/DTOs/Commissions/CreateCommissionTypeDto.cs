@@ -6,6 +6,8 @@ public class CreateCommissionTypeDto
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public decimal Percentage { get; set; }
+    public decimal? Amount { get; set; }
+    public decimal? AmountPromo { get; set; }
     public int PaymentDelayDays { get; set; }
     public bool IsRealTime { get; set; }
     public bool IsPaidOnSignup { get; set; }

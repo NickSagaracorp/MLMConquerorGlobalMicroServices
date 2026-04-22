@@ -14,6 +14,7 @@ using MLMConquerorGlobalEdition.Repository.Identity;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs;
+using MLMConquerorGlobalEdition.SignupAPI.Services;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Commands.SignupAmbassador;
 
@@ -28,17 +29,20 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
     private readonly IDateTimeProvider            _dateTime;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IPushNotificationService     _push;
+    private readonly IEncryptionService           _encryption;
 
     public SignupAmbassadorHandler(
         AppDbContext db,
         IDateTimeProvider dateTime,
         UserManager<ApplicationUser> userManager,
-        IPushNotificationService push)
+        IPushNotificationService push,
+        IEncryptionService encryption)
     {
         _db          = db;
         _dateTime    = dateTime;
         _userManager = userManager;
         _push        = push;
+        _encryption  = encryption;
     }
 
     public async Task<Result<SignupResponse>> Handle(SignupAmbassadorCommand command, CancellationToken ct)
@@ -63,13 +67,20 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
                 throw new DuplicateReplicateSiteException(req.ReplicateSiteSlug);
         }
 
-        if (!string.IsNullOrEmpty(req.SponsorMemberId))
+        // Resolve sponsor by replicate site slug — this is the public identifier ambassadors share.
+        string? sponsorMemberId = null;
+        if (!string.IsNullOrEmpty(req.SponsorReplicateSite))
         {
-            var sponsorExists = await _db.MemberProfiles
-                .AnyAsync(x => x.MemberId == req.SponsorMemberId, ct);
-            if (!sponsorExists)
+            sponsorMemberId = await _db.MemberProfiles
+                .AsNoTracking()
+                .Where(x => x.ReplicateSiteSlug == req.SponsorReplicateSite
+                         && x.Status == MemberAccountStatus.Active)
+                .Select(x => x.MemberId)
+                .FirstOrDefaultAsync(ct);
+
+            if (sponsorMemberId is null)
                 return Result<SignupResponse>.Failure(
-                    "SPONSOR_NOT_FOUND", $"Sponsor '{req.SponsorMemberId}' not found.");
+                    "SPONSOR_NOT_FOUND", $"Sponsor site '{req.SponsorReplicateSite}' not found or inactive.");
         }
 
         var membershipLevel = await _db.MembershipLevels
@@ -96,12 +107,13 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
             City              = req.City,
             Address           = req.Address,
             ZipCode           = req.ZipCode,
+            SsnEncrypted      = !string.IsNullOrEmpty(req.Ssn) ? _encryption.Encrypt(req.Ssn) : null,
             BusinessName      = req.BusinessName,
             ShowBusinessName  = req.ShowBusinessName,
             MemberType        = MemberType.Ambassador,
             Status            = MemberAccountStatus.Pending,
             EnrollDate        = now,
-            SponsorMemberId   = req.SponsorMemberId,
+            SponsorMemberId   = sponsorMemberId,
             ReplicateSiteSlug = req.ReplicateSiteSlug,
             CreatedBy         = req.Email,
             CreationDate      = now,
@@ -147,17 +159,17 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
         order.MembershipSubscriptionId = subscriptionId;
 
         GenealogyEntity? sponsorNode = null;
-        if (!string.IsNullOrEmpty(req.SponsorMemberId))
+        if (!string.IsNullOrEmpty(sponsorMemberId))
         {
             sponsorNode = await _db.GenealogyTree
                 .AsNoTracking()
-                .FirstOrDefaultAsync(g => g.MemberId == req.SponsorMemberId, ct);
+                .FirstOrDefaultAsync(g => g.MemberId == sponsorMemberId, ct);
         }
 
         var genealogyNode = new GenealogyEntity
         {
             MemberId       = memberId,
-            ParentMemberId = req.SponsorMemberId,
+            ParentMemberId = sponsorMemberId,
             HierarchyPath  = sponsorNode is not null
                 ? $"{sponsorNode.HierarchyPath}{memberId}/"
                 : $"/{memberId}/",

@@ -1,4 +1,4 @@
-using MediatR;
+﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 using MLMConquerorGlobalEdition.Domain.Enums;
@@ -145,8 +145,8 @@ public class CalculateFastStartBonusHandler
                 continue;
             }
 
-            // FixedAmount takes precedence over Percentage calculation
-            var amount = windowType.FixedAmount
+            // Amount takes precedence over Percentage calculation
+            var amount = windowType.ActiveAmount
                          ?? Math.Round(order.TotalAmount * windowType.Percentage / 100, 2);
             var earning = BuildEarning(sponsorMemberId, command.BuyerMemberId, command.OrderId,
                 windowType, amount, now);
@@ -200,3 +200,4 @@ public class CalculateFastStartBonusHandler
             LastUpdateDate = now
         };
 }
+

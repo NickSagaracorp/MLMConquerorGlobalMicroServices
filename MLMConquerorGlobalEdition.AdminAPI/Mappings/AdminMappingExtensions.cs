@@ -263,6 +263,8 @@ public static class AdminMappingExtensions
         Name                         = entity.Name,
         Description                  = entity.Description,
         Percentage                   = entity.Percentage,
+        Amount                       = entity.Amount,
+        AmountPromo                  = entity.AmountPromo,
         PaymentDelayDays             = entity.PaymentDelayDays,
         IsActive                     = entity.IsActive,
         IsRealTime                   = entity.IsRealTime,
@@ -295,6 +297,8 @@ public static class AdminMappingExtensions
         Name                         = dto.Name,
         Description                  = dto.Description,
         Percentage                   = dto.Percentage,
+        Amount                       = dto.Amount,
+        AmountPromo                  = dto.AmountPromo,
         PaymentDelayDays             = dto.PaymentDelayDays,
         IsRealTime                   = dto.IsRealTime,
         IsPaidOnSignup               = dto.IsPaidOnSignup,
@@ -326,6 +330,8 @@ public static class AdminMappingExtensions
         entity.Name                         = dto.Name;
         entity.Description                  = dto.Description;
         entity.Percentage                   = dto.Percentage;
+        entity.Amount                       = dto.Amount;
+        entity.AmountPromo                  = dto.AmountPromo;
         entity.PaymentDelayDays             = dto.PaymentDelayDays;
         entity.IsActive                     = dto.IsActive;
         entity.IsRealTime                   = dto.IsRealTime;

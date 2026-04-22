@@ -265,6 +265,12 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<decimal?>("Amount")
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<decimal?>("AmountPromo")
+                        .HasColumnType("decimal(12,2)");
+
                     b.Property<int>("CommissionCategoryId")
                         .HasColumnType("int");
 
@@ -293,9 +299,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.Property<int>("ExternalMembers")
                         .HasColumnType("int");
-
-                    b.Property<decimal?>("FixedAmount")
-                        .HasColumnType("decimal(12,2)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -384,6 +387,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 1,
+                            Amount = 20m,
                             CommissionCategoryId = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -393,7 +397,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "One-time $20 bonus to the direct enroller when a VIP member signs up.",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 20m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -421,6 +424,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 2,
+                            Amount = 40m,
                             CommissionCategoryId = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -430,7 +434,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "One-time $40 bonus to the direct enroller when an Elite member signs up.",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 40m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -458,16 +461,16 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 3,
+                            Amount = 40m,
                             CommissionCategoryId = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             Cummulative = false,
                             CurrentRank = 0,
                             DaysAfterJoining = 0,
-                            Description = "One-time $80 bonus to the direct enroller when a Turbo member signs up.",
+                            Description = "One-time $40 bonus paid to the direct enroller for the Turbo portion. Stacks with Member Bonus – Elite ($40) for a combined $80 on Turbo signups.",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 80m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -495,6 +498,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 4,
+                            Amount = 150m,
                             CommissionCategoryId = 2,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -504,7 +508,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Earn $150 when enrolling within your first 14 days as an ambassador.",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 150m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -532,6 +535,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 5,
+                            Amount = 150m,
                             CommissionCategoryId = 2,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -541,7 +545,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Earn $150 within 7 days of triggering Reset 1 (after earning Window 1 bonus).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 150m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -569,6 +572,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 6,
+                            Amount = 150m,
                             CommissionCategoryId = 2,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -578,7 +582,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Earn $150 within 7 days of triggering Reset 2 (after earning Window 2 bonus).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 150m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -606,6 +609,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 7,
+                            Amount = 4m,
                             CommissionCategoryId = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -615,7 +619,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Earn $4/day when qualifying at Silver rank (18 Enrollment Team points).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 4m,
                             IsActive = true,
                             IsEnrollmentBased = true,
                             IsPaidOnRenewal = false,
@@ -643,6 +646,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 8,
+                            Amount = 10m,
                             CommissionCategoryId = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -652,7 +656,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Earn $10/day when qualifying at Gold rank (72 Enrollment Team points).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 10m,
                             IsActive = true,
                             IsEnrollmentBased = true,
                             IsPaidOnRenewal = false,
@@ -680,6 +683,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 9,
+                            Amount = 15m,
                             CommissionCategoryId = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -689,7 +693,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Earn $15/day when qualifying at Platinum rank (175 Enrollment Team points).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 15m,
                             IsActive = true,
                             IsEnrollmentBased = true,
                             IsPaidOnRenewal = false,
@@ -717,6 +720,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 10,
+                            Amount = 25m,
                             CommissionCategoryId = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -726,7 +730,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Earn $25/day when qualifying at Titanium rank (350 Dual Team points).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 25m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -754,6 +757,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 11,
+                            Amount = 40m,
                             CommissionCategoryId = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -763,7 +767,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Earn $40/day when qualifying at Jade rank (700 Dual Team points).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 40m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -791,6 +794,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 12,
+                            Amount = 80m,
                             CommissionCategoryId = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -800,7 +804,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Earn $80/day when qualifying at Pearl rank (1,500 Dual Team points).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 80m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -828,6 +831,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 13,
+                            Amount = 150m,
                             CommissionCategoryId = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -837,7 +841,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Earn $150/day when qualifying at Emerald rank (3,000 Dual Team points).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 150m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -865,6 +868,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 14,
+                            Amount = 300m,
                             CommissionCategoryId = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -874,7 +878,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Earn $300/day when qualifying at Ruby rank (6,000 Dual Team points).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 300m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -902,6 +905,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 15,
+                            Amount = 500m,
                             CommissionCategoryId = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -911,7 +915,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Earn $500/day when qualifying at Sapphire rank (10,000 Dual Team points).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 500m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -939,6 +942,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 16,
+                            Amount = 750m,
                             CommissionCategoryId = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -948,7 +952,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Earn $750/day when qualifying at Diamond rank (15,000 Dual Team points).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 750m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -976,6 +979,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 17,
+                            Amount = 1000m,
                             CommissionCategoryId = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -985,7 +989,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Earn $1,000/day when qualifying at Double Diamond (20,000 DT points).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 1000m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -1013,6 +1016,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 18,
+                            Amount = 1500m,
                             CommissionCategoryId = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -1022,7 +1026,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Earn $1,500/day when qualifying at Triple Diamond (30,000 DT points).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 1500m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -1050,6 +1053,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 19,
+                            Amount = 2000m,
                             CommissionCategoryId = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -1059,7 +1063,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Earn $2,000/day when qualifying at Blue Diamond (60,000 DT points).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 2000m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -1087,6 +1090,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 20,
+                            Amount = 3000m,
                             CommissionCategoryId = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -1096,7 +1100,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Earn $3,000/day when qualifying at Black Diamond (120,000 DT points).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 3000m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -1124,6 +1127,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 21,
+                            Amount = 4000m,
                             CommissionCategoryId = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -1133,7 +1137,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Earn $4,000/day when qualifying at Royal rank (200,000 DT points).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 4000m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -1161,6 +1164,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 22,
+                            Amount = 5000m,
                             CommissionCategoryId = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -1170,7 +1174,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Earn $5,000/day when qualifying at Double Royal (300,000 DT points).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 5000m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -1198,6 +1201,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 23,
+                            Amount = 7500m,
                             CommissionCategoryId = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -1207,7 +1211,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Earn $7,500/day when qualifying at Triple Royal (400,000 DT points).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 7500m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -1235,6 +1238,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 24,
+                            Amount = 10000m,
                             CommissionCategoryId = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -1244,7 +1248,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Earn $10,000/day when qualifying at Blue Royal (500,000 DT points).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 10000m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -1272,6 +1275,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 25,
+                            Amount = 15000m,
                             CommissionCategoryId = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -1281,7 +1285,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Earn $15,000/day when qualifying at Black Royal (700,000 DT points).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 15000m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -1309,6 +1312,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 26,
+                            Amount = 600m,
                             CommissionCategoryId = 4,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -1318,7 +1322,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Earn $600 when 6+ new Elite/Turbo members join your Enrollment Team in a week. Based on Lifetime Rank Gold.",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 600m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -1346,6 +1349,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 27,
+                            Amount = 1200m,
                             CommissionCategoryId = 4,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -1355,7 +1359,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Earn $1,200 when 12+ new Elite/Turbo members join your Enrollment Team in a week. Based on Lifetime Rank Platinum. Supersedes Gold if both qualify.",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 1200m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -1563,6 +1566,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 33,
+                            Amount = 25m,
                             CommissionCategoryId = 6,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -1572,7 +1576,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Additional sponsor bonus paid when enrolling a VIP member. Stacks with Member Bonus.",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 25m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -1600,6 +1603,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 34,
+                            Amount = 60m,
                             CommissionCategoryId = 6,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -1609,7 +1613,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Additional sponsor bonus paid when enrolling an Elite member. Stacks with Member Bonus.",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 60m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -1637,17 +1640,17 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 35,
+                            Amount = 120m,
                             CommissionCategoryId = 6,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             Cummulative = false,
                             CurrentRank = 0,
                             DaysAfterJoining = 0,
-                            Description = "Additional sponsor bonus paid when enrolling a Turbo member. Stacks with Member Bonus.",
+                            Description = "Superseded by Cat7 Turbo types (IDs 66-84). Deactivated.",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 120m,
-                            IsActive = true,
+                            IsActive = false,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
                             IsPaidOnSignup = true,
@@ -1674,17 +1677,17 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 36,
+                            Amount = 30m,
                             CommissionCategoryId = 7,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             Cummulative = false,
                             CurrentRank = 0,
                             DaysAfterJoining = 0,
-                            Description = "Enhanced Builder Bonus (Turbo program) paid when enrolling a VIP member.",
+                            Description = "Cat7 only fires for Turbo product (LevelNo=4). Deactivated for VIP.",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 30m,
-                            IsActive = true,
+                            IsActive = false,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
                             IsPaidOnSignup = true,
@@ -1711,17 +1714,17 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 37,
+                            Amount = 80m,
                             CommissionCategoryId = 7,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             Cummulative = false,
                             CurrentRank = 0,
                             DaysAfterJoining = 0,
-                            Description = "Enhanced Builder Bonus (Turbo program) paid when enrolling an Elite member.",
+                            Description = "Cat7 only fires for Turbo product (LevelNo=4). Deactivated for Elite.",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 80m,
-                            IsActive = true,
+                            IsActive = false,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
                             IsPaidOnSignup = true,
@@ -1748,16 +1751,16 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 38,
+                            Amount = 60m,
                             CommissionCategoryId = 7,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             Cummulative = false,
                             CurrentRank = 0,
                             DaysAfterJoining = 0,
-                            Description = "Enhanced Builder Bonus (Turbo program) paid when enrolling a Turbo member.",
+                            Description = "Builder Bonus Turbo base (rank 0 sponsors). Matches Cat6 base amount.",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 160m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -1821,16 +1824,16 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 40,
+                            Amount = 1m,
                             CommissionCategoryId = 8,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             Cummulative = false,
                             CurrentRank = 0,
                             DaysAfterJoining = 0,
-                            Description = "Deduction applied in real-time when a member consumes tokens. Unit cost can be overridden per TokenType; FixedAmount here is the platform default.",
+                            Description = "Deduction applied in real-time when a member consumes tokens. Unit cost can be overridden per TokenType; Amount here is the platform default.",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 1m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2074,6 +2077,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 47,
+                            Amount = 10m,
                             CommissionCategoryId = 6,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -2083,7 +2087,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Silver (1).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 10m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2111,6 +2114,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 48,
+                            Amount = 20m,
                             CommissionCategoryId = 6,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -2120,7 +2124,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Gold (2).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 20m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2148,6 +2151,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 49,
+                            Amount = 30m,
                             CommissionCategoryId = 6,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -2157,7 +2161,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Platinum (3).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 30m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2185,6 +2188,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 50,
+                            Amount = 40m,
                             CommissionCategoryId = 6,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -2194,7 +2198,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Titanium (4).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 40m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2222,6 +2225,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 51,
+                            Amount = 50m,
                             CommissionCategoryId = 6,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -2231,7 +2235,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Jade (5).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 50m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2259,6 +2262,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 52,
+                            Amount = 60m,
                             CommissionCategoryId = 6,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -2268,7 +2272,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Pearl (6).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 60m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2296,6 +2299,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 53,
+                            Amount = 65m,
                             CommissionCategoryId = 6,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -2305,7 +2309,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Emerald (7).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 65m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2333,6 +2336,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 54,
+                            Amount = 70m,
                             CommissionCategoryId = 6,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -2342,7 +2346,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Ruby (8).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 70m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2370,6 +2373,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 55,
+                            Amount = 75m,
                             CommissionCategoryId = 6,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -2379,7 +2383,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Sapphire (9).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 75m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2407,6 +2410,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 56,
+                            Amount = 80m,
                             CommissionCategoryId = 6,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -2416,7 +2420,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Diamond (10).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 80m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2444,6 +2447,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 57,
+                            Amount = 85m,
                             CommissionCategoryId = 6,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -2453,7 +2457,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Double Diamond (11).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 85m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2481,6 +2484,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 58,
+                            Amount = 90m,
                             CommissionCategoryId = 6,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -2490,7 +2494,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Triple Diamond (12).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 90m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2518,6 +2521,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 59,
+                            Amount = 95m,
                             CommissionCategoryId = 6,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -2527,7 +2531,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Blue Diamond (13).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 95m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2555,6 +2558,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 60,
+                            Amount = 100m,
                             CommissionCategoryId = 6,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -2564,7 +2568,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Black Diamond (14).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 100m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2592,6 +2595,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 61,
+                            Amount = 105m,
                             CommissionCategoryId = 6,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -2601,7 +2605,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Royal (15).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 105m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2629,6 +2632,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 62,
+                            Amount = 110m,
                             CommissionCategoryId = 6,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -2638,7 +2642,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Double Royal (16).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 110m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2666,6 +2669,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 63,
+                            Amount = 115m,
                             CommissionCategoryId = 6,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -2675,7 +2679,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Triple Royal (17).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 115m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2703,6 +2706,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 64,
+                            Amount = 120m,
                             CommissionCategoryId = 6,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -2712,7 +2716,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Blue Royal (18).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 120m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2740,6 +2743,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 65,
+                            Amount = 125m,
                             CommissionCategoryId = 6,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -2749,7 +2753,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Elite enrollment. Requires lifetime rank Black Royal (19).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 125m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2777,6 +2780,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 66,
+                            Amount = 10m,
                             CommissionCategoryId = 7,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -2786,7 +2790,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Silver (1).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 20m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2814,6 +2817,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 67,
+                            Amount = 20m,
                             CommissionCategoryId = 7,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -2823,7 +2827,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Gold (2).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 40m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2851,6 +2854,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 68,
+                            Amount = 30m,
                             CommissionCategoryId = 7,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -2860,7 +2864,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Platinum (3).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 60m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2888,6 +2891,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 69,
+                            Amount = 40m,
                             CommissionCategoryId = 7,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -2897,7 +2901,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Titanium (4).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 80m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2925,6 +2928,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 70,
+                            Amount = 50m,
                             CommissionCategoryId = 7,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -2934,7 +2938,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Jade (5).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 100m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2962,6 +2965,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 71,
+                            Amount = 60m,
                             CommissionCategoryId = 7,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -2971,7 +2975,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Pearl (6).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 120m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -2999,6 +3002,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 72,
+                            Amount = 65m,
                             CommissionCategoryId = 7,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -3008,7 +3012,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Emerald (7).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 130m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -3036,6 +3039,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 73,
+                            Amount = 70m,
                             CommissionCategoryId = 7,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -3045,7 +3049,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Ruby (8).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 140m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -3073,6 +3076,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 74,
+                            Amount = 75m,
                             CommissionCategoryId = 7,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -3082,7 +3086,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Sapphire (9).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 150m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -3110,6 +3113,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 75,
+                            Amount = 80m,
                             CommissionCategoryId = 7,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -3119,7 +3123,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Diamond (10).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 160m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -3147,6 +3150,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 76,
+                            Amount = 85m,
                             CommissionCategoryId = 7,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -3156,7 +3160,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Double Diamond (11).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 170m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -3184,6 +3187,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 77,
+                            Amount = 90m,
                             CommissionCategoryId = 7,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -3193,7 +3197,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Triple Diamond (12).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 180m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -3221,6 +3224,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 78,
+                            Amount = 95m,
                             CommissionCategoryId = 7,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -3230,7 +3234,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Blue Diamond (13).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 190m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -3258,6 +3261,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 79,
+                            Amount = 100m,
                             CommissionCategoryId = 7,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -3267,7 +3271,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Black Diamond (14).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 200m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -3295,6 +3298,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 80,
+                            Amount = 105m,
                             CommissionCategoryId = 7,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -3304,7 +3308,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Royal (15).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 210m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -3332,6 +3335,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 81,
+                            Amount = 110m,
                             CommissionCategoryId = 7,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -3341,7 +3345,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Double Royal (16).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 220m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -3369,6 +3372,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 82,
+                            Amount = 115m,
                             CommissionCategoryId = 7,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -3378,7 +3382,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Triple Royal (17).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 230m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -3406,6 +3409,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 83,
+                            Amount = 120m,
                             CommissionCategoryId = 7,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -3415,7 +3419,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Blue Royal (18).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 240m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -3443,6 +3446,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 84,
+                            Amount = 125m,
                             CommissionCategoryId = 7,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -3452,7 +3456,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Builder Bonus for Turbo enrollment. Requires lifetime rank Black Royal (19).",
                             EnrollmentTeam = 0,
                             ExternalMembers = 0,
-                            FixedAmount = 250m,
                             IsActive = true,
                             IsEnrollmentBased = false,
                             IsPaidOnRenewal = false,
@@ -3475,6 +3478,43 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             ReverseId = 0,
                             SponsoredMembers = 0,
                             TeamPoints = 0,
+                            TriggerOrder = 0
+                        },
+                        new
+                        {
+                            Id = 85,
+                            Amount = 500m,
+                            CommissionCategoryId = 4,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Cummulative = false,
+                            CurrentRank = 0,
+                            DaysAfterJoining = 0,
+                            Description = "Earn $500/month when maintaining personal activity (6+ pts) and 1,000+ Enrollment Team points in the calendar month.",
+                            EnrollmentTeam = 0,
+                            ExternalMembers = 0,
+                            IsActive = true,
+                            IsEnrollmentBased = true,
+                            IsPaidOnRenewal = false,
+                            IsPaidOnSignup = false,
+                            IsRealTime = false,
+                            IsSponsorBonus = false,
+                            LevelNo = 0,
+                            LifeTimeRank = 0,
+                            MaxEnrollmentTeamPointsPerBranch = 0.5,
+                            MaxTeamPointsPerBranch = 0.5,
+                            MembersRebill = 0,
+                            Name = "Car Bonus",
+                            NewMembers = 0,
+                            PaymentDelayDays = 15,
+                            Percentage = 0m,
+                            PersonalPoints = 6,
+                            ResidualBased = false,
+                            ResidualOverCommissionType = 0,
+                            ResidualPercentage = 0.0,
+                            ReverseId = 0,
+                            SponsoredMembers = 0,
+                            TeamPoints = 1000,
                             TriggerOrder = 0
                         });
                 });
@@ -3942,6 +3982,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .IsRequired()
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
+
+                    b.Property<bool>("HasStates")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -4925,6 +4968,211 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.ToTable("LoyaltyPoints");
                 });
 
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Marketing.DocumentType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("LastUpdateBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("LastUpdateDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("DocumentTypes", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedBy = "system",
+                            CreationDate = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Compensation Plan",
+                            SortOrder = 1
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CreatedBy = "system",
+                            CreationDate = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Marketing",
+                            SortOrder = 2
+                        },
+                        new
+                        {
+                            Id = 3,
+                            CreatedBy = "system",
+                            CreationDate = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Independent Lifestyle Ambassador Agreement",
+                            SortOrder = 3
+                        },
+                        new
+                        {
+                            Id = 4,
+                            CreatedBy = "system",
+                            CreationDate = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Policies & Procedures",
+                            SortOrder = 4
+                        });
+                });
+
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Marketing.MarketingDocument", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DocumentTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<long>("FileSizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("LanguageCode")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("LanguageName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("LastUpdateBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("LastUpdateDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("S3Key")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentTypeId");
+
+                    b.HasIndex("LanguageCode");
+
+                    b.HasIndex("DocumentTypeId", "LanguageCode");
+
+                    b.ToTable("MarketingDocuments", (string)null);
+                });
+
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Marketing.S3StorageConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BucketName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FolderPrefix")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("LastUpdateBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("LastUpdateDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Region")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("S3StorageConfig", (string)null);
+                });
+
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Member.MemberFcmToken", b =>
                 {
                     b.Property<long>("Id")
@@ -5113,6 +5361,10 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.Property<string>("SponsorMemberId")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SsnEncrypted")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
 
                     b.Property<string>("State")
                         .HasMaxLength(100)
@@ -11887,6 +12139,17 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasForeignKey("MemberProfileId");
                 });
 
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Marketing.MarketingDocument", b =>
+                {
+                    b.HasOne("MLMConquerorGlobalEdition.Domain.Entities.Marketing.DocumentType", "DocumentType")
+                        .WithMany("Documents")
+                        .HasForeignKey("DocumentTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("DocumentType");
+                });
+
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Member.MemberProfile", b =>
                 {
                     b.HasOne("MLMConquerorGlobalEdition.Domain.Entities.Membership.MembershipSubscription", "ActiveMembership")
@@ -12232,6 +12495,11 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Navigation("Countries");
 
                     b.Navigation("Gateways");
+                });
+
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Marketing.DocumentType", b =>
+                {
+                    b.Navigation("Documents");
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Member.MemberProfile", b =>

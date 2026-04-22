@@ -1,0 +1,451 @@
+Using launch settings from C:\Users\sagar\source\repos\ClaudeRepository\MLMConquerorGlobalEdition.CommissionEngine\Properties\launchSettings.json...
+warn: Microsoft.EntityFrameworkCore.Model.Validation[10622]
+      Entity 'Product' has a global query filter defined and is the required end of a relationship with the entity 'CountryProduct'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[10622]
+      Entity 'Product' has a global query filter defined and is the required end of a relationship with the entity 'ProductCommission'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[10622]
+      Entity 'Product' has a global query filter defined and is the required end of a relationship with the entity 'ProductCommissionPromo'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[10622]
+      Entity 'KnowledgeBaseArticle' has a global query filter defined and is the required end of a relationship with the entity 'KbArticleVersion'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[10622]
+      Entity 'Ticket' has a global query filter defined and is the required end of a relationship with the entity 'SlaBreach'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[10622]
+      Entity 'Ticket' has a global query filter defined and is the required end of a relationship with the entity 'TicketComment'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[10622]
+      Entity 'Ticket' has a global query filter defined and is the required end of a relationship with the entity 'TicketHistory'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[10625]
+      The foreign key property 'MemberCommissionCountDown.MemberId1' was created in shadow state because a conflicting property with the simple name 'MemberId' exists in the entity type, but is either not mapped, is already used for another relationship, or is incompatible with the associated primary key type. See https://aka.ms/efcore-relationships for information on mapping relationships in EF Core.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[10625]
+      The foreign key property 'MemberCommissionCountDownHistory.MemberId1' was created in shadow state because a conflicting property with the simple name 'MemberId' exists in the entity type, but is either not mapped, is already used for another relationship, or is incompatible with the associated primary key type. See https://aka.ms/efcore-relationships for information on mapping relationships in EF Core.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[10625]
+      The foreign key property 'MembershipSubscription.LastOrderId1' was created in shadow state because a conflicting property with the simple name 'LastOrderId' exists in the entity type, but is either not mapped, is already used for another relationship, or is incompatible with the associated primary key type. See https://aka.ms/efcore-relationships for information on mapping relationships in EF Core.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[10625]
+      The foreign key property 'ProductCommissionPromo.CorporatePromoId1' was created in shadow state because a conflicting property with the simple name 'CorporatePromoId' exists in the entity type, but is either not mapped, is already used for another relationship, or is incompatible with the associated primary key type. See https://aka.ms/efcore-relationships for information on mapping relationships in EF Core.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'PointsEarned' on entity type 'LoyaltyPoints'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'CurrentMonthIncomeGrowth' on entity type 'MemberStatisticEntity'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'CurrentWeekIncomeGrowth' on entity type 'MemberStatisticEntity'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'CurrentYearIncomeGrowth' on entity type 'MemberStatisticEntity'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'UnitPrice' on entity type 'OrderDetail'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'TotalAmount' on entity type 'Orders'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'Amount' on entity type 'PaymentHistory'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (55ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT 1
+info: Microsoft.EntityFrameworkCore.Migrations[20411]
+      Acquiring an exclusive lock for migration application. See https://aka.ms/efcore-docs-migrations-lock for more information if this takes too long.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (45ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      DECLARE @result int;
+      EXEC @result = sp_getapplock @Resource = '__EFMigrationsLock', @LockOwner = 'Session', @LockMode = 'Exclusive';
+      SELECT @result
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      IF OBJECT_ID(N'[__EFMigrationsHistory]') IS NULL
+      BEGIN
+          CREATE TABLE [__EFMigrationsHistory] (
+              [MigrationId] nvarchar(150) NOT NULL,
+              [ProductVersion] nvarchar(32) NOT NULL,
+              CONSTRAINT [PK___EFMigrationsHistory] PRIMARY KEY ([MigrationId])
+          );
+      END;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (31ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [MigrationId], [ProductVersion]
+      FROM [__EFMigrationsHistory]
+      ORDER BY [MigrationId];
+info: Microsoft.EntityFrameworkCore.Migrations[20405]
+      No migrations were applied. The database is already up to date.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      DECLARE @result int;
+      EXEC @result = sp_releaseapplock @Resource = '__EFMigrationsLock', @LockOwner = 'Session';
+      SELECT @result
+info: Hangfire.SqlServer.SqlServerObjectsInstaller[0]
+      Start installing Hangfire SQL objects...
+info: Hangfire.SqlServer.SqlServerObjectsInstaller[0]
+      Hangfire SQL objects installed.
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: https://localhost:7008
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:5008
+info: Hangfire.BackgroundJobServer[0]
+      Starting Hangfire Server using job storage: 'SQL Server: .@MLMConquerorGlobalEditionDb'
+info: Hangfire.BackgroundJobServer[0]
+      Using the following options for SQL Server job storage: Queue poll interval: 00:00:00.
+info: Hangfire.BackgroundJobServer[0]
+      Using the following options for Hangfire Server:
+          Worker count: 5
+          Listening queues: 'default'
+          Shutdown timeout: 00:00:15
+          Schedule polling interval: 00:00:15
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: C:\Users\sagar\source\repos\ClaudeRepository\MLMConquerorGlobalEdition.CommissionEngine
+info: Hangfire.Server.BackgroundServerProcess[0]
+      Server jarvis2_0:13828:ecdc77c4 successfully announced in 78.5476 ms
+info: Hangfire.Server.BackgroundServerProcess[0]
+      Server jarvis2_0:13828:ecdc77c4 is starting the registered dispatchers: ServerWatchdog, ServerJobCancellationWatcher, SqlServerHeartbeatProcess, ExpirationManager, CountersAggregator, Worker, DelayedJobScheduler, RecurringJobScheduler...
+info: Hangfire.Server.ServerWatchdog[0]
+      4 servers were removed due to timeout
+info: Hangfire.Server.BackgroundServerProcess[0]
+      Server jarvis2_0:13828:ecdc77c4 all the dispatchers started
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'process-scheduled-cancellations' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.SignupAPI'.
+         at System.Reflection.TypeNameResolver.ResolveAssembly(AssemblyName assemblyName)
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.GetSimpleType(TypeName typeName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'process-scheduled-cancellations' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.SignupAPI'.
+         at System.Reflection.TypeNameResolver.ResolveAssembly(AssemblyName assemblyName)
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'process-scheduled-cancellations' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.SignupAPI'.
+         at System.Reflection.TypeNameResolver.ResolveAssembly(AssemblyName assemblyName)
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+warn: Hangfire.AutomaticRetryAttribute[0]
+      Failed to process the job '446': an exception occurred. Retry attempt 2 of 10 will be performed in 00:00:28.
+      System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.RankEngine'.
+         at System.Reflection.TypeNameResolver.ResolveAssembly(AssemblyName assemblyName)
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+warn: Hangfire.AutomaticRetryAttribute[0]
+      Failed to process the job '446': an exception occurred. Retry attempt 3 of 10 will be performed in 00:01:28.
+      System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.RankEngine'.
+         at System.Reflection.TypeNameResolver.ResolveAssembly(AssemblyName assemblyName)
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (11ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [c].[Id], [c].[Amount], [c].[AmountPromo], [c].[CommissionCategoryId], [c].[CreatedBy], [c].[CreationDate], [c].[Cummulative], [c].[CurrentRank], [c].[DaysAfterJoining], [c].[Description], [c].[EnrollmentTeam], [c].[ExternalMembers], [c].[IsActive], [c].[IsEnrollmentBased], [c].[IsPaidOnRenewal], [c].[IsPaidOnSignup], [c].[IsRealTime], [c].[IsSponsorBonus], [c].[LastUpdateBy], [c].[LastUpdateDate], [c].[LevelNo], [c].[LifeTimeRank], [c].[MaxEnrollmentTeamPointsPerBranch], [c].[MaxTeamPointsPerBranch], [c].[MembersRebill], [c].[Name], [c].[NewMembers], [c].[PaymentDelayDays], [c].[Percentage], [c].[PersonalPoints], [c].[ResidualBased], [c].[ResidualOverCommissionType], [c].[ResidualPercentage], [c].[ReverseId], [c].[SponsoredMembers], [c].[TeamPoints], [c].[TriggerOrder]
+      FROM [CommissionTypes] AS [c]
+      WHERE [c].[IsActive] = CAST(1 AS bit) AND [c].[IsPaidOnSignup] = CAST(0 AS bit) AND [c].[ResidualBased] = CAST(0 AS bit) AND [c].[IsSponsorBonus] = CAST(0 AS bit) AND [c].[TriggerOrder] > 0
+      ORDER BY [c].[LifeTimeRank], [c].[NewMembers]
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (15ms) [Parameters=[@Select1='?' (DbType = Int32), @Select2='?' (DbType = Int32), @weekStart='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+      SELECT CASE
+          WHEN EXISTS (
+              SELECT 1
+              FROM [CommissionEarnings] AS [c]
+              WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[CommissionTypeId] IN (@Select1, @Select2) AND [c].[PeriodDate] IS NOT NULL AND CONVERT(date, [c].[PeriodDate]) = @weekStart) THEN CAST(1 AS bit)
+          ELSE CAST(0 AS bit)
+      END
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (25ms) [Parameters=[@weekStart='?' (DbType = DateTime2), @weekEnd='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+      SELECT DISTINCT [m].[MemberId]
+      FROM [MemberProfiles] AS [m]
+      INNER JOIN [Orders] AS [o] ON [m].[MemberId] = [o].[MemberId]
+      INNER JOIN [OrderDetails] AS [o0] ON [o].[Id] = [o0].[OrderId]
+      INNER JOIN (
+          SELECT [p].[Id], [p].[MembershipLevelId]
+          FROM [Products] AS [p]
+          WHERE [p].[IsDeleted] = CAST(0 AS bit)
+      ) AS [p0] ON [o0].[ProductId] = [p0].[Id]
+      WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @weekStart AND [m].[EnrollDate] < @weekEnd AND [o].[Status] = 4 AND [p0].[MembershipLevelId] IS NOT NULL AND [p0].[MembershipLevelId] IN (3, 4)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (10ms) [Parameters=[@eligibleNewMemberIds1='?' (Size = 450), @eligibleNewMemberIds2='?' (Size = 450), @eligibleNewMemberIds3='?' (Size = 450), @eligibleNewMemberIds4='?' (Size = 450), @eligibleNewMemberIds5='?' (Size = 450), @eligibleNewMemberIds6='?' (Size = 450), @eligibleNewMemberIds7='?' (Size = 450), @eligibleNewMemberIds8='?' (Size = 450), @eligibleNewMemberIds9='?' (Size = 450), @eligibleNewMemberIds10='?' (Size = 450), @eligibleNewMemberIds11='?' (Size = 450), @eligibleNewMemberIds12='?' (Size = 450), @eligibleNewMemberIds13='?' (Size = 450), @eligibleNewMemberIds14='?' (Size = 450), @eligibleNewMemberIds15='?' (Size = 450), @eligibleNewMemberIds16='?' (Size = 450), @eligibleNewMemberIds17='?' (Size = 450), @eligibleNewMemberIds18='?' (Size = 450), @eligibleNewMemberIds19='?' (Size = 450), @eligibleNewMemberIds20='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+      SELECT [g].[MemberId], [g].[HierarchyPath]
+      FROM [GenealogyTree] AS [g]
+      WHERE [g].[IsDeleted] = CAST(0 AS bit) AND [g].[MemberId] IN (@eligibleNewMemberIds1, @eligibleNewMemberIds2, @eligibleNewMemberIds3, @eligibleNewMemberIds4, @eligibleNewMemberIds5, @eligibleNewMemberIds6, @eligibleNewMemberIds7, @eligibleNewMemberIds8, @eligibleNewMemberIds9, @eligibleNewMemberIds10, @eligibleNewMemberIds11, @eligibleNewMemberIds12, @eligibleNewMemberIds13, @eligibleNewMemberIds14, @eligibleNewMemberIds15, @eligibleNewMemberIds16, @eligibleNewMemberIds17, @eligibleNewMemberIds18, @eligibleNewMemberIds19, @eligibleNewMemberIds20)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (11ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [m].[MemberId], MAX([r].[SortOrder]) AS [LifetimeRank]
+      FROM [MemberRankHistories] AS [m]
+      INNER JOIN [RankDefinitions] AS [r] ON [m].[RankDefinitionId] = [r].[Id]
+      GROUP BY [m].[MemberId]
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [c].[Id], [c].[Amount], [c].[AmountPromo], [c].[CommissionCategoryId], [c].[CreatedBy], [c].[CreationDate], [c].[Cummulative], [c].[CurrentRank], [c].[DaysAfterJoining], [c].[Description], [c].[EnrollmentTeam], [c].[ExternalMembers], [c].[IsActive], [c].[IsEnrollmentBased], [c].[IsPaidOnRenewal], [c].[IsPaidOnSignup], [c].[IsRealTime], [c].[IsSponsorBonus], [c].[LastUpdateBy], [c].[LastUpdateDate], [c].[LevelNo], [c].[LifeTimeRank], [c].[MaxEnrollmentTeamPointsPerBranch], [c].[MaxTeamPointsPerBranch], [c].[MembersRebill], [c].[Name], [c].[NewMembers], [c].[PaymentDelayDays], [c].[Percentage], [c].[PersonalPoints], [c].[ResidualBased], [c].[ResidualOverCommissionType], [c].[ResidualPercentage], [c].[ReverseId], [c].[SponsoredMembers], [c].[TeamPoints], [c].[TriggerOrder]
+      FROM [CommissionTypes] AS [c]
+      WHERE [c].[IsActive] = CAST(1 AS bit) AND [c].[IsPaidOnSignup] = CAST(0 AS bit) AND [c].[ResidualBased] = CAST(0 AS bit) AND [c].[IsSponsorBonus] = CAST(0 AS bit) AND [c].[TriggerOrder] > 0
+      ORDER BY [c].[LifeTimeRank], [c].[NewMembers]
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@Select1='?' (DbType = Int32), @Select2='?' (DbType = Int32), @weekStart='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+      SELECT CASE
+          WHEN EXISTS (
+              SELECT 1
+              FROM [CommissionEarnings] AS [c]
+              WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[CommissionTypeId] IN (@Select1, @Select2) AND [c].[PeriodDate] IS NOT NULL AND CONVERT(date, [c].[PeriodDate]) = @weekStart) THEN CAST(1 AS bit)
+          ELSE CAST(0 AS bit)
+      END
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[@weekStart='?' (DbType = DateTime2), @weekEnd='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+      SELECT DISTINCT [m].[MemberId]
+      FROM [MemberProfiles] AS [m]
+      INNER JOIN [Orders] AS [o] ON [m].[MemberId] = [o].[MemberId]
+      INNER JOIN [OrderDetails] AS [o0] ON [o].[Id] = [o0].[OrderId]
+      INNER JOIN (
+          SELECT [p].[Id], [p].[MembershipLevelId]
+          FROM [Products] AS [p]
+          WHERE [p].[IsDeleted] = CAST(0 AS bit)
+      ) AS [p0] ON [o0].[ProductId] = [p0].[Id]
+      WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @weekStart AND [m].[EnrollDate] < @weekEnd AND [o].[Status] = 4 AND [p0].[MembershipLevelId] IS NOT NULL AND [p0].[MembershipLevelId] IN (3, 4)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [c].[Id], [c].[Amount], [c].[AmountPromo], [c].[CommissionCategoryId], [c].[CreatedBy], [c].[CreationDate], [c].[Cummulative], [c].[CurrentRank], [c].[DaysAfterJoining], [c].[Description], [c].[EnrollmentTeam], [c].[ExternalMembers], [c].[IsActive], [c].[IsEnrollmentBased], [c].[IsPaidOnRenewal], [c].[IsPaidOnSignup], [c].[IsRealTime], [c].[IsSponsorBonus], [c].[LastUpdateBy], [c].[LastUpdateDate], [c].[LevelNo], [c].[LifeTimeRank], [c].[MaxEnrollmentTeamPointsPerBranch], [c].[MaxTeamPointsPerBranch], [c].[MembersRebill], [c].[Name], [c].[NewMembers], [c].[PaymentDelayDays], [c].[Percentage], [c].[PersonalPoints], [c].[ResidualBased], [c].[ResidualOverCommissionType], [c].[ResidualPercentage], [c].[ReverseId], [c].[SponsoredMembers], [c].[TeamPoints], [c].[TriggerOrder]
+      FROM [CommissionTypes] AS [c]
+      WHERE [c].[IsActive] = CAST(1 AS bit) AND [c].[IsPaidOnSignup] = CAST(0 AS bit) AND [c].[ResidualBased] = CAST(0 AS bit) AND [c].[IsSponsorBonus] = CAST(0 AS bit) AND [c].[TriggerOrder] > 0
+      ORDER BY [c].[LifeTimeRank], [c].[NewMembers]
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@Select1='?' (DbType = Int32), @Select2='?' (DbType = Int32), @weekStart='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+      SELECT CASE
+          WHEN EXISTS (
+              SELECT 1
+              FROM [CommissionEarnings] AS [c]
+              WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[CommissionTypeId] IN (@Select1, @Select2) AND [c].[PeriodDate] IS NOT NULL AND CONVERT(date, [c].[PeriodDate]) = @weekStart) THEN CAST(1 AS bit)
+          ELSE CAST(0 AS bit)
+      END
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[@weekStart='?' (DbType = DateTime2), @weekEnd='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+      SELECT DISTINCT [m].[MemberId]
+      FROM [MemberProfiles] AS [m]
+      INNER JOIN [Orders] AS [o] ON [m].[MemberId] = [o].[MemberId]
+      INNER JOIN [OrderDetails] AS [o0] ON [o].[Id] = [o0].[OrderId]
+      INNER JOIN (
+          SELECT [p].[Id], [p].[MembershipLevelId]
+          FROM [Products] AS [p]
+          WHERE [p].[IsDeleted] = CAST(0 AS bit)
+      ) AS [p0] ON [o0].[ProductId] = [p0].[Id]
+      WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @weekStart AND [m].[EnrollDate] < @weekEnd AND [o].[Status] = 4 AND [p0].[MembershipLevelId] IS NOT NULL AND [p0].[MembershipLevelId] IN (3, 4)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [c].[Id], [c].[Amount], [c].[AmountPromo], [c].[CommissionCategoryId], [c].[CreatedBy], [c].[CreationDate], [c].[Cummulative], [c].[CurrentRank], [c].[DaysAfterJoining], [c].[Description], [c].[EnrollmentTeam], [c].[ExternalMembers], [c].[IsActive], [c].[IsEnrollmentBased], [c].[IsPaidOnRenewal], [c].[IsPaidOnSignup], [c].[IsRealTime], [c].[IsSponsorBonus], [c].[LastUpdateBy], [c].[LastUpdateDate], [c].[LevelNo], [c].[LifeTimeRank], [c].[MaxEnrollmentTeamPointsPerBranch], [c].[MaxTeamPointsPerBranch], [c].[MembersRebill], [c].[Name], [c].[NewMembers], [c].[PaymentDelayDays], [c].[Percentage], [c].[PersonalPoints], [c].[ResidualBased], [c].[ResidualOverCommissionType], [c].[ResidualPercentage], [c].[ReverseId], [c].[SponsoredMembers], [c].[TeamPoints], [c].[TriggerOrder]
+      FROM [CommissionTypes] AS [c]
+      WHERE [c].[IsActive] = CAST(1 AS bit) AND [c].[IsPaidOnSignup] = CAST(0 AS bit) AND [c].[ResidualBased] = CAST(0 AS bit) AND [c].[IsSponsorBonus] = CAST(0 AS bit) AND [c].[TriggerOrder] > 0
+      ORDER BY [c].[LifeTimeRank], [c].[NewMembers]
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@Select1='?' (DbType = Int32), @Select2='?' (DbType = Int32), @weekStart='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+      SELECT CASE
+          WHEN EXISTS (
+              SELECT 1
+              FROM [CommissionEarnings] AS [c]
+              WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[CommissionTypeId] IN (@Select1, @Select2) AND [c].[PeriodDate] IS NOT NULL AND CONVERT(date, [c].[PeriodDate]) = @weekStart) THEN CAST(1 AS bit)
+          ELSE CAST(0 AS bit)
+      END
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@weekStart='?' (DbType = DateTime2), @weekEnd='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+      SELECT DISTINCT [m].[MemberId]
+      FROM [MemberProfiles] AS [m]
+      INNER JOIN [Orders] AS [o] ON [m].[MemberId] = [o].[MemberId]
+      INNER JOIN [OrderDetails] AS [o0] ON [o].[Id] = [o0].[OrderId]
+      INNER JOIN (
+          SELECT [p].[Id], [p].[MembershipLevelId]
+          FROM [Products] AS [p]
+          WHERE [p].[IsDeleted] = CAST(0 AS bit)
+      ) AS [p0] ON [o0].[ProductId] = [p0].[Id]
+      WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @weekStart AND [m].[EnrollDate] < @weekEnd AND [o].[Status] = 4 AND [p0].[MembershipLevelId] IS NOT NULL AND [p0].[MembershipLevelId] IN (3, 4)
+info: MLMConquerorGlobalEdition.CommissionEngine.Jobs.BoostBonusJob[0]
+      BoostBonusJob started at 04/20/2026 21:06:18
+info: MLMConquerorGlobalEdition.CommissionEngine.Jobs.DailyResidualJob[0]
+      DailyResidualJob started at 04/20/2026 21:06:18
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [c].[Id], [c].[Amount], [c].[AmountPromo], [c].[CommissionCategoryId], [c].[CreatedBy], [c].[CreationDate], [c].[Cummulative], [c].[CurrentRank], [c].[DaysAfterJoining], [c].[Description], [c].[EnrollmentTeam], [c].[ExternalMembers], [c].[IsActive], [c].[IsEnrollmentBased], [c].[IsPaidOnRenewal], [c].[IsPaidOnSignup], [c].[IsRealTime], [c].[IsSponsorBonus], [c].[LastUpdateBy], [c].[LastUpdateDate], [c].[LevelNo], [c].[LifeTimeRank], [c].[MaxEnrollmentTeamPointsPerBranch], [c].[MaxTeamPointsPerBranch], [c].[MembersRebill], [c].[Name], [c].[NewMembers], [c].[PaymentDelayDays], [c].[Percentage], [c].[PersonalPoints], [c].[ResidualBased], [c].[ResidualOverCommissionType], [c].[ResidualPercentage], [c].[ReverseId], [c].[SponsoredMembers], [c].[TeamPoints], [c].[TriggerOrder]
+      FROM [CommissionTypes] AS [c]
+      WHERE [c].[IsActive] = CAST(1 AS bit) AND [c].[IsPaidOnSignup] = CAST(0 AS bit) AND [c].[ResidualBased] = CAST(0 AS bit) AND [c].[IsSponsorBonus] = CAST(0 AS bit) AND [c].[TriggerOrder] > 0
+      ORDER BY [c].[LifeTimeRank], [c].[NewMembers]
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@Select1='?' (DbType = Int32), @Select2='?' (DbType = Int32), @weekStart='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+      SELECT CASE
+          WHEN EXISTS (
+              SELECT 1
+              FROM [CommissionEarnings] AS [c]
+              WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[CommissionTypeId] IN (@Select1, @Select2) AND [c].[PeriodDate] IS NOT NULL AND CONVERT(date, [c].[PeriodDate]) = @weekStart) THEN CAST(1 AS bit)
+          ELSE CAST(0 AS bit)
+      END
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@weekStart='?' (DbType = DateTime2), @weekEnd='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+      SELECT DISTINCT [m].[MemberId]
+      FROM [MemberProfiles] AS [m]
+      INNER JOIN [Orders] AS [o] ON [m].[MemberId] = [o].[MemberId]
+      INNER JOIN [OrderDetails] AS [o0] ON [o].[Id] = [o0].[OrderId]
+      INNER JOIN (
+          SELECT [p].[Id], [p].[MembershipLevelId]
+          FROM [Products] AS [p]
+          WHERE [p].[IsDeleted] = CAST(0 AS bit)
+      ) AS [p0] ON [o0].[ProductId] = [p0].[Id]
+      WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @weekStart AND [m].[EnrollDate] < @weekEnd AND [o].[Status] = 4 AND [p0].[MembershipLevelId] IS NOT NULL AND [p0].[MembershipLevelId] IN (3, 4)
+info: MLMConquerorGlobalEdition.CommissionEngine.Jobs.BoostBonusJob[0]
+      BoostBonus: 0 records, $0.00
+info: MLMConquerorGlobalEdition.CommissionEngine.Jobs.BoostBonusJob[0]
+      BoostBonusJob completed at 04/20/2026 21:06:18
+info: MLMConquerorGlobalEdition.CommissionEngine.Jobs.PresidentialBonusJob[0]
+      PresidentialBonusJob started at 04/20/2026 21:06:18
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (6ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [c].[Id], [c].[Amount], [c].[AmountPromo], [c].[CommissionCategoryId], [c].[CreatedBy], [c].[CreationDate], [c].[Cummulative], [c].[CurrentRank], [c].[DaysAfterJoining], [c].[Description], [c].[EnrollmentTeam], [c].[ExternalMembers], [c].[IsActive], [c].[IsEnrollmentBased], [c].[IsPaidOnRenewal], [c].[IsPaidOnSignup], [c].[IsRealTime], [c].[IsSponsorBonus], [c].[LastUpdateBy], [c].[LastUpdateDate], [c].[LevelNo], [c].[LifeTimeRank], [c].[MaxEnrollmentTeamPointsPerBranch], [c].[MaxTeamPointsPerBranch], [c].[MembersRebill], [c].[Name], [c].[NewMembers], [c].[PaymentDelayDays], [c].[Percentage], [c].[PersonalPoints], [c].[ResidualBased], [c].[ResidualOverCommissionType], [c].[ResidualPercentage], [c].[ReverseId], [c].[SponsoredMembers], [c].[TeamPoints], [c].[TriggerOrder]
+      FROM [CommissionTypes] AS [c]
+      WHERE [c].[IsActive] = CAST(1 AS bit) AND [c].[ResidualBased] = CAST(1 AS bit) AND [c].[IsPaidOnSignup] = CAST(0 AS bit)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (11ms) [Parameters=[@residualTypeIds1='?' (DbType = Int32), @residualTypeIds2='?' (DbType = Int32), @residualTypeIds3='?' (DbType = Int32), @residualTypeIds4='?' (DbType = Int32), @residualTypeIds5='?' (DbType = Int32), @residualTypeIds6='?' (DbType = Int32), @residualTypeIds7='?' (DbType = Int32), @residualTypeIds8='?' (DbType = Int32), @residualTypeIds9='?' (DbType = Int32), @residualTypeIds10='?' (DbType = Int32), @residualTypeIds11='?' (DbType = Int32), @residualTypeIds12='?' (DbType = Int32), @residualTypeIds13='?' (DbType = Int32), @residualTypeIds14='?' (DbType = Int32), @residualTypeIds15='?' (DbType = Int32), @residualTypeIds16='?' (DbType = Int32), @residualTypeIds17='?' (DbType = Int32), @residualTypeIds18='?' (DbType = Int32), @residualTypeIds19='?' (DbType = Int32), @residualTypeIds20='?' (DbType = Int32), @periodDate='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+      SELECT CASE
+          WHEN EXISTS (
+              SELECT 1
+              FROM [CommissionEarnings] AS [c]
+              WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[CommissionTypeId] IN (@residualTypeIds1, @residualTypeIds2, @residualTypeIds3, @residualTypeIds4, @residualTypeIds5, @residualTypeIds6, @residualTypeIds7, @residualTypeIds8, @residualTypeIds9, @residualTypeIds10, @residualTypeIds11, @residualTypeIds12, @residualTypeIds13, @residualTypeIds14, @residualTypeIds15, @residualTypeIds16, @residualTypeIds17, @residualTypeIds18, @residualTypeIds19, @residualTypeIds20) AND [c].[PeriodDate] IS NOT NULL AND CONVERT(date, [c].[PeriodDate]) = @periodDate) THEN CAST(1 AS bit)
+          ELSE CAST(0 AS bit)
+      END
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (11ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [c].[Id], [c].[Amount], [c].[AmountPromo], [c].[CommissionCategoryId], [c].[CreatedBy], [c].[CreationDate], [c].[Cummulative], [c].[CurrentRank], [c].[DaysAfterJoining], [c].[Description], [c].[EnrollmentTeam], [c].[ExternalMembers], [c].[IsActive], [c].[IsEnrollmentBased], [c].[IsPaidOnRenewal], [c].[IsPaidOnSignup], [c].[IsRealTime], [c].[IsSponsorBonus], [c].[LastUpdateBy], [c].[LastUpdateDate], [c].[LevelNo], [c].[LifeTimeRank], [c].[MaxEnrollmentTeamPointsPerBranch], [c].[MaxTeamPointsPerBranch], [c].[MembersRebill], [c].[Name], [c].[NewMembers], [c].[PaymentDelayDays], [c].[Percentage], [c].[PersonalPoints], [c].[ResidualBased], [c].[ResidualOverCommissionType], [c].[ResidualPercentage], [c].[ReverseId], [c].[SponsoredMembers], [c].[TeamPoints], [c].[TriggerOrder]
+      FROM [CommissionTypes] AS [c]
+      WHERE [c].[IsActive] = CAST(1 AS bit) AND [c].[LifeTimeRank] > 0 AND [c].[IsPaidOnSignup] = CAST(0 AS bit)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (12ms) [Parameters=[@Select1='?' (DbType = Int32), @Select2='?' (DbType = Int32), @Select3='?' (DbType = Int32), @monthStart_Year='?' (DbType = Int32), @monthStart_Month='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT CASE
+          WHEN EXISTS (
+              SELECT 1
+              FROM [CommissionEarnings] AS [c]
+              WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[CommissionTypeId] IN (@Select1, @Select2, @Select3) AND [c].[PeriodDate] IS NOT NULL AND DATEPART(year, [c].[PeriodDate]) = @monthStart_Year AND DATEPART(month, [c].[PeriodDate]) = @monthStart_Month) THEN CAST(1 AS bit)
+          ELSE CAST(0 AS bit)
+      END
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (18ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [m].[MemberId], [m].[DualTeamPoints], [m].[EnrollmentPoints]
+      FROM [MemberStatistics] AS [m]
+      INNER JOIN (
+          SELECT [m0].[MemberId], [m0].[MemberType], [m0].[Status]
+          FROM [MemberProfiles] AS [m0]
+          WHERE [m0].[IsDeleted] = CAST(0 AS bit)
+      ) AS [m1] ON [m].[MemberId] = [m1].[MemberId]
+      WHERE [m1].[MemberType] = 0 AND [m1].[Status] = 1 AND ([m].[DualTeamPoints] > 0 OR [m].[EnrollmentPoints] > 0)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (8ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [m].[Id], [m].[AchievedAt], [m].[CreatedBy], [m].[CreationDate], [m].[DeletedAt], [m].[DeletedBy], [m].[GeneratedCertificateUrl], [m].[IsDeleted], [m].[LastUpdateBy], [m].[LastUpdateDate], [m].[MemberId], [m].[PreviousRankId], [m].[RankDefinitionId], [m].[RowVersion], [r].[Id], [r].[CertificateTemplateUrl], [r].[CreatedBy], [r].[CreationDate], [r].[Description], [r].[LastUpdateBy], [r].[LastUpdateDate], [r].[Name], [r].[SortOrder], [r].[Status]
+      FROM [MemberRankHistories] AS [m]
+      INNER JOIN [RankDefinitions] AS [r] ON [m].[RankDefinitionId] = [r].[Id]
+      WHERE [m].[IsDeleted] = CAST(0 AS bit)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[@monthStart='?' (DbType = DateTime2), @monthEnd='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+      SELECT COALESCE(SUM([o].[TotalAmount]), 0.0)
+      FROM [Orders] AS [o]
+      WHERE [o].[Status] = 4 AND [o].[OrderDate] >= @monthStart AND [o].[OrderDate] < @monthEnd
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (14ms) [Parameters=[@p0='?' (Size = 450), @p1='?' (Precision = 18) (Scale = 4) (DbType = Decimal), @p2='?' (Size = 450), @p3='?' (DbType = Int32), @p4='?' (DbType = Int32), @p5='?' (Size = 4000), @p6='?' (DbType = DateTime2), @p7='?' (Size = 4000), @p8='?' (DbType = DateTime2), @p9='?' (Size = 4000), @p10='?' (DbType = DateTime2), @p11='?' (DbType = Boolean), @p12='?' (DbType = Boolean), @p13='?' (Size = 4000), @p14='?' (DbType = DateTime2), @p15='?' (Size = 4000), @p16='?' (DbType = DateTime2), @p17='?' (DbType = DateTime2), @p18='?' (Size = 4000), @p19='?' (Size = 450), @p20='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SET IMPLICIT_TRANSACTIONS OFF;
+      SET NOCOUNT ON;
+      INSERT INTO [CommissionEarnings] ([Id], [Amount], [BeneficiaryMemberId], [CommissionOperationTypeId], [CommissionTypeId], [CreatedBy], [CreationDate], [CsvImportBatchId], [DeletedAt], [DeletedBy], [EarnedDate], [IsDeleted], [IsManualEntry], [LastUpdateBy], [LastUpdateDate], [Notes], [PaymentDate], [PeriodDate], [SourceMemberId], [SourceOrderId], [Status])
+      OUTPUT INSERTED.[RowVersion]
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15, @p16, @p17, @p18, @p19, @p20);
+info: MLMConquerorGlobalEdition.CommissionEngine.Jobs.PresidentialBonusJob[0]
+      PresidentialBonus: 1 records, $563.20
+info: MLMConquerorGlobalEdition.CommissionEngine.Jobs.PresidentialBonusJob[0]
+      PresidentialBonusJob completed at 04/20/2026 21:06:19
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (32ms) [Parameters=[@p0='?' (Size = 450), @p1='?' (Precision = 18) (Scale = 4) (DbType = Decimal), @p2='?' (Size = 450), @p3='?' (DbType = Int32), @p4='?' (DbType = Int32), @p5='?' (Size = 4000), @p6='?' (DbType = DateTime2), @p7='?' (Size = 4000), @p8='?' (DbType = DateTime2), @p9='?' (Size = 4000), @p10='?' (DbType = DateTime2), @p11='?' (DbType = Boolean), @p12='?' (DbType = Boolean), @p13='?' (Size = 4000), @p14='?' (DbType = DateTime2), @p15='?' (Size = 4000), @p16='?' (DbType = DateTime2), @p17='?' (DbType = DateTime2), @p18='?' (Size = 4000), @p19='?' (Size = 450), @p20='?' (DbType = Int32), @p21='?' (Size = 450), @p22='?' (Precision = 18) (Scale = 4) (DbType = Decimal), @p23='?' (Size = 450), @p24='?' (DbType = Int32), @p25='?' (DbType = Int32), @p26='?' (Size = 4000), @p27='?' (DbType = DateTime2), @p28='?' (Size = 4000), @p29='?' (DbType = DateTime2), @p30='?' (Size = 4000), @p31='?' (DbType = DateTime2), @p32='?' (DbType = Boolean), @p33='?' (DbType = Boolean), @p34='?' (Size = 4000), @p35='?' (DbType = DateTime2), @p36='?' (Size = 4000), @p37='?' (DbType = DateTime2), @p38='?' (DbType = DateTime2), @p39='?' (Size = 4000), @p40='?' (Size = 450), @p41='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SET IMPLICIT_TRANSACTIONS OFF;
+      SET NOCOUNT ON;
+      MERGE [CommissionEarnings] USING (
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15, @p16, @p17, @p18, @p19, @p20, 0),
+      (@p21, @p22, @p23, @p24, @p25, @p26, @p27, @p28, @p29, @p30, @p31, @p32, @p33, @p34, @p35, @p36, @p37, @p38, @p39, @p40, @p41, 1)) AS i ([Id], [Amount], [BeneficiaryMemberId], [CommissionOperationTypeId], [CommissionTypeId], [CreatedBy], [CreationDate], [CsvImportBatchId], [DeletedAt], [DeletedBy], [EarnedDate], [IsDeleted], [IsManualEntry], [LastUpdateBy], [LastUpdateDate], [Notes], [PaymentDate], [PeriodDate], [SourceMemberId], [SourceOrderId], [Status], _Position) ON 1=0
+      WHEN NOT MATCHED THEN
+      INSERT ([Id], [Amount], [BeneficiaryMemberId], [CommissionOperationTypeId], [CommissionTypeId], [CreatedBy], [CreationDate], [CsvImportBatchId], [DeletedAt], [DeletedBy], [EarnedDate], [IsDeleted], [IsManualEntry], [LastUpdateBy], [LastUpdateDate], [Notes], [PaymentDate], [PeriodDate], [SourceMemberId], [SourceOrderId], [Status])
+      VALUES (i.[Id], i.[Amount], i.[BeneficiaryMemberId], i.[CommissionOperationTypeId], i.[CommissionTypeId], i.[CreatedBy], i.[CreationDate], i.[CsvImportBatchId], i.[DeletedAt], i.[DeletedBy], i.[EarnedDate], i.[IsDeleted], i.[IsManualEntry], i.[LastUpdateBy], i.[LastUpdateDate], i.[Notes], i.[PaymentDate], i.[PeriodDate], i.[SourceMemberId], i.[SourceOrderId], i.[Status])
+      OUTPUT INSERTED.[RowVersion], i._Position;
+info: MLMConquerorGlobalEdition.CommissionEngine.Jobs.DailyResidualJob[0]
+      DailyResidual: 2 records, $8.00
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (12ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [c].[Id], [c].[Amount], [c].[AmountPromo], [c].[CommissionCategoryId], [c].[CreatedBy], [c].[CreationDate], [c].[Cummulative], [c].[CurrentRank], [c].[DaysAfterJoining], [c].[Description], [c].[EnrollmentTeam], [c].[ExternalMembers], [c].[IsActive], [c].[IsEnrollmentBased], [c].[IsPaidOnRenewal], [c].[IsPaidOnSignup], [c].[IsRealTime], [c].[IsSponsorBonus], [c].[LastUpdateBy], [c].[LastUpdateDate], [c].[LevelNo], [c].[LifeTimeRank], [c].[MaxEnrollmentTeamPointsPerBranch], [c].[MaxTeamPointsPerBranch], [c].[MembersRebill], [c].[Name], [c].[NewMembers], [c].[PaymentDelayDays], [c].[Percentage], [c].[PersonalPoints], [c].[ResidualBased], [c].[ResidualOverCommissionType], [c].[ResidualPercentage], [c].[ReverseId], [c].[SponsoredMembers], [c].[TeamPoints], [c].[TriggerOrder]
+      FROM [CommissionTypes] AS [c]
+      WHERE [c].[IsActive] = CAST(1 AS bit) AND [c].[ResidualBased] = CAST(1 AS bit) AND [c].[ResidualOverCommissionType] > 0
+fail: MLMConquerorGlobalEdition.CommissionEngine.Jobs.DailyResidualJob[0]
+      MatchingBonus failed: No active Matching Bonus commission types configured.
+info: MLMConquerorGlobalEdition.CommissionEngine.Jobs.DailyResidualJob[0]
+      DailyResidualJob completed at 04/20/2026 21:06:19
+warn: Hangfire.AutomaticRetryAttribute[0]
+      Failed to process the job '446': an exception occurred. Retry attempt 4 of 10 will be performed in 00:01:36.
+      System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.RankEngine'.
+         at System.Reflection.TypeNameResolver.ResolveAssembly(AssemblyName assemblyName)
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100

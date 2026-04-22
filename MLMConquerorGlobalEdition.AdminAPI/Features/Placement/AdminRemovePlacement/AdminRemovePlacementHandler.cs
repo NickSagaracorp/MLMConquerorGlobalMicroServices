@@ -40,33 +40,21 @@ public class AdminRemovePlacementHandler : IRequestHandler<AdminRemovePlacementC
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
         try
         {
-            // Detach all direct children (they become tree roots)
-            var directChildren = await _db.DualTeamTree
-                .Where(d => d.ParentMemberId == command.MemberId)
+            // Keep all descendants linked to the removed member so that when the member
+            // is re-placed, their subtree moves with them.
+            // Replace the old path prefix with /{memberId}/ (member becomes a floating root).
+            var oldPrefix = node.HierarchyPath;                    // e.g. /root/A/
+            var floatPrefix = $"/{command.MemberId}/";             // e.g. /A/
+
+            var allDescendants = await _db.DualTeamTree
+                .Where(d => d.HierarchyPath.StartsWith(oldPrefix) && d.MemberId != command.MemberId)
                 .ToListAsync(ct);
 
-            foreach (var child in directChildren)
+            foreach (var desc in allDescendants)
             {
-                child.ParentMemberId = null;
-                child.HierarchyPath  = $"/{child.MemberId}/";
-                child.LastUpdateDate = now;
-                child.LastUpdateBy   = _currentUser.UserId;
-            }
-
-            // Update grandchildren hierarchy paths
-            foreach (var child in directChildren)
-            {
-                var grandchildren = await _db.DualTeamTree
-                    .Where(d => d.HierarchyPath.StartsWith(node.HierarchyPath + child.MemberId + "/"))
-                    .ToListAsync(ct);
-
-                foreach (var gc in grandchildren)
-                {
-                    gc.HierarchyPath  = gc.HierarchyPath.Replace(
-                        node.HierarchyPath, "/");
-                    gc.LastUpdateDate = now;
-                    gc.LastUpdateBy   = _currentUser.UserId;
-                }
+                desc.HierarchyPath  = floatPrefix + desc.HierarchyPath.Substring(oldPrefix.Length);
+                desc.LastUpdateDate = now;
+                desc.LastUpdateBy   = _currentUser.UserId;
             }
 
             var parentId = node.ParentMemberId;

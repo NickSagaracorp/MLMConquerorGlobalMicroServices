@@ -10,7 +10,7 @@ public record GetCountriesQuery : IRequest<Result<List<CountryLookupDto>>>;
 
 public record CountryLookupDto(
     string Iso2, string Iso3, string NameEn, string NameNative,
-    string DefaultLanguageCode, string FlagEmoji, string? PhoneCode, bool IsActive);
+    string DefaultLanguageCode, string FlagEmoji, string? PhoneCode, bool IsActive, bool HasStates);
 
 public class GetCountriesHandler : IRequestHandler<GetCountriesQuery, Result<List<CountryLookupDto>>>
 {
@@ -40,7 +40,7 @@ public class GetCountriesHandler : IRequestHandler<GetCountriesQuery, Result<Lis
             .OrderBy(x => x.SortOrder).ThenBy(x => x.NameEn)
             .Select(x => new CountryLookupDto(
                 x.Iso2, x.Iso3, x.NameEn, x.NameNative,
-                x.DefaultLanguageCode, x.FlagEmoji, x.PhoneCode, x.IsActive))
+                x.DefaultLanguageCode, x.FlagEmoji, x.PhoneCode, x.IsActive, x.HasStates))
             .ToListAsync(ct);
 
         try { await _cache.SetAsync(CacheKey, countries, TimeSpan.FromHours(24), ct); }

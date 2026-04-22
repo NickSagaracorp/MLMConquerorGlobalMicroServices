@@ -1,4 +1,4 @@
-using MediatR;
+﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 using MLMConquerorGlobalEdition.Domain.Enums;
@@ -108,8 +108,8 @@ public class CalculateSponsorBonusHandler
                 }
             });
 
-        // Use FixedAmount when set (comp plan: VIP=$20, Elite=$40, Turbo=$80).
-        var amount = commType.FixedAmount
+        // Use Amount when set (comp plan: VIP=$20, Elite=$40, Turbo=$80).
+        var amount = commType.ActiveAmount
             ?? Math.Round(order.TotalAmount * commType.Percentage / 100, 2);
 
         var earning = new CommissionEarning
@@ -140,3 +140,4 @@ public class CalculateSponsorBonusHandler
         });
     }
 }
+

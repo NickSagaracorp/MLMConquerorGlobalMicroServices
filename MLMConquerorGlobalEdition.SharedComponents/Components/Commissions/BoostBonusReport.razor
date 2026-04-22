@@ -27,7 +27,7 @@
                                         </div>
                                         <div class="flex-grow-1 ms-2">
                                             <span>Gold</span>
-                                            <h3 class="fs-20 mt-1 mb-0">@_weekStats.GoldCount/@_weekStats.GoldTarget</h3>
+                                            <h3 class="fs-20 mt-1 mb-0">@_weekStats.GoldPoints/@_weekStats.GoldPointsTarget</h3>
                                         </div>
                                     </div>
                                 </div>
@@ -42,7 +42,7 @@
                                         </div>
                                         <div class="flex-grow-1 ms-2">
                                             <span>Platinum</span>
-                                            <h3 class="fs-20 mt-1 mb-0">@_weekStats.PlatinumCount/@_weekStats.PlatinumTarget</h3>
+                                            <h3 class="fs-20 mt-1 mb-0">@_weekStats.PlatinumPoints/@_weekStats.PlatinumPointsTarget</h3>
                                         </div>
                                     </div>
                                 </div>
@@ -81,19 +81,33 @@
                     </div>
                 </div>
 
-                <ul class="nav nav-tabs bg-transparent border-bottom gap-2 gap-sm-5 pb-4" role="tablist">
+                <style>
+                    .nav-tabs .nav-item .nav-link.active {
+                        color: #4936F5 !important;
+                    }
+                </style>
+
+                <ul class="nav nav-tabs bg-transparent border-bottom gap-2 gap-sm-5 pb-4" id="boostBonusTab" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_enrollmentTab == "gold" ? "active" : "")"
+                                id="gold-tab"
                                 type="button"
+                                role="tab"
+                                aria-controls="gold-tab-pane"
+                                aria-selected="@(_enrollmentTab == "gold" ? "true" : "false")"
                                 @onclick='() => _enrollmentTab = "gold"'>
-                            GOLD (@_goldEnrollments.Count)
+                            GOLD (@_goldEnrollments.Count.ToString("00"))
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_enrollmentTab == "platinum" ? "active" : "")"
+                                id="platinum-tab"
                                 type="button"
+                                role="tab"
+                                aria-controls="platinum-tab-pane"
+                                aria-selected="@(_enrollmentTab == "platinum" ? "true" : "false")"
                                 @onclick='() => _enrollmentTab = "platinum"'>
-                            PLATINUM (@_platinumEnrollments.Count)
+                            PLATINUM (@_platinumEnrollments.Count.ToString("00"))
                         </button>
                     </li>
                 </ul>
@@ -101,68 +115,149 @@
                 <LoadingSpinner IsLoading="@_enrollmentLoading" />
                 @if (!_enrollmentLoading)
                 {
-                    <div class="default-table-area style-two campaigns-table">
-                        <div class="table-responsive">
-                            <table class="table align-middle border-0">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Member</th>
-                                        <th>Email</th>
-                                        <th>Leg</th>
-                                        <th>Enrollment Date</th>
-                                        <th>Rebilling</th>
-                                        <th>Points</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var en in (_enrollmentTab == "platinum" ? _platinumEnrollments : _goldEnrollments))
-                                    {
-                                        var memberBorderClass = en.IsRebillingActive ? "border-success" : "border-danger";
-                                        var rebillingBgClass  = en.IsRebillingActive  ? "bg-success bg-opacity-10 rounded-2 text-success-emphasis"
-                                                              : en.IsRebillingPending ? "bg-warning bg-opacity-10 rounded-2 text-warning-emphasis"
-                                                              : "bg-danger bg-opacity-10 rounded-2 text-danger-emphasis";
-                                        var pointsBgClass = en.IsRebillingActive ? "bg-success bg-opacity-10 rounded-2 text-success-emphasis"
-                                                          : en.IsRebillingPending ? "bg-warning bg-opacity-10 rounded-2 text-warning-emphasis"
-                                                          : "bg-danger bg-opacity-10 rounded-2 text-danger-emphasis";
-                                        <tr>
-                                            <td>@en.MemberId</td>
-                                            <td>
-                                                <div class="border-start border-2 @memberBorderClass ps-3 py-2">
-                                                    <h4 class="fs-14 fw-semibold mb-1">@en.MemberName</h4>
-                                                    <span class="fs-12">@en.MembershipType</span>
-                                                </div>
-                                            </td>
-                                            <td>@(string.IsNullOrEmpty(en.Email) ? "-" : en.Email)</td>
-                                            <td>
-                                                <div class="border-start border-2 @memberBorderClass ps-3 py-2">
-                                                    <h4 class="fs-14 fw-semibold mb-1">@(string.IsNullOrEmpty(en.LegName) ? "-" : en.LegName)</h4>
-                                                </div>
-                                            </td>
-                                            <td>@en.EnrollmentDate.ToString("MM/dd/yyyy")</td>
-                                            <td>
-                                                @if (en.NextRebillingDate.HasValue)
-                                                {
-                                                    <span class="d-inline-block py-1 px-2 @rebillingBgClass">
-                                                        @en.NextRebillingDate.Value.ToString("MMM d'th', yyyy")
-                                                    </span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="text-muted">-</span>
-                                                }
-                                            </td>
-                                            <td>
-                                                <span class="d-inline-block py-1 px-2 @pointsBgClass">@en.Points Points</span>
-                                            </td>
-                                        </tr>
-                                    }
-                                    @if (!(_enrollmentTab == "platinum" ? _platinumEnrollments : _goldEnrollments).Any())
-                                    {
-                                        <tr><td colspan="7" class="text-center text-muted py-4">No enrollments for this period.</td></tr>
-                                    }
-                                </tbody>
-                            </table>
+                    <div class="tab-content" id="boostBonusTabContent">
+                        <!-- GOLD tab pane (threshold: 6 enrollments) -->
+                        <div class="tab-pane fade @(_enrollmentTab == "gold" ? "show active" : "")"
+                             id="gold-tab-pane"
+                             role="tabpanel"
+                             aria-labelledby="gold-tab"
+                             tabindex="0">
+                            <div class="default-table-area style-two campaigns-table">
+                                <div class="table-responsive">
+                                    <table class="table align-middle border-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Order No</th>
+                                                <th>Member Name</th>
+                                                <th>Membership Type</th>
+                                                <th>Leg</th>
+                                                <th>Enrollment Date</th>
+                                                <th>Next Rebilling</th>
+                                                <th>Points</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var en in _goldEnrollments)
+                                            {
+                                                var memberBorderClass = en.IsRebillingActive ? "border-success" : "border-danger";
+                                                var rebillingBgClass  = en.IsRebillingActive  ? "bg-success bg-opacity-10 rounded-2 text-success-emphasis"
+                                                                      : en.IsRebillingPending ? "bg-warning bg-opacity-10 rounded-2 text-warning-emphasis"
+                                                                      : "bg-danger bg-opacity-10 rounded-2 text-danger-emphasis";
+                                                var pointsBgClass = en.IsRebillingActive ? "bg-success bg-opacity-10 rounded-2 text-success-emphasis"
+                                                                  : en.IsRebillingPending ? "bg-warning bg-opacity-10 rounded-2 text-warning-emphasis"
+                                                                  : "bg-danger bg-opacity-10 rounded-2 text-danger-emphasis";
+                                                <tr>
+                                                    <td>@en.OrderNo</td>
+                                                    <td>
+                                                        <div class="border-start border-2 @memberBorderClass ps-3 py-2">
+                                                            <h4 class="fs-14 fw-semibold mb-1">@en.MemberName</h4>
+                                                            <span class="fs-12">@(string.IsNullOrEmpty(en.Email) ? "-" : en.Email)</span>
+                                                        </div>
+                                                    </td>
+                                                    <td><span class="fs-12">@en.MembershipType</span></td>
+                                                    <td>
+                                                        <div class="border-start border-2 @memberBorderClass ps-3 py-2">
+                                                            <h4 class="fs-14 fw-semibold mb-1">@(string.IsNullOrEmpty(en.LegName) ? "-" : en.LegName)</h4>
+                                                        </div>
+                                                    </td>
+                                                    <td>@en.EnrollmentDate.ToString("MM/dd/yyyy")</td>
+                                                    <td>
+                                                        @if (en.NextRebillingDate.HasValue)
+                                                        {
+                                                            <span class="d-inline-block py-1 px-2 @rebillingBgClass">
+                                                                @en.NextRebillingDate.Value.ToString("MMM d'th', yyyy")
+                                                            </span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-muted">-</span>
+                                                        }
+                                                    </td>
+                                                    <td>
+                                                        <span class="d-inline-block py-1 px-2 @pointsBgClass">@en.Points Points</span>
+                                                    </td>
+                                                </tr>
+                                            }
+                                            @if (!_goldEnrollments.Any())
+                                            {
+                                                <tr><td colspan="7" class="text-center text-muted py-4">No Gold enrollments for this period (threshold: 6).</td></tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PLATINUM tab pane (threshold: 12 enrollments) -->
+                        <div class="tab-pane fade @(_enrollmentTab == "platinum" ? "show active" : "")"
+                             id="platinum-tab-pane"
+                             role="tabpanel"
+                             aria-labelledby="platinum-tab"
+                             tabindex="0">
+                            <div class="default-table-area style-two campaigns-table">
+                                <div class="table-responsive">
+                                    <table class="table align-middle border-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Order No</th>
+                                                <th>Member Name</th>
+                                                <th>Membership Type</th>
+                                                <th>Leg</th>
+                                                <th>Enrollment Date</th>
+                                                <th>Next Rebilling</th>
+                                                <th>Points</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var en in _platinumEnrollments)
+                                            {
+                                                var memberBorderClass = en.IsRebillingActive ? "border-success" : "border-danger";
+                                                var rebillingBgClass  = en.IsRebillingActive  ? "bg-success bg-opacity-10 rounded-2 text-success-emphasis"
+                                                                      : en.IsRebillingPending ? "bg-warning bg-opacity-10 rounded-2 text-warning-emphasis"
+                                                                      : "bg-danger bg-opacity-10 rounded-2 text-danger-emphasis";
+                                                var pointsBgClass = en.IsRebillingActive ? "bg-success bg-opacity-10 rounded-2 text-success-emphasis"
+                                                                  : en.IsRebillingPending ? "bg-warning bg-opacity-10 rounded-2 text-warning-emphasis"
+                                                                  : "bg-danger bg-opacity-10 rounded-2 text-danger-emphasis";
+                                                <tr>
+                                                    <td>@en.OrderNo</td>
+                                                    <td>
+                                                        <div class="border-start border-2 @memberBorderClass ps-3 py-2">
+                                                            <h4 class="fs-14 fw-semibold mb-1">@en.MemberName</h4>
+                                                            <span class="fs-12">@(string.IsNullOrEmpty(en.Email) ? "-" : en.Email)</span>
+                                                        </div>
+                                                    </td>
+                                                    <td><span class="fs-12">@en.MembershipType</span></td>
+                                                    <td>
+                                                        <div class="border-start border-2 @memberBorderClass ps-3 py-2">
+                                                            <h4 class="fs-14 fw-semibold mb-1">@(string.IsNullOrEmpty(en.LegName) ? "-" : en.LegName)</h4>
+                                                        </div>
+                                                    </td>
+                                                    <td>@en.EnrollmentDate.ToString("MM/dd/yyyy")</td>
+                                                    <td>
+                                                        @if (en.NextRebillingDate.HasValue)
+                                                        {
+                                                            <span class="d-inline-block py-1 px-2 @rebillingBgClass">
+                                                                @en.NextRebillingDate.Value.ToString("MMM d'th', yyyy")
+                                                            </span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-muted">-</span>
+                                                        }
+                                                    </td>
+                                                    <td>
+                                                        <span class="d-inline-block py-1 px-2 @pointsBgClass">@en.Points Points</span>
+                                                    </td>
+                                                </tr>
+                                            }
+                                            @if (!_platinumEnrollments.Any())
+                                            {
+                                                <tr><td colspan="7" class="text-center text-muted py-4">No Platinum enrollments for this period (threshold: 12).</td></tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 }
@@ -462,11 +557,15 @@
 
     private class WeekStatsData
     {
-        public string WeekLabel      { get; set; } = string.Empty;
-        public int    GoldCount      { get; set; }
-        public int    GoldTarget     { get; set; }
-        public int    PlatinumCount  { get; set; }
-        public int    PlatinumTarget { get; set; }
+        public string WeekLabel            { get; set; } = string.Empty;
+        public int    GoldCount            { get; set; }
+        public int    GoldTarget           { get; set; }
+        public int    PlatinumCount        { get; set; }
+        public int    PlatinumTarget       { get; set; }
+        public int    GoldPoints           { get; set; }
+        public int    GoldPointsTarget     { get; set; }
+        public int    PlatinumPoints       { get; set; }
+        public int    PlatinumPointsTarget { get; set; }
     }
 
     private class MemberSummData
@@ -501,6 +600,7 @@
     private class EnrollmentItem
     {
         public string   MemberId           { get; set; } = string.Empty;
+        public string   OrderNo            { get; set; } = string.Empty;
         public string   MemberName         { get; set; } = string.Empty;
         public string   MembershipType     { get; set; } = string.Empty;
         public string   Email              { get; set; } = string.Empty;

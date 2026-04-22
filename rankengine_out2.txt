@@ -1,0 +1,673 @@
+Using launch settings from C:\Users\sagar\source\repos\ClaudeRepository\MLMConquerorGlobalEdition.RankEngine\Properties\launchSettings.json...
+warn: Microsoft.EntityFrameworkCore.Model.Validation[10622]
+      Entity 'Product' has a global query filter defined and is the required end of a relationship with the entity 'CountryProduct'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[10622]
+      Entity 'Product' has a global query filter defined and is the required end of a relationship with the entity 'ProductCommission'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[10622]
+      Entity 'Product' has a global query filter defined and is the required end of a relationship with the entity 'ProductCommissionPromo'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[10622]
+      Entity 'KnowledgeBaseArticle' has a global query filter defined and is the required end of a relationship with the entity 'KbArticleVersion'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[10622]
+      Entity 'Ticket' has a global query filter defined and is the required end of a relationship with the entity 'SlaBreach'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[10622]
+      Entity 'Ticket' has a global query filter defined and is the required end of a relationship with the entity 'TicketComment'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[10622]
+      Entity 'Ticket' has a global query filter defined and is the required end of a relationship with the entity 'TicketHistory'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[10625]
+      The foreign key property 'MemberCommissionCountDown.MemberId1' was created in shadow state because a conflicting property with the simple name 'MemberId' exists in the entity type, but is either not mapped, is already used for another relationship, or is incompatible with the associated primary key type. See https://aka.ms/efcore-relationships for information on mapping relationships in EF Core.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[10625]
+      The foreign key property 'MemberCommissionCountDownHistory.MemberId1' was created in shadow state because a conflicting property with the simple name 'MemberId' exists in the entity type, but is either not mapped, is already used for another relationship, or is incompatible with the associated primary key type. See https://aka.ms/efcore-relationships for information on mapping relationships in EF Core.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[10625]
+      The foreign key property 'MembershipSubscription.LastOrderId1' was created in shadow state because a conflicting property with the simple name 'LastOrderId' exists in the entity type, but is either not mapped, is already used for another relationship, or is incompatible with the associated primary key type. See https://aka.ms/efcore-relationships for information on mapping relationships in EF Core.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[10625]
+      The foreign key property 'ProductCommissionPromo.CorporatePromoId1' was created in shadow state because a conflicting property with the simple name 'CorporatePromoId' exists in the entity type, but is either not mapped, is already used for another relationship, or is incompatible with the associated primary key type. See https://aka.ms/efcore-relationships for information on mapping relationships in EF Core.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'PointsEarned' on entity type 'LoyaltyPoints'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'CurrentMonthIncomeGrowth' on entity type 'MemberStatisticEntity'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'CurrentWeekIncomeGrowth' on entity type 'MemberStatisticEntity'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'CurrentYearIncomeGrowth' on entity type 'MemberStatisticEntity'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'UnitPrice' on entity type 'OrderDetail'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'TotalAmount' on entity type 'Orders'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'Amount' on entity type 'PaymentHistory'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (114ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT 1
+info: Microsoft.EntityFrameworkCore.Migrations[20411]
+      Acquiring an exclusive lock for migration application. See https://aka.ms/efcore-docs-migrations-lock for more information if this takes too long.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (151ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      DECLARE @result int;
+      EXEC @result = sp_getapplock @Resource = '__EFMigrationsLock', @LockOwner = 'Session', @LockMode = 'Exclusive';
+      SELECT @result
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (16ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      IF OBJECT_ID(N'[__EFMigrationsHistory]') IS NULL
+      BEGIN
+          CREATE TABLE [__EFMigrationsHistory] (
+              [MigrationId] nvarchar(150) NOT NULL,
+              [ProductVersion] nvarchar(32) NOT NULL,
+              CONSTRAINT [PK___EFMigrationsHistory] PRIMARY KEY ([MigrationId])
+          );
+      END;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (14ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (21ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (27ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [MigrationId], [ProductVersion]
+      FROM [__EFMigrationsHistory]
+      ORDER BY [MigrationId];
+info: Microsoft.EntityFrameworkCore.Migrations[20405]
+      No migrations were applied. The database is already up to date.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (8ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      DECLARE @result int;
+      EXEC @result = sp_releaseapplock @Resource = '__EFMigrationsLock', @LockOwner = 'Session';
+      SELECT @result
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (23ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT CASE
+          WHEN EXISTS (
+              SELECT 1
+              FROM [CompanyInfo] AS [c]) THEN CAST(1 AS bit)
+          ELSE CAST(0 AS bit)
+      END
+info: Hangfire.SqlServer.SqlServerObjectsInstaller[0]
+      Start installing Hangfire SQL objects...
+info: Hangfire.SqlServer.SqlServerObjectsInstaller[0]
+      Hangfire SQL objects installed.
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:5000
+info: Hangfire.BackgroundJobServer[0]
+      Starting Hangfire Server using job storage: 'SQL Server: .@MLMConquerorGlobalEditionDb'
+info: Hangfire.BackgroundJobServer[0]
+      Using the following options for SQL Server job storage: Queue poll interval: 00:00:00.
+info: Hangfire.BackgroundJobServer[0]
+      Using the following options for Hangfire Server:
+          Worker count: 5
+          Listening queues: 'default'
+          Shutdown timeout: 00:00:15
+          Schedule polling interval: 00:00:15
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Production
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: C:\Users\sagar\source\repos\ClaudeRepository\MLMConquerorGlobalEdition.RankEngine
+info: Hangfire.Server.BackgroundServerProcess[0]
+      Server jarvis2_0:26704:c1079ee0 successfully announced in 11.6726 ms
+info: Hangfire.Server.BackgroundServerProcess[0]
+      Server jarvis2_0:26704:c1079ee0 is starting the registered dispatchers: ServerWatchdog, ServerJobCancellationWatcher, SqlServerHeartbeatProcess, ExpirationManager, CountersAggregator, Worker, DelayedJobScheduler, RecurringJobScheduler...
+info: Hangfire.Server.BackgroundServerProcess[0]
+      Server jarvis2_0:26704:c1079ee0 all the dispatchers started
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'boost-bonus-sweep' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.CommissionEngine'.
+         at System.Reflection.TypeNameResolver.ResolveAssembly(AssemblyName assemblyName)
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'fsb-sweep' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.SignupAPI'.
+         at System.Reflection.TypeNameResolver.ResolveAssembly(AssemblyName assemblyName)
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'sla-checker' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.TicketManagementSystem'.
+         at System.Reflection.TypeNameResolver.ResolveAssembly(AssemblyName assemblyName)
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'boost-bonus-sweep' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.CommissionEngine'.
+         at System.Reflection.TypeNameResolver.ResolveAssembly(AssemblyName assemblyName)
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'fsb-sweep' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.SignupAPI'.
+         at System.Reflection.TypeNameResolver.ResolveAssembly(AssemblyName assemblyName)
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'sla-checker' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.TicketManagementSystem'.
+         at System.Reflection.TypeNameResolver.ResolveAssembly(AssemblyName assemblyName)
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'boost-bonus-sweep' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.CommissionEngine'.
+         at System.Reflection.TypeNameResolver.ResolveAssembly(AssemblyName assemblyName)
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'fsb-sweep' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.SignupAPI'.
+         at System.Reflection.TypeNameResolver.ResolveAssembly(AssemblyName assemblyName)
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'sla-checker' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.TicketManagementSystem'.
+         at System.Reflection.TypeNameResolver.ResolveAssembly(AssemblyName assemblyName)
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'boost-bonus-sweep' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.CommissionEngine'.
+         at System.Reflection.TypeNameResolver.ResolveAssembly(AssemblyName assemblyName)
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'fsb-sweep' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.SignupAPI'.
+         at System.Reflection.TypeNameResolver.ResolveAssembly(AssemblyName assemblyName)
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'sla-checker' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.TicketManagementSystem'.
+         at System.Reflection.TypeNameResolver.ResolveAssembly(AssemblyName assemblyName)
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'boost-bonus-sweep' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.CommissionEngine'.
+         at System.Reflection.TypeNameResolver.ResolveAssembly(AssemblyName assemblyName)
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'fsb-sweep' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.SignupAPI'.
+         at System.Reflection.TypeNameResolver.ResolveAssembly(AssemblyName assemblyName)
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'sla-checker' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.TicketManagementSystem'.
+         at System.Reflection.TypeNameResolver.ResolveAssembly(AssemblyName assemblyName)
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+fail: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'fsb-sweep' can't be scheduled due to an error and will be disabled.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.SignupAPI'.
+         at System.Reflection.TypeNameResolver.ResolveAssembly(AssemblyName assemblyName)
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+fail: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'sla-checker' can't be scheduled due to an error and will be disabled.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.TicketManagementSystem'.
+         at System.Reflection.TypeNameResolver.ResolveAssembly(AssemblyName assemblyName)
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+fail: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'boost-bonus-sweep' can't be scheduled due to an error and will be disabled.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.CommissionEngine'.
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'builder-bonus-sweep' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.SignupAPI'.
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@p='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT TOP(@p) [r].[Id], [r].[CreatedBy], [r].[CreationDate], [r].[ErrorMessage], [r].[EvaluateMemberId], [r].[IsProcessed], [r].[ProcessedAt], [r].[ProcessedBy], [r].[RetryCount], [r].[TriggerDate], [r].[TriggerEvent], [r].[TriggerMemberId]
+      FROM [RankEvaluationQueue] AS [r]
+      WHERE [r].[IsProcessed] = CAST(0 AS bit) AND [r].[RetryCount] < 3
+      ORDER BY [r].[TriggerDate]
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'builder-bonus-sweep' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.SignupAPI'.
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'builder-bonus-sweep' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.SignupAPI'.
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@p='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT TOP(@p) [r].[Id], [r].[CreatedBy], [r].[CreationDate], [r].[ErrorMessage], [r].[EvaluateMemberId], [r].[IsProcessed], [r].[ProcessedAt], [r].[ProcessedBy], [r].[RetryCount], [r].[TriggerDate], [r].[TriggerEvent], [r].[TriggerMemberId]
+      FROM [RankEvaluationQueue] AS [r]
+      WHERE [r].[IsProcessed] = CAST(0 AS bit) AND [r].[RetryCount] < 3
+      ORDER BY [r].[TriggerDate]
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'builder-bonus-sweep' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.SignupAPI'.
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@p='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT TOP(@p) [r].[Id], [r].[CreatedBy], [r].[CreationDate], [r].[ErrorMessage], [r].[EvaluateMemberId], [r].[IsProcessed], [r].[ProcessedAt], [r].[ProcessedBy], [r].[RetryCount], [r].[TriggerDate], [r].[TriggerEvent], [r].[TriggerMemberId]
+      FROM [RankEvaluationQueue] AS [r]
+      WHERE [r].[IsProcessed] = CAST(0 AS bit) AND [r].[RetryCount] < 3
+      ORDER BY [r].[TriggerDate]
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'builder-bonus-sweep' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.SignupAPI'.
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'builder-bonus-sweep' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.SignupAPI'.
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'builder-bonus-sweep' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.SignupAPI'.
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+warn: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'builder-bonus-sweep' can't be scheduled due to an error and will be retried in 00:00:15.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.SignupAPI'.
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+fail: Hangfire.Server.RecurringJobScheduler[0]
+      Recurring job 'builder-bonus-sweep' can't be scheduled due to an error and will be disabled.
+      Hangfire.Common.JobLoadException: Could not load the job. See inner exception for the details.
+       ---> System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.SignupAPI'.
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100
+         --- End of inner exception stack trace ---
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 118
+         at Hangfire.RecurringJobExtensions.TriggerRecurringJob(IBackgroundJobFactory factory, JobStorage storage, IStorageConnection connection, IProfiler profiler, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\RecurringJobExtensions.cs:line 115
+         at Hangfire.Server.RecurringJobScheduler.ScheduleRecurringJob(BackgroundProcessContext context, IStorageConnection connection, String recurringJobId, RecurringJobEntity recurringJob, DateTime now) in C:\projects\hangfire-525\src\Hangfire.Core\Server\RecurringJobScheduler.cs:line 333
+warn: Hangfire.AutomaticRetryAttribute[0]
+      Failed to process the job '475': an exception occurred. Retry attempt 1 of 10 will be performed in 00:00:44.
+      System.IO.FileNotFoundException: Could not resolve assembly 'MLMConquerorGlobalEdition.TicketManagementSystem'.
+         at System.Reflection.TypeNameResolver.GetType(String escapedTypeName, ReadOnlySpan`1 nestedTypeNames, TypeName parsedName)
+         at System.Reflection.TypeNameResolver.Resolve(TypeName typeName)
+         at System.Reflection.TypeNameResolver.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Assembly requestingAssembly, Boolean throwOnError, Boolean ignoreCase, Boolean extensibleParser)
+         at System.Type.GetType(String typeName, Func`2 assemblyResolver, Func`4 typeResolver, Boolean throwOnError)
+         at Hangfire.Common.TypeHelper.<>c.<DefaultTypeResolver>b__20_0(String name) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 83
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Common.TypeHelper.DefaultTypeResolver(String typeName) in C:\projects\hangfire-525\src\Hangfire.Core\Common\TypeHelper.cs:line 75
+         at Hangfire.Storage.InvocationData.<>c.<CachedDeserializeMethod>b__33_0(MethodDeserializerCacheKey key) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 339
+         at System.Collections.Concurrent.ConcurrentDictionary`2.GetOrAdd(TKey key, Func`2 valueFactory)
+         at Hangfire.Storage.InvocationData.CachedDeserializeMethod(Func`2 typeResolver, String typeName, String methodName, String parameterTypes, Type& type, MethodInfo& methodInfo) in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 335
+         at Hangfire.Storage.InvocationData.DeserializeJob() in C:\projects\hangfire-525\src\Hangfire.Core\Storage\InvocationData.cs:line 100

@@ -36,6 +36,14 @@ public class SignupAmbassadorHandlerTests
         return m;
     }
 
+    private static Mock<IEncryptionService> BuildEncryption()
+    {
+        var m = new Mock<IEncryptionService>();
+        m.Setup(e => e.Encrypt(It.IsAny<string>())).Returns<string>(s => "ENC:" + s);
+        m.Setup(e => e.Decrypt(It.IsAny<string>())).Returns<string>(s => s.Replace("ENC:", ""));
+        return m;
+    }
+
     private static Mock<UserManager<ApplicationUser>> BuildUserManager(bool emailTaken = false)
     {
         var mgr = UserManagerHelper.Create();
@@ -51,36 +59,38 @@ public class SignupAmbassadorHandlerTests
     private static SignupAmbassadorHandler BuildHandler(
         MLMConquerorGlobalEdition.Repository.Context.AppDbContext db,
         Mock<UserManager<ApplicationUser>>? userMgr = null,
-        Mock<IPushNotificationService>? push = null) =>
+        Mock<IPushNotificationService>? push = null,
+        Mock<IEncryptionService>? encryption = null) =>
         new(db,
             BuildClock().Object,
             (userMgr ?? BuildUserManager()).Object,
-            (push ?? BuildPush()).Object);
+            (push ?? BuildPush()).Object,
+            (encryption ?? BuildEncryption()).Object);
 
     private static AmbassadorSignupRequest BuildRequest(
-        string email          = "new.ambassador@example.com",
-        string? sponsorId     = null,
-        string? slug          = "mysite",
-        int membershipLevelId = 1) => new()
+        string email              = "new.ambassador@example.com",
+        string? sponsorSlug       = null,
+        string? slug              = "mysite",
+        int membershipLevelId     = 1) => new()
     {
-        SponsorMemberId   = sponsorId,
-        FirstName         = "Carlos",
-        LastName          = "Rivera",
-        DateOfBirth       = new DateTime(1990, 6, 15),
-        Email             = email,
-        Password          = "SecurePass!1",
-        ConfirmPassword   = "SecurePass!1",
-        Phone             = "+1-555-0100",
-        WhatsApp          = "+1-555-0100",
-        Country           = "US",
-        State             = "FL",
-        City              = "Miami",
-        Address           = "123 Ocean Drive",
-        ZipCode           = "33139",
-        BusinessName      = "Rivera Group",
-        ShowBusinessName  = true,
-        ReplicateSiteSlug = slug,
-        MembershipLevelId = membershipLevelId
+        SponsorReplicateSite = sponsorSlug,
+        FirstName            = "Carlos",
+        LastName             = "Rivera",
+        DateOfBirth          = new DateTime(1990, 6, 15),
+        Email                = email,
+        Password             = "SecurePass!1",
+        ConfirmPassword      = "SecurePass!1",
+        Phone                = "+1-555-0100",
+        WhatsApp             = "+1-555-0100",
+        Country              = "US",
+        State                = "FL",
+        City                 = "Miami",
+        Address              = "123 Ocean Drive",
+        ZipCode              = "33139",
+        BusinessName         = "Rivera Group",
+        ShowBusinessName     = true,
+        ReplicateSiteSlug    = slug,
+        MembershipLevelId    = membershipLevelId
     };
 
     private static MembershipLevel BuildLevel(int id = 1) => new()
@@ -98,18 +108,19 @@ public class SignupAmbassadorHandlerTests
         CreationDate = FixedNow
     };
 
-    private static MemberProfile BuildSponsor(string memberId = "AMB-000001") => new()
+    private static MemberProfile BuildSponsor(string memberId = "AMB-000001", string slug = "maria-site") => new()
     {
-        MemberId       = memberId,
-        FirstName      = "Maria",
-        LastName       = "Gomez",
-        Email          = "maria@example.com",
-        MemberType     = MemberType.Ambassador,
-        Status         = MemberAccountStatus.Active,
-        EnrollDate     = FixedNow.AddMonths(-6),
-        Country        = "US",
-        CreatedBy      = "seed",
-        LastUpdateDate = FixedNow
+        MemberId          = memberId,
+        FirstName         = "Maria",
+        LastName          = "Gomez",
+        Email             = "maria@example.com",
+        MemberType        = MemberType.Ambassador,
+        Status            = MemberAccountStatus.Active,
+        ReplicateSiteSlug = slug,
+        EnrollDate        = FixedNow.AddMonths(-6),
+        Country           = "US",
+        CreatedBy         = "seed",
+        LastUpdateDate    = FixedNow
     };
 
     // ─── Validation: age ────────────────────────────────────────────────────────
@@ -205,14 +216,14 @@ public class SignupAmbassadorHandlerTests
     // ─── Validation: sponsor ─────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Handle_WhenSponsorNotFound_ReturnsSponsorNotFound()
+    public async Task Handle_WhenSponsorSlugNotFound_ReturnsSponsorNotFound()
     {
         await using var db = InMemoryDbHelper.Create();
         await db.MembershipLevels.AddAsync(BuildLevel());
         await db.SaveChangesAsync();
 
         var handler = BuildHandler(db);
-        var req = BuildRequest(sponsorId: "AMB-GHOST", slug: "newsite");
+        var req = BuildRequest(sponsorSlug: "nonexistent-site", slug: "newsite");
 
         var result = await handler.Handle(new SignupAmbassadorCommand(req), CancellationToken.None);
 
@@ -221,14 +232,33 @@ public class SignupAmbassadorHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenSponsorIdIsNull_SkipsSponsorValidation()
+    public async Task Handle_WhenSponsorIsInactive_ReturnsSponsorNotFound()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await db.MembershipLevels.AddAsync(BuildLevel());
+        var sponsor = BuildSponsor("AMB-000001", "inactive-site");
+        sponsor.Status = MemberAccountStatus.Suspended;
+        await db.MemberProfiles.AddAsync(sponsor);
+        await db.SaveChangesAsync();
+
+        var handler = BuildHandler(db);
+        var req = BuildRequest(sponsorSlug: "inactive-site", slug: "newsite2");
+
+        var result = await handler.Handle(new SignupAmbassadorCommand(req), CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be("SPONSOR_NOT_FOUND");
+    }
+
+    [Fact]
+    public async Task Handle_WhenSponsorSlugIsNull_SkipsSponsorValidation()
     {
         await using var db = InMemoryDbHelper.Create();
         await db.MembershipLevels.AddAsync(BuildLevel());
         await db.SaveChangesAsync();
 
         var handler = BuildHandler(db);
-        var req = BuildRequest(sponsorId: null, slug: "noparent");
+        var req = BuildRequest(sponsorSlug: null, slug: "noparent");
 
         var result = await handler.Handle(new SignupAmbassadorCommand(req), CancellationToken.None);
 
@@ -359,7 +389,7 @@ public class SignupAmbassadorHandlerTests
     {
         await using var db = InMemoryDbHelper.Create();
         await db.MembershipLevels.AddAsync(BuildLevel());
-        var sponsor = BuildSponsor("AMB-000001");
+        var sponsor = BuildSponsor("AMB-000001", "maria-site");
         await db.MemberProfiles.AddAsync(sponsor);
         await db.GenealogyTree.AddAsync(new GenealogyEntity
         {
@@ -374,7 +404,7 @@ public class SignupAmbassadorHandlerTests
 
         var handler = BuildHandler(db);
         var result  = await handler.Handle(
-            new SignupAmbassadorCommand(BuildRequest(sponsorId: "AMB-000001", slug: "childsite")),
+            new SignupAmbassadorCommand(BuildRequest(sponsorSlug: "maria-site", slug: "childsite")),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -392,7 +422,7 @@ public class SignupAmbassadorHandlerTests
     {
         await using var db = InMemoryDbHelper.Create();
         await db.MembershipLevels.AddAsync(BuildLevel());
-        var sponsor = BuildSponsor("AMB-000001");
+        var sponsor = BuildSponsor("AMB-000001", "maria-site");
         await db.MemberProfiles.AddAsync(sponsor);
         await db.GenealogyTree.AddAsync(new GenealogyEntity
         {
@@ -407,7 +437,7 @@ public class SignupAmbassadorHandlerTests
 
         var handler = BuildHandler(db);
         await handler.Handle(
-            new SignupAmbassadorCommand(BuildRequest(sponsorId: "AMB-000001", slug: "queuetest")),
+            new SignupAmbassadorCommand(BuildRequest(sponsorSlug: "maria-site", slug: "queuetest")),
             CancellationToken.None);
 
         var queue = await db.RankEvaluationQueue.ToListAsync();
@@ -424,7 +454,7 @@ public class SignupAmbassadorHandlerTests
 
         var handler = BuildHandler(db);
         await handler.Handle(
-            new SignupAmbassadorCommand(BuildRequest(sponsorId: null, slug: "noqueue")),
+            new SignupAmbassadorCommand(BuildRequest(sponsorSlug: null, slug: "noqueue")),
             CancellationToken.None);
 
         var queue = await db.RankEvaluationQueue.ToListAsync();
@@ -515,7 +545,7 @@ public class SignupAmbassadorHandlerTests
     {
         await using var db = InMemoryDbHelper.Create();
         await db.MembershipLevels.AddAsync(BuildLevel());
-        var sponsor = BuildSponsor("AMB-000001");
+        var sponsor = BuildSponsor("AMB-000001", "maria-site");
         await db.MemberProfiles.AddAsync(sponsor);
         await db.GenealogyTree.AddAsync(new GenealogyEntity
         {
@@ -532,7 +562,7 @@ public class SignupAmbassadorHandlerTests
         var handler = BuildHandler(db, push: push);
 
         await handler.Handle(
-            new SignupAmbassadorCommand(BuildRequest(sponsorId: "AMB-000001", slug: "notifytest")),
+            new SignupAmbassadorCommand(BuildRequest(sponsorSlug: "maria-site", slug: "notifytest")),
             CancellationToken.None);
 
         push.Verify(p => p.SendAsync(
@@ -552,7 +582,7 @@ public class SignupAmbassadorHandlerTests
         var handler = BuildHandler(db, push: push);
 
         await handler.Handle(
-            new SignupAmbassadorCommand(BuildRequest(sponsorId: null, slug: "nopush")),
+            new SignupAmbassadorCommand(BuildRequest(sponsorSlug: null, slug: "nopush")),
             CancellationToken.None);
 
         push.Verify(p => p.SendAsync(
@@ -620,5 +650,82 @@ public class SignupAmbassadorHandlerTests
             .FirstAsync(s => s.MemberId == result.Value!.MemberId);
 
         order.MembershipSubscriptionId.Should().Be(sub.Id);
+    }
+
+    // ─── SSN encryption ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Handle_WhenCountryIsUS_StoresSsnEncrypted()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await db.MembershipLevels.AddAsync(BuildLevel());
+        await db.SaveChangesAsync();
+
+        var enc     = BuildEncryption();
+        var handler = BuildHandler(db, encryption: enc);
+        var req     = BuildRequest();
+        req.Country = "US";
+        req.Ssn     = "123-45-6789";
+
+        var result = await handler.Handle(new SignupAmbassadorCommand(req), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+
+        var member = await db.MemberProfiles.FirstAsync(m => m.MemberId == result.Value!.MemberId);
+        member.SsnEncrypted.Should().StartWith("ENC:");
+        enc.Verify(e => e.Encrypt("123-45-6789"), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenCountryIsNotUS_SsnEncryptedIsNull()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await db.MembershipLevels.AddAsync(BuildLevel());
+        await db.SaveChangesAsync();
+
+        var enc     = BuildEncryption();
+        var handler = BuildHandler(db, encryption: enc);
+        var req     = BuildRequest(slug: "mx-site");
+        req.Country = "MX";
+        req.Ssn     = null;
+
+        var result = await handler.Handle(new SignupAmbassadorCommand(req), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+
+        var member = await db.MemberProfiles.FirstAsync(m => m.MemberId == result.Value!.MemberId);
+        member.SsnEncrypted.Should().BeNull();
+        enc.Verify(e => e.Encrypt(It.IsAny<string>()), Times.Never);
+    }
+
+    // ─── Sponsor lookup by slug ──────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Handle_WhenSponsorFoundBySlug_SetsSponsorMemberIdOnProfile()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await db.MembershipLevels.AddAsync(BuildLevel());
+        var sponsor = BuildSponsor("AMB-000099", "pedro-site");
+        await db.MemberProfiles.AddAsync(sponsor);
+        await db.GenealogyTree.AddAsync(new GenealogyEntity
+        {
+            MemberId       = "AMB-000099",
+            HierarchyPath  = "/AMB-000099/",
+            Level          = 1,
+            CreatedBy      = "seed",
+            CreationDate   = FixedNow,
+            LastUpdateDate = FixedNow
+        });
+        await db.SaveChangesAsync();
+
+        var handler = BuildHandler(db);
+        var result  = await handler.Handle(
+            new SignupAmbassadorCommand(BuildRequest(sponsorSlug: "pedro-site", slug: "new-amb")),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+
+        var member = await db.MemberProfiles.FirstAsync(m => m.MemberId == result.Value!.MemberId);
+        member.SponsorMemberId.Should().Be("AMB-000099");
     }
 }

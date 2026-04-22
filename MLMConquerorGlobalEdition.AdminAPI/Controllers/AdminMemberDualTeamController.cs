@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.AdminAPI.DTOs.Placement;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
+using MLMConquerorGlobalEdition.Domain.Entities.Membership;
+using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
@@ -218,68 +221,103 @@ public class AdminMemberDualTeamController : ControllerBase
         string nodeId,
         CancellationToken ct = default)
     {
-        var node = await _db.DualTeamTree.AsNoTracking()
-            .FirstOrDefaultAsync(d => d.MemberId == nodeId, ct);
-
-        if (node is null)
-            return NotFound(ApiResponse<object>.Fail("NODE_NOT_FOUND", "Node not found."));
-
-        var profile = await _db.MemberProfiles.AsNoTracking()
-            .FirstOrDefaultAsync(p => p.MemberId == nodeId, ct);
-
-        var stat = await _db.MemberStatistics.AsNoTracking()
-            .FirstOrDefaultAsync(s => s.MemberId == nodeId, ct);
-
-        var statusCode = profile?.Status switch
-        {
-            MemberAccountStatus.Active    => "Q",
-            MemberAccountStatus.Inactive  => "U",
-            MemberAccountStatus.Suspended => "U",
-            _                             => "C"
-        };
-
-        // Direct children
+        // Level 1: immediate children
         var children = await _db.DualTeamTree.AsNoTracking()
             .Where(d => d.ParentMemberId == nodeId)
             .ToListAsync(ct);
 
         var childIds = children.Select(c => c.MemberId).ToList();
-        var childProfiles = await _db.MemberProfiles.AsNoTracking()
-            .Where(p => childIds.Contains(p.MemberId))
-            .ToDictionaryAsync(p => p.MemberId, ct);
-        var childStats = await _db.MemberStatistics.AsNoTracking()
-            .Where(s => childIds.Contains(s.MemberId))
-            .ToDictionaryAsync(s => s.MemberId, ct);
 
-        // Grandchildren (to determine HasLeft / HasRight for children)
-        var grandchildren = await _db.DualTeamTree.AsNoTracking()
-            .Where(d => childIds.Contains(d.ParentMemberId!))
-            .Select(d => new { d.ParentMemberId, d.Side })
-            .ToListAsync(ct);
-        var grandchildMap = grandchildren
-            .GroupBy(g => g.ParentMemberId!)
-            .ToDictionary(g => g.Key, g => g.Select(x => x.Side).ToHashSet());
+        // Level 2: grandchildren — full entities
+        var grandchildren = childIds.Count > 0
+            ? await _db.DualTeamTree.AsNoTracking()
+                .Where(d => childIds.Contains(d.ParentMemberId!))
+                .ToListAsync(ct)
+            : new List<DualTeamEntity>();
 
-        DualChildDto? MapChild(string childId)
+        var grandchildIds = grandchildren.Select(g => g.MemberId).ToList();
+
+        // Level 3: great-grandchild sides only (for HasLeft/HasRight on grandchildren)
+        var ggcMap = new Dictionary<string, HashSet<TreeSide>>();
+        if (grandchildIds.Count > 0)
         {
-            if (!childProfiles.TryGetValue(childId, out var cp)) return null;
-            var cs = childStats.GetValueOrDefault(childId);
-            var sc = cp.Status switch
+            var ggcEntries = await _db.DualTeamTree.AsNoTracking()
+                .Where(d => grandchildIds.Contains(d.ParentMemberId!))
+                .Select(d => new { d.ParentMemberId, d.Side })
+                .ToListAsync(ct);
+            ggcMap = ggcEntries
+                .GroupBy(g => g.ParentMemberId!)
+                .ToDictionary(g => g.Key, g => g.Select(x => x.Side).ToHashSet());
+        }
+
+        // Profiles + subscriptions for all visible levels
+        var allIds = new HashSet<string> { nodeId };
+        allIds.UnionWith(childIds);
+        allIds.UnionWith(grandchildIds);
+
+        var profiles = await _db.MemberProfiles.AsNoTracking()
+            .Where(p => allIds.Contains(p.MemberId))
+            .ToDictionaryAsync(p => p.MemberId, ct);
+
+        var activeSubs = await _db.MembershipSubscriptions.AsNoTracking()
+            .Where(s => allIds.Contains(s.MemberId)
+                     && s.SubscriptionStatus == MembershipStatus.Active
+                     && !s.IsDeleted)
+            .Select(s => s.MemberId)
+            .ToListAsync(ct);
+        var activeMemberIds = activeSubs.ToHashSet();
+
+        string ResolveStatus(string mid)
+        {
+            if (!profiles.TryGetValue(mid, out var p)) return "unqualified";
+            return p.Status switch
             {
-                MemberAccountStatus.Active    => "Q",
-                MemberAccountStatus.Inactive  => "U",
-                MemberAccountStatus.Suspended => "U",
-                _                             => "C"
+                MemberAccountStatus.Active    => activeMemberIds.Contains(mid) ? "qualified" : "unqualified",
+                MemberAccountStatus.Inactive  => "inactive",
+                MemberAccountStatus.Suspended => "suspended",
+                _                             => "cancelled"
             };
-            var gc = grandchildMap.GetValueOrDefault(childId) ?? new HashSet<TreeSide>();
+        }
+
+        string ResolveName(string mid) =>
+            profiles.TryGetValue(mid, out var p)
+                ? $"{p.FirstName} {p.LastName}".Trim()
+                : mid;
+
+        // Group grandchildren by their parent (child) ID
+        var grandchildByParent = grandchildren
+            .GroupBy(g => g.ParentMemberId!)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        DualGrandchildDto BuildGrandchild(DualTeamEntity gc)
+        {
+            var ggcSides = ggcMap.GetValueOrDefault(gc.MemberId) ?? new HashSet<TreeSide>();
+            return new DualGrandchildDto
+            {
+                MemberId   = gc.MemberId,
+                FullName   = ResolveName(gc.MemberId),
+                StatusCode = ResolveStatus(gc.MemberId),
+                HasLeft    = ggcSides.Contains(TreeSide.Left),
+                HasRight   = ggcSides.Contains(TreeSide.Right)
+            };
+        }
+
+        DualChildDto? BuildChild(DualTeamEntity? dual)
+        {
+            if (dual is null) return null;
+            var gcList  = grandchildByParent.GetValueOrDefault(dual.MemberId) ?? new List<DualTeamEntity>();
+            var leftGc  = gcList.FirstOrDefault(g => g.Side == TreeSide.Left);
+            var rightGc = gcList.FirstOrDefault(g => g.Side == TreeSide.Right);
             return new DualChildDto
             {
-                MemberId  = childId,
-                FullName  = $"{cp.FirstName} {cp.LastName}",
-                StatusCode= sc,
-                Points    = cs?.DualTeamPoints ?? 0,
-                HasLeft   = gc.Contains(TreeSide.Left),
-                HasRight  = gc.Contains(TreeSide.Right)
+                MemberId   = dual.MemberId,
+                FullName   = ResolveName(dual.MemberId),
+                StatusCode = ResolveStatus(dual.MemberId),
+                Points     = 0,
+                HasLeft    = leftGc  is not null,
+                HasRight   = rightGc is not null,
+                LeftChild  = leftGc  is not null ? BuildGrandchild(leftGc)  : null,
+                RightChild = rightGc is not null ? BuildGrandchild(rightGc) : null
             };
         }
 
@@ -289,11 +327,11 @@ public class AdminMemberDualTeamController : ControllerBase
         var dto = new DualTreeNodeDto
         {
             MemberId   = nodeId,
-            FullName   = profile is not null ? $"{profile.FirstName} {profile.LastName}" : nodeId,
-            StatusCode = statusCode,
-            Points     = stat?.DualTeamPoints ?? 0,
-            LeftChild  = leftChild  is not null ? MapChild(leftChild.MemberId)  : null,
-            RightChild = rightChild is not null ? MapChild(rightChild.MemberId) : null
+            FullName   = ResolveName(nodeId),
+            StatusCode = ResolveStatus(nodeId),
+            Points     = 0,
+            LeftChild  = BuildChild(leftChild),
+            RightChild = BuildChild(rightChild)
         };
 
         return Ok(ApiResponse<DualTreeNodeDto>.Ok(dto));
@@ -316,6 +354,75 @@ public class AdminMemberDualTeamController : ControllerBase
         };
 
         return Ok(ApiResponse<DualTreeStatsDto>.Ok(dto));
+    }
+
+    // ─── Available For Placement ─────────────────────────────────────────────
+    /// <summary>
+    /// Returns all ambassadors in the member's enrollment genealogy downline
+    /// who are NOT yet placed in the dual tree — eligible to be placed by admin.
+    /// Route: GET api/v1/admin/members/{memberId}/team/dual-tree/available-for-placement
+    /// </summary>
+    [HttpGet("dual-tree/available-for-placement")]
+    public async Task<IActionResult> GetAvailableForPlacement(
+        string memberId,
+        CancellationToken ct = default)
+    {
+        // 1. Build the hierarchy filter from the member's genealogy node
+        var hierarchyFilter = $"/{memberId}/";
+
+        // 2. Collect all downline MemberIds from the genealogy tree
+        var downlineIds = await _db.GenealogyTree.AsNoTracking()
+            .Where(g => g.HierarchyPath.Contains(hierarchyFilter))
+            .Select(g => g.MemberId)
+            .ToListAsync(ct);
+
+        // 3. Also include direct sponsored members (in case they are not yet in genealogy tree)
+        var directSponsoredIds = await _db.MemberProfiles.AsNoTracking()
+            .Where(m => m.SponsorMemberId == memberId && !m.IsDeleted)
+            .Select(m => m.MemberId)
+            .ToListAsync(ct);
+
+        // 4. Combine both sets into one distinct candidate pool
+        var candidateIds = downlineIds
+            .Union(directSponsoredIds)
+            .Where(id => id != memberId)
+            .Distinct()
+            .ToList();
+
+        if (!candidateIds.Any())
+            return Ok(ApiResponse<List<PlacementCandidateDto>>.Ok(new List<PlacementCandidateDto>()));
+
+        // 5. Collect IDs already placed in the dual tree
+        var alreadyPlacedIds = await _db.DualTeamTree.AsNoTracking()
+            .Where(d => candidateIds.Contains(d.MemberId))
+            .Select(d => d.MemberId)
+            .ToHashSetAsync(ct);
+
+        // 6. Query ambassador profiles — Ambassador type, not deleted, not yet placed
+        var candidates = await _db.MemberProfiles.AsNoTracking()
+            .Where(m => candidateIds.Contains(m.MemberId)
+                     && m.MemberType == MemberType.Ambassador
+                     && !m.IsDeleted
+                     && !alreadyPlacedIds.Contains(m.MemberId))
+            .OrderBy(m => m.FirstName).ThenBy(m => m.LastName)
+            .Select(m => new PlacementCandidateDto
+            {
+                MemberId = m.MemberId,
+                FullName = (m.FirstName + " " + m.LastName).Trim(),
+                PhotoUrl = m.ProfilePhotoUrl
+            })
+            .ToListAsync(ct);
+
+        // 7. For each candidate, count floating descendants from a previous unplacement.
+        //    Floating nodes have HierarchyPath starting with /{candidateId}/.
+        foreach (var c in candidates)
+        {
+            var fp = $"/{c.MemberId}/";
+            c.FloatingSubtreeSize = await _db.DualTeamTree.AsNoTracking()
+                .CountAsync(d => d.HierarchyPath.StartsWith(fp), ct);
+        }
+
+        return Ok(ApiResponse<List<PlacementCandidateDto>>.Ok(candidates));
     }
 
     // ─── DTOs ────────────────────────────────────────────────────────────────
@@ -355,10 +462,21 @@ public class AdminMemberDualTeamController : ControllerBase
 
     public class DualChildDto
     {
+        public string             MemberId   { get; set; } = string.Empty;
+        public string             FullName   { get; set; } = string.Empty;
+        public string             StatusCode { get; set; } = string.Empty;
+        public int                Points     { get; set; }
+        public bool               HasLeft    { get; set; }
+        public bool               HasRight   { get; set; }
+        public DualGrandchildDto? LeftChild  { get; set; }
+        public DualGrandchildDto? RightChild { get; set; }
+    }
+
+    public class DualGrandchildDto
+    {
         public string MemberId   { get; set; } = string.Empty;
         public string FullName   { get; set; } = string.Empty;
-        public string StatusCode { get; set; } = "Q";
-        public int    Points     { get; set; }
+        public string StatusCode { get; set; } = string.Empty;
         public bool   HasLeft    { get; set; }
         public bool   HasRight   { get; set; }
     }

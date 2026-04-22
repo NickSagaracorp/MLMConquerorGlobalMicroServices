@@ -38,5 +38,19 @@ public class SignupAmbassadorValidator : AbstractValidator<SignupAmbassadorComma
             .MaximumLength(100)
             .Matches("^[a-z0-9-]+$").WithMessage("Replicate site slug must be lowercase alphanumeric with hyphens.")
             .When(x => !string.IsNullOrEmpty(x.Request.ReplicateSiteSlug));
+
+        // SSN is required only for United States residents (ISO2 "US").
+        When(x => IsUnitedStates(x.Request.Country), () =>
+        {
+            RuleFor(x => x.Request.Ssn)
+                .NotEmpty().WithMessage("SSN is required for United States residents.")
+                .Matches(@"^\d{3}-\d{2}-\d{4}$").WithMessage("SSN must be in the format XXX-XX-XXXX.");
+        });
     }
+
+    private static bool IsUnitedStates(string country)
+        => !string.IsNullOrWhiteSpace(country) &&
+           (country.Equals("US", StringComparison.OrdinalIgnoreCase) ||
+            country.Equals("United States", StringComparison.OrdinalIgnoreCase) ||
+            country.Equals("United States of America", StringComparison.OrdinalIgnoreCase));
 }

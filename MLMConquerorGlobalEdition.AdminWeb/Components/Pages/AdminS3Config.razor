@@ -1,0 +1,198 @@
+@page "/admin/s3-config"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin")]
+@inject HttpClient Http
+
+<PageTitle>S3 Storage Config — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("S3 Config") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header py-3">
+                <h6 class="card-title mb-0 fw-semibold">
+                    <i class="ri-cloud-line me-2 text-primary"></i>Amazon S3 Storage Settings
+                </h6>
+                <p class="text-muted small mb-0 mt-1">
+                    These settings control where marketing documents are stored in AWS S3.
+                    Only SuperAdmins can view or modify this configuration.
+                </p>
+            </div>
+
+            @if (_loading)
+            {
+                <div class="card-body text-center py-5">
+                    <div class="spinner-border text-primary"></div>
+                    <p class="text-muted mt-2 mb-0">Loading configuration...</p>
+                </div>
+            }
+            else
+            {
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">
+                                Bucket Name <span class="text-danger">*</span>
+                            </label>
+                            <input class="form-control @(_errors.ContainsKey("BucketName") ? "is-invalid" : "")"
+                                   @bind="_form.BucketName"
+                                   placeholder="my-mlm-documents" />
+                            @if (_errors.TryGetValue("BucketName", out var bucketErr))
+                            {
+                                <div class="invalid-feedback">@bucketErr</div>
+                            }
+                            <div class="form-text">The S3 bucket where documents will be stored.</div>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">
+                                Region <span class="text-danger">*</span>
+                            </label>
+                            <input class="form-control @(_errors.ContainsKey("Region") ? "is-invalid" : "")"
+                                   @bind="_form.Region"
+                                   placeholder="us-east-1" />
+                            @if (_errors.TryGetValue("Region", out var regionErr))
+                            {
+                                <div class="invalid-feedback">@regionErr</div>
+                            }
+                            <div class="form-text">AWS region identifier, e.g. us-east-1, eu-west-1.</div>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Folder Prefix</label>
+                            <input class="form-control" @bind="_form.FolderPrefix"
+                                   placeholder="marketing-docs/" />
+                            <div class="form-text">
+                                Optional key prefix (folder path) inside the bucket.
+                                Include a trailing slash, e.g. <code>marketing-docs/</code>.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-footer d-flex justify-content-end gap-2 bg-light border-top">
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync" disabled="@_saving">
+                        <i class="ri-refresh-line me-1"></i>Reload
+                    </button>
+                    <button class="btn btn-primary" @onclick="Save" disabled="@_saving">
+                        @if (_saving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                            <span>Saving...</span>
+                        }
+                        else
+                        {
+                            <i class="ri-save-line me-1"></i>
+                            <span>Save Configuration</span>
+                        }
+                    </button>
+                </div>
+            }
+        </div>
+
+        @* ── Info panel ── *@
+        <div class="card border-0 shadow-sm mt-3 bg-light">
+            <div class="card-body py-3">
+                <h6 class="fw-semibold mb-2">
+                    <i class="ri-information-line me-1 text-primary"></i>Notes
+                </h6>
+                <ul class="mb-0 small text-muted ps-3">
+                    <li>IAM credentials are managed via environment variables or EC2 instance role — not stored here.</li>
+                    <li>Changing the bucket or region does not migrate existing documents.</li>
+                    <li>The bucket must already exist and have the correct IAM permissions applied.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private S3ConfigForm _form = new();
+    private bool _loading = true;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private Dictionary<string, string> _errors = new();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<S3ConfigDto>>("api/v1/admin/s3-config");
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _form = new S3ConfigForm
+                {
+                    BucketName = resp.Data.BucketName ?? string.Empty,
+                    Region = resp.Data.Region ?? string.Empty,
+                    FolderPrefix = resp.Data.FolderPrefix
+                };
+            }
+            else
+            {
+                _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Could not load S3 configuration.";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error loading configuration: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private async Task Save()
+    {
+        _errors.Clear();
+
+        if (string.IsNullOrWhiteSpace(_form.BucketName))
+            _errors["BucketName"] = "Bucket name is required.";
+        if (string.IsNullOrWhiteSpace(_form.Region))
+            _errors["Region"] = "Region is required.";
+
+        if (_errors.Any()) return;
+
+        _saving = true;
+        try
+        {
+            var response = await Http.PutAsJsonAsync("api/v1/admin/s3-config", new
+            {
+                BucketName = _form.BucketName.Trim(),
+                Region = _form.Region.Trim(),
+                FolderPrefix = string.IsNullOrWhiteSpace(_form.FolderPrefix) ? null : _form.FolderPrefix.Trim()
+            });
+
+            if (response.IsSuccessStatusCode)
+            {
+                _alertMsg = "S3 configuration saved.";
+                _alertIsError = false;
+            }
+            else
+            {
+                _alertMsg = $"Save failed ({(int)response.StatusCode}).";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    // ── Models ────────────────────────────────────────────────────
+    private class S3ConfigForm
+    {
+        public string BucketName { get; set; } = string.Empty;
+        public string Region { get; set; } = string.Empty;
+        public string? FolderPrefix { get; set; }
+    }
+
+    private record S3ConfigDto(string? BucketName, string? Region, string? FolderPrefix);
+    private record ApiResp<T>(bool Success, T? Data, string? ErrorCode, IEnumerable<string>? Errors);
+}

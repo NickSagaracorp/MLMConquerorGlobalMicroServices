@@ -10,10 +10,30 @@ public class CommissionType : AuditChangesIntKey
     public decimal Percentage { get; set; }
 
     /// <summary>
-    /// When set, handlers use this fixed dollar amount instead of (TeamPoints × Percentage / 100).
-    /// Used for flat-rate bonuses: FSB = $150, Boost Gold = $600, DTR fixed daily amounts, etc.
+    /// Standard commission amount configured by Admin. Used when no promo is active.
     /// </summary>
-    public decimal? FixedAmount { get; set; }
+    public decimal? Amount { get; set; }
+
+    /// <summary>
+    /// Promotional commission amount. When set (non-null, > 0), the engine uses this
+    /// instead of Amount for the duration of a promotion. Admin clears it to end the promo.
+    /// </summary>
+    public decimal? AmountPromo { get; set; }
+
+    /// <summary>
+    /// Returns AmountPromo when the signup occurred inside an active CorporatePromo period
+    /// that covers this commission category (promoActive=true), otherwise returns Amount.
+    /// AmountPromo always has a configured value; the promo gate is determined solely by
+    /// whether a CorporatePromo is currently active for the product being purchased.
+    /// </summary>
+    public decimal? GetEffectiveAmount(bool promoActive)
+        => promoActive ? AmountPromo : Amount;
+
+    /// <summary>
+    /// Standard amount used by batch/sweep jobs and admin tools that have no per-order
+    /// promo context. Never returns AmountPromo — promo resolution is caller responsibility.
+    /// </summary>
+    public decimal? ActiveAmount => Amount;
 
     public int PaymentDelayDays { get; set; }
     public bool IsActive { get; set; } = true;

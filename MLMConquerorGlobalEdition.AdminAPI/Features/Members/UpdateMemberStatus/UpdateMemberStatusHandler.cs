@@ -2,6 +2,8 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.AdminAPI.DTOs.Members;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
+using MLMConquerorGlobalEdition.Domain.Entities.Membership;
+using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
@@ -52,6 +54,41 @@ public class UpdateMemberStatusHandler : IRequestHandler<UpdateMemberStatusComma
         };
 
         await _db.MemberStatusHistories.AddAsync(history, cancellationToken);
+
+        // When an admin activates a member, sync the pending membership subscription.
+        if (request.Request.Status == MemberAccountStatus.Active)
+        {
+            var subscription = await _db.MembershipSubscriptions
+                .Where(s => s.MemberId == member.MemberId && s.SubscriptionStatus == MembershipStatus.Pending)
+                .OrderByDescending(s => s.CreationDate)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (subscription is not null)
+            {
+                var startDate = subscription.StartDate == default ? now : subscription.StartDate;
+                subscription.SubscriptionStatus = MembershipStatus.Active;
+                subscription.StartDate          = startDate;
+                subscription.EndDate            = startDate.AddMonths(1);
+                subscription.RenewalDate        = startDate.AddMonths(1);
+                subscription.LastUpdateDate     = now;
+                subscription.LastUpdateBy       = _currentUser.UserId;
+            }
+
+            // Complete the most recent pending order so qualification points are counted.
+            var pendingOrder = await _db.Orders
+                .Where(o => o.MemberId == member.MemberId && o.Status == OrderStatus.Pending)
+                .OrderByDescending(o => o.CreationDate)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (pendingOrder is not null)
+            {
+                pendingOrder.Status          = OrderStatus.Completed;
+                pendingOrder.OrderDate       = pendingOrder.OrderDate == default ? now : pendingOrder.OrderDate;
+                pendingOrder.LastUpdateDate  = now;
+                pendingOrder.LastUpdateBy    = _currentUser.UserId;
+            }
+        }
+
         await _db.SaveChangesAsync(cancellationToken);
 
         var dto = new AdminMemberDto

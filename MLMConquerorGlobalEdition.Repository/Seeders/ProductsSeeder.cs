@@ -7,15 +7,45 @@ namespace MLMConquerorGlobalEdition.Repository.Seeders;
 
 public static class ProductsSeeder
 {
+    // MembershipLevelId assignments: 1=Guest Pass, 2=VIP, 3=Elite, 4=Turbo
+    private static readonly Dictionary<string, int> MembershipLevelByProductName = new()
+    {
+        ["Guest Pass"]       = 1,
+        ["VIP Membership"]   = 2,
+        ["Elite Membership"] = 3,
+        ["Turbo Elite"]      = 4
+    };
+
     public static async Task SeedAsync(AppDbContext db, ILogger logger)
     {
+        var now = DateTime.UtcNow;
+
         if (await db.Products.AnyAsync())
         {
-            logger.LogDebug("Products already exist. Skipping seed.");
+            // Patch any existing products that are missing MembershipLevelId.
+            // Required because the original seeder didn't set this field, which
+            // prevents commission engines from matching products to membership tiers.
+            var existing = await db.Products
+                .Where(p => MembershipLevelByProductName.Keys.Contains(p.Name)
+                         && p.MembershipLevelId == null)
+                .ToListAsync();
+
+            if (existing.Count > 0)
+            {
+                foreach (var p in existing)
+                    if (MembershipLevelByProductName.TryGetValue(p.Name, out var lvl))
+                        p.MembershipLevelId = lvl;
+
+                await db.SaveChangesAsync();
+                logger.LogInformation("Patched MembershipLevelId on {Count} existing products.", existing.Count);
+            }
+            else
+            {
+                logger.LogDebug("Products already exist and are up to date. Skipping seed.");
+            }
+
             return;
         }
-
-        var now = DateTime.UtcNow;
 
         var products = new List<Product>
         {
@@ -51,6 +81,7 @@ public static class ProductsSeeder
                 CorporateFee       = false,
                 JoinPageMembership = true,
                 OldSystemProductId = 1,
+                MembershipLevelId  = 1,
                 CreatedBy          = "SYSTEM",
                 CreationDate       = now,
                 LastUpdateDate     = now
@@ -68,6 +99,7 @@ public static class ProductsSeeder
                 CorporateFee       = false,
                 JoinPageMembership = true,
                 OldSystemProductId = 2,
+                MembershipLevelId  = 2,
                 CreatedBy          = "SYSTEM",
                 CreationDate       = now,
                 LastUpdateDate     = now
@@ -85,6 +117,7 @@ public static class ProductsSeeder
                 CorporateFee       = false,
                 JoinPageMembership = true,
                 OldSystemProductId = 3,
+                MembershipLevelId  = 3,
                 CreatedBy          = "SYSTEM",
                 CreationDate       = now,
                 LastUpdateDate     = now
@@ -102,6 +135,7 @@ public static class ProductsSeeder
                 CorporateFee       = false,
                 JoinPageMembership = true,
                 OldSystemProductId = 4,
+                MembershipLevelId  = 4,
                 CreatedBy          = "SYSTEM",
                 CreationDate       = now,
                 LastUpdateDate     = now

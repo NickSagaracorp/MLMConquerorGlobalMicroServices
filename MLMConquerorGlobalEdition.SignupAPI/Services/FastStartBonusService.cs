@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Enums;
@@ -150,7 +150,7 @@ public class FastStartBonusService : IFastStartBonusService
         var notes = $"{member1} — {member2}";
 
         // 8. Record the FSB earning — pay half now, remaining half fires on rebilling
-        var amount = (commType.FixedAmount ?? 0m) / 2m;
+        var amount = (commType.ActiveAmount ?? 0m) / 2m;
         if (amount <= 0) return;
 
         await _db.CommissionEarnings.AddAsync(new CommissionEarning

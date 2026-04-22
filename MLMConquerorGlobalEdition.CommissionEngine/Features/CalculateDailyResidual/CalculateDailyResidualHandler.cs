@@ -1,4 +1,4 @@
-using MediatR;
+﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 using MLMConquerorGlobalEdition.Domain.Enums;
@@ -76,8 +76,8 @@ public class CalculateDailyResidualHandler
         // An ambassador qualifies at exactly one tier per day (the best one), not all thresholds at once.
         // ET-based ranks (IsEnrollmentBased=true): Silver/Gold/Platinum — compare against EnrollmentPoints.
         // DT-based ranks (IsEnrollmentBased=false): Titanium+ — compare against DualTeamPoints.
-        // Types sorted by FixedAmount descending so FirstOrDefault always picks the highest paying tier.
-        var residualTypesSorted = residualTypes.OrderByDescending(t => t.FixedAmount ?? 0).ToList();
+        // Types sorted by Amount descending so FirstOrDefault always picks the highest paying tier.
+        var residualTypesSorted = residualTypes.OrderByDescending(t => t.ActiveAmount ?? 0).ToList();
         var userId = _currentUser.UserId;
 
         var earnings = (
@@ -87,7 +87,7 @@ public class CalculateDailyResidualHandler
                     ? s.EnrollmentPoints >= ct2.TeamPoints
                     : s.DualTeamPoints >= ct2.TeamPoints)
             where qualifyingType != null
-            let amount = qualifyingType.FixedAmount
+            let amount = qualifyingType.ActiveAmount
                          ?? Math.Round((decimal)s.DualTeamPoints * qualifyingType.Percentage / 100, 2)
             where amount > 0
             select new CommissionEarning
@@ -121,3 +121,4 @@ public class CalculateDailyResidualHandler
         });
     }
 }
+

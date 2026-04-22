@@ -52,7 +52,10 @@ builder.Services.AddSingleton<IPushNotificationService, FirebasePushNotification
 // HangFire job classes (scoped so they can inject DbContext / IMediator)
 builder.Services.AddScoped<DailyResidualJob>();
 builder.Services.AddScoped<BoostBonusJob>();
+builder.Services.AddScoped<BoostBonusSweepJob>();
 builder.Services.AddScoped<PresidentialBonusJob>();
+builder.Services.AddScoped<CarBonusJob>();
+builder.Services.AddScoped<CarBonusSweepJob>();
 
 // HangFire
 var hangfireConn = builder.Configuration.GetConnectionString("DefaultConnection")!;
@@ -158,10 +161,28 @@ RecurringJob.AddOrUpdate<BoostBonusJob>(
     "0 3 * * 0",          // 3:00 AM UTC every Sunday
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
+RecurringJob.AddOrUpdate<BoostBonusSweepJob>(
+    "boost-bonus-sweep",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "*/5 * * * *",        // every 5 minutes — backfills any missed past weeks
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
 RecurringJob.AddOrUpdate<PresidentialBonusJob>(
     "presidential-bonus",
     job => job.ExecuteAsync(CancellationToken.None),
     "0 4 1 * *",          // 4:00 AM UTC on the 1st of each month
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+RecurringJob.AddOrUpdate<CarBonusJob>(
+    "car-bonus",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "0 5 1 * *",          // 5:00 AM UTC on the 1st of each month
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+RecurringJob.AddOrUpdate<CarBonusSweepJob>(
+    "car-bonus-sweep",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "0 6 * * *",          // 6:00 AM UTC daily — reconciliation backfill
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
 app.MapGet("/health", async (AppDbContext db, CancellationToken ct) =>

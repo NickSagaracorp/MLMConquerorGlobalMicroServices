@@ -1,5 +1,6 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
+using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 
@@ -22,8 +23,6 @@ public class SponsorBonusService : ISponsorBonusService
     {
         if (string.IsNullOrEmpty(sponsorMemberId)) return;
 
-        // Resolve enrolled member's membership level (LevelNo: 2=VIP, 3=Elite, 4=Turbo).
-        // Lifestyle Ambassador (<=1) carries no sponsor bonus.
         var membershipLevelId = await (
             from od in _db.OrderDetails.AsNoTracking()
             join p  in _db.Products.AsNoTracking() on od.ProductId equals p.Id
@@ -33,90 +32,121 @@ public class SponsorBonusService : ISponsorBonusService
 
         if (membershipLevelId <= 1) return;
 
-        // Resolve sponsor's lifetime rank (SortOrder). 0 = no rank history.
-        var sponsorLifetimeRank = await _db.MemberRankHistories
-            .AsNoTracking()
-            .Where(r => r.MemberId == sponsorMemberId)
-            .Join(_db.RankDefinitions.AsNoTracking(),
-                  h => h.RankDefinitionId,
-                  d => d.Id,
-                  (_, d) => d.SortOrder)
-            .DefaultIfEmpty(0)
-            .MaxAsync(ct);
+        // Resolve active CorporatePromo rule for the product in this order.
+        // Promo amounts are applied per commission category only when a matching
+        // rule is active and the trigger flag for that category is enabled.
+        var promoRule = await GetActivePromoRuleAsync(orderId, now, ct);
 
-        // Turbo signups trigger Builder Bonus for both Elite (LevelNo=3) AND Turbo (LevelNo=4).
-        // VIP/Elite signups only trigger their own level.
+        var newMember = await _db.MemberProfiles.AsNoTracking()
+            .Where(m => m.MemberId == newMemberId)
+            .Select(m => new { m.FirstName, m.LastName })
+            .FirstOrDefaultAsync(ct);
+        var memberFullName = newMember is not null
+            ? $"{newMember.FirstName} {newMember.LastName}" : newMemberId;
+
+        var orderNo = await _db.Orders.AsNoTracking()
+            .Where(o => o.Id == orderId)
+            .Select(o => o.OrderNo ?? orderId)
+            .FirstOrDefaultAsync(ct) ?? orderId;
+
+        // Turbo signup fires Builder Bonus for both Elite (LevelNo=3) and Turbo (LevelNo=4).
         var builderLevels = membershipLevelId == 4
             ? new[] { 3, 4 }
             : new[] { membershipLevelId };
 
-        // Load all active sponsor bonus types for these levels in one query.
-        var allTypes = await _db.CommissionTypes
-            .AsNoTracking()
+        var allTypes = await _db.CommissionTypes.AsNoTracking()
             .Where(t => t.IsActive && t.IsSponsorBonus && builderLevels.Contains(t.LevelNo))
             .OrderByDescending(t => t.LifeTimeRank)
             .ToListAsync(ct);
 
-        // ── Cat 1 — Member Bonus ──────────────────────────────────────────────
-        // Paid once, for the actual product level only (Turbo = $80, Elite = $40, VIP = $20).
-        var memberBonus = allTypes.FirstOrDefault(
-            t => t.CommissionCategoryId == 1 && t.LevelNo == membershipLevelId);
+        bool promoForSponsorBonus  = promoRule is { TriggerSponsorBonus: true };
+        bool promoForBuilderBonus  = promoRule is { TriggerBuilderBonus: true };
+        bool promoForBuilderTurbo  = promoRule is { TriggerBuilderBonusTurbo: true };
 
-        // ── Cat 6 & 7 — Builder Bonus (per level in builderLevels) ───────────
-        // For each level: pick the highest LifeTimeRank tier the sponsor qualifies for.
-        // LifeTimeRank = 0 on the flat seed types means no minimum rank required.
-        var builderTypes = builderLevels
-            .SelectMany(lvl => new CommissionType?[]
-            {
-                // Cat 6 — highest qualifying tier for this level
-                allTypes
-                    .Where(t => t.CommissionCategoryId == 6
-                             && t.LevelNo == lvl
-                             && t.LifeTimeRank <= sponsorLifetimeRank)
-                    .MaxBy(t => t.LifeTimeRank),
-
-                // Cat 7 — highest qualifying tier for this level
-                allTypes
-                    .Where(t => t.CommissionCategoryId == 7
-                             && t.LevelNo == lvl
-                             && t.LifeTimeRank <= sponsorLifetimeRank)
-                    .MaxBy(t => t.LifeTimeRank)
-            })
-            .Where(t => t is not null)
-            .Distinct(); // guard against duplicate resolution across levels
-
-        var typesToPay = new[] { memberBonus }
-            .Concat(builderTypes)
-            .Where(t => t is not null);
-
-        foreach (var commType in typesToPay)
+        // ── Cat 1 — Member Bonus: direct sponsor only, one per builderLevel ────
+        // Turbo fires two: Cat1/Elite ($40) + Cat1/Turbo ($40) = $80 total.
+        // VIP and Elite fire one.
+        foreach (var lvl in builderLevels)
         {
-            var amount = commType!.FixedAmount
-                ?? Math.Round(orderTotal * commType.Percentage / 100m, 2);
+            var memberBonus = allTypes.FirstOrDefault(
+                t => t.CommissionCategoryId == 1 && t.LevelNo == lvl);
+            if (memberBonus is null) continue;
 
-            if (amount <= 0) continue; // placeholder not yet configured by admin
+            var mbAmount = memberBonus.GetEffectiveAmount(promoForSponsorBonus)
+                ?? Math.Round(orderTotal * memberBonus.Percentage / 100m, 2);
+            if (mbAmount <= 0) continue;
 
-            var alreadyExists = await _db.CommissionEarnings
-                .AnyAsync(e => e.SourceOrderId      == orderId
-                            && e.CommissionTypeId    == commType.Id
-                            && e.BeneficiaryMemberId == sponsorMemberId, ct);
-            if (alreadyExists) continue;
+            var exists = await _db.CommissionEarnings.AnyAsync(
+                e => e.SourceOrderId       == orderId
+                  && e.CommissionTypeId    == memberBonus.Id
+                  && e.BeneficiaryMemberId == sponsorMemberId, ct);
+            if (!exists)
+                await _db.CommissionEarnings.AddAsync(
+                    MakeEarning(sponsorMemberId, newMemberId, orderId, memberBonus,
+                                mbAmount, now, orderNo, memberFullName, createdBy), ct);
+        }
 
-            await _db.CommissionEarnings.AddAsync(new CommissionEarning
+        // ── Cat 6 & 7 — differential Builder Bonus up the enrollment tree ───
+        // Direct sponsor first, then uplines closest-first. Each member earns
+        // (their full tier) minus (max tier already paid below them in the chain).
+        if (!allTypes.Any(t => t.CommissionCategoryId is 6 or 7)) return;
+
+        var directRank  = await GetLifetimeRankAsync(sponsorMemberId, ct);
+        var uplineChain = await GetAncestorChainAsync(sponsorMemberId, ct);
+
+        var chain = new List<(string MemberId, int LifetimeRank)>(uplineChain.Count + 1)
+        {
+            (sponsorMemberId, directRank)
+        };
+        chain.AddRange(uplineChain);
+
+        // Tracks the highest tier amount committed so far per (category, level).
+        var maxTierPaid = new Dictionary<(int cat, int lvl), decimal>();
+
+        foreach (var (memberId, lifetimeRank) in chain)
+        {
+            foreach (var lvl in builderLevels)
             {
-                BeneficiaryMemberId = sponsorMemberId,
-                SourceMemberId      = newMemberId,
-                SourceOrderId       = orderId,
-                CommissionTypeId    = commType.Id,
-                Amount              = amount,
-                Status              = CommissionEarningStatus.Pending,
-                EarnedDate          = now,
-                PaymentDate         = now.AddDays(commType.PaymentDelayDays),
-                PeriodDate          = now.Date,
-                CreatedBy           = createdBy,
-                CreationDate        = now,
-                LastUpdateDate      = now
-            }, ct);
+                foreach (var cat in new[] { 6, 7 })
+                {
+                    var dictKey  = (cat, lvl);
+                    var bestType = allTypes
+                        .Where(t => t.CommissionCategoryId == cat
+                                 && t.LevelNo             == lvl
+                                 && t.LifeTimeRank        <= lifetimeRank)
+                        .MaxBy(t => t.LifeTimeRank);
+
+                    if (bestType is null) continue;
+
+                    var promoActiveForCat = cat == 6 ? promoForBuilderBonus : promoForBuilderTurbo;
+                    var tierAmount = bestType.GetEffectiveAmount(promoActiveForCat)
+                        ?? Math.Round(orderTotal * bestType.Percentage / 100m, 2);
+                    if (tierAmount <= 0) continue;
+
+                    maxTierPaid.TryGetValue(dictKey, out var paidBelow);
+
+                    // If an earning already exists for this member+order+type, advance
+                    // the tracker so higher uplines are computed correctly, then skip.
+                    var alreadyExists = await _db.CommissionEarnings.AnyAsync(
+                        e => e.SourceOrderId      == orderId
+                          && e.CommissionTypeId   == bestType.Id
+                          && e.BeneficiaryMemberId == memberId, ct);
+                    if (alreadyExists)
+                    {
+                        maxTierPaid[dictKey] = tierAmount;
+                        continue;
+                    }
+
+                    var differential = tierAmount - paidBelow;
+                    if (differential <= 0) continue;
+
+                    await _db.CommissionEarnings.AddAsync(
+                        MakeEarning(memberId, newMemberId, orderId, bestType,
+                                    differential, now, orderNo, memberFullName, createdBy), ct);
+
+                    maxTierPaid[dictKey] = tierAmount;
+                }
+            }
         }
     }
 
@@ -139,8 +169,8 @@ public class SponsorBonusService : ISponsorBonusService
         var typeIds = sponsorBonusTypes.Select(t => t.Id).ToList();
 
         var earnings = await _db.CommissionEarnings
-            .Where(e => e.SourceOrderId    == signupOrderId
-                     && e.SourceMemberId   == cancelledMemberId
+            .Where(e => e.SourceOrderId  == signupOrderId
+                     && e.SourceMemberId == cancelledMemberId
                      && typeIds.Contains(e.CommissionTypeId))
             .ToListAsync(ct);
 
@@ -193,4 +223,105 @@ public class SponsorBonusService : ISponsorBonusService
             }, ct);
         }
     }
+
+    // ── Private helpers ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Returns the first active <see cref="ProductCommissionPromo"/> that covers any product
+    /// in <paramref name="orderId"/> under a currently-running CorporatePromo, or null if
+    /// no promo is in effect. When non-null, the caller uses its trigger flags to decide
+    /// whether AmountPromo applies per commission category.
+    /// Uses a two-step query to avoid EF Core type-mismatch issues with the shadow FK
+    /// on ProductCommissionPromo (long CorporatePromoId vs string CorporatePromo.Id).
+    /// </summary>
+    private async Task<ProductCommissionPromo?> GetActivePromoRuleAsync(
+        string orderId, DateTime now, CancellationToken ct)
+    {
+        var activePromoIds = await _db.CorporatePromos
+            .AsNoTracking()
+            .Where(cp => cp.IsActive && cp.StartDate <= now && cp.EndDate >= now)
+            .Select(cp => cp.Id)
+            .ToListAsync(ct);
+
+        if (activePromoIds.Count == 0) return null;
+
+        return await (
+            from od  in _db.OrderDetails.AsNoTracking()
+            join pcp in _db.ProductCommissionPromos.AsNoTracking()
+                on od.ProductId equals pcp.ProductId
+            where od.OrderId == orderId
+               && activePromoIds.Contains(EF.Property<string>(pcp, "CorporatePromoId1"))
+            select pcp
+        ).FirstOrDefaultAsync(ct);
+    }
+
+    private async Task<int> GetLifetimeRankAsync(string memberId, CancellationToken ct)
+        => await _db.MemberRankHistories.AsNoTracking()
+            .Where(r => r.MemberId == memberId)
+            .Join(_db.RankDefinitions.AsNoTracking(),
+                  h => h.RankDefinitionId, d => d.Id,
+                  (_, d) => d.SortOrder)
+            .DefaultIfEmpty(0)
+            .MaxAsync(ct);
+
+    /// <summary>
+    /// Returns the enrollment-tree upline of <paramref name="memberId"/>,
+    /// ordered closest-first, each paired with their lifetime rank.
+    /// </summary>
+    private async Task<List<(string MemberId, int LifetimeRank)>> GetAncestorChainAsync(
+        string memberId, CancellationToken ct)
+    {
+        var path = await _db.GenealogyTree.AsNoTracking()
+            .Where(g => g.MemberId == memberId)
+            .Select(g => g.HierarchyPath)
+            .FirstOrDefaultAsync(ct);
+
+        if (string.IsNullOrEmpty(path)) return [];
+
+        // "/root/a/b/sponsorId/" → segments ["root","a","b","sponsorId"]
+        // Drop the last segment (member itself), reverse for closest-first.
+        var segments    = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var ancestorIds = segments.SkipLast(1).Reverse().ToList();
+        if (ancestorIds.Count == 0) return [];
+
+        var ranks = await _db.MemberRankHistories.AsNoTracking()
+            .Where(r => ancestorIds.Contains(r.MemberId))
+            .Join(_db.RankDefinitions.AsNoTracking(),
+                  h => h.RankDefinitionId, d => d.Id,
+                  (h, d) => new { h.MemberId, d.SortOrder })
+            .GroupBy(x => x.MemberId)
+            .Select(g => new { MemberId = g.Key, MaxRank = g.Max(x => x.SortOrder) })
+            .ToDictionaryAsync(x => x.MemberId, x => x.MaxRank, ct);
+
+        return ancestorIds
+            .Select(id => (id, ranks.GetValueOrDefault(id, 0)))
+            .ToList();
+    }
+
+    private static CommissionEarning MakeEarning(
+        string beneficiaryMemberId,
+        string sourceMemberId,
+        string sourceOrderId,
+        CommissionType commType,
+        decimal amount,
+        DateTime now,
+        string orderNo,
+        string memberFullName,
+        string createdBy)
+        => new()
+        {
+            BeneficiaryMemberId = beneficiaryMemberId,
+            SourceMemberId      = sourceMemberId,
+            SourceOrderId       = sourceOrderId,
+            CommissionTypeId    = commType.Id,
+            Amount              = amount,
+            Status              = CommissionEarningStatus.Pending,
+            EarnedDate          = now,
+            PaymentDate         = now.AddDays(commType.PaymentDelayDays),
+            PeriodDate          = now.Date,
+            Notes               = $"Order {orderNo} — {memberFullName} ({sourceMemberId})",
+            CreatedBy           = createdBy,
+            CreationDate        = now,
+            LastUpdateDate      = now
+        };
 }

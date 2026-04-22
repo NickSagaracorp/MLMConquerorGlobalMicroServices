@@ -35,6 +35,14 @@ public class SignupMemberHandlerTests
         return m;
     }
 
+    private static Mock<IEncryptionService> BuildEncryption()
+    {
+        var m = new Mock<IEncryptionService>();
+        m.Setup(e => e.Encrypt(It.IsAny<string>())).Returns<string>(s => "ENC:" + s);
+        m.Setup(e => e.Decrypt(It.IsAny<string>())).Returns<string>(s => s.Replace("ENC:", ""));
+        return m;
+    }
+
     private static Mock<UserManager<ApplicationUser>> BuildUserManager(bool emailTaken = false)
     {
         var mgr = UserManagerHelper.Create();
@@ -50,28 +58,30 @@ public class SignupMemberHandlerTests
     private static SignupMemberHandler BuildHandler(
         MLMConquerorGlobalEdition.Repository.Context.AppDbContext db,
         Mock<UserManager<ApplicationUser>>? userMgr = null,
-        Mock<IPushNotificationService>? push = null) =>
+        Mock<IPushNotificationService>? push = null,
+        Mock<IEncryptionService>? encryption = null) =>
         new(db,
             BuildClock().Object,
             (userMgr ?? BuildUserManager()).Object,
-            (push ?? BuildPush()).Object);
+            (push ?? BuildPush()).Object,
+            (encryption ?? BuildEncryption()).Object);
 
     private static MemberSignupRequest BuildRequest(
         string email          = "new.member@example.com",
-        string? sponsorId     = null,
+        string? sponsorSlug   = null,
         int membershipLevelId = 1) => new()
     {
-        SponsorMemberId   = sponsorId,
-        FirstName         = "Ana",
-        LastName          = "Lopez",
-        Email             = email,
-        Password          = "SecurePass!1",
-        Phone             = "+1-555-0200",
-        Country           = "US",
-        State             = "TX",
-        City              = "Houston",
-        Address           = "456 Main Street",
-        MembershipLevelId = membershipLevelId
+        SponsorReplicateSite = sponsorSlug,
+        FirstName            = "Ana",
+        LastName             = "Lopez",
+        Email                = email,
+        Password             = "SecurePass!1",
+        Phone                = "+1-555-0200",
+        Country              = "US",
+        State                = "TX",
+        City                 = "Houston",
+        Address              = "456 Main Street",
+        MembershipLevelId    = membershipLevelId
     };
 
     private static MembershipLevel BuildLevel(int id = 1, bool isActive = true) => new()
@@ -89,18 +99,19 @@ public class SignupMemberHandlerTests
         CreationDate = FixedNow
     };
 
-    private static MemberProfile BuildSponsor(string memberId) => new()
+    private static MemberProfile BuildSponsor(string memberId, string slug = "pedro-site") => new()
     {
-        MemberId       = memberId,
-        FirstName      = "Pedro",
-        LastName       = "Martinez",
-        Email          = "pedro@example.com",
-        MemberType     = MemberType.Ambassador,
-        Status         = MemberAccountStatus.Active,
-        EnrollDate     = FixedNow.AddMonths(-3),
-        Country        = "US",
-        CreatedBy      = "seed",
-        LastUpdateDate = FixedNow
+        MemberId          = memberId,
+        FirstName         = "Pedro",
+        LastName          = "Martinez",
+        Email             = "pedro@example.com",
+        MemberType        = MemberType.Ambassador,
+        Status            = MemberAccountStatus.Active,
+        ReplicateSiteSlug = slug,
+        EnrollDate        = FixedNow.AddMonths(-3),
+        Country           = "US",
+        CreatedBy         = "seed",
+        LastUpdateDate    = FixedNow
     };
 
     // ─── Validation: email ───────────────────────────────────────────────────────
@@ -125,7 +136,7 @@ public class SignupMemberHandlerTests
     // ─── Validation: sponsor ─────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Handle_WhenSponsorNotFound_ReturnsSponsorNotFound()
+    public async Task Handle_WhenSponsorSlugNotFound_ReturnsSponsorNotFound()
     {
         await using var db = InMemoryDbHelper.Create();
         await db.MembershipLevels.AddAsync(BuildLevel());
@@ -134,14 +145,14 @@ public class SignupMemberHandlerTests
         var handler = BuildHandler(db);
 
         var result = await handler.Handle(
-            new SignupMemberCommand(BuildRequest(sponsorId: "AMB-GHOST")), CancellationToken.None);
+            new SignupMemberCommand(BuildRequest(sponsorSlug: "nonexistent-slug")), CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be("SPONSOR_NOT_FOUND");
     }
 
     [Fact]
-    public async Task Handle_WhenSponsorIdIsNull_SkipsSponsorValidation()
+    public async Task Handle_WhenSponsorSlugIsNull_SkipsSponsorValidation()
     {
         await using var db = InMemoryDbHelper.Create();
         await db.MembershipLevels.AddAsync(BuildLevel());
@@ -150,7 +161,7 @@ public class SignupMemberHandlerTests
         var handler = BuildHandler(db);
 
         var result = await handler.Handle(
-            new SignupMemberCommand(BuildRequest(sponsorId: null)), CancellationToken.None);
+            new SignupMemberCommand(BuildRequest(sponsorSlug: null)), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
     }
@@ -292,7 +303,7 @@ public class SignupMemberHandlerTests
     {
         await using var db = InMemoryDbHelper.Create();
         await db.MembershipLevels.AddAsync(BuildLevel());
-        var sponsor = BuildSponsor("AMB-000001");
+        var sponsor = BuildSponsor("AMB-000001", "pedro-site");
         await db.MemberProfiles.AddAsync(sponsor);
         await db.GenealogyTree.AddAsync(new GenealogyEntity
         {
@@ -307,7 +318,7 @@ public class SignupMemberHandlerTests
 
         var handler = BuildHandler(db);
         var result  = await handler.Handle(
-            new SignupMemberCommand(BuildRequest(sponsorId: "AMB-000001")),
+            new SignupMemberCommand(BuildRequest(sponsorSlug: "pedro-site")),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -325,7 +336,7 @@ public class SignupMemberHandlerTests
     {
         await using var db = InMemoryDbHelper.Create();
         await db.MembershipLevels.AddAsync(BuildLevel());
-        var sponsor = BuildSponsor("AMB-000001");
+        var sponsor = BuildSponsor("AMB-000001", "pedro-site");
         await db.MemberProfiles.AddAsync(sponsor);
         await db.GenealogyTree.AddAsync(new GenealogyEntity
         {
@@ -340,7 +351,7 @@ public class SignupMemberHandlerTests
 
         var handler = BuildHandler(db);
         await handler.Handle(
-            new SignupMemberCommand(BuildRequest(sponsorId: "AMB-000001")),
+            new SignupMemberCommand(BuildRequest(sponsorSlug: "pedro-site")),
             CancellationToken.None);
 
         var queue = await db.RankEvaluationQueue.ToListAsync();
@@ -357,7 +368,7 @@ public class SignupMemberHandlerTests
 
         var handler = BuildHandler(db);
         await handler.Handle(
-            new SignupMemberCommand(BuildRequest(sponsorId: null)),
+            new SignupMemberCommand(BuildRequest(sponsorSlug: null)),
             CancellationToken.None);
 
         var queue = await db.RankEvaluationQueue.ToListAsync();
@@ -451,7 +462,7 @@ public class SignupMemberHandlerTests
     {
         await using var db = InMemoryDbHelper.Create();
         await db.MembershipLevels.AddAsync(BuildLevel());
-        var sponsor = BuildSponsor("AMB-000001");
+        var sponsor = BuildSponsor("AMB-000001", "pedro-site");
         await db.MemberProfiles.AddAsync(sponsor);
         await db.GenealogyTree.AddAsync(new GenealogyEntity
         {
@@ -468,7 +479,7 @@ public class SignupMemberHandlerTests
         var handler = BuildHandler(db, push: push);
 
         await handler.Handle(
-            new SignupMemberCommand(BuildRequest(sponsorId: "AMB-000001")),
+            new SignupMemberCommand(BuildRequest(sponsorSlug: "pedro-site")),
             CancellationToken.None);
 
         push.Verify(p => p.SendAsync(
@@ -488,7 +499,7 @@ public class SignupMemberHandlerTests
         var handler = BuildHandler(db, push: push);
 
         await handler.Handle(
-            new SignupMemberCommand(BuildRequest(sponsorId: null)),
+            new SignupMemberCommand(BuildRequest(sponsorSlug: null)),
             CancellationToken.None);
 
         push.Verify(p => p.SendAsync(
@@ -536,5 +547,51 @@ public class SignupMemberHandlerTests
         var sub = await db.MembershipSubscriptions
             .FirstAsync(s => s.MemberId == result.Value!.MemberId);
         sub.IsAutoRenew.Should().BeTrue();
+    }
+
+    // ─── SSN encryption ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Handle_WhenCountryIsUS_StoresSsnEncrypted()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await db.MembershipLevels.AddAsync(BuildLevel());
+        await db.SaveChangesAsync();
+
+        var enc     = BuildEncryption();
+        var handler = BuildHandler(db, encryption: enc);
+        var req     = BuildRequest();
+        req.Country = "US";
+        req.Ssn     = "987-65-4321";
+
+        var result = await handler.Handle(new SignupMemberCommand(req), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+
+        var member = await db.MemberProfiles.FirstAsync(m => m.MemberId == result.Value!.MemberId);
+        member.SsnEncrypted.Should().StartWith("ENC:");
+        enc.Verify(e => e.Encrypt("987-65-4321"), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenCountryIsNotUS_SsnEncryptedIsNull()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await db.MembershipLevels.AddAsync(BuildLevel());
+        await db.SaveChangesAsync();
+
+        var enc     = BuildEncryption();
+        var handler = BuildHandler(db, encryption: enc);
+        var req     = BuildRequest();
+        req.Country = "CA";
+        req.Ssn     = null;
+
+        var result = await handler.Handle(new SignupMemberCommand(req), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+
+        var member = await db.MemberProfiles.FirstAsync(m => m.MemberId == result.Value!.MemberId);
+        member.SsnEncrypted.Should().BeNull();
+        enc.Verify(e => e.Encrypt(It.IsAny<string>()), Times.Never);
     }
 }

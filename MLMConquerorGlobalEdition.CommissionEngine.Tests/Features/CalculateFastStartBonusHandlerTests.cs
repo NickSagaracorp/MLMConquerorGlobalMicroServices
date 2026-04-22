@@ -1,4 +1,4 @@
-using MLMConquerorGlobalEdition.CommissionEngine.Features.CalculateFastStartBonus;
+﻿using MLMConquerorGlobalEdition.CommissionEngine.Features.CalculateFastStartBonus;
 using MLMConquerorGlobalEdition.CommissionEngine.Services;
 using MLMConquerorGlobalEdition.CommissionEngine.Tests.Helpers;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
@@ -54,7 +54,7 @@ public class CalculateFastStartBonusHandlerTests
     };
 
     private static CommissionType BuildFsbType(int id, int levelNo, int triggerOrder = 1,
-        decimal? fixedAmount = 150) => new()
+        decimal? Amount = 150) => new()
     {
         Id               = id,
         Name             = $"FSB-L{levelNo}-W{triggerOrder}",
@@ -63,7 +63,7 @@ public class CalculateFastStartBonusHandlerTests
         IsSponsorBonus   = false,
         LevelNo          = levelNo,
         TriggerOrder     = triggerOrder,
-        FixedAmount      = fixedAmount,
+        Amount      = Amount,
         Percentage       = 0,
         PaymentDelayDays = 0,
         CreatedBy        = "seed",
@@ -153,7 +153,7 @@ public class CalculateFastStartBonusHandlerTests
             Quantity = 1, UnitPrice = 80, CreatedBy = "seed", CreationDate = FixedNow
         });
         await db.ProductCommissions.AddAsync(BuildProductCommission("1", triggerFsb: true));
-        await db.CommissionTypes.AddAsync(BuildFsbType(id: 1, levelNo: 1, triggerOrder: 1, fixedAmount: 150));
+        await db.CommissionTypes.AddAsync(BuildFsbType(id: 1, levelNo: 1, triggerOrder: 1, Amount: 150));
 
         // Sponsor is in window 1 — MemberId matches sponsor.UserId so the handler can find it
         var countdown = new MemberCommissionCountDown
@@ -184,3 +184,4 @@ public class CalculateFastStartBonusHandlerTests
         db.CommissionEarnings.Should().HaveCount(1);
     }
 }
+

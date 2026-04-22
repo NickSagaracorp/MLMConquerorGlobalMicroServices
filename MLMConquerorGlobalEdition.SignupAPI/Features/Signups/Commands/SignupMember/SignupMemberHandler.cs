@@ -12,6 +12,7 @@ using MLMConquerorGlobalEdition.Repository.Identity;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs;
+using MLMConquerorGlobalEdition.SignupAPI.Services;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Commands.SignupMember;
 
@@ -26,17 +27,20 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
     private readonly IDateTimeProvider            _dateTime;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IPushNotificationService     _push;
+    private readonly IEncryptionService           _encryption;
 
     public SignupMemberHandler(
         AppDbContext db,
         IDateTimeProvider dateTime,
         UserManager<ApplicationUser> userManager,
-        IPushNotificationService push)
+        IPushNotificationService push,
+        IEncryptionService encryption)
     {
         _db          = db;
         _dateTime    = dateTime;
         _userManager = userManager;
         _push        = push;
+        _encryption  = encryption;
     }
 
     public async Task<Result<SignupResponse>> Handle(SignupMemberCommand command, CancellationToken ct)
@@ -48,13 +52,19 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
         if (emailTaken is not null)
             return Result<SignupResponse>.Failure("EMAIL_TAKEN", "This email is already registered.");
 
-        if (!string.IsNullOrEmpty(req.SponsorMemberId))
+        string? sponsorMemberId = null;
+        if (!string.IsNullOrEmpty(req.SponsorReplicateSite))
         {
-            var sponsorExists = await _db.MemberProfiles
-                .AnyAsync(x => x.MemberId == req.SponsorMemberId, ct);
-            if (!sponsorExists)
+            sponsorMemberId = await _db.MemberProfiles
+                .AsNoTracking()
+                .Where(x => x.ReplicateSiteSlug == req.SponsorReplicateSite
+                         && x.Status == MemberAccountStatus.Active)
+                .Select(x => x.MemberId)
+                .FirstOrDefaultAsync(ct);
+
+            if (sponsorMemberId is null)
                 return Result<SignupResponse>.Failure(
-                    "SPONSOR_NOT_FOUND", $"Sponsor '{req.SponsorMemberId}' not found.");
+                    "SPONSOR_NOT_FOUND", $"Sponsor site '{req.SponsorReplicateSite}' not found or inactive.");
         }
 
         var membershipLevel = await _db.MembershipLevels
@@ -68,23 +78,24 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
 
         var member = new MemberProfile
         {
-            UserId         = Guid.NewGuid(),
-            MemberId       = memberId,
-            Email          = req.Email,
-            FirstName      = req.FirstName,
-            LastName       = req.LastName,
-            Phone          = req.Phone,
-            Country        = req.Country,
-            State          = req.State,
-            City           = req.City,
-            Address        = req.Address,
-            MemberType     = MemberType.ExternalMember,
-            Status         = MemberAccountStatus.Pending,
-            EnrollDate     = now,
-            SponsorMemberId = req.SponsorMemberId,
-            CreatedBy      = req.Email,
-            CreationDate   = now,
-            LastUpdateDate = now
+            UserId          = Guid.NewGuid(),
+            MemberId        = memberId,
+            Email           = req.Email,
+            FirstName       = req.FirstName,
+            LastName        = req.LastName,
+            Phone           = req.Phone,
+            Country         = req.Country,
+            State           = req.State,
+            City            = req.City,
+            Address         = req.Address,
+            SsnEncrypted    = !string.IsNullOrEmpty(req.Ssn) ? _encryption.Encrypt(req.Ssn) : null,
+            MemberType      = MemberType.ExternalMember,
+            Status          = MemberAccountStatus.Pending,
+            EnrollDate      = now,
+            SponsorMemberId = sponsorMemberId,
+            CreatedBy       = req.Email,
+            CreationDate    = now,
+            LastUpdateDate  = now
         };
 
         var orderId = Guid.NewGuid().ToString();
@@ -126,17 +137,17 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
         order.MembershipSubscriptionId = subscriptionId;
 
         GenealogyEntity? sponsorNode = null;
-        if (!string.IsNullOrEmpty(req.SponsorMemberId))
+        if (!string.IsNullOrEmpty(sponsorMemberId))
         {
             sponsorNode = await _db.GenealogyTree
                 .AsNoTracking()
-                .FirstOrDefaultAsync(g => g.MemberId == req.SponsorMemberId, ct);
+                .FirstOrDefaultAsync(g => g.MemberId == sponsorMemberId, ct);
         }
 
         var genealogyNode = new GenealogyEntity
         {
             MemberId       = memberId,
-            ParentMemberId = req.SponsorMemberId,
+            ParentMemberId = sponsorMemberId,
             HierarchyPath  = sponsorNode is not null
                 ? $"{sponsorNode.HierarchyPath}{memberId}/"
                 : $"/{memberId}/",

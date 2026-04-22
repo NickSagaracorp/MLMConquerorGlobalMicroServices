@@ -62,6 +62,7 @@ builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 builder.Services.AddSingleton<IHtmlSanitizerService, HtmlSanitizerService>();
 builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IS3StorageService, S3StorageService>();
 
 builder.Services.AddStackExchangeRedisCache(options =>
 {
@@ -70,7 +71,9 @@ builder.Services.AddStackExchangeRedisCache(options =>
 builder.Services.AddSingleton<ICacheService, CacheService>();
 builder.Services.AddTransient<IEmailService, NullEmailService>();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(o =>
+        o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")

@@ -12,6 +12,8 @@ using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetEnrollmentCustomers;
 using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetTeamMembers;
 using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetVisualizerStats;
 using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetVisualizerChildren;
+using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetDualTreeNode;
+using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetDualTreeStats;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Controllers;
@@ -121,6 +123,26 @@ public class TeamController : ControllerBase
             return BadRequest(ApiResponse<PagedResult<EnrollmentCustomerDto>>
                 .Fail(result.ErrorCode!, result.Error!));
         return Ok(ApiResponse<PagedResult<EnrollmentCustomerDto>>.Ok(result.Value!));
+    }
+
+    /// <summary>GET /api/v1/bizcenter/team/dual-tree/node/{nodeMemberId} — node + immediate L/R children for the binary tree visualizer</summary>
+    [HttpGet("dual-tree/node/{nodeMemberId}")]
+    public async Task<IActionResult> GetDualTreeNode(string nodeMemberId, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetDualTreeNodeQuery(nodeMemberId), ct);
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<DualTreeNodeDto>.Fail(result.ErrorCode!, result.Error!));
+        return Ok(ApiResponse<DualTreeNodeDto>.Ok(result.Value!));
+    }
+
+    /// <summary>GET /api/v1/bizcenter/team/dual-tree/stats/{nodeMemberId} — left/right leg points for a member's binary tree position</summary>
+    [HttpGet("dual-tree/stats/{nodeMemberId}")]
+    public async Task<IActionResult> GetDualTreeStats(string nodeMemberId, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetDualTreeStatsQuery(nodeMemberId), ct);
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<DualTreeStatsDto>.Fail(result.ErrorCode!, result.Error!));
+        return Ok(ApiResponse<DualTreeStatsDto>.Ok(result.Value!));
     }
 
     /// <summary>GET /api/v1/bizcenter/team/enrollment/visualizer/stats — downline status counts for the tree visualizer</summary>

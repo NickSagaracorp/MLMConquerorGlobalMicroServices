@@ -1,0 +1,511 @@
+@page "/admin/marketing-documents"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+
+<PageTitle>Marketing Documents — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Marketing Documents") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2 flex-wrap">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-file-list-3-line me-2 text-primary"></i>Marketing Documents
+        </h6>
+
+        @* ── Filters ── *@
+        <select class="form-select form-select-sm w-auto" style="min-width:170px"
+                @bind="_filterTypeId" @bind:after="() => _ = LoadAsync()">
+            <option value="0">All Document Types</option>
+            @foreach (var dt in _documentTypes)
+            {
+                <option value="@dt.Id">@dt.Name</option>
+            }
+        </select>
+        <select class="form-select form-select-sm w-auto" style="min-width:130px"
+                @bind="_filterActive" @bind:after="() => _ = LoadAsync()">
+            <option value="">All Statuses</option>
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+        </select>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+        <button class="btn btn-primary btn-sm" @onclick="OpenUpload">
+            <i class="ri-upload-cloud-line me-1"></i>Upload Document
+        </button>
+    </div>
+
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="MarketingDocumentDto" DataSource="@_items"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="50" PageSizes="@(new int[] { 50, 100, 250 })" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn HeaderText="Title" Width="240">
+                        <Template>
+                            @{
+                                var doc = (MarketingDocumentDto)context;
+                            }
+                            <span class="fw-semibold">@doc.Title</span>
+                            <br /><small class="text-muted">@doc.OriginalFileName</small>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(MarketingDocumentDto.DocumentTypeName)" HeaderText="Type" Width="160" AllowFiltering="true" />
+                    <GridColumn HeaderText="Language" Width="140">
+                        <Template>
+                            @{
+                                var doc = (MarketingDocumentDto)context;
+                            }
+                            <span class="badge bg-light text-dark border">@doc.LanguageCode.ToUpper()</span>
+                            <small class="ms-1 text-muted">@doc.LanguageName</small>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="File Size" Width="110" TextAlign="TextAlign.Right">
+                        <Template>
+                            <span class="text-muted small">@FormatFileSize(((MarketingDocumentDto)context).FileSizeBytes)</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Status" Width="100" TextAlign="TextAlign.Center">
+                        <Template>
+                            <span class="badge @BoolBadge(((MarketingDocumentDto)context).IsActive)">
+                                @(((MarketingDocumentDto)context).IsActive ? "Active" : "Inactive")
+                            </span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(MarketingDocumentDto.CreationDate)" HeaderText="Uploaded" Width="120"
+                                Format="yyyy-MM-dd" Type="ColumnType.Date" />
+                    <GridColumn HeaderText="Actions" Width="110" TextAlign="TextAlign.Center">
+                        <Template>
+                            <button class="btn btn-sm btn-outline-primary py-0 me-1"
+                                    @onclick="() => OpenEdit((MarketingDocumentDto)context)">
+                                <i class="ri-edit-line"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger py-0"
+                                    @onclick="() => ConfirmDelete((MarketingDocumentDto)context)">
+                                <i class="ri-delete-bin-line"></i>
+                            </button>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+@* ── Upload modal ── *@
+@if (_showUpload)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold">Upload Marketing Document</h5>
+                    <button type="button" class="btn-close" @onclick="CloseUpload" disabled="@_saving"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Title <span class="text-danger">*</span></label>
+                            <input class="form-control" @bind="_uploadForm.Title" placeholder="e.g. Q1 Product Brochure EN" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Document Type <span class="text-danger">*</span></label>
+                            <select class="form-select" @bind="_uploadForm.DocumentTypeId">
+                                <option value="0">— Select Type —</option>
+                                @foreach (var dt in _documentTypes)
+                                {
+                                    <option value="@dt.Id">@dt.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Language Code <span class="text-danger">*</span></label>
+                            <input class="form-control" @bind="_uploadForm.LanguageCode"
+                                   placeholder="en" maxlength="10" style="text-transform:lowercase" />
+                            <div class="form-text">ISO 639-1, e.g. en, es, fr</div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Language Name <span class="text-danger">*</span></label>
+                            <input class="form-control" @bind="_uploadForm.LanguageName" placeholder="English" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">File <span class="text-danger">*</span></label>
+                            <InputFile OnChange="OnFileSelected" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp"
+                                       class="form-control" />
+                            <div class="form-text">Accepted: PDF, PNG, JPG, GIF, WEBP — max 20 MB</div>
+                            @if (_selectedFile is not null)
+                            {
+                                <div class="mt-1 text-success small">
+                                    <i class="ri-check-line me-1"></i>@_selectedFile.Name (@FormatFileSize(_selectedFile.Size))
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseUpload" disabled="@_saving">Cancel</button>
+                    <button class="btn btn-primary" @onclick="UploadDocument" disabled="@_saving">
+                        @if (_saving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                            <span>Uploading...</span>
+                        }
+                        else
+                        {
+                            <i class="ri-upload-cloud-line me-1"></i>
+                            <span>Upload</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ── Edit modal (no re-upload) ── *@
+@if (_showEdit)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold">Edit Document</h5>
+                    <button type="button" class="btn-close" @onclick="() => _showEdit = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Title <span class="text-danger">*</span></label>
+                            <input class="form-control" @bind="_editForm.Title" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Document Type <span class="text-danger">*</span></label>
+                            <select class="form-select" @bind="_editForm.DocumentTypeId">
+                                <option value="0">— Select Type —</option>
+                                @foreach (var dt in _documentTypes)
+                                {
+                                    <option value="@dt.Id">@dt.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Language Code <span class="text-danger">*</span></label>
+                            <input class="form-control" @bind="_editForm.LanguageCode" maxlength="10" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Language Name <span class="text-danger">*</span></label>
+                            <input class="form-control" @bind="_editForm.LanguageName" />
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="docActive" @bind="_editForm.IsActive" />
+                                <label class="form-check-label fw-semibold" for="docActive">Active</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => _showEdit = false">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SaveEdit" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ── Delete confirmation modal ── *@
+@if (_showDeleteConfirm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold text-danger">Delete Document</h5>
+                    <button type="button" class="btn-close" @onclick="() => { _showDeleteConfirm = false; _deleteItem = null; }"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Delete <strong>@_deleteItem?.Title</strong>?</p>
+                    <p class="text-muted small mb-0">The file will be removed from storage. This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => { _showDeleteConfirm = false; _deleteItem = null; }">Cancel</button>
+                    <button class="btn btn-danger" @onclick="DeleteItem" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<MarketingDocumentDto> _items = new();
+    private List<DocumentTypeItem> _documentTypes = new();
+    private bool _loading = true;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+
+    // Filter state
+    private int _filterTypeId;
+    private string _filterActive = string.Empty;
+
+    // Upload form
+    private bool _showUpload;
+    private IBrowserFile? _selectedFile;
+    private UploadFormModel _uploadForm = new();
+
+    // Edit form
+    private bool _showEdit;
+    private string? _editDocId;
+    private EditFormModel _editForm = new();
+
+    // Delete
+    private bool _showDeleteConfirm;
+    private MarketingDocumentDto? _deleteItem;
+
+    private const long MaxFileSizeBytes = 20 * 1024 * 1024; // 20 MB
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDocumentTypes();
+        await LoadAsync();
+    }
+
+    private async Task LoadDocumentTypes()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<List<DocumentTypeItem>>>("api/v1/admin/document-types");
+            if (resp?.Success == true && resp.Data is not null)
+                _documentTypes = resp.Data;
+        }
+        catch { /* non-critical — filters still work */ }
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var url = "api/v1/admin/marketing-documents?";
+            if (_filterTypeId > 0) url += $"documentTypeId={_filterTypeId}&";
+            if (!string.IsNullOrWhiteSpace(_filterActive)) url += $"isActive={_filterActive}&";
+
+            var resp = await Http.GetFromJsonAsync<ApiResp<List<MarketingDocumentDto>>>(url.TrimEnd('?', '&'));
+            if (resp?.Success == true && resp.Data is not null)
+                _items = resp.Data;
+        }
+        catch (Exception ex) { _alertMsg = $"Error loading documents: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private void OpenUpload()
+    {
+        _uploadForm = new();
+        _selectedFile = null;
+        _showUpload = true;
+    }
+
+    private void CloseUpload()
+    {
+        _showUpload = false;
+        _selectedFile = null;
+        _uploadForm = new();
+    }
+
+    private void OnFileSelected(InputFileChangeEventArgs e)
+        => _selectedFile = e.File;
+
+    private async Task UploadDocument()
+    {
+        if (string.IsNullOrWhiteSpace(_uploadForm.Title))
+        { _alertMsg = "Title is required."; _alertIsError = true; return; }
+        if (_uploadForm.DocumentTypeId == 0)
+        { _alertMsg = "Document type is required."; _alertIsError = true; return; }
+        if (string.IsNullOrWhiteSpace(_uploadForm.LanguageCode))
+        { _alertMsg = "Language code is required."; _alertIsError = true; return; }
+        if (string.IsNullOrWhiteSpace(_uploadForm.LanguageName))
+        { _alertMsg = "Language name is required."; _alertIsError = true; return; }
+        if (_selectedFile is null)
+        { _alertMsg = "Please select a file."; _alertIsError = true; return; }
+        if (_selectedFile.Size > MaxFileSizeBytes)
+        { _alertMsg = $"File exceeds the 20 MB limit ({FormatFileSize(_selectedFile.Size)})."; _alertIsError = true; return; }
+
+        _saving = true;
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            content.Add(new StringContent(_uploadForm.Title), "title");
+            content.Add(new StringContent(_uploadForm.DocumentTypeId.ToString()), "documentTypeId");
+            content.Add(new StringContent(_uploadForm.LanguageCode.Trim().ToLower()), "languageCode");
+            content.Add(new StringContent(_uploadForm.LanguageName.Trim()), "languageName");
+
+            // Stream the file without buffering the entire payload in memory
+            var stream = _selectedFile.OpenReadStream(MaxFileSizeBytes);
+            var fileContent = new StreamContent(stream);
+            fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(_selectedFile.ContentType);
+            content.Add(fileContent, "file", _selectedFile.Name);
+
+            var response = await Http.PostAsync("api/v1/admin/marketing-documents", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _alertMsg = "Document uploaded successfully.";
+                _alertIsError = false;
+                CloseUpload();
+                await LoadAsync();
+            }
+            else
+            {
+                _alertMsg = $"Upload failed ({(int)response.StatusCode}).";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private void OpenEdit(MarketingDocumentDto doc)
+    {
+        _editDocId = doc.Id;
+        _editForm = new EditFormModel
+        {
+            Title = doc.Title,
+            DocumentTypeId = doc.DocumentTypeId,
+            LanguageCode = doc.LanguageCode,
+            LanguageName = doc.LanguageName,
+            IsActive = doc.IsActive
+        };
+        _showEdit = true;
+    }
+
+    private async Task SaveEdit()
+    {
+        if (string.IsNullOrWhiteSpace(_editForm.Title))
+        { _alertMsg = "Title is required."; _alertIsError = true; return; }
+        if (_editForm.DocumentTypeId == 0)
+        { _alertMsg = "Document type is required."; _alertIsError = true; return; }
+        if (string.IsNullOrWhiteSpace(_editForm.LanguageCode))
+        { _alertMsg = "Language code is required."; _alertIsError = true; return; }
+        if (string.IsNullOrWhiteSpace(_editForm.LanguageName))
+        { _alertMsg = "Language name is required."; _alertIsError = true; return; }
+
+        _saving = true;
+        try
+        {
+            var response = await Http.PutAsJsonAsync($"api/v1/admin/marketing-documents/{_editDocId}", new
+            {
+                _editForm.Title,
+                _editForm.DocumentTypeId,
+                LanguageCode = _editForm.LanguageCode.Trim().ToLower(),
+                LanguageName = _editForm.LanguageName.Trim(),
+                _editForm.IsActive
+            });
+
+            if (response.IsSuccessStatusCode)
+            {
+                _alertMsg = "Document updated.";
+                _alertIsError = false;
+                _showEdit = false;
+                await LoadAsync();
+            }
+            else
+            {
+                _alertMsg = $"Update failed ({(int)response.StatusCode}).";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private void ConfirmDelete(MarketingDocumentDto doc) { _deleteItem = doc; _showDeleteConfirm = true; }
+
+    private async Task DeleteItem()
+    {
+        if (_deleteItem is null) return;
+        _saving = true;
+        try
+        {
+            var response = await Http.DeleteAsync($"api/v1/admin/marketing-documents/{_deleteItem.Id}");
+            if (response.IsSuccessStatusCode)
+            {
+                _alertMsg = $"'{_deleteItem.Title}' deleted.";
+                _alertIsError = false;
+                _showDeleteConfirm = false;
+                _deleteItem = null;
+                await LoadAsync();
+            }
+            else
+            {
+                _alertMsg = $"Delete failed ({(int)response.StatusCode}).";
+                _alertIsError = true;
+                _showDeleteConfirm = false;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────
+    private static string FormatFileSize(long bytes)
+    {
+        if (bytes >= 1_048_576) return $"{bytes / 1_048_576.0:F1} MB";
+        if (bytes >= 1_024) return $"{bytes / 1_024.0:F0} KB";
+        return $"{bytes} B";
+    }
+
+    private static string BoolBadge(bool val) => val ? "bg-success" : "bg-secondary";
+
+    // ── Form models ───────────────────────────────────────────────
+    private class UploadFormModel
+    {
+        public string Title { get; set; } = string.Empty;
+        public int DocumentTypeId { get; set; }
+        public string LanguageCode { get; set; } = string.Empty;
+        public string LanguageName { get; set; } = string.Empty;
+    }
+
+    private class EditFormModel
+    {
+        public string Title { get; set; } = string.Empty;
+        public int DocumentTypeId { get; set; }
+        public string LanguageCode { get; set; } = string.Empty;
+        public string LanguageName { get; set; } = string.Empty;
+        public bool IsActive { get; set; } = true;
+    }
+
+    // ── DTOs (deserialization only) ───────────────────────────────
+    private record MarketingDocumentDto(
+        string Id,
+        string Title,
+        int DocumentTypeId,
+        string DocumentTypeName,
+        string LanguageCode,
+        string LanguageName,
+        string OriginalFileName,
+        long FileSizeBytes,
+        string ContentType,
+        bool IsActive,
+        DateTime CreationDate);
+
+    private record DocumentTypeItem(int Id, string Name);
+    private record ApiResp<T>(bool Success, T? Data, string? ErrorCode, IEnumerable<string>? Errors);
+}

@@ -1,4 +1,4 @@
-using MLMConquerorGlobalEdition.CommissionEngine.Features.ReverseSponsorBonus;
+﻿using MLMConquerorGlobalEdition.CommissionEngine.Features.ReverseSponsorBonus;
 using MLMConquerorGlobalEdition.CommissionEngine.Services;
 using MLMConquerorGlobalEdition.CommissionEngine.Tests.Helpers;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
@@ -44,7 +44,7 @@ public class ReverseSponsorBonusHandlerTests
         IsActive        = true,
         IsSponsorBonus  = true,
         LevelNo         = 2,
-        FixedAmount     = 20,
+        Amount     = 20,
         Percentage      = 0,
         ReverseId       = reverseId,
         PaymentDelayDays = 0,
@@ -191,3 +191,4 @@ public class ReverseSponsorBonusHandlerTests
         result.Value!.RecordsCreated.Should().Be(0);
     }
 }
+

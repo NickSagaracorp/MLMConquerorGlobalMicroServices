@@ -1,0 +1,332 @@
+Using launch settings from C:\Users\sagar\source\repos\ClaudeRepository\MLMConquerorGlobalEdition.AdminWeb\Properties\launchSettings.json...
+Building...
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: https://localhost:7001
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:5001
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: C:\Users\sagar\source\repos\ClaudeRepository\MLMConquerorGlobalEdition.AdminWeb
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request POST https://localhost:7002/api/v1/auth/login
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request POST https://localhost:7002/api/v1/auth/login
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 841.7262ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 855.0887ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/dashboard/ceo
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/dashboard/ceo
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 810.2063ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 810.6402ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/members?*
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/members?*
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 75.5653ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 75.8251ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 120.847ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 121.1903ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/rank-definitions
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/rank-definitions
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 51.5732ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 51.8721ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions/summary
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions/summary
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions?*
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions?*
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions?*
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions?*
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions/history
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions/history
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 76.0611ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 76.4289ms - 200
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 84.9874ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 85.351ms - 200
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 124.0625ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 124.5086ms - 200
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 127.5783ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 127.8755ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions/boost-bonus/week-stats
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions/boost-bonus/week-stats
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions/boost-bonus/summary
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions/boost-bonus/summary
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions/boost-bonus?*
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions/boost-bonus?*
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions/boost-bonus/enrollments?*
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions/boost-bonus/enrollments?*
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 80.3581ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 80.6168ms - 200
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 99.9726ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 100.2525ms - 200
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 157.9059ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 158.1875ms - 200
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 172.7158ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 172.9517ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-312785
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-312785
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 22.3589ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 22.5941ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/rank-definitions
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/rank-definitions
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 4.2528ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 4.4059ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request PUT https://localhost:7002/api/v1/admin/members/AMB-312785/status
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request PUT https://localhost:7002/api/v1/admin/members/AMB-312785/status
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 51.4683ms - 400
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 51.626ms - 400
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-164544
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-164544
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 10.615ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 11.0201ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/rank-definitions
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/rank-definitions
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 4.1424ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 4.3776ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request PUT https://localhost:7002/api/v1/admin/members/AMB-164544/status
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request PUT https://localhost:7002/api/v1/admin/members/AMB-164544/status
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 3.6757ms - 400
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 3.9254ms - 400
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-164544
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-164544
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 508.7362ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 508.9342ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/rank-definitions
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/rank-definitions
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 116.1559ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 116.3216ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request PUT https://localhost:7002/api/v1/admin/members/AMB-164544/status
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request PUT https://localhost:7002/api/v1/admin/members/AMB-164544/status
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 412.598ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 412.7391ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request PUT https://localhost:7002/api/v1/admin/members/AMB-312785/status
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request PUT https://localhost:7002/api/v1/admin/members/AMB-312785/status
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 41.428ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 41.5621ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/members?*
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/members?*
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 149.6619ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 149.8371ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-270988
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-270988
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 15.9037ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 16.2134ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/rank-definitions
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/rank-definitions
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 5.6684ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 5.8052ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request PUT https://localhost:7002/api/v1/admin/members/AMB-270988/status
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request PUT https://localhost:7002/api/v1/admin/members/AMB-270988/status
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 14.2675ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 14.4135ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-654438
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-654438
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 53.0929ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 53.2671ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/rank-definitions
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/rank-definitions
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 5.8363ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 5.9846ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request PUT https://localhost:7002/api/v1/admin/members/AMB-654438/status
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request PUT https://localhost:7002/api/v1/admin/members/AMB-654438/status
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 22.3657ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 22.5166ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 15.2628ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 15.5983ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/rank-definitions
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/rank-definitions
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 4.8679ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 5.0342ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions/summary
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions/summary
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions?*
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions?*
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions?*
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions?*
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions/history
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions/history
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 39.4268ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 39.5546ms - 200
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 54.5468ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 54.6331ms - 200
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 67.4325ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 67.4928ms - 200
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 67.6197ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 67.6629ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions/boost-bonus/week-stats
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions/boost-bonus/week-stats
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions/boost-bonus/summary
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions/boost-bonus/summary
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions/boost-bonus?*
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions/boost-bonus?*
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[100]
+      Start processing HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions/boost-bonus/enrollments?*
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[100]
+      Sending HTTP request GET https://localhost:7002/api/v1/admin/members/AMB-671841/commissions/boost-bonus/enrollments?*
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 44.9015ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 44.9837ms - 200
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 70.5549ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 70.6545ms - 200
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 98.4393ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 98.6163ms - 200
+info: System.Net.Http.HttpClient.AdminApi.ClientHandler[101]
+      Received HTTP response headers after 98.6943ms - 200
+info: System.Net.Http.HttpClient.AdminApi.LogicalHandler[101]
+      End processing HTTP request after 98.8209ms - 200

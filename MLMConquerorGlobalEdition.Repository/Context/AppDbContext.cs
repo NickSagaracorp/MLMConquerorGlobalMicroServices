@@ -14,6 +14,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Support;
 using MLMConquerorGlobalEdition.Domain.Entities.Tokens;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Entities.Wallet;
+using MLMConquerorGlobalEdition.Domain.Entities.Marketing;
 using MLMConquerorGlobalEdition.Repository.Identity;
 using MLMConquerorGlobalEdition.Repository.Interceptors;
 
@@ -98,6 +99,10 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     public DbSet<SupportTeam> SupportTeams => Set<SupportTeam>();
     public DbSet<SupportAgent> SupportAgents => Set<SupportAgent>();
     public DbSet<TicketMetricsDaily> TicketMetrics => Set<TicketMetricsDaily>();
+
+    public DbSet<DocumentType>      DocumentTypes      => Set<DocumentType>();
+    public DbSet<MarketingDocument> MarketingDocuments => Set<MarketingDocument>();
+    public DbSet<S3StorageConfig>   S3StorageConfigs   => Set<S3StorageConfig>();
 
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 

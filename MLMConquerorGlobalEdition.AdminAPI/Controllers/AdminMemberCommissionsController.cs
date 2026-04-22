@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
@@ -606,34 +606,109 @@ public class AdminMemberCommissionsController : ControllerBase
     // Boost Bonus
     // ─────────────────────────────────────────────────────────────────────────
 
-    /// <summary>GET /boost-bonus/week-stats — Gold/Platinum counts for current ISO week.</summary>
+    /// <summary>GET /boost-bonus/week-stats — Gold/Platinum enrollment progress for current ISO week.</summary>
     [HttpGet("boost-bonus/week-stats")]
     public async Task<IActionResult> GetBoostBonusWeekStats(string memberId, CancellationToken ct = default)
     {
-        var today    = DateTime.UtcNow;
-        var dayOfWeek = (int)today.DayOfWeek;
-        var daysToMon = dayOfWeek == 0 ? -6 : -(dayOfWeek - 1);
+        var today     = DateTime.UtcNow;
+        var daysToMon = (int)today.DayOfWeek == 0 ? -6 : -((int)today.DayOfWeek - 1);
         var weekStart = today.AddDays(daysToMon).Date;
-        var weekEnd   = weekStart.AddDays(6).Date;
+        var weekEnd   = weekStart.AddDays(7);
 
-        var names = await _db.CommissionEarnings
+        // Load boost types to get correct NewMembers thresholds (Gold=6, Platinum=12 per seed)
+        var boostTypes = await _db.CommissionTypes
             .AsNoTracking()
-            .Where(c => c.BeneficiaryMemberId == memberId
-                     && c.EarnedDate >= weekStart
-                     && c.EarnedDate <= weekEnd.AddDays(1))
-            .Join(
-                _db.CommissionTypes.Where(t => t.CommissionCategoryId == BoostPresidentialCategoryId),
-                c   => c.CommissionTypeId,
-                ct2 => ct2.Id,
-                (_, ct2) => ct2.Name)
+            .Where(t => t.IsActive && !t.IsPaidOnSignup && !t.ResidualBased
+                     && !t.IsSponsorBonus && t.TriggerOrder > 0)
+            .OrderBy(t => t.LifeTimeRank)
             .ToListAsync(ct);
 
-        // Also pull amounts for Gold/Platinum totals
+        var goldType     = boostTypes.FirstOrDefault(t => t.Name.Contains("Gold",     StringComparison.OrdinalIgnoreCase));
+        var platinumType = boostTypes.FirstOrDefault(t => t.Name.Contains("Platinum", StringComparison.OrdinalIgnoreCase));
+
+        int goldTarget     = goldType?.NewMembers     ?? 6;
+        int platinumTarget = platinumType?.NewMembers ?? 12;
+
+        // New Elite/Turbo Active enrollments in member's downline this week (raw, per leg).
+        // Uses MembershipSubscription (set in Phase 1) and filters on Active status (Phase 3 done)
+        // so the progress bar reflects signups that actually count toward the bonus threshold.
+        int[] eligibleLevelIds = [3, 4];
+        var hierarchyFilter    = $"/{memberId}/";
+
+        var downlineEnrollments = await (
+            from mp  in _db.MemberProfiles.AsNoTracking()
+            join g   in _db.GenealogyTree.AsNoTracking()           on mp.MemberId           equals g.MemberId
+            join sub in _db.MembershipSubscriptions.AsNoTracking() on mp.MemberId           equals sub.MemberId
+            where mp.EnrollDate >= weekStart
+               && mp.EnrollDate <  weekEnd
+               && sub.SubscriptionStatus == MembershipStatus.Active
+               && eligibleLevelIds.Contains(sub.MembershipLevelId)
+               && g.HierarchyPath.Contains(hierarchyFilter)
+            select new { mp.MemberId, g.HierarchyPath }
+        ).Distinct().ToListAsync(ct);
+
+        // Determine leg (direct child of member) for each enrollment, then apply 50% cap
+        static string GetLeg(string path, string filter)
+        {
+            var idx = path.IndexOf(filter, StringComparison.Ordinal);
+            if (idx < 0) return string.Empty;
+            var after = path[(idx + filter.Length)..];
+            var slash = after.IndexOf('/');
+            return slash > 0 ? after[..slash] : after.TrimEnd('/');
+        }
+
+        int CappedCount(int threshold)
+        {
+            if (threshold == 0) return downlineEnrollments.Count;
+            var capPerLeg = (int)Math.Floor(threshold * 0.5);
+            return downlineEnrollments
+                .Select(e => GetLeg(e.HierarchyPath, hierarchyFilter))
+                .GroupBy(leg => leg)
+                .Sum(g => Math.Min(g.Count(), capPerLeg));
+        }
+
+        // Resolve qualification points per enrolled member from completed orders
+        var enrolledIds = downlineEnrollments.Select(e => e.MemberId).Distinct().ToList();
+        var memberPointsData = enrolledIds.Count > 0
+            ? await (
+                from o  in _db.Orders.AsNoTracking()
+                join od in _db.OrderDetails.AsNoTracking() on o.Id equals od.OrderId
+                join p  in _db.Products.AsNoTracking()     on od.ProductId equals p.Id
+                where enrolledIds.Contains(o.MemberId)
+                   && o.Status == Domain.Entities.Orders.OrderStatus.Completed
+                select new { o.MemberId, Points = od.Quantity * p.QualificationPoins }
+              ).ToListAsync(ct)
+            : new();
+
+        var pointsPerMember = memberPointsData
+            .GroupBy(x => x.MemberId)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Points));
+
+        var minProductPoints = enrolledIds.Count > 0
+            ? await _db.Products.AsNoTracking()
+                .Where(p => p.IsActive && !p.IsDeleted && p.QualificationPoins >= 6)
+                .MinAsync(p => (int?)p.QualificationPoins, ct) ?? 6
+            : 6;
+
+        int CappedPoints(int threshold)
+        {
+            if (threshold == 0)
+                return downlineEnrollments.DistinctBy(e => e.MemberId)
+                    .Sum(e => pointsPerMember.TryGetValue(e.MemberId, out var p) ? p : 0);
+            var capPerLeg = (int)Math.Floor(threshold * 0.5);
+            return downlineEnrollments
+                .GroupBy(e => GetLeg(e.HierarchyPath, hierarchyFilter))
+                .Sum(g => g.DistinctBy(e => e.MemberId)
+                           .Take(capPerLeg)
+                           .Sum(e => pointsPerMember.TryGetValue(e.MemberId, out var p) ? p : 0));
+        }
+
+        // Earned amounts this week (for the amount totals)
         var amounts = await _db.CommissionEarnings
             .AsNoTracking()
             .Where(c => c.BeneficiaryMemberId == memberId
                      && c.EarnedDate >= weekStart
-                     && c.EarnedDate <= weekEnd.AddDays(1))
+                     && c.EarnedDate <  weekEnd)
             .Join(
                 _db.CommissionTypes.Where(t => t.CommissionCategoryId == BoostPresidentialCategoryId),
                 c   => c.CommissionTypeId,
@@ -643,16 +718,176 @@ public class AdminMemberCommissionsController : ControllerBase
 
         var dto = new BoostWeekStatsDto
         {
-            WeekLabel      = $"Week of {weekStart:MMM d} - {weekEnd:MMM d}",
-            GoldCount      = names.Count(n => n.Contains("Gold",     StringComparison.OrdinalIgnoreCase)),
-            PlatinumCount  = names.Count(n => n.Contains("Platinum", StringComparison.OrdinalIgnoreCase)),
-            GoldTarget     = 36,
-            PlatinumTarget = 72,
-            GoldAmount     = amounts.Where(x => x.Name.Contains("Gold",     StringComparison.OrdinalIgnoreCase)).Sum(x => x.Amount),
-            PlatinumAmount = amounts.Where(x => x.Name.Contains("Platinum", StringComparison.OrdinalIgnoreCase)).Sum(x => x.Amount)
+            WeekLabel          = $"Week of {weekStart:MMM d} - {weekStart.AddDays(6):MMM d}",
+            GoldCount          = CappedCount(goldTarget),
+            PlatinumCount      = CappedCount(platinumTarget),
+            GoldTarget         = goldTarget,
+            PlatinumTarget     = platinumTarget,
+            GoldPoints         = CappedPoints(goldTarget),
+            GoldPointsTarget   = goldTarget * minProductPoints,
+            PlatinumPoints     = CappedPoints(platinumTarget),
+            PlatinumPointsTarget = platinumTarget * minProductPoints,
+            GoldAmount         = amounts.Where(x => x.Name.Contains("Gold",     StringComparison.OrdinalIgnoreCase)).Sum(x => x.Amount),
+            PlatinumAmount     = amounts.Where(x => x.Name.Contains("Platinum", StringComparison.OrdinalIgnoreCase)).Sum(x => x.Amount)
         };
 
         return Ok(ApiResponse<BoostWeekStatsDto>.Ok(dto));
+    }
+
+    /// <summary>GET /boost-bonus/enrollments — new Elite/Turbo members in downline for a given ISO week.</summary>
+    [HttpGet("boost-bonus/enrollments")]
+    public async Task<IActionResult> GetBoostBonusEnrollments(
+        string memberId,
+        [FromQuery] string week = "current",
+        CancellationToken ct = default)
+    {
+        var today            = DateTime.UtcNow;
+        var daysToMon        = (int)today.DayOfWeek == 0 ? -6 : -((int)today.DayOfWeek - 1);
+        var currentWeekStart = today.AddDays(daysToMon).Date;
+
+        DateTime weekStart;
+        if (week == "current" || !DateTime.TryParse(week, out var parsedDate))
+            weekStart = currentWeekStart;
+        else
+            weekStart = parsedDate.Date.AddDays(-(((int)parsedDate.DayOfWeek + 6) % 7));
+
+        var weekEnd = weekStart.AddDays(7);
+
+        var availableWeeks = Enumerable.Range(0, 8)
+            .Select(i =>
+            {
+                var ws = currentWeekStart.AddDays(-7 * i);
+                return new BoostWeekOptionDto
+                {
+                    Value = i == 0 ? "current" : ws.ToString("yyyy-MM-dd"),
+                    Label = i == 0 ? "Current Week" : $"Week of {ws:MMM d, yyyy}"
+                };
+            })
+            .ToList();
+
+        int[] eligibleLevelIds = [3, 4];    // Elite=3, Turbo=4
+        var hierarchyFilter    = $"/{memberId}/";
+
+        var rawEnrollments = await (
+            from mp  in _db.MemberProfiles.AsNoTracking()
+            join g   in _db.GenealogyTree.AsNoTracking()            on mp.MemberId           equals g.MemberId
+            join sub in _db.MembershipSubscriptions.AsNoTracking()  on mp.MemberId           equals sub.MemberId
+            join ml  in _db.MembershipLevels.AsNoTracking()         on sub.MembershipLevelId equals ml.Id
+            where mp.EnrollDate >= weekStart
+               && mp.EnrollDate <  weekEnd
+               && eligibleLevelIds.Contains(sub.MembershipLevelId)
+               && g.HierarchyPath.Contains(hierarchyFilter)
+            select new
+            {
+                mp.MemberId,
+                MemberName        = mp.FirstName + " " + mp.LastName,
+                mp.Email,
+                mp.EnrollDate,
+                g.HierarchyPath,
+                sub.MembershipLevelId,
+                sub.SubscriptionStatus,
+                sub.RenewalDate,
+                MembershipType    = ml.Name
+            }
+        ).ToListAsync(ct);
+
+        // Deduplicate per member: prefer Active subscription, then most recent enrollment date.
+        var deduped = rawEnrollments
+            .GroupBy(m => m.MemberId)
+            .Select(g => g.OrderByDescending(m => m.SubscriptionStatus == MembershipStatus.Active ? 1 : 0)
+                          .ThenByDescending(m => m.EnrollDate)
+                          .First())
+            .OrderBy(m => m.EnrollDate)
+            .ToList();
+
+        // Resolve OrderNo and qualification points per enrolled member.
+        var enrolledMemberIds = deduped.Select(m => m.MemberId).ToList();
+
+        // OrderNo: any completed order — does NOT require products to be present
+        var orderNoData = enrolledMemberIds.Count > 0
+            ? await _db.Orders.AsNoTracking()
+                .Where(o => enrolledMemberIds.Contains(o.MemberId)
+                         && o.Status == Domain.Entities.Orders.OrderStatus.Completed)
+                .Select(o => new { o.MemberId, o.OrderNo, o.CreationDate })
+                .ToListAsync(ct)
+            : new();
+
+        var orderNoMap = orderNoData
+            .GroupBy(x => x.MemberId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderByDescending(x => x.CreationDate).First().OrderNo ?? g.Key);
+
+        // Points: requires order details + products join
+        var pointsData = enrolledMemberIds.Count > 0
+            ? await (
+                from o  in _db.Orders.AsNoTracking()
+                join od in _db.OrderDetails.AsNoTracking() on o.Id equals od.OrderId
+                join p  in _db.Products.AsNoTracking()     on od.ProductId equals p.Id
+                where enrolledMemberIds.Contains(o.MemberId)
+                   && o.Status == Domain.Entities.Orders.OrderStatus.Completed
+                select new { o.MemberId, Points = od.Quantity * p.QualificationPoins }
+              ).ToListAsync(ct)
+            : new();
+
+        var pointsMap = pointsData
+            .GroupBy(x => x.MemberId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Sum(x => x.Points));
+
+        // Derive leg MemberId: first path segment after /{memberId}/ in hierarchy path.
+        static string GetLegMemberId(string path, string filter)
+        {
+            var idx = path.IndexOf(filter, StringComparison.Ordinal);
+            if (idx < 0) return string.Empty;
+            var after = path[(idx + filter.Length)..];
+            var slash = after.IndexOf('/');
+            return slash > 0 ? after[..slash] : after.TrimEnd('/');
+        }
+
+        // Resolve leg MemberIds → full names.
+        var legMemberIds = deduped
+            .Select(m => GetLegMemberId(m.HierarchyPath, hierarchyFilter))
+            .Where(id => !string.IsNullOrEmpty(id))
+            .Distinct()
+            .ToList();
+
+        var legNameMap = await _db.MemberProfiles
+            .AsNoTracking()
+            .Where(mp => legMemberIds.Contains(mp.MemberId))
+            .Select(mp => new { mp.MemberId, FullName = mp.FirstName + " " + mp.LastName })
+            .ToDictionaryAsync(x => x.MemberId, x => x.FullName.Trim(), ct);
+
+        var enrollmentItems = deduped
+            .Select(m =>
+            {
+                var legId = GetLegMemberId(m.HierarchyPath, hierarchyFilter);
+                return new BoostEnrollmentItemDto
+                {
+                    MemberId           = m.MemberId,
+                    OrderNo            = orderNoMap.TryGetValue(m.MemberId, out var no) ? no : m.MemberId,
+                    MemberName         = m.MemberName.Trim(),
+                    MembershipType     = m.MembershipType,
+                    Email              = m.Email ?? string.Empty,
+                    LegName            = legNameMap.TryGetValue(legId, out var name) ? name : legId,
+                    EnrollmentDate     = m.EnrollDate,
+                    NextRebillingDate  = m.RenewalDate,
+                    IsRebillingActive  = m.SubscriptionStatus == MembershipStatus.Active,
+                    IsRebillingPending = m.SubscriptionStatus == MembershipStatus.Pending,
+                    Points             = pointsMap.TryGetValue(m.MemberId, out var pts) ? pts : 0
+                };
+            })
+            .ToList();
+
+        var response = new BoostEnrollmentResponseDto
+        {
+            AvailableWeeks      = availableWeeks,
+            GoldEnrollments     = enrollmentItems,
+            PlatinumEnrollments = enrollmentItems
+        };
+
+        return Ok(ApiResponse<BoostEnrollmentResponseDto>.Ok(response));
     }
 
     /// <summary>GET /boost-bonus/summary — total members in downline (count).</summary>
@@ -764,6 +999,191 @@ public class AdminMemberCommissionsController : ControllerBase
         {
             Items = items, TotalCount = totalCount, Page = page, PageSize = pageSize
         }));
+    }
+
+    /// <summary>GET /car-bonus/stats — current-month progress for a member.</summary>
+    [HttpGet("car-bonus/stats")]
+    public async Task<IActionResult> GetCarBonusStats(string memberId, CancellationToken ct = default)
+    {
+        var today  = DateTime.UtcNow;
+        var label  = today.ToString("MMMM");
+
+        var carBonusType = await _db.CommissionTypes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Name.Contains("Car") && t.IsActive, ct);
+
+        var teamPointsTarget = carBonusType?.TeamPoints ?? 1000;
+        var personalTarget   = carBonusType?.PersonalPoints ?? 6;
+
+        var hierarchyFilter = $"/{memberId}/";
+
+        var downlineIds = await _db.GenealogyTree
+            .AsNoTracking()
+            .Where(g => g.HierarchyPath.Contains(hierarchyFilter) && g.MemberId != memberId)
+            .Select(g => g.MemberId)
+            .ToListAsync(ct);
+
+        var activeSubs = await _db.MembershipSubscriptions
+            .AsNoTracking()
+            .Where(s => downlineIds.Contains(s.MemberId)
+                     && s.SubscriptionStatus == MembershipStatus.Active
+                     && !s.IsDeleted)
+            .Select(s => new { s.MemberId, s.MembershipLevelId, s.CreationDate })
+            .ToListAsync(ct);
+
+        var levelPoints = new Dictionary<int, int> { [2] = 1, [3] = 6, [4] = 6 };
+
+        var subsByMember = activeSubs
+            .GroupBy(s => s.MemberId)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(s => s.CreationDate).First().MembershipLevelId);
+
+        var totalPoints   = subsByMember.Values.Sum(lid => levelPoints.TryGetValue(lid, out var p) ? p : 0);
+        var eligiblePoints = Math.Min(totalPoints, (int)teamPointsTarget);
+        var pct           = teamPointsTarget > 0 ? (int)Math.Min(100, Math.Round(totalPoints / (double)teamPointsTarget * 100)) : 0;
+
+        return Ok(ApiResponse<CarBonusStatsAdminDto>.Ok(new CarBonusStatsAdminDto
+        {
+            TotalPoints      = totalPoints,
+            EligiblePoints   = eligiblePoints,
+            ProgressPercent  = pct,
+            TeamPointsTarget = (int)teamPointsTarget,
+            MonthLabel       = label
+        }));
+    }
+
+    /// <summary>GET /car-bonus/ambassadors — downline ambassador breakdown for a member.</summary>
+    [HttpGet("car-bonus/ambassadors")]
+    public async Task<IActionResult> GetCarBonusAmbassadors(string memberId, CancellationToken ct = default)
+    {
+        var hierarchyFilter = $"/{memberId}/";
+        var levelPoints     = new Dictionary<int, int> { [2] = 1, [3] = 6, [4] = 6 };
+
+        var downlineIds = await _db.GenealogyTree
+            .AsNoTracking()
+            .Where(g => g.HierarchyPath.Contains(hierarchyFilter) && g.MemberId != memberId)
+            .Select(g => g.MemberId)
+            .ToListAsync(ct);
+
+        if (downlineIds.Count == 0)
+            return Ok(ApiResponse<List<CarBonusAmbassadorAdminDto>>.Ok(new List<CarBonusAmbassadorAdminDto>()));
+
+        var profiles = await _db.MemberProfiles
+            .AsNoTracking()
+            .Where(mp => downlineIds.Contains(mp.MemberId))
+            .Select(mp => new { mp.MemberId, mp.FirstName, mp.LastName })
+            .ToListAsync(ct);
+
+        var activeSubs = await _db.MembershipSubscriptions
+            .AsNoTracking()
+            .Where(s => downlineIds.Contains(s.MemberId)
+                     && s.SubscriptionStatus == MembershipStatus.Active
+                     && !s.IsDeleted)
+            .Select(s => new { s.MemberId, s.MembershipLevelId, s.CreationDate })
+            .ToListAsync(ct);
+
+        var subsByMember = activeSubs
+            .GroupBy(s => s.MemberId)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(s => s.CreationDate).First().MembershipLevelId);
+
+        var result = profiles
+            .Select(mp =>
+            {
+                var levelId = subsByMember.TryGetValue(mp.MemberId, out var lid) ? lid : 0;
+                var pts     = levelPoints.TryGetValue(levelId, out var p) ? p : 0;
+                return new CarBonusAmbassadorAdminDto
+                {
+                    MemberId       = mp.MemberId,
+                    AmbassadorName = $"{mp.FirstName} {mp.LastName}".Trim(),
+                    TotalPoints    = pts,
+                    EligiblePoints = pts
+                };
+            })
+            .OrderByDescending(x => x.TotalPoints)
+            .ThenBy(x => x.AmbassadorName)
+            .ToList();
+
+        return Ok(ApiResponse<List<CarBonusAmbassadorAdminDto>>.Ok(result));
+    }
+
+    /// <summary>GET /car-bonus/ambassadors/{branchMemberId}/branch — branch member breakdown.</summary>
+    [HttpGet("car-bonus/ambassadors/{branchMemberId}/branch")]
+    public async Task<IActionResult> GetCarBonusBranch(
+        string branchMemberId,
+        CancellationToken ct = default)
+    {
+        var levelPoints     = new Dictionary<int, int> { [2] = 1, [3] = 6, [4] = 6 };
+        var hierarchyFilter = $"/{branchMemberId}/";
+
+        // Include the branch ambassador themselves + all their downline
+        var memberIds = await _db.GenealogyTree
+            .AsNoTracking()
+            .Where(g => g.MemberId == branchMemberId
+                     || g.HierarchyPath.Contains(hierarchyFilter))
+            .Select(g => g.MemberId)
+            .ToListAsync(ct);
+
+        if (memberIds.Count == 0)
+            return Ok(ApiResponse<CarBonusBranchAdminDto>.Ok(new CarBonusBranchAdminDto()));
+
+        var activeSubs = await _db.MembershipSubscriptions
+            .AsNoTracking()
+            .Where(s => memberIds.Contains(s.MemberId)
+                     && s.SubscriptionStatus == MembershipStatus.Active
+                     && !s.IsDeleted)
+            .Select(s => new { s.MemberId, s.MembershipLevelId, s.EndDate, s.LastOrderId, s.CreationDate })
+            .ToListAsync(ct);
+
+        var subsByMember = activeSubs
+            .GroupBy(s => s.MemberId)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(s => s.CreationDate).First());
+
+        var levelIds = subsByMember.Values.Select(s => s.MembershipLevelId).Distinct().ToList();
+        var levels   = await _db.MembershipLevels
+            .AsNoTracking()
+            .Where(l => levelIds.Contains(l.Id))
+            .Select(l => new { l.Id, l.Name })
+            .ToDictionaryAsync(l => l.Id, l => l.Name, ct);
+
+        var orderIds = subsByMember.Values
+            .Where(s => s.LastOrderId != null)
+            .Select(s => s.LastOrderId!)
+            .Distinct()
+            .ToList();
+
+        var orderNos = await _db.Orders
+            .AsNoTracking()
+            .Where(o => orderIds.Contains(o.Id))
+            .Select(o => new { o.Id, o.OrderNo })
+            .ToDictionaryAsync(o => o.Id, o => o.OrderNo ?? string.Empty, ct);
+
+        var profiles = await _db.MemberProfiles
+            .AsNoTracking()
+            .Where(mp => memberIds.Contains(mp.MemberId))
+            .Select(mp => new { mp.MemberId, mp.FirstName, mp.LastName })
+            .ToListAsync(ct);
+
+        var result = profiles
+            .Select(mp =>
+            {
+                var sub       = subsByMember.TryGetValue(mp.MemberId, out var s) ? s : null;
+                var levelId   = sub?.MembershipLevelId ?? 0;
+                var pts       = levelPoints.TryGetValue(levelId, out var p) ? p : 0;
+                var levelName = levelId > 0 && levels.TryGetValue(levelId, out var ln) ? ln : "—";
+                var orderNo   = sub?.LastOrderId != null && orderNos.TryGetValue(sub.LastOrderId, out var on) ? on : "—";
+                return new CarBonusBranchMemberAdminDto
+                {
+                    OrderNo         = orderNo,
+                    FullName        = $"{mp.FirstName} {mp.LastName}".Trim(),
+                    MembershipLevel = levelName,
+                    ExpirationDate  = sub?.EndDate,
+                    Points          = pts
+                };
+            })
+            .OrderByDescending(x => x.Points)
+            .ThenBy(x => x.FullName)
+            .ToList();
+
+        return Ok(ApiResponse<CarBonusBranchAdminDto>.Ok(new CarBonusBranchAdminDto { Members = result }));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -923,7 +1343,7 @@ public class AdminMemberCommissionsController : ControllerBase
         var notes = $"{m1.FirstName} {m1.LastName} ({m1.MemberId}) — {m2.FirstName} {m2.LastName} ({m2.MemberId})";
 
         // Pay half now; the remaining half fires on rebilling
-        var amount = (commType.FixedAmount ?? 0m) / 2m;
+        var amount = (commType.ActiveAmount ?? 0m) / 2m;
 
         var sourceMemberId = m2.MemberId;
         // When force=true we may be re-inserting after cancelling the original — use a unique synthetic ID
@@ -1084,13 +1504,17 @@ public class AdminMemberCommissionsController : ControllerBase
 
     public class BoostWeekStatsDto
     {
-        public string  WeekLabel      { get; set; } = string.Empty;
-        public int     GoldCount      { get; set; }
-        public int     GoldTarget     { get; set; }
-        public int     PlatinumCount  { get; set; }
-        public int     PlatinumTarget { get; set; }
-        public decimal GoldAmount     { get; set; }
-        public decimal PlatinumAmount { get; set; }
+        public string  WeekLabel            { get; set; } = string.Empty;
+        public int     GoldCount            { get; set; }
+        public int     GoldTarget           { get; set; }
+        public int     PlatinumCount        { get; set; }
+        public int     PlatinumTarget       { get; set; }
+        public int     GoldPoints           { get; set; }
+        public int     GoldPointsTarget     { get; set; }
+        public int     PlatinumPoints       { get; set; }
+        public int     PlatinumPointsTarget { get; set; }
+        public decimal GoldAmount           { get; set; }
+        public decimal PlatinumAmount       { get; set; }
     }
 
     public class BoostMemberSummaryDto
@@ -1100,11 +1524,70 @@ public class AdminMemberCommissionsController : ControllerBase
         public int InactiveRebilling { get; set; }
     }
 
+    public class BoostWeekOptionDto
+    {
+        public string Value { get; set; } = string.Empty;
+        public string Label { get; set; } = string.Empty;
+    }
+
+    public class BoostEnrollmentResponseDto
+    {
+        public List<BoostWeekOptionDto>     AvailableWeeks      { get; set; } = new();
+        public List<BoostEnrollmentItemDto> GoldEnrollments     { get; set; } = new();
+        public List<BoostEnrollmentItemDto> PlatinumEnrollments { get; set; } = new();
+    }
+
+    public class BoostEnrollmentItemDto
+    {
+        public string    MemberId           { get; set; } = string.Empty;
+        public string    OrderNo            { get; set; } = string.Empty;
+        public string    MemberName         { get; set; } = string.Empty;
+        public string    MembershipType     { get; set; } = string.Empty;
+        public string    Email              { get; set; } = string.Empty;
+        public string    LegName            { get; set; } = string.Empty;
+        public DateTime  EnrollmentDate     { get; set; }
+        public DateTime? NextRebillingDate  { get; set; }
+        public bool      IsRebillingActive  { get; set; }
+        public bool      IsRebillingPending { get; set; }
+        public int       Points             { get; set; }
+    }
+
     public class DualResidualDto
     {
         public DateTime EarnedDate     { get; set; }
         public decimal  Amount         { get; set; }
         public string   Status         { get; set; } = string.Empty;
         public int      EligiblePoints { get; set; }
+    }
+
+    public class CarBonusStatsAdminDto
+    {
+        public int    TotalPoints      { get; set; }
+        public int    EligiblePoints   { get; set; }
+        public int    ProgressPercent  { get; set; }
+        public int    TeamPointsTarget { get; set; }
+        public string MonthLabel       { get; set; } = string.Empty;
+    }
+
+    public class CarBonusAmbassadorAdminDto
+    {
+        public string MemberId       { get; set; } = string.Empty;
+        public string AmbassadorName { get; set; } = string.Empty;
+        public int    TotalPoints    { get; set; }
+        public int    EligiblePoints { get; set; }
+    }
+
+    public class CarBonusBranchAdminDto
+    {
+        public List<CarBonusBranchMemberAdminDto> Members { get; set; } = new();
+    }
+
+    public class CarBonusBranchMemberAdminDto
+    {
+        public string    OrderNo         { get; set; } = string.Empty;
+        public string    FullName        { get; set; } = string.Empty;
+        public string    MembershipLevel { get; set; } = string.Empty;
+        public DateTime? ExpirationDate  { get; set; }
+        public int       Points          { get; set; }
     }
 }

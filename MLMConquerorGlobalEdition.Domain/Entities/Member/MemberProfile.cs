@@ -27,6 +27,9 @@ public class MemberProfile : AuditChangesStringKey, IAuditable
     public string? Address { get; set; }
     public string? ZipCode { get; set; }
 
+    // Tax identity — stored encrypted; required for US residents
+    public string? SsnEncrypted { get; set; }
+
     // Business identity
     public string? BusinessName { get; set; }
     public bool ShowBusinessName { get; set; }

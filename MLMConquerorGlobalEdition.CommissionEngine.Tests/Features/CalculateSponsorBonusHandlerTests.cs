@@ -1,4 +1,4 @@
-using MLMConquerorGlobalEdition.CommissionEngine.Features.CalculateSponsorBonus;
+﻿using MLMConquerorGlobalEdition.CommissionEngine.Features.CalculateSponsorBonus;
 using MLMConquerorGlobalEdition.CommissionEngine.Services;
 using MLMConquerorGlobalEdition.CommissionEngine.Tests.Helpers;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
@@ -54,14 +54,14 @@ public class CalculateSponsorBonusHandlerTests
     };
 
     private static CommissionType BuildSponsorBonusType(int id = 10, int levelNo = 2,
-        decimal? fixedAmount = 20) => new()
+        decimal? Amount = 20) => new()
     {
         Id              = id,
         Name            = "SponsorBonus-VIP",
         IsActive        = true,
         IsSponsorBonus  = true,
         LevelNo         = levelNo,
-        FixedAmount     = fixedAmount,
+        Amount     = Amount,
         Percentage      = 10,
         PaymentDelayDays = 0,
         CreatedBy       = "seed",
@@ -147,7 +147,7 @@ public class CalculateSponsorBonusHandlerTests
         await db.Orders.AddAsync(BuildOrder("ORD-003", "AMB-003"));
         await db.MemberProfiles.AddAsync(BuildMember("AMB-003", sponsor: "AMB-SPONSOR"));
         await db.Products.AddAsync(BuildProduct("P-VIP", membershipLevelId: 2));
-        await db.CommissionTypes.AddAsync(BuildSponsorBonusType(id: 10, levelNo: 2, fixedAmount: 20));
+        await db.CommissionTypes.AddAsync(BuildSponsorBonusType(id: 10, levelNo: 2, Amount: 20));
         await db.OrderDetails.AddAsync(new OrderDetail
         {
             OrderId      = "ORD-003",
@@ -180,7 +180,7 @@ public class CalculateSponsorBonusHandlerTests
         await db.Orders.AddAsync(BuildOrder("ORD-004", "AMB-004"));
         await db.MemberProfiles.AddAsync(BuildMember("AMB-004", sponsor: "AMB-SPONSOR"));
         await db.Products.AddAsync(BuildProduct("P-VIP", membershipLevelId: 2));
-        await db.CommissionTypes.AddAsync(BuildSponsorBonusType(id: 10, levelNo: 2, fixedAmount: 20));
+        await db.CommissionTypes.AddAsync(BuildSponsorBonusType(id: 10, levelNo: 2, Amount: 20));
         await db.OrderDetails.AddAsync(new OrderDetail
         {
             OrderId      = "ORD-004",
@@ -230,3 +230,4 @@ public class CalculateSponsorBonusHandlerTests
         result.ErrorCode.Should().Be("NO_SPONSOR_BONUS_TYPE");
     }
 }
+

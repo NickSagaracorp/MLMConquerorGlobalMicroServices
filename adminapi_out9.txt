@@ -1,0 +1,1019 @@
+Using launch settings from C:\Users\sagar\source\repos\ClaudeRepository\MLMConquerorGlobalEdition.AdminAPI\Properties\launchSettings.json...
+Building...
+C:\Users\sagar\source\repos\ClaudeRepository\MLMConquerorGlobalEdition.AdminAPI\MLMConquerorGlobalEdition.AdminAPI.csproj : warning NU1902: Package 'HtmlSanitizer' 8.1.870 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-j92c-7v7g-gj3f
+C:\Users\sagar\source\repos\ClaudeRepository\MLMConquerorGlobalEdition.AdminAPI\MLMConquerorGlobalEdition.AdminAPI.csproj : warning NU1902: Package 'HtmlSanitizer' 8.1.870 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-j92c-7v7g-gj3f
+C:\Users\sagar\source\repos\ClaudeRepository\MLMConquerorGlobalEdition.AdminAPI\Controllers\AdminMemberEnrollmentController.cs(584,47): warning CS8604: Possible null reference argument for parameter 'item' in 'bool List<string>.Contains(string item)'. [C:\Users\sagar\source\repos\ClaudeRepository\MLMConquerorGlobalEdition.AdminAPI\MLMConquerorGlobalEdition.AdminAPI.csproj]
+C:\Users\sagar\source\repos\ClaudeRepository\MLMConquerorGlobalEdition.AdminAPI\Controllers\AdminMemberEnrollmentController.cs(582,13): warning CS8620: Argument of type 'List<string?>' cannot be used for parameter 'collection' of type 'IEnumerable<string>' in 'HashSet<string>.HashSet(IEnumerable<string> collection)' due to differences in the nullability of reference types. [C:\Users\sagar\source\repos\ClaudeRepository\MLMConquerorGlobalEdition.AdminAPI\MLMConquerorGlobalEdition.AdminAPI.csproj]
+[2026-04-21 01:21:43.696 WRN] Microsoft.EntityFrameworkCore.Model.Validation: Entity 'Product' has a global query filter defined and is the required end of a relationship with the entity 'CountryProduct'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+[2026-04-21 01:21:43.702 WRN] Microsoft.EntityFrameworkCore.Model.Validation: Entity 'Product' has a global query filter defined and is the required end of a relationship with the entity 'ProductCommission'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+[2026-04-21 01:21:43.703 WRN] Microsoft.EntityFrameworkCore.Model.Validation: Entity 'Product' has a global query filter defined and is the required end of a relationship with the entity 'ProductCommissionPromo'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+[2026-04-21 01:21:43.703 WRN] Microsoft.EntityFrameworkCore.Model.Validation: Entity 'KnowledgeBaseArticle' has a global query filter defined and is the required end of a relationship with the entity 'KbArticleVersion'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+[2026-04-21 01:21:43.703 WRN] Microsoft.EntityFrameworkCore.Model.Validation: Entity 'Ticket' has a global query filter defined and is the required end of a relationship with the entity 'SlaBreach'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+[2026-04-21 01:21:43.703 WRN] Microsoft.EntityFrameworkCore.Model.Validation: Entity 'Ticket' has a global query filter defined and is the required end of a relationship with the entity 'TicketComment'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+[2026-04-21 01:21:43.703 WRN] Microsoft.EntityFrameworkCore.Model.Validation: Entity 'Ticket' has a global query filter defined and is the required end of a relationship with the entity 'TicketHistory'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+[2026-04-21 01:21:43.882 WRN] Microsoft.EntityFrameworkCore.Model.Validation: The foreign key property 'MemberCommissionCountDown.MemberId1' was created in shadow state because a conflicting property with the simple name 'MemberId' exists in the entity type, but is either not mapped, is already used for another relationship, or is incompatible with the associated primary key type. See https://aka.ms/efcore-relationships for information on mapping relationships in EF Core.
+[2026-04-21 01:21:43.882 WRN] Microsoft.EntityFrameworkCore.Model.Validation: The foreign key property 'MemberCommissionCountDownHistory.MemberId1' was created in shadow state because a conflicting property with the simple name 'MemberId' exists in the entity type, but is either not mapped, is already used for another relationship, or is incompatible with the associated primary key type. See https://aka.ms/efcore-relationships for information on mapping relationships in EF Core.
+[2026-04-21 01:21:43.882 WRN] Microsoft.EntityFrameworkCore.Model.Validation: The foreign key property 'MembershipSubscription.LastOrderId1' was created in shadow state because a conflicting property with the simple name 'LastOrderId' exists in the entity type, but is either not mapped, is already used for another relationship, or is incompatible with the associated primary key type. See https://aka.ms/efcore-relationships for information on mapping relationships in EF Core.
+[2026-04-21 01:21:43.882 WRN] Microsoft.EntityFrameworkCore.Model.Validation: The foreign key property 'ProductCommissionPromo.CorporatePromoId1' was created in shadow state because a conflicting property with the simple name 'CorporatePromoId' exists in the entity type, but is either not mapped, is already used for another relationship, or is incompatible with the associated primary key type. See https://aka.ms/efcore-relationships for information on mapping relationships in EF Core.
+[2026-04-21 01:21:43.934 WRN] Microsoft.EntityFrameworkCore.Model.Validation: No store type was specified for the decimal property 'PointsEarned' on entity type 'LoyaltyPoints'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+[2026-04-21 01:21:43.934 WRN] Microsoft.EntityFrameworkCore.Model.Validation: No store type was specified for the decimal property 'CurrentMonthIncomeGrowth' on entity type 'MemberStatisticEntity'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+[2026-04-21 01:21:43.934 WRN] Microsoft.EntityFrameworkCore.Model.Validation: No store type was specified for the decimal property 'CurrentWeekIncomeGrowth' on entity type 'MemberStatisticEntity'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+[2026-04-21 01:21:43.934 WRN] Microsoft.EntityFrameworkCore.Model.Validation: No store type was specified for the decimal property 'CurrentYearIncomeGrowth' on entity type 'MemberStatisticEntity'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+[2026-04-21 01:21:43.934 WRN] Microsoft.EntityFrameworkCore.Model.Validation: No store type was specified for the decimal property 'UnitPrice' on entity type 'OrderDetail'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+[2026-04-21 01:21:43.934 WRN] Microsoft.EntityFrameworkCore.Model.Validation: No store type was specified for the decimal property 'TotalAmount' on entity type 'Orders'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+[2026-04-21 01:21:43.935 WRN] Microsoft.EntityFrameworkCore.Model.Validation: No store type was specified for the decimal property 'Amount' on entity type 'PaymentHistory'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+[2026-04-21 01:21:44.904 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (36ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-21 01:21:44.920 INF] Microsoft.EntityFrameworkCore.Migrations: Acquiring an exclusive lock for migration application. See https://aka.ms/efcore-docs-migrations-lock for more information if this takes too long.
+[2026-04-21 01:21:44.947 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (24ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+DECLARE @result int;
+EXEC @result = sp_getapplock @Resource = '__EFMigrationsLock', @LockOwner = 'Session', @LockMode = 'Exclusive';
+SELECT @result
+[2026-04-21 01:21:45.024 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+IF OBJECT_ID(N'[__EFMigrationsHistory]') IS NULL
+BEGIN
+    CREATE TABLE [__EFMigrationsHistory] (
+        [MigrationId] nvarchar(150) NOT NULL,
+        [ProductVersion] nvarchar(32) NOT NULL,
+        CONSTRAINT [PK___EFMigrationsHistory] PRIMARY KEY ([MigrationId])
+    );
+END;
+[2026-04-21 01:21:45.048 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT 1
+[2026-04-21 01:21:45.050 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+[2026-04-21 01:21:45.057 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [MigrationId], [ProductVersion]
+FROM [__EFMigrationsHistory]
+ORDER BY [MigrationId];
+[2026-04-21 01:21:45.071 INF] Microsoft.EntityFrameworkCore.Migrations: No migrations were applied. The database is already up to date.
+[2026-04-21 01:21:45.077 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+DECLARE @result int;
+EXEC @result = sp_releaseapplock @Resource = '__EFMigrationsLock', @LockOwner = 'Session';
+SELECT @result
+[2026-04-21 01:21:45.364 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT CASE
+    WHEN EXISTS (
+        SELECT 1
+        FROM [CompanyInfo] AS [c]) THEN CAST(1 AS bit)
+    ELSE CAST(0 AS bit)
+END
+[2026-04-21 01:21:45.410 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Iso2]
+FROM [Countries] AS [c]
+[2026-04-21 01:21:45.495 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Id], [c].[CreatedBy], [c].[CreationDate], [c].[DefaultLanguageCode], [c].[FlagEmoji], [c].[HasStates], [c].[IsActive], [c].[Iso2], [c].[Iso3], [c].[LastUpdateBy], [c].[LastUpdateDate], [c].[NameEn], [c].[NameNative], [c].[PhoneCode], [c].[RegionId], [c].[SortOrder]
+FROM [Countries] AS [c]
+WHERE [c].[Iso2] IN (N'ZA', N'SR', N'KE', N'BW', N'DZ', N'AO', N'BJ', N'BF', N'BI', N'CM', N'TD', N'KM', N'CG', N'CI', N'DJ', N'CD', N'EG', N'GQ', N'GA', N'GH', N'GN', N'GW', N'MG', N'ML', N'MR', N'MU', N'MA', N'NA', N'NG', N'RW', N'SN', N'SL', N'TG', N'TN', N'UG', N'ZM', N'ZW', N'TZ', N'CV', N'SC', N'DM', N'GY', N'LC', N'PR', N'NE', N'TT', N'BZ', N'PH') AND [c].[IsActive] = CAST(0 AS bit)
+[2026-04-21 01:21:45.523 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (10ms) [Parameters=[@vipId='?' (Size = 450), @eliteId='?' (Size = 450), @turboId='?' (Size = 450), @subscriptionId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT [p].[Id]
+FROM [Products] AS [p]
+WHERE [p].[IsDeleted] = CAST(0 AS bit) AND [p].[Id] IN (@vipId, @eliteId, @turboId, @subscriptionId) AND [p].[IsDeleted] = CAST(0 AS bit)
+[2026-04-21 01:21:45.532 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Id], [c].[Iso2]
+FROM [Countries] AS [c]
+WHERE [c].[IsActive] = CAST(1 AS bit)
+[2026-04-21 01:21:45.550 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT DISTINCT [c].[CountryId]
+FROM [CountryProducts] AS [c]
+[2026-04-21 01:21:45.554 INF] Program: [CountryProductDefaultSeeder] All active countries already have mappings.
+[2026-04-21 01:21:45.749 WRN] Microsoft.AspNetCore.StaticFiles.StaticFileMiddleware: The WebRootPath was not found: C:\Users\sagar\source\repos\ClaudeRepository\MLMConquerorGlobalEdition.AdminAPI\wwwroot. Static files may be unavailable.
+[2026-04-21 01:21:45.829 INF] Microsoft.Hosting.Lifetime: Now listening on: https://localhost:7002
+[2026-04-21 01:21:45.829 INF] Microsoft.Hosting.Lifetime: Now listening on: http://localhost:5002
+[2026-04-21 01:21:45.829 INF] Microsoft.Hosting.Lifetime: Application started. Press Ctrl+C to shut down.
+[2026-04-21 01:21:45.829 INF] Microsoft.Hosting.Lifetime: Hosting environment: Development
+[2026-04-21 01:21:45.829 INF] Microsoft.Hosting.Lifetime: Content root path: C:\Users\sagar\source\repos\ClaudeRepository\MLMConquerorGlobalEdition.AdminAPI
+[2026-04-21 01:21:56.236 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@request_MemberId='?' (Size = 20)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(1) [m].[Id], [m].[ActiveMembershipId], [m].[Address], [m].[BinaryNodeId], [m].[BusinessName], [m].[City], [m].[Country], [m].[CreatedBy], [m].[CreationDate], [m].[DateOfBirth], [m].[DeletedAt], [m].[DeletedBy], [m].[Email], [m].[EnrollDate], [m].[EnrollmentNodeId], [m].[FirstName], [m].[IsDeleted], [m].[IsEmailPublic], [m].[IsNamePublic], [m].[IsPhonePublic], [m].[LastName], [m].[LastUpdateBy], [m].[LastUpdateDate], [m].[MemberId], [m].[MemberType], [m].[Phone], [m].[ProfilePhotoUrl], [m].[ReplicateSiteSlug], [m].[RowVersion], [m].[ShowBusinessName], [m].[SponsorMemberId], [m].[SsnEncrypted], [m].[State], [m].[Status], [m].[UserId], [m].[WhatsApp], [m].[ZipCode]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[MemberId] = @request_MemberId
+[2026-04-21 01:21:56.250 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@request_MemberId='?' (Size = 4000)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(1) [m].[Id], [m].[CreatedBy], [m].[CreationDate], [m].[CurrentMonthIncomeGrowth], [m].[CurrentWeekIncomeGrowth], [m].[CurrentYearIncomeGrowth], [m].[DualTeamPoints], [m].[DualTeamPointsGrowth], [m].[DualTeamSize], [m].[DualteamGrowth], [m].[EnrollmentPoints], [m].[EnrollmentTeamGrowth], [m].[EnrollmentTeamPointsGrowth], [m].[EnrollmentTeamSize], [m].[ExternalCustomerPoints], [m].[MemberId], [m].[PersonalPoints], [m].[QualifiedSponsoredExternalCustomers], [m].[QualifiedSponsoredMembers]
+FROM [MemberStatistics] AS [m]
+WHERE [m].[MemberId] = @request_MemberId
+[2026-04-21 01:21:56.272 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@request_MemberId='?' (Size = 4000)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[RankDefinitionId], [r].[Name], [r].[SortOrder], [m].[AchievedAt]
+FROM [MemberRankHistories] AS [m]
+INNER JOIN [RankDefinitions] AS [r] ON [m].[RankDefinitionId] = [r].[Id]
+WHERE [m].[MemberId] = @request_MemberId
+[2026-04-21 01:21:56.397 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [r].[Id], [r].[CertificateTemplateUrl], [r].[CreatedBy], [r].[CreationDate], [r].[Description], [r].[LastUpdateBy], [r].[LastUpdateDate], [r].[Name], [r].[SortOrder], [r].[Status]
+FROM [RankDefinitions] AS [r]
+ORDER BY [r].[SortOrder]
+[2026-04-21 01:22:00.356 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit)
+[2026-04-21 01:22:00.377 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@p='?' (DbType = Int32), @p1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[MemberId], [m].[FirstName], [m].[LastName], [m].[Phone], [m].[Country], CASE [m].[Status]
+    WHEN 1 THEN N'Active'
+    WHEN 2 THEN N'Inactive'
+    WHEN 3 THEN N'Suspended'
+    WHEN 4 THEN N'Terminated'
+    WHEN 5 THEN N'Pending'
+    ELSE CAST([m].[Status] AS nvarchar(max))
+END AS [Status], CASE [m].[MemberType]
+    WHEN 0 THEN N'Ambassador'
+    WHEN 1 THEN N'ExternalMember'
+    ELSE CAST([m].[MemberType] AS nvarchar(max))
+END AS [MemberType], [m].[EnrollDate], [m].[SponsorMemberId], [m].[CreationDate]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit)
+ORDER BY [m].[CreationDate] DESC
+OFFSET @p ROWS FETCH NEXT @p1 ROWS ONLY
+[2026-04-21 01:22:03.198 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@memberId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Amount], [c].[Status], [c].[EarnedDate]
+FROM [CommissionEarnings] AS [c]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId
+[2026-04-21 01:22:03.230 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@memberId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT DATEPART(year, [c].[EarnedDate]) AS [Year], DATEPART(month, [c].[EarnedDate]) AS [Month], [c].[Amount]
+FROM [CommissionEarnings] AS [c]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = 2
+[2026-04-21 01:22:03.235 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+[2026-04-21 01:22:03.246 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+[2026-04-21 01:22:03.255 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32), @p='?' (DbType = Int32), @p3='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Id], [c0].[Name] AS [CommissionTypeName], [c1].[Name] AS [CategoryName], [c].[Amount], CASE [c].[Status]
+    WHEN 1 THEN N'Pending'
+    WHEN 2 THEN N'Paid'
+    WHEN 3 THEN N'Cancelled'
+    ELSE CAST([c].[Status] AS nvarchar(max))
+END AS [Status], [c].[EarnedDate], [c].[PaymentDate]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+ORDER BY [c].[EarnedDate] DESC
+OFFSET @p ROWS FETCH NEXT @p3 ROWS ONLY
+[2026-04-21 01:22:03.255 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32), @p='?' (DbType = Int32), @p3='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Id], [c0].[Name] AS [CommissionTypeName], [c1].[Name] AS [CategoryName], [c].[Amount], CASE [c].[Status]
+    WHEN 1 THEN N'Pending'
+    WHEN 2 THEN N'Paid'
+    WHEN 3 THEN N'Cancelled'
+    ELSE CAST([c].[Status] AS nvarchar(max))
+END AS [Status], [c].[EarnedDate], [c].[PaymentDate]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+ORDER BY [c].[EarnedDate] DESC
+OFFSET @p ROWS FETCH NEXT @p3 ROWS ONLY
+[2026-04-21 01:22:05.776 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@Format_contains='?' (Size = 2000), @memberId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [GenealogyTree] AS [g]
+WHERE [g].[IsDeleted] = CAST(0 AS bit) AND [g].[HierarchyPath] LIKE @Format_contains ESCAPE N'\' AND [g].[MemberId] <> @memberId
+[2026-04-21 01:22:05.778 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Id], [c].[Amount], [c].[AmountPromo], [c].[CommissionCategoryId], [c].[CreatedBy], [c].[CreationDate], [c].[Cummulative], [c].[CurrentRank], [c].[DaysAfterJoining], [c].[Description], [c].[EnrollmentTeam], [c].[ExternalMembers], [c].[IsActive], [c].[IsEnrollmentBased], [c].[IsPaidOnRenewal], [c].[IsPaidOnSignup], [c].[IsRealTime], [c].[IsSponsorBonus], [c].[LastUpdateBy], [c].[LastUpdateDate], [c].[LevelNo], [c].[LifeTimeRank], [c].[MaxEnrollmentTeamPointsPerBranch], [c].[MaxTeamPointsPerBranch], [c].[MembersRebill], [c].[Name], [c].[NewMembers], [c].[PaymentDelayDays], [c].[Percentage], [c].[PersonalPoints], [c].[ResidualBased], [c].[ResidualOverCommissionType], [c].[ResidualPercentage], [c].[ReverseId], [c].[SponsoredMembers], [c].[TeamPoints], [c].[TriggerOrder]
+FROM [CommissionTypes] AS [c]
+WHERE [c].[IsActive] = CAST(1 AS bit) AND [c].[IsPaidOnSignup] = CAST(0 AS bit) AND [c].[ResidualBased] = CAST(0 AS bit) AND [c].[IsSponsorBonus] = CAST(0 AS bit) AND [c].[TriggerOrder] > 0
+ORDER BY [c].[LifeTimeRank]
+[2026-04-21 01:22:05.786 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (3ms) [Parameters=[@memberId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [CommissionEarnings] AS [c]
+INNER JOIN (
+    SELECT [c0].[Id]
+    FROM [CommissionTypes] AS [c0]
+    WHERE [c0].[CommissionCategoryId] = 4 AND [c0].[Name] LIKE N'%Boost%'
+) AS [c1] ON [c].[CommissionTypeId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId
+[2026-04-21 01:22:05.802 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@memberId='?' (Size = 450), @p='?' (DbType = Int32), @p2='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [c1].[Name] AS [CommissionTypeName], [c].[Amount], CASE [c].[Status]
+    WHEN 1 THEN N'Pending'
+    WHEN 2 THEN N'Paid'
+    WHEN 3 THEN N'Cancelled'
+    ELSE CAST([c].[Status] AS nvarchar(max))
+END AS [Status], [c].[EarnedDate], [c].[PaymentDate]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN (
+    SELECT [c0].[Id], [c0].[Name]
+    FROM [CommissionTypes] AS [c0]
+    WHERE [c0].[CommissionCategoryId] = 4 AND [c0].[Name] LIKE N'%Boost%'
+) AS [c1] ON [c].[CommissionTypeId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId
+ORDER BY [c].[EarnedDate] DESC
+OFFSET @p ROWS FETCH NEXT @p2 ROWS ONLY
+[2026-04-21 01:22:05.817 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (3ms) [Parameters=[@weekStart='?' (DbType = DateTime2), @weekEnd='?' (DbType = DateTime2), @eligibleLevelIds1='?' (DbType = Int32), @eligibleLevelIds2='?' (DbType = Int32), @hierarchyFilter_contains='?' (Size = 2000)], CommandType='Text', CommandTimeout='30']
+SELECT DISTINCT [m].[MemberId], [g0].[HierarchyPath]
+FROM [MemberProfiles] AS [m]
+INNER JOIN (
+    SELECT [g].[HierarchyPath], [g].[MemberId]
+    FROM [GenealogyTree] AS [g]
+    WHERE [g].[IsDeleted] = CAST(0 AS bit)
+) AS [g0] ON [m].[MemberId] = [g0].[MemberId]
+INNER JOIN [MembershipSubscriptions] AS [m0] ON [m].[MemberId] = [m0].[MemberId]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @weekStart AND [m].[EnrollDate] < @weekEnd AND [m0].[SubscriptionStatus] = 1 AND [m0].[MembershipLevelId] IN (@eligibleLevelIds1, @eligibleLevelIds2) AND [g0].[HierarchyPath] LIKE @hierarchyFilter_contains ESCAPE N'\'
+[2026-04-21 01:22:05.828 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@memberId='?' (Size = 450), @weekStart='?' (DbType = DateTime2), @weekEnd='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT [c1].[Name], [c].[Amount]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN (
+    SELECT [c0].[Id], [c0].[Name]
+    FROM [CommissionTypes] AS [c0]
+    WHERE [c0].[CommissionCategoryId] = 4
+) AS [c1] ON [c].[CommissionTypeId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[EarnedDate] >= @weekStart AND [c].[EarnedDate] < @weekEnd
+[2026-04-21 01:22:05.837 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (23ms) [Parameters=[@weekStart='?' (DbType = DateTime2), @weekEnd='?' (DbType = DateTime2), @eligibleLevelIds1='?' (DbType = Int32), @eligibleLevelIds2='?' (DbType = Int32), @hierarchyFilter_contains='?' (Size = 2000)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[MemberId], [m].[FirstName] + N' ' + [m].[LastName] AS [MemberName], [m].[Email], [m].[EnrollDate], [g0].[HierarchyPath], [m0].[MembershipLevelId], [m0].[SubscriptionStatus], [m0].[RenewalDate], [m1].[Name] AS [MembershipType]
+FROM [MemberProfiles] AS [m]
+INNER JOIN (
+    SELECT [g].[HierarchyPath], [g].[MemberId]
+    FROM [GenealogyTree] AS [g]
+    WHERE [g].[IsDeleted] = CAST(0 AS bit)
+) AS [g0] ON [m].[MemberId] = [g0].[MemberId]
+INNER JOIN [MembershipSubscriptions] AS [m0] ON [m].[MemberId] = [m0].[MemberId]
+INNER JOIN [MembershipLevels] AS [m1] ON [m0].[MembershipLevelId] = [m1].[Id]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @weekStart AND [m].[EnrollDate] < @weekEnd AND [m0].[MembershipLevelId] IN (@eligibleLevelIds1, @eligibleLevelIds2) AND [g0].[HierarchyPath] LIKE @hierarchyFilter_contains ESCAPE N'\'
+[2026-04-21 01:22:05.881 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (9ms) [Parameters=[@enrolledMemberIds1='?' (Size = 4000), @enrolledMemberIds2='?' (Size = 4000), @enrolledMemberIds3='?' (Size = 4000), @enrolledMemberIds4='?' (Size = 4000)], CommandType='Text', CommandTimeout='30']
+SELECT [o].[MemberId], (
+    SELECT TOP(1) [o0].[OrderNo]
+    FROM [Orders] AS [o0]
+    WHERE [o0].[MemberId] IN (@enrolledMemberIds1, @enrolledMemberIds2, @enrolledMemberIds3, @enrolledMemberIds4) AND [o].[MemberId] = [o0].[MemberId]
+    ORDER BY [o0].[CreationDate] DESC) AS [OrderNo]
+FROM [Orders] AS [o]
+WHERE [o].[MemberId] IN (@enrolledMemberIds1, @enrolledMemberIds2, @enrolledMemberIds3, @enrolledMemberIds4)
+GROUP BY [o].[MemberId]
+[2026-04-21 01:22:05.897 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (8ms) [Parameters=[@legMemberIds1='?' (Size = 20), @legMemberIds2='?' (Size = 20), @legMemberIds3='?' (Size = 20), @legMemberIds4='?' (Size = 20)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[MemberId], [m].[FirstName] + N' ' + [m].[LastName] AS [FullName]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[MemberId] IN (@legMemberIds1, @legMemberIds2, @legMemberIds3, @legMemberIds4)
+[2026-04-21 01:22:47.935 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [PaymentHistories] AS [p]
+[2026-04-21 01:22:47.954 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@p='?' (DbType = Int32), @p1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [p].[Id], [p].[MemberId], [p].[OrderId], [p].[Amount], [p].[GatewayName], [p].[GatewayTransactionId], CASE [p].[TransactionStatus]
+    WHEN 1 THEN N'Pending'
+    WHEN 2 THEN N'Authorized'
+    WHEN 3 THEN N'Captured'
+    WHEN 4 THEN N'Failed'
+    WHEN 5 THEN N'Refunded'
+    WHEN 6 THEN N'Voided'
+    ELSE CAST([p].[TransactionStatus] AS nvarchar(max))
+END AS [Status], [p].[FailureReason], [p].[ProcessedAt], [p].[CreationDate]
+FROM [PaymentHistories] AS [p]
+ORDER BY [p].[CreationDate] DESC
+OFFSET @p ROWS FETCH NEXT @p1 ROWS ONLY
+[2026-04-21 01:22:52.320 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [PaymentHistories] AS [p]
+[2026-04-21 01:22:52.322 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@p='?' (DbType = Int32), @p1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [p].[Id], [p].[MemberId], [p].[OrderId], [p].[Amount], [p].[GatewayName], [p].[GatewayTransactionId], CASE [p].[TransactionStatus]
+    WHEN 1 THEN N'Pending'
+    WHEN 2 THEN N'Authorized'
+    WHEN 3 THEN N'Captured'
+    WHEN 4 THEN N'Failed'
+    WHEN 5 THEN N'Refunded'
+    WHEN 6 THEN N'Voided'
+    ELSE CAST([p].[TransactionStatus] AS nvarchar(max))
+END AS [Status], [p].[FailureReason], [p].[ProcessedAt], [p].[CreationDate]
+FROM [PaymentHistories] AS [p]
+ORDER BY [p].[CreationDate] DESC
+OFFSET @p ROWS FETCH NEXT @p1 ROWS ONLY
+[2026-04-21 01:23:02.917 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [PaymentHistories] AS [p]
+[2026-04-21 01:23:02.919 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@p='?' (DbType = Int32), @p1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [p].[Id], [p].[MemberId], [p].[OrderId], [p].[Amount], [p].[GatewayName], [p].[GatewayTransactionId], CASE [p].[TransactionStatus]
+    WHEN 1 THEN N'Pending'
+    WHEN 2 THEN N'Authorized'
+    WHEN 3 THEN N'Captured'
+    WHEN 4 THEN N'Failed'
+    WHEN 5 THEN N'Refunded'
+    WHEN 6 THEN N'Voided'
+    ELSE CAST([p].[TransactionStatus] AS nvarchar(max))
+END AS [Status], [p].[FailureReason], [p].[ProcessedAt], [p].[CreationDate]
+FROM [PaymentHistories] AS [p]
+ORDER BY [p].[CreationDate] DESC
+OFFSET @p ROWS FETCH NEXT @p1 ROWS ONLY
+[2026-04-21 01:23:06.795 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [PaymentHistories] AS [p]
+[2026-04-21 01:23:06.799 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@p='?' (DbType = Int32), @p1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [p].[Id], [p].[MemberId], [p].[OrderId], [p].[Amount], [p].[GatewayName], [p].[GatewayTransactionId], CASE [p].[TransactionStatus]
+    WHEN 1 THEN N'Pending'
+    WHEN 2 THEN N'Authorized'
+    WHEN 3 THEN N'Captured'
+    WHEN 4 THEN N'Failed'
+    WHEN 5 THEN N'Refunded'
+    WHEN 6 THEN N'Voided'
+    ELSE CAST([p].[TransactionStatus] AS nvarchar(max))
+END AS [Status], [p].[FailureReason], [p].[ProcessedAt], [p].[CreationDate]
+FROM [PaymentHistories] AS [p]
+ORDER BY [p].[CreationDate] DESC
+OFFSET @p ROWS FETCH NEXT @p1 ROWS ONLY
+[2026-04-21 01:23:18.721 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@request_MemberId='?' (Size = 20)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(1) [m].[Id], [m].[ActiveMembershipId], [m].[Address], [m].[BinaryNodeId], [m].[BusinessName], [m].[City], [m].[Country], [m].[CreatedBy], [m].[CreationDate], [m].[DateOfBirth], [m].[DeletedAt], [m].[DeletedBy], [m].[Email], [m].[EnrollDate], [m].[EnrollmentNodeId], [m].[FirstName], [m].[IsDeleted], [m].[IsEmailPublic], [m].[IsNamePublic], [m].[IsPhonePublic], [m].[LastName], [m].[LastUpdateBy], [m].[LastUpdateDate], [m].[MemberId], [m].[MemberType], [m].[Phone], [m].[ProfilePhotoUrl], [m].[ReplicateSiteSlug], [m].[RowVersion], [m].[ShowBusinessName], [m].[SponsorMemberId], [m].[SsnEncrypted], [m].[State], [m].[Status], [m].[UserId], [m].[WhatsApp], [m].[ZipCode]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[MemberId] = @request_MemberId
+[2026-04-21 01:23:18.722 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@request_MemberId='?' (Size = 4000)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(1) [m].[Id], [m].[CreatedBy], [m].[CreationDate], [m].[CurrentMonthIncomeGrowth], [m].[CurrentWeekIncomeGrowth], [m].[CurrentYearIncomeGrowth], [m].[DualTeamPoints], [m].[DualTeamPointsGrowth], [m].[DualTeamSize], [m].[DualteamGrowth], [m].[EnrollmentPoints], [m].[EnrollmentTeamGrowth], [m].[EnrollmentTeamPointsGrowth], [m].[EnrollmentTeamSize], [m].[ExternalCustomerPoints], [m].[MemberId], [m].[PersonalPoints], [m].[QualifiedSponsoredExternalCustomers], [m].[QualifiedSponsoredMembers]
+FROM [MemberStatistics] AS [m]
+WHERE [m].[MemberId] = @request_MemberId
+[2026-04-21 01:23:18.724 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@request_MemberId='?' (Size = 4000)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[RankDefinitionId], [r].[Name], [r].[SortOrder], [m].[AchievedAt]
+FROM [MemberRankHistories] AS [m]
+INNER JOIN [RankDefinitions] AS [r] ON [m].[RankDefinitionId] = [r].[Id]
+WHERE [m].[MemberId] = @request_MemberId
+[2026-04-21 01:23:18.731 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [r].[Id], [r].[CertificateTemplateUrl], [r].[CreatedBy], [r].[CreationDate], [r].[Description], [r].[LastUpdateBy], [r].[LastUpdateDate], [r].[Name], [r].[SortOrder], [r].[Status]
+FROM [RankDefinitions] AS [r]
+ORDER BY [r].[SortOrder]
+[2026-04-21 01:23:19.865 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@memberId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Amount], [c].[Status], [c].[EarnedDate]
+FROM [CommissionEarnings] AS [c]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId
+[2026-04-21 01:23:19.870 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+[2026-04-21 01:23:19.873 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32), @p='?' (DbType = Int32), @p3='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Id], [c0].[Name] AS [CommissionTypeName], [c1].[Name] AS [CategoryName], [c].[Amount], CASE [c].[Status]
+    WHEN 1 THEN N'Pending'
+    WHEN 2 THEN N'Paid'
+    WHEN 3 THEN N'Cancelled'
+    ELSE CAST([c].[Status] AS nvarchar(max))
+END AS [Status], [c].[EarnedDate], [c].[PaymentDate]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+ORDER BY [c].[EarnedDate] DESC
+OFFSET @p ROWS FETCH NEXT @p3 ROWS ONLY
+[2026-04-21 01:23:19.881 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@memberId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT DATEPART(year, [c].[EarnedDate]) AS [Year], DATEPART(month, [c].[EarnedDate]) AS [Month], [c].[Amount]
+FROM [CommissionEarnings] AS [c]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = 2
+[2026-04-21 01:23:19.881 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+[2026-04-21 01:23:19.884 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32), @p='?' (DbType = Int32), @p3='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Id], [c0].[Name] AS [CommissionTypeName], [c1].[Name] AS [CategoryName], [c].[Amount], CASE [c].[Status]
+    WHEN 1 THEN N'Pending'
+    WHEN 2 THEN N'Paid'
+    WHEN 3 THEN N'Cancelled'
+    ELSE CAST([c].[Status] AS nvarchar(max))
+END AS [Status], [c].[EarnedDate], [c].[PaymentDate]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+ORDER BY [c].[EarnedDate] DESC
+OFFSET @p ROWS FETCH NEXT @p3 ROWS ONLY
+[2026-04-21 01:23:27.872 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@Format_contains='?' (Size = 2000), @memberId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [GenealogyTree] AS [g]
+WHERE [g].[IsDeleted] = CAST(0 AS bit) AND [g].[HierarchyPath] LIKE @Format_contains ESCAPE N'\' AND [g].[MemberId] <> @memberId
+[2026-04-21 01:23:27.873 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Id], [c].[Amount], [c].[AmountPromo], [c].[CommissionCategoryId], [c].[CreatedBy], [c].[CreationDate], [c].[Cummulative], [c].[CurrentRank], [c].[DaysAfterJoining], [c].[Description], [c].[EnrollmentTeam], [c].[ExternalMembers], [c].[IsActive], [c].[IsEnrollmentBased], [c].[IsPaidOnRenewal], [c].[IsPaidOnSignup], [c].[IsRealTime], [c].[IsSponsorBonus], [c].[LastUpdateBy], [c].[LastUpdateDate], [c].[LevelNo], [c].[LifeTimeRank], [c].[MaxEnrollmentTeamPointsPerBranch], [c].[MaxTeamPointsPerBranch], [c].[MembersRebill], [c].[Name], [c].[NewMembers], [c].[PaymentDelayDays], [c].[Percentage], [c].[PersonalPoints], [c].[ResidualBased], [c].[ResidualOverCommissionType], [c].[ResidualPercentage], [c].[ReverseId], [c].[SponsoredMembers], [c].[TeamPoints], [c].[TriggerOrder]
+FROM [CommissionTypes] AS [c]
+WHERE [c].[IsActive] = CAST(1 AS bit) AND [c].[IsPaidOnSignup] = CAST(0 AS bit) AND [c].[ResidualBased] = CAST(0 AS bit) AND [c].[IsSponsorBonus] = CAST(0 AS bit) AND [c].[TriggerOrder] > 0
+ORDER BY [c].[LifeTimeRank]
+[2026-04-21 01:23:27.876 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@weekStart='?' (DbType = DateTime2), @weekEnd='?' (DbType = DateTime2), @eligibleLevelIds1='?' (DbType = Int32), @eligibleLevelIds2='?' (DbType = Int32), @hierarchyFilter_contains='?' (Size = 2000)], CommandType='Text', CommandTimeout='30']
+SELECT DISTINCT [m].[MemberId], [g0].[HierarchyPath]
+FROM [MemberProfiles] AS [m]
+INNER JOIN (
+    SELECT [g].[HierarchyPath], [g].[MemberId]
+    FROM [GenealogyTree] AS [g]
+    WHERE [g].[IsDeleted] = CAST(0 AS bit)
+) AS [g0] ON [m].[MemberId] = [g0].[MemberId]
+INNER JOIN [MembershipSubscriptions] AS [m0] ON [m].[MemberId] = [m0].[MemberId]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @weekStart AND [m].[EnrollDate] < @weekEnd AND [m0].[SubscriptionStatus] = 1 AND [m0].[MembershipLevelId] IN (@eligibleLevelIds1, @eligibleLevelIds2) AND [g0].[HierarchyPath] LIKE @hierarchyFilter_contains ESCAPE N'\'
+[2026-04-21 01:23:27.879 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@memberId='?' (Size = 450), @weekStart='?' (DbType = DateTime2), @weekEnd='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT [c1].[Name], [c].[Amount]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN (
+    SELECT [c0].[Id], [c0].[Name]
+    FROM [CommissionTypes] AS [c0]
+    WHERE [c0].[CommissionCategoryId] = 4
+) AS [c1] ON [c].[CommissionTypeId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[EarnedDate] >= @weekStart AND [c].[EarnedDate] < @weekEnd
+[2026-04-21 01:23:27.882 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@memberId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [CommissionEarnings] AS [c]
+INNER JOIN (
+    SELECT [c0].[Id]
+    FROM [CommissionTypes] AS [c0]
+    WHERE [c0].[CommissionCategoryId] = 4 AND [c0].[Name] LIKE N'%Boost%'
+) AS [c1] ON [c].[CommissionTypeId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId
+[2026-04-21 01:23:27.883 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@weekStart='?' (DbType = DateTime2), @weekEnd='?' (DbType = DateTime2), @eligibleLevelIds1='?' (DbType = Int32), @eligibleLevelIds2='?' (DbType = Int32), @hierarchyFilter_contains='?' (Size = 2000)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[MemberId], [m].[FirstName] + N' ' + [m].[LastName] AS [MemberName], [m].[Email], [m].[EnrollDate], [g0].[HierarchyPath], [m0].[MembershipLevelId], [m0].[SubscriptionStatus], [m0].[RenewalDate], [m1].[Name] AS [MembershipType]
+FROM [MemberProfiles] AS [m]
+INNER JOIN (
+    SELECT [g].[HierarchyPath], [g].[MemberId]
+    FROM [GenealogyTree] AS [g]
+    WHERE [g].[IsDeleted] = CAST(0 AS bit)
+) AS [g0] ON [m].[MemberId] = [g0].[MemberId]
+INNER JOIN [MembershipSubscriptions] AS [m0] ON [m].[MemberId] = [m0].[MemberId]
+INNER JOIN [MembershipLevels] AS [m1] ON [m0].[MembershipLevelId] = [m1].[Id]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @weekStart AND [m].[EnrollDate] < @weekEnd AND [m0].[MembershipLevelId] IN (@eligibleLevelIds1, @eligibleLevelIds2) AND [g0].[HierarchyPath] LIKE @hierarchyFilter_contains ESCAPE N'\'
+[2026-04-21 01:23:27.885 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@memberId='?' (Size = 450), @p='?' (DbType = Int32), @p2='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [c1].[Name] AS [CommissionTypeName], [c].[Amount], CASE [c].[Status]
+    WHEN 1 THEN N'Pending'
+    WHEN 2 THEN N'Paid'
+    WHEN 3 THEN N'Cancelled'
+    ELSE CAST([c].[Status] AS nvarchar(max))
+END AS [Status], [c].[EarnedDate], [c].[PaymentDate]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN (
+    SELECT [c0].[Id], [c0].[Name]
+    FROM [CommissionTypes] AS [c0]
+    WHERE [c0].[CommissionCategoryId] = 4 AND [c0].[Name] LIKE N'%Boost%'
+) AS [c1] ON [c].[CommissionTypeId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId
+ORDER BY [c].[EarnedDate] DESC
+OFFSET @p ROWS FETCH NEXT @p2 ROWS ONLY
+[2026-04-21 01:23:27.886 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@enrolledMemberIds1='?' (Size = 4000), @enrolledMemberIds2='?' (Size = 4000), @enrolledMemberIds3='?' (Size = 4000), @enrolledMemberIds4='?' (Size = 4000)], CommandType='Text', CommandTimeout='30']
+SELECT [o].[MemberId], (
+    SELECT TOP(1) [o0].[OrderNo]
+    FROM [Orders] AS [o0]
+    WHERE [o0].[MemberId] IN (@enrolledMemberIds1, @enrolledMemberIds2, @enrolledMemberIds3, @enrolledMemberIds4) AND [o].[MemberId] = [o0].[MemberId]
+    ORDER BY [o0].[CreationDate] DESC) AS [OrderNo]
+FROM [Orders] AS [o]
+WHERE [o].[MemberId] IN (@enrolledMemberIds1, @enrolledMemberIds2, @enrolledMemberIds3, @enrolledMemberIds4)
+GROUP BY [o].[MemberId]
+[2026-04-21 01:23:27.888 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@legMemberIds1='?' (Size = 20), @legMemberIds2='?' (Size = 20), @legMemberIds3='?' (Size = 20), @legMemberIds4='?' (Size = 20)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[MemberId], [m].[FirstName] + N' ' + [m].[LastName] AS [FullName]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[MemberId] IN (@legMemberIds1, @legMemberIds2, @legMemberIds3, @legMemberIds4)
+[2026-04-21 11:35:41.685 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@normalizedEmail='?' (Size = 256)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(2) [a].[Id], [a].[AccessFailedCount], [a].[ConcurrencyStamp], [a].[CreatedBy], [a].[CreationDate], [a].[Email], [a].[EmailConfirmed], [a].[IsActive], [a].[LastLoginAt], [a].[LockoutEnabled], [a].[LockoutEnd], [a].[MemberProfileId], [a].[NormalizedEmail], [a].[NormalizedUserName], [a].[PasswordHash], [a].[PhoneNumber], [a].[PhoneNumberConfirmed], [a].[RefreshToken], [a].[RefreshTokenExpiry], [a].[SecurityStamp], [a].[TwoFactorEnabled], [a].[UserName]
+FROM [AspNetUsers] AS [a]
+WHERE [a].[NormalizedEmail] = @normalizedEmail
+[2026-04-21 11:35:41.883 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@userId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT [a0].[Name]
+FROM [AspNetUserRoles] AS [a]
+INNER JOIN [AspNetRoles] AS [a0] ON [a].[RoleId] = [a0].[Id]
+WHERE [a].[UserId] = @userId
+[2026-04-21 11:35:41.915 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@normalizedUserName='?' (Size = 256)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(1) [a].[Id], [a].[AccessFailedCount], [a].[ConcurrencyStamp], [a].[CreatedBy], [a].[CreationDate], [a].[Email], [a].[EmailConfirmed], [a].[IsActive], [a].[LastLoginAt], [a].[LockoutEnabled], [a].[LockoutEnd], [a].[MemberProfileId], [a].[NormalizedEmail], [a].[NormalizedUserName], [a].[PasswordHash], [a].[PhoneNumber], [a].[PhoneNumberConfirmed], [a].[RefreshToken], [a].[RefreshTokenExpiry], [a].[SecurityStamp], [a].[TwoFactorEnabled], [a].[UserName]
+FROM [AspNetUsers] AS [a]
+WHERE [a].[NormalizedUserName] = @normalizedUserName
+[2026-04-21 11:35:41.923 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@normalizedEmail='?' (Size = 256)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(2) [a].[Id], [a].[AccessFailedCount], [a].[ConcurrencyStamp], [a].[CreatedBy], [a].[CreationDate], [a].[Email], [a].[EmailConfirmed], [a].[IsActive], [a].[LastLoginAt], [a].[LockoutEnabled], [a].[LockoutEnd], [a].[MemberProfileId], [a].[NormalizedEmail], [a].[NormalizedUserName], [a].[PasswordHash], [a].[PhoneNumber], [a].[PhoneNumberConfirmed], [a].[RefreshToken], [a].[RefreshTokenExpiry], [a].[SecurityStamp], [a].[TwoFactorEnabled], [a].[UserName]
+FROM [AspNetUsers] AS [a]
+WHERE [a].[NormalizedEmail] = @normalizedEmail
+[2026-04-21 11:35:42.011 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@p21='?' (Size = 450), @p0='?' (DbType = Int32), @p1='?' (Size = 4000), @p22='?' (Size = 4000), @p2='?' (Size = 4000), @p3='?' (DbType = DateTime2), @p4='?' (Size = 256), @p5='?' (DbType = Boolean), @p6='?' (DbType = Boolean), @p7='?' (DbType = DateTime2), @p8='?' (DbType = Boolean), @p9='?' (DbType = DateTimeOffset), @p10='?' (Size = 4000), @p11='?' (Size = 256), @p12='?' (Size = 256), @p13='?' (Size = 4000), @p14='?' (Size = 4000), @p15='?' (DbType = Boolean), @p16='?' (Size = 4000), @p17='?' (DbType = DateTime2), @p18='?' (Size = 4000), @p19='?' (DbType = Boolean), @p20='?' (Size = 256)], CommandType='Text', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+UPDATE [AspNetUsers] SET [AccessFailedCount] = @p0, [ConcurrencyStamp] = @p1, [CreatedBy] = @p2, [CreationDate] = @p3, [Email] = @p4, [EmailConfirmed] = @p5, [IsActive] = @p6, [LastLoginAt] = @p7, [LockoutEnabled] = @p8, [LockoutEnd] = @p9, [MemberProfileId] = @p10, [NormalizedEmail] = @p11, [NormalizedUserName] = @p12, [PasswordHash] = @p13, [PhoneNumber] = @p14, [PhoneNumberConfirmed] = @p15, [RefreshToken] = @p16, [RefreshTokenExpiry] = @p17, [SecurityStamp] = @p18, [TwoFactorEnabled] = @p19, [UserName] = @p20
+OUTPUT 1
+WHERE [Id] = @p21 AND [ConcurrencyStamp] = @p22;
+[2026-04-21 11:35:42.450 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [m].[Status], COUNT(*) AS [Count]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit)
+GROUP BY [m].[Status]
+[2026-04-21 11:35:42.460 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [m].[MemberType] AS [Type], COUNT(*) AS [Count]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit)
+GROUP BY [m].[MemberType]
+[2026-04-21 11:35:42.466 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@today='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @today
+[2026-04-21 11:35:42.471 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@last7Days='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @last7Days
+[2026-04-21 11:35:42.475 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@startOfMonth='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @startOfMonth
+[2026-04-21 11:35:42.479 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@startOfLastMonth='?' (DbType = DateTime2), @startOfMonth='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @startOfLastMonth AND [m].[EnrollDate] < @startOfMonth
+[2026-04-21 11:35:42.495 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@startOfMonth='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COALESCE(SUM([o].[TotalAmount]), 0.0)
+FROM [Orders] AS [o]
+WHERE [o].[OrderDate] >= @startOfMonth AND [o].[Status] <> 5
+[2026-04-21 11:35:42.504 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@startOfLastMonth='?' (DbType = DateTime2), @startOfMonth='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COALESCE(SUM([o].[TotalAmount]), 0.0)
+FROM [Orders] AS [o]
+WHERE [o].[OrderDate] >= @startOfLastMonth AND [o].[OrderDate] < @startOfMonth AND [o].[Status] <> 5
+[2026-04-21 11:35:42.510 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@startOfYear='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COALESCE(SUM([o].[TotalAmount]), 0.0)
+FROM [Orders] AS [o]
+WHERE [o].[OrderDate] >= @startOfYear AND [o].[Status] <> 5
+[2026-04-21 11:35:42.515 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@startOfMonth='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [Orders] AS [o]
+WHERE [o].[OrderDate] >= @startOfMonth AND [o].[Status] <> 5
+[2026-04-21 11:35:42.520 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COALESCE(SUM([c].[Amount]), 0.0)
+FROM [CommissionEarnings] AS [c]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[Status] = 2
+[2026-04-21 11:35:42.526 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@startOfMonth='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COALESCE(SUM([c].[Amount]), 0.0)
+FROM [CommissionEarnings] AS [c]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[Status] = 2 AND [c].[EarnedDate] >= @startOfMonth
+[2026-04-21 11:35:42.530 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COALESCE(SUM([c].[Amount]), 0.0)
+FROM [CommissionEarnings] AS [c]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[Status] = 1
+[2026-04-21 11:35:42.536 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MembershipSubscriptions] AS [m]
+WHERE [m].[SubscriptionStatus] = 1
+[2026-04-21 11:35:42.541 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@now='?' (DbType = DateTime2), @next30Days='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MembershipSubscriptions] AS [m]
+WHERE [m].[SubscriptionStatus] = 1 AND [m].[RenewalDate] IS NOT NULL AND [m].[RenewalDate] >= @now AND [m].[RenewalDate] <= @next30Days
+[2026-04-21 11:35:42.545 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@startOfMonth='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MembershipSubscriptions] AS [m]
+WHERE [m].[SubscriptionStatus] = 4 AND [m].[CancellationDate] IS NOT NULL AND [m].[CancellationDate] >= @startOfMonth
+[2026-04-21 11:35:42.553 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [Tickets] AS [t]
+WHERE [t].[IsDeleted] = CAST(0 AS bit) AND [t].[Status] = 1
+[2026-04-21 11:35:42.558 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [Tickets] AS [t]
+WHERE [t].[IsDeleted] = CAST(0 AS bit) AND [t].[Status] = 2
+[2026-04-21 11:35:42.565 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [Tickets] AS [t]
+WHERE [t].[IsDeleted] = CAST(0 AS bit) AND [t].[Priority] = 4 AND [t].[Status] <> 4 AND [t].[Status] <> 5
+[2026-04-21 11:35:42.569 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@startOfMonth='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [Tickets] AS [t]
+WHERE [t].[IsDeleted] = CAST(0 AS bit) AND [t].[Status] = 4 AND [t].[CreationDate] >= @startOfMonth
+[2026-04-21 11:35:42.575 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [TokenTransactions] AS [t]
+WHERE [t].[ReferenceId] IS NOT NULL
+[2026-04-21 11:35:42.580 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [TokenTransactions] AS [t]
+WHERE [t].[ReferenceId] IS NOT NULL AND [t].[UsedAt] IS NOT NULL
+[2026-04-21 11:35:42.585 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [PaymentHistories] AS [p]
+WHERE [p].[TransactionStatus] = 1
+[2026-04-21 11:35:42.589 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [PaymentHistories] AS [p]
+WHERE [p].[TransactionStatus] = 4
+[2026-04-21 11:35:42.598 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@p='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(@p) [m].[MemberId], [m].[FirstName] + N' ' + [m].[LastName], CASE [m].[MemberType]
+    WHEN 0 THEN N'Ambassador'
+    WHEN 1 THEN N'ExternalMember'
+    ELSE CAST([m].[MemberType] AS nvarchar(max))
+END, CASE [m].[Status]
+    WHEN 1 THEN N'Active'
+    WHEN 2 THEN N'Inactive'
+    WHEN 3 THEN N'Suspended'
+    WHEN 4 THEN N'Terminated'
+    WHEN 5 THEN N'Pending'
+    ELSE CAST([m].[Status] AS nvarchar(max))
+END, [m].[EnrollDate], [m].[SponsorMemberId]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit)
+ORDER BY [m].[EnrollDate] DESC
+[2026-04-21 11:35:42.611 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT MAX([p].[ProcessedAt])
+FROM [PaymentHistories] AS [p]
+WHERE [p].[ProcessedAt] IS NOT NULL
+[2026-04-21 11:35:42.625 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@runDate='?' (DbType = DateTime2), @runDateEnd='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[Id], [m0].[Name] AS [LevelName], [m0].[RenewalPrice]
+FROM [MembershipSubscriptions] AS [m]
+INNER JOIN [MembershipLevels] AS [m0] ON [m].[MembershipLevelId] = [m0].[Id]
+WHERE [m].[IsAutoRenew] = CAST(1 AS bit) AND [m].[RenewalDate] IS NOT NULL AND [m].[RenewalDate] >= @runDate AND [m].[RenewalDate] < @runDateEnd
+[2026-04-21 11:35:42.637 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@runDate='?' (DbType = DateTime2), @runDateEnd='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[Id] AS [SubId], [m0].[Name] AS [LevelName], [m0].[RenewalPrice], [p].[TransactionStatus], [p].[Amount]
+FROM [PaymentHistories] AS [p]
+INNER JOIN [Orders] AS [o] ON [p].[OrderId] = [o].[Id]
+INNER JOIN [MembershipSubscriptions] AS [m] ON [o].[MembershipSubscriptionId] = [m].[Id]
+INNER JOIN [MembershipLevels] AS [m0] ON [m].[MembershipLevelId] = [m0].[Id]
+WHERE [p].[ProcessedAt] IS NOT NULL AND [p].[ProcessedAt] >= @runDate AND [p].[ProcessedAt] < @runDateEnd AND [o].[MembershipSubscriptionId] IS NOT NULL
+[2026-04-21 11:35:42.666 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [m1].[Name], COUNT(*), [m1].[IsFree]
+FROM [MemberProfiles] AS [m]
+INNER JOIN [MembershipSubscriptions] AS [m0] ON [m].[MemberId] = [m0].[MemberId]
+INNER JOIN [MembershipLevels] AS [m1] ON [m0].[MembershipLevelId] = [m1].[Id]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[MemberType] = 0 AND [m].[Status] = 1 AND [m].[IsDeleted] = CAST(0 AS bit) AND [m0].[SubscriptionStatus] = 1
+GROUP BY [m1].[Name], [m1].[IsFree]
+ORDER BY COUNT(*) DESC
+[2026-04-21 11:35:42.682 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@startOfYear='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT [s].[Month], [s].[Name], CASE [s].[Status]
+    WHEN 1 THEN N'Active'
+    WHEN 2 THEN N'Inactive'
+    WHEN 3 THEN N'Suspended'
+    WHEN 4 THEN N'Terminated'
+    WHEN 5 THEN N'Pending'
+    ELSE CAST([s].[Status] AS nvarchar(max))
+END, COUNT(*)
+FROM (
+    SELECT [m].[Status], [m1].[Name], DATEPART(month, [m].[EnrollDate]) AS [Month]
+    FROM [MemberProfiles] AS [m]
+    INNER JOIN [MembershipSubscriptions] AS [m0] ON [m].[MemberId] = [m0].[MemberId]
+    INNER JOIN [MembershipLevels] AS [m1] ON [m0].[MembershipLevelId] = [m1].[Id]
+    WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @startOfYear AND [m].[IsDeleted] = CAST(0 AS bit) AND [m0].[SubscriptionStatus] = 1
+) AS [s]
+GROUP BY [s].[Month], [s].[Name], [s].[Status]
+[2026-04-21 11:35:42.694 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [m].[Country] AS [CountryName], COUNT(*) AS [ActiveCount]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[IsDeleted] = CAST(0 AS bit) AND [m].[Status] = 1 AND [m].[Country] <> N''
+GROUP BY [m].[Country]
+ORDER BY COUNT(*) DESC
+[2026-04-21 11:35:42.707 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [c].[RegionId], COUNT(*) AS [Count]
+FROM [MemberProfiles] AS [m]
+INNER JOIN [Countries] AS [c] ON [m].[Country] = [c].[NameEn]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[IsDeleted] = CAST(0 AS bit) AND [m].[Status] = 1
+GROUP BY [c].[RegionId]
+[2026-04-21 11:35:42.724 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [r].[Id], [r].[Name], [r].[Code], (
+    SELECT COUNT(*)
+    FROM [Countries] AS [c]
+    WHERE [r].[Id] = [c].[RegionId] AND [c].[IsActive] = CAST(1 AS bit)) AS [CountryCount]
+FROM [Regions] AS [r]
+ORDER BY [r].[SortOrder], [r].[Name]
+[2026-04-21 11:35:42.739 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [m0].[Name], COUNT(*), [m0].[IsFree]
+FROM [MembershipSubscriptions] AS [m]
+INNER JOIN [MembershipLevels] AS [m0] ON [m].[MembershipLevelId] = [m0].[Id]
+WHERE [m].[SubscriptionStatus] = 1
+GROUP BY [m0].[Name], [m0].[IsFree]
+ORDER BY COUNT(*) DESC
+[2026-04-21 11:35:48.925 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@normalizedEmail='?' (Size = 256)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(2) [a].[Id], [a].[AccessFailedCount], [a].[ConcurrencyStamp], [a].[CreatedBy], [a].[CreationDate], [a].[Email], [a].[EmailConfirmed], [a].[IsActive], [a].[LastLoginAt], [a].[LockoutEnabled], [a].[LockoutEnd], [a].[MemberProfileId], [a].[NormalizedEmail], [a].[NormalizedUserName], [a].[PasswordHash], [a].[PhoneNumber], [a].[PhoneNumberConfirmed], [a].[RefreshToken], [a].[RefreshTokenExpiry], [a].[SecurityStamp], [a].[TwoFactorEnabled], [a].[UserName]
+FROM [AspNetUsers] AS [a]
+WHERE [a].[NormalizedEmail] = @normalizedEmail
+[2026-04-21 11:35:49.005 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@userId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT [a0].[Name]
+FROM [AspNetUserRoles] AS [a]
+INNER JOIN [AspNetRoles] AS [a0] ON [a].[RoleId] = [a0].[Id]
+WHERE [a].[UserId] = @userId
+[2026-04-21 11:35:49.008 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@normalizedUserName='?' (Size = 256)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(1) [a].[Id], [a].[AccessFailedCount], [a].[ConcurrencyStamp], [a].[CreatedBy], [a].[CreationDate], [a].[Email], [a].[EmailConfirmed], [a].[IsActive], [a].[LastLoginAt], [a].[LockoutEnabled], [a].[LockoutEnd], [a].[MemberProfileId], [a].[NormalizedEmail], [a].[NormalizedUserName], [a].[PasswordHash], [a].[PhoneNumber], [a].[PhoneNumberConfirmed], [a].[RefreshToken], [a].[RefreshTokenExpiry], [a].[SecurityStamp], [a].[TwoFactorEnabled], [a].[UserName]
+FROM [AspNetUsers] AS [a]
+WHERE [a].[NormalizedUserName] = @normalizedUserName
+[2026-04-21 11:35:49.009 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@normalizedEmail='?' (Size = 256)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(2) [a].[Id], [a].[AccessFailedCount], [a].[ConcurrencyStamp], [a].[CreatedBy], [a].[CreationDate], [a].[Email], [a].[EmailConfirmed], [a].[IsActive], [a].[LastLoginAt], [a].[LockoutEnabled], [a].[LockoutEnd], [a].[MemberProfileId], [a].[NormalizedEmail], [a].[NormalizedUserName], [a].[PasswordHash], [a].[PhoneNumber], [a].[PhoneNumberConfirmed], [a].[RefreshToken], [a].[RefreshTokenExpiry], [a].[SecurityStamp], [a].[TwoFactorEnabled], [a].[UserName]
+FROM [AspNetUsers] AS [a]
+WHERE [a].[NormalizedEmail] = @normalizedEmail
+[2026-04-21 11:35:49.011 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@p21='?' (Size = 450), @p0='?' (DbType = Int32), @p1='?' (Size = 4000), @p22='?' (Size = 4000), @p2='?' (Size = 4000), @p3='?' (DbType = DateTime2), @p4='?' (Size = 256), @p5='?' (DbType = Boolean), @p6='?' (DbType = Boolean), @p7='?' (DbType = DateTime2), @p8='?' (DbType = Boolean), @p9='?' (DbType = DateTimeOffset), @p10='?' (Size = 4000), @p11='?' (Size = 256), @p12='?' (Size = 256), @p13='?' (Size = 4000), @p14='?' (Size = 4000), @p15='?' (DbType = Boolean), @p16='?' (Size = 4000), @p17='?' (DbType = DateTime2), @p18='?' (Size = 4000), @p19='?' (DbType = Boolean), @p20='?' (Size = 256)], CommandType='Text', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+UPDATE [AspNetUsers] SET [AccessFailedCount] = @p0, [ConcurrencyStamp] = @p1, [CreatedBy] = @p2, [CreationDate] = @p3, [Email] = @p4, [EmailConfirmed] = @p5, [IsActive] = @p6, [LastLoginAt] = @p7, [LockoutEnabled] = @p8, [LockoutEnd] = @p9, [MemberProfileId] = @p10, [NormalizedEmail] = @p11, [NormalizedUserName] = @p12, [PasswordHash] = @p13, [PhoneNumber] = @p14, [PhoneNumberConfirmed] = @p15, [RefreshToken] = @p16, [RefreshTokenExpiry] = @p17, [SecurityStamp] = @p18, [TwoFactorEnabled] = @p19, [UserName] = @p20
+OUTPUT 1
+WHERE [Id] = @p21 AND [ConcurrencyStamp] = @p22;
+[2026-04-21 11:35:49.221 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [m].[Status], COUNT(*) AS [Count]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit)
+GROUP BY [m].[Status]
+[2026-04-21 11:35:49.223 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [m].[MemberType] AS [Type], COUNT(*) AS [Count]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit)
+GROUP BY [m].[MemberType]
+[2026-04-21 11:35:49.224 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@today='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @today
+[2026-04-21 11:35:49.225 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@last7Days='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @last7Days
+[2026-04-21 11:35:49.226 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (0ms) [Parameters=[@startOfMonth='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @startOfMonth
+[2026-04-21 11:35:49.227 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@startOfLastMonth='?' (DbType = DateTime2), @startOfMonth='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @startOfLastMonth AND [m].[EnrollDate] < @startOfMonth
+[2026-04-21 11:35:49.228 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@startOfMonth='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COALESCE(SUM([o].[TotalAmount]), 0.0)
+FROM [Orders] AS [o]
+WHERE [o].[OrderDate] >= @startOfMonth AND [o].[Status] <> 5
+[2026-04-21 11:35:49.229 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@startOfLastMonth='?' (DbType = DateTime2), @startOfMonth='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COALESCE(SUM([o].[TotalAmount]), 0.0)
+FROM [Orders] AS [o]
+WHERE [o].[OrderDate] >= @startOfLastMonth AND [o].[OrderDate] < @startOfMonth AND [o].[Status] <> 5
+[2026-04-21 11:35:49.231 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@startOfYear='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COALESCE(SUM([o].[TotalAmount]), 0.0)
+FROM [Orders] AS [o]
+WHERE [o].[OrderDate] >= @startOfYear AND [o].[Status] <> 5
+[2026-04-21 11:35:49.232 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@startOfMonth='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [Orders] AS [o]
+WHERE [o].[OrderDate] >= @startOfMonth AND [o].[Status] <> 5
+[2026-04-21 11:35:49.232 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COALESCE(SUM([c].[Amount]), 0.0)
+FROM [CommissionEarnings] AS [c]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[Status] = 2
+[2026-04-21 11:35:49.233 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@startOfMonth='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COALESCE(SUM([c].[Amount]), 0.0)
+FROM [CommissionEarnings] AS [c]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[Status] = 2 AND [c].[EarnedDate] >= @startOfMonth
+[2026-04-21 11:35:49.234 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COALESCE(SUM([c].[Amount]), 0.0)
+FROM [CommissionEarnings] AS [c]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[Status] = 1
+[2026-04-21 11:35:49.235 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MembershipSubscriptions] AS [m]
+WHERE [m].[SubscriptionStatus] = 1
+[2026-04-21 11:35:49.236 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@now='?' (DbType = DateTime2), @next30Days='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MembershipSubscriptions] AS [m]
+WHERE [m].[SubscriptionStatus] = 1 AND [m].[RenewalDate] IS NOT NULL AND [m].[RenewalDate] >= @now AND [m].[RenewalDate] <= @next30Days
+[2026-04-21 11:35:49.237 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@startOfMonth='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MembershipSubscriptions] AS [m]
+WHERE [m].[SubscriptionStatus] = 4 AND [m].[CancellationDate] IS NOT NULL AND [m].[CancellationDate] >= @startOfMonth
+[2026-04-21 11:35:49.238 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [Tickets] AS [t]
+WHERE [t].[IsDeleted] = CAST(0 AS bit) AND [t].[Status] = 1
+[2026-04-21 11:35:49.239 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [Tickets] AS [t]
+WHERE [t].[IsDeleted] = CAST(0 AS bit) AND [t].[Status] = 2
+[2026-04-21 11:35:49.240 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [Tickets] AS [t]
+WHERE [t].[IsDeleted] = CAST(0 AS bit) AND [t].[Priority] = 4 AND [t].[Status] <> 4 AND [t].[Status] <> 5
+[2026-04-21 11:35:49.241 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (0ms) [Parameters=[@startOfMonth='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [Tickets] AS [t]
+WHERE [t].[IsDeleted] = CAST(0 AS bit) AND [t].[Status] = 4 AND [t].[CreationDate] >= @startOfMonth
+[2026-04-21 11:35:49.241 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [TokenTransactions] AS [t]
+WHERE [t].[ReferenceId] IS NOT NULL
+[2026-04-21 11:35:49.242 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [TokenTransactions] AS [t]
+WHERE [t].[ReferenceId] IS NOT NULL AND [t].[UsedAt] IS NOT NULL
+[2026-04-21 11:35:49.242 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [PaymentHistories] AS [p]
+WHERE [p].[TransactionStatus] = 1
+[2026-04-21 11:35:49.243 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [PaymentHistories] AS [p]
+WHERE [p].[TransactionStatus] = 4
+[2026-04-21 11:35:49.244 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@p='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(@p) [m].[MemberId], [m].[FirstName] + N' ' + [m].[LastName], CASE [m].[MemberType]
+    WHEN 0 THEN N'Ambassador'
+    WHEN 1 THEN N'ExternalMember'
+    ELSE CAST([m].[MemberType] AS nvarchar(max))
+END, CASE [m].[Status]
+    WHEN 1 THEN N'Active'
+    WHEN 2 THEN N'Inactive'
+    WHEN 3 THEN N'Suspended'
+    WHEN 4 THEN N'Terminated'
+    WHEN 5 THEN N'Pending'
+    ELSE CAST([m].[Status] AS nvarchar(max))
+END, [m].[EnrollDate], [m].[SponsorMemberId]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit)
+ORDER BY [m].[EnrollDate] DESC
+[2026-04-21 11:35:49.245 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT MAX([p].[ProcessedAt])
+FROM [PaymentHistories] AS [p]
+WHERE [p].[ProcessedAt] IS NOT NULL
+[2026-04-21 11:35:49.247 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@runDate='?' (DbType = DateTime2), @runDateEnd='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[Id], [m0].[Name] AS [LevelName], [m0].[RenewalPrice]
+FROM [MembershipSubscriptions] AS [m]
+INNER JOIN [MembershipLevels] AS [m0] ON [m].[MembershipLevelId] = [m0].[Id]
+WHERE [m].[IsAutoRenew] = CAST(1 AS bit) AND [m].[RenewalDate] IS NOT NULL AND [m].[RenewalDate] >= @runDate AND [m].[RenewalDate] < @runDateEnd
+[2026-04-21 11:35:49.248 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@runDate='?' (DbType = DateTime2), @runDateEnd='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[Id] AS [SubId], [m0].[Name] AS [LevelName], [m0].[RenewalPrice], [p].[TransactionStatus], [p].[Amount]
+FROM [PaymentHistories] AS [p]
+INNER JOIN [Orders] AS [o] ON [p].[OrderId] = [o].[Id]
+INNER JOIN [MembershipSubscriptions] AS [m] ON [o].[MembershipSubscriptionId] = [m].[Id]
+INNER JOIN [MembershipLevels] AS [m0] ON [m].[MembershipLevelId] = [m0].[Id]
+WHERE [p].[ProcessedAt] IS NOT NULL AND [p].[ProcessedAt] >= @runDate AND [p].[ProcessedAt] < @runDateEnd AND [o].[MembershipSubscriptionId] IS NOT NULL
+[2026-04-21 11:35:49.250 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [m1].[Name], COUNT(*), [m1].[IsFree]
+FROM [MemberProfiles] AS [m]
+INNER JOIN [MembershipSubscriptions] AS [m0] ON [m].[MemberId] = [m0].[MemberId]
+INNER JOIN [MembershipLevels] AS [m1] ON [m0].[MembershipLevelId] = [m1].[Id]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[MemberType] = 0 AND [m].[Status] = 1 AND [m].[IsDeleted] = CAST(0 AS bit) AND [m0].[SubscriptionStatus] = 1
+GROUP BY [m1].[Name], [m1].[IsFree]
+ORDER BY COUNT(*) DESC
+[2026-04-21 11:35:49.252 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@startOfYear='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT [s].[Month], [s].[Name], CASE [s].[Status]
+    WHEN 1 THEN N'Active'
+    WHEN 2 THEN N'Inactive'
+    WHEN 3 THEN N'Suspended'
+    WHEN 4 THEN N'Terminated'
+    WHEN 5 THEN N'Pending'
+    ELSE CAST([s].[Status] AS nvarchar(max))
+END, COUNT(*)
+FROM (
+    SELECT [m].[Status], [m1].[Name], DATEPART(month, [m].[EnrollDate]) AS [Month]
+    FROM [MemberProfiles] AS [m]
+    INNER JOIN [MembershipSubscriptions] AS [m0] ON [m].[MemberId] = [m0].[MemberId]
+    INNER JOIN [MembershipLevels] AS [m1] ON [m0].[MembershipLevelId] = [m1].[Id]
+    WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @startOfYear AND [m].[IsDeleted] = CAST(0 AS bit) AND [m0].[SubscriptionStatus] = 1
+) AS [s]
+GROUP BY [s].[Month], [s].[Name], [s].[Status]
+[2026-04-21 11:35:49.253 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [m].[Country] AS [CountryName], COUNT(*) AS [ActiveCount]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[IsDeleted] = CAST(0 AS bit) AND [m].[Status] = 1 AND [m].[Country] <> N''
+GROUP BY [m].[Country]
+ORDER BY COUNT(*) DESC
+[2026-04-21 11:35:49.255 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [c].[RegionId], COUNT(*) AS [Count]
+FROM [MemberProfiles] AS [m]
+INNER JOIN [Countries] AS [c] ON [m].[Country] = [c].[NameEn]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[IsDeleted] = CAST(0 AS bit) AND [m].[Status] = 1
+GROUP BY [c].[RegionId]
+[2026-04-21 11:35:49.257 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [r].[Id], [r].[Name], [r].[Code], (
+    SELECT COUNT(*)
+    FROM [Countries] AS [c]
+    WHERE [r].[Id] = [c].[RegionId] AND [c].[IsActive] = CAST(1 AS bit)) AS [CountryCount]
+FROM [Regions] AS [r]
+ORDER BY [r].[SortOrder], [r].[Name]
+[2026-04-21 11:35:49.258 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [m0].[Name], COUNT(*), [m0].[IsFree]
+FROM [MembershipSubscriptions] AS [m]
+INNER JOIN [MembershipLevels] AS [m0] ON [m].[MembershipLevelId] = [m0].[Id]
+WHERE [m].[SubscriptionStatus] = 1
+GROUP BY [m0].[Name], [m0].[IsFree]
+ORDER BY COUNT(*) DESC
+[2026-04-21 11:35:50.781 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit)
+[2026-04-21 11:35:50.784 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@p='?' (DbType = Int32), @p1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[MemberId], [m].[FirstName], [m].[LastName], [m].[Phone], [m].[Country], CASE [m].[Status]
+    WHEN 1 THEN N'Active'
+    WHEN 2 THEN N'Inactive'
+    WHEN 3 THEN N'Suspended'
+    WHEN 4 THEN N'Terminated'
+    WHEN 5 THEN N'Pending'
+    ELSE CAST([m].[Status] AS nvarchar(max))
+END AS [Status], CASE [m].[MemberType]
+    WHEN 0 THEN N'Ambassador'
+    WHEN 1 THEN N'ExternalMember'
+    ELSE CAST([m].[MemberType] AS nvarchar(max))
+END AS [MemberType], [m].[EnrollDate], [m].[SponsorMemberId], [m].[CreationDate]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit)
+ORDER BY [m].[CreationDate] DESC
+OFFSET @p ROWS FETCH NEXT @p1 ROWS ONLY
+[2026-04-21 11:35:56.170 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@request_MemberId='?' (Size = 20)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(1) [m].[Id], [m].[ActiveMembershipId], [m].[Address], [m].[BinaryNodeId], [m].[BusinessName], [m].[City], [m].[Country], [m].[CreatedBy], [m].[CreationDate], [m].[DateOfBirth], [m].[DeletedAt], [m].[DeletedBy], [m].[Email], [m].[EnrollDate], [m].[EnrollmentNodeId], [m].[FirstName], [m].[IsDeleted], [m].[IsEmailPublic], [m].[IsNamePublic], [m].[IsPhonePublic], [m].[LastName], [m].[LastUpdateBy], [m].[LastUpdateDate], [m].[MemberId], [m].[MemberType], [m].[Phone], [m].[ProfilePhotoUrl], [m].[ReplicateSiteSlug], [m].[RowVersion], [m].[ShowBusinessName], [m].[SponsorMemberId], [m].[SsnEncrypted], [m].[State], [m].[Status], [m].[UserId], [m].[WhatsApp], [m].[ZipCode]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[MemberId] = @request_MemberId
+[2026-04-21 11:35:56.172 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@request_MemberId='?' (Size = 4000)], CommandType='Text', CommandTimeout='30']
+SELECT TOP(1) [m].[Id], [m].[CreatedBy], [m].[CreationDate], [m].[CurrentMonthIncomeGrowth], [m].[CurrentWeekIncomeGrowth], [m].[CurrentYearIncomeGrowth], [m].[DualTeamPoints], [m].[DualTeamPointsGrowth], [m].[DualTeamSize], [m].[DualteamGrowth], [m].[EnrollmentPoints], [m].[EnrollmentTeamGrowth], [m].[EnrollmentTeamPointsGrowth], [m].[EnrollmentTeamSize], [m].[ExternalCustomerPoints], [m].[MemberId], [m].[PersonalPoints], [m].[QualifiedSponsoredExternalCustomers], [m].[QualifiedSponsoredMembers]
+FROM [MemberStatistics] AS [m]
+WHERE [m].[MemberId] = @request_MemberId
+[2026-04-21 11:35:56.173 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@request_MemberId='?' (Size = 4000)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[RankDefinitionId], [r].[Name], [r].[SortOrder], [m].[AchievedAt]
+FROM [MemberRankHistories] AS [m]
+INNER JOIN [RankDefinitions] AS [r] ON [m].[RankDefinitionId] = [r].[Id]
+WHERE [m].[MemberId] = @request_MemberId
+[2026-04-21 11:35:56.178 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [r].[Id], [r].[CertificateTemplateUrl], [r].[CreatedBy], [r].[CreationDate], [r].[Description], [r].[LastUpdateBy], [r].[LastUpdateDate], [r].[Name], [r].[SortOrder], [r].[Status]
+FROM [RankDefinitions] AS [r]
+ORDER BY [r].[SortOrder]
+[2026-04-21 11:35:57.626 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@memberId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Amount], [c].[Status], [c].[EarnedDate]
+FROM [CommissionEarnings] AS [c]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId
+[2026-04-21 11:35:57.635 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+[2026-04-21 11:35:57.638 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32), @p='?' (DbType = Int32), @p3='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Id], [c0].[Name] AS [CommissionTypeName], [c1].[Name] AS [CategoryName], [c].[Amount], CASE [c].[Status]
+    WHEN 1 THEN N'Pending'
+    WHEN 2 THEN N'Paid'
+    WHEN 3 THEN N'Cancelled'
+    ELSE CAST([c].[Status] AS nvarchar(max))
+END AS [Status], [c].[EarnedDate], [c].[PaymentDate]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+ORDER BY [c].[EarnedDate] DESC
+OFFSET @p ROWS FETCH NEXT @p3 ROWS ONLY
+[2026-04-21 11:35:57.646 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+[2026-04-21 11:35:57.648 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@memberId='?' (Size = 450), @statusFilter_Value='?' (DbType = Int32), @p='?' (DbType = Int32), @p3='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Id], [c0].[Name] AS [CommissionTypeName], [c1].[Name] AS [CategoryName], [c].[Amount], CASE [c].[Status]
+    WHEN 1 THEN N'Pending'
+    WHEN 2 THEN N'Paid'
+    WHEN 3 THEN N'Cancelled'
+    ELSE CAST([c].[Status] AS nvarchar(max))
+END AS [Status], [c].[EarnedDate], [c].[PaymentDate]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN [CommissionTypes] AS [c0] ON [c].[CommissionTypeId] = [c0].[Id]
+INNER JOIN [CommissionCategories] AS [c1] ON [c0].[CommissionCategoryId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = @statusFilter_Value
+ORDER BY [c].[EarnedDate] DESC
+OFFSET @p ROWS FETCH NEXT @p3 ROWS ONLY
+[2026-04-21 11:35:57.656 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@memberId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT DATEPART(year, [c].[EarnedDate]) AS [Year], DATEPART(month, [c].[EarnedDate]) AS [Month], [c].[Amount]
+FROM [CommissionEarnings] AS [c]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[Status] = 2
+[2026-04-21 11:36:01.238 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@Format_contains='?' (Size = 2000), @memberId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [GenealogyTree] AS [g]
+WHERE [g].[IsDeleted] = CAST(0 AS bit) AND [g].[HierarchyPath] LIKE @Format_contains ESCAPE N'\' AND [g].[MemberId] <> @memberId
+[2026-04-21 11:36:01.238 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@memberId='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+SELECT COUNT(*)
+FROM [CommissionEarnings] AS [c]
+INNER JOIN (
+    SELECT [c0].[Id]
+    FROM [CommissionTypes] AS [c0]
+    WHERE [c0].[CommissionCategoryId] = 4 AND [c0].[Name] LIKE N'%Boost%'
+) AS [c1] ON [c].[CommissionTypeId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId
+[2026-04-21 11:36:01.239 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@weekStart='?' (DbType = DateTime2), @weekEnd='?' (DbType = DateTime2), @eligibleLevelIds1='?' (DbType = Int32), @eligibleLevelIds2='?' (DbType = Int32), @hierarchyFilter_contains='?' (Size = 2000)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[MemberId], [m].[FirstName] + N' ' + [m].[LastName] AS [MemberName], [m].[Email], [m].[EnrollDate], [g0].[HierarchyPath], [m0].[MembershipLevelId], [m0].[SubscriptionStatus], [m0].[RenewalDate], [m1].[Name] AS [MembershipType]
+FROM [MemberProfiles] AS [m]
+INNER JOIN (
+    SELECT [g].[HierarchyPath], [g].[MemberId]
+    FROM [GenealogyTree] AS [g]
+    WHERE [g].[IsDeleted] = CAST(0 AS bit)
+) AS [g0] ON [m].[MemberId] = [g0].[MemberId]
+INNER JOIN [MembershipSubscriptions] AS [m0] ON [m].[MemberId] = [m0].[MemberId]
+INNER JOIN [MembershipLevels] AS [m1] ON [m0].[MembershipLevelId] = [m1].[Id]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @weekStart AND [m].[EnrollDate] < @weekEnd AND [m0].[MembershipLevelId] IN (@eligibleLevelIds1, @eligibleLevelIds2) AND [g0].[HierarchyPath] LIKE @hierarchyFilter_contains ESCAPE N'\'
+[2026-04-21 11:36:01.239 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@memberId='?' (Size = 450), @p='?' (DbType = Int32), @p2='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+SELECT [c1].[Name] AS [CommissionTypeName], [c].[Amount], CASE [c].[Status]
+    WHEN 1 THEN N'Pending'
+    WHEN 2 THEN N'Paid'
+    WHEN 3 THEN N'Cancelled'
+    ELSE CAST([c].[Status] AS nvarchar(max))
+END AS [Status], [c].[EarnedDate], [c].[PaymentDate]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN (
+    SELECT [c0].[Id], [c0].[Name]
+    FROM [CommissionTypes] AS [c0]
+    WHERE [c0].[CommissionCategoryId] = 4 AND [c0].[Name] LIKE N'%Boost%'
+) AS [c1] ON [c].[CommissionTypeId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId
+ORDER BY [c].[EarnedDate] DESC
+OFFSET @p ROWS FETCH NEXT @p2 ROWS ONLY
+[2026-04-21 11:36:01.242 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@enrolledMemberIds1='?' (Size = 4000), @enrolledMemberIds2='?' (Size = 4000), @enrolledMemberIds3='?' (Size = 4000), @enrolledMemberIds4='?' (Size = 4000)], CommandType='Text', CommandTimeout='30']
+SELECT [o].[MemberId], (
+    SELECT TOP(1) [o0].[OrderNo]
+    FROM [Orders] AS [o0]
+    WHERE [o0].[MemberId] IN (@enrolledMemberIds1, @enrolledMemberIds2, @enrolledMemberIds3, @enrolledMemberIds4) AND [o].[MemberId] = [o0].[MemberId]
+    ORDER BY [o0].[CreationDate] DESC) AS [OrderNo]
+FROM [Orders] AS [o]
+WHERE [o].[MemberId] IN (@enrolledMemberIds1, @enrolledMemberIds2, @enrolledMemberIds3, @enrolledMemberIds4)
+GROUP BY [o].[MemberId]
+[2026-04-21 11:36:01.243 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@legMemberIds1='?' (Size = 20), @legMemberIds2='?' (Size = 20), @legMemberIds3='?' (Size = 20), @legMemberIds4='?' (Size = 20)], CommandType='Text', CommandTimeout='30']
+SELECT [m].[MemberId], [m].[FirstName] + N' ' + [m].[LastName] AS [FullName]
+FROM [MemberProfiles] AS [m]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[MemberId] IN (@legMemberIds1, @legMemberIds2, @legMemberIds3, @legMemberIds4)
+[2026-04-21 11:36:01.246 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Id], [c].[Amount], [c].[AmountPromo], [c].[CommissionCategoryId], [c].[CreatedBy], [c].[CreationDate], [c].[Cummulative], [c].[CurrentRank], [c].[DaysAfterJoining], [c].[Description], [c].[EnrollmentTeam], [c].[ExternalMembers], [c].[IsActive], [c].[IsEnrollmentBased], [c].[IsPaidOnRenewal], [c].[IsPaidOnSignup], [c].[IsRealTime], [c].[IsSponsorBonus], [c].[LastUpdateBy], [c].[LastUpdateDate], [c].[LevelNo], [c].[LifeTimeRank], [c].[MaxEnrollmentTeamPointsPerBranch], [c].[MaxTeamPointsPerBranch], [c].[MembersRebill], [c].[Name], [c].[NewMembers], [c].[PaymentDelayDays], [c].[Percentage], [c].[PersonalPoints], [c].[ResidualBased], [c].[ResidualOverCommissionType], [c].[ResidualPercentage], [c].[ReverseId], [c].[SponsoredMembers], [c].[TeamPoints], [c].[TriggerOrder]
+FROM [CommissionTypes] AS [c]
+WHERE [c].[IsActive] = CAST(1 AS bit) AND [c].[IsPaidOnSignup] = CAST(0 AS bit) AND [c].[ResidualBased] = CAST(0 AS bit) AND [c].[IsSponsorBonus] = CAST(0 AS bit) AND [c].[TriggerOrder] > 0
+ORDER BY [c].[LifeTimeRank]
+[2026-04-21 11:36:01.249 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (2ms) [Parameters=[@weekStart='?' (DbType = DateTime2), @weekEnd='?' (DbType = DateTime2), @eligibleLevelIds1='?' (DbType = Int32), @eligibleLevelIds2='?' (DbType = Int32), @hierarchyFilter_contains='?' (Size = 2000)], CommandType='Text', CommandTimeout='30']
+SELECT DISTINCT [m].[MemberId], [g0].[HierarchyPath]
+FROM [MemberProfiles] AS [m]
+INNER JOIN (
+    SELECT [g].[HierarchyPath], [g].[MemberId]
+    FROM [GenealogyTree] AS [g]
+    WHERE [g].[IsDeleted] = CAST(0 AS bit)
+) AS [g0] ON [m].[MemberId] = [g0].[MemberId]
+INNER JOIN [MembershipSubscriptions] AS [m0] ON [m].[MemberId] = [m0].[MemberId]
+WHERE [m].[IsDeleted] = CAST(0 AS bit) AND [m].[EnrollDate] >= @weekStart AND [m].[EnrollDate] < @weekEnd AND [m0].[SubscriptionStatus] = 1 AND [m0].[MembershipLevelId] IN (@eligibleLevelIds1, @eligibleLevelIds2) AND [g0].[HierarchyPath] LIKE @hierarchyFilter_contains ESCAPE N'\'
+[2026-04-21 11:36:01.251 INF] Microsoft.EntityFrameworkCore.Database.Command: Executed DbCommand (1ms) [Parameters=[@memberId='?' (Size = 450), @weekStart='?' (DbType = DateTime2), @weekEnd='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+SELECT [c1].[Name], [c].[Amount]
+FROM [CommissionEarnings] AS [c]
+INNER JOIN (
+    SELECT [c0].[Id], [c0].[Name]
+    FROM [CommissionTypes] AS [c0]
+    WHERE [c0].[CommissionCategoryId] = 4
+) AS [c1] ON [c].[CommissionTypeId] = [c1].[Id]
+WHERE [c].[IsDeleted] = CAST(0 AS bit) AND [c].[BeneficiaryMemberId] = @memberId AND [c].[EarnedDate] >= @weekStart AND [c].[EarnedDate] < @weekEnd

@@ -14,6 +14,9 @@ public class Country : AuditChangesIntKey
     public bool IsActive { get; set; } = false;
     public int SortOrder { get; set; } = 0;
 
+    // When true the frontend renders a state/province dropdown; otherwise a free text field.
+    public bool HasStates { get; set; } = false;
+
     public int? RegionId { get; set; }
     public Region? Region { get; set; }
 }

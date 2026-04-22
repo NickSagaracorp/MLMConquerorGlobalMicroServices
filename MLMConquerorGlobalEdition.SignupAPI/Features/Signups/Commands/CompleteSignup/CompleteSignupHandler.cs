@@ -129,6 +129,8 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
 
         subscription.SubscriptionStatus = MembershipStatus.Active;
         subscription.StartDate          = now;
+        subscription.EndDate            = now.AddMonths(1);
+        subscription.RenewalDate        = now.AddMonths(1);
         subscription.LastUpdateDate     = now;
         subscription.LastUpdateBy       = member.Email;
 

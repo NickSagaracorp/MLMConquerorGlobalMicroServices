@@ -42,10 +42,7 @@ public class AdminPlaceMemberHandler : IRequestHandler<AdminPlaceMemberCommand, 
         var targetParent = await _db.DualTeamTree
             .FirstOrDefaultAsync(d => d.MemberId == command.TargetParentMemberId, ct);
 
-        if (targetParent is null)
-            return Result<string>.Failure("TARGET_NOT_FOUND", "El nodo destino no existe en el Dual Team.");
-
-        var slotOccupied = await _db.DualTeamTree
+        var slotOccupied = targetParent is not null && await _db.DualTeamTree
             .AnyAsync(d => d.ParentMemberId == command.TargetParentMemberId && d.Side == side, ct);
 
         if (slotOccupied)
@@ -59,16 +56,41 @@ public class AdminPlaceMemberHandler : IRequestHandler<AdminPlaceMemberCommand, 
         var existingNode = await _db.DualTeamTree
             .FirstOrDefaultAsync(d => d.MemberId == command.MemberToPlaceId, ct);
 
-        if (existingNode != null &&
-            targetParent.HierarchyPath.StartsWith(existingNode.HierarchyPath))
+        // Circular reference: the target must not be under the member being placed,
+        // whether the member is currently in the tree or is a floating root (was unplaced).
+        var memberEffectivePath = existingNode?.HierarchyPath ?? $"/{command.MemberToPlaceId}/";
+        if (targetParent is not null &&
+            targetParent.HierarchyPath.StartsWith(memberEffectivePath))
             return Result<string>.Failure("CIRCULAR_REFERENCE",
                 "No se puede realizar este placement: generaría una referencia circular en el árbol.");
 
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
         try
         {
+            // Auto-create the parent as a root node if it doesn't exist in the dual tree yet.
+            // This happens on first placement under an ambassador who was never placed themselves.
+            if (targetParent is null)
+            {
+                targetParent = new DualTeamEntity
+                {
+                    MemberId       = command.TargetParentMemberId,
+                    ParentMemberId = null,
+                    Side           = TreeSide.Left,
+                    HierarchyPath  = $"/{command.TargetParentMemberId}/",
+                    CreationDate   = now,
+                    CreatedBy      = _currentUser.UserId,
+                    LastUpdateDate = now,
+                    LastUpdateBy   = _currentUser.UserId
+                };
+                _db.DualTeamTree.Add(targetParent);
+                await _db.SaveChangesAsync(ct);
+            }
+
+            var newPath = $"{targetParent.HierarchyPath}{command.MemberToPlaceId}/";
+
             if (existingNode != null)
             {
+                // Member is currently in the tree — move their whole subtree to the new position.
                 _db.DualTeamTree.Remove(existingNode);
 
                 var descendants = await _db.DualTeamTree
@@ -78,14 +100,29 @@ public class AdminPlaceMemberHandler : IRequestHandler<AdminPlaceMemberCommand, 
 
                 foreach (var desc in descendants)
                 {
-                    var relative    = desc.HierarchyPath.Substring(existingNode.HierarchyPath.Length);
-                    desc.HierarchyPath  = $"{targetParent.HierarchyPath}{command.MemberToPlaceId}/{relative}";
+                    var relative   = desc.HierarchyPath.Substring(existingNode.HierarchyPath.Length);
+                    desc.HierarchyPath  = newPath + relative;
                     desc.LastUpdateDate = now;
                     desc.LastUpdateBy   = _currentUser.UserId;
                 }
             }
+            else
+            {
+                // Member was previously unplaced — their descendants are floating under /{memberId}/.
+                // Re-attach them to the new position.
+                var floatPrefix = $"/{command.MemberToPlaceId}/";
+                var floatingDescendants = await _db.DualTeamTree
+                    .Where(d => d.HierarchyPath.StartsWith(floatPrefix))
+                    .ToListAsync(ct);
 
-            var newPath = $"{targetParent.HierarchyPath}{command.MemberToPlaceId}/";
+                foreach (var desc in floatingDescendants)
+                {
+                    var relative   = desc.HierarchyPath.Substring(floatPrefix.Length);
+                    desc.HierarchyPath  = newPath + relative;
+                    desc.LastUpdateDate = now;
+                    desc.LastUpdateBy   = _currentUser.UserId;
+                }
+            }
             _db.DualTeamTree.Add(new DualTeamEntity
             {
                 MemberId       = command.MemberToPlaceId,

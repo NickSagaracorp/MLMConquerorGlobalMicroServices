@@ -9,7 +9,7 @@ namespace MLMConquerorGlobalEdition.BizCenter.Features.Commissions.GetCarBonusCo
 
 public class GetCarBonusCommissionsHandler : IRequestHandler<GetCarBonusCommissionsQuery, Result<PagedResult<CommissionEarningDto>>>
 {
-    private const int CarBonusCategoryId = 5;
+    private const int CarBonusCategoryId = 4;
 
     private readonly AppDbContext        _db;
     private readonly ICurrentUserService _currentUser;

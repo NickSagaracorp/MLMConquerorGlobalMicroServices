@@ -1,4 +1,4 @@
-using MLMConquerorGlobalEdition.CommissionEngine.Features.CalculateMatchingBonus;
+﻿using MLMConquerorGlobalEdition.CommissionEngine.Features.CalculateMatchingBonus;
 using MLMConquerorGlobalEdition.CommissionEngine.Services;
 using MLMConquerorGlobalEdition.CommissionEngine.Tests.Helpers;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
@@ -47,7 +47,7 @@ public class CalculateMatchingBonusHandlerTests
         ResidualBased    = true,
         ResidualOverCommissionType = 0,
         Percentage       = 0,
-        FixedAmount      = 50,
+        Amount      = 50,
         PaymentDelayDays = 0,
         CreatedBy        = "seed",
         CreationDate     = FixedNow
@@ -222,3 +222,4 @@ public class CalculateMatchingBonusHandlerTests
         db.CommissionEarnings.Where(e => e.CommissionTypeId == 2).Should().HaveCount(1);
     }
 }
+

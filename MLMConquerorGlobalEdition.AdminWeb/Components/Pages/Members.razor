@@ -43,34 +43,97 @@
                 <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250,500,1000})" />
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
                 <GridColumns>
-                    <GridColumn HeaderText="Member ID" Width="130">
+                    <GridColumn Field="@nameof(AdminMemberDto.MemberId)" HeaderText="Member ID" Width="130" AllowFiltering="true">
                         <Template>
                             <code class="text-primary">@(((AdminMemberDto)context).MemberId)</code>
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="Name" Width="180">
+                    <GridColumn Field="@nameof(AdminMemberDto.FirstName)" HeaderText="Name" Width="180" AllowFiltering="true">
                         <Template>
                             @(((AdminMemberDto)context).FirstName) @(((AdminMemberDto)context).LastName)
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="Phone" Width="130">
+                    <GridColumn Field="@nameof(AdminMemberDto.Email)" HeaderText="Email" Width="200" AllowFiltering="true">
+                        <Template>
+                            @(((AdminMemberDto)context).Email ?? "—")
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(AdminMemberDto.Phone)" HeaderText="Phone" Width="130" AllowFiltering="true">
                         <Template>
                             @(((AdminMemberDto)context).Phone ?? "—")
                         </Template>
                     </GridColumn>
-                    <GridColumn Field="@nameof(AdminMemberDto.Country)" HeaderText="Country" Width="110" />
-                    <GridColumn HeaderText="Type" Width="120">
+                    <GridColumn Field="@nameof(AdminMemberDto.Country)" HeaderText="Country" Width="110" AllowFiltering="true" />
+                    <GridColumn Field="@nameof(AdminMemberDto.ReplicateSiteSlug)" HeaderText="Website" Width="160" AllowFiltering="true">
+                        <Template>
+                            @(((AdminMemberDto)context).ReplicateSiteSlug ?? "—")
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(AdminMemberDto.MembershipLevelName)" HeaderText="Membership" Width="150" AllowFiltering="true">
+                        <Template>
+                            @{ var lvl = ((AdminMemberDto)context).MembershipLevelName; }
+                            @if (!string.IsNullOrWhiteSpace(lvl))
+                            {
+                                <span class="badge bg-info text-dark">@lvl</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(AdminMemberDto.LifetimeRankName)" HeaderText="Lifetime Rank" Width="150" AllowFiltering="true">
+                        <Template>
+                            @{ var lr = ((AdminMemberDto)context).LifetimeRankName; }
+                            @if (!string.IsNullOrWhiteSpace(lr))
+                            {
+                                <span class="badge bg-warning text-dark">@lr</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(AdminMemberDto.SponsorFullName)" HeaderText="Sponsor" Width="180" AllowFiltering="true">
+                        <Template>
+                            @{ var m = (AdminMemberDto)context; }
+                            @if (!string.IsNullOrWhiteSpace(m.SponsorMemberId) && !string.IsNullOrWhiteSpace(m.SponsorFullName))
+                            {
+                                <a href="/admin/members/@m.SponsorMemberId" target="_blank" class="text-primary">@m.SponsorFullName</a>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(AdminMemberDto.DualTeamUplineFullName)" HeaderText="Upline" Width="180" AllowFiltering="true">
+                        <Template>
+                            @{ var m = (AdminMemberDto)context; }
+                            @if (!string.IsNullOrWhiteSpace(m.DualTeamParentMemberId) && !string.IsNullOrWhiteSpace(m.DualTeamUplineFullName))
+                            {
+                                <a href="/admin/members/@m.DualTeamParentMemberId" target="_blank" class="text-primary">@m.DualTeamUplineFullName</a>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(AdminMemberDto.MemberType)" HeaderText="Type" Width="120" AllowFiltering="true">
                         <Template>
                             <span class="badge bg-secondary">@(((AdminMemberDto)context).MemberType)</span>
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="Status" Width="110">
+                    <GridColumn Field="@nameof(AdminMemberDto.Status)" HeaderText="Status" Width="110" AllowFiltering="true">
                         <Template>
                             <span class="badge @StatusBadge(((AdminMemberDto)context).Status)">@(((AdminMemberDto)context).Status)</span>
                         </Template>
                     </GridColumn>
-                    <GridColumn Field="@nameof(AdminMemberDto.EnrollDate)" HeaderText="Enrolled" Width="130" Format="yyyy-MM-dd" Type="ColumnType.Date" />
-                    <GridColumn HeaderText="Actions" Width="120" TextAlign="TextAlign.Center">
+                    <GridColumn Field="@nameof(AdminMemberDto.EnrollDate)" HeaderText="Enrolled" Width="130" Format="yyyy-MM-dd" Type="ColumnType.Date" AllowFiltering="true" />
+                    <GridColumn Field="@nameof(AdminMemberDto.ExpirationDate)" HeaderText="Expiration Date" Width="140" Format="yyyy-MM-dd" Type="ColumnType.Date" AllowFiltering="true" />
+                    <GridColumn HeaderText="Actions" Width="120" TextAlign="TextAlign.Center" AllowFiltering="false">
                         <Template>
                             <a href="/admin/members/@(((AdminMemberDto)context).MemberId)" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2" title="View Profile">
                                 <i class="ri-eye-line"></i>
@@ -149,8 +212,13 @@
     { "Active" => "bg-success", "Inactive" => "bg-secondary", "Suspended" => "bg-danger", _ => "bg-secondary" };
 
     private record AdminMemberDto(string MemberId, string FirstName, string LastName,
-        string? Phone, string Country, string Status, string MemberType, DateTime EnrollDate,
-        string? SponsorMemberId, DateTime CreationDate);
+        string? Phone, string? Email, string Country, string Status, string MemberType,
+        DateTime EnrollDate, DateTime? ExpirationDate,
+        string? SponsorMemberId, string? SponsorFullName,
+        string? DualTeamParentMemberId, string? DualTeamUplineFullName,
+        string? ReplicateSiteSlug, string? MembershipLevelName,
+        string? LifetimeRankName,
+        DateTime CreationDate);
     private record PagedResult<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
     private record ApiResponse<T>(bool Success, T? Data, IEnumerable<string>? Errors);
 }

@@ -217,12 +217,15 @@
                             <label>Date of Birth *</label>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="form-floating">
-                            <input type="text" class="form-control" placeholder="SSN (optional)" @bind="_ssn" />
-                            <label>SSN</label>
+                    @if (IsUnitedStates(_country))
+                    {
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" placeholder="SSN" @bind="_ssn" />
+                                <label>SSN *</label>
+                            </div>
                         </div>
-                    </div>
+                    }
                 </div>
 
                 <hr class="my-4" />
@@ -414,13 +417,21 @@
                     </div>
                     <div class="col-md-3">
                         <div class="form-floating">
-                            <select class="form-select" @bind="_province">
-                                <option value="">— State —</option>
-                                @foreach (var pr in GetProvinces(_countryIso2))
-                                {
-                                    <option value="@pr">@pr</option>
-                                }
-                            </select>
+                            @if (CountryHasStates(_countryIso2))
+                            {
+                                <select class="form-select" @bind="_province">
+                                    <option value="">— State —</option>
+                                    @foreach (var pr in GetProvinces(_countryIso2))
+                                    {
+                                        <option value="@pr">@pr</option>
+                                    }
+                                </select>
+                            }
+                            else
+                            {
+                                <input type="text" class="form-control" placeholder="State / Province"
+                                       value="@_province" @oninput="e => _province = e.Value?.ToString() ?? string.Empty" />
+                            }
                             <label>State / Province</label>
                         </div>
                     </div>
@@ -497,13 +508,21 @@
                         </div>
                         <div class="col-md-3">
                             <div class="form-floating">
-                                <select class="form-select" @bind="_billProvince">
-                                    <option value="">— State —</option>
-                                    @foreach (var pr in GetProvinces(_billCountryIso2))
-                                    {
-                                        <option value="@pr">@pr</option>
-                                    }
-                                </select>
+                                @if (CountryHasStates(_billCountryIso2))
+                                {
+                                    <select class="form-select" @bind="_billProvince">
+                                        <option value="">— State —</option>
+                                        @foreach (var pr in GetProvinces(_billCountryIso2))
+                                        {
+                                            <option value="@pr">@pr</option>
+                                        }
+                                    </select>
+                                }
+                                else
+                                {
+                                    <input type="text" class="form-control" placeholder="State"
+                                           value="@_billProvince" @oninput="e => _billProvince = e.Value?.ToString() ?? string.Empty" />
+                                }
                                 <label>State</label>
                             </div>
                         </div>
@@ -903,7 +922,7 @@
                             {
                                 <button type="button"
                                         class="country-item @(_billCountry == ct.NameEn ? "is-selected" : "")"
-                                        @onclick="() => { _billCountry = ct.NameEn; _billCountryIso2 = ct.Iso2; _billProvince = string.Empty; _showBillCountryModal = false; _billCountrySearch = string.Empty; }">
+                                        @onclick="() => { _billCountry = ct.NameEn; _billCountryIso2 = ct.Iso2; if (!CountryHasStates(_billCountryIso2)) _billProvince = string.Empty; _showBillCountryModal = false; _billCountrySearch = string.Empty; }">
                                     <img class="country-flag"
                                          src="https://flagcdn.com/w40/@(ct.Iso2.ToLower()).png"
                                          alt="@ct.NameEn"
@@ -1197,9 +1216,10 @@
     {
         var nameEn = e.Value?.ToString() ?? string.Empty;
         _country  = nameEn;
-        _province = string.Empty;
         var ct = _countryData.FirstOrDefault(x => x.NameEn == nameEn);
         _countryIso2 = ct?.Iso2 ?? string.Empty;
+        if (!CountryHasStates(_countryIso2)) _province = string.Empty;
+        if (!IsUnitedStates(_country)) _ssn = string.Empty;
         // Phone codes are updated but products are not reloaded from the dropdown —
         // product reloading is triggered exclusively from the country modal.
         if (ct?.PhoneCode is not null)
@@ -1213,7 +1233,8 @@
     {
         _country     = ct.NameEn;
         _countryIso2 = ct.Iso2;
-        _province    = string.Empty;
+        if (!CountryHasStates(_countryIso2)) _province = string.Empty;
+        if (!IsUnitedStates(_country)) _ssn = string.Empty;
         if (ct.PhoneCode is not null)
         {
             _waCountryCode   = ct.PhoneCode;
@@ -1363,6 +1384,15 @@
         _couponMsg = "Invalid or expired coupon."; _couponMsgClass = "coupon-err";
     }
 
+    private static bool IsUnitedStates(string? country) => country is not null &&
+        (country.Equals("US", StringComparison.OrdinalIgnoreCase) ||
+         country.Equals("United States", StringComparison.OrdinalIgnoreCase) ||
+         country.Equals("United States of America", StringComparison.OrdinalIgnoreCase));
+
+    private bool CountryHasStates(string? iso2) =>
+        !string.IsNullOrEmpty(iso2) &&
+        (_countryData.FirstOrDefault(x => x.Iso2.Equals(iso2, StringComparison.OrdinalIgnoreCase))?.HasStates ?? false);
+
     private static IEnumerable<string> GetProvinces(string country) => country switch
     {
         "US" => new[] { "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut",
@@ -1406,6 +1436,8 @@
             { _error = "Password is required."; return; }
         if (_password != _password2)
             { _error = "Passwords do not match."; return; }
+        if (IsUnitedStates(_country) && string.IsNullOrWhiteSpace(_ssn))
+            { _error = "SSN is required for United States residents."; return; }
 
         _busy = true;
         try
@@ -1417,24 +1449,25 @@
 
             var r1 = await api.PostAsJsonAsync("api/v1/signups/ambassador", new
             {
-                SponsorMemberId   = _sponsor?.MemberId ?? SponsorSlug,
-                FirstName         = _firstName,
-                LastName          = _lastName,
-                DateOfBirth       = _dateOfBirth,
-                Email             = _email,
-                Password          = _password,
-                ConfirmPassword   = _password2,
-                Phone             = phone,
-                WhatsApp          = string.IsNullOrWhiteSpace(_whatsApp) ? null : $"{_waCountryCode}{_whatsApp}",
-                BusinessName      = _showBusiness ? _businessName : null,
-                ShowBusinessName  = _showBusiness && !string.IsNullOrWhiteSpace(_businessName),
-                Country           = _country,
-                State             = _province,
-                City              = _city,
-                Address           = _address,
-                ZipCode           = _postalCode,
-                ReplicateSiteSlug = _siteHandle,
-                MembershipLevelId = _membershipProducts
+                SponsorReplicateSite = SponsorSlug,
+                FirstName            = _firstName,
+                LastName             = _lastName,
+                DateOfBirth          = _dateOfBirth,
+                Ssn                  = _ssn,
+                Email                = _email,
+                Password             = _password,
+                ConfirmPassword      = _password2,
+                Phone                = phone,
+                WhatsApp             = string.IsNullOrWhiteSpace(_whatsApp) ? null : $"{_waCountryCode}{_whatsApp}",
+                BusinessName         = _showBusiness ? _businessName : null,
+                ShowBusinessName     = _showBusiness && !string.IsNullOrWhiteSpace(_businessName),
+                Country              = _country,
+                State                = _province,
+                City                 = _city,
+                Address              = _address,
+                ZipCode              = _postalCode,
+                ReplicateSiteSlug    = _siteHandle,
+                MembershipLevelId    = _membershipProducts
                     .FirstOrDefault(p => p.Id == _selectedMembershipProductId)
                     ?.MembershipLevelId ?? 0
             });
@@ -1495,7 +1528,7 @@
 
     // ── Local models ──────────────────────────────────────────────────────────
     private record ApiWrapper<T>(bool Success, T? Data, string? Message, List<string>? Errors);
-    private record CountryLookupDto(string Iso2, string Iso3, string NameEn, string NameNative, string DefaultLanguageCode, string FlagEmoji, string? PhoneCode, bool IsActive);
+    private record CountryLookupDto(string Iso2, string Iso3, string NameEn, string NameNative, string DefaultLanguageCode, string FlagEmoji, string? PhoneCode, bool IsActive, bool HasStates);
     private record SponsorModel(string MemberId, string DisplayName, string FullName,
         string? ReplicateSiteSlug, string? PhotoUrl);
     private record MembershipLevelModel(int Id, string Name, string? Description,

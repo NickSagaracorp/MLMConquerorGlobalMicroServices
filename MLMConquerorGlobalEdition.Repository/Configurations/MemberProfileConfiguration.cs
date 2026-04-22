@@ -25,6 +25,8 @@ public class MemberProfileConfiguration : IEntityTypeConfiguration<MemberProfile
         builder.Property(x => x.City).HasMaxLength(100);
         builder.Property(x => x.Address).HasMaxLength(500);
 
+        builder.Property(x => x.SsnEncrypted).HasMaxLength(512);
+
         builder.Property(x => x.ReplicateSiteSlug).HasMaxLength(100);
         builder.HasIndex(x => x.ReplicateSiteSlug).IsUnique().HasFilter("[ReplicateSiteSlug] IS NOT NULL");
 

@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
@@ -80,16 +80,11 @@ public class FastStartBonusSweepJob
 
             try
             {
-                var earned = await ProcessSponsorAsync(countdown, sponsorMemberId, now, typeByTrigger, ct);
-                if (earned)
+                var earnedCount = await ProcessSponsorAsync(countdown, sponsorMemberId, now, typeByTrigger, ct);
+                if (_db.ChangeTracker.HasChanges())
                 {
                     await _db.SaveChangesAsync(ct);
-                    awarded++;
-                }
-                else if (_db.ChangeTracker.HasChanges())
-                {
-                    // FSB3 date repair — persist without a commission earning
-                    await _db.SaveChangesAsync(ct);
+                    awarded += earnedCount;
                 }
             }
             catch (Exception ex)
@@ -102,7 +97,13 @@ public class FastStartBonusSweepJob
         _logger.LogInformation("FSB sweep complete — {Count} commissions awarded.", awarded);
     }
 
-    private async Task<bool> ProcessSponsorAsync(
+    /// <summary>
+    /// Processes ALL eligible FSB windows for a single sponsor in one sweep run.
+    /// After firing W1 the countdown dates for W2 are written immediately, so W2
+    /// can be evaluated in the same pass if it already has qualifying members.
+    /// Returns the number of windows that earned a commission this run.
+    /// </summary>
+    private async Task<int> ProcessSponsorAsync(
         MemberCommissionCountDown countdown,
         string sponsorMemberId,
         DateTime now,
@@ -129,110 +130,118 @@ public class FastStartBonusSweepJob
             }
         }
 
-        // Find the first open window that hasn't been earned yet
-        var candidates = new (int TriggerOrder, DateTime Start, DateTime End)[]
+        int earned = 0;
+
+        // Track trigger orders awarded in this pass so the in-memory earning (not yet
+        // saved) prevents the alternate W1 window slot from firing a duplicate earning
+        // before SaveChangesAsync is called.
+        var earnedThisPass = new HashSet<int>();
+
+        // Process windows in order. After firing one window the countdown dates for the
+        // next window are updated in memory, so the following iteration can immediately
+        // check whether that window is now also eligible — covering all ready windows in
+        // a single sweep run rather than requiring separate runs for each.
+        var windowDefs = new (int TriggerOrder, Func<DateTime> GetStart, Func<DateTime> GetEnd)[]
         {
-            (1, countdown.FastStartBonus1Start,         countdown.FastStartBonus1End),
-            (1, countdown.FastStartBonus1ExtendedStart, countdown.FastStartBonus1ExtendedEnd),
-            (2, countdown.FastStartBonus2Start,         countdown.FastStartBonus2End),
-            (3, countdown.FastStartBonus3Start,         countdown.FastStartBonus3End),
+            (1, () => countdown.FastStartBonus1Start,         () => countdown.FastStartBonus1End),
+            (1, () => countdown.FastStartBonus1ExtendedStart, () => countdown.FastStartBonus1ExtendedEnd),
+            (2, () => countdown.FastStartBonus2Start,         () => countdown.FastStartBonus2End),
+            (3, () => countdown.FastStartBonus3Start,         () => countdown.FastStartBonus3End),
         };
 
-        int activeWindow     = 0;
-        DateTime windowStart = default, windowEnd = default;
-        CommissionType? commType = null;
-
-        foreach (var c in candidates)
+        foreach (var win in windowDefs)
         {
-            if (c.Start == default || now < c.Start || now > c.End) continue;
-            if (!typeByTrigger.TryGetValue(c.TriggerOrder, out var cType)) continue;
+            var winStart = win.GetStart();
+            var winEnd   = win.GetEnd();
+
+            if (winStart == default || now < winStart || now > winEnd) continue;
+            if (!typeByTrigger.TryGetValue(win.TriggerOrder, out var commType)) continue;
+
+            // Skip if already earned in this pass (handles the dual W1 window slots) or in the DB.
+            if (earnedThisPass.Contains(win.TriggerOrder)) continue;
 
             var alreadyEarned = await _db.CommissionEarnings
                 .AnyAsync(e => e.BeneficiaryMemberId == sponsorMemberId
-                            && e.CommissionTypeId == cType.Id
+                            && e.CommissionTypeId == commType.Id
                             && e.Status != CommissionEarningStatus.Cancelled, ct);
             if (alreadyEarned) continue;
 
-            activeWindow = c.TriggerOrder;
-            windowStart  = c.Start;
-            windowEnd    = c.End;
-            commType     = cType;
-            break;
+            // Check for at least 2 Elite/Turbo members enrolled within this window
+            var eligible = await _db.MemberProfiles
+                .AsNoTracking()
+                .Where(m => m.SponsorMemberId == sponsorMemberId
+                         && m.EnrollDate >= winStart
+                         && m.EnrollDate <= winEnd)
+                .Join(
+                    _db.MembershipSubscriptions.AsNoTracking()
+                        .Where(s => s.SubscriptionStatus == MembershipStatus.Active
+                                 && EligibleLevelIds.Contains(s.MembershipLevelId)),
+                    m => m.MemberId,
+                    s => s.MemberId,
+                    (m, _) => new { m.MemberId, m.FirstName, m.LastName, m.EnrollDate })
+                .OrderBy(x => x.EnrollDate)
+                .Take(2)
+                .ToListAsync(ct);
+
+            if (eligible.Count < 2) continue;
+
+            var m1 = eligible[0];
+            var m2 = eligible[1];
+            var notes = $"{m1.FirstName} {m1.LastName} ({m1.MemberId}) — {m2.FirstName} {m2.LastName} ({m2.MemberId})";
+
+            var amount = (commType.ActiveAmount ?? 0m) / 2m;
+            if (amount <= 0) continue;
+
+            var sourceOrderId = await _db.Orders
+                .AsNoTracking()
+                .Where(o => o.MemberId == m2.MemberId && o.Status == OrderStatus.Completed)
+                .OrderByDescending(o => o.CreationDate)
+                .Select(o => o.Id)
+                .FirstOrDefaultAsync(ct)
+                ?? $"SWEEP-{sponsorMemberId}-W{win.TriggerOrder}-{now:yyyyMMddHHmm}";
+
+            await _db.CommissionEarnings.AddAsync(new CommissionEarning
+            {
+                BeneficiaryMemberId = sponsorMemberId,
+                SourceMemberId      = m2.MemberId,
+                SourceOrderId       = sourceOrderId,
+                CommissionTypeId    = commType.Id,
+                Amount              = amount,
+                Status              = CommissionEarningStatus.Pending,
+                EarnedDate          = now,
+                PaymentDate         = now.AddDays(commType.PaymentDelayDays),
+                PeriodDate          = now.Date,
+                Notes               = notes,
+                CreatedBy           = "fsb-sweep",
+                CreationDate        = now,
+                LastUpdateDate      = now
+            }, ct);
+
+            // Open the next window immediately so it can be evaluated in this same pass
+            if (win.TriggerOrder == 1)
+            {
+                countdown.FastStartBonus2Start = now;
+                countdown.FastStartBonus2End   = now.AddDays(7);
+                countdown.LastUpdateDate       = now;
+                countdown.LastUpdateBy         = "fsb-sweep";
+            }
+            else if (win.TriggerOrder == 2)
+            {
+                countdown.FastStartBonus3Start = now;
+                countdown.FastStartBonus3End   = now.AddDays(7);
+                countdown.LastUpdateDate       = now;
+                countdown.LastUpdateBy         = "fsb-sweep";
+            }
+
+            earnedThisPass.Add(win.TriggerOrder);
+
+            _logger.LogInformation(
+                "FSB sweep: awarded W{Window} ${Amount} to {Sponsor} — {Notes}",
+                win.TriggerOrder, amount, sponsorMemberId, notes);
+
+            earned++;
         }
 
-        if (activeWindow == 0 || commType is null) return false;
-
-        // Check for at least 2 Elite/Turbo members enrolled within this window
-        var eligible = await _db.MemberProfiles
-            .AsNoTracking()
-            .Where(m => m.SponsorMemberId == sponsorMemberId
-                     && m.EnrollDate >= windowStart
-                     && m.EnrollDate <= windowEnd)
-            .Join(
-                _db.MembershipSubscriptions.AsNoTracking()
-                    .Where(s => s.SubscriptionStatus == MembershipStatus.Active
-                             && EligibleLevelIds.Contains(s.MembershipLevelId)),
-                m => m.MemberId,
-                s => s.MemberId,
-                (m, _) => new { m.MemberId, m.FirstName, m.LastName, m.EnrollDate })
-            .OrderBy(x => x.EnrollDate)
-            .Take(2)
-            .ToListAsync(ct);
-
-        if (eligible.Count < 2) return false;
-
-        var m1 = eligible[0];
-        var m2 = eligible[1];
-        var notes = $"{m1.FirstName} {m1.LastName} ({m1.MemberId}) — {m2.FirstName} {m2.LastName} ({m2.MemberId})";
-
-        var amount = (commType.FixedAmount ?? 0m) / 2m;
-        if (amount <= 0) return false;
-
-        var sourceOrderId = await _db.Orders
-            .AsNoTracking()
-            .Where(o => o.MemberId == m2.MemberId && o.Status == OrderStatus.Completed)
-            .OrderByDescending(o => o.CreationDate)
-            .Select(o => o.Id)
-            .FirstOrDefaultAsync(ct)
-            ?? $"SWEEP-{sponsorMemberId}-W{activeWindow}-{now:yyyyMMddHHmm}";
-
-        await _db.CommissionEarnings.AddAsync(new CommissionEarning
-        {
-            BeneficiaryMemberId = sponsorMemberId,
-            SourceMemberId      = m2.MemberId,
-            SourceOrderId       = sourceOrderId,
-            CommissionTypeId    = commType.Id,
-            Amount              = amount,
-            Status              = CommissionEarningStatus.Pending,
-            EarnedDate          = now,
-            PaymentDate         = now.AddDays(commType.PaymentDelayDays),
-            PeriodDate          = now.Date,
-            Notes               = notes,
-            CreatedBy           = "fsb-sweep",
-            CreationDate        = now,
-            LastUpdateDate      = now
-        }, ct);
-
-        // Open next window
-        if (activeWindow == 1)
-        {
-            countdown.FastStartBonus2Start = now;
-            countdown.FastStartBonus2End   = now.AddDays(7);
-            countdown.LastUpdateDate       = now;
-            countdown.LastUpdateBy         = "fsb-sweep";
-        }
-        else if (activeWindow == 2)
-        {
-            countdown.FastStartBonus3Start = now;
-            countdown.FastStartBonus3End   = now.AddDays(7);
-            countdown.LastUpdateDate       = now;
-            countdown.LastUpdateBy         = "fsb-sweep";
-        }
-
-        _logger.LogInformation(
-            "FSB sweep: awarded W{Window} ${Amount} to {Sponsor} — {Notes}",
-            activeWindow, amount, sponsorMemberId, notes);
-
-        return true;
+        return earned;
     }
 }

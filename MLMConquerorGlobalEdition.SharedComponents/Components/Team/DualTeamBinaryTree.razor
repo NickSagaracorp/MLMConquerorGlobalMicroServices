@@ -1,19 +1,22 @@
 @inject HttpClient Http
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 @using System.Net.Http.Json
+@implements IAsyncDisposable
 
 @if (ShowBreadcrumb) { <BreadcrumbNav Items="@_breadcrumb" /> }
 
 <style>
     .genealogy-body {
         white-space: nowrap;
-        overflow: auto;
+        overflow: hidden;
         position: relative;
         background: linear-gradient(180deg, #f8f9fb, #eef1f4);
         border-radius: 10px;
         padding: 20px;
-        min-height: 400px;
+        min-height: 480px;
         text-align: center;
+        cursor: grab;
     }
     .genealogy-tree ul {
         padding-top: 16px;
@@ -111,6 +114,21 @@
         background: #fafbff;
         margin: 6px auto 0;
     }
+    .revert-btn {
+        margin-top: 6px;
+        font-size: 11px;
+        line-height: 1;
+        border: 1px solid #ffb4b4;
+        color: #b42318;
+        background: #fff4f4;
+        padding: 5px 9px;
+        border-radius: 8px;
+        cursor: pointer;
+        display: inline-block;
+        transition: background .15s;
+    }
+    .revert-btn:hover  { background: #ffe5e5; }
+    .revert-btn:disabled { opacity: .55; cursor: not-allowed; }
 </style>
 
 <div class="card bg-white border-0 rounded-3 mb-4">
@@ -211,7 +229,7 @@
         }
         else if (_rootNode is not null)
         {
-            <div class="genealogy-body">
+            <div class="genealogy-body" id="@_treeContainerId">
                 <div class="genealogy-tree">
                     <ul>
                         <li>
@@ -229,14 +247,218 @@
             </div>
         }
 
+        @* ── Unplacement error toast ──────────────────────────────────────────── *@
+        @if (_unplacementError is not null)
+        {
+            <div class="alert alert-danger alert-dismissible mt-3" role="alert">
+                @_unplacementError
+                <button type="button" class="btn-close" @onclick="() => _unplacementError = null"></button>
+            </div>
+        }
+
+        @* ── Placement Modal ──────────────────────────────────────────────────── *@
+        @if (_placementModalVisible)
+        {
+            <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.5)">
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                Seleccionar ambassador — pierna <strong>@_placementSide</strong>
+                            </h5>
+                            <button type="button" class="btn-close"
+                                    disabled="@_placingMember"
+                                    @onclick="() => { _placementModalVisible = false; _selectedPlacementCandidate = null; }">
+                            </button>
+                        </div>
+                        <div class="modal-body" style="max-height:360px;overflow-y:auto;padding:0">
+                            @if (_placementModalError is not null)
+                            {
+                                <div class="alert alert-danger m-3 mb-0">@_placementModalError</div>
+                            }
+                            @if (_placementCandidateLoading)
+                            {
+                                <div class="text-center py-4">
+                                    <span class="spinner-border text-primary"></span>
+                                </div>
+                            }
+                            else if (!_placementCandidates.Any() && _placementModalError is null)
+                            {
+                                <div class="alert alert-warning m-3">No hay ambassadors disponibles para placement.</div>
+                            }
+                            else
+                            {
+                                @foreach (var candidate in _placementCandidates)
+                                {
+                                    var c        = candidate;
+                                    var selected = _selectedPlacementCandidate?.MemberId == c.MemberId;
+                                    <div class="d-flex align-items-center gap-3 px-3 py-2"
+                                         style="cursor:@(_placingMember ? "default" : "pointer");
+                                                border-bottom:1px solid #f0f0f0;
+                                                background:@(selected ? "#eef4ff" : "transparent");
+                                                opacity:@(_placingMember && !selected ? "0.5" : "1");
+                                                transition:background .1s"
+                                         @onclick="() => { if (!_placingMember) _selectedPlacementCandidate = selected ? null : c; }">
+                                        @if (!string.IsNullOrEmpty(c.PhotoUrl))
+                                        {
+                                            <img src="@c.PhotoUrl" class="rounded-circle" width="40" height="40"
+                                                 style="object-fit:cover;flex-shrink:0" alt="@c.FullName" />
+                                        }
+                                        else
+                                        {
+                                            <div style="width:40px;height:40px;border-radius:50%;background:#605DFF;
+                                                        color:#fff;display:flex;align-items:center;justify-content:center;
+                                                        font-weight:700;font-size:16px;flex-shrink:0">
+                                                @(c.FullName.Length > 0 ? c.FullName[0].ToString().ToUpper() : "?")
+                                            </div>
+                                        }
+                                        <div class="flex-grow-1">
+                                            <div class="fw-medium">@c.FullName</div>
+                                            <div class="text-muted" style="font-size:12px">@c.MemberId</div>
+                                        </div>
+                                        @if (selected)
+                                        {
+                                            <i class="ri-checkbox-circle-fill text-primary fs-5 ms-auto"></i>
+                                        }
+                                    </div>
+                                }
+                            }
+                        </div>
+
+                        @* Footer changes based on selection state *@
+                        @if (_selectedPlacementCandidate is not null)
+                        {
+                            var sel   = _selectedPlacementCandidate;
+                            var pts   = 1 + sel.FloatingSubtreeSize;
+                            <div class="modal-footer flex-column align-items-stretch gap-2 pt-3"
+                                 style="border-top:2px solid #e9ecef">
+                                <div class="rounded-3 p-3" style="background:#f8f9ff;border:1px solid #dde3ff">
+                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                        <i class="ri-user-add-line text-primary"></i>
+                                        <span class="fw-semibold" style="font-size:13px">Confirmación de Placement</span>
+                                    </div>
+                                    <div style="font-size:13px;line-height:1.6">
+                                        <div>
+                                            <span class="text-muted">Ambassador:</span>
+                                            <strong class="ms-1">@sel.FullName</strong>
+                                        </div>
+                                        <div>
+                                            <span class="text-muted">Bajo:</span>
+                                            <strong class="ms-1">@_placementTargetParentName</strong>
+                                            <span class="badge ms-1" style="background:#605DFF;font-size:10px">pierna @_placementSide</span>
+                                        </div>
+                                        <div class="mt-1">
+                                            <span class="text-muted">Puntos que aportará a</span>
+                                            <strong class="ms-1">@_placementTargetParentName</strong>
+                                            <span class="ms-1">:</span>
+                                            <span class="badge bg-success ms-1" style="font-size:11px">
+                                                +@pts @(pts == 1 ? "punto" : "puntos")
+                                            </span>
+                                            @if (sel.FloatingSubtreeSize > 0)
+                                            {
+                                                <span class="text-muted ms-1" style="font-size:11px">
+                                                    (él + @sel.FloatingSubtreeSize en su subárbol)
+                                                </span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-2 justify-content-end">
+                                    <button class="btn btn-outline-secondary btn-sm"
+                                            disabled="@_placingMember"
+                                            @onclick="() => _selectedPlacementCandidate = null">
+                                        Cambiar selección
+                                    </button>
+                                    <button class="btn btn-primary btn-sm"
+                                            disabled="@_placingMember"
+                                            @onclick="async () => await PlaceSelectedMember(sel.MemberId)">
+                                        @if (_placingMember)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-1"></span>
+                                        }
+                                        Confirmar Placement
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="modal-footer">
+                                <button class="btn btn-secondary btn-sm"
+                                        disabled="@_placingMember"
+                                        @onclick="() => _placementModalVisible = false">
+                                    Cancelar
+                                </button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* ── Unplacement Confirmation Modal ───────────────────────────────────── *@
+        @if (_confirmUnplaceMemberId is not null)
+        {
+            <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.5)">
+                <div class="modal-dialog modal-dialog-centered" style="max-width:420px">
+                    <div class="modal-content">
+                        <div class="modal-header border-0 pb-0">
+                            <h5 class="modal-title text-danger">
+                                <i class="ri-error-warning-line me-2"></i>Confirmar Revert Placement
+                            </h5>
+                            <button type="button" class="btn-close"
+                                    @onclick="() => _confirmUnplaceMemberId = null"
+                                    disabled="@(_unplacingMemberId is not null)"></button>
+                        </div>
+                        <div class="modal-body pt-2">
+                            <p class="mb-1">
+                                ¿Está seguro que desea revertir el placement de
+                                <strong>@_confirmUnplaceMemberName</strong>?
+                            </p>
+                            <p class="text-muted" style="font-size:13px">
+                                El ambassador y su subárbol quedarán desvinculados del árbol dual.
+                                Podrán ser re-colocados posteriormente y su subárbol los acompañará.
+                            </p>
+                        </div>
+                        <div class="modal-footer border-0 pt-0">
+                            <button class="btn btn-secondary btn-sm"
+                                    @onclick="() => _confirmUnplaceMemberId = null"
+                                    disabled="@(_unplacingMemberId is not null)">
+                                Cancelar
+                            </button>
+                            <button class="btn btn-danger btn-sm"
+                                    disabled="@(_unplacingMemberId is not null)"
+                                    @onclick="async () => {
+                                        var mid = _confirmUnplaceMemberId!;
+                                        _confirmUnplaceMemberId = null;
+                                        await UnplaceMemberAsync(mid);
+                                    }">
+                                @if (_unplacingMemberId is not null)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1"></span>
+                                }
+                                Confirmar Revert
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
     </div>
 </div>
 
 @code {
     // ── Parameters ───────────────────────────────────────────────────────────
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
-    [Parameter] public string ApiBaseUrl      { get; set; } = "api/v1/bizcenter/team";
-    [Parameter] public bool   ShowBreadcrumb  { get; set; } = true;
+    [Parameter] public string ApiBaseUrl           { get; set; } = "api/v1/bizcenter/team";
+    [Parameter] public string PlacementApiBaseUrl  { get; set; } = "api/v1/admin/placement";
+    [Parameter] public bool   ShowBreadcrumb       { get; set; } = true;
+    [Parameter] public bool   AllowUnplacement     { get; set; } = false;
+
+    // ── JS interop ───────────────────────────────────────────────────────────
+    private IJSObjectReference? _jsModule;
+    private string _treeContainerId => "dtree-" + MemberProfileId.Replace("-", "").Replace("_", "");
 
     // ── State ────────────────────────────────────────────────────────────────
     private bool   _treeLoading  = true;
@@ -250,6 +472,23 @@
 
     // Navigation breadcrumb stack: list of (memberId, displayName)
     private List<(string Id, string Name)> _navStack = new();
+
+    // ── Placement modal state ─────────────────────────────────────────────────
+    private bool   _placementModalVisible     = false;
+    private bool   _placementCandidateLoading = false;
+    private bool   _placingMember             = false;
+    private string _placementTargetParentId   = string.Empty;
+    private string _placementTargetParentName = string.Empty;
+    private string _placementSide             = string.Empty;
+    private string? _placementModalError;
+    private List<PlacementCandidateDto> _placementCandidates = new();
+    private PlacementCandidateDto?      _selectedPlacementCandidate;
+
+    // ── Unplacement state ─────────────────────────────────────────────────────
+    private string? _unplacingMemberId;        // non-null while the DELETE call is in flight
+    private string? _unplacementError;
+    private string? _confirmUnplaceMemberId;   // non-null when confirmation modal is open
+    private string  _confirmUnplaceMemberName = string.Empty;
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
@@ -267,6 +506,22 @@
             _navStack.Clear();
             await Task.WhenAll(LoadNodeAsync(_currentRootId), LoadStatsAsync(_currentRootId));
         }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            _jsModule = await JS.InvokeAsync<IJSObjectReference>(
+                "import", "./_content/MLMConquerorGlobalEdition.SharedComponents/js/dualtree.js");
+
+        if (_jsModule is not null && !_treeLoading && _rootNode is not null)
+            await _jsModule.InvokeVoidAsync("initPan", _treeContainerId);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_jsModule is not null)
+            await _jsModule.DisposeAsync();
     }
 
     // ── Data loading ─────────────────────────────────────────────────────────
@@ -314,20 +569,35 @@
     }
 
     // ── Navigation ───────────────────────────────────────────────────────────
+    private async Task ResetPanAsync()
+    {
+        if (_jsModule is not null)
+            await _jsModule.InvokeVoidAsync("resetPan", _treeContainerId);
+    }
+
     private async Task DrillIntoNode(DualTreeChildDto child)
     {
         if (_rootNode is not null)
             _navStack.Add((_rootNode.MemberId, _rootNode.FullName));
 
+        await ResetPanAsync();
         _currentRootId = child.MemberId;
         await LoadNodeAsync(child.MemberId);
     }
 
+    private async Task DrillIntoNodeById(string memberId, string fullName, string parentId, string parentName)
+    {
+        _navStack.Add((parentId, parentName));
+        await ResetPanAsync();
+        _currentRootId = memberId;
+        await LoadNodeAsync(memberId);
+    }
+
     private async Task NavigateTo(string memberId)
     {
-        // Pop stack back to this entry
         var idx = _navStack.FindIndex(x => x.Id == memberId);
         if (idx >= 0) _navStack = _navStack.Take(idx).ToList();
+        await ResetPanAsync();
         _currentRootId = memberId;
         await LoadNodeAsync(memberId);
     }
@@ -335,8 +605,101 @@
     private async Task NavigateToRoot()
     {
         _navStack.Clear();
+        await ResetPanAsync();
         _currentRootId = MemberProfileId;
         await Task.WhenAll(LoadNodeAsync(MemberProfileId), LoadStatsAsync(MemberProfileId));
+    }
+
+    // ── Placement modal ──────────────────────────────────────────────────────
+    private async Task OpenPlacementModal(string targetParentMemberId, string parentName, string side)
+    {
+        _placementTargetParentId    = targetParentMemberId;
+        _placementTargetParentName  = parentName;
+        _placementSide              = side == "L" ? "Left" : "Right";
+        _placementModalError        = null;
+        _placementCandidates        = new();
+        _selectedPlacementCandidate = null;
+        _placementModalVisible      = true;
+        _placementCandidateLoading  = true;
+        StateHasChanged();
+
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<PlacementCandidateDto>>>(
+                $"{ApiBaseUrl}/dual-tree/available-for-placement");
+            _placementCandidates = resp?.Success == true ? resp.Data ?? new() : new();
+            if (!_placementCandidates.Any())
+                _placementModalError = "No members available for placement.";
+        }
+        catch (Exception ex)
+        {
+            _placementModalError = $"Error loading candidates: {ex.Message}";
+        }
+        finally
+        {
+            _placementCandidateLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task PlaceSelectedMember(string memberToPlaceId)
+    {
+        _placingMember       = true;
+        _placementModalError = null;
+        StateHasChanged();
+
+        try
+        {
+            var body = new
+            {
+                memberToPlaceId,
+                targetParentMemberId = _placementTargetParentId,
+                side = _placementSide
+            };
+            var response = await Http.PostAsJsonAsync(PlacementApiBaseUrl, body);
+            if (response.IsSuccessStatusCode)
+            {
+                _placementModalVisible = false;
+                await Task.WhenAll(LoadNodeAsync(_currentRootId), LoadStatsAsync(_currentRootId));
+            }
+            else
+            {
+                _placementModalError = $"Placement failed: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _placementModalError = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            _placingMember = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task UnplaceMemberAsync(string memberId)
+    {
+        _unplacingMemberId = memberId;
+        _unplacementError  = null;
+        StateHasChanged();
+        try
+        {
+            var response = await Http.DeleteAsync($"{PlacementApiBaseUrl}/{Uri.EscapeDataString(memberId)}");
+            if (response.IsSuccessStatusCode)
+                await Task.WhenAll(LoadNodeAsync(_currentRootId), LoadStatsAsync(_currentRootId));
+            else
+                _unplacementError = $"Error al revertir placement ({(int)response.StatusCode}).";
+        }
+        catch (Exception ex)
+        {
+            _unplacementError = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            _unplacingMemberId = null;
+            StateHasChanged();
+        }
     }
 
     // ── Tree rendering (recursive up to 3 levels) ────────────────────────────
@@ -356,49 +719,43 @@
         @* Render children if within depth limit *@
         @if (depth < 2)
         {
-            var hasLeft  = node.LeftChild  is not null;
-            var hasRight = node.RightChild is not null;
-
-            @if (hasLeft || hasRight)
-            {
-                <ul>
-                    @* Left slot *@
-                    <li>
-                        @if (node.LeftChild is not null)
-                        {
-                            var left = node.LeftChild;
-                            @RenderChildNode(left, depth + 1)
-                        }
-                        else
-                        {
-                            @RenderEmptySlot("L")
-                        }
-                    </li>
-                    @* Right slot *@
-                    <li>
-                        @if (node.RightChild is not null)
-                        {
-                            var right = node.RightChild;
-                            @RenderChildNode(right, depth + 1)
-                        }
-                        else
-                        {
-                            @RenderEmptySlot("R")
-                        }
-                    </li>
-                </ul>
-            }
+            <ul>
+                @* Left slot *@
+                <li>
+                    @if (node.LeftChild is not null)
+                    {
+                        var left = node.LeftChild;
+                        @RenderChildNode(left, depth + 1)
+                    }
+                    else
+                    {
+                        @RenderEmptySlot(node.MemberId, node.FullName, "L")
+                    }
+                </li>
+                @* Right slot *@
+                <li>
+                    @if (node.RightChild is not null)
+                    {
+                        var right = node.RightChild;
+                        @RenderChildNode(right, depth + 1)
+                    }
+                    else
+                    {
+                        @RenderEmptySlot(node.MemberId, node.FullName, "R")
+                    }
+                </li>
+            </ul>
         }
         else if (depth == 2)
         {
-            @* At max depth — show expand buttons if children exist *@
+            @* At max depth — show expand button if children exist *@
             var hasChildren = node.LeftChild is not null || node.RightChild is not null;
             @if (hasChildren)
             {
                 var n = node;
                 <div style="margin-top:8px">
                     <button class="btn btn-outline-primary btn-sm" style="font-size:11px"
-                            @onclick="async () => await DrillIntoNode(new DualTreeChildDto(n.MemberId, n.FullName, n.StatusCode, n.Points, n.LeftChild is not null, n.RightChild is not null))">
+                            @onclick="async () => await DrillIntoNodeById(n.MemberId, n.FullName, _currentRootId, _rootNode?.FullName ?? string.Empty)">
                         <i class="ri-expand-diagonal-line me-1"></i>Expand
                     </button>
                 </div>
@@ -408,50 +765,101 @@
 
     private RenderFragment RenderChildNode(DualTreeChildDto child, int depth) => __builder =>
     {
-        var statusClass = ResolveStatusClass(child.StatusCode);
+        var statusClass   = ResolveStatusClass(child.StatusCode);
+        var capturedChild = child;
         <div class="member-view-box @statusClass">
             <div class="member-header">@child.StatusCode</div>
             <div class="member-avatar" title="@child.FullName — Click to drill in"
-                 @onclick="async () => await DrillIntoNode(child)">
+                 @onclick="async () => await DrillIntoNode(capturedChild)">
                 @(child.FullName.Length > 0 ? child.FullName[0].ToString().ToUpper() : "?")
             </div>
             <div class="member-footer" style="white-space:normal;word-break:break-word">@child.FullName</div>
             <div style="font-size:11px;color:#888;margin-top:2px">@child.Points.ToString("N0") pts</div>
+            @if (AllowUnplacement)
+            {
+                var mid  = child.MemberId;
+                var name = child.FullName;
+                var busy = _unplacingMemberId == mid;
+                <button class="revert-btn" disabled="@busy"
+                        @onclick:stopPropagation="true"
+                        @onclick="() => { _confirmUnplaceMemberId = mid; _confirmUnplaceMemberName = name; }">
+                    @(busy ? "..." : "Revert Placement")
+                </button>
+            }
         </div>
 
-        @* Recurse if not at max depth and child has children *@
-        @if (depth < 2 && (child.HasLeft || child.HasRight))
+        @* Level 2: show actual grandchildren or empty slots *@
+        @if (depth < 2)
         {
             <ul>
                 <li>
-                    @if (child.HasLeft)
+                    @if (child.LeftChild is not null)
                     {
-                        @RenderEmptySlot("L")
+                        var gc = child.LeftChild;
+                        @RenderGrandchildNode(gc, child)
                     }
                     else
                     {
-                        @RenderEmptySlot("L")
+                        @RenderEmptySlot(child.MemberId, child.FullName, "L")
                     }
                 </li>
                 <li>
-                    @if (child.HasRight)
+                    @if (child.RightChild is not null)
                     {
-                        @RenderEmptySlot("R")
+                        var gc = child.RightChild;
+                        @RenderGrandchildNode(gc, child)
                     }
                     else
                     {
-                        @RenderEmptySlot("R")
+                        @RenderEmptySlot(child.MemberId, child.FullName, "R")
                     }
                 </li>
             </ul>
         }
     };
 
-    private RenderFragment RenderEmptySlot(string side) => __builder =>
+    private RenderFragment RenderGrandchildNode(DualTreeGrandchildDto gc, DualTreeChildDto parent) => __builder =>
     {
-        <div class="member-view-box" style="opacity:.65">
+        var capturedGc     = gc;
+        var capturedParent = parent;
+        var statusClass    = ResolveStatusClass(gc.StatusCode);
+        <div class="member-view-box @statusClass" style="cursor:pointer"
+             title="@gc.FullName — Click to drill in"
+             @onclick="async () => await DrillIntoNodeById(capturedGc.MemberId, capturedGc.FullName, capturedParent.MemberId, capturedParent.FullName)">
+            <div class="member-header">@gc.StatusCode</div>
+            <div class="member-avatar">
+                @(gc.FullName.Length > 0 ? gc.FullName[0].ToString().ToUpper() : "?")
+            </div>
+            <div class="member-footer" style="white-space:normal;word-break:break-word">@gc.FullName</div>
+            @if (gc.HasLeft || gc.HasRight)
+            {
+                <div style="font-size:10px;color:#888;margin-top:2px">
+                    <i class="ri-expand-diagonal-line"></i> expand
+                </div>
+            }
+            @if (AllowUnplacement)
+            {
+                var mid  = gc.MemberId;
+                var name = gc.FullName;
+                var busy = _unplacingMemberId == mid;
+                <button class="revert-btn" disabled="@busy"
+                        @onclick:stopPropagation="true"
+                        @onclick="() => { _confirmUnplaceMemberId = mid; _confirmUnplaceMemberName = name; }">
+                    @(busy ? "..." : "Revert Placement")
+                </button>
+            }
+        </div>
+    };
+
+    private RenderFragment RenderEmptySlot(string parentMemberId, string parentName, string side) => __builder =>
+    {
+        var capturedParent     = parentMemberId;
+        var capturedParentName = parentName;
+        var capturedSide       = side;
+        <div class="member-view-box" style="opacity:.65;cursor:pointer"
+             @onclick="async () => await OpenPlacementModal(capturedParent, capturedParentName, capturedSide)">
             <div class="member-header" style="background:#b0b8c1">@side Empty</div>
-            <div class="placeholder-node" title="No member placed here">
+            <div class="placeholder-node" title="Click to place a member">
                 <i class="ri-add-line"></i>
             </div>
             <div class="member-footer" style="color:#b0b8c1;font-size:12px">Open Slot</div>
@@ -477,6 +885,8 @@
     // ── DTOs ─────────────────────────────────────────────────────────────────
     private class ApiWrapper<T> { public bool Success { get; set; } public T? Data { get; set; } }
 
+    private record PlacementCandidateDto(string MemberId, string FullName, string? PhotoUrl, int FloatingSubtreeSize = 0);
+
     private class DualTreeNodeDto
     {
         public string           MemberId   { get; set; } = string.Empty;
@@ -487,13 +897,26 @@
         public DualTreeChildDto? RightChild { get; set; }
     }
 
-    private record DualTreeChildDto(
-        string MemberId,
-        string FullName,
-        string StatusCode,
-        int    Points,
-        bool   HasLeft,
-        bool   HasRight);
+    private class DualTreeChildDto
+    {
+        public string                MemberId   { get; set; } = string.Empty;
+        public string                FullName   { get; set; } = string.Empty;
+        public string                StatusCode { get; set; } = string.Empty;
+        public int                   Points     { get; set; }
+        public bool                  HasLeft    { get; set; }
+        public bool                  HasRight   { get; set; }
+        public DualTreeGrandchildDto? LeftChild  { get; set; }
+        public DualTreeGrandchildDto? RightChild { get; set; }
+    }
+
+    private class DualTreeGrandchildDto
+    {
+        public string MemberId   { get; set; } = string.Empty;
+        public string FullName   { get; set; } = string.Empty;
+        public string StatusCode { get; set; } = string.Empty;
+        public bool   HasLeft    { get; set; }
+        public bool   HasRight   { get; set; }
+    }
 
     private class DualTreeStatsDto
     {
