@@ -130,15 +130,15 @@
                                 }
                             </select>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold">Language Code <span class="text-danger">*</span></label>
-                            <input class="form-control" @bind="_uploadForm.LanguageCode"
-                                   placeholder="en" maxlength="10" style="text-transform:lowercase" />
-                            <div class="form-text">ISO 639-1, e.g. en, es, fr</div>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold">Language Name <span class="text-danger">*</span></label>
-                            <input class="form-control" @bind="_uploadForm.LanguageName" placeholder="English" />
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Language <span class="text-danger">*</span></label>
+                            <select class="form-select" @onchange="e => OnUploadLanguageChanged(e.Value?.ToString())">
+                                <option value="">— Select Language —</option>
+                                @foreach (var lang in _languages)
+                                {
+                                    <option value="@lang.Code" selected="@(_uploadForm.LanguageCode == lang.Code)">@lang.Name</option>
+                                }
+                            </select>
                         </div>
                         <div class="col-12">
                             <label class="form-label fw-semibold">File <span class="text-danger">*</span></label>
@@ -200,13 +200,15 @@
                                 }
                             </select>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Language Code <span class="text-danger">*</span></label>
-                            <input class="form-control" @bind="_editForm.LanguageCode" maxlength="10" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Language Name <span class="text-danger">*</span></label>
-                            <input class="form-control" @bind="_editForm.LanguageName" />
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Language <span class="text-danger">*</span></label>
+                            <select class="form-select" @onchange="e => OnEditLanguageChanged(e.Value?.ToString())">
+                                <option value="">— Select Language —</option>
+                                @foreach (var lang in _languages)
+                                {
+                                    <option value="@lang.Code" selected="@(_editForm.LanguageCode == lang.Code)">@lang.Name</option>
+                                }
+                            </select>
                         </div>
                         <div class="col-12">
                             <div class="form-check">
@@ -340,9 +342,7 @@
         if (_uploadForm.DocumentTypeId == 0)
         { _alertMsg = "Document type is required."; _alertIsError = true; return; }
         if (string.IsNullOrWhiteSpace(_uploadForm.LanguageCode))
-        { _alertMsg = "Language code is required."; _alertIsError = true; return; }
-        if (string.IsNullOrWhiteSpace(_uploadForm.LanguageName))
-        { _alertMsg = "Language name is required."; _alertIsError = true; return; }
+        { _alertMsg = "Language is required."; _alertIsError = true; return; }
         if (_selectedFile is null)
         { _alertMsg = "Please select a file."; _alertIsError = true; return; }
         if (_selectedFile.Size > MaxFileSizeBytes)
@@ -403,9 +403,7 @@
         if (_editForm.DocumentTypeId == 0)
         { _alertMsg = "Document type is required."; _alertIsError = true; return; }
         if (string.IsNullOrWhiteSpace(_editForm.LanguageCode))
-        { _alertMsg = "Language code is required."; _alertIsError = true; return; }
-        if (string.IsNullOrWhiteSpace(_editForm.LanguageName))
-        { _alertMsg = "Language name is required."; _alertIsError = true; return; }
+        { _alertMsg = "Language is required."; _alertIsError = true; return; }
 
         _saving = true;
         try
@@ -508,4 +506,53 @@
 
     private record DocumentTypeItem(int Id, string Name);
     private record ApiResp<T>(bool Success, T? Data, string? ErrorCode, IEnumerable<string>? Errors);
+    private record LanguageOption(string Code, string Name);
+
+    private void OnUploadLanguageChanged(string? code)
+    {
+        var lang = _languages.FirstOrDefault(l => l.Code == code);
+        _uploadForm.LanguageCode = lang?.Code ?? string.Empty;
+        _uploadForm.LanguageName = lang?.Name ?? string.Empty;
+    }
+
+    private void OnEditLanguageChanged(string? code)
+    {
+        var lang = _languages.FirstOrDefault(l => l.Code == code);
+        _editForm.LanguageCode = lang?.Code ?? string.Empty;
+        _editForm.LanguageName = lang?.Name ?? string.Empty;
+    }
+
+    private static readonly List<LanguageOption> _languages = new()
+    {
+        new("en", "English"),
+        new("es", "Español"),
+        new("pt", "Português"),
+        new("fr", "Français"),
+        new("de", "Deutsch"),
+        new("it", "Italiano"),
+        new("nl", "Nederlands"),
+        new("ru", "Русский"),
+        new("zh", "中文"),
+        new("ja", "日本語"),
+        new("ko", "한국어"),
+        new("ar", "العربية"),
+        new("hi", "हिन्दी"),
+        new("tr", "Türkçe"),
+        new("pl", "Polski"),
+        new("vi", "Tiếng Việt"),
+        new("th", "ไทย"),
+        new("id", "Bahasa Indonesia"),
+        new("ms", "Bahasa Melayu"),
+        new("ro", "Română"),
+        new("uk", "Українська"),
+        new("sv", "Svenska"),
+        new("da", "Dansk"),
+        new("fi", "Suomi"),
+        new("no", "Norsk"),
+        new("cs", "Čeština"),
+        new("hu", "Magyar"),
+        new("el", "Ελληνικά"),
+        new("he", "עברית"),
+        new("fa", "فارسی"),
+    };
 }

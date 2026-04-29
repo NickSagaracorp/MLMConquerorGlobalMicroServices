@@ -1,75 +1,97 @@
 @page "/login"
-@rendermode InteractiveServer
 @layout MLMConquerorGlobalEdition.SharedComponents.Components.Layout.BlankLayout
-@inject NavigationManager Navigation
-@inject HttpClient Http
 
-<div class="login-wrapper">
-    <div class="login-card">
-        <div class="login-logo">
-            <h2>MLM Conqueror</h2>
-            <p class="text-muted">Ambassador &amp; Member Portal</p>
-        </div>
-        @if (!string.IsNullOrEmpty(_error))
-        {
-            <div class="alert alert-danger">@_error</div>
-        }
-        <EditForm Model="_model" OnValidSubmit="HandleLogin">
-            <DataAnnotationsValidator />
-            <div class="mb-3">
-                <label class="form-label">Email</label>
-                <InputText class="form-control" @bind-Value="_model.Email" type="email" />
-                <ValidationMessage For="() => _model.Email" />
+@* Matches UI-Templates/login.html structure EXACTLY:
+     <div class="container">
+       <div class="main-content d-flex flex-column p-0">
+         <div class="m-auto m-1230">
+           <div class="row align-items-center">
+             <div class="col-lg-6 d-none d-lg-block"><img poster-login.webp></div>
+             <div class="col-lg-6">
+               <div class="mw-480 ms-lg-auto"> ...logo, title, form... </div>
+             </div>
+           </div>
+         </div>
+       </div>
+     </div>
+   BlankLayout renders only @Body, so no sidebar/header interferes. *@
+
+<PageTitle>MLM Conqueror - Log In</PageTitle>
+
+<div class="container">
+    <div class="main-content d-flex flex-column p-0">
+        <div class="m-auto m-1230">
+            <div class="row align-items-center">
+                <div class="col-lg-6 d-none d-lg-block">
+                    <img src="assets/images/poster-login.webp" class="rounded-3" alt="login">
+                </div>
+                <div class="col-lg-6">
+                    <div class="mw-480 ms-lg-auto">
+                        <div class="d-inline-block mb-4">
+                            <img src="assets/images/logo.svg" class="rounded-3 for-light-logo" alt="logo">
+                            <img src="assets/images/logo.svg" class="rounded-3 for-dark-logo" alt="logo">
+                        </div>
+                        <h3 class="fs-28 mb-2">Welcome Back!</h3>
+                        <p class="fw-medium fs-16 mb-4">Please Log In to Your Account</p>
+
+                        @if (Error == "invalid")
+                        {
+                            <div class="alert alert-danger mb-3">Invalid email or password.</div>
+                        }
+                        else if (Error == "inactive")
+                        {
+                            <div class="alert alert-warning mb-3">
+                                Your account is inactive. Please contact support.
+                            </div>
+                        }
+                        else if (Error == "session_expired")
+                        {
+                            <div class="alert alert-info mb-3">
+                                Your session has expired. Please sign in again.
+                            </div>
+                        }
+
+                        <form method="post" action="/account/login">
+                            <div class="form-group mb-4">
+                                <label class="label text-secondary">Email Address</label>
+                                <input name="Email" type="email" class="form-control h-55"
+                                       placeholder="Enter your email" required autocomplete="username" />
+                            </div>
+                            <div class="form-group mb-4">
+                                <label class="label text-secondary">Password</label>
+                                <input name="Password" type="password" class="form-control h-55"
+                                       placeholder="Enter password" required autocomplete="current-password" />
+                            </div>
+                            <div class="form-group mb-4">
+                                <a href="/forgot-password" class="text-decoration-none text-primary fw-semibold">
+                                    Forgot Password?
+                                </a>
+                            </div>
+                            <div class="form-group mb-4">
+                                <button type="submit" class="btn btn-primary fw-medium py-2 px-3 w-100">
+                                    <div class="d-flex align-items-center justify-content-center py-1">
+                                        <i class="material-symbols-outlined text-white fs-20 me-2">login</i>
+                                        <span>SIGN IN</span>
+                                    </div>
+                                </button>
+                            </div>
+                            <div class="form-group">
+                                <p>
+                                    Don't have an account?
+                                    <a href="/signup" class="fw-medium text-primary text-decoration-none">
+                                        Contact our support team
+                                    </a>
+                                </p>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             </div>
-            <div class="mb-3">
-                <label class="form-label">Password</label>
-                <InputText class="form-control" @bind-Value="_model.Password" type="password" />
-                <ValidationMessage For="() => _model.Password" />
-            </div>
-            <button type="submit" class="btn btn-primary w-100" disabled="@_busy">
-                @if (_busy) { <span class="spinner-border spinner-border-sm me-2"></span> }
-                Sign In
-            </button>
-        </EditForm>
-        <div class="mt-3 text-center"><a href="/forgot-password">Forgot password?</a></div>
-        <div class="mt-2 text-center">
-            <span class="text-muted small">Don't have an account?</span>
-            <a href="/signup" class="ms-1 small">Sign up</a>
         </div>
     </div>
 </div>
 
-<style>
-.login-wrapper { display:flex; justify-content:center; align-items:center; min-height:100vh; background:#f0f2f5; }
-.login-card { background:white; padding:2rem; border-radius:12px; box-shadow:0 4px 24px rgba(0,0,0,.08); width:100%; max-width:420px; }
-.login-logo { text-align:center; margin-bottom:1.5rem; }
-</style>
-
 @code {
-    private LoginModel _model = new();
-    private bool _busy;
-    private string _error = string.Empty;
-
-    private async Task HandleLogin()
-    {
-        _busy = true; _error = string.Empty;
-        try
-        {
-            var response = await Http.PostAsJsonAsync("/account/login", new { _model.Email, _model.Password });
-            if (response.IsSuccessStatusCode)
-                Navigation.NavigateTo("/", forceLoad: true);
-            else
-                _error = "Invalid email or password.";
-        }
-        catch (Exception ex) { _error = $"Connection error: {ex.Message}"; }
-        finally { _busy = false; }
-    }
-
-    private class LoginModel
-    {
-        [System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.EmailAddress]
-        public string Email { get; set; } = string.Empty;
-        [System.ComponentModel.DataAnnotations.Required]
-        public string Password { get; set; } = string.Empty;
-    }
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
 }

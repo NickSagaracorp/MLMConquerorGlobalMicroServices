@@ -1,0 +1,149 @@
+@inject HttpClient Http
+
+@*
+    Recent transactions list mirroring the template's "Recent Transactions"
+    table on the Billing tab. The endpoint returns a generic shape — we map a
+    handful of obvious property names defensively so the table still renders if
+    the backend tweaks naming.
+*@
+
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-header bg-transparent py-3">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h6 class="fs-18 mb-0 fw-semibold">
+                <i class="ri-bill-line me-2 text-primary"></i>Recent Transactions
+            </h6>
+            <small class="text-muted">Showing @_items.Count of @_total</small>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <LoadingSpinner IsLoading="@_loading" />
+        @if (!_loading)
+        {
+            @if (_items.Count == 0)
+            {
+                <div class="text-center py-5">
+                    <i class="ri-archive-line text-muted" style="font-size:2.5rem"></i>
+                    <p class="text-muted mt-2 mb-0">No transactions yet.</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Transaction</th>
+                                <th>Date</th>
+                                <th>Description</th>
+                                <th class="text-end">Amount</th>
+                                <th>Status</th>
+                                <th>Source</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var t in _items)
+                            {
+                                <tr>
+                                    <td class="font-monospace small">@t.Id</td>
+                                    <td class="small text-nowrap">@t.Date.ToString("MM/dd/yyyy HH:mm")</td>
+                                    <td>@t.Description</td>
+                                    <td class="text-end fw-medium">@t.Amount.ToString("C")</td>
+                                    <td><StatusBadge Status="@t.Status" /></td>
+                                    <td class="small text-muted">@t.Source</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (_total > _pageSize)
+                {
+                    var totalPages = (int)Math.Ceiling((double)_total / _pageSize);
+                    <div class="d-flex justify-content-center py-3">
+                        <nav>
+                            <ul class="pagination pagination-sm mb-0">
+                                <li class="page-item @(_page <= 1 ? "disabled" : "")">
+                                    <button class="page-link" @onclick="() => LoadAsync(_page - 1)">&#x2039;</button>
+                                </li>
+                                @for (var pg = 1; pg <= totalPages; pg++)
+                                {
+                                    var p = pg;
+                                    <li class="page-item @(p == _page ? "active" : "")">
+                                        <button class="page-link" @onclick="() => LoadAsync(p)">@p</button>
+                                    </li>
+                                }
+                                <li class="page-item @(_page >= totalPages ? "disabled" : "")">
+                                    <button class="page-link" @onclick="() => LoadAsync(_page + 1)">&#x203A;</button>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                }
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private bool _loading = true;
+    private int  _page = 1;
+    private int  _pageSize = 10;
+    private int  _total;
+    private List<BillingTx> _items = new();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync(1);
+
+    private async Task LoadAsync(int page)
+    {
+        _loading = true; _page = page; StateHasChanged();
+        try
+        {
+            // The backend response is an ApiResponse<PagedResult<dynamic>>; we
+            // parse defensively so this still renders even if a property name
+            // is slightly different on the server.
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<PagedData<BillingTxRaw>>>(
+                $"api/v1/bizcenter/billing/history?page={page}&pageSize={_pageSize}");
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _total = resp.Data.TotalCount;
+                _items = resp.Data.Items.Select(r => new BillingTx(
+                    r.Id ?? r.TransactionId ?? r.OrderId ?? "—",
+                    r.Date ?? r.CreationDate ?? r.PaymentDate ?? DateTime.MinValue,
+                    r.Description ?? r.MembershipLevel ?? r.Note ?? "Membership renewal",
+                    r.Amount ?? 0m,
+                    r.Status ?? r.PaymentStatus ?? "—",
+                    r.Source ?? r.PaymentMethod ?? r.Gateway ?? "—"
+                )).ToList();
+            }
+        }
+        catch { /* leave _items empty */ }
+        finally { _loading = false; StateHasChanged(); }
+    }
+
+    private record BillingTx(string Id, DateTime Date, string Description, decimal Amount, string Status, string Source);
+
+    private class ApiWrapper<T> { public bool Success { get; set; } public T? Data { get; set; } }
+    private class PagedData<T>  { public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
+
+    // Defensive raw shape — covers the property names most commonly used in
+    // the Billing/Order DTOs across the codebase.
+    private class BillingTxRaw
+    {
+        public string?  Id              { get; set; }
+        public string?  TransactionId   { get; set; }
+        public string?  OrderId         { get; set; }
+        public DateTime? Date           { get; set; }
+        public DateTime? CreationDate   { get; set; }
+        public DateTime? PaymentDate    { get; set; }
+        public string?  Description     { get; set; }
+        public string?  MembershipLevel { get; set; }
+        public string?  Note            { get; set; }
+        public decimal? Amount          { get; set; }
+        public string?  Status          { get; set; }
+        public string?  PaymentStatus   { get; set; }
+        public string?  Source          { get; set; }
+        public string?  PaymentMethod   { get; set; }
+        public string?  Gateway         { get; set; }
+    }
+}

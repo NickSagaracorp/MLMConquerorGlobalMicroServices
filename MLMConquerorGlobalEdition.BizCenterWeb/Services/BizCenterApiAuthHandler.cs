@@ -1,13 +1,18 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
 
 namespace MLMConquerorGlobalEdition.BizCenterWeb.Services;
 
 /// <summary>
 /// DelegatingHandler that forwards the member's JWT Bearer token to the
-/// BizCenter REST API. Works in both SSR (HttpContext available) and
-/// Blazor Server SignalR circuit contexts.
+/// BizCenter REST API. Pre-checks JWT expiry to avoid 401 round-trips and,
+/// on expiry/401, flips auth state to anonymous so AuthorizeRouteView's
+/// NotAuthorized template handles the redirect to login.
 /// </summary>
 public class BizCenterApiAuthHandler : DelegatingHandler
 {
@@ -25,10 +30,8 @@ public class BizCenterApiAuthHandler : DelegatingHandler
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        // Phase 1 — SSR: read token claim stored on the ClaimsPrincipal during login
         var token = _httpContextAccessor.HttpContext?.User.FindFirstValue("access_token");
 
-        // Phase 2 — Blazor Server circuit: HttpContext is null; use auth state provider
         if (string.IsNullOrEmpty(token))
         {
             try
@@ -39,9 +42,45 @@ public class BizCenterApiAuthHandler : DelegatingHandler
             catch { /* provider not yet ready — proceed without token */ }
         }
 
+        if (!string.IsNullOrEmpty(token) && IsTokenExpired(token))
+        {
+            await SignOutAsync();
+            return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+        }
+
         if (!string.IsNullOrEmpty(token))
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        return await base.SendAsync(request, cancellationToken);
+        var response = await base.SendAsync(request, cancellationToken);
+
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+            await SignOutAsync();
+
+        return response;
+    }
+
+    private async Task SignOutAsync()
+    {
+        var ctx = _httpContextAccessor.HttpContext;
+        if (ctx is not null && !ctx.Response.HasStarted)
+        {
+            try { await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme); }
+            catch { /* best effort */ }
+        }
+
+        if (_authStateProvider is PersistingServerAuthStateProvider persisting)
+            persisting.MarkUserAsLoggedOut();
+    }
+
+    private static bool IsTokenExpired(string token)
+    {
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+            if (!handler.CanReadToken(token)) return true;
+            var jwt = handler.ReadJwtToken(token);
+            return jwt.ValidTo <= DateTime.UtcNow.AddSeconds(5);
+        }
+        catch { return true; }
     }
 }

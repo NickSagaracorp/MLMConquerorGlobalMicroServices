@@ -1,0 +1,108 @@
+@*
+    Read-only "About Me" card — names, DOB, business name, SSN.
+    These fields are intentionally LOCKED in the BizCenter UI: an attacker who
+    hijacks a session shouldn't be able to rewrite the rightful owner's
+    identity. Changes go through a support ticket instead.
+*@
+
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom pb-3 mb-3">
+            <h6 class="fs-18 mb-0 fw-semibold">
+                <i class="ri-id-card-line me-2 text-primary"></i>About Me
+            </h6>
+            <button type="button"
+                    class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
+                    @onclick="() => _showDisclaimer = !_showDisclaimer">
+                <i class="ri-information-line"></i>
+                <span>Why is this locked?</span>
+            </button>
+        </div>
+
+        @if (_showDisclaimer)
+        {
+            <div class="alert alert-warning small d-flex align-items-start gap-2 mb-3">
+                <i class="ri-shield-keyhole-line fs-5 mt-1 flex-shrink-0"></i>
+                <div>
+                    <strong>Identity fields are locked for your security.</strong><br />
+                    First name, last name, date of birth, business name and SSN
+                    can only be changed by our support team. Open a ticket from
+                    the Support page if any of these need to be corrected.
+                </div>
+            </div>
+        }
+
+        <div class="row g-3">
+            <div class="col-12 col-md-6">
+                <div class="profile-readonly-field">
+                    <label class="form-label text-muted small mb-1">First Name</label>
+                    <div class="fw-medium">@DisplayOrDash(FirstName)</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="profile-readonly-field">
+                    <label class="form-label text-muted small mb-1">Last Name</label>
+                    <div class="fw-medium">@DisplayOrDash(LastName)</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="profile-readonly-field">
+                    <label class="form-label text-muted small mb-1">Date of Birth</label>
+                    <div class="fw-medium">@FormatDob(DateOfBirth)</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="profile-readonly-field">
+                    <label class="form-label text-muted small mb-1">Business Name</label>
+                    <div class="fw-medium">@DisplayOrDash(BusinessName)</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="profile-readonly-field">
+                    <label class="form-label text-muted small mb-1">SSN</label>
+                    <div class="fw-medium font-monospace">@FormatSsn(SsnLast4)</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="profile-readonly-field">
+                    <label class="form-label text-muted small mb-1">EIN</label>
+                    <div class="fw-medium font-monospace text-muted">— not on file —</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="profile-readonly-field">
+                    <label class="form-label text-muted small mb-1">Member ID</label>
+                    <div class="fw-medium font-monospace">@DisplayOrDash(MemberId)</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="profile-readonly-field">
+                    <label class="form-label text-muted small mb-1">Enrolled</label>
+                    <div class="fw-medium">@(EnrollDate == default ? "—" : EnrollDate.ToString("MMM dd, yyyy"))</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string?  MemberId      { get; set; }
+    [Parameter] public string?  FirstName     { get; set; }
+    [Parameter] public string?  LastName      { get; set; }
+    [Parameter] public DateTime DateOfBirth   { get; set; }
+    [Parameter] public string?  BusinessName  { get; set; }
+    [Parameter] public string?  SsnLast4      { get; set; }
+    [Parameter] public DateTime EnrollDate    { get; set; }
+
+    private bool _showDisclaimer;
+
+    private static string DisplayOrDash(string? v) =>
+        string.IsNullOrWhiteSpace(v) ? "—" : v;
+
+    private static string FormatDob(DateTime dob) =>
+        dob == default ? "—" : dob.ToString("dd/MM/yyyy");
+
+    // Mask SSN as ***-**-1234 — never show full digits in any UI.
+    private static string FormatSsn(string? last4) =>
+        string.IsNullOrWhiteSpace(last4) ? "— not on file —" : $"***-**-{last4}";
+}

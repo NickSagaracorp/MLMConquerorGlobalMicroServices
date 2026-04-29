@@ -99,7 +99,7 @@ public class StartImpersonationHandlerTests
         {
             Id = "user-001",
             Email = "amb@test.com",
-            MemberProfileId = member.Id,
+            MemberProfileId = member.MemberId,
             IsActive = true
         };
         var userManager = UserManagerHelper.Create();
@@ -131,7 +131,7 @@ public class StartImpersonationHandlerTests
         {
             Id = "user-001",
             Email = "amb@test.com",
-            MemberProfileId = member.Id,
+            MemberProfileId = member.MemberId,
             IsActive = true
         };
         var userManager = UserManagerHelper.Create();
@@ -163,7 +163,7 @@ public class StartImpersonationHandlerTests
         {
             Id = "user-001",
             Email = "amb@test.com",
-            MemberProfileId = member.Id,
+            MemberProfileId = member.MemberId,
             IsActive = true
         };
         var userManager = UserManagerHelper.Create();
@@ -195,7 +195,7 @@ public class StartImpersonationHandlerTests
         {
             Id = "user-001",
             Email = "amb@test.com",
-            MemberProfileId = member.Id,
+            MemberProfileId = member.MemberId,
             IsActive = true
         };
         var userManager = UserManagerHelper.Create();

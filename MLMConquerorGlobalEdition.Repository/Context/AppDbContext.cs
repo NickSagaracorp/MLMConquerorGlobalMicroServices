@@ -33,6 +33,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
 
     public DbSet<MemberProfile> MemberProfiles => Set<MemberProfile>();
     public DbSet<MemberStatusHistory> MemberStatusHistories => Set<MemberStatusHistory>();
+    public DbSet<MemberAddressHistory> MemberAddressHistories => Set<MemberAddressHistory>();
+    public DbSet<MemberCredentialChangeLog> MemberCredentialChangeLogs => Set<MemberCredentialChangeLog>();
     public DbSet<MemberIdentificationType> MemberIdentificationTypes => Set<MemberIdentificationType>();
     public DbSet<MemberStatisticEntity> MemberStatistics => Set<MemberStatisticEntity>();
     public DbSet<MemberProfileNotificationTracking> MemberNotifications => Set<MemberProfileNotificationTracking>();
@@ -40,6 +42,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
 
     public DbSet<MemberProfilesWallet> Wallets => Set<MemberProfilesWallet>();
     public DbSet<MemberProfilesWalletHistory> WalletHistories => Set<MemberProfilesWalletHistory>();
+    public DbSet<MemberWalletApiLog> WalletApiLogs => Set<MemberWalletApiLog>();
+    public DbSet<PaymentGatewayInfo> PaymentGateways => Set<PaymentGatewayInfo>();
     public DbSet<MemberCreditCard> CreditCards => Set<MemberCreditCard>();
 
     public DbSet<MembershipLevel> MembershipLevels => Set<MembershipLevel>();

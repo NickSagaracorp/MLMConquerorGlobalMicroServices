@@ -1,8 +1,9 @@
-@page "/team/enrollment/branches"
-@rendermode InteractiveAuto
+﻿@page "/team/enrollment/branches"
+@rendermode InteractiveServer
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @inject IViewContextService ViewContext
 
-<PageTitle>Enrollment Team — Branches</PageTitle>
+<PageTitle>Enrollment Team â€” Branches</PageTitle>
 
 <EnrollmentTeamBranches MemberProfileId="@ViewContext.ViewingMemberId" />
+

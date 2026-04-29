@@ -1,0 +1,261 @@
+@inject HttpClient Http
+
+<div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.55)">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="ri-bank-card-line me-2"></i>Add credit card</h5>
+                <button type="button" class="btn-close" @onclick="OnClose"></button>
+            </div>
+            <div class="modal-body">
+
+                @* ─── 3-D card preview (front + back) ─── *@
+                <div class="cc-stage mb-4">
+                    <div class="cc-card @( _flipped ? "cc-flipped" : "") cc-bg-@_brand.ToLowerInvariant()">
+                        <div class="cc-face cc-front">
+                            <div class="cc-chip"></div>
+                            <div class="cc-brand">@(_brand == "Unknown" ? "" : _brand)</div>
+                            <div class="cc-number">@DisplayNumber()</div>
+                            <div class="cc-row">
+                                <div>
+                                    <div class="cc-lbl">Card holder</div>
+                                    <div class="cc-val">@(string.IsNullOrWhiteSpace(_cardholder) ? "FULL NAME" : _cardholder.ToUpperInvariant())</div>
+                                </div>
+                                <div>
+                                    <div class="cc-lbl">Expires</div>
+                                    <div class="cc-val">@DisplayExpiry()</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="cc-face cc-back">
+                            <div class="cc-stripe"></div>
+                            <div class="cc-cvv-row">
+                                <div class="cc-cvv-label">CVC</div>
+                                <div class="cc-cvv-box">@DisplayCvv()</div>
+                            </div>
+                            <div class="cc-back-brand">@(_brand == "Unknown" ? "" : _brand)</div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (_error is not null)
+                {
+                    <div class="alert alert-danger small">@_error</div>
+                }
+
+                <div class="row g-2">
+                    <div class="col-12">
+                        <label class="form-label small">Card number</label>
+                        <input type="text" inputmode="numeric" class="form-control"
+                               placeholder="1234 5678 9012 3456"
+                               value="@_displayedCardNumber"
+                               @oninput="OnCardNumberInput"
+                               @onfocus='() => _flipped = false'
+                               maxlength="23" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small">Cardholder name</label>
+                        <input type="text" class="form-control"
+                               placeholder="As printed on the card"
+                               @bind="_cardholder" @bind:event="oninput"
+                               @onfocus='() => _flipped = false' />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small">Expiration</label>
+                        <input type="text" inputmode="numeric" class="form-control"
+                               placeholder="MM/YY"
+                               value="@_expiryDisplay"
+                               @oninput="OnExpiryInput"
+                               @onfocus='() => _flipped = false'
+                               maxlength="5" />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small">CVC</label>
+                        <input type="password" inputmode="numeric" class="form-control"
+                               placeholder="•••"
+                               value="@_cvv"
+                               @oninput="OnCvvInput"
+                               @onfocus='() => _flipped = true'
+                               @onblur='() => _flipped = false'
+                               maxlength="4" />
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-secondary" disabled="@_submitting" @onclick="OnClose">Cancel</button>
+                <button class="btn btn-primary" disabled="@(_submitting || !CanSubmit)" @onclick="SubmitAsync">
+                    @if (_submitting) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                    Save card
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnAdded { get; set; }
+
+    private string _rawCardNumber       = string.Empty; // digits only
+    private string _displayedCardNumber = string.Empty; // with spaces
+    private string _cardholder          = string.Empty;
+    private string _expiryDisplay       = string.Empty; // MM/YY
+    private string _cvv                 = string.Empty;
+    private string _brand               = "Unknown";
+    private bool   _flipped;
+    private bool   _submitting;
+    private string? _error;
+
+    private bool CanSubmit =>
+        _rawCardNumber.Length >= 13 &&
+        ParseExpiry(_expiryDisplay) is not null &&
+        _cvv.Length >= 3;
+
+    // ── Input handlers ────────────────────────────────────────────────────
+    private void OnCardNumberInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        var typed = e.Value?.ToString() ?? string.Empty;
+        var digits = new string(typed.Where(char.IsDigit).ToArray());
+        if (digits.Length > 19) digits = digits[..19];
+        _rawCardNumber = digits;
+        _brand = DetectBrand(digits);
+        _displayedCardNumber = FormatNumber(digits, _brand);
+    }
+
+    private void OnExpiryInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        var typed  = e.Value?.ToString() ?? string.Empty;
+        var digits = new string(typed.Where(char.IsDigit).ToArray());
+        if (digits.Length > 4) digits = digits[..4];
+        _expiryDisplay = digits.Length switch
+        {
+            <= 2 => digits,
+            _    => $"{digits[..2]}/{digits[2..]}"
+        };
+    }
+
+    private void OnCvvInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        var typed  = e.Value?.ToString() ?? string.Empty;
+        var digits = new string(typed.Where(char.IsDigit).ToArray());
+        var max    = string.Equals(_brand, "Amex", StringComparison.OrdinalIgnoreCase) ? 4 : 3;
+        _cvv = digits.Length > max ? digits[..max] : digits;
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+    private string DisplayNumber()
+    {
+        if (string.IsNullOrEmpty(_rawCardNumber)) return "•••• •••• •••• ••••";
+        var len   = _rawCardNumber.Length;
+        var groups = string.Equals(_brand, "Amex", StringComparison.OrdinalIgnoreCase)
+            ? new[] { 4, 6, 5 }
+            : new[] { 4, 4, 4, 4 };
+        var sb  = new System.Text.StringBuilder();
+        var idx = 0;
+        foreach (var g in groups)
+        {
+            for (var i = 0; i < g; i++)
+                sb.Append(idx < len ? _rawCardNumber[idx++] : '•');
+            sb.Append(' ');
+        }
+        return sb.ToString().Trim();
+    }
+
+    private string DisplayExpiry() =>
+        string.IsNullOrEmpty(_expiryDisplay) ? "MM/YY" : _expiryDisplay;
+
+    private string DisplayCvv() =>
+        string.IsNullOrEmpty(_cvv) ? "•••" : new string('•', _cvv.Length);
+
+    private static string FormatNumber(string digits, string brand)
+    {
+        if (digits.Length == 0) return string.Empty;
+        var groups = string.Equals(brand, "Amex", StringComparison.OrdinalIgnoreCase)
+            ? new[] { 4, 6, 5 }
+            : new[] { 4, 4, 4, 4 };
+        var sb  = new System.Text.StringBuilder();
+        var idx = 0;
+        foreach (var g in groups)
+        {
+            if (idx >= digits.Length) break;
+            if (sb.Length > 0) sb.Append(' ');
+            var take = Math.Min(g, digits.Length - idx);
+            sb.Append(digits.AsSpan(idx, take));
+            idx += take;
+        }
+        return sb.ToString();
+    }
+
+    private static string DetectBrand(string digits)
+    {
+        if (string.IsNullOrEmpty(digits)) return "Unknown";
+        if (digits[0] == '4') return "Visa";
+        if (digits.Length >= 2)
+        {
+            var two = int.Parse(digits[..2]);
+            if (two == 34 || two == 37) return "Amex";
+            if (two is >= 51 and <= 55 or >= 22 and <= 27) return "Mastercard";
+            if (two == 36 || (two >= 30 && two <= 38)) return "Diners";
+            if (two == 35) return "JCB";
+            if (two == 65) return "Discover";
+        }
+        if (digits.Length >= 4 && digits.StartsWith("6011")) return "Discover";
+        return "Unknown";
+    }
+
+    private static (int Month, int Year)? ParseExpiry(string raw)
+    {
+        var parts = raw.Split('/');
+        if (parts.Length != 2) return null;
+        if (!int.TryParse(parts[0], out var month) || month is < 1 or > 12) return null;
+        if (!int.TryParse(parts[1], out var yy)) return null;
+        // 2-digit year → 20YY
+        return (month, 2000 + yy);
+    }
+
+    // ── Submit ────────────────────────────────────────────────────────────
+    private async Task SubmitAsync()
+    {
+        _error = null;
+        var exp = ParseExpiry(_expiryDisplay);
+        if (exp is null) { _error = "Invalid expiration date."; return; }
+
+        // Block already-expired cards client-side too, so the user gets the
+        // message instantly without an API round-trip. Server enforces the same.
+        var today = DateTime.UtcNow;
+        if (exp.Value.Year < today.Year ||
+            (exp.Value.Year == today.Year && exp.Value.Month < today.Month))
+        {
+            _error = "This card is already expired. Please use a card with a future expiration date.";
+            return;
+        }
+
+        if (_rawCardNumber.Length < 13) { _error = "Card number is too short."; return; }
+        if (_cvv.Length < 3) { _error = "CVC is too short."; return; }
+
+        _submitting = true; StateHasChanged();
+        try
+        {
+            var payload = new
+            {
+                cardNumber     = _rawCardNumber,
+                cardholderName = _cardholder,
+                expiryMonth    = exp.Value.Month,
+                expiryYear     = exp.Value.Year,
+                cvv            = _cvv
+            };
+            var resp = await Http.PostAsJsonAsync(
+                "api/v1/bizcenter/billing/credit-cards", payload);
+            if (resp.IsSuccessStatusCode)
+            {
+                await OnAdded.InvokeAsync();
+            }
+            else
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _submitting = false; StateHasChanged(); }
+    }
+}

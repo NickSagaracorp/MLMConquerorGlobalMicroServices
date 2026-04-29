@@ -6,6 +6,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Entities.Tokens;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Tests;
 
@@ -15,6 +16,7 @@ public class GetDashboardStatsHandlerTests : IDisposable
 
     private readonly AppDbContext _db;
     private readonly Mock<ICurrentUserService> _currentUser;
+    private readonly Mock<IDateTimeProvider> _dateTime;
 
     public GetDashboardStatsHandlerTests()
     {
@@ -25,12 +27,15 @@ public class GetDashboardStatsHandlerTests : IDisposable
 
         _currentUser = new Mock<ICurrentUserService>();
         _currentUser.Setup(x => x.MemberId).Returns(MemberId);
+
+        _dateTime = new Mock<IDateTimeProvider>();
+        _dateTime.Setup(x => x.UtcNow).Returns(DateTime.UtcNow);
     }
 
     public void Dispose() => _db.Dispose();
 
     private GetDashboardStatsHandler CreateHandler() =>
-        new(_db, _currentUser.Object);
+        new(_db, _currentUser.Object, _dateTime.Object, new RankComputationService(_db));
 
 
     [Fact]
@@ -144,11 +149,13 @@ public class GetDashboardStatsHandlerTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_WhenMemberHasNoFsbEarnings_ReturnEmptyFsbWindows()
+    public async Task Handle_WhenMemberHasNoFsbEarningsAndNoCountdown_ReturnsThreeLockedWindows()
     {
         var result = await CreateHandler().Handle(new GetDashboardStatsQuery(), default);
 
-        result.Value!.FsbWindows.Should().BeEmpty();
+        // Dashboard always renders 3 windows; without a countdown record they are all "Locked".
+        result.Value!.FsbWindows.Should().HaveCount(3);
+        result.Value!.FsbWindows.Should().OnlyContain(w => w.Status == "Locked");
     }
 
 

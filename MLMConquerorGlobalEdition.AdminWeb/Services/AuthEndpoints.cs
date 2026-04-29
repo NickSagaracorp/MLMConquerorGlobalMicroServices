@@ -11,15 +11,16 @@ public static class AuthEndpoints
 {
     /// <summary>
     /// Handles the HTML form POST from Login.razor.
-    /// Validates credentials against AdminAPI, sets the auth cookie, and redirects.
+    /// Validates credentials against SignupAPI, sets the auth cookie, and redirects.
     /// </summary>
     public static async Task<IResult> LoginAsync(
         [Microsoft.AspNetCore.Mvc.FromForm] LoginRequest request,
-        HttpClient httpClient,
+        IHttpClientFactory httpClientFactory,
         HttpContext httpContext,
         CancellationToken ct)
     {
-        // Call AdminAPI — runs server-side so the cookie response goes to the real browser request
+        // Auth lives in the SignupAPI — runs server-side so cookie goes to the real browser request
+        var httpClient = httpClientFactory.CreateClient("AuthApi");
         var response = await httpClient.PostAsJsonAsync("api/v1/auth/login",
             new { request.Email, request.Password }, ct);
 

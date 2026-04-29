@@ -3,21 +3,22 @@
 @inject IThemeService Theme
 @inject IViewContextService ViewContext
 
+@* Matches UI-Templates/event_details.html layout structure.
+   Mirror of MainLayout but with the admin sidebar. *@
+
 <div class="@(Theme.IsDarkMode ? "dark-mode" : "")">
     <ImpersonationBanner />
 
-    <!-- Sidebar fixed left — matches template sidebar-area pattern -->
     <div class="sidebar-area" id="sidebar-area">
         <AdminSidebarMenu />
     </div>
 
-    <!-- Main content offset by sidebar (padding-left: 273px from style.css) -->
     <div class="container-fluid">
         <div class="main-content d-flex flex-column">
 
             <HeaderArea />
 
-            <div class="inner-main-content">
+            <div class="main-content-container overflow-hidden">
                 <ErrorBoundary>
                     <ChildContent>@Body</ChildContent>
                     <ErrorContent Context="ex">
@@ -30,6 +31,8 @@
                     </ErrorContent>
                 </ErrorBoundary>
             </div>
+
+            <div class="flex-grow-1"></div>
 
             <FooterArea />
         </div>

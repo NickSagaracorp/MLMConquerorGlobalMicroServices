@@ -5,6 +5,7 @@ using MLMConquerorGlobalEdition.BizCenterWeb.Components;
 using MLMConquerorGlobalEdition.BizCenterWeb.Middleware;
 using MLMConquerorGlobalEdition.BizCenterWeb.Services;
 using MLMConquerorGlobalEdition.SharedComponents.Extensions;
+using Syncfusion.Blazor;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,6 +31,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     });
 
 builder.Services.AddAuthorization();
+builder.Services.AddSyncfusionBlazor();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<BizCenterApiAuthHandler>();
@@ -45,14 +47,20 @@ builder.Services.AddScoped<ServerViewContextInitializer>();
 // BizCenterApiAuthHandler forwards the JWT from the HttpOnly cookie claim to the API.
 builder.Services.AddHttpClient("BizCenterApi", client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7001");
+    client.BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7003");
 }).AddHttpMessageHandler<BizCenterApiAuthHandler>();
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("BizCenterApi"));
+
+// HTTP client — Auth (SignupAPI handles auth for all apps)
+builder.Services.AddHttpClient("AuthApi", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["AuthApiBaseUrl"] ?? "https://localhost:7005");
+});
 
 // HTTP client — Signups public API (unauthenticated signup wizard)
 builder.Services.AddHttpClient("SignupsApi", client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration["SignupsApiBaseUrl"] ?? "https://localhost:7147");
+    client.BaseAddress = new Uri(builder.Configuration["SignupsApiBaseUrl"] ?? "https://localhost:7005");
 });
 
 var app = builder.Build();
@@ -78,9 +86,10 @@ app.MapRazorComponents<App>()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(MLMConquerorGlobalEdition.BizCenterWeb.Client._Imports).Assembly);
 
-// Auth endpoints
-app.MapPost("/account/login",  AuthEndpoints.LoginAsync);
-app.MapPost("/account/logout", AuthEndpoints.LogoutAsync);
+// Auth endpoints — antiforgery disabled (login = unauthenticated form POST)
+app.MapPost("/account/login",  (Delegate)AuthEndpoints.LoginAsync).DisableAntiforgery();
+app.MapPost("/account/logout", (Delegate)AuthEndpoints.LogoutAsync).DisableAntiforgery();
+app.MapGet("/account/logout",  (Delegate)AuthEndpoints.LogoutAsync);
 
 // Culture selection endpoint — sets cookie and redirects back
 app.MapGet("/culture", (HttpContext ctx, string culture, string redirectUri) =>

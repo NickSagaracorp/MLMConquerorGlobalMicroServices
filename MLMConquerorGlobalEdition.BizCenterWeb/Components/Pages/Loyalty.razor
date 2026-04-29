@@ -1,8 +1,9 @@
-@page "/loyalty"
-@rendermode InteractiveAuto
+﻿@page "/loyalty"
+@rendermode InteractiveServer
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @inject IViewContextService ViewContext
 
 <PageTitle>Loyalty Points</PageTitle>
 
 <LoyaltyPointsPage MemberProfileId="@ViewContext.ViewingMemberId" />
+

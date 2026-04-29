@@ -2,23 +2,27 @@
 @inject IViewContextService ViewContext
 @inject IStringLocalizer<SharedResources> L
 
+@* Matches UI-Templates/event_details.html header structure:
+   - .header-area.bg-white.mb-4.rounded-bottom-15
+   - col-lg-4 left-header-content (burger + search)
+   - col-lg-8 right-header-content (theme toggle, language, fullscreen, notifications, user profile, settings)
+   Uses material-symbols-outlined icons (not ri-* remix icons) to match template styling. *@
+
 <header class="header-area bg-white mb-4 rounded-bottom-15" id="header-area">
     <div class="row align-items-center">
         <div class="col-lg-4 col-sm-6">
             <div class="left-header-content">
-                <ul class="d-flex align-items-center ps-0 mb-0 list-unstyled">
+                <ul class="d-flex align-items-center ps-0 mb-0 list-unstyled justify-content-center justify-content-sm-start">
                     <li>
-                        <button class="header-burger-menu bg-transparent p-0 border-0 me-3"
-                                id="header-burger-menu">
-                            <i class="ri-menu-2-line fs-5"></i>
+                        <button class="header-burger-menu bg-transparent p-0 border-0" id="header-burger-menu">
+                            <span class="material-symbols-outlined">menu</span>
                         </button>
                     </li>
                     <li>
                         <form class="src-form position-relative">
-                            <input type="text" class="form-control" placeholder="@L["Header.SearchPlaceholder"]" />
-                            <button type="submit"
-                                    class="src-btn position-absolute top-50 end-0 translate-middle-y bg-transparent p-0 border-0 pe-2">
-                                <i class="ri-search-line"></i>
+                            <input type="text" class="form-control" placeholder="@L["Header.SearchPlaceholder"]">
+                            <button type="submit" class="src-btn position-absolute top-50 end-0 translate-middle-y bg-transparent p-0 border-0">
+                                <span class="material-symbols-outlined">search</span>
                             </button>
                         </form>
                     </li>
@@ -27,55 +31,168 @@
         </div>
 
         <div class="col-lg-8 col-sm-6">
-            <div class="right-header-content d-flex align-items-center justify-content-end gap-3">
-
-                <!-- Language switcher -->
-                <LanguageSwitcher />
-
-                <!-- Dark mode toggle (handled by sidebar-menu.js via data attribute) -->
-                <button class="bg-transparent p-0 border-0" id="theme-toggle-btn" title="@L["Header.ToggleDarkMode"]">
-                    <i class="ri-moon-line fs-5"></i>
-                </button>
-
-                <!-- Notifications -->
-                <div class="dropdown notifications">
-                    <button class="btn btn-secondary border-0 p-0 position-relative"
-                            type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="ri-notification-3-line fs-5"></i>
-                        <span class="badge bg-danger rounded-circle position-absolute top-0 end-0"
-                              style="width:8px;height:8px;padding:0;"></span>
-                    </button>
-                    <div class="dropdown-menu dropdown-menu-end p-3 border-0 shadow" style="min-width:300px;">
-                        <h6 class="fw-semibold mb-2">@L["Header.Notifications"]</h6>
-                        <p class="text-muted small mb-0">@L["Header.NoNotifications"]</p>
-                    </div>
-                </div>
-
-                <!-- User menu -->
-                <div class="dropdown profile-nav">
-                    <button class="btn p-0 d-flex align-items-center gap-2 dropdown-toggle border-0"
-                            type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <div class="d-flex align-items-center justify-content-center rounded-circle bg-primary text-white fw-bold"
-                             style="width:36px;height:36px;font-size:.9rem;">
-                            <i class="ri-user-line"></i>
+            <div class="right-header-content mt-2 mt-sm-0">
+                <ul class="d-flex align-items-center justify-content-center justify-content-sm-end ps-0 mb-0 list-unstyled">
+                    <li class="header-right-item">
+                        <div class="light-dark">
+                            <button class="switch-toggle settings-btn dark-btn p-0 bg-transparent border-0"
+                                    id="switch-toggle" title="@L["Header.ToggleDarkMode"]">
+                                <span class="dark"><i class="material-symbols-outlined">light_mode</i></span>
+                                <span class="light"><i class="material-symbols-outlined">dark_mode</i></span>
+                            </button>
                         </div>
-                        <span class="d-none d-lg-block fw-medium small">Admin</span>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow">
-                        <li>
-                            <a class="dropdown-item" href="/admin/system-users">
-                                <i class="ri-user-settings-line me-2"></i>@L["Header.Profile"]
-                            </a>
-                        </li>
-                        <li><hr class="dropdown-divider" /></li>
-                        <li>
-                            <a class="dropdown-item text-danger" href="/account/logout">
-                                <i class="ri-logout-box-line me-2"></i>@L["Header.Logout"]
-                            </a>
-                        </li>
-                    </ul>
-                </div>
+                    </li>
+
+                    <li class="header-right-item">
+                        <LanguageSwitcher />
+                    </li>
+
+                    <li class="header-right-item">
+                        <button class="fullscreen-btn bg-transparent p-0 border-0" id="fullscreen-button">
+                            <i class="material-symbols-outlined text-body">fullscreen</i>
+                        </button>
+                    </li>
+
+                    <li class="header-right-item">
+                        <div class="dropdown notifications noti">
+                            <button class="btn btn-secondary border-0 p-0 position-relative badge" type="button"
+                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                <span class="material-symbols-outlined">notifications</span>
+                            </button>
+                            <div class="dropdown-menu dropdown-lg p-0 border-0 dropdown-menu-end">
+                                <div class="d-flex justify-content-between align-items-center title">
+                                    <span class="fw-semibold fs-15 text-secondary">@L["Header.Notifications"]</span>
+                                    <button class="p-0 m-0 bg-transparent border-0 fs-14 text-primary">Clear All</button>
+                                </div>
+                                <div class="max-h-217" data-simplebar>
+                                    <p class="text-muted small p-3 mb-0">@L["Header.NoNotifications"]</p>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+
+                    <li class="header-right-item">
+                        <div class="dropdown admin-profile">
+                            <div class="d-xxl-flex align-items-center bg-transparent border-0 text-start p-0 cursor dropdown-toggle"
+                                 data-bs-toggle="dropdown">
+                                <div class="flex-shrink-0">
+                                    <div class="rounded-circle wh-40 administrator d-flex align-items-center justify-content-center bg-primary text-white fw-bold">
+                                        @_initial
+                                    </div>
+                                </div>
+                                <div class="flex-grow-1 ms-2">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div class="d-none d-xxl-block">
+                                            <div class="d-flex align-content-center">
+                                                <h3>@_displayName</h3>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="dropdown-menu border-0 bg-white dropdown-menu-end">
+                                <div class="d-flex align-items-center info">
+                                    <div class="flex-shrink-0">
+                                        <div class="rounded-circle wh-30 administrator d-flex align-items-center justify-content-center bg-primary text-white fw-bold">
+                                            @_initial
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-2">
+                                        <h3 class="fw-medium">@_displayName</h3>
+                                        @if (!string.IsNullOrWhiteSpace(_rankLabel))
+                                        {
+                                            <span class="fs-12">@_rankLabel</span>
+                                        }
+                                        else if (!string.IsNullOrWhiteSpace(ViewContext.MemberEmail))
+                                        {
+                                            <span class="fs-12">@ViewContext.MemberEmail</span>
+                                        }
+                                    </div>
+                                </div>
+
+                                <ul class="admin-link ps-0 mb-0 list-unstyled">
+                                    @if (ViewContext.IsAdminContext)
+                                    {
+                                        <li>
+                                            <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="/admin/system-users">
+                                                <i class="material-symbols-outlined">account_circle</i>
+                                                <span class="ms-2">@L["Header.Profile"]</span>
+                                            </a>
+                                        </li>
+                                    }
+                                    else
+                                    {
+                                        <li>
+                                            <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="/profile">
+                                                <i class="material-symbols-outlined">account_circle</i>
+                                                <span class="ms-2">@L["Header.Profile"]</span>
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="#">
+                                                <i class="material-symbols-outlined">chat</i>
+                                                <span class="ms-2">Messages</span>
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="/tokens/guest-passes">
+                                                <i class="material-symbols-outlined">confirmation_number</i>
+                                                <span class="ms-2">Guest Passes</span>
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="/marketing">
+                                                <i class="material-symbols-outlined">format_list_bulleted</i>
+                                                <span class="ms-2">Marketing</span>
+                                            </a>
+                                        </li>
+                                    }
+                                </ul>
+
+                                <ul class="admin-link ps-0 mb-0 list-unstyled">
+                                    @if (!ViewContext.IsAdminContext)
+                                    {
+                                        <li>
+                                            <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="/tickets">
+                                                <i class="material-symbols-outlined">support</i>
+                                                <span class="ms-2">Support</span>
+                                            </a>
+                                        </li>
+                                    }
+                                    <li>
+                                        <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="/account/logout">
+                                            <i class="material-symbols-outlined">logout</i>
+                                            <span class="ms-2">@L["Header.Logout"]</span>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </li>
+
+                    <li class="header-right-item">
+                        <button class="theme-settings-btn p-0 border-0 bg-transparent" type="button"
+                                data-bs-toggle="offcanvas" data-bs-target="#offcanvasScrolling"
+                                aria-controls="offcanvasScrolling">
+                            <i class="material-symbols-outlined" data-bs-toggle="tooltip" data-bs-placement="left"
+                               data-bs-title="Click On Theme Settings">settings</i>
+                        </button>
+                    </li>
+                </ul>
             </div>
         </div>
     </div>
 </header>
+
+@code {
+    private string _displayName => string.IsNullOrWhiteSpace(ViewContext.MemberFullName)
+        ? (ViewContext.IsAdminContext ? "Admin" : "Member")
+        : ViewContext.MemberFullName;
+
+    private string _rankLabel => ViewContext.MemberRankLabel ?? string.Empty;
+
+    private string _initial => string.IsNullOrWhiteSpace(_displayName)
+        ? "?"
+        : _displayName.Trim()[0].ToString().ToUpperInvariant();
+}

@@ -46,6 +46,12 @@ builder.Services.AddScoped<AuthenticationStateProvider, PersistingServerAuthStat
 builder.Services.AddSharedComponents();
 builder.Services.AddScoped<ServerViewContextInitializer>();
 
+// HTTP client to SignupAPI — auth only, no auth handler (login is unauthenticated)
+builder.Services.AddHttpClient("AuthApi", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["AuthApiBaseUrl"] ?? "https://localhost:7005");
+});
+
 // HTTP client to AdminAPI — attaches JWT Bearer token automatically
 builder.Services.AddHttpClient("AdminApi", client =>
 {

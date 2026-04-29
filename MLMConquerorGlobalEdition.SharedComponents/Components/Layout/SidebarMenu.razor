@@ -1,73 +1,39 @@
 @inject IViewContextService ViewContext
 @inject NavigationManager Nav
 
-<aside id="layout-menu" class="layout-menu menu-vertical menu">
-    <div class="app-brand">
-        <a href="/" class="app-brand-link">
-            <span class="app-brand-text fw-bold text-primary">MLM<span class="text-dark">Conqueror</span></span>
-        </a>
-    </div>
+<div class="logo position-relative">
+    <a href="/dashboard" class="d-block text-decoration-none position-relative">
+        <img src="assets/images/logo.svg" alt="logo-icon">
+    </a>
+    <button class="sidebar-burger-menu bg-transparent p-0 border-0 opacity-0 z-n1 position-absolute top-50 end-0 translate-middle-y"
+            id="sidebar-burger-menu">
+        <i data-feather="x"></i>
+    </button>
+</div>
 
-    <div class="menu-inner-shadow"></div>
+<aside id="layout-menu" class="layout-menu menu-vertical menu active" data-simplebar>
+    <ul class="menu-inner">
 
-    <ul class="menu-inner py-1">
+        <li class="menu-title small text-uppercase">
+            <span class="menu-title-text">MENU</span>
+        </li>
+
         <!-- Dashboard -->
         <li class="menu-item @IsActive("/dashboard")">
             <a href="/dashboard" class="menu-link">
-                <i class="menu-icon ri-home-line"></i>
-                <span class="menu-text">Dashboard</span>
+                <span class="material-symbols-outlined menu-icon">home</span>
+                <span class="title">Home</span>
             </a>
         </li>
 
-        <!-- Commissions — Ambassador only -->
-        @if (ViewContext.IsInAnyRole(AppRoles.Ambassador) || ViewContext.IsAdminContext)
-        {
-            <li class="menu-header small text-uppercase">
-                <span>Commissions</span>
-            </li>
-            <li class="menu-item @IsActive("/commissions")">
-                <a href="/commissions" class="menu-link">
-                    <i class="menu-icon ri-money-dollar-circle-line"></i>
-                    <span class="menu-text">Overview</span>
-                </a>
-            </li>
-            <li class="menu-item @IsActive("/commissions/fast-start")">
-                <a href="/commissions/fast-start" class="menu-link">
-                    <i class="menu-icon ri-flashlight-line"></i>
-                    <span class="menu-text">Fast Start Bonus</span>
-                </a>
-            </li>
-            <li class="menu-item @IsActive("/commissions/boost")">
-                <a href="/commissions/boost" class="menu-link">
-                    <i class="menu-icon ri-rocket-line"></i>
-                    <span class="menu-text">Boost Bonus</span>
-                </a>
-            </li>
-            <li class="menu-item @IsActive("/commissions/presidential")">
-                <a href="/commissions/presidential" class="menu-link">
-                    <i class="menu-icon ri-award-line"></i>
-                    <span class="menu-text">Presidential Bonus</span>
-                </a>
-            </li>
-            <li class="menu-item @IsActive("/commissions/car-bonus")">
-                <a href="/commissions/car-bonus" class="menu-link">
-                    <i class="menu-icon ri-car-line"></i>
-                    <span class="menu-text">Car Bonus</span>
-                </a>
-            </li>
-        }
-
-        <!-- Team -->
-        <li class="menu-header small text-uppercase"><span>Team</span></li>
-
-        <!-- Enrollment Team (4 sub-items) -->
+        <!-- Enrollment Team -->
         <li class="menu-item @(IsEnrollmentActive() ? "active open" : "")">
-            <a href="javascript:void(0);" class="menu-link menu-toggle" @onclick="ToggleEnrollment">
-                <i class="menu-icon ri-organization-chart"></i>
-                <span class="menu-text">Enrollment Team</span>
-                <span class="badge bg-label-primary rounded-pill ms-auto">4</span>
+            <a href="javascript:void(0);" class="menu-link menu-toggle">
+                <span class="material-symbols-outlined menu-icon">group</span>
+                <span class="title">Enrollment Team</span>
+                <span class="count">4</span>
             </a>
-            <ul class="menu-sub @(_enrollmentOpen ? "" : "d-none")">
+            <ul class="menu-sub">
                 <li class="menu-item @IsActive("/team/enrollment/my-team")">
                     <a href="/team/enrollment/my-team" class="menu-link">My Team</a>
                 </li>
@@ -83,16 +49,16 @@
             </ul>
         </li>
 
-        <!-- Dual Team (3 sub-items) — Ambassador only -->
+        <!-- Dual Team — Ambassador only -->
         @if (ViewContext.IsInAnyRole(AppRoles.Ambassador) || ViewContext.IsAdminContext)
         {
             <li class="menu-item @(IsDualTeamActive() ? "active open" : "")">
-                <a href="javascript:void(0);" class="menu-link menu-toggle" @onclick="ToggleDualTeam">
-                    <i class="menu-icon ri-node-tree"></i>
-                    <span class="menu-text">Dual Team</span>
-                    <span class="badge bg-label-primary rounded-pill ms-auto">3</span>
+                <a href="javascript:void(0);" class="menu-link menu-toggle">
+                    <span class="material-symbols-outlined menu-icon">share</span>
+                    <span class="title">Dual Team</span>
+                    <span class="count">3</span>
                 </a>
-                <ul class="menu-sub @(_dualTeamOpen ? "" : "d-none")">
+                <ul class="menu-sub">
                     <li class="menu-item @IsActive("/team/dual-myteam")">
                         <a href="/team/dual-myteam" class="menu-link">My Dual Team</a>
                     </li>
@@ -104,80 +70,110 @@
                     </li>
                 </ul>
             </li>
+        }
 
-            <li class="menu-item @IsActive("/team/placement")">
-                <a href="/team/placement" class="menu-link">
-                    <i class="menu-icon ri-user-add-line"></i>
-                    <span class="menu-text">Placement</span>
+        <!-- Commissions — Ambassador only -->
+        @if (ViewContext.IsInAnyRole(AppRoles.Ambassador) || ViewContext.IsAdminContext)
+        {
+            <li class="menu-item @(IsCommissionsActive() ? "active open" : "")">
+                <a href="javascript:void(0);" class="menu-link menu-toggle">
+                    <span class="material-symbols-outlined menu-icon">paid</span>
+                    <span class="title">Commissions</span>
+                    <span class="count">5</span>
                 </a>
+                <ul class="menu-sub">
+                    <li class="menu-item @IsExact("/commissions")">
+                        <a href="/commissions" class="menu-link">Overview</a>
+                    </li>
+                    <li class="menu-item @IsActive("/commissions/presidential")">
+                        <a href="/commissions/presidential" class="menu-link">Presidential Bonus</a>
+                    </li>
+                    <li class="menu-item @IsActive("/commissions/car-bonus")">
+                        <a href="/commissions/car-bonus" class="menu-link">Car Bonus</a>
+                    </li>
+                    <li class="menu-item @IsActive("/commissions/fast-start")">
+                        <a href="/commissions/fast-start" class="menu-link">Fast Start Bonus</a>
+                    </li>
+                    <li class="menu-item @IsActive("/commissions/boost")">
+                        <a href="/commissions/boost" class="menu-link">Boost Bonus</a>
+                    </li>
+                </ul>
             </li>
         }
 
-        <!-- Tokens & Loyalty -->
-        <li class="menu-header small text-uppercase"><span>Tokens &amp; Loyalty</span></li>
+        <!-- Tokens -->
         <li class="menu-item @IsActive("/tokens")">
             <a href="/tokens" class="menu-link">
-                <i class="menu-icon ri-copper-coin-line"></i>
-                <span class="menu-text">Tokens</span>
+                <span class="material-symbols-outlined menu-icon">content_paste</span>
+                <span class="title">Tokens</span>
             </a>
         </li>
-        <li class="menu-item @IsActive("/tokens/guest-passes")">
-            <a href="/tokens/guest-passes" class="menu-link">
-                <i class="menu-icon ri-pass-pending-line"></i>
-                <span class="menu-text">Guest Passes</span>
-            </a>
-        </li>
+
+        @* Placement menu removed — placements are performed from the Dual Team binary tree visualizer *@
+
+        <!-- Loyalty -->
         <li class="menu-item @IsActive("/loyalty")">
             <a href="/loyalty" class="menu-link">
-                <i class="menu-icon ri-heart-line"></i>
-                <span class="menu-text">Loyalty Points</span>
+                <span class="material-symbols-outlined menu-icon">favorite</span>
+                <span class="title">Loyalty Points</span>
+            </a>
+        </li>
+
+        <!-- Marketing -->
+        <li class="menu-item @IsActive("/marketing")">
+            <a href="/marketing" class="menu-link">
+                <span class="material-symbols-outlined menu-icon">campaign</span>
+                <span class="title">Marketing</span>
             </a>
         </li>
 
         <!-- Ranks — Ambassador only -->
         @if (ViewContext.IsInAnyRole(AppRoles.Ambassador) || ViewContext.IsAdminContext)
         {
-            <li class="menu-header small text-uppercase"><span>Ranks</span></li>
             <li class="menu-item @IsActive("/ranks")">
                 <a href="/ranks" class="menu-link">
-                    <i class="menu-icon ri-medal-line"></i>
-                    <span class="menu-text">Rank Dashboard</span>
+                    <span class="material-symbols-outlined menu-icon">workspace_premium</span>
+                    <span class="title">Rank Dashboard</span>
                 </a>
             </li>
         }
 
         <!-- Profile -->
-        <li class="menu-header small text-uppercase"><span>Account</span></li>
         <li class="menu-item @IsActive("/profile")">
             <a href="/profile" class="menu-link">
-                <i class="menu-icon ri-user-settings-line"></i>
-                <span class="menu-text">My Profile</span>
+                <span class="material-symbols-outlined menu-icon">account_circle</span>
+                <span class="title">My Profile</span>
             </a>
         </li>
 
-        <!-- Tickets -->
+        <!-- Support Tickets -->
         <li class="menu-item @IsActive("/tickets")">
             <a href="/tickets" class="menu-link">
-                <i class="menu-icon ri-customer-service-2-line"></i>
-                <span class="menu-text">Support Tickets</span>
+                <span class="material-symbols-outlined menu-icon">support</span>
+                <span class="title">Support</span>
             </a>
         </li>
+
+        <!-- Logout -->
+        <li class="menu-item">
+            <a href="/account/logout" class="menu-link">
+                <span class="material-symbols-outlined menu-icon">logout</span>
+                <span class="title">Logout</span>
+            </a>
+        </li>
+
     </ul>
 </aside>
 
 @code {
-    private bool _enrollmentOpen;
-    private bool _dualTeamOpen;
-
-    protected override void OnInitialized()
-    {
-        // Auto-open the active submenu on first render
-        _enrollmentOpen = IsEnrollmentActive();
-        _dualTeamOpen   = IsDualTeamActive();
-    }
-
     private string IsActive(string href)
         => Nav.Uri.Contains(href, StringComparison.OrdinalIgnoreCase) ? "active" : string.Empty;
+
+    private string IsExact(string href)
+    {
+        var path = new Uri(Nav.Uri).AbsolutePath.TrimEnd('/');
+        return string.Equals(path, href.TrimEnd('/'), StringComparison.OrdinalIgnoreCase) ? "active" : string.Empty;
+    }
 
     private bool IsEnrollmentActive()
         => Nav.Uri.Contains("/team/enrollment", StringComparison.OrdinalIgnoreCase);
@@ -185,6 +181,6 @@
     private bool IsDualTeamActive()
         => Nav.Uri.Contains("/team/dual", StringComparison.OrdinalIgnoreCase);
 
-    private void ToggleEnrollment() => _enrollmentOpen = !_enrollmentOpen;
-    private void ToggleDualTeam()   => _dualTeamOpen   = !_dualTeamOpen;
+    private bool IsCommissionsActive()
+        => Nav.Uri.Contains("/commissions", StringComparison.OrdinalIgnoreCase);
 }

@@ -210,7 +210,8 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
 
     /// <summary>
     /// Walks up the Dual Team from the given node and recalculates
-    /// LeftLegPoints / RightLegPoints for each ancestor.
+    /// LeftLegPoints / RightLegPoints for each ancestor, plus syncs
+    /// MemberStatistics.DualTeamPoints (= LeftLeg + RightLeg = sum of all downline points).
     /// Ghost points are NOT transferred — only organic tree points.
     /// </summary>
     private async Task RecalculateUplineStatsAsync(string startMemberId, CancellationToken ct)
@@ -223,8 +224,7 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
 
             if (node is null) break;
 
-            // Sum points of all members in left subtree (excluding ghost points)
-            var leftTotal = await SumSubtreePointsAsync(current, TreeSide.Left, ct);
+            var leftTotal  = await SumSubtreePointsAsync(current, TreeSide.Left,  ct);
             var rightTotal = await SumSubtreePointsAsync(current, TreeSide.Right, ct);
 
             node.LeftLegPoints  = leftTotal;
@@ -232,28 +232,38 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
             node.LastUpdateDate = _clock.UtcNow;
             node.LastUpdateBy   = "system";
 
+            // Mirror onto MemberStatistics so ranks/dashboards see the same number.
+            var stats = await _db.MemberStatistics.FirstOrDefaultAsync(s => s.MemberId == current, ct);
+            if (stats is not null)
+                stats.DualTeamPoints = (int)(leftTotal + rightTotal);
+
             current = node.ParentMemberId;
         }
 
         await _db.SaveChangesAsync(ct);
     }
 
+    /// <summary>
+    /// Sum of <see cref="MemberStatisticEntity.PersonalPoints"/> for every member in the
+    /// subtree on the given side, INCLUDING the immediate leg-root member. Returns 0 when
+    /// the side is empty.
+    /// </summary>
     private async Task<decimal> SumSubtreePointsAsync(
         string parentMemberId, TreeSide side, CancellationToken ct)
     {
-        // Find immediate child on this side
         var child = await _db.DualTeamTree
             .AsNoTracking()
             .FirstOrDefaultAsync(d => d.ParentMemberId == parentMemberId && d.Side == side, ct);
 
         if (child is null) return 0m;
 
-        // Sum all downline members' active subscription points (placeholder — real logic
-        // depends on CommissionEngine; here we count each member in subtree as 1 point)
-        var subtreeCount = await _db.DualTeamTree
-            .AsNoTracking()
-            .CountAsync(d => d.HierarchyPath.StartsWith(child.HierarchyPath), ct);
+        var total = await (
+            from d in _db.DualTeamTree.AsNoTracking()
+            join s in _db.MemberStatistics.AsNoTracking() on d.MemberId equals s.MemberId
+            where d.HierarchyPath.StartsWith(child.HierarchyPath)
+            select (decimal?)s.PersonalPoints
+        ).SumAsync(ct);
 
-        return subtreeCount;
+        return total ?? 0m;
     }
 }

@@ -1,3 +1,11 @@
 @inherits LayoutComponentBase
 
-@Body
+@* Blank layout — no sidebar, no header, no footer.
+   Used by /login and other standalone pages (signup, forgot-password).
+   Matches UI-Templates/login.html which sets body="boxed-size bg-white".
+   Because App.razor sets body="boxed-size" globally, we provide the white
+   background via a full-viewport wrapper with min-height:100vh. *@
+
+<div class="blank-layout bg-white" style="min-height:100vh;">
+    @Body
+</div>

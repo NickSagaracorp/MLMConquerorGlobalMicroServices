@@ -19,6 +19,9 @@ public class ViewContextService : IViewContextService
     private bool   _isImpersonating;
     private bool   _isAdminContext;
     private List<string> _viewerRoles = new();
+    private string _memberFullName  = string.Empty;
+    private string _memberEmail     = string.Empty;
+    private string _memberRankLabel = string.Empty;
     private bool _initialized;
 
     public ViewContextService(IHttpContextAccessor httpContextAccessor)
@@ -37,6 +40,26 @@ public class ViewContextService : IViewContextService
         _viewerUserId    = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
         _viewingMemberId = user.FindFirstValue("memberId") ?? user.FindFirstValue("member_id") ?? string.Empty;
 
+        _memberEmail = user.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
+
+        var given  = user.FindFirstValue(ClaimTypes.GivenName) ?? user.FindFirstValue("given_name") ?? string.Empty;
+        var family = user.FindFirstValue(ClaimTypes.Surname)   ?? user.FindFirstValue("family_name") ?? string.Empty;
+        var full   = user.FindFirstValue(ClaimTypes.Name)      ?? user.FindFirstValue("name")        ?? string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(given) || !string.IsNullOrWhiteSpace(family))
+            _memberFullName = $"{given} {family}".Trim();
+        else if (!string.IsNullOrWhiteSpace(full) && !full.Contains('@'))
+            _memberFullName = full;
+        else if (!string.IsNullOrWhiteSpace(_memberEmail))
+            _memberFullName = _memberEmail.Split('@')[0];
+        else
+            _memberFullName = string.Empty;
+
+        _memberRankLabel = user.FindFirstValue("membership_level")
+                        ?? user.FindFirstValue("membershipLevel")
+                        ?? user.FindFirstValue("rank")
+                        ?? string.Empty;
+
         // JWT role claim can arrive as the full URI or as the short name
         _viewerRoles = user.Claims
             .Where(c => c.Type == ClaimTypes.Role ||
@@ -51,6 +74,17 @@ public class ViewContextService : IViewContextService
     public bool   IsImpersonating  { get { EnsureInitialized(); return _isImpersonating; } }
     public bool   IsAdminContext   { get { EnsureInitialized(); return _isAdminContext; } }
     public IEnumerable<string> ViewerRoles { get { EnsureInitialized(); return _viewerRoles; } }
+    public string MemberFullName   { get { EnsureInitialized(); return _memberFullName; } }
+    public string MemberEmail      { get { EnsureInitialized(); return _memberEmail; } }
+    public string MemberRankLabel  { get { EnsureInitialized(); return _memberRankLabel; } }
+
+    /// <summary>Allows the host app to override the resolved member display name (e.g., after a profile load).</summary>
+    public void SetMemberDisplay(string fullName, string email, string rankLabel)
+    {
+        if (!string.IsNullOrWhiteSpace(fullName))  _memberFullName  = fullName;
+        if (!string.IsNullOrWhiteSpace(email))     _memberEmail     = email;
+        if (!string.IsNullOrWhiteSpace(rankLabel)) _memberRankLabel = rankLabel;
+    }
 
     public void SetContext(
         string viewingMemberId,

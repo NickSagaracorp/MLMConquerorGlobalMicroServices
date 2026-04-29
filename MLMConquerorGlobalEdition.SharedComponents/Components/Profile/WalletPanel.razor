@@ -5,85 +5,263 @@
 
 @if (!_isLoading)
 {
+    @if (_alertMsg is not null)
+    {
+        <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+            @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+        </div>
+    }
+
+    @* ─── Tabs: Payout Options (gateways) | Payment Method (cards) ───────── *@
+    <ul class="nav nav-tabs mb-3" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link @(_activeTab == "payout" ? "active" : "")"
+                    @onclick='() => _activeTab = "payout"'>
+                <i class="ri-wallet-3-line me-1"></i>Payout Options
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link @(_activeTab == "payment" ? "active" : "")"
+                    @onclick='() => _activeTab = "payment"'>
+                <i class="ri-bank-card-line me-1"></i>Payment Method
+            </button>
+        </li>
+    </ul>
+
+    @if (_activeTab == "payment")
+    {
+        <PaymentMethodTab />
+    }
+    else
+    {
     <div class="row g-3">
-        <div class="col-12 col-md-6">
-            <div class="card border-primary">
-                <div class="card-body">
-                    <h6 class="fw-semibold mb-3">Active Wallet</h6>
-                    @if (_wallet is not null)
-                    {
-                        <div class="d-flex justify-content-between small mb-2">
-                            <span class="text-muted">Type</span>
-                            <span class="fw-medium">@_wallet.WalletType</span>
-                        </div>
-                        <div class="d-flex justify-content-between small mb-2">
-                            <span class="text-muted">Status</span>
-                            <StatusBadge Status="@_wallet.Status" />
-                        </div>
-                        <div class="d-flex justify-content-between small">
-                            <span class="text-muted">Added</span>
-                            <span>@_wallet.CreatedAt.ToString("MMM dd, yyyy")</span>
-                        </div>
-                    }
-                    else
-                    {
-                        <EmptyState Icon="ri-wallet-line" Title="No wallet" Message="No active wallet configured." />
-                    }
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12 col-md-6">
+        @* ─── Active wallets per gateway ─────────────────────────────────────── *@
+        <div class="col-12">
             <div class="card">
+                <div class="card-header py-3 d-flex align-items-center">
+                    <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+                        <i class="ri-wallet-3-line me-2 text-primary"></i>Payout Options
+                    </h6>
+                    <small class="text-muted">Add or update each gateway separately. Mark one as default to receive commissions.</small>
+                </div>
                 <div class="card-body">
-                    <h6 class="fw-semibold mb-3">Credit Cards</h6>
-                    @foreach (var card in _creditCards)
+                    <div class="row g-3">
+                        @foreach (var gw in _supportedGateways)
+                        {
+                            var existing = _wallets.FirstOrDefault(w => w.WalletType == gw.Code);
+                            var info     = _gatewayInfos.FirstOrDefault(i => i.WalletType == gw.Code);
+                            var isPreferred = existing?.IsPreferred == true;
+                            var canBeDefault = existing is not null && !isPreferred && existing.StatusName == "Approved";
+                            <div class="col-12 col-md-6 col-xl-4">
+                                <div class="card h-100 @(isPreferred ? "border-success border-2 shadow-sm" : "")">
+                                    @if (isPreferred)
+                                    {
+                                        <div class="bg-success bg-opacity-10 border-bottom border-success py-2 px-3">
+                                            <span class="text-success fw-semibold small">
+                                                <i class="ri-star-fill me-1"></i>Default — receiving commissions
+                                            </span>
+                                        </div>
+                                    }
+                                    <div class="card-body d-flex flex-column">
+                                        <div class="d-flex align-items-start mb-2">
+                                            <i class="@gw.Icon fs-22 me-2 text-primary"></i>
+                                            <div class="flex-grow-1">
+                                                <h6 class="mb-0 fw-semibold">@(info?.DisplayName ?? gw.Label)</h6>
+                                                @if (info is not null)
+                                                {
+                                                    <div class="small text-muted mt-1">
+                                                        <i class="ri-money-dollar-circle-line me-1"></i>Admin fee: <strong>@info.AdminFeeDisplay</strong> per payout
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        @if (info is not null && !string.IsNullOrEmpty(info.Description))
+                                        {
+                                            <div class="small text-muted mb-3 border-start border-3 ps-2 fst-italic"
+                                                 style="white-space:pre-wrap;line-height:1.4">@info.Description</div>
+                                        }
+
+                                        <hr class="my-2" />
+
+                                        @if (existing is not null)
+                                        {
+                                            <div class="small mb-1">
+                                                <span class="text-muted">Account:</span>
+                                                <code class="ms-1 text-break">@(existing.AccountIdentifier ?? "—")</code>
+                                            </div>
+                                            <div class="small mb-1">
+                                                <span class="text-muted">Status:</span>
+                                                <span class="badge @StatusBadgeClass(existing.Status) ms-1">@existing.StatusName</span>
+                                            </div>
+                                            <div class="small text-muted mb-2">Updated @existing.LastUpdateDate.ToString("MMM dd, yyyy")</div>
+                                        }
+                                        else
+                                        {
+                                            <div class="small text-muted mb-2 fst-italic">Not configured yet.</div>
+                                        }
+
+                                        <div class="mt-auto d-grid gap-2">
+                                            <button class="btn btn-sm btn-outline-primary"
+                                                    @onclick="() => OpenEdit(gw)">
+                                                <i class="ri-edit-line me-1"></i>@(existing is null ? "Add account" : "Edit account")
+                                            </button>
+
+                                            @if (isPreferred)
+                                            {
+                                                <button class="btn btn-sm btn-success" disabled>
+                                                    <i class="ri-check-line me-1"></i>Currently default
+                                                </button>
+                                            }
+                                            else if (canBeDefault)
+                                            {
+                                                <button class="btn btn-sm btn-outline-success"
+                                                        disabled="@_busy"
+                                                        title="Use this wallet to receive commission payouts"
+                                                        @onclick="() => SetDefaultAsync(existing!.WalletType)">
+                                                    <i class="ri-star-line me-1"></i>Set as default
+                                                </button>
+                                            }
+                                            else if (existing is not null && existing.StatusName != "Approved")
+                                            {
+                                                <button class="btn btn-sm btn-outline-secondary" disabled
+                                                        title="The gateway must approve this account before it can be set as default">
+                                                    <i class="ri-lock-line me-1"></i>Pending approval
+                                                </button>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* ─── Wallet history (visible to member + admin; admin gets API logs too) ─── *@
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header py-3">
+                    <h6 class="card-title mb-0 fw-semibold">
+                        <i class="ri-history-line me-2 text-warning"></i>Wallet Change History
+                        <small class="text-muted ms-2">— including account-identifier changes for fraud prevention</small>
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    <LoadingSpinner IsLoading="@_historyLoading" />
+                    @if (!_historyLoading)
                     {
-                        <div class="d-flex align-items-center justify-content-between mb-2">
-                            <span class="small"><i class="ri-bank-card-line me-1"></i>@card.MaskedNumber</span>
-                            <span class="small text-muted">@card.Brand · @card.ExpiryMonth/@card.ExpiryYear</span>
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm mb-0">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th>When</th>
+                                        <th>Gateway</th>
+                                        <th>Change</th>
+                                        <th>From → To</th>
+                                        <th>Status</th>
+                                        <th>By</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (!_history.Any())
+                                    {
+                                        <tr><td colspan="6" class="text-center text-muted py-4">No wallet changes yet.</td></tr>
+                                    }
+                                    @foreach (var h in _history)
+                                    {
+                                        <tr class="@(h.Action == "AccountChanged" ? "table-warning" : "")">
+                                            <td class="small">@h.OccurredAt.ToString("MMM dd, yyyy HH:mm")</td>
+                                            <td><span class="badge bg-light text-dark border">@h.WalletType</span></td>
+                                            <td>@FormatAction(h.Action)</td>
+                                            <td>@RenderTransition(h)</td>
+                                            <td>
+                                                @if (h.OldStatus != h.NewStatus)
+                                                {
+                                                    <span class="small">@h.OldStatus → @h.NewStatus</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="small text-muted">—</span>
+                                                }
+                                            </td>
+                                            <td class="small text-muted">@h.ChangedBy</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
                         </div>
-                    }
-                    @if (!_creditCards.Any())
-                    {
-                        <p class="text-muted small">No credit cards on file.</p>
                     }
                 </div>
             </div>
         </div>
 
-        <!-- Full wallet history — admin/billing only -->
-        <AdminOnlyWrapper Permission="@Permissions.Wallet.ViewFullHistory">
+        @* ─── API call/response logs — admin only ─────────────────────────── *@
+        @if (ViewContext.IsAdminContext)
+        {
             <div class="col-12">
-                <div class="card">
+                <div class="card border-info">
                     <div class="card-header py-3">
-                        <h6 class="card-title mb-0 fw-semibold">Wallet History</h6>
+                        <h6 class="card-title mb-0 fw-semibold">
+                            <i class="ri-code-s-slash-line me-2 text-info"></i>Gateway API Call Log
+                            <small class="text-muted ms-2">— request/response per gateway interaction (for support escalations)</small>
+                        </h6>
                     </div>
                     <div class="card-body p-0">
-                        <LoadingSpinner IsLoading="@_historyLoading" />
-                        @if (!_historyLoading)
+                        <LoadingSpinner IsLoading="@_apiLogsLoading" />
+                        @if (!_apiLogsLoading)
                         {
                             <div class="table-responsive">
-                                <table class="table table-hover table-sm mb-0">
-                                    <thead>
+                                <table class="table table-sm mb-0">
+                                    <thead class="bg-light">
                                         <tr>
-                                            <th>Date</th>
-                                            <th>Action</th>
-                                            <th>By</th>
+                                            <th>When</th>
+                                            <th>Gateway</th>
+                                            <th>Operation</th>
+                                            <th>Endpoint</th>
+                                            <th>Status</th>
+                                            <th>Duration</th>
+                                            <th>Result</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @if (!_history.Any())
+                                        @if (!_apiLogs.Any())
                                         {
-                                            <tr><td colspan="3" class="text-center text-muted py-4">No data available.</td></tr>
+                                            <tr><td colspan="7" class="text-center text-muted py-4">No API calls logged.</td></tr>
                                         }
-                                        @foreach (var h in _history)
+                                        @foreach (var log in _apiLogs)
                                         {
                                             <tr>
-                                                <td>@h.OccurredAt.ToString("MMM dd, yyyy HH:mm")</td>
-                                                <td>@h.Action</td>
-                                                <td>@h.ChangedBy</td>
+                                                <td class="small">@log.OccurredAt.ToString("MMM dd HH:mm:ss")</td>
+                                                <td><span class="badge bg-light text-dark border">@log.WalletType</span></td>
+                                                <td class="small">@log.Operation</td>
+                                                <td class="small text-truncate" style="max-width:240px"><code>@log.HttpMethod @log.Endpoint</code></td>
+                                                <td>
+                                                    <span class="badge @(log.Success ? "bg-success" : "bg-danger")">@log.HttpStatusCode</span>
+                                                </td>
+                                                <td class="small">@log.DurationMs ms</td>
+                                                <td>
+                                                    <button class="btn btn-link btn-sm p-0" @onclick="() => _expandedLogId = (_expandedLogId == log.Id ? -1 : log.Id)">
+                                                        @(_expandedLogId == log.Id ? "Hide" : "View req/resp")
+                                                    </button>
+                                                </td>
                                             </tr>
+                                            @if (_expandedLogId == log.Id)
+                                            {
+                                                <tr><td colspan="7" class="bg-light p-3">
+                                                    <div class="row g-2">
+                                                        <div class="col-md-6">
+                                                            <div class="small fw-semibold text-muted mb-1">Request</div>
+                                                            <pre class="small mb-0" style="max-height:160px;overflow:auto">@(log.RequestBody ?? "—")</pre>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <div class="small fw-semibold text-muted mb-1">Response @(log.Success ? "" : "(error)")</div>
+                                                            <pre class="small mb-0" style="max-height:160px;overflow:auto">@(log.ResponseBody ?? log.ErrorMessage ?? "—")</pre>
+                                                        </div>
+                                                    </div>
+                                                </td></tr>
+                                            }
                                         }
                                     </tbody>
                                 </table>
@@ -92,75 +270,380 @@
                     </div>
                 </div>
             </div>
-        </AdminOnlyWrapper>
+        }
     </div>
+    } @* end of else (Payout Options tab) *@
+
+    @* ─── Edit modal ─────────────────────────────────────────────────────── *@
+    @if (_editing is not null)
+    {
+        <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.4)">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="@_editing.Icon me-2"></i>@_editing.Label</h5>
+                        <button type="button" class="btn-close" @onclick="() => _editing = null"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label small">@_editing.AccountFieldLabel <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" placeholder="@_editing.AccountFieldPlaceholder"
+                                   @bind="_editAccountIdentifier" />
+                            <div class="form-text small">@_editing.HelpText</div>
+                        </div>
+                        @if (_editing.Code == 4) @* eWallet *@
+                        {
+                            <div class="mb-3">
+                                <label class="form-label small">eWallet Password (will be encrypted)</label>
+                                <input type="password" class="form-control" @bind="_editPassword" />
+                                <div class="form-text small">Required by I-Payout for the initial registration only.</div>
+                            </div>
+                        }
+                        <div class="mb-0">
+                            <label class="form-label small">Notes</label>
+                            <textarea class="form-control" rows="2" @bind="_editNotes"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-outline-secondary" @onclick="() => _editing = null">Cancel</button>
+                        <button class="btn btn-primary" disabled="@_busy" @onclick="SaveEditAsync">
+                            @if (_busy) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                            Save
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
 }
 
 @code {
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
 
-    private bool _isLoading     = true;
-    private bool _historyLoading;
-    private int  _historyPage   = 1;
-    private int  _historyTotal;
+    private bool   _isLoading      = true;
+    private bool   _historyLoading;
+    private bool   _apiLogsLoading;
+    private bool   _busy;
+    private string? _alertMsg;
+    private bool   _alertIsError;
+    private long   _expandedLogId  = -1;
+    private string _activeTab      = "payout";  // "payout" | "payment"
 
-    private WalletDto? _wallet;
-    private List<CreditCardDto>      _creditCards = new();
-    private List<WalletHistoryItem>  _history     = new();
+    private List<WalletDto>           _wallets       = new();
+    private List<GatewayInfoDto>      _gatewayInfos  = new();
+    private List<WalletHistoryItem>   _history       = new();
+    private List<WalletApiLogItem>    _apiLogs       = new();
+
+    private GatewayDescriptor? _editing;
+    private string?  _editAccountIdentifier;
+    private string?  _editPassword;
+    private string?  _editNotes;
+
+    // Apex four gateways the company supports today.
+    private readonly List<GatewayDescriptor> _supportedGateways = new()
+    {
+        new(4,  "eWallet (I-Payout)", "ri-bank-card-line",  "I-Payout email", "user@example.com",
+            "I-Payout will email a confirmation to verify the account."),
+        new(1,  "Dwolla",             "ri-bank-line",       "Dwolla account email", "user@example.com",
+            "Use the email tied to your Dwolla account."),
+        new(9,  "Crypto",             "ri-coin-line",       "Wallet address",  "bc1qxy2k...x9k2",
+            "Provide the receiving wallet address for the asset you want payouts in."),
+        new(10, "Advancash",          "ri-wallet-line",     "Advancash account email", "user@example.com",
+            "Use the email tied to your AdvCash account.")
+    };
+
+    private string BizCenterBaseUrl => "api/v1/bizcenter/wallets";
+    private string AdminBaseUrl     => $"api/v1/admin/members/{MemberProfileId}/wallets";
+    private string ListUrl          => ViewContext.IsAdminContext ? AdminBaseUrl : BizCenterBaseUrl;
 
     protected override async Task OnParametersSetAsync()
     {
         if (string.IsNullOrEmpty(MemberProfileId)) return;
-        _isLoading = true;
-        StateHasChanged();
-
+        _isLoading = true; StateHasChanged();
         try
         {
-            var walletTask = Http.GetFromJsonAsync<ApiResponse<WalletDto>>(
-                "api/v1/bizcenter/wallet");
-            var cardsTask  = Http.GetFromJsonAsync<ApiResponse<List<CreditCardDto>>>(
-                "api/v1/bizcenter/billing/credit-cards");
-
-            await Task.WhenAll(walletTask, cardsTask);
-
-            var walletResp = await walletTask;
-            var cardsResp  = await cardsTask;
-
-            if (walletResp?.Success == true) _wallet      = walletResp.Data;
-            if (cardsResp?.Success  == true) _creditCards = cardsResp.Data ?? new();
+            await Task.WhenAll(
+                LoadWalletsAsync(),
+                LoadGatewayInfoAsync(),
+                LoadHistoryAsync(),
+                LoadApiLogsAsync());
         }
-        catch { /* silently degrade */ }
-        finally
-        {
-            _isLoading = false;
-        }
+        finally { _isLoading = false; }
     }
 
-    private async Task ChangeHistoryPage(int page) => await LoadHistoryAsync(page);
-
-    private async Task LoadHistoryAsync(int page)
+    private async Task LoadGatewayInfoAsync()
     {
-        _historyPage    = page;
-        _historyLoading = true;
-        StateHasChanged();
         try
         {
-            var response = await Http.GetFromJsonAsync<ApiResponse<PagedData<WalletHistoryItem>>>(
-                $"api/v1/admin/members/{MemberProfileId}/wallet/history?page={page}");
-            if (response?.Success == true && response.Data is not null)
-            {
-                _history      = response.Data.Items;
-                _historyTotal = response.Data.TotalCount;
-            }
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<GatewayInfoDto>>>(
+                "api/v1/bizcenter/payment-gateways");
+            if (resp?.Success == true) _gatewayInfos = resp.Data ?? new();
+        }
+        catch { /* silently degrade — cards still render with built-in metadata */ }
+    }
+
+    private async Task LoadWalletsAsync()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<WalletDto>>>(ListUrl);
+            if (resp?.Success == true) _wallets = resp.Data ?? new();
         }
         catch { /* silently degrade */ }
+    }
+
+    private async Task LoadHistoryAsync()
+    {
+        _historyLoading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<PagedData<WalletHistoryItem>>>(
+                $"{ListUrl}/history?page=1&pageSize=50");
+            if (resp?.Success == true && resp.Data is not null)
+                _history = resp.Data.Items;
+        }
+        catch { }
         finally { _historyLoading = false; }
     }
 
-    private class ApiResponse<T> { public bool Success { get; set; } public T? Data { get; set; } }
-    private class PagedData<T>   { public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
+    private async Task LoadApiLogsAsync()
+    {
+        if (!ViewContext.IsAdminContext) return;
+        _apiLogsLoading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<PagedData<WalletApiLogItem>>>(
+                $"{AdminBaseUrl}/api-logs?page=1&pageSize=50");
+            if (resp?.Success == true && resp.Data is not null)
+                _apiLogs = resp.Data.Items;
+        }
+        catch { }
+        finally { _apiLogsLoading = false; }
+    }
 
-    public record WalletDto(string WalletType, string Status, DateTime CreatedAt);
-    public record CreditCardDto(string MaskedNumber, string Brand, int ExpiryMonth, int ExpiryYear);
-    public record WalletHistoryItem(DateTime OccurredAt, string Action, string ChangedBy);
+    private void OpenEdit(GatewayDescriptor gw)
+    {
+        _editing = gw;
+        var existing = _wallets.FirstOrDefault(w => w.WalletType == gw.Code);
+        _editAccountIdentifier = existing?.AccountIdentifier ?? string.Empty;
+        _editPassword          = null;
+        _editNotes             = existing?.Notes;
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (_editing is null) return;
+        if (string.IsNullOrWhiteSpace(_editAccountIdentifier))
+        { _alertMsg = "Account identifier is required."; _alertIsError = true; return; }
+
+        // Pre-validate locally so the user gets instant feedback before the round trip.
+        var trimmed     = _editAccountIdentifier!.Trim();
+        var localError  = ValidateLocally(_editing.Code, trimmed);
+        if (localError is not null)
+        { _alertMsg = localError; _alertIsError = true; return; }
+
+        _busy = true; StateHasChanged();
+        try
+        {
+            var url = $"{ListUrl}/{_editing.Code}";
+            var payload = new
+            {
+                accountIdentifier         = trimmed,
+                notes                     = _editNotes,
+                eWalletPasswordEncrypted  = string.IsNullOrEmpty(_editPassword) ? null : $"ENC:{_editPassword}"
+            };
+            var resp = await Http.PutAsJsonAsync(url, payload);
+            if (resp.IsSuccessStatusCode)
+            {
+                _alertMsg = $"{_editing.Label} updated."; _alertIsError = false;
+                _editing = null;
+                await LoadWalletsAsync();
+                await LoadHistoryAsync();
+                await LoadApiLogsAsync();
+            }
+            else
+            {
+                // Try to extract a clean error message from the API response envelope.
+                var body = await resp.Content.ReadAsStringAsync();
+                var msg = TryExtractApiError(body) ?? body;
+                _alertMsg = msg; _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _busy = false; StateHasChanged(); }
+    }
+
+    /// <summary>Mirrors the server-side validation so the user gets instant feedback.</summary>
+    private static string? ValidateLocally(int walletTypeCode, string value)
+    {
+        var isEmail = System.Text.RegularExpressions.Regex.IsMatch(
+            value, @"^[^\s@]+@[^\s@]+\.[^\s@]+$");
+
+        if (walletTypeCode == 9) // Crypto
+        {
+            if (isEmail)
+                return "A crypto wallet address is required, not an email. " +
+                       "Provide a Bitcoin (bc1.../1.../3...), USDT-TRC20 (T...), or EVM (0x...) address.";
+
+            var looksLikeCrypto =
+                System.Text.RegularExpressions.Regex.IsMatch(value, @"^(bc1)[a-z0-9]{6,87}$") ||
+                System.Text.RegularExpressions.Regex.IsMatch(value, @"^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$") ||
+                System.Text.RegularExpressions.Regex.IsMatch(value, @"^0x[a-fA-F0-9]{40}$") ||
+                System.Text.RegularExpressions.Regex.IsMatch(value, @"^T[1-9A-HJ-NP-Za-km-z]{33}$");
+
+            return looksLikeCrypto ? null
+                : "Account does not look like a valid crypto wallet address.";
+        }
+
+        // Email-based gateways (eWallet 4 / Dwolla 1 / Advancash 10)
+        if (!isEmail)
+            return "This gateway expects a valid email address as the account identifier.";
+
+        return null;
+    }
+
+    private static string? TryExtractApiError(string body)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("errors", out var errors)
+                && errors.ValueKind == System.Text.Json.JsonValueKind.Array
+                && errors.GetArrayLength() > 0)
+                return errors[0].GetString();
+            if (doc.RootElement.TryGetProperty("message", out var m) && m.ValueKind == System.Text.Json.JsonValueKind.String)
+                return m.GetString();
+        }
+        catch { }
+        return null;
+    }
+
+    private async Task SetDefaultAsync(int walletType)
+    {
+        _busy = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.PutAsync($"{ListUrl}/{walletType}/default", null);
+            if (resp.IsSuccessStatusCode)
+            {
+                _alertMsg = "Default wallet updated."; _alertIsError = false;
+                await LoadWalletsAsync();
+                await LoadHistoryAsync();
+            }
+            else
+            {
+                var err = await resp.Content.ReadAsStringAsync();
+                _alertMsg = $"Could not set as default: {err}"; _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _busy = false; StateHasChanged(); }
+    }
+
+    private static string FormatAction(string action) => action switch
+    {
+        "Created"        => "Account created",
+        "AccountChanged" => "Account changed",
+        "StatusChanged"  => "Status changed",
+        "SetAsDefault"   => "Set as default",
+        "UnsetAsDefault" => "Replaced as default",
+        "Deleted"        => "Account removed",
+        _                => action
+    };
+
+    private static RenderFragment RenderTransition(WalletHistoryItem h) => __builder =>
+    {
+        if (h.Action == "AccountChanged" && (!string.IsNullOrEmpty(h.OldAccountIdentifier) || !string.IsNullOrEmpty(h.NewAccountIdentifier)))
+        {
+            <code class="small">@(h.OldAccountIdentifier ?? "—")</code>
+            <i class="ri-arrow-right-line mx-1 text-warning"></i>
+            <code class="small fw-semibold text-warning">@(h.NewAccountIdentifier ?? "—")</code>
+        }
+        else if (h.Action == "Created")
+        {
+            <span class="text-muted">— → </span>
+            <code class="small">@(h.NewAccountIdentifier ?? "—")</code>
+        }
+        else if (h.Action == "SetAsDefault" || h.Action == "UnsetAsDefault")
+        {
+            <code class="small">@(h.NewAccountIdentifier ?? "—")</code>
+        }
+        else
+        {
+            <span class="text-muted small">—</span>
+        }
+    };
+
+    private static string StatusBadgeClass(int status) => status switch
+    {
+        1 => "bg-warning text-dark",      // Pending
+        2 => "bg-success",                // Approved
+        3 => "bg-danger",                 // Rejected
+        _ => "bg-secondary"
+    };
+
+    private record GatewayDescriptor(int Code, string Label, string Icon,
+        string AccountFieldLabel, string AccountFieldPlaceholder, string HelpText);
+
+    private class ApiWrapper<T> { public bool Success { get; set; } public T? Data { get; set; } }
+    private class PagedData<T> { public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
+
+    public class WalletDto
+    {
+        public string  WalletId          { get; set; } = string.Empty;
+        public int     WalletType        { get; set; }
+        public string  WalletTypeName    { get; set; } = string.Empty;
+        public int     Status            { get; set; }
+        public string  StatusName        { get; set; } = string.Empty;
+        public string? AccountIdentifier { get; set; }
+        public bool    IsPreferred       { get; set; }
+        public string? Notes             { get; set; }
+        public DateTime CreationDate     { get; set; }
+        public DateTime LastUpdateDate   { get; set; }
+    }
+
+    public class WalletHistoryItem
+    {
+        public long    Id                   { get; set; }
+        public string  WalletId             { get; set; } = string.Empty;
+        public int     WalletType           { get; set; }
+        public string  Action               { get; set; } = string.Empty;
+        public int     OldStatus            { get; set; }
+        public int     NewStatus            { get; set; }
+        public string? OldAccountIdentifier { get; set; }
+        public string? NewAccountIdentifier { get; set; }
+        public string? ChangeReason         { get; set; }
+        public string  ChangedBy            { get; set; } = string.Empty;
+        public DateTime OccurredAt          { get; set; }
+    }
+
+    public class WalletApiLogItem
+    {
+        public long     Id             { get; set; }
+        public int      WalletType     { get; set; }
+        public string   Operation      { get; set; } = string.Empty;
+        public string?  Endpoint       { get; set; }
+        public string?  HttpMethod     { get; set; }
+        public string?  RequestBody    { get; set; }
+        public int      HttpStatusCode { get; set; }
+        public string?  ResponseBody   { get; set; }
+        public bool     Success        { get; set; }
+        public string?  ErrorMessage   { get; set; }
+        public int      DurationMs     { get; set; }
+        public DateTime OccurredAt     { get; set; }
+    }
+
+
+    public class GatewayInfoDto
+    {
+        public int     WalletType      { get; set; }
+        public string  WalletTypeName  { get; set; } = string.Empty;
+        public string  DisplayName     { get; set; } = string.Empty;
+        public string  Description     { get; set; } = string.Empty;
+        public decimal AdminFee        { get; set; }
+        public string  AdminFeeKind    { get; set; } = "Fixed";
+        public string  AdminFeeDisplay { get; set; } = string.Empty;
+        public string  Currency        { get; set; } = "USD";
+        public bool    IsActive        { get; set; }
+    }
 }

@@ -5173,6 +5173,108 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.ToTable("S3StorageConfig", (string)null);
                 });
 
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Member.MemberAddressHistory", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("IpAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("MemberId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NewAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NewCity")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NewCountry")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NewState")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NewZipCode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PreviousAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PreviousCity")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PreviousCountry")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PreviousState")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PreviousZipCode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UserAgent")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("MemberAddressHistories");
+                });
+
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Member.MemberCredentialChangeLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("IpAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MemberId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NewValue")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PreviousValue")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UserAgent")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("MemberCredentialChangeLogs");
+                });
+
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Member.MemberFcmToken", b =>
                 {
                     b.Property<long>("Id")
@@ -5288,6 +5390,10 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<DateTime>("DateOfBirth")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("DefaultLanguage")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2");
 
@@ -5338,6 +5444,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasColumnType("nvarchar(20)");
 
                     b.Property<int>("MemberType")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PayoutFrequency")
                         .HasColumnType("int");
 
                     b.Property<string>("Phone")
@@ -6956,21 +7065,21 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CurrentRankDescription = "You are a Silver Ambassador. Earn $4/day in Dual Team Residuals.",
                             DailyBonus = 4m,
                             EnrollmentQualifiedTeamMembers = 0,
-                            EnrollmentTeam = 3,
+                            EnrollmentTeam = 18,
                             ExternalMembers = 1,
                             LevelNo = 1,
                             LifetimeHoldingDuration = 0,
-                            MaxEnrollmentTeamPointsPerBranch = 0.5,
-                            MaxTeamPointsPerBranch = 0.5,
+                            MaxEnrollmentTeamPointsPerBranch = 0.66000000000000003,
+                            MaxTeamPointsPerBranch = 0.0,
                             MonthlyBonus = 0m,
                             PersonalPoints = 1,
                             PlacementQualifiedTeamMembers = 0,
                             RankBonus = 100m,
                             RankDefinitionId = 1,
-                            RankDescription = "Qualify with 18 Enrollment Team points (3 Elite/Turbo members, max 50% per branch).",
+                            RankDescription = "Qualify with 18 Enrollment Team points (max 66% per leg).",
                             SalesVolume = 0m,
                             SponsoredMembers = 1,
-                            TeamPoints = 18
+                            TeamPoints = 0
                         },
                         new
                         {
@@ -6981,21 +7090,21 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CurrentRankDescription = "You are a Gold Ambassador. Earn $10/day in Dual Team Residuals.",
                             DailyBonus = 10m,
                             EnrollmentQualifiedTeamMembers = 0,
-                            EnrollmentTeam = 12,
+                            EnrollmentTeam = 72,
                             ExternalMembers = 1,
                             LevelNo = 2,
                             LifetimeHoldingDuration = 0,
                             MaxEnrollmentTeamPointsPerBranch = 0.5,
-                            MaxTeamPointsPerBranch = 0.5,
+                            MaxTeamPointsPerBranch = 0.0,
                             MonthlyBonus = 0m,
                             PersonalPoints = 1,
                             PlacementQualifiedTeamMembers = 0,
                             RankBonus = 300m,
                             RankDefinitionId = 2,
-                            RankDescription = "Qualify with 72 Enrollment Team points (12 Elite/Turbo members, max 50% per branch).",
+                            RankDescription = "Qualify with 72 Enrollment Team points (max 50% per leg).",
                             SalesVolume = 0m,
                             SponsoredMembers = 1,
-                            TeamPoints = 72
+                            TeamPoints = 0
                         },
                         new
                         {
@@ -7006,21 +7115,21 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CurrentRankDescription = "You are a Platinum Ambassador. Earn $15/day in Dual Team Residuals.",
                             DailyBonus = 15m,
                             EnrollmentQualifiedTeamMembers = 0,
-                            EnrollmentTeam = 29,
+                            EnrollmentTeam = 175,
                             ExternalMembers = 1,
                             LevelNo = 3,
                             LifetimeHoldingDuration = 0,
                             MaxEnrollmentTeamPointsPerBranch = 0.5,
-                            MaxTeamPointsPerBranch = 0.5,
+                            MaxTeamPointsPerBranch = 0.0,
                             MonthlyBonus = 0m,
                             PersonalPoints = 1,
                             PlacementQualifiedTeamMembers = 0,
                             RankBonus = 500m,
                             RankDefinitionId = 3,
-                            RankDescription = "Qualify with 175 Enrollment Team points (max 50% per branch). Boost Bonus unlocked.",
+                            RankDescription = "Qualify with 175 Enrollment Team points (max 50% per leg). Boost Bonus unlocked.",
                             SalesVolume = 0m,
                             SponsoredMembers = 2,
-                            TeamPoints = 175
+                            TeamPoints = 0
                         },
                         new
                         {
@@ -7031,7 +7140,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CurrentRankDescription = "You are a Titanium Ambassador. Earn $25/day in Dual Team Residuals.",
                             DailyBonus = 25m,
                             EnrollmentQualifiedTeamMembers = 0,
-                            EnrollmentTeam = 0,
+                            EnrollmentTeam = 175,
                             ExternalMembers = 1,
                             LevelNo = 4,
                             LifetimeHoldingDuration = 0,
@@ -7042,7 +7151,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             PlacementQualifiedTeamMembers = 0,
                             RankBonus = 1000m,
                             RankDefinitionId = 4,
-                            RankDescription = "Qualify with 350 Dual Team points (max 50% per branch).",
+                            RankDescription = "Qualify with 350 Dual Team points and 175 Enrollment Team points (max 50% per leg).",
                             SalesVolume = 0m,
                             SponsoredMembers = 2,
                             TeamPoints = 350
@@ -7056,7 +7165,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CurrentRankDescription = "You are a Jade Ambassador. Earn $40/day in Dual Team Residuals.",
                             DailyBonus = 40m,
                             EnrollmentQualifiedTeamMembers = 0,
-                            EnrollmentTeam = 0,
+                            EnrollmentTeam = 350,
                             ExternalMembers = 1,
                             LevelNo = 5,
                             LifetimeHoldingDuration = 0,
@@ -7067,7 +7176,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             PlacementQualifiedTeamMembers = 0,
                             RankBonus = 2500m,
                             RankDefinitionId = 5,
-                            RankDescription = "Qualify with 700 Dual Team points (max 50% per branch). Presidential Bonus unlocked.",
+                            RankDescription = "Qualify with 700 Dual Team and 350 Enrollment Team points (max 50% per leg). Presidential Bonus unlocked.",
                             SalesVolume = 0m,
                             SponsoredMembers = 3,
                             TeamPoints = 700
@@ -7081,7 +7190,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CurrentRankDescription = "You are a Pearl Ambassador. Earn $80/day in Dual Team Residuals.",
                             DailyBonus = 80m,
                             EnrollmentQualifiedTeamMembers = 0,
-                            EnrollmentTeam = 0,
+                            EnrollmentTeam = 750,
                             ExternalMembers = 1,
                             LevelNo = 6,
                             LifetimeHoldingDuration = 0,
@@ -7092,7 +7201,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             PlacementQualifiedTeamMembers = 0,
                             RankBonus = 5000m,
                             RankDefinitionId = 6,
-                            RankDescription = "Qualify with 1,500 Dual Team points (max 50% per branch).",
+                            RankDescription = "Qualify with 1,500 Dual Team and 750 Enrollment Team points (max 50% per leg).",
                             SalesVolume = 0m,
                             SponsoredMembers = 3,
                             TeamPoints = 1500
@@ -7106,7 +7215,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CurrentRankDescription = "You are an Emerald Ambassador. Earn $150/day in Dual Team Residuals.",
                             DailyBonus = 150m,
                             EnrollmentQualifiedTeamMembers = 0,
-                            EnrollmentTeam = 0,
+                            EnrollmentTeam = 1500,
                             ExternalMembers = 1,
                             LevelNo = 7,
                             LifetimeHoldingDuration = 0,
@@ -7117,7 +7226,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             PlacementQualifiedTeamMembers = 0,
                             RankBonus = 10000m,
                             RankDefinitionId = 7,
-                            RankDescription = "Qualify with 3,000 Dual Team points (max 50% per branch).",
+                            RankDescription = "Qualify with 3,000 Dual Team and 1,500 Enrollment Team points (max 50% per leg).",
                             SalesVolume = 0m,
                             SponsoredMembers = 4,
                             TeamPoints = 3000
@@ -7131,7 +7240,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CurrentRankDescription = "You are a Ruby Ambassador. Earn $300/day in Dual Team Residuals.",
                             DailyBonus = 300m,
                             EnrollmentQualifiedTeamMembers = 0,
-                            EnrollmentTeam = 0,
+                            EnrollmentTeam = 3000,
                             ExternalMembers = 1,
                             LevelNo = 8,
                             LifetimeHoldingDuration = 0,
@@ -7142,7 +7251,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             PlacementQualifiedTeamMembers = 0,
                             RankBonus = 25000m,
                             RankDefinitionId = 8,
-                            RankDescription = "Qualify with 6,000 Dual Team points (max 50% per branch).",
+                            RankDescription = "Qualify with 6,000 Dual Team and 3,000 Enrollment Team points (max 50% per leg).",
                             SalesVolume = 0m,
                             SponsoredMembers = 5,
                             TeamPoints = 6000
@@ -7156,7 +7265,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CurrentRankDescription = "You are a Sapphire Ambassador. Earn $500/day in Dual Team Residuals.",
                             DailyBonus = 500m,
                             EnrollmentQualifiedTeamMembers = 0,
-                            EnrollmentTeam = 0,
+                            EnrollmentTeam = 5000,
                             ExternalMembers = 1,
                             LevelNo = 9,
                             LifetimeHoldingDuration = 0,
@@ -7167,7 +7276,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             PlacementQualifiedTeamMembers = 0,
                             RankBonus = 50000m,
                             RankDefinitionId = 9,
-                            RankDescription = "Qualify with 10,000 Dual Team points (max 50% per branch).",
+                            RankDescription = "Qualify with 10,000 Dual Team and 5,000 Enrollment Team points (max 50% per leg).",
                             SalesVolume = 0m,
                             SponsoredMembers = 5,
                             TeamPoints = 10000
@@ -7181,7 +7290,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CurrentRankDescription = "You are a Diamond Ambassador. Earn $750/day in Dual Team Residuals.",
                             DailyBonus = 750m,
                             EnrollmentQualifiedTeamMembers = 0,
-                            EnrollmentTeam = 0,
+                            EnrollmentTeam = 7500,
                             ExternalMembers = 1,
                             LevelNo = 10,
                             LifetimeHoldingDuration = 0,
@@ -7192,7 +7301,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             PlacementQualifiedTeamMembers = 0,
                             RankBonus = 100000m,
                             RankDefinitionId = 10,
-                            RankDescription = "Qualify with 15,000 Dual Team points (max 50% per branch). Car Bonus unlocked.",
+                            RankDescription = "Qualify with 15,000 Dual Team and 7,500 Enrollment Team points (max 50% per leg). Car Bonus unlocked.",
                             SalesVolume = 0m,
                             SponsoredMembers = 6,
                             TeamPoints = 15000
@@ -7206,7 +7315,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CurrentRankDescription = "You are a Double Diamond Ambassador. Earn $1,000/day in Dual Team Residuals.",
                             DailyBonus = 1000m,
                             EnrollmentQualifiedTeamMembers = 0,
-                            EnrollmentTeam = 0,
+                            EnrollmentTeam = 10000,
                             ExternalMembers = 1,
                             LevelNo = 11,
                             LifetimeHoldingDuration = 0,
@@ -7217,7 +7326,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             PlacementQualifiedTeamMembers = 0,
                             RankBonus = 150000m,
                             RankDefinitionId = 11,
-                            RankDescription = "Qualify with 20,000 Dual Team points (max 50% per branch).",
+                            RankDescription = "Qualify with 20,000 Dual Team and 10,000 Enrollment Team points (max 50% per leg).",
                             SalesVolume = 0m,
                             SponsoredMembers = 6,
                             TeamPoints = 20000
@@ -7231,7 +7340,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CurrentRankDescription = "You are a Triple Diamond Ambassador. Earn $1,500/day in Dual Team Residuals.",
                             DailyBonus = 1500m,
                             EnrollmentQualifiedTeamMembers = 0,
-                            EnrollmentTeam = 0,
+                            EnrollmentTeam = 15000,
                             ExternalMembers = 1,
                             LevelNo = 12,
                             LifetimeHoldingDuration = 0,
@@ -7242,7 +7351,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             PlacementQualifiedTeamMembers = 0,
                             RankBonus = 200000m,
                             RankDefinitionId = 12,
-                            RankDescription = "Qualify with 30,000 Dual Team points (max 50% per branch).",
+                            RankDescription = "Qualify with 30,000 Dual Team and 15,000 Enrollment Team points (max 50% per leg).",
                             SalesVolume = 0m,
                             SponsoredMembers = 7,
                             TeamPoints = 30000
@@ -7256,7 +7365,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CurrentRankDescription = "You are a Blue Diamond Ambassador. Earn $2,000/day in Dual Team Residuals.",
                             DailyBonus = 2000m,
                             EnrollmentQualifiedTeamMembers = 0,
-                            EnrollmentTeam = 0,
+                            EnrollmentTeam = 30000,
                             ExternalMembers = 1,
                             LevelNo = 13,
                             LifetimeHoldingDuration = 0,
@@ -7267,7 +7376,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             PlacementQualifiedTeamMembers = 0,
                             RankBonus = 300000m,
                             RankDefinitionId = 13,
-                            RankDescription = "Qualify with 60,000 Dual Team points (max 50% per branch).",
+                            RankDescription = "Qualify with 60,000 Dual Team and 30,000 Enrollment Team points (max 50% per leg).",
                             SalesVolume = 0m,
                             SponsoredMembers = 8,
                             TeamPoints = 60000
@@ -7281,7 +7390,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CurrentRankDescription = "You are a Black Diamond Ambassador. Earn $3,000/day in Dual Team Residuals.",
                             DailyBonus = 3000m,
                             EnrollmentQualifiedTeamMembers = 0,
-                            EnrollmentTeam = 0,
+                            EnrollmentTeam = 60000,
                             ExternalMembers = 1,
                             LevelNo = 14,
                             LifetimeHoldingDuration = 0,
@@ -7292,7 +7401,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             PlacementQualifiedTeamMembers = 0,
                             RankBonus = 500000m,
                             RankDefinitionId = 14,
-                            RankDescription = "Qualify with 120,000 Dual Team points (max 50% per branch).",
+                            RankDescription = "Qualify with 120,000 Dual Team and 60,000 Enrollment Team points (max 50% per leg).",
                             SalesVolume = 0m,
                             SponsoredMembers = 10,
                             TeamPoints = 120000
@@ -7306,7 +7415,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CurrentRankDescription = "You are a Royal Ambassador. Earn $4,000/day in Dual Team Residuals.",
                             DailyBonus = 4000m,
                             EnrollmentQualifiedTeamMembers = 0,
-                            EnrollmentTeam = 0,
+                            EnrollmentTeam = 100000,
                             ExternalMembers = 1,
                             LevelNo = 15,
                             LifetimeHoldingDuration = 0,
@@ -7317,7 +7426,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             PlacementQualifiedTeamMembers = 0,
                             RankBonus = 750000m,
                             RankDefinitionId = 15,
-                            RankDescription = "Qualify with 200,000 Dual Team points (max 50% per branch).",
+                            RankDescription = "Qualify with 200,000 Dual Team and 100,000 Enrollment Team points (max 50% per leg).",
                             SalesVolume = 0m,
                             SponsoredMembers = 12,
                             TeamPoints = 200000
@@ -7331,7 +7440,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CurrentRankDescription = "You are a Double Royal Ambassador. Earn $5,000/day in Dual Team Residuals.",
                             DailyBonus = 5000m,
                             EnrollmentQualifiedTeamMembers = 0,
-                            EnrollmentTeam = 0,
+                            EnrollmentTeam = 150000,
                             ExternalMembers = 1,
                             LevelNo = 16,
                             LifetimeHoldingDuration = 0,
@@ -7342,7 +7451,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             PlacementQualifiedTeamMembers = 0,
                             RankBonus = 1000000m,
                             RankDefinitionId = 16,
-                            RankDescription = "Qualify with 300,000 Dual Team points (max 50% per branch).",
+                            RankDescription = "Qualify with 300,000 Dual Team and 150,000 Enrollment Team points (max 50% per leg).",
                             SalesVolume = 0m,
                             SponsoredMembers = 15,
                             TeamPoints = 300000
@@ -7356,7 +7465,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CurrentRankDescription = "You are a Triple Royal Ambassador. Earn $7,500/day in Dual Team Residuals.",
                             DailyBonus = 7500m,
                             EnrollmentQualifiedTeamMembers = 0,
-                            EnrollmentTeam = 0,
+                            EnrollmentTeam = 200000,
                             ExternalMembers = 1,
                             LevelNo = 17,
                             LifetimeHoldingDuration = 0,
@@ -7367,7 +7476,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             PlacementQualifiedTeamMembers = 0,
                             RankBonus = 1500000m,
                             RankDefinitionId = 17,
-                            RankDescription = "Qualify with 400,000 Dual Team points (max 50% per branch).",
+                            RankDescription = "Qualify with 400,000 Dual Team and 200,000 Enrollment Team points (max 50% per leg).",
                             SalesVolume = 0m,
                             SponsoredMembers = 20,
                             TeamPoints = 400000
@@ -7381,7 +7490,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CurrentRankDescription = "You are a Blue Royal Ambassador. Earn $10,000/day in Dual Team Residuals.",
                             DailyBonus = 10000m,
                             EnrollmentQualifiedTeamMembers = 0,
-                            EnrollmentTeam = 0,
+                            EnrollmentTeam = 250000,
                             ExternalMembers = 1,
                             LevelNo = 18,
                             LifetimeHoldingDuration = 0,
@@ -7392,7 +7501,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             PlacementQualifiedTeamMembers = 0,
                             RankBonus = 2000000m,
                             RankDefinitionId = 18,
-                            RankDescription = "Qualify with 500,000 Dual Team points (max 50% per branch).",
+                            RankDescription = "Qualify with 500,000 Dual Team and 250,000 Enrollment Team points (max 50% per leg).",
                             SalesVolume = 0m,
                             SponsoredMembers = 25,
                             TeamPoints = 500000
@@ -7406,7 +7515,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CurrentRankDescription = "You are a Black Royal Ambassador. Earn $15,000/day in Dual Team Residuals.",
                             DailyBonus = 15000m,
                             EnrollmentQualifiedTeamMembers = 0,
-                            EnrollmentTeam = 0,
+                            EnrollmentTeam = 350000,
                             ExternalMembers = 1,
                             LevelNo = 19,
                             LifetimeHoldingDuration = 0,
@@ -7417,7 +7526,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             PlacementQualifiedTeamMembers = 0,
                             RankBonus = 3000000m,
                             RankDefinitionId = 19,
-                            RankDescription = "Qualify with 700,000 Dual Team points (max 50% per branch). The pinnacle of the Ambassador journey.",
+                            RankDescription = "Qualify with 700,000 Dual Team and 350,000 Enrollment Team points (max 50% per leg). The pinnacle of the Ambassador journey.",
                             SalesVolume = 0m,
                             SponsoredMembers = 30,
                             TeamPoints = 700000
@@ -11646,11 +11755,16 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<string>("DeletedBy")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("ExpiryMonth")
-                        .HasColumnType("int");
+                    b.Property<string>("EncryptedCvv")
+                        .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("ExpiryYear")
-                        .HasColumnType("int");
+                    b.Property<string>("EncryptedExpiry")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EncryptedPan")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("First6")
                         .IsRequired()
@@ -11690,6 +11804,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<string>("MemberId")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("int");
 
                     b.Property<byte[]>("RowVersion")
                         .HasColumnType("varbinary(max)");
@@ -11764,6 +11881,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<int>("Action")
+                        .HasColumnType("int");
+
                     b.Property<string>("ChangeReason")
                         .HasColumnType("nvarchar(max)");
 
@@ -11778,8 +11898,20 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("NewAccountIdentifier")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool?>("NewIsPreferred")
+                        .HasColumnType("bit");
+
                     b.Property<int>("NewStatus")
                         .HasColumnType("int");
+
+                    b.Property<string>("OldAccountIdentifier")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool?>("OldIsPreferred")
+                        .HasColumnType("bit");
 
                     b.Property<int>("OldStatus")
                         .HasColumnType("int");
@@ -11794,6 +11926,184 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("WalletHistories");
+                });
+
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Wallet.MemberWalletApiLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DurationMs")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Endpoint")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("HttpMethod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<int>("HttpStatusCode")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MemberId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("RequestBody")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ResponseBody")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("Success")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("WalletType")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreationDate");
+
+                    b.HasIndex("MemberId", "WalletType");
+
+                    b.ToTable("WalletApiLogs");
+                });
+
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Wallet.PaymentGatewayInfo", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("AdminFee")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<int>("AdminFeeKind")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LastUpdateBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("LastUpdateDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal?>("MinAdminFee")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<int>("WalletType")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WalletType")
+                        .IsUnique();
+
+                    b.ToTable("PaymentGateways");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            AdminFee = 1.95m,
+                            AdminFeeKind = 1,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 4, 28, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Currency = "USD",
+                            Description = "I-Payout maintains your in-account balance. Once you register, I-Payout sends a confirmation email; you must verify before payouts can be sent. Funds typically arrive within 24 hours of approval. International withdrawals from your I-Payout account to a bank may incur additional fees from I-Payout itself. Admin fee: $1.95 USD per transaction.",
+                            DisplayName = "eWallet (I-Payout)",
+                            IsActive = true,
+                            WalletType = 4
+                        },
+                        new
+                        {
+                            Id = 2,
+                            AdminFee = 1.95m,
+                            AdminFeeKind = 1,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 4, 28, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Currency = "USD",
+                            Description = "Dwolla pushes commissions directly into your linked US bank account. You must complete Dwolla's identity verification before your account is approved. Standard ACH transfers settle in 3–5 business days. Dwolla is US-only. Admin fee: $1.95 USD per transaction.",
+                            DisplayName = "Dwolla",
+                            IsActive = true,
+                            WalletType = 1
+                        },
+                        new
+                        {
+                            Id = 3,
+                            AdminFee = 2.00m,
+                            AdminFeeKind = 2,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 4, 28, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Currency = "USD",
+                            Description = "Provide the receiving wallet address for Bitcoin (BTC) or USDT (TRC-20). Double-check the address — crypto transactions are irreversible. The company is not liable for funds sent to a wrong address you provided. Network fees are deducted from the payout in addition to the admin fee. Admin fee: minimum 2% of payout, with a minimum of $6.95 USD per transaction.",
+                            DisplayName = "Crypto (Bitcoin / USDT)",
+                            IsActive = true,
+                            MinAdminFee = 6.95m,
+                            WalletType = 9
+                        },
+                        new
+                        {
+                            Id = 4,
+                            AdminFee = 1.95m,
+                            AdminFeeKind = 1,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 4, 28, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Currency = "USD",
+                            Description = "AdvCash holds funds in your AdvCash account in the currency of your choice. From there you can withdraw to bank, card, or other gateways. Verification through AdvCash is required to lift withdrawal limits. Available in most regions worldwide. Admin fee: $1.95 USD per transaction.",
+                            DisplayName = "AdvCash",
+                            IsActive = true,
+                            WalletType = 10
+                        });
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Repository.Identity.ApplicationUser", b =>

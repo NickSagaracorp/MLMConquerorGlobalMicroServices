@@ -1,0 +1,135 @@
+.pm-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    counter-reset: pm-counter;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.pm-item {
+    display: grid;
+    grid-template-columns: 240px 1fr auto;
+    align-items: center;
+    gap: 16px;
+    padding: 14px;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: 12px;
+    background: #fff;
+    cursor: grab;
+    transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+}
+
+.pm-item:hover {
+    box-shadow: 0 8px 18px -10px rgba(0, 0, 0, 0.18);
+    transform: translateY(-1px);
+}
+
+.pm-item:active {
+    cursor: grabbing;
+}
+
+.pm-dragging {
+    opacity: 0.55;
+    transform: scale(1.01);
+    box-shadow: 0 14px 28px -10px rgba(0, 0, 0, 0.32);
+}
+
+.pm-expired {
+    background: repeating-linear-gradient(45deg, #fff, #fff 10px, #fef3f3 10px, #fef3f3 20px);
+}
+
+/* Mini-credit-card visual — mirrors the template's "Credit Card" layout. */
+.pm-mini-card {
+    width: 240px;
+    height: 130px;
+    border-radius: 12px;
+    color: #fff;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 8px 16px -8px rgba(0, 0, 0, 0.35);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    position: relative;
+}
+
+.pm-mini-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.pm-mini-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.85;
+}
+
+.pm-mini-brand {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.pm-mini-chip {
+    width: 32px;
+    height: 24px;
+    border-radius: 4px;
+    background: linear-gradient(135deg, #f5d782, #c9a046 60%, #f5d782);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+    align-self: flex-start;
+    margin-top: 4px;
+}
+
+.pm-mini-number {
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    letter-spacing: 0.18em;
+    font-weight: 600;
+}
+
+.pm-mini-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    font-size: 11px;
+}
+
+.pm-mini-holder,
+.pm-mini-exp {
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.pm-meta {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.pm-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+@media (max-width: 575.98px) {
+    .pm-item {
+        grid-template-columns: 1fr;
+    }
+    .pm-mini-card {
+        width: 100%;
+    }
+}
+
+/* Per-brand gradients — keep these vibrant; do not switch to the orange used
+   by the template's stock background image. */
+.pm-bg-unknown    { background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%); }
+.pm-bg-visa       { background: linear-gradient(135deg, #1a3a8a 0%, #2c5fbd 50%, #4287f5 100%); }
+.pm-bg-mastercard { background: linear-gradient(135deg, #1a1a1a 0%, #cc1f2c 50%, #f7a716 100%); }
+.pm-bg-amex       { background: linear-gradient(135deg, #006fcf 0%, #2e8be9 100%); }
+.pm-bg-discover   { background: linear-gradient(135deg, #4a3000 0%, #ff6000 60%, #ffa030 100%); }
+.pm-bg-jcb        { background: linear-gradient(135deg, #0e3060 0%, #1554a8 50%, #aa2d2d 100%); }
+.pm-bg-diners     { background: linear-gradient(135deg, #003e7e 0%, #5da7e4 100%); }

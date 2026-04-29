@@ -1,8 +1,9 @@
-@page "/team"
-@rendermode InteractiveAuto
+﻿@page "/team"
+@rendermode InteractiveServer
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Ambassador")]
 @inject IViewContextService ViewContext
 
 <PageTitle>My Team</PageTitle>
 
 <DualTeamMyTeam MemberProfileId="@ViewContext.ViewingMemberId" />
+

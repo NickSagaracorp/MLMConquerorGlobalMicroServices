@@ -260,9 +260,8 @@ public class SponsorBonusService : ISponsorBonusService
             .Where(r => r.MemberId == memberId)
             .Join(_db.RankDefinitions.AsNoTracking(),
                   h => h.RankDefinitionId, d => d.Id,
-                  (_, d) => d.SortOrder)
-            .DefaultIfEmpty(0)
-            .MaxAsync(ct);
+                  (_, d) => (int?)d.SortOrder)
+            .MaxAsync(ct) ?? 0;
 
     /// <summary>
     /// Returns the enrollment-tree upline of <paramref name="memberId"/>,

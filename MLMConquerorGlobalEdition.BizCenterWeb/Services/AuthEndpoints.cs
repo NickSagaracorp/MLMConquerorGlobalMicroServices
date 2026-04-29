@@ -10,29 +10,31 @@ namespace MLMConquerorGlobalEdition.BizCenterWeb.Services;
 public static class AuthEndpoints
 {
     public static async Task<IResult> LoginAsync(
-        LoginRequest request,
-        HttpClient httpClient,
+        [Microsoft.AspNetCore.Mvc.FromForm] LoginRequest request,
+        IHttpClientFactory httpClientFactory,
         HttpContext httpContext,
         CancellationToken ct)
     {
-        // Call the backend Signups API
-        var response = await httpClient.PostAsJsonAsync("api/v1/auth/login", request, ct);
+        // Auth lives in the SignupAPI
+        var httpClient = httpClientFactory.CreateClient("AuthApi");
+        var response = await httpClient.PostAsJsonAsync("api/v1/auth/login",
+            new { request.Email, request.Password }, ct);
+
         if (!response.IsSuccessStatusCode)
-            return Results.Unauthorized();
+            return Results.Redirect("/login?error=invalid");
 
         var apiResponse = await response.Content.ReadFromJsonAsync<ApiResponse<AuthTokens>>(cancellationToken: ct);
         if (apiResponse?.Success != true || apiResponse.Data is null)
-            return Results.Unauthorized();
+            return Results.Redirect("/login?error=invalid");
 
-        // Parse the JWT to extract claims
         var handler = new JwtSecurityTokenHandler();
         if (!handler.CanReadToken(apiResponse.Data.AccessToken))
-            return Results.Unauthorized();
+            return Results.Redirect("/login?error=invalid");
 
         var jwt    = handler.ReadJwtToken(apiResponse.Data.AccessToken);
         var claims = jwt.Claims.ToList();
+        claims.Add(new Claim("access_token", apiResponse.Data.AccessToken));
 
-        // Build ClaimsPrincipal and sign in with cookie
         var identity  = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
         var principal = new ClaimsPrincipal(identity);
 
@@ -41,13 +43,13 @@ public static class AuthEndpoints
             principal,
             new AuthenticationProperties { IsPersistent = true });
 
-        return Results.Ok(new { success = true });
+        return Results.Redirect("/");
     }
 
     public static async Task<IResult> LogoutAsync(HttpContext httpContext)
     {
         await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        return Results.Ok();
+        return Results.Redirect("/login");
     }
 
     public record LoginRequest(string Email, string Password);

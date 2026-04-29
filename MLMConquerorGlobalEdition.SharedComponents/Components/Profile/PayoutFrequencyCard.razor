@@ -1,0 +1,107 @@
+@inject HttpClient Http
+
+@*
+    Pay-frequency picker. The chosen value is part of the editable profile —
+    PUT /profile is what persists it, so we re-send the entire editable surface
+    here, just like the language/visibility cards do.
+*@
+
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-body p-4">
+        <h6 class="fs-18 mb-1 fw-semibold">
+            <i class="ri-time-line me-2 text-primary"></i>Commission Payout Frequency
+        </h6>
+        <p class="text-muted small mb-3">
+            How often should we move accrued commissions into your default
+            payout gateway? Daily payouts settle the next business day; weekly
+            payouts settle every Friday.
+        </p>
+
+        <div class="btn-group" role="group" aria-label="Payout frequency">
+            <button type="button" class="btn @(_selected == "Daily" ? "btn-primary" : "btn-outline-primary")"
+                    disabled="@_busy" @onclick='() => SaveAsync("Daily")'>
+                <i class="ri-calendar-line me-1"></i>Daily
+            </button>
+            <button type="button" class="btn @(_selected == "Weekly" ? "btn-primary" : "btn-outline-primary")"
+                    disabled="@_busy" @onclick='() => SaveAsync("Weekly")'>
+                <i class="ri-calendar-2-line me-1"></i>Weekly (Fridays)
+            </button>
+        </div>
+
+        @if (_alert is not null)
+        {
+            <div class="alert alert-@(_alertOk ? "success" : "danger") small mt-3 mb-0 py-2">
+                @_alert
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string?  CurrentFrequency { get; set; }
+    [Parameter] public string?  Phone            { get; set; }
+    [Parameter] public string?  WhatsApp         { get; set; }
+    [Parameter] public string?  Country          { get; set; }
+    [Parameter] public string?  State            { get; set; }
+    [Parameter] public string?  City             { get; set; }
+    [Parameter] public string?  Address          { get; set; }
+    [Parameter] public string?  ZipCode          { get; set; }
+    [Parameter] public string?  DefaultLanguage  { get; set; }
+    [Parameter] public bool     ShowBusinessName { get; set; }
+    [Parameter] public bool     IsEmailPublic    { get; set; }
+    [Parameter] public bool     IsPhonePublic    { get; set; }
+
+    [Parameter] public EventCallback<string> OnChanged { get; set; }
+
+    private string _selected = "Weekly";
+    private bool   _busy;
+    private string? _alert;
+    private bool _alertOk;
+
+    protected override void OnParametersSet()
+    {
+        _selected = string.IsNullOrEmpty(CurrentFrequency) ? "Weekly" : CurrentFrequency!;
+    }
+
+    private async Task SaveAsync(string value)
+    {
+        if (_selected == value) return;
+        var previous = _selected;
+        _selected = value;
+        _busy = true; _alert = null; StateHasChanged();
+        try
+        {
+            var resp = await Http.PutAsJsonAsync("api/v1/bizcenter/profile", new
+            {
+                Phone, WhatsApp, Country, State, City, Address, ZipCode,
+                AddressChangeReason = (string?)null,
+                DefaultLanguage,
+                PayoutFrequency = value,
+                ShowBusinessName, IsEmailPublic, IsPhonePublic
+            });
+            if (resp.IsSuccessStatusCode)
+            {
+                _alert = $"Payouts will run {value.ToLowerInvariant()}.";
+                _alertOk = true;
+                await OnChanged.InvokeAsync(value);
+            }
+            else
+            {
+                _selected = previous;
+                _alert    = $"Failed: {resp.StatusCode}";
+                _alertOk  = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _selected = previous;
+            _alert    = ex.Message;
+            _alertOk  = false;
+        }
+        finally
+        {
+            _busy = false;
+            StateHasChanged();
+        }
+    }
+}

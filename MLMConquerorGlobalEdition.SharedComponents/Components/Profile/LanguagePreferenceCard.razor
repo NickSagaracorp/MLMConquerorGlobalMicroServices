@@ -1,0 +1,131 @@
+@inject HttpClient Http
+
+@*
+    Language picker. The persisted value drives default-language behavior across
+    the app; the actual translation tables can land later. Five locales are
+    pre-wired here (en/es/pt/fr/de). The card writes the entire profile back
+    via PUT /profile because that endpoint is the editable surface today.
+*@
+
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-body p-4">
+        <h6 class="fs-18 mb-1 fw-semibold">
+            <i class="ri-translate-2 me-2 text-primary"></i>Default Language
+        </h6>
+        <p class="text-muted small mb-3">
+            We'll send notifications, emails and dashboard hints in this
+            language whenever a translation is available.
+        </p>
+
+        <div class="row g-2">
+            @foreach (var lang in _languages)
+            {
+                var isActive = string.Equals(_selected, lang.Code, StringComparison.OrdinalIgnoreCase);
+                <div class="col-6 col-md-4">
+                    <button type="button"
+                            class="btn w-100 text-start d-flex align-items-center gap-2 @(isActive ? "btn-primary" : "btn-outline-secondary")"
+                            disabled="@_busy"
+                            @onclick="() => SelectAsync(lang.Code)">
+                        <span class="fs-5">@lang.Flag</span>
+                        <span class="flex-grow-1">@lang.Label</span>
+                        @if (isActive)
+                        {
+                            <i class="ri-check-line"></i>
+                        }
+                    </button>
+                </div>
+            }
+        </div>
+
+        @if (_alert is not null)
+        {
+            <div class="alert alert-@(_alertOk ? "success" : "danger") small mt-3 mb-0 py-2">
+                @_alert
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? CurrentLanguage  { get; set; }
+    [Parameter] public string?  Phone           { get; set; }
+    [Parameter] public string?  WhatsApp        { get; set; }
+    [Parameter] public string?  Country         { get; set; }
+    [Parameter] public string?  State           { get; set; }
+    [Parameter] public string?  City            { get; set; }
+    [Parameter] public string?  Address         { get; set; }
+    [Parameter] public string?  ZipCode         { get; set; }
+    [Parameter] public string?  PayoutFrequency { get; set; }
+    [Parameter] public bool     ShowBusinessName { get; set; }
+    [Parameter] public bool     IsEmailPublic    { get; set; }
+    [Parameter] public bool     IsPhonePublic    { get; set; }
+
+    [Parameter] public EventCallback<string> OnLanguageChanged { get; set; }
+
+    private record Language(string Code, string Label, string Flag);
+    private readonly List<Language> _languages = new()
+    {
+        new("en", "English",    "🇺🇸"),
+        new("es", "Español",    "🇪🇸"),
+        new("pt", "Português",  "🇵🇹"),
+        new("fr", "Français",   "🇫🇷"),
+        new("de", "Deutsch",    "🇩🇪"),
+        new("zh", "中文",        "🇨🇳")
+    };
+
+    private string _selected = "en";
+    private bool   _busy;
+    private string? _alert;
+    private bool   _alertOk;
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrEmpty(CurrentLanguage))
+            _selected = CurrentLanguage!;
+    }
+
+    private async Task SelectAsync(string code)
+    {
+        if (_selected == code) return;
+        var previous = _selected;
+        _selected = code;
+        StateHasChanged();
+
+        _busy = true; _alert = null;
+        try
+        {
+            var resp = await Http.PutAsJsonAsync("api/v1/bizcenter/profile", new
+            {
+                Phone, WhatsApp, Country, State, City, Address, ZipCode,
+                AddressChangeReason = (string?)null,
+                DefaultLanguage = code,
+                PayoutFrequency,
+                ShowBusinessName, IsEmailPublic, IsPhonePublic
+            });
+
+            if (resp.IsSuccessStatusCode)
+            {
+                _alert = "Language preference saved.";
+                _alertOk = true;
+                await OnLanguageChanged.InvokeAsync(code);
+            }
+            else
+            {
+                _selected = previous;
+                _alert    = $"Failed: {resp.StatusCode}";
+                _alertOk  = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _selected = previous;
+            _alert    = ex.Message;
+            _alertOk  = false;
+        }
+        finally
+        {
+            _busy = false;
+            StateHasChanged();
+        }
+    }
+}

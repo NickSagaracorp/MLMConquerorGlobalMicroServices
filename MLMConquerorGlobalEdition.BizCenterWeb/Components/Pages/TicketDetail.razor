@@ -1,5 +1,5 @@
-@page "/tickets/{TicketId}"
-@rendermode InteractiveAuto
+﻿@page "/tickets/{TicketId}"
+@rendermode InteractiveServer
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @inject IViewContextService ViewContext
 
@@ -10,3 +10,4 @@
 @code {
     [Parameter] public string TicketId { get; set; } = string.Empty;
 }
+

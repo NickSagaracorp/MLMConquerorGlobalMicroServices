@@ -1,22 +1,52 @@
 @inherits LayoutComponentBase
+@implements IDisposable
 @inject IThemeService Theme
 @inject IViewContextService ViewContext
 
-<div class="@(Theme.IsDarkMode ? "dark-mode" : "") wrapper">
+@* Matches UI-Templates/event_details.html layout structure:
+     <body class="boxed-size">
+       <div class="sidebar-area" id="sidebar-area"> ... </div>
+       <div class="container-fluid">
+         <div class="main-content d-flex flex-column">
+           <header class="header-area"> ... </header>
+           <div class="main-content-container"> ... page body ... </div>
+           <div class="flex-grow-1"></div>
+           <footer class="footer-area"> ... </footer>
+         </div>
+       </div>
+     </body>
+   Keep the dark-mode wrapper around everything so theme-toggle works. *@
+
+<div class="@(Theme.IsDarkMode ? "dark-mode" : "")">
     <ImpersonationBanner />
 
-    <SidebarMenu />
+    <div class="sidebar-area" id="sidebar-area">
+        <SidebarMenu />
+    </div>
 
-    <div class="main-content-wrapper">
-        <HeaderArea />
+    <div class="container-fluid">
+        <div class="main-content d-flex flex-column">
 
-        <main class="main-content">
-            <div class="container-fluid py-3">
-                @Body
+            <HeaderArea />
+
+            <div class="main-content-container overflow-hidden">
+                <ErrorBoundary>
+                    <ChildContent>@Body</ChildContent>
+                    <ErrorContent Context="ex">
+                        <div class="alert alert-danger m-3">
+                            <h5 class="alert-heading"><i class="ri-error-warning-line me-2"></i>An error occurred</h5>
+                            <p class="mb-1">@ex.Message</p>
+                            <pre class="small text-muted mt-2" style="white-space:pre-wrap;">@ex.ToString()</pre>
+                            <button class="btn btn-sm btn-outline-danger mt-2" onclick="window.location.reload()">Reload Page</button>
+                        </div>
+                    </ErrorContent>
+                </ErrorBoundary>
             </div>
-        </main>
 
-        <FooterArea />
+            <div class="flex-grow-1"></div>
+
+            <FooterArea />
+        </div>
     </div>
 </div>
 

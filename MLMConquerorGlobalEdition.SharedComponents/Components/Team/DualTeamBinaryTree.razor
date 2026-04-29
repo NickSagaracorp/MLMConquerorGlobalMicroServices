@@ -713,7 +713,10 @@
                 @(node.FullName.Length > 0 ? node.FullName[0].ToString().ToUpper() : "?")
             </div>
             <div class="member-footer" style="white-space:normal;word-break:break-word">@node.FullName</div>
-            <div style="font-size:11px;color:#888;margin-top:2px">@node.Points.ToString("N0") pts</div>
+            <div style="font-size:11px;color:#888;margin-top:2px;cursor:help"
+                 title="@BuildRootPointsTooltip(node.Points, node.PersonalPoints)">
+                @node.Points.ToString("N0") pts
+            </div>
         </div>
 
         @* Render children if within depth limit *@
@@ -774,7 +777,10 @@
                 @(child.FullName.Length > 0 ? child.FullName[0].ToString().ToUpper() : "?")
             </div>
             <div class="member-footer" style="white-space:normal;word-break:break-word">@child.FullName</div>
-            <div style="font-size:11px;color:#888;margin-top:2px">@child.Points.ToString("N0") pts</div>
+            <div style="font-size:11px;color:#888;margin-top:2px;cursor:help"
+                 title="@BuildPointsTooltip(child.Points, child.PersonalPoints)">
+                @((child.Points + child.PersonalPoints).ToString("N0")) pts
+            </div>
             @if (AllowUnplacement)
             {
                 var mid  = child.MemberId;
@@ -831,6 +837,10 @@
                 @(gc.FullName.Length > 0 ? gc.FullName[0].ToString().ToUpper() : "?")
             </div>
             <div class="member-footer" style="white-space:normal;word-break:break-word">@gc.FullName</div>
+            <div style="font-size:11px;color:#888;margin-top:2px;cursor:help"
+                 title="@BuildPointsTooltip(gc.Points, gc.PersonalPoints)">
+                @((gc.Points + gc.PersonalPoints).ToString("N0")) pts
+            </div>
             @if (gc.HasLeft || gc.HasRight)
             {
                 <div style="font-size:10px;color:#888;margin-top:2px">
@@ -889,33 +899,59 @@
 
     private class DualTreeNodeDto
     {
-        public string           MemberId   { get; set; } = string.Empty;
-        public string           FullName   { get; set; } = string.Empty;
-        public string           StatusCode { get; set; } = string.Empty;
-        public int              Points     { get; set; }
-        public DualTreeChildDto? LeftChild  { get; set; }
-        public DualTreeChildDto? RightChild { get; set; }
+        public string           MemberId       { get; set; } = string.Empty;
+        public string           FullName       { get; set; } = string.Empty;
+        public string           StatusCode     { get; set; } = string.Empty;
+        public int              Points         { get; set; }
+        public int              PersonalPoints { get; set; }
+        public DualTreeChildDto? LeftChild     { get; set; }
+        public DualTreeChildDto? RightChild    { get; set; }
     }
 
     private class DualTreeChildDto
     {
-        public string                MemberId   { get; set; } = string.Empty;
-        public string                FullName   { get; set; } = string.Empty;
-        public string                StatusCode { get; set; } = string.Empty;
-        public int                   Points     { get; set; }
-        public bool                  HasLeft    { get; set; }
-        public bool                  HasRight   { get; set; }
-        public DualTreeGrandchildDto? LeftChild  { get; set; }
-        public DualTreeGrandchildDto? RightChild { get; set; }
+        public string                MemberId       { get; set; } = string.Empty;
+        public string                FullName       { get; set; } = string.Empty;
+        public string                StatusCode     { get; set; } = string.Empty;
+        public int                   Points         { get; set; }
+        public int                   PersonalPoints { get; set; }
+        public bool                  HasLeft        { get; set; }
+        public bool                  HasRight       { get; set; }
+        public DualTreeGrandchildDto? LeftChild     { get; set; }
+        public DualTreeGrandchildDto? RightChild    { get; set; }
     }
 
     private class DualTreeGrandchildDto
     {
-        public string MemberId   { get; set; } = string.Empty;
-        public string FullName   { get; set; } = string.Empty;
-        public string StatusCode { get; set; } = string.Empty;
-        public bool   HasLeft    { get; set; }
-        public bool   HasRight   { get; set; }
+        public string MemberId       { get; set; } = string.Empty;
+        public string FullName       { get; set; } = string.Empty;
+        public string StatusCode     { get; set; } = string.Empty;
+        public int    Points         { get; set; }
+        public int    PersonalPoints { get; set; }
+        public bool   HasLeft        { get; set; }
+        public bool   HasRight       { get; set; }
+    }
+
+    /// <summary>
+    /// Tooltip for non-root nodes: the visible number IS the contribution to the
+    /// upline's leg. The tooltip breaks it down into personal + downline.
+    /// </summary>
+    private static string BuildPointsTooltip(int downlinePts, int personalPts)
+    {
+        var contribution = downlinePts + personalPts;
+        return $"Contribution to upline's leg: {contribution:N0}\n" +
+               $"  • Personal points: {personalPts:N0}\n" +
+               $"  • Downline points: {downlinePts:N0}";
+    }
+
+    /// <summary>
+    /// Tooltip for the root node: the visible number is the sum of both legs
+    /// (= total downline points). No "upline contribution" since the root has no parent here.
+    /// </summary>
+    private static string BuildRootPointsTooltip(int downlinePts, int personalPts)
+    {
+        return $"Total downline points (left + right legs): {downlinePts:N0}\n" +
+               $"  • Personal points (not included): {personalPts:N0}";
     }
 
     private class DualTreeStatsDto

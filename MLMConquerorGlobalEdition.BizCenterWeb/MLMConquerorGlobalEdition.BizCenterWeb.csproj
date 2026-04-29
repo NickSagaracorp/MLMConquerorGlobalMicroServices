@@ -9,6 +9,15 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.5" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.9.0" />
+    <PackageReference Include="Syncfusion.Blazor.Core" Version="33.1.44" />
+    <PackageReference Include="Syncfusion.Blazor.Grid" Version="33.1.44" />
+    <PackageReference Include="Syncfusion.Blazor.Navigations" Version="33.1.44" />
+    <PackageReference Include="Syncfusion.Blazor.Buttons" Version="33.1.44" />
+    <PackageReference Include="Syncfusion.Blazor.Inputs" Version="33.1.44" />
+    <PackageReference Include="Syncfusion.Blazor.Popups" Version="33.1.44" />
+    <PackageReference Include="Syncfusion.Blazor.Spinner" Version="33.1.44" />
+    <PackageReference Include="Syncfusion.Blazor.Calendars" Version="33.1.44" />
+    <PackageReference Include="Syncfusion.Blazor.Themes" Version="33.1.44" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\MLMConquerorGlobalEdition.BizCenterWeb.Client\MLMConquerorGlobalEdition.BizCenterWeb.Client.csproj" />

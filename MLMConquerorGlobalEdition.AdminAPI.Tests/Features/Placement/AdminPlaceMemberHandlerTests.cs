@@ -71,7 +71,7 @@ public class AdminPlaceMemberHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenTargetParentNotInDualTree_ReturnsTargetNotFound()
+    public async Task Handle_WhenTargetParentNotInDualTree_AutoCreatesParentAsRoot()
     {
         await using var db = InMemoryDbHelper.Create();
         db.MemberProfiles.Add(BuildProfile("amb-001"));
@@ -81,8 +81,19 @@ public class AdminPlaceMemberHandlerTests
             new AdminPlaceMemberCommand("amb-001", "nonexistent-parent", "Left"),
             CancellationToken.None);
 
-        result.IsSuccess.Should().BeFalse();
-        result.ErrorCode.Should().Be("TARGET_NOT_FOUND");
+        // Admin placement auto-creates the target parent as a root node when it
+        // doesn't yet exist in the dual tree (first placement under an upline
+        // ambassador who was never placed themselves).
+        result.IsSuccess.Should().BeTrue();
+        var parent = db.DualTeamTree.FirstOrDefault(d => d.MemberId == "nonexistent-parent");
+        parent.Should().NotBeNull();
+        parent!.ParentMemberId.Should().BeNull();
+        parent.HierarchyPath.Should().Be("/nonexistent-parent/");
+
+        var placed = db.DualTeamTree.FirstOrDefault(d => d.MemberId == "amb-001");
+        placed.Should().NotBeNull();
+        placed!.ParentMemberId.Should().Be("nonexistent-parent");
+        placed.HierarchyPath.Should().Be("/nonexistent-parent/amb-001/");
     }
 
     [Fact]

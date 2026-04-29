@@ -36,7 +36,14 @@ public class AutoPlacementJob
         _logger       = logger;
     }
 
-    public async Task ExecuteAsync()
+    public Task ExecuteAsync() => ExecuteAsync(ignoreWindow: false);
+
+    /// <summary>
+    /// <paramref name="ignoreWindow"/> = true bypasses the 30-day placement window —
+    /// used by the admin "force run" endpoint to backfill placements for newly
+    /// signed-up members who don't yet exist in the dual tree.
+    /// </summary>
+    public async Task<int> ExecuteAsync(bool ignoreWindow)
     {
         using var scope = _scopeFactory.CreateScope();
         var db    = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -46,17 +53,19 @@ public class AutoPlacementJob
         // Members whose placement window has expired and are still unplaced
         var windowCutoff = now.AddDays(-PlacementWindowDays);
 
-        var unplaced = await db.MemberProfiles
+        var unplacedQuery = db.MemberProfiles
             .AsNoTracking()
-            .Where(m => !m.IsDeleted
-                     && m.EnrollDate <= windowCutoff
-                     && m.SponsorMemberId != null)
-            .ToListAsync();
+            .Where(m => !m.IsDeleted && m.SponsorMemberId != null);
+
+        if (!ignoreWindow)
+            unplacedQuery = unplacedQuery.Where(m => m.EnrollDate <= windowCutoff);
+
+        var unplaced = await unplacedQuery.ToListAsync();
 
         if (!unplaced.Any())
         {
             _logger.LogInformation("AutoPlacementJob: no unplaced members found at {Now}", now);
-            return;
+            return 0;
         }
 
         // Exclude members already in the dual tree
@@ -74,7 +83,7 @@ public class AutoPlacementJob
         if (!toAutoPlace.Any())
         {
             _logger.LogInformation("AutoPlacementJob: all expired-window members are already placed.");
-            return;
+            return 0;
         }
 
         foreach (var member in toAutoPlace)
@@ -82,6 +91,9 @@ public class AutoPlacementJob
             try
             {
                 await AutoPlaceAsync(db, member.MemberId, member.SponsorMemberId!, now);
+                // Save after each placement so subsequent iterations see the
+                // updated tree (avoids 2+ members landing on the same side of a parent).
+                await db.SaveChangesAsync();
                 _logger.LogInformation(
                     "AutoPlacementJob: auto-placed {MemberId} under sponsor {SponsorId}",
                     member.MemberId, member.SponsorMemberId);
@@ -93,9 +105,42 @@ public class AutoPlacementJob
             }
         }
 
-        await db.SaveChangesAsync();
+        // Recompute leg-point sums and DualTeamPoints across the full tree so any
+        // ancestors of newly placed members reflect their new descendant points.
+        await RecalculateAllLegPointsAsync(db);
+
         _logger.LogInformation("AutoPlacementJob completed at {Now}. Processed: {Count}",
             now, toAutoPlace.Count);
+        return toAutoPlace.Count;
+    }
+
+    private static async Task RecalculateAllLegPointsAsync(AppDbContext db)
+    {
+        const string sql = @"
+;WITH leg_sums AS (
+    SELECT
+        leg_root.ParentMemberId AS NodeMemberId,
+        leg_root.Side,
+        SUM(s.PersonalPoints) AS LegSum
+    FROM DualTeamTree leg_root
+    INNER JOIN DualTeamTree subtree
+        ON subtree.HierarchyPath LIKE leg_root.HierarchyPath + N'%'
+    INNER JOIN MemberStatistics s
+        ON s.MemberId = subtree.MemberId
+    WHERE leg_root.ParentMemberId IS NOT NULL
+    GROUP BY leg_root.ParentMemberId, leg_root.Side
+)
+UPDATE d
+SET LeftLegPoints  = COALESCE((SELECT LegSum FROM leg_sums WHERE NodeMemberId = d.MemberId AND Side = 0), 0),
+    RightLegPoints = COALESCE((SELECT LegSum FROM leg_sums WHERE NodeMemberId = d.MemberId AND Side = 1), 0)
+FROM DualTeamTree d;
+
+UPDATE s
+SET DualTeamPoints = CAST(COALESCE(d.LeftLegPoints, 0) + COALESCE(d.RightLegPoints, 0) AS int)
+FROM MemberStatistics s
+INNER JOIN DualTeamTree d ON d.MemberId = s.MemberId;
+";
+        await db.Database.ExecuteSqlRawAsync(sql);
     }
 
 

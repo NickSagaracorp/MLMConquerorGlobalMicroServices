@@ -1,61 +1,38 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.BizCenter.DTOs.Commissions;
-using MLMConquerorGlobalEdition.BizCenter.Services;
-using MLMConquerorGlobalEdition.Domain.Enums;
-using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Commissions;
 using MLMConquerorGlobalEdition.SharedKernel;
+using ICurrentUserService = MLMConquerorGlobalEdition.BizCenter.Services.ICurrentUserService;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Features.Commissions.GetCommissionsHistory;
 
 public class GetCommissionsHistoryHandler : IRequestHandler<GetCommissionsHistoryQuery, Result<List<CommissionHistoryYearDto>>>
 {
-    private readonly AppDbContext        _db;
+    private readonly ICommissionsService _service;
     private readonly ICurrentUserService _currentUser;
 
-    public GetCommissionsHistoryHandler(AppDbContext db, ICurrentUserService currentUser)
+    public GetCommissionsHistoryHandler(ICommissionsService service, ICurrentUserService currentUser)
     {
-        _db          = db;
+        _service     = service;
         _currentUser = currentUser;
     }
 
     public async Task<Result<List<CommissionHistoryYearDto>>> Handle(GetCommissionsHistoryQuery request, CancellationToken ct)
     {
-        var memberId = _currentUser.MemberId;
+        var years = await _service.GetHistoryAsync(_currentUser.MemberId, ct);
 
-        // Group by year and month in the database, then project into DTOs
-        var grouped = await _db.CommissionEarnings
-            .AsNoTracking()
-            .Where(c => c.BeneficiaryMemberId == memberId && c.Status == CommissionEarningStatus.Paid)
-            .GroupBy(c => new { c.EarnedDate.Year, c.EarnedDate.Month })
-            .Select(g => new
+        var mapped = years.Select(y => new CommissionHistoryYearDto
+        {
+            Year        = y.Year,
+            TotalIncome = y.TotalIncome,
+            Months      = y.Months.Select(m => new CommissionHistoryMonthDto
             {
-                g.Key.Year,
-                g.Key.Month,
-                Total = g.Sum(c => c.Amount)
-            })
-            .OrderByDescending(g => g.Year)
-            .ThenByDescending(g => g.Month)
-            .ToListAsync(ct);
+                MonthNo     = m.MonthNo,
+                MonthName   = m.MonthName,
+                TotalIncome = m.TotalIncome
+            }).ToList()
+        }).ToList();
 
-        var years = grouped
-            .GroupBy(g => g.Year)
-            .Select(yg => new CommissionHistoryYearDto
-            {
-                Year        = yg.Key,
-                TotalIncome = yg.Sum(m => m.Total),
-                Months      = yg
-                    .OrderByDescending(m => m.Month)
-                    .Select(m => new CommissionHistoryMonthDto
-                    {
-                        MonthNo     = m.Month,
-                        MonthName   = new DateTime(m.Year, m.Month, 1).ToString("MMMM"),
-                        TotalIncome = m.Total
-                    })
-                    .ToList()
-            })
-            .ToList();
-
-        return Result<List<CommissionHistoryYearDto>>.Success(years);
+        return Result<List<CommissionHistoryYearDto>>.Success(mapped);
     }
 }

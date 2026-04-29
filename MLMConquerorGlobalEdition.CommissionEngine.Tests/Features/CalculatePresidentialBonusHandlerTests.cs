@@ -5,6 +5,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
+using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 
 namespace MLMConquerorGlobalEdition.CommissionEngine.Tests.Features;
@@ -138,17 +139,19 @@ public class CalculatePresidentialBonusHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenMembersQualify_SplitsPoolEvenlyAmongThem()
+    public async Task Handle_WhenMembersQualify_PaysWeakLegByPercentage()
     {
         await using var db = InMemoryDbHelper.Create();
-        // 1% of monthly volume split among qualifying members
+        // Each qualifying member earns weakLeg × percentage / 100. Members must
+        // also be placed in the dual team tree so leg points are available.
         await db.CommissionTypes.AddAsync(BuildPresidentialType(id: 1, lifeTimeRank: 5, percentage: 1));
         await db.RankDefinitions.AddAsync(BuildRankDefinition(1, sortOrder: 6));
         await db.MemberRankHistories.AddRangeAsync(
             BuildRankHistory("AMB-001", rankId: 1),
             BuildRankHistory("AMB-002", rankId: 1));
-        // $10,000 monthly volume → 1% pool = $100 → $50 per member
-        await db.Orders.AddAsync(BuildOrder("ORD-001", total: 10000));
+        await db.DualTeamTree.AddRangeAsync(
+            BuildDualNode("AMB-001", left: 5000, right: 8000),  // weakLeg=5000 → 50
+            BuildDualNode("AMB-002", left: 2000, right: 7000)); // weakLeg=2000 → 20
         await db.SaveChangesAsync();
 
         var handler = new CalculatePresidentialBonusHandler(db, BuildClock().Object, BuildUser().Object);
@@ -158,10 +161,24 @@ public class CalculatePresidentialBonusHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value!.RecordsCreated.Should().Be(2);
-        result.Value.TotalAmountCalculated.Should().Be(100);
+        result.Value.TotalAmountCalculated.Should().Be(70);
 
         var earnings = db.CommissionEarnings.ToList();
         earnings.Should().HaveCount(2);
-        earnings.Should().AllSatisfy(e => e.Amount.Should().Be(50));
+        earnings.Single(e => e.BeneficiaryMemberId == "AMB-001").Amount.Should().Be(50);
+        earnings.Single(e => e.BeneficiaryMemberId == "AMB-002").Amount.Should().Be(20);
     }
+
+    private static DualTeamEntity BuildDualNode(string memberId, decimal left, decimal right) => new()
+    {
+        MemberId       = memberId,
+        ParentMemberId = null,
+        Side           = TreeSide.Left,
+        HierarchyPath  = $"/{memberId}/",
+        LeftLegPoints  = left,
+        RightLegPoints = right,
+        CreatedBy      = "seed",
+        CreationDate   = FixedNow,
+        LastUpdateDate = FixedNow
+    };
 }

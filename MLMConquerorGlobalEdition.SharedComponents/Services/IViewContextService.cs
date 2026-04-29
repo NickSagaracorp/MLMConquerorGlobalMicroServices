@@ -21,6 +21,15 @@ public interface IViewContextService
     /// <summary>Roles of the logged-in user.</summary>
     IEnumerable<string> ViewerRoles { get; }
 
+    /// <summary>Full display name of the viewing member (first + last, falling back to email local part).</summary>
+    string MemberFullName { get; }
+
+    /// <summary>Email of the viewing member, when available.</summary>
+    string MemberEmail { get; }
+
+    /// <summary>Membership level / rank label for the viewing member (e.g., "Jade Ambassador"). May be empty.</summary>
+    string MemberRankLabel { get; }
+
     /// <summary>Returns true if the viewer has the specified permission.</summary>
     bool HasPermission(string permission);
 

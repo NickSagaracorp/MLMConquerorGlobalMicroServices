@@ -85,7 +85,7 @@ public class AdminRemovePlacementHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenMemberHasDirectChildren_ChildrenBecomeRoots()
+    public async Task Handle_WhenMemberHasDirectChildren_DescendantsRemainLinkedUnderFloatingPrefix()
     {
         await using var db = InMemoryDbHelper.Create();
         // Tree: parent-001 → amb-001 (left) → child-left (left)
@@ -101,14 +101,20 @@ public class AdminRemovePlacementHandlerTests
             new AdminRemovePlacementCommand("amb-001"),
             CancellationToken.None);
 
+        // amb-001 is removed from the tree.
+        db.DualTeamTree.Any(d => d.MemberId == "amb-001").Should().BeFalse();
+
+        // Descendants stay linked to amb-001 (kept as ParentMemberId) so that when
+        // amb-001 is re-placed later, the whole subtree moves with them. Their
+        // hierarchy path is rebased onto the floating root /amb-001/.
         var leftChild  = db.DualTeamTree.First(d => d.MemberId == "child-left");
         var rightChild = db.DualTeamTree.First(d => d.MemberId == "child-right");
 
-        leftChild.ParentMemberId.Should().BeNull();
-        leftChild.HierarchyPath.Should().Be("/child-left/");
+        leftChild.ParentMemberId.Should().Be("amb-001");
+        leftChild.HierarchyPath.Should().Be("/amb-001/child-left/");
 
-        rightChild.ParentMemberId.Should().BeNull();
-        rightChild.HierarchyPath.Should().Be("/child-right/");
+        rightChild.ParentMemberId.Should().Be("amb-001");
+        rightChild.HierarchyPath.Should().Be("/amb-001/child-right/");
     }
 
     [Fact]

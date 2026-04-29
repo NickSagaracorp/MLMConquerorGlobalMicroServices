@@ -1,0 +1,164 @@
+@inject HttpClient Http
+
+@*
+    Toggles three flags that control what shows on the member's public page.
+    The card writes through to PUT /profile so the parent UserProfilePage can
+    re-fetch the DTO afterwards and stay in sync.
+*@
+
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-body p-4">
+        <h6 class="fs-18 mb-1 fw-semibold">
+            <i class="ri-eye-line me-2 text-primary"></i>Public Page Visibility
+        </h6>
+        <p class="text-muted small mb-3">
+            Choose what visitors will see on your public website. Phone and
+            email are hidden by default.
+        </p>
+
+        <div class="d-flex flex-column gap-2">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" role="switch"
+                       id="prefShowBusinessName"
+                       checked="@_showBusinessName"
+                       @onchange="async e => await ToggleAsync(nameof(_showBusinessName), (bool)(e.Value ?? false))" />
+                <label class="form-check-label" for="prefShowBusinessName">
+                    Show business name
+                    <span class="d-block text-muted small">
+                        Visitors will see your registered business name instead of your personal name.
+                    </span>
+                </label>
+            </div>
+
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" role="switch"
+                       id="prefIsEmailPublic"
+                       checked="@_isEmailPublic"
+                       @onchange="async e => await ToggleAsync(nameof(_isEmailPublic), (bool)(e.Value ?? false))" />
+                <label class="form-check-label" for="prefIsEmailPublic">
+                    Show email on public page
+                    <span class="d-block text-muted small">
+                        Anyone landing on your replicate page can see this address.
+                    </span>
+                </label>
+            </div>
+
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" role="switch"
+                       id="prefIsPhonePublic"
+                       checked="@_isPhonePublic"
+                       @onchange="async e => await ToggleAsync(nameof(_isPhonePublic), (bool)(e.Value ?? false))" />
+                <label class="form-check-label" for="prefIsPhonePublic">
+                    Show phone on public page
+                    <span class="d-block text-muted small">
+                        Visitors will see your phone number; consider WhatsApp privacy.
+                    </span>
+                </label>
+            </div>
+        </div>
+
+        @if (_alert is not null)
+        {
+            <div class="alert alert-@(_alertOk ? "success" : "danger") small mt-3 mb-0 py-2">
+                @_alert
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool ShowBusinessName { get; set; }
+    [Parameter] public bool IsEmailPublic    { get; set; }
+    [Parameter] public bool IsPhonePublic    { get; set; }
+
+    [Parameter] public string?  Phone           { get; set; }
+    [Parameter] public string?  WhatsApp        { get; set; }
+    [Parameter] public string?  Country         { get; set; }
+    [Parameter] public string?  State           { get; set; }
+    [Parameter] public string?  City            { get; set; }
+    [Parameter] public string?  Address         { get; set; }
+    [Parameter] public string?  ZipCode         { get; set; }
+    [Parameter] public string?  DefaultLanguage { get; set; }
+    [Parameter] public string?  PayoutFrequency { get; set; }
+
+    [Parameter] public EventCallback OnPersisted { get; set; }
+
+    private bool _showBusinessName;
+    private bool _isEmailPublic;
+    private bool _isPhonePublic;
+    private string? _alert;
+    private bool _alertOk;
+
+    protected override void OnParametersSet()
+    {
+        _showBusinessName = ShowBusinessName;
+        _isEmailPublic    = IsEmailPublic;
+        _isPhonePublic    = IsPhonePublic;
+    }
+
+    private async Task ToggleAsync(string field, bool value)
+    {
+        // Optimistic UI: flip the local state immediately so the toggle feels
+        // instant; revert if the server says no.
+        switch (field)
+        {
+            case nameof(_showBusinessName): _showBusinessName = value; break;
+            case nameof(_isEmailPublic):    _isEmailPublic    = value; break;
+            case nameof(_isPhonePublic):    _isPhonePublic    = value; break;
+        }
+        StateHasChanged();
+
+        try
+        {
+            var resp = await Http.PutAsJsonAsync("api/v1/bizcenter/profile", BuildPayload());
+            if (resp.IsSuccessStatusCode)
+            {
+                _alert   = "Visibility preference saved.";
+                _alertOk = true;
+                await OnPersisted.InvokeAsync();
+            }
+            else
+            {
+                _alert = $"Failed to save: {resp.StatusCode}";
+                _alertOk = false;
+                Revert(field);
+            }
+        }
+        catch (Exception ex)
+        {
+            _alert = ex.Message;
+            _alertOk = false;
+            Revert(field);
+        }
+        StateHasChanged();
+    }
+
+    private void Revert(string field)
+    {
+        switch (field)
+        {
+            case nameof(_showBusinessName): _showBusinessName = ShowBusinessName; break;
+            case nameof(_isEmailPublic):    _isEmailPublic    = IsEmailPublic;    break;
+            case nameof(_isPhonePublic):    _isPhonePublic    = IsPhonePublic;    break;
+        }
+    }
+
+    // PUT /profile expects the *full* editable surface, so we re-send everything
+    // even when only one flag changes. The server treats unchanged values as no-ops.
+    private object BuildPayload() => new
+    {
+        Phone,
+        WhatsApp,
+        Country,
+        State,
+        City,
+        Address,
+        ZipCode,
+        AddressChangeReason = (string?)null,
+        DefaultLanguage,
+        PayoutFrequency,
+        ShowBusinessName    = _showBusinessName,
+        IsEmailPublic       = _isEmailPublic,
+        IsPhonePublic       = _isPhonePublic
+    };
+}

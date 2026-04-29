@@ -1,46 +1,44 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.BizCenter.DTOs.Commissions;
-using MLMConquerorGlobalEdition.BizCenter.Services;
-using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Commissions;
 using MLMConquerorGlobalEdition.SharedKernel;
+using ICurrentUserService = MLMConquerorGlobalEdition.BizCenter.Services.ICurrentUserService;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Features.Commissions.GetPresidentialBonusSummary;
 
 public class GetPresidentialBonusSummaryHandler : IRequestHandler<GetPresidentialBonusSummaryQuery, Result<CommissionBonusSummaryDto>>
 {
-    private const int PresidentialBonusCategoryId = 4;
-
-    private readonly AppDbContext        _db;
+    private readonly ICommissionsService _service;
     private readonly ICurrentUserService _currentUser;
 
-    public GetPresidentialBonusSummaryHandler(AppDbContext db, ICurrentUserService currentUser)
+    public GetPresidentialBonusSummaryHandler(ICommissionsService service, ICurrentUserService currentUser)
     {
-        _db          = db;
+        _service     = service;
         _currentUser = currentUser;
     }
 
     public async Task<Result<CommissionBonusSummaryDto>> Handle(GetPresidentialBonusSummaryQuery request, CancellationToken ct)
     {
-        var memberId = _currentUser.MemberId;
+        var v = await _service.GetPresidentialBonusSummaryAsync(_currentUser.MemberId, ct);
 
-        var summary = await _db.CommissionEarnings
-            .AsNoTracking()
-            .Where(c => c.BeneficiaryMemberId == memberId)
-            .Join(
-                _db.CommissionTypes.Where(t => t.CommissionCategoryId == PresidentialBonusCategoryId
-                                            && t.Name.Contains("Presidential")),
-                c   => c.CommissionTypeId,
-                ct2 => ct2.Id,
-                (c, _) => c.Amount)
-            .GroupBy(_ => 1)
-            .Select(g => new CommissionBonusSummaryDto
+        return Result<CommissionBonusSummaryDto>.Success(new CommissionBonusSummaryDto
+        {
+            Count              = v.Count,
+            TotalAmount        = v.TotalAmount,
+            IsExtendedMode     = v.IsExtendedMode,
+            IsDisqualifiedW2W3 = v.IsDisqualifiedW2W3,
+            Windows            = v.Windows?.Select(w => new FsbWindowDto
             {
-                Count       = g.Count(),
-                TotalAmount = g.Sum()
-            })
-            .FirstOrDefaultAsync(ct);
-
-        return Result<CommissionBonusSummaryDto>.Success(summary ?? new CommissionBonusSummaryDto());
+                WindowNumber   = w.WindowNumber,
+                IsPromo        = w.IsPromo,
+                Amount         = w.Amount,
+                IsCompleted    = w.IsCompleted,
+                IsActive       = w.IsActive,
+                StartDate      = w.StartDate,
+                EndDate        = w.EndDate,
+                SponsoredCount = w.SponsoredCount,
+                IsHidden       = w.IsHidden
+            }).ToList()
+        });
     }
 }

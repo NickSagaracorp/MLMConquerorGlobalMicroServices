@@ -1,61 +1,94 @@
 @using MLMConquerorGlobalEdition.SharedComponents.Components.Dashboard
+@implements IDisposable
 
-<div class="card fsb-card h-100 @StatusClass">
-    <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between mb-3">
-            <span class="badge rounded-pill bg-@BadgeColor">Window @Window.WindowNumber</span>
-            <StatusBadge Status="@Window.Status" />
+@{
+    var fsbCardClass = Window.IsCompleted ? "fsb-card fsb-complete"
+                     : Window.IsActive    ? "fsb-card fsb-active"
+                     :                     "fsb-card fsb-locked position-relative";
+
+    var footerClass = Window.IsCompleted ? "fsb-footerline completed"
+                    : Window.IsActive    ? "fsb-footerline available"
+                    :                     "fsb-footerline locked";
+
+    string SlotClass(int slotIndex)
+    {
+        if (!Window.IsCompleted && !Window.IsActive)
+            return "fsb-person-big locked";
+        var filled = Window.SponsoredCount >= slotIndex;
+        if (!filled) return "fsb-person-big inactive";
+        return Window.IsCompleted ? "fsb-person-big active-green" : "fsb-person-big active-blue";
+    }
+}
+
+<div class="fsb-card-wrap">
+    <div class="@fsbCardClass">
+        <div class="fsb-topline">
+            <div class="fsb-title">FAST START BONUS @Window.WindowNumber</div>
         </div>
-
-        @if (Window.StartDate.HasValue && Window.EndDate.HasValue && Window.Status == "Active")
-        {
-            <div class="fsb-timer text-center mb-3">
-                <div class="display-6 fw-bold text-@BadgeColor">@_timeRemaining</div>
-                <div class="text-muted small">remaining</div>
+        <div class="fsb-bottom">
+            <div class="fsb-icons-area d-flex align-items-center"
+                 style="@(!Window.IsCompleted && !Window.IsActive ? "opacity:.7;filter:grayscale(.4);" : "")">
+                <div class="@SlotClass(1)"><i class="ri-user-fill" aria-hidden="true"></i></div>
+                <div class="@SlotClass(2)"><i class="ri-user-fill" aria-hidden="true"></i></div>
             </div>
-        }
-
-        <div class="d-flex justify-content-between align-items-center">
-            <span class="text-muted small">Earned</span>
-            <span class="fw-semibold fs-5">@Window.Earned.ToString("C")</span>
+            <div class="fsb-timer">@_timerDisplay</div>
         </div>
-
-        @if (Window.StartDate.HasValue)
+        @if (!Window.IsCompleted && !Window.IsActive)
         {
-            <div class="text-muted small mt-1">
-                @Window.StartDate.Value.ToString("MMM dd") — @Window.EndDate?.ToString("MMM dd, yyyy")
-            </div>
+            <div class="fsb-black-layer"><i class="ri-lock-line" aria-hidden="true"></i>Locked &mdash; Coming Soon</div>
         }
+    </div>
+    <div class="@footerClass">
+        <span>@(Window.StartDate.HasValue ? Window.StartDate.Value.ToString("MM/dd/yyyy HH:mm:ss") : "--")</span>
+        <span>@(Window.EndDate.HasValue ? Window.EndDate.Value.ToString("MM/dd/yyyy HH:mm:ss") : "--")</span>
     </div>
 </div>
 
 @code {
     [Parameter, EditorRequired] public DashboardPage.FsbWindowDto Window { get; set; } = default!;
 
-    private string _timeRemaining = "—";
-
-    private string BadgeColor => Window.Status switch
-    {
-        "Active"   => "primary",
-        "Complete" => "success",
-        _          => "secondary"
-    };
-
-    private string StatusClass => Window.Status switch
-    {
-        "Active"   => "border-primary",
-        "Complete" => "border-success",
-        _          => string.Empty
-    };
+    private string _timerDisplay = "--D --H --M --S";
+    private System.Threading.Timer? _timer;
 
     protected override void OnParametersSet()
     {
-        if (Window.EndDate.HasValue && Window.Status == "Active")
+        UpdateTimerDisplay();
+        if (Window.IsActive && Window.EndDate.HasValue)
         {
-            var remaining = Window.EndDate.Value - DateTime.UtcNow;
-            _timeRemaining = remaining.TotalSeconds > 0
-                ? $"{(int)remaining.TotalDays}d {remaining.Hours:D2}h {remaining.Minutes:D2}m"
-                : "Expired";
+            _timer?.Dispose();
+            _timer = new System.Threading.Timer(_ => InvokeAsync(() =>
+            {
+                UpdateTimerDisplay();
+                StateHasChanged();
+            }), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
         }
     }
+
+    private void UpdateTimerDisplay()
+    {
+        if (Window.IsCompleted)
+        {
+            _timerDisplay = Window.Earned > 0 ? Window.Earned.ToString("C") : "COMPLETED!";
+            return;
+        }
+        if (Window.IsActive && Window.EndDate.HasValue)
+        {
+            _timerDisplay = FmtDHMS(Window.EndDate.Value - DateTime.UtcNow);
+            return;
+        }
+        if (!Window.IsCompleted && !Window.IsActive && Window.StartDate.HasValue)
+        {
+            _timerDisplay = FmtDHMS(Window.StartDate.Value - DateTime.UtcNow);
+            return;
+        }
+        _timerDisplay = "--D --H --M --S";
+    }
+
+    private static string FmtDHMS(TimeSpan ts)
+    {
+        if (ts.TotalSeconds <= 0) return "COMPLETED!";
+        return $"{(int)ts.TotalDays}D {ts.Hours}H {ts.Minutes}M {ts.Seconds}S";
+    }
+
+    public void Dispose() => _timer?.Dispose();
 }

@@ -1,6 +1,12 @@
-<footer class="footer-area">
-    <div class="d-flex align-items-center justify-content-between py-3 px-4 border-top">
-        <span class="text-muted small">&copy; @DateTime.UtcNow.Year MLMConqueror. All rights reserved.</span>
-        <span class="text-muted small">Powered by Sagara Corp</span>
-    </div>
+@* Matches UI-Templates/event_details.html footer style:
+   <footer class="footer-area bg-white text-center rounded-top-7">
+     <p class="fs-14">© ... </p>
+   </footer>
+   style.css .footer-area p rule handles padding (18.5px 30px). *@
+
+<footer class="footer-area bg-white text-center rounded-top-7">
+    <p class="fs-14">
+        &copy; @DateTime.UtcNow.Year <span class="text-primary-div">MLM Conqueror</span> —
+        <a href="https://sagaracorp.com/" target="_blank" class="text-decoration-none text-primary">Sagara Corp</a>
+    </p>
 </footer>

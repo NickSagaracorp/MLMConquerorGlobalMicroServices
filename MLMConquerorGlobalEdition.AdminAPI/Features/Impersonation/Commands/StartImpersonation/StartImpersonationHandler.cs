@@ -50,7 +50,7 @@ public class StartImpersonationHandler
         }
 
         var targetUser = await _userManager.Users
-            .FirstOrDefaultAsync(u => u.MemberProfileId == member.Id, ct);
+            .FirstOrDefaultAsync(u => u.MemberProfileId == member.MemberId, ct);
 
         if (targetUser is null)
         {

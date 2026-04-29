@@ -31,12 +31,10 @@ else
     {
         <div class="mb-4">
             <h6 class="fw-semibold mb-3">Fast Start Bonus Windows</h6>
-            <div class="row g-3">
+            <div class="fsb-row">
                 @foreach (var fsb in _fsbWindows)
                 {
-                    <div class="col-12 col-md-4">
-                        <FastStartBonusCard Window="@fsb" />
-                    </div>
+                    <FastStartBonusCard Window="@fsb" />
                 }
             </div>
         </div>
@@ -97,7 +95,7 @@ else
                 _tokenBalance  = d.TokenBalance.ToString();
                 _currentRank   = d.CurrentRank ?? "—";
                 _fsbWindows    = d.FsbWindows
-                    .Select(w => new FsbWindowDto(w.WindowNumber, w.StartDate, w.EndDate, w.Earned, w.Status))
+                    .Select(w => new FsbWindowDto(w.WindowNumber, w.StartDate, w.EndDate, w.Earned, w.Status, w.IsActive, w.IsCompleted, w.SponsoredCount))
                     .ToList();
             }
         }
@@ -125,12 +123,23 @@ else
 
     private class FsbWindowApiDto
     {
-        public int       WindowNumber { get; set; }
-        public DateTime? StartDate    { get; set; }
-        public DateTime? EndDate      { get; set; }
-        public decimal   Earned       { get; set; }
-        public string    Status       { get; set; } = string.Empty;
+        public int       WindowNumber   { get; set; }
+        public DateTime? StartDate      { get; set; }
+        public DateTime? EndDate        { get; set; }
+        public decimal   Earned         { get; set; }
+        public string    Status         { get; set; } = string.Empty;
+        public bool      IsActive       { get; set; }
+        public bool      IsCompleted    { get; set; }
+        public int       SponsoredCount { get; set; }
     }
 
-    public record FsbWindowDto(int WindowNumber, DateTime? StartDate, DateTime? EndDate, decimal Earned, string Status);
+    public record FsbWindowDto(
+        int       WindowNumber,
+        DateTime? StartDate,
+        DateTime? EndDate,
+        decimal   Earned,
+        string    Status,
+        bool      IsActive,
+        bool      IsCompleted,
+        int       SponsoredCount);
 }

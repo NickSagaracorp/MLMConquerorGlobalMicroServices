@@ -1,0 +1,235 @@
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<LoadingSpinner IsLoading="@_loading" />
+
+@if (!_loading)
+{
+    @if (_alertMsg is not null)
+    {
+        <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+            @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+        </div>
+    }
+
+    <div class="d-flex align-items-start mb-3">
+        <div class="flex-grow-1">
+            <h6 class="fw-semibold mb-1"><i class="ri-bank-card-line me-2 text-primary"></i>Payment Method</h6>
+            <small class="text-muted">
+                Drag the cards to set the order in which the company should try to charge your membership.
+                The first one that succeeds wins.
+            </small>
+        </div>
+        <button class="btn btn-primary btn-sm" @onclick="() => _showAddModal = true">
+            <i class="ri-add-line me-1"></i>Add card
+        </button>
+    </div>
+
+    @if (_cards.Count == 0)
+    {
+        <div class="text-center py-5 border rounded bg-light">
+            <i class="ri-bank-card-2-line text-muted" style="font-size:2.5rem"></i>
+            <p class="text-muted mt-2 mb-0">You don't have any cards on file yet.</p>
+            <button class="btn btn-link" @onclick="() => _showAddModal = true">Add your first card</button>
+        </div>
+    }
+    else
+    {
+        <ol class="pm-list" @ondragover:preventDefault>
+            @for (var i = 0; i < _cards.Count; i++)
+            {
+                var card  = _cards[i];
+                var index = i;
+                <li class="pm-item @(_draggingIndex == index ? "pm-dragging" : "") @(card.IsExpired ? "pm-expired" : "")"
+                    draggable="true"
+                    @ondragstart="() => OnDragStart(index)"
+                    @ondragenter="() => OnDragEnter(index)"
+                    @ondragend="OnDragEnd">
+                    <div class="pm-mini-card pm-bg-@card.CardBrand.ToLowerInvariant()">
+                        <div class="pm-mini-top">
+                            <div class="pm-mini-label">Credit Card</div>
+                            <div class="pm-mini-brand">@card.CardBrand</div>
+                        </div>
+                        <div class="pm-mini-chip"></div>
+                        <div class="pm-mini-number">•••• •••• •••• @card.Last4</div>
+                        <div class="pm-mini-bottom">
+                            <span class="pm-mini-holder">Card Holder</span>
+                            <span class="pm-mini-exp">EXP @card.ExpiryMonth.ToString("00")/@card.ExpiryYear.ToString().Substring(2)</span>
+                        </div>
+                    </div>
+                    <div class="pm-meta">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-secondary">#@(index + 1)</span>
+                            @if (card.IsDefault)
+                            {
+                                <span class="badge bg-success"><i class="ri-star-fill me-1"></i>Default</span>
+                            }
+                            @if (card.IsExpired)
+                            {
+                                <span class="badge bg-danger">Expired</span>
+                            }
+                        </div>
+                        <div class="small text-muted mt-1"><i class="ri-drag-move-2-line me-1"></i>Drag to reorder</div>
+                    </div>
+                    <div class="pm-actions">
+                        @if (!card.IsDefault && !card.IsExpired)
+                        {
+                            <button class="btn btn-sm btn-outline-success"
+                                    disabled="@_busy"
+                                    @onclick="() => SetDefaultAsync(card.Id)">
+                                <i class="ri-star-line me-1"></i>Set default
+                            </button>
+                        }
+                        <button class="btn btn-sm btn-outline-danger"
+                                disabled="@_busy"
+                                @onclick="() => DeleteAsync(card.Id)"
+                                title="Remove this card">
+                            <i class="ri-delete-bin-line"></i>
+                        </button>
+                    </div>
+                </li>
+            }
+        </ol>
+    }
+}
+
+@if (_showAddModal)
+{
+    <AddCardModal OnClose="() => _showAddModal = false"
+                  OnAdded="OnCardAddedAsync" />
+}
+
+@code {
+    private bool _loading      = true;
+    private bool _busy;
+    private bool _showAddModal;
+    private string? _alertMsg;
+    private bool   _alertIsError;
+    private int    _draggingIndex = -1;
+
+    private List<CreditCardDto> _cards = new();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<CreditCardDto>>>(
+                "api/v1/bizcenter/billing/credit-cards");
+            _cards = resp?.Success == true ? (resp.Data ?? new()) : new();
+        }
+        catch (Exception ex)
+        {
+            _alertMsg = $"Could not load cards: {ex.Message}"; _alertIsError = true;
+        }
+        finally { _loading = false; StateHasChanged(); }
+    }
+
+    private async Task OnCardAddedAsync()
+    {
+        _showAddModal = false;
+        _alertMsg = "Card added successfully."; _alertIsError = false;
+        await LoadAsync();
+    }
+
+    private async Task SetDefaultAsync(string cardId)
+    {
+        _busy = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.PutAsync(
+                $"api/v1/bizcenter/billing/credit-cards/{cardId}/default", null);
+            if (resp.IsSuccessStatusCode)
+            {
+                _alertMsg = "Default card updated."; _alertIsError = false;
+                await LoadAsync();
+            }
+            else
+            {
+                _alertMsg = $"Could not set default: {await resp.Content.ReadAsStringAsync()}";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = ex.Message; _alertIsError = true; }
+        finally { _busy = false; StateHasChanged(); }
+    }
+
+    private async Task DeleteAsync(string cardId)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", "Remove this card?")) return;
+        _busy = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.DeleteAsync(
+                $"api/v1/bizcenter/billing/credit-cards/{cardId}");
+            if (resp.IsSuccessStatusCode)
+            {
+                _alertMsg = "Card removed."; _alertIsError = false;
+                await LoadAsync();
+            }
+            else
+            {
+                _alertMsg = $"Could not remove: {await resp.Content.ReadAsStringAsync()}";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = ex.Message; _alertIsError = true; }
+        finally { _busy = false; StateHasChanged(); }
+    }
+
+    private void OnDragStart(int index) => _draggingIndex = index;
+
+    private void OnDragEnter(int hoverIndex)
+    {
+        if (_draggingIndex < 0 || _draggingIndex == hoverIndex) return;
+        var dragged = _cards[_draggingIndex];
+        _cards.RemoveAt(_draggingIndex);
+        _cards.Insert(hoverIndex, dragged);
+        _draggingIndex = hoverIndex;
+        StateHasChanged();
+    }
+
+    private async Task OnDragEnd()
+    {
+        if (_draggingIndex < 0) return;
+        _draggingIndex = -1;
+        await PersistOrderAsync();
+    }
+
+    private async Task PersistOrderAsync()
+    {
+        _busy = true; StateHasChanged();
+        try
+        {
+            var payload = new { OrderedCardIds = _cards.Select(c => c.Id).ToList() };
+            var resp = await Http.PutAsJsonAsync(
+                "api/v1/bizcenter/billing/credit-cards/reorder", payload);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _alertMsg = $"Could not save order: {await resp.Content.ReadAsStringAsync()}";
+                _alertIsError = true;
+                await LoadAsync(); // revert UI
+            }
+        }
+        catch (Exception ex) { _alertMsg = ex.Message; _alertIsError = true; await LoadAsync(); }
+        finally { _busy = false; StateHasChanged(); }
+    }
+
+    public class CreditCardDto
+    {
+        public string Id               { get; set; } = string.Empty;
+        public string Last4            { get; set; } = string.Empty;
+        public string First6           { get; set; } = string.Empty;
+        public string CardBrand        { get; set; } = "Unknown";
+        public int    ExpiryMonth      { get; set; }
+        public int    ExpiryYear       { get; set; }
+        public bool   IsDefault        { get; set; }
+        public bool   IsExpired        { get; set; }
+        public int    Priority         { get; set; }
+        public string MaskedCardNumber { get; set; } = string.Empty;
+    }
+
+    private class ApiWrapper<T> { public bool Success { get; set; } public T? Data { get; set; } }
+}

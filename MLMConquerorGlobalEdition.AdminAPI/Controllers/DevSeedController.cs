@@ -426,7 +426,69 @@ public class DevSeedController : ControllerBase
         return (bestNodeId, bestSide);
     }
 
+    /// <summary>
+    /// POST /api/v1/dev/activate-user
+    /// Dev-only: sets IsActive=true and EmailConfirmed=true on an ApplicationUser by email.
+    /// Use this when a member completed signup but the CompleteSignup step failed.
+    /// </summary>
+    [HttpPost("activate-user")]
+    public async Task<ActionResult<ApiResponse<SeedResultDto>>> ActivateUser(
+        [FromBody] ActivateUserRequest request,
+        CancellationToken ct)
+    {
+        if (!_env.IsDevelopment())
+            return NotFound();
+
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        if (user is null)
+            return NotFound(ApiResponse<SeedResultDto>.Fail("NOT_FOUND", $"No user found with email '{request.Email}'."));
+
+        user.IsActive        = true;
+        user.EmailConfirmed  = true;
+
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            return BadRequest(ApiResponse<SeedResultDto>.Fail("UPDATE_FAILED", errors));
+        }
+
+        // Also activate the MemberProfile if it exists
+        var member = !string.IsNullOrEmpty(user.MemberProfileId)
+            ? await _db.MemberProfiles.FirstOrDefaultAsync(m => m.MemberId == user.MemberProfileId, ct)
+            : await _db.MemberProfiles.FirstOrDefaultAsync(m => m.Email == request.Email, ct);
+
+        if (member is not null && member.Status != MemberAccountStatus.Active)
+        {
+            member.Status         = MemberAccountStatus.Active;
+            member.LastUpdateDate = _dateTime.Now;
+            member.LastUpdateBy   = "dev-activate-user";
+
+            // Also activate their latest pending subscription
+            var sub = await _db.MembershipSubscriptions
+                .Where(s => s.MemberId == member.MemberId)
+                .OrderByDescending(s => s.CreationDate)
+                .FirstOrDefaultAsync(ct);
+
+            if (sub is not null && sub.SubscriptionStatus == MembershipStatus.Pending)
+            {
+                sub.SubscriptionStatus = MembershipStatus.Active;
+                sub.StartDate          = sub.StartDate == default ? _dateTime.Now : sub.StartDate;
+                sub.EndDate            = sub.StartDate.AddMonths(1);
+                sub.RenewalDate        = sub.StartDate.AddMonths(1);
+                sub.LastUpdateDate     = _dateTime.Now;
+                sub.LastUpdateBy       = "dev-activate-user";
+            }
+
+            await _db.SaveChangesAsync(ct);
+        }
+
+        return Ok(ApiResponse<SeedResultDto>.Ok(
+            new SeedResultDto($"User '{request.Email}' activated successfully (IsActive=true, EmailConfirmed=true).")));
+    }
+
     public record SeedRequest(string Email, string Password);
+    public record ActivateUserRequest(string Email);
     public record SeedResultDto(string Message);
     public record FixMembershipResultDto(int Activated, int DatesFixed, string Message);
     public record FixMemberOrdersResultDto(int Fixed, string Message);

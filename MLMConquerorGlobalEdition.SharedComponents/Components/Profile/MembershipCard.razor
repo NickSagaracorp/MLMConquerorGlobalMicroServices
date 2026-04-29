@@ -1,0 +1,78 @@
+@*
+    Compact "Membership" card. Shows current level, status, dates and auto-renew
+    state. Shows a friendly empty state when the member has no active
+    subscription (e.g., a brand-new ambassador who hasn't been billed yet).
+*@
+
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-body p-4">
+        <h6 class="fs-18 mb-3 fw-semibold">
+            <i class="ri-vip-crown-line me-2 text-primary"></i>Membership
+        </h6>
+
+        @if (Snapshot is null)
+        {
+            <div class="text-center py-3">
+                <i class="ri-emotion-sad-line text-muted" style="font-size: 2rem"></i>
+                <p class="text-muted small mb-0 mt-2">No active membership.</p>
+            </div>
+        }
+        else
+        {
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="badge fs-13 px-3 py-2 @LevelBadgeClass">
+                    <i class="ri-medal-line me-1"></i>@Snapshot.LevelName
+                </span>
+                <StatusBadge Status="@Snapshot.Status" />
+            </div>
+
+            <div class="row g-2 small">
+                <div class="col-6">
+                    <div class="text-muted">Started</div>
+                    <div class="fw-medium">@Snapshot.StartDate.ToString("MMM dd, yyyy")</div>
+                </div>
+                <div class="col-6">
+                    <div class="text-muted">@(Snapshot.ExpireDate.HasValue ? "Renews" : "Expires")</div>
+                    <div class="fw-medium">
+                        @(Snapshot.ExpireDate?.ToString("MMM dd, yyyy") ?? "—")
+                    </div>
+                </div>
+                <div class="col-12 mt-2">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" role="switch"
+                               id="autoRenewSwitch"
+                               checked="@Snapshot.IsAutoRenew" disabled />
+                        <label class="form-check-label small" for="autoRenewSwitch">
+                            Auto-renew is @(Snapshot.IsAutoRenew ? "ON" : "OFF")
+                        </label>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public MembershipSnapshot? Snapshot { get; set; }
+
+    private string LevelBadgeClass =>
+        (Snapshot?.LevelName ?? string.Empty).ToLowerInvariant() switch
+        {
+            "elite"     => "bg-warning text-dark",
+            "gold"      => "bg-warning text-dark",
+            "platinum"  => "bg-secondary",
+            "diamond"   => "bg-info text-dark",
+            "founder"   => "bg-dark",
+            _           => "bg-primary-subtle text-primary"
+        };
+
+    public class MembershipSnapshot
+    {
+        public int      LevelId     { get; set; }
+        public string   LevelName   { get; set; } = string.Empty;
+        public string   Status      { get; set; } = string.Empty;
+        public DateTime StartDate   { get; set; }
+        public DateTime? ExpireDate { get; set; }
+        public bool     IsAutoRenew { get; set; }
+    }
+}

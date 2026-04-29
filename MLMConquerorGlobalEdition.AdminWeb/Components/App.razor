@@ -73,8 +73,30 @@
         })();
     </script>
     <script>
-        // Burger menu toggle — uses sidebar-data-theme attribute as expected by style.css
         (function () {
+            // Sidebar accordion menu init
+            function initMenu() {
+                var layoutMenuEls = document.querySelectorAll('#layout-menu');
+                layoutMenuEls.forEach(function (el) {
+                    if (el.menuInstance) {
+                        try { el.menuInstance.destroy(); } catch (e) { }
+                        el.menuInstance = null;
+                    }
+                    if (typeof Menu !== 'undefined') {
+                        el.menuInstance = new Menu(el, {
+                            orientation: 'vertical',
+                            closeChildren: false
+                        });
+                        if (window.Helpers && typeof window.Helpers.scrollToActive === 'function') {
+                            window.Helpers.scrollToActive(false);
+                            window.Helpers.mainMenu = el.menuInstance;
+                        }
+                    }
+                });
+                if (typeof feather !== 'undefined') feather.replace();
+            }
+
+            // Burger menu toggle — uses sidebar-data-theme attribute as expected by style.css
             function initBurger() {
                 var btn = document.getElementById('header-burger-menu');
                 if (!btn || btn._burgerInit) return;
@@ -88,12 +110,16 @@
                     }
                 });
             }
-            // Init on DOMContentLoaded and also after Blazor circuit starts
-            document.addEventListener('DOMContentLoaded', initBurger);
-            document.addEventListener('blazor:connected', initBurger);
-            // Fallback: re-init on any navigation
-            document.addEventListener('enhancedload', initBurger);
-            setTimeout(initBurger, 500);
+
+            function initAll() {
+                initMenu();
+                initBurger();
+            }
+
+            document.addEventListener('DOMContentLoaded', initAll);
+            document.addEventListener('blazor:connected', initAll);
+            document.addEventListener('enhancedload', initAll);
+            setTimeout(initAll, 300);
         })();
     </script>
 </body>

@@ -2,11 +2,15 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MLMConquerorGlobalEdition.BizCenter.DTOs.Profile;
+using MLMConquerorGlobalEdition.BizCenter.Features.Profile.GetAddressHistory;
+using MLMConquerorGlobalEdition.BizCenter.Features.Profile.GetCredentialsHistory;
 using MLMConquerorGlobalEdition.BizCenter.Features.Profile.GetProfile;
 using MLMConquerorGlobalEdition.BizCenter.Features.Profile.GetSecurityLog;
 using MLMConquerorGlobalEdition.BizCenter.Features.Profile.UpdateEmail;
 using MLMConquerorGlobalEdition.BizCenter.Features.Profile.UpdatePassword;
+using MLMConquerorGlobalEdition.BizCenter.Features.Profile.UpdatePhoto;
 using MLMConquerorGlobalEdition.BizCenter.Features.Profile.UpdateProfile;
+using MLMConquerorGlobalEdition.BizCenter.Features.Profile.UpdateReplicateSite;
 using MLMConquerorGlobalEdition.BizCenter.Services;
 using MLMConquerorGlobalEdition.SharedKernel;
 
@@ -46,14 +50,14 @@ public class ProfileController : ControllerBase
         return Ok(ApiResponse<ProfileDto>.Ok(result.Value!));
     }
 
-    /// <summary>PUT /api/v1/bizcenter/profile/photo — upload profile photo (placeholder S3)</summary>
+    /// <summary>PUT /api/v1/bizcenter/profile/photo — upload profile photo to S3</summary>
     [HttpPut("profile/photo")]
     public async Task<IActionResult> UpdatePhoto([FromBody] UpdatePhotoRequest request, CancellationToken ct)
     {
-        var memberId = _currentUser.MemberId;
-        // Placeholder: return a URL without actual S3 upload
-        var photoUrl = $"/profile-photos/{memberId}.jpg";
-        return Ok(ApiResponse<string>.Ok(photoUrl, "Profile photo updated successfully."));
+        var result = await _mediator.Send(new UpdatePhotoCommand(request), ct);
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<string>.Fail(result.ErrorCode!, result.Error!));
+        return Ok(ApiResponse<string>.Ok(result.Value!, "Profile photo updated."));
     }
 
     /// <summary>PUT /api/v1/bizcenter/profile/credentials/email — update email (stub)</summary>
@@ -87,5 +91,41 @@ public class ProfileController : ControllerBase
         if (!result.IsSuccess)
             return BadRequest(ApiResponse<PagedResult<SecurityLogDto>>.Fail(result.ErrorCode!, result.Error!));
         return Ok(ApiResponse<PagedResult<SecurityLogDto>>.Ok(result.Value!));
+    }
+
+    /// <summary>PUT /api/v1/bizcenter/profile/replicate-site — change the public website slug</summary>
+    [HttpPut("profile/replicate-site")]
+    public async Task<IActionResult> UpdateReplicateSite([FromBody] UpdateReplicateSiteRequest request, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new UpdateReplicateSiteCommand(request), ct);
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<string>.Fail(result.ErrorCode!, result.Error!));
+        return Ok(ApiResponse<string>.Ok(result.Value!, "Website name updated."));
+    }
+
+    /// <summary>GET /api/v1/bizcenter/profile/address-history — paginated history of address changes</summary>
+    [HttpGet("profile/address-history")]
+    public async Task<IActionResult> GetAddressHistory(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new GetAddressHistoryQuery(page, pageSize), ct);
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<PagedResult<AddressHistoryDto>>.Fail(result.ErrorCode!, result.Error!));
+        return Ok(ApiResponse<PagedResult<AddressHistoryDto>>.Ok(result.Value!));
+    }
+
+    /// <summary>GET /api/v1/bizcenter/profile/credentials-history — paginated history of email/password/2FA changes</summary>
+    [HttpGet("profile/credentials-history")]
+    public async Task<IActionResult> GetCredentialsHistory(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new GetCredentialsHistoryQuery(page, pageSize), ct);
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<PagedResult<CredentialChangeDto>>.Fail(result.ErrorCode!, result.Error!));
+        return Ok(ApiResponse<PagedResult<CredentialChangeDto>>.Ok(result.Value!));
     }
 }

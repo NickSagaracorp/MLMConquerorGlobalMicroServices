@@ -1,8 +1,9 @@
-@page "/ranks"
-@rendermode InteractiveAuto
+﻿@page "/ranks"
+@rendermode InteractiveServer
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Ambassador")]
 @inject IViewContextService ViewContext
 
 <PageTitle>Ranks</PageTitle>
 
 <RankDashboard MemberProfileId="@ViewContext.ViewingMemberId" />
+

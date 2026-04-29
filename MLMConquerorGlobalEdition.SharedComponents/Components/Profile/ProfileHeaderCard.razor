@@ -1,0 +1,162 @@
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+@*
+    Top-of-page banner: gradient cover + circular avatar + name + role badge.
+    The user can replace the photo by clicking the avatar; we read the file in
+    JS as base64 and POST it to /profile/photo, then refresh the URL inline.
+*@
+
+<div class="card border-0 shadow-sm overflow-hidden mb-4 profile-header-card">
+    <div class="profile-header-cover"></div>
+    <div class="card-body pt-0 px-4 pb-4">
+        <div class="d-flex flex-column flex-md-row align-items-center align-items-md-end gap-3">
+            <div class="profile-header-avatar-wrapper">
+                <img src="@AvatarSrc" alt="profile avatar"
+                     class="profile-header-avatar rounded-circle border border-2 border-white shadow-sm"
+                     onerror="this.onerror=null;this.src='@FallbackInline'" />
+                @if (CanEdit)
+                {
+                    <button type="button"
+                            class="profile-header-avatar-edit btn btn-primary btn-sm rounded-circle shadow-sm"
+                            title="Change profile photo"
+                            disabled="@_uploading"
+                            @onclick="OpenFilePickerAsync">
+                        @if (_uploading)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status"></span>
+                        }
+                        else
+                        {
+                            <i class="ri-camera-line"></i>
+                        }
+                    </button>
+                    <InputFile OnChange="OnFileSelected" id="profile-photo-input" class="d-none"
+                               accept="image/png,image/jpeg,image/webp" />
+                }
+            </div>
+            <div class="flex-grow-1 text-center text-md-start">
+                <h4 class="fs-22 mb-1 fw-semibold">@(string.IsNullOrWhiteSpace(FullName) ? "—" : FullName)</h4>
+                <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-md-start gap-2">
+                    @if (!string.IsNullOrWhiteSpace(MembershipLevel))
+                    {
+                        <span class="badge bg-primary-subtle text-primary fw-medium">
+                            <i class="ri-medal-line me-1"></i>@MembershipLevel @MemberType
+                        </span>
+                    }
+                    <span class="text-muted small">
+                        <i class="ri-hashtag me-1"></i>@MemberId
+                    </span>
+                    @if (!string.IsNullOrEmpty(Status))
+                    {
+                        <StatusBadge Status="@Status" />
+                    }
+                </div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_alert))
+        {
+            <div class="alert alert-@(_alertOk ? "success" : "danger") small mt-3 mb-0 py-2">
+                @_alert
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string MemberId         { get; set; } = string.Empty;
+    [Parameter] public string FullName         { get; set; } = string.Empty;
+    [Parameter] public string MemberType       { get; set; } = string.Empty;
+    [Parameter] public string Status           { get; set; } = string.Empty;
+    [Parameter] public string MembershipLevel  { get; set; } = string.Empty;
+    [Parameter] public string? PhotoUrl        { get; set; }
+    [Parameter] public bool   CanEdit          { get; set; }
+    [Parameter] public EventCallback<string> OnPhotoChanged { get; set; }
+
+    private bool    _uploading;
+    private string? _alert;
+    private bool    _alertOk;
+
+    // Tiny inline fallback so a broken image URL never leaves a hole in the UI.
+    private const string FallbackInline =
+        "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><rect width='80' height='80' fill='%23e5e7eb'/><circle cx='40' cy='32' r='14' fill='%239ca3af'/><path d='M14 70c0-12 12-22 26-22s26 10 26 22' fill='%239ca3af'/></svg>";
+
+    private string AvatarSrc =>
+        string.IsNullOrWhiteSpace(PhotoUrl) ? FallbackInline : PhotoUrl!;
+
+    private async Task OpenFilePickerAsync()
+    {
+        // The InputFile renders a hidden <input>; we click it via JS so the
+        // user never sees the default ugly file picker button.
+        await JS.InvokeVoidAsync("eval",
+            "document.getElementById('profile-photo-input')?.click();");
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        if (e.File is null) return;
+        if (e.File.Size > 5 * 1024 * 1024)
+        {
+            _alert = "Image is larger than 5 MB. Please choose a smaller file.";
+            _alertOk = false;
+            return;
+        }
+
+        _uploading = true; _alert = null; StateHasChanged();
+        try
+        {
+            using var ms = new MemoryStream();
+            // 5MB cap — keeps Server-mode SignalR happy.
+            await using (var stream = e.File.OpenReadStream(5 * 1024 * 1024))
+            {
+                await stream.CopyToAsync(ms);
+            }
+            var base64 = Convert.ToBase64String(ms.ToArray());
+
+            var resp = await Http.PutAsJsonAsync("api/v1/bizcenter/profile/photo", new
+            {
+                Base64Image = base64,
+                ContentType = e.File.ContentType
+            });
+
+            if (resp.IsSuccessStatusCode)
+            {
+                var payload = await resp.Content.ReadFromJsonAsync<ApiWrapper<string>>();
+                if (payload?.Success == true && !string.IsNullOrEmpty(payload.Data))
+                {
+                    _alert = "Profile photo updated.";
+                    _alertOk = true;
+                    await OnPhotoChanged.InvokeAsync(payload.Data);
+                }
+                else
+                {
+                    _alert = payload?.Message ?? "Photo update failed.";
+                    _alertOk = false;
+                }
+            }
+            else
+            {
+                _alert = $"Upload failed: {resp.StatusCode}";
+                _alertOk = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _alert = ex.Message;
+            _alertOk = false;
+        }
+        finally
+        {
+            _uploading = false;
+            StateHasChanged();
+        }
+    }
+
+    private class ApiWrapper<T>
+    {
+        public bool    Success { get; set; }
+        public T?      Data    { get; set; }
+        public string? Message { get; set; }
+    }
+}

@@ -42,7 +42,16 @@ public class MemberProfile : AuditChangesStringKey, IAuditable
     public string? ReplicateSiteSlug { get; set; }
     public string? ProfilePhotoUrl { get; set; }
 
-    // Privacy settings
+    /// <summary>
+    /// ISO 639-1 code (en, es, pt, fr…) — governs the BizCenter UI language.
+    /// Defaults to "en" so existing rows are unaffected.
+    /// </summary>
+    public string DefaultLanguage { get; set; } = "en";
+
+    /// <summary>How often commissions are pushed to the member's preferred wallet.</summary>
+    public PayoutFrequency PayoutFrequency { get; set; } = PayoutFrequency.Weekly;
+
+    // Privacy settings — controls what the member's public/replicate page shows
     public bool IsNamePublic { get; set; }
     public bool IsEmailPublic { get; set; }
     public bool IsPhonePublic { get; set; }

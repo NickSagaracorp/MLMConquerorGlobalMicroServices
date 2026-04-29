@@ -27,6 +27,7 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
     private readonly IFastStartBonusService       _fastStartBonus;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IJwtService                  _jwtService;
+    private readonly IEncryptionService           _encryption;
 
     public CompleteSignupHandler(
         AppDbContext db,
@@ -35,7 +36,8 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
         ISponsorBonusService sponsorBonus,
         IFastStartBonusService fastStartBonus,
         UserManager<ApplicationUser> userManager,
-        IJwtService jwtService)
+        IJwtService jwtService,
+        IEncryptionService encryption)
     {
         _db             = db;
         _dateTime       = dateTime;
@@ -44,6 +46,7 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
         _fastStartBonus = fastStartBonus;
         _userManager    = userManager;
         _jwtService     = jwtService;
+        _encryption     = encryption;
     }
 
     public async Task<Result<SignupResponse>> Handle(CompleteSignupCommand command, CancellationToken ct)
@@ -106,8 +109,8 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
                 First6           = cc.First6,
                 MaskedCardNumber = BuildMaskedCardNumber(cc.First6, cc.Last4),
                 CardBrand        = cc.CardBrand,
-                ExpiryMonth      = cc.ExpiryMonth,
-                ExpiryYear       = cc.ExpiryYear,
+                EncryptedExpiry  = _encryption.Encrypt($"{cc.ExpiryMonth:00}/{cc.ExpiryYear:0000}"),
+                EncryptedCvv     = null, // signup flow does not capture CVV — gateway already tokenized
                 Gateway          = cc.Gateway,
                 GatewayToken     = cc.GatewayToken,
                 CardToken        = cc.CardToken,
@@ -140,12 +143,16 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
             .Join(_db.Products.AsNoTracking(), od => od.ProductId, p => p.Id, (od, p) => p.QualificationPoins)
             .SumAsync(ct);
 
+        // EnrollmentPoints is the sum of personal points across the downline INCLUDING this
+        // member's own — so a brand-new leaf must seed with its own PersonalPoints. Each
+        // ancestor row will be incremented separately below as we walk the upline.
         await _db.MemberStatistics.AddAsync(new MemberStatisticEntity
         {
-            MemberId       = member.MemberId,
-            PersonalPoints = totalQualPoints,
-            CreatedBy      = member.Email,
-            CreationDate   = now
+            MemberId         = member.MemberId,
+            PersonalPoints   = totalQualPoints,
+            EnrollmentPoints = totalQualPoints,
+            CreatedBy        = member.Email,
+            CreationDate     = now
         }, ct);
 
         if (!string.IsNullOrEmpty(member.SponsorMemberId))

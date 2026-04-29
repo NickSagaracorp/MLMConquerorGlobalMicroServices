@@ -1,0 +1,131 @@
+@inject HttpClient Http
+
+@*
+    Replicate-site (public website) slug editor. The visible prefix mirrors what
+    the backend renders for prospects, so the user knows exactly what URL their
+    leads will hit. Validation regex matches the server's UpdateReplicateSite
+    rule so we can fail fast before the round trip.
+*@
+
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-body p-4">
+        <h6 class="fs-18 mb-3 fw-semibold">
+            <i class="ri-global-line me-2 text-primary"></i>My Website
+        </h6>
+
+        <p class="text-muted small mb-3">
+            Choose the public address where prospects will land. Lowercase
+            letters, digits and dashes only. Must start with a letter and be
+            between 3 and 40 characters long.
+        </p>
+
+        <div class="input-group input-group-lg mb-2">
+            <span class="input-group-text bg-light text-muted small">@UrlPrefix</span>
+            <input type="text"
+                   class="form-control @(_localError is null ? "" : "is-invalid")"
+                   @bind="_slug" @bind:event="oninput"
+                   placeholder="your-name"
+                   maxlength="40" />
+        </div>
+
+        @if (_localError is not null)
+        {
+            <div class="text-danger small mb-2"><i class="ri-error-warning-line me-1"></i>@_localError</div>
+        }
+        @if (_serverError is not null)
+        {
+            <div class="text-danger small mb-2"><i class="ri-error-warning-line me-1"></i>@_serverError</div>
+        }
+        @if (_success is not null)
+        {
+            <div class="text-success small mb-2"><i class="ri-check-line me-1"></i>@_success</div>
+        }
+
+        <div class="d-flex justify-content-between align-items-center">
+            <a href="@($"{UrlPrefix}{_slug}")" target="_blank" rel="noopener"
+               class="small text-decoration-none @(_isValidLocally ? "" : "disabled-link")">
+                <i class="ri-external-link-line me-1"></i>Open public page
+            </a>
+            <button class="btn btn-primary btn-sm" disabled="@(_busy || !_isValidLocally || _slug == InitialSlug)"
+                    @onclick="SaveAsync">
+                @if (_busy) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                Save website name
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? InitialSlug { get; set; }
+    [Parameter] public string  UrlPrefix   { get; set; } = "mlmconqueror.com/";
+    [Parameter] public EventCallback<string> OnSaved { get; set; }
+
+    private string _slug = string.Empty;
+    private bool   _busy;
+    private string? _localError;
+    private string? _serverError;
+    private string? _success;
+
+    // Mirror the backend rule: starts with letter, 3-40 chars, [a-z0-9-].
+    private static readonly System.Text.RegularExpressions.Regex SlugRegex =
+        new(@"^[a-z][a-z0-9-]{2,39}$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    protected override void OnParametersSet()
+    {
+        _slug = (InitialSlug ?? string.Empty).Trim().ToLowerInvariant();
+    }
+
+    private bool _isValidLocally
+    {
+        get
+        {
+            _localError = null;
+            if (string.IsNullOrEmpty(_slug)) return false;
+            if (!SlugRegex.IsMatch(_slug))
+            {
+                _localError = "Use 3–40 lowercase letters, digits or dashes. Must start with a letter.";
+                return false;
+            }
+            return true;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _busy = true; _serverError = null; _success = null; StateHasChanged();
+        try
+        {
+            var resp = await Http.PutAsJsonAsync(
+                "api/v1/bizcenter/profile/replicate-site", new { Slug = _slug });
+            if (resp.IsSuccessStatusCode)
+            {
+                _success = "Website name updated.";
+                await OnSaved.InvokeAsync(_slug);
+            }
+            else
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                _serverError = TryExtractError(body) ?? "Could not update the website name.";
+            }
+        }
+        catch (Exception ex) { _serverError = ex.Message; }
+        finally { _busy = false; StateHasChanged(); }
+    }
+
+    private static string? TryExtractError(string body)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("errorCode", out var code)
+                && code.ValueKind == System.Text.Json.JsonValueKind.String
+                && code.GetString() == "SLUG_TAKEN")
+                return "That website name is already taken.";
+            if (doc.RootElement.TryGetProperty("message", out var m)
+                && m.ValueKind == System.Text.Json.JsonValueKind.String)
+                return m.GetString();
+        }
+        catch { }
+        return null;
+    }
+}

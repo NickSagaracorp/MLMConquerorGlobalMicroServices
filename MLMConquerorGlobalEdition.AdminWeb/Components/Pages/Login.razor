@@ -16,6 +16,10 @@
         {
             <div class="alert alert-warning">Access denied. Admin privileges required.</div>
         }
+        else if (Error == "session_expired")
+        {
+            <div class="alert alert-info">Your session has expired. Please sign in again.</div>
+        }
 
         <form method="post" action="/account/login">
             <div class="mb-3">

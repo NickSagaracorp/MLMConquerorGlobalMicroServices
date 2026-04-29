@@ -1,0 +1,71 @@
+.bd-card-preview {
+    border-radius: 14px;
+    color: #fff;
+    padding: 20px 24px;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.35);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.bd-card-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.85;
+}
+
+.bd-card-brand {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.bd-chip {
+    width: 44px;
+    height: 32px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #f5d782, #c9a046 60%, #f5d782);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+    margin: 8px 0;
+}
+
+.bd-card-number {
+    display: flex;
+    gap: 14px;
+    font-size: 22px;
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.05em;
+    margin: 8px 0 12px;
+}
+
+.bd-card-mini-lbl {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.7;
+}
+
+.bd-card-mini-val {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+
+.bd-empty-card {
+    background-color: #f8f9fa;
+    border-style: dashed !important;
+}
+
+/* Brand-specific gradients (match PaymentMethodTab) */
+.pm-bg-unknown    { background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%); }
+.pm-bg-visa       { background: linear-gradient(135deg, #1a3a8a 0%, #2c5fbd 50%, #4287f5 100%); }
+.pm-bg-mastercard { background: linear-gradient(135deg, #1a1a1a 0%, #cc1f2c 50%, #f7a716 100%); }
+.pm-bg-amex       { background: linear-gradient(135deg, #006fcf 0%, #2e8be9 100%); }
+.pm-bg-discover   { background: linear-gradient(135deg, #4a3000 0%, #ff6000 60%, #ffa030 100%); }
+.pm-bg-jcb        { background: linear-gradient(135deg, #0e3060 0%, #1554a8 50%, #aa2d2d 100%); }
+.pm-bg-diners     { background: linear-gradient(135deg, #003e7e 0%, #5da7e4 100%); }

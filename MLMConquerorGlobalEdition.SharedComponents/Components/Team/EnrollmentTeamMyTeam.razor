@@ -165,24 +165,44 @@
                     </GridColumn>
 
                     <GridColumn HeaderText="Qual. Points" Width="115" TextAlign="TextAlign.Right">
+                        <HeaderTemplate>
+                            <span title="Personal qualification points — sum of QualificationPoints from this member's own product purchases.">
+                                Qual. Points <i class="ri-information-line text-muted small"></i>
+                            </span>
+                        </HeaderTemplate>
                         <Template>
                             @(((EnrollmentMyTeamMemberDto)context).QualificationPoints.ToString("N0"))
                         </Template>
                     </GridColumn>
 
                     <GridColumn HeaderText="Enroll. Points" Width="120" TextAlign="TextAlign.Right">
+                        <HeaderTemplate>
+                            <span title="Enrollment-team points — points accumulated from this member's own downline (their sponsored members and below). 0 means they haven't enrolled anyone yet.">
+                                Enroll. Points <i class="ri-information-line text-muted small"></i>
+                            </span>
+                        </HeaderTemplate>
                         <Template>
                             @(((EnrollmentMyTeamMemberDto)context).EnrollmentTeamPoints.ToString("N0"))
                         </Template>
                     </GridColumn>
 
                     <GridColumn HeaderText="Left Points" Width="110" TextAlign="TextAlign.Right">
+                        <HeaderTemplate>
+                            <span title="Dual-tree left-leg points — accumulated points on this member's binary-tree LEFT leg. 0 means no descendants on that leg.">
+                                Left Points <i class="ri-information-line text-muted small"></i>
+                            </span>
+                        </HeaderTemplate>
                         <Template>
                             @(((EnrollmentMyTeamMemberDto)context).LeftTeamPoints.ToString("N0"))
                         </Template>
                     </GridColumn>
 
                     <GridColumn HeaderText="Right Points" Width="110" TextAlign="TextAlign.Right">
+                        <HeaderTemplate>
+                            <span title="Dual-tree right-leg points — accumulated points on this member's binary-tree RIGHT leg. 0 means no descendants on that leg.">
+                                Right Points <i class="ri-information-line text-muted small"></i>
+                            </span>
+                        </HeaderTemplate>
                         <Template>
                             @(((EnrollmentMyTeamMemberDto)context).RightTeamPoints.ToString("N0"))
                         </Template>

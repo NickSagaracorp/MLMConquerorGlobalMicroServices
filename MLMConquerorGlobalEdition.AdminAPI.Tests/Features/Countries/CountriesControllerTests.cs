@@ -62,7 +62,7 @@ public class CountriesControllerTests
         await db.SaveChangesAsync();
 
         var controller = CreateController(db, CacheMock());
-        var result = await controller.GetAll(null, new PagedRequest { Page = 1, PageSize = 20 }, CancellationToken.None);
+        var result = await controller.GetAll(null, null, new PagedRequest { Page = 1, PageSize = 20 }, CancellationToken.None);
 
         var ok = result.Should().BeOfType<OkObjectResult>().Subject;
         var response = ok.Value.Should().BeOfType<ApiResponse<PagedResult<CountriesController.CountryDto>>>().Subject;
@@ -82,7 +82,7 @@ public class CountriesControllerTests
         await db.SaveChangesAsync();
 
         var controller = CreateController(db, CacheMock());
-        var result = await controller.GetAll(isActive: true, new PagedRequest { Page = 1, PageSize = 20 }, CancellationToken.None);
+        var result = await controller.GetAll(isActive: true, regionId: null, request: new PagedRequest { Page = 1, PageSize = 20 }, ct: CancellationToken.None);
 
         var ok = result.Should().BeOfType<OkObjectResult>().Subject;
         var response = ok.Value.Should().BeOfType<ApiResponse<PagedResult<CountriesController.CountryDto>>>().Subject;

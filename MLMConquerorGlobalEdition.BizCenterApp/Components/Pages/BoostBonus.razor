@@ -1,5 +1,5 @@
 @page "/commissions/boost"
-@rendermode InteractiveAuto
+@rendermode @(new InteractiveAutoRenderMode(prerender: false))
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Ambassador")]
 @inject IViewContextService ViewContext
 

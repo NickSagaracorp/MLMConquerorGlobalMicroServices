@@ -26,6 +26,17 @@ public class PersistingServerAuthStateProvider : AuthenticationStateProvider, IH
 
     public void SetAuthenticationState(Task<AuthenticationState> task) => _authStateTask = task;
 
+    /// <summary>
+    /// Marks the user as logged out and notifies subscribers so AuthorizeRouteView
+    /// re-renders and the NotAuthorized template (RedirectToAdminLogin) takes over.
+    /// </summary>
+    public void MarkUserAsLoggedOut()
+    {
+        var anonymous = Task.FromResult(new AuthenticationState(new ClaimsPrincipal()));
+        _authStateTask = anonymous;
+        NotifyAuthenticationStateChanged(anonymous);
+    }
+
     private async Task PersistAuthStateAsync()
     {
         var state = await GetAuthenticationStateAsync();

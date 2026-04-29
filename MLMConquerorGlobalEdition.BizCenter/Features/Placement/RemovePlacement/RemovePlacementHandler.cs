@@ -128,18 +128,26 @@ public class RemovePlacementHandler : IRequestHandler<RemovePlacementCommand, Re
             var n = await _db.DualTeamTree.FirstOrDefaultAsync(d => d.MemberId == current, ct);
             if (n is null) break;
 
-            var leftCount  = await CountSubtreeAsync(current, Domain.Enums.TreeSide.Left,  ct);
-            var rightCount = await CountSubtreeAsync(current, Domain.Enums.TreeSide.Right, ct);
-            n.LeftLegPoints  = leftCount;
-            n.RightLegPoints = rightCount;
+            var leftTotal  = await SumSubtreePointsAsync(current, Domain.Enums.TreeSide.Left,  ct);
+            var rightTotal = await SumSubtreePointsAsync(current, Domain.Enums.TreeSide.Right, ct);
+            n.LeftLegPoints  = leftTotal;
+            n.RightLegPoints = rightTotal;
             n.LastUpdateDate = _clock.UtcNow;
             n.LastUpdateBy   = "system";
+
+            var stats = await _db.MemberStatistics.FirstOrDefaultAsync(s => s.MemberId == current, ct);
+            if (stats is not null)
+                stats.DualTeamPoints = (int)(leftTotal + rightTotal);
+
             current = n.ParentMemberId;
         }
         await _db.SaveChangesAsync(ct);
     }
 
-    private async Task<decimal> CountSubtreeAsync(
+    /// <summary>
+    /// Sum of PersonalPoints across the leg subtree (including the leg-root member).
+    /// </summary>
+    private async Task<decimal> SumSubtreePointsAsync(
         string parentId, Domain.Enums.TreeSide side, CancellationToken ct)
     {
         var child = await _db.DualTeamTree
@@ -148,8 +156,13 @@ public class RemovePlacementHandler : IRequestHandler<RemovePlacementCommand, Re
 
         if (child is null) return 0m;
 
-        return await _db.DualTeamTree
-            .AsNoTracking()
-            .CountAsync(d => d.HierarchyPath.StartsWith(child.HierarchyPath), ct);
+        var total = await (
+            from d in _db.DualTeamTree.AsNoTracking()
+            join s in _db.MemberStatistics.AsNoTracking() on d.MemberId equals s.MemberId
+            where d.HierarchyPath.StartsWith(child.HierarchyPath)
+            select (decimal?)s.PersonalPoints
+        ).SumAsync(ct);
+
+        return total ?? 0m;
     }
 }

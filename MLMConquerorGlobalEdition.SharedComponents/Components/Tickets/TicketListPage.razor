@@ -34,7 +34,7 @@
                 </select>
             </div>
             <div class="col-12 col-sm-auto ms-sm-auto">
-                <button class="btn btn-primary btn-sm" @onclick="@(() => _showCreateModal = true)">
+                <button class="btn btn-primary btn-sm" @onclick="@(() => { _showCreateModal = true; _pendingShow = true; })">
                     <i class="ri-add-line me-1"></i>Create New Ticket
                 </button>
             </div>
@@ -137,6 +137,7 @@
     private bool   _isLoading     = true;
     private int    _page = 1, _pageSize = 10, _total;
     private bool   _showCreateModal;
+    private bool   _pendingShow;
     private string _statusFilter   = string.Empty;
     private string _priorityFilter = string.Empty;
 
@@ -157,8 +158,11 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && _showCreateModal && _createModal is not null)
+        if (_pendingShow && _createModal is not null)
+        {
+            _pendingShow = false;
             _createModal.Show();
+        }
     }
 
     private async Task ApplyFiltersAsync() => await LoadPageAsync(1);

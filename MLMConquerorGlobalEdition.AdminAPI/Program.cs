@@ -58,6 +58,16 @@ builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Ranks.IRankComputationService,
+                            MLMConquerorGlobalEdition.Repository.Services.Ranks.RankComputationService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTreeNodeService,
+                            MLMConquerorGlobalEdition.Repository.Services.Teams.DualTreeNodeService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IEnrollmentTeamService,
+                            MLMConquerorGlobalEdition.Repository.Services.Teams.EnrollmentTeamService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Commissions.ICommissionsService,
+                            MLMConquerorGlobalEdition.Repository.Services.Commissions.CommissionsService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Wallets.IMemberWalletService,
+                            MLMConquerorGlobalEdition.Repository.Services.Wallets.MemberWalletService>();
 builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 builder.Services.AddSingleton<IHtmlSanitizerService, HtmlSanitizerService>();
 builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
@@ -142,6 +152,14 @@ builder.Services.AddHttpClient("HealthCheck")
     {
         ServerCertificateCustomValidationCallback = (_, _, _, _) => true
     });
+builder.Services.AddHttpClient("SignupApi", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:SignupAPI"] ?? "https://localhost:7005");
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+});
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>

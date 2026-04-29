@@ -1,22 +1,28 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.BizCenter.DTOs.Ranks;
-using MLMConquerorGlobalEdition.BizCenter.Services;
-using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.SharedKernel;
 using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
+using ICurrentUserService = MLMConquerorGlobalEdition.BizCenter.Services.ICurrentUserService;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Features.Ranks.GetRankDashboard;
 
+/// <summary>
+/// BizCenter rank dashboard endpoint. Delegates ALL rank computation to the
+/// shared <see cref="IRankComputationService"/> — do not put rank logic here.
+/// </summary>
 public class GetRankDashboardHandler : IRequestHandler<GetRankDashboardQuery, Result<RankDashboardDto>>
 {
-    private readonly AppDbContext _db;
-    private readonly ICurrentUserService _currentUser;
-    private readonly ICacheService _cache;
+    private readonly IRankComputationService _ranks;
+    private readonly ICurrentUserService     _currentUser;
+    private readonly ICacheService           _cache;
 
-    public GetRankDashboardHandler(AppDbContext db, ICurrentUserService currentUser, ICacheService cache)
+    public GetRankDashboardHandler(
+        IRankComputationService ranks,
+        ICurrentUserService currentUser,
+        ICacheService cache)
     {
-        _db          = db;
+        _ranks       = ranks;
         _currentUser = currentUser;
         _cache       = cache;
     }
@@ -30,41 +36,28 @@ public class GetRankDashboardHandler : IRequestHandler<GetRankDashboardQuery, Re
         if (cached is not null)
             return Result<RankDashboardDto>.Success(cached);
 
-        // Load member stats
-        var stats = await _db.MemberStatistics
-            .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.MemberId == memberId, ct);
-
-        // Current rank — most recently achieved
-        var currentRankHistory = await _db.MemberRankHistories
-            .AsNoTracking()
-            .Include(r => r.RankDefinition)
-            .Where(r => r.MemberId == memberId)
-            .OrderByDescending(r => r.AchievedAt)
-            .FirstOrDefaultAsync(ct);
-
-        // Lifetime rank — highest SortOrder ever achieved
-        var lifetimeRankHistory = await _db.MemberRankHistories
-            .AsNoTracking()
-            .Include(r => r.RankDefinition)
-            .Where(r => r.MemberId == memberId)
-            .OrderByDescending(r => r.RankDefinition!.SortOrder)
-            .FirstOrDefaultAsync(ct);
-
-        var dto = new RankDashboardDto
-        {
-            MemberId                   = memberId,
-            CurrentRankName            = currentRankHistory?.RankDefinition?.Name,
-            CurrentRankSortOrder       = currentRankHistory?.RankDefinition?.SortOrder ?? 0,
-            LifetimeRankName           = lifetimeRankHistory?.RankDefinition?.Name,
-            DualTeamPoints             = stats?.DualTeamPoints ?? 0,
-            EnrollmentPoints           = stats?.EnrollmentPoints ?? 0,
-            QualifiedSponsoredMembers  = stats?.QualifiedSponsoredMembers ?? 0,
-            EnrollmentTeamSize         = stats?.EnrollmentTeamSize ?? 0
-        };
+        var summary = await _ranks.GetSummaryAsync(memberId, ct);
+        var dto     = MapToBizCenterDto(summary);
 
         await _cache.SetAsync(cacheKey, dto, CacheKeys.MemberRankTtl, ct);
-
         return Result<RankDashboardDto>.Success(dto);
     }
+
+    private static RankDashboardDto MapToBizCenterDto(RankSummaryDto s) => new()
+    {
+        MemberId                    = s.MemberId,
+        CurrentRankName             = s.CurrentRankName,
+        CurrentRankSortOrder        = s.CurrentRankSortOrder,
+        CurrentRankDualTeamPoints   = s.CurrentRankDualTeamPoints,
+        CurrentRankEnrollmentPoints = s.CurrentRankEnrollmentPoints,
+        NextRankName                = s.NextRankName,
+        NextRankSortOrder           = s.NextRankSortOrder,
+        NextRankDualTeamPoints      = s.NextRankDualTeamPoints,
+        NextRankEnrollmentPoints    = s.NextRankEnrollmentPoints,
+        LifetimeRankName            = s.LifetimeRankName,
+        DualTeamPoints              = s.DualTeamPoints,
+        EnrollmentPoints            = s.EnrollmentPoints,
+        QualifiedSponsoredMembers   = s.QualifiedSponsoredMembers,
+        EnrollmentTeamSize          = s.EnrollmentTeamSize
+    };
 }

@@ -1,7 +1,8 @@
-@page "/team/placement/history"
-@rendermode InteractiveAuto
+﻿@page "/team/placement/history"
+@rendermode InteractiveServer
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Ambassador")]
 
 <PageTitle>Historial de Placement</PageTitle>
 
 <PlacementHistoryTable BackRoute="/team/placement" />
+

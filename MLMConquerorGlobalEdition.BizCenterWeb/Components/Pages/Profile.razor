@@ -1,8 +1,9 @@
-@page "/profile"
-@rendermode InteractiveAuto
+﻿@page "/profile"
+@rendermode InteractiveServer
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @inject IViewContextService ViewContext
 
 <PageTitle>My Profile</PageTitle>
 
 <UserProfilePage MemberProfileId="@ViewContext.ViewingMemberId" />
+

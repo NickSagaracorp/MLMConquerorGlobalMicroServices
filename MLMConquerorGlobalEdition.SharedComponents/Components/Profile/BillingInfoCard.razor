@@ -1,0 +1,99 @@
+@*
+    Summary card for the Billing tab. Renders the default-charge card visually
+    (matches the template's Visa-on-blue layout) plus the billing address.
+    The "Manage cards" CTA scrolls to the full PaymentMethodTab beneath.
+*@
+
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom pb-3 mb-3">
+            <h6 class="fs-18 mb-0 fw-semibold">
+                <i class="ri-bank-card-line me-2 text-primary"></i>Billing Info
+            </h6>
+            <button class="btn btn-sm btn-outline-primary"
+                    @onclick="() => OnManageCardsRequested.InvokeAsync()">
+                <i class="ri-edit-line me-1"></i>Manage cards
+            </button>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-12 col-lg-6">
+                @if (DefaultCard is null)
+                {
+                    <div class="bd-empty-card border rounded-3 p-4 text-center">
+                        <i class="ri-bank-card-2-line text-muted" style="font-size:2rem"></i>
+                        <p class="text-muted small mb-0 mt-2">No default card on file. Add a card to start auto-renewal.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="bd-card-preview pm-bg-@DefaultCard.Brand.ToLowerInvariant()">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="bd-card-label">Credit Card</div>
+                            <div class="bd-card-brand">@FormatBrand(DefaultCard.Brand)</div>
+                        </div>
+                        <div class="bd-chip"></div>
+                        <div class="bd-card-number">
+                            <span>••••</span><span>••••</span><span>••••</span><span>@DefaultCard.Last4</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-end">
+                            <div>
+                                <div class="bd-card-mini-lbl">Card holder</div>
+                                <div class="bd-card-mini-val">@(string.IsNullOrEmpty(DefaultCard.Holder) ? "—" : DefaultCard.Holder.ToUpperInvariant())</div>
+                            </div>
+                            <div class="text-end">
+                                <div class="bd-card-mini-lbl">EXP</div>
+                                <div class="bd-card-mini-val">@DefaultCard.ExpiryMonth.ToString("00") / @DefaultCard.ExpiryYear</div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="col-12 col-lg-6">
+                <h6 class="fs-16 fw-medium mb-2">Billing Address</h6>
+                <div class="small">
+                    <div><span class="text-muted">Address:</span> @DisplayOrDash(Address)</div>
+                    <div><span class="text-muted">City:</span> @DisplayOrDash(City)</div>
+                    <div><span class="text-muted">State / Province:</span> @DisplayOrDash(State)</div>
+                    <div><span class="text-muted">ZIP / Postal:</span> @DisplayOrDash(ZipCode)</div>
+                    <div><span class="text-muted">Country:</span> @DisplayOrDash(Country)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public DefaultCardInfo? DefaultCard { get; set; }
+    [Parameter] public string? Address  { get; set; }
+    [Parameter] public string? City     { get; set; }
+    [Parameter] public string? State    { get; set; }
+    [Parameter] public string? ZipCode  { get; set; }
+    [Parameter] public string? Country  { get; set; }
+
+    [Parameter] public EventCallback OnManageCardsRequested { get; set; }
+
+    private static string DisplayOrDash(string? v) =>
+        string.IsNullOrWhiteSpace(v) ? "—" : v;
+
+    private static string FormatBrand(string brand) => brand.ToLowerInvariant() switch
+    {
+        "visa"       => "VISA",
+        "mastercard" => "MasterCard",
+        "amex"       => "American Express",
+        "discover"   => "Discover",
+        "jcb"        => "JCB",
+        "diners"     => "Diners",
+        _            => brand
+    };
+
+    public class DefaultCardInfo
+    {
+        public string Brand      { get; set; } = "Unknown";
+        public string Last4      { get; set; } = "----";
+        public int    ExpiryMonth{ get; set; }
+        public int    ExpiryYear { get; set; }
+        public string Holder     { get; set; } = string.Empty;
+    }
+}

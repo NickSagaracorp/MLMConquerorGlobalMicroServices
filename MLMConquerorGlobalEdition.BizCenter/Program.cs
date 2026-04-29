@@ -4,6 +4,7 @@ using Hangfire;
 using Hangfire.Dashboard;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -29,6 +30,21 @@ builder.Logging.AddPiiMaskingConsole();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Identity is needed here because the BizCenter Profile page lets the member
+// change their own email and password (handled in-process via UserManager,
+// audit-logged to MemberCredentialChangeLogs). Mirrors the AdminAPI setup.
+builder.Services.AddIdentityCore<MLMConquerorGlobalEdition.Repository.Identity.ApplicationUser>(options =>
+{
+    options.Password.RequiredLength         = 8;
+    options.Password.RequireDigit           = true;
+    options.Password.RequireUppercase       = true;
+    options.Password.RequireNonAlphanumeric = false;
+    options.User.RequireUniqueEmail         = true;
+})
+.AddRoles<IdentityRole>()
+.AddEntityFrameworkStores<AppDbContext>()
+.AddDefaultTokenProviders();
+
 // Order matters: Validation runs first, then error handling wraps the handler.
 builder.Services.AddMediatR(cfg =>
 {
@@ -42,7 +58,35 @@ builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Ranks.IRankComputationService,
+                            MLMConquerorGlobalEdition.Repository.Services.Ranks.RankComputationService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTreeNodeService,
+                            MLMConquerorGlobalEdition.Repository.Services.Teams.DualTreeNodeService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IEnrollmentTeamService,
+                            MLMConquerorGlobalEdition.Repository.Services.Teams.EnrollmentTeamService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Commissions.ICommissionsService,
+                            MLMConquerorGlobalEdition.Repository.Services.Commissions.CommissionsService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Wallets.IMemberWalletService,
+                            MLMConquerorGlobalEdition.Repository.Services.Wallets.MemberWalletService>();
 builder.Services.AddScoped<IS3PresignedUrlService, S3PresignedUrlService>();
+
+// Profile photo upload uses the same S3 bucket the Signup wizard uses for
+// checkout screenshots. The credentials lookup mirrors SignupAPI's wiring.
+builder.Services.AddSingleton<Amazon.S3.IAmazonS3>(_ =>
+{
+    var accessKey = builder.Configuration["AWS:Credentials:AccessKey"];
+    var secretKey = builder.Configuration["AWS:Credentials:SecretKey"];
+    var region    = builder.Configuration["AWS:S3:Region"] ?? "us-east-1";
+    if (string.IsNullOrEmpty(accessKey) || string.IsNullOrEmpty(secretKey))
+        return new Amazon.S3.AmazonS3Client(Amazon.RegionEndpoint.GetBySystemName(region));
+    return new Amazon.S3.AmazonS3Client(accessKey, secretKey, Amazon.RegionEndpoint.GetBySystemName(region));
+});
+builder.Services.AddScoped<IS3FileService, S3FileService>();
+
+builder.Services.AddDataProtection();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.SharedKernel.Interfaces.IEncryptionService, EncryptionService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.BizCenter.Services.Billing.ICardTokenizationService,
+                            MLMConquerorGlobalEdition.BizCenter.Services.Billing.SimulatedCardTokenizationService>();
 builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 builder.Services.AddSingleton<MLMConquerorGlobalEdition.SharedKernel.Interfaces.IDateTimeProvider>(
     sp => sp.GetRequiredService<IDateTimeProvider>());

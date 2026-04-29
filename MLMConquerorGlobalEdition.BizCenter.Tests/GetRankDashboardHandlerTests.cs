@@ -5,6 +5,7 @@ using MLMConquerorGlobalEdition.BizCenter.Services;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using ICurrentUserService = MLMConquerorGlobalEdition.BizCenter.Services.ICurrentUserService;
@@ -40,7 +41,7 @@ public class GetRankDashboardHandlerTests : IDisposable
     public void Dispose() => _db.Dispose();
 
     private GetRankDashboardHandler CreateHandler() =>
-        new(_db, _currentUser.Object, _cache.Object);
+        new(new RankComputationService(_db), _currentUser.Object, _cache.Object);
 
 
     [Fact]
@@ -65,6 +66,11 @@ public class GetRankDashboardHandlerTests : IDisposable
     public async Task Handle_WhenCacheMiss_ReturnsRankDataFromDb()
     {
         var rankDef = new RankDefinition { Id = 1, Name = "Silver", SortOrder = 2 };
+        rankDef.Requirements.Add(new RankRequirement
+        {
+            RankDefinitionId = rankDef.Id, LevelNo = 0,
+            TeamPoints = 0, EnrollmentTeam = 0
+        });
         _db.RankDefinitions.Add(rankDef);
         _db.MemberRankHistories.Add(new MemberRankHistory
         {
@@ -77,7 +83,10 @@ public class GetRankDashboardHandlerTests : IDisposable
         var result = await CreateHandler().Handle(new GetRankDashboardQuery(), default);
 
         result.IsSuccess.Should().BeTrue();
+        // Current rank is now computed live from points + requirements; with 0/0
+        // thresholds the member qualifies for Silver.
         result.Value!.CurrentRankName.Should().Be("Silver");
+        result.Value!.LifetimeRankName.Should().Be("Silver");
     }
 
     [Fact]
@@ -152,7 +161,16 @@ public class GetRankDashboardHandlerTests : IDisposable
         var silver   = new RankDefinition { Id = 1, Name = "Silver",   SortOrder = 2 };
         var gold     = new RankDefinition { Id = 2, Name = "Gold",     SortOrder = 3 };
         var platinum = new RankDefinition { Id = 3, Name = "Platinum", SortOrder = 5 };
+        // Silver/Gold qualify with member's stats; Platinum requires more.
+        silver.Requirements.Add(new RankRequirement   { LevelNo = 0, TeamPoints = 0,    EnrollmentTeam = 0 });
+        gold.Requirements.Add(new RankRequirement     { LevelNo = 0, TeamPoints = 1000, EnrollmentTeam = 0 });
+        platinum.Requirements.Add(new RankRequirement { LevelNo = 0, TeamPoints = 5000, EnrollmentTeam = 0 });
         _db.RankDefinitions.AddRange(silver, gold, platinum);
+
+        _db.MemberStatistics.Add(new MemberStatisticEntity
+        {
+            MemberId = MemberId, DualTeamPoints = 2000, EnrollmentPoints = 0
+        });
 
         _db.MemberRankHistories.AddRange(
             new MemberRankHistory { MemberId = MemberId, RankDefinitionId = silver.Id,   AchievedAt = DateTime.UtcNow.AddDays(-90) },
@@ -163,7 +181,9 @@ public class GetRankDashboardHandlerTests : IDisposable
 
         var result = await CreateHandler().Handle(new GetRankDashboardQuery(), default);
 
-        result.Value!.CurrentRankName.Should().Be("Gold");     // most recent
-        result.Value!.LifetimeRankName.Should().Be("Platinum"); // highest sort order
+        // Current rank is computed live from points: 2000 DT meets Gold (1000) but not Platinum (5000).
+        result.Value!.CurrentRankName.Should().Be("Gold");
+        // Lifetime rank is the highest SortOrder ever achieved (preserved in history).
+        result.Value!.LifetimeRankName.Should().Be("Platinum");
     }
 }

@@ -22,11 +22,19 @@
             <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
             <option value="Suspended">Suspended</option>
+            <option value="Pending">Pending</option>
         </select>
         <button class="btn btn-primary btn-sm" @onclick="() => { _page = 1; _ = LoadAsync(); }">
             <i class="ri-search-line me-1"></i>Search
         </button>
     </div>
+    @if (_retryMessage is not null)
+    {
+        <div class="alert @(_retryIsError ? "alert-danger" : "alert-success") alert-dismissible m-3">
+            @_retryMessage
+            <button type="button" class="btn-close" @onclick="() => _retryMessage = null"></button>
+        </div>
+    }
     <div class="card-body p-0">
         @if (_loading)
         {
@@ -45,12 +53,18 @@
                 <GridColumns>
                     <GridColumn Field="@nameof(AdminMemberDto.MemberId)" HeaderText="Member ID" Width="130" AllowFiltering="true">
                         <Template>
-                            <code class="text-primary">@(((AdminMemberDto)context).MemberId)</code>
+                            @{ var m = (AdminMemberDto)context; }
+                            <a href="/admin/members/@m.MemberId" target="_blank" class="text-decoration-none">
+                                <code class="text-primary">@m.MemberId</code>
+                            </a>
                         </Template>
                     </GridColumn>
                     <GridColumn Field="@nameof(AdminMemberDto.FirstName)" HeaderText="Name" Width="180" AllowFiltering="true">
                         <Template>
-                            @(((AdminMemberDto)context).FirstName) @(((AdminMemberDto)context).LastName)
+                            @{ var m = (AdminMemberDto)context; }
+                            <a href="/admin/members/@m.MemberId" target="_blank" class="text-primary">
+                                @m.FirstName @m.LastName
+                            </a>
                         </Template>
                     </GridColumn>
                     <GridColumn Field="@nameof(AdminMemberDto.Email)" HeaderText="Email" Width="200" AllowFiltering="true">
@@ -133,16 +147,31 @@
                     </GridColumn>
                     <GridColumn Field="@nameof(AdminMemberDto.EnrollDate)" HeaderText="Enrolled" Width="130" Format="yyyy-MM-dd" Type="ColumnType.Date" AllowFiltering="true" />
                     <GridColumn Field="@nameof(AdminMemberDto.ExpirationDate)" HeaderText="Expiration Date" Width="140" Format="yyyy-MM-dd" Type="ColumnType.Date" AllowFiltering="true" />
-                    <GridColumn HeaderText="Actions" Width="120" TextAlign="TextAlign.Center" AllowFiltering="false">
+                    <GridColumn HeaderText="Actions" Width="170" TextAlign="TextAlign.Center" AllowFiltering="false">
                         <Template>
-                            <a href="/admin/members/@(((AdminMemberDto)context).MemberId)" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2" title="View Profile">
+                            @{ var m = (AdminMemberDto)context; }
+                            <a href="/admin/members/@m.MemberId" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2" title="View Profile">
                                 <i class="ri-eye-line"></i>
                             </a>
-                            @{ var treeUrl = "/admin/network/binary-tree?memberId=" + ((AdminMemberDto)context).MemberId; }
                             <button class="btn btn-sm btn-outline-secondary py-0 px-2 ms-1" title="Binary Tree"
-                                @onclick="() => Navigation.NavigateTo(treeUrl)">
+                                @onclick="@(() => Navigation.NavigateTo($"/admin/network/binary-tree?memberId={m.MemberId}"))">
                                 <i class="ri-node-tree"></i>
                             </button>
+                            @if (m.Status == "Pending")
+                            {
+                                <button class="btn btn-sm btn-outline-warning py-0 px-2 ms-1" title="Retry Complete Signup"
+                                    disabled="@_retryingMemberId.Equals(m.MemberId)"
+                                    @onclick="@(() => RetryCompleteAsync(m.MemberId))">
+                                    @if (_retryingMemberId == m.MemberId)
+                                    {
+                                        <span class="spinner-border spinner-border-sm" role="status"></span>
+                                    }
+                                    else
+                                    {
+                                        <i class="ri-refresh-line"></i>
+                                    }
+                                </button>
+                            }
                         </Template>
                     </GridColumn>
                 </GridColumns>
@@ -172,14 +201,17 @@
 
 @code {
     private List<AdminMemberDto> _members = new();
-    private bool    _loading      = true;
+    private bool    _loading           = true;
     private string? _error;
-    private int     _page         = 1;
-    private const int PageSize    = 20;
+    private int     _page              = 1;
+    private const int PageSize         = 20;
     private int     _totalCount;
-    private int     _totalPages   = 1;
-    private string  _search       = string.Empty;
-    private string  _statusFilter = string.Empty;
+    private int     _totalPages        = 1;
+    private string  _search            = string.Empty;
+    private string  _statusFilter      = string.Empty;
+    private string  _retryingMemberId  = string.Empty;
+    private string? _retryMessage;
+    private bool    _retryIsError;
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -208,8 +240,44 @@
 
     private async Task OnSearchKey(KeyboardEventArgs e) { if (e.Key == "Enter") { _page = 1; await LoadAsync(); } }
 
+    private async Task RetryCompleteAsync(string memberId)
+    {
+        // Look up the pending order for this member via the pending-signups endpoint.
+        _retryingMemberId = memberId;
+        _retryMessage = null;
+        StateHasChanged();
+        try
+        {
+            var pending = await Http.GetFromJsonAsync<ApiResponse<List<PendingSignupDto>>>("api/v1/admin/signups/pending");
+            var match = pending?.Data?.FirstOrDefault(p => p.MemberId == memberId);
+            if (match is null)
+            {
+                _retryMessage = "No pending signup found for this member."; _retryIsError = true; return;
+            }
+
+            var resp = await Http.PostAsync($"api/v1/admin/signups/{match.OrderId}/retry-complete", null);
+            if (resp.IsSuccessStatusCode)
+            {
+                _retryMessage = $"Signup completed for {memberId}. Reloading list…";
+                _retryIsError = false;
+                await LoadAsync();
+            }
+            else
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                _retryMessage = $"Retry failed ({(int)resp.StatusCode}): {body}";
+                _retryIsError = true;
+            }
+        }
+        catch (Exception ex) { _retryMessage = $"Retry error: {ex.Message}"; _retryIsError = true; }
+        finally { _retryingMemberId = string.Empty; StateHasChanged(); }
+    }
+
     private static string StatusBadge(string status) => status switch
     { "Active" => "bg-success", "Inactive" => "bg-secondary", "Suspended" => "bg-danger", _ => "bg-secondary" };
+
+    private record PendingSignupDto(string MemberId, string FullName, string Email,
+        string Country, string? SponsorMemberId, DateTime EnrollDate, string OrderId, decimal OrderTotal);
 
     private record AdminMemberDto(string MemberId, string FirstName, string LastName,
         string? Phone, string? Email, string Country, string Status, string MemberType,

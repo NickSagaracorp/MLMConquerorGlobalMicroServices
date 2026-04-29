@@ -13,9 +13,12 @@ public class DashboardStatsDto
 
 public class FsbWindowDto
 {
-    public int       WindowNumber { get; set; }
-    public DateTime? StartDate    { get; set; }
-    public DateTime? EndDate      { get; set; }
-    public decimal   Earned       { get; set; }
-    public string    Status       { get; set; } = string.Empty;
+    public int       WindowNumber   { get; set; }
+    public DateTime? StartDate      { get; set; }
+    public DateTime? EndDate        { get; set; }
+    public decimal   Earned         { get; set; }
+    public string    Status         { get; set; } = string.Empty;
+    public bool      IsActive       { get; set; }
+    public bool      IsCompleted    { get; set; }
+    public int       SponsoredCount { get; set; }
 }
