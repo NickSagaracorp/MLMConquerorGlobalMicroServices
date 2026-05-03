@@ -1,4 +1,5 @@
 @inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
 @using System.Net.Http.Json
 
 @if (ShowBreadcrumb)
@@ -20,7 +21,7 @@
                                         <i class="material-symbols-outlined fs-40 text-primary">workspace_premium</i>
                                     </div>
                                     <div class="flex-grow-1 ms-2">
-                                        <span>Total Bonus Earned</span>
+                                        <span>@L["Presidential.TotalBonusEarned"]</span>
                                         @if (_summaryLoading) { <span class="placeholder col-6 d-block mt-1"></span> }
                                         else { <h3 class="fs-20 mt-1 mb-0">@_count</h3> }
                                     </div>
@@ -36,7 +37,7 @@
                                         <i class="material-symbols-outlined fs-40 text-success">paid</i>
                                     </div>
                                     <div class="flex-grow-1 ms-2">
-                                        <span>Total Amount Earned</span>
+                                        <span>@L["Presidential.TotalAmountEarned"]</span>
                                         @if (_summaryLoading) { <span class="placeholder col-6 d-block mt-1"></span> }
                                         else { <h3 class="fs-20 mt-1 mb-0">@_totalAmount.ToString("C")</h3> }
                                     </div>
@@ -55,7 +56,7 @@
     <div class="card-body p-0">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
             <form class="position-relative table-src-form me-0">
-                <input type="text" class="form-control" placeholder="Search here"
+                <input type="text" class="form-control" placeholder="@L["Reports.SearchPlaceholder"]"
                        value="@_search"
                        @oninput="OnSearchInput" />
                 <i class="material-symbols-outlined position-absolute top-50 start-0 translate-middle-y">search</i>
@@ -80,10 +81,10 @@
                     <table class="table align-middle">
                         <thead>
                             <tr>
-                                <th scope="col">Earned Date</th>
-                                <th scope="col">Amount</th>
-                                <th scope="col">Eligible Points</th>
-                                <th scope="col">Paid</th>
+                                <th scope="col">@L["Reports.EarnedDate"]</th>
+                                <th scope="col">@L["Common.Amount"]</th>
+                                <th scope="col">@L["Reports.EligiblePoints"]</th>
+                                <th scope="col">@L["Reports.Paid"]</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -104,21 +105,21 @@
                             }
                             @if (!Filtered.Any())
                             {
-                                <tr><td colspan="4" class="text-center text-muted py-4">No data available.</td></tr>
+                                <tr><td colspan="4" class="text-center text-muted py-4">@L["Common.NoDataAvailable"]</td></tr>
                             }
                         </tbody>
                     </table>
                 </div>
                 <div class="p-4 pt-lg-4">
                     <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
-                        <span class="fs-12 fw-medium">Showing @Filtered.Count() of @_total Results</span>
+                        <span class="fs-12 fw-medium">@L["Reports.Showing"] @Filtered.Count() @L["Common.Of"] @_total @L["Reports.Results"]</span>
                         @if (_total > _pageSize)
                         {
                             var totalPages = (int)Math.Ceiling((double)_total / _pageSize);
-                            <nav aria-label="Presidential Bonus pagination">
+                            <nav aria-label="@L["Sidebar.PresidentialBonus"]">
                                 <ul class="pagination mb-0 justify-content-center">
                                     <li class="page-item @(_page <= 1 ? "disabled" : "")">
-                                        <button type="button" class="page-link icon" @onclick="() => LoadPageAsync(_page - 1)" aria-label="Previous">
+                                        <button type="button" class="page-link icon" @onclick="() => LoadPageAsync(_page - 1)" aria-label="@L["Common.Previous"]">
                                             <i class="material-symbols-outlined">keyboard_arrow_left</i>
                                         </button>
                                     </li>
@@ -130,7 +131,7 @@
                                         </li>
                                     }
                                     <li class="page-item @(_page >= totalPages ? "disabled" : "")">
-                                        <button type="button" class="page-link icon" @onclick="() => LoadPageAsync(_page + 1)" aria-label="Next">
+                                        <button type="button" class="page-link icon" @onclick="() => LoadPageAsync(_page + 1)" aria-label="@L["Common.Next"]">
                                             <i class="material-symbols-outlined">keyboard_arrow_right</i>
                                         </button>
                                     </li>
@@ -166,9 +167,9 @@
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
-        new("Dashboard", "/dashboard"),
-        new("Commissions", "/commissions"),
-        new("Presidential Bonus")
+        new(L["UserProfile.Breadcrumb.Dashboard"].Value, "/dashboard"),
+        new(L["Sidebar.Commissions"].Value, "/commissions"),
+        new(L["Presidential.Breadcrumb"].Value)
     };
 
     protected override async Task OnParametersSetAsync()

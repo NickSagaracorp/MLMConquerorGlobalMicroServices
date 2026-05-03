@@ -1,5 +1,6 @@
 @inject HttpClient Http
 @inject IJSRuntime JS
+@inject IStringLocalizer<SharedResources> L
 
 @*
     Top-of-page banner: gradient cover + circular avatar + name + role badge.
@@ -12,14 +13,14 @@
     <div class="card-body pt-0 px-4 pb-4">
         <div class="d-flex flex-column flex-md-row align-items-center align-items-md-end gap-3">
             <div class="profile-header-avatar-wrapper">
-                <img src="@AvatarSrc" alt="profile avatar"
+                <img src="@AvatarSrc" alt="@L["ProfileHeader.AvatarAlt"]"
                      class="profile-header-avatar rounded-circle border border-2 border-white shadow-sm"
                      onerror="this.onerror=null;this.src='@FallbackInline'" />
                 @if (CanEdit)
                 {
                     <button type="button"
                             class="profile-header-avatar-edit btn btn-primary btn-sm rounded-circle shadow-sm"
-                            title="Change profile photo"
+                            title="@L["ProfileHeader.ChangePhoto"]"
                             disabled="@_uploading"
                             @onclick="OpenFilePickerAsync">
                         @if (_uploading)
@@ -98,7 +99,7 @@
         if (e.File is null) return;
         if (e.File.Size > 5 * 1024 * 1024)
         {
-            _alert = "Image is larger than 5 MB. Please choose a smaller file.";
+            _alert = L["ProfileHeader.ImageTooLarge"].Value;
             _alertOk = false;
             return;
         }
@@ -125,19 +126,19 @@
                 var payload = await resp.Content.ReadFromJsonAsync<ApiWrapper<string>>();
                 if (payload?.Success == true && !string.IsNullOrEmpty(payload.Data))
                 {
-                    _alert = "Profile photo updated.";
+                    _alert = L["ProfileHeader.PhotoUpdated"].Value;
                     _alertOk = true;
                     await OnPhotoChanged.InvokeAsync(payload.Data);
                 }
                 else
                 {
-                    _alert = payload?.Message ?? "Photo update failed.";
+                    _alert = payload?.Message ?? L["ProfileHeader.PhotoFailed"].Value;
                     _alertOk = false;
                 }
             }
             else
             {
-                _alert = $"Upload failed: {resp.StatusCode}";
+                _alert = $"{L["ProfileHeader.UploadFailed"]} {resp.StatusCode}";
                 _alertOk = false;
             }
         }

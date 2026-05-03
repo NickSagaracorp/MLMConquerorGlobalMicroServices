@@ -4,4 +4,4 @@ using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Features.Dashboards.GetGrowthDashboard;
 
-public record GetGrowthDashboardQuery : IRequest<Result<GrowthDashboardDto>>;
+public record GetGrowthDashboardQuery(bool BypassCache = false) : IRequest<Result<GrowthDashboardDto>>;

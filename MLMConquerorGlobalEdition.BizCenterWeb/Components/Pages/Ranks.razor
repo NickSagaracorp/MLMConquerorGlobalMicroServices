@@ -1,9 +1,9 @@
-﻿@page "/ranks"
-@rendermode InteractiveServer
+@page "/ranks"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Ambassador")]
 @inject IViewContextService ViewContext
+@inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
 
-<PageTitle>Ranks</PageTitle>
+<PageTitle>@L["PageTitle.Ranks"]</PageTitle>
 
 <RankDashboard MemberProfileId="@ViewContext.ViewingMemberId" />
-

@@ -27,6 +27,14 @@
         <button class="btn btn-primary btn-sm" @onclick="() => { _page = 1; _ = LoadAsync(); }">
             <i class="ri-search-line me-1"></i>Search
         </button>
+        <button type="button"
+                class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
+                title="Refresh from server"
+                disabled="@_loading"
+                @onclick="RefreshAsync">
+            <i class="ri-refresh-line"></i>
+            <span>Refresh</span>
+        </button>
     </div>
     @if (_retryMessage is not null)
     {
@@ -215,7 +223,13 @@
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
-    private async Task LoadAsync()
+    /// <summary>
+    /// User-triggered "Refresh" action. Re-fetches the current page bypassing
+    /// the AdminAPI's server-side cache so the admin can see fresh data on demand.
+    /// </summary>
+    private Task RefreshAsync() => LoadAsync(bypassCache: true);
+
+    private async Task LoadAsync(bool bypassCache = false)
     {
         _loading = true; _error = null; StateHasChanged();
         try
@@ -223,6 +237,7 @@
             var url = $"api/v1/admin/members?page={_page}&pageSize={PageSize}";
             if (!string.IsNullOrWhiteSpace(_statusFilter)) url += $"&status={_statusFilter}";
             if (!string.IsNullOrWhiteSpace(_search))       url += $"&search={Uri.EscapeDataString(_search)}";
+            if (bypassCache)                                url += "&bypassCache=true";
             var resp = await Http.GetFromJsonAsync<ApiResponse<PagedResult<AdminMemberDto>>>(url);
             if (resp?.Success == true && resp.Data is not null)
             {

@@ -1,6 +1,9 @@
 @inject HttpClient Http
 @inject NavigationManager Nav
+@inject IStringLocalizer<SharedResources> L
 
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
 @using MLMConquerorGlobalEdition.SharedComponents.Components.Placement
 
 <BreadcrumbNav Items="@_breadcrumb" />
@@ -8,9 +11,9 @@
 <!-- Header -->
 <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
     <div>
-        <h4 class="mb-0 fw-semibold">Placement — Vista Admin</h4>
+        <h4 class="mb-0 fw-semibold">@L["Placement.AdminTitle"]</h4>
         <p class="text-muted small mb-0 mt-1">
-            Gestiona el placement de todos los miembros de la red. Sin restricciones de tiempo ni oportunidades.
+            @L["Placement.AdminSubtitle"]
         </p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
@@ -18,18 +21,18 @@
                 @onclick="RunAutoPlacementAsync"
                 disabled="@_isRunningAuto"
                 type="button"
-                aria-label="Ejecutar auto-placement manualmente">
+                aria-label="@L["Placement.AutoPlacementAriaLabel"]">
             @if (_isRunningAuto)
             {
                 <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
-                <span class="visually-hidden">Ejecutando…</span>
+                <span class="visually-hidden">@L["Placement.Running"]</span>
             }
             <i class="ri-robot-line me-1" aria-hidden="true"></i>
-            Auto-Placement
+            @L["Placement.AutoPlacement"]
         </button>
         <a class="btn btn-outline-secondary btn-sm" href="@HistoryRoute">
             <i class="ri-history-line me-1" aria-hidden="true"></i>
-            Ver historial
+            @L["Placement.ViewHistory"]
         </a>
     </div>
 </div>
@@ -40,32 +43,32 @@
          role="alert">
         <i class="@(_autoError ? "ri-error-warning-line" : "ri-checkbox-circle-line") flex-shrink-0" aria-hidden="true"></i>
         <div>@_autoMsg</div>
-        <button type="button" class="btn-close" @onclick="() => _autoMsg = null" aria-label="Cerrar"></button>
+        <button type="button" class="btn-close" @onclick="() => _autoMsg = null" aria-label="@L["Placement.CloseAlert"]"></button>
     </div>
 }
 
 <!-- Stats row -->
 <div class="row g-3 mb-4">
     <div class="col-6 col-md-3">
-        <StatCard Title="Pendientes"
+        <StatCard Title="@L["Placement.StatPending"]"
                   Value="@_pendingCount.ToString()"
                   Icon="ri-user-add-line"
                   Color="warning" />
     </div>
     <div class="col-6 col-md-3">
-        <StatCard Title="Colocados"
+        <StatCard Title="@L["Placement.StatPlaced"]"
                   Value="@_placedCount.ToString()"
                   Icon="ri-checkbox-circle-line"
                   Color="success" />
     </div>
     <div class="col-6 col-md-3">
-        <StatCard Title="Auto-colocados"
+        <StatCard Title="@L["Placement.StatAutoPlaced"]"
                   Value="@_autoPlacedCount.ToString()"
                   Icon="ri-robot-line"
                   Color="info" />
     </div>
     <div class="col-6 col-md-3">
-        <StatCard Title="Expirados"
+        <StatCard Title="@L["Placement.StatExpired"]"
                   Value="@_expiredCount.ToString()"
                   Icon="ri-time-line"
                   Color="danger" />
@@ -75,21 +78,21 @@
 <!-- Filter row -->
 <div class="d-flex flex-wrap gap-3 align-items-center mb-3">
     <div class="d-flex align-items-center gap-2">
-        <label class="small text-muted fw-semibold text-nowrap" for="sponsor-filter">Sponsor:</label>
+        <label class="small text-muted fw-semibold text-nowrap" for="sponsor-filter">@L["Placement.SponsorLabel"]</label>
         <input id="sponsor-filter"
                type="text"
                class="form-control form-control-sm"
                style="width:200px"
-               placeholder="ID o nombre del sponsor…"
+               placeholder="@L["Placement.SponsorPlaceholder"]"
                @bind="_sponsorFilter"
                @bind:event="oninput"
-               aria-label="Filtrar por sponsor" />
+               aria-label="@L["Placement.SponsorFilterAria"]" />
     </div>
 </div>
 
 @if (_isLoading)
 {
-    <div role="status" aria-label="Cargando placements…">
+    <div role="status" aria-label="@L["Placement.LoadingPlacements"]">
         @for (int i = 0; i < 3; i++)
         {
             <div class="placement-card mb-3 skeleton-card" aria-hidden="true">
@@ -105,7 +108,7 @@
                 </div>
             </div>
         }
-        <span class="visually-hidden">Cargando…</span>
+        <span class="visually-hidden">@L["Placement.LoadingShort"]</span>
     </div>
 }
 else if (_error != null)
@@ -115,13 +118,13 @@ else if (_error != null)
 else if (!_placements.Any())
 {
     <EmptyState Icon="ri-group-line"
-                Title="Sin placements pendientes"
-                Message="No hay miembros pendientes de placement en la red." />
+                Title="@L["Placement.AdminNoneTitle"]"
+                Message="@L["Placement.AdminNoneMessage"]" />
 }
 else
 {
     <!-- Filter tabs -->
-    <ul class="nav nav-pills mb-3" role="tablist" aria-label="Filtrar placements">
+    <ul class="nav nav-pills mb-3" role="tablist" aria-label="@L["Placement.FilterAria"]">
         @foreach (var tab in _tabs)
         {
             <li class="nav-item" role="presentation">
@@ -130,7 +133,7 @@ else
                         aria-selected="@(tab == _activeTab ? "true" : "false")"
                         @onclick="() => _activeTab = tab"
                         type="button">
-                    @tab
+                    @TabLabel(tab)
                     <span class="badge bg-@(tab == _activeTab ? "white text-primary" : "secondary") ms-1">
                         @GetTabCount(tab)
                     </span>
@@ -141,7 +144,7 @@ else
 
     <div class="d-flex flex-column gap-3"
          role="list"
-         aria-label="Lista de miembros para placement">
+         aria-label="@L["Placement.ListAria"]">
         @foreach (var p in FilteredPlacements)
         {
             <div role="listitem">
@@ -150,7 +153,7 @@ else
                 {
                     <div class="small text-muted mb-1 ps-1">
                         <i class="ri-user-star-line me-1" aria-hidden="true"></i>
-                        Sponsor: <strong>@p.SponsorFullName</strong>
+                        @L["Placement.SponsorLabel"] <strong>@p.SponsorFullName</strong>
                         <code class="ms-1 text-muted">@p.SponsorMemberId</code>
                     </div>
                 }
@@ -173,9 +176,9 @@ else
 
 <!-- Confirm Remove Modal -->
 <ConfirmModal IsVisible="@(_removeTarget != null)"
-              Title="Eliminar Placement"
-              ConfirmLabel="Eliminar placement"
-              CancelLabel="Cancelar"
+              Title="@L["Placement.RemoveTitle"]"
+              ConfirmLabel="@L["Placement.RemoveConfirmLabel"]"
+              CancelLabel="@L["Common.Cancel"]"
               ConfirmColor="danger"
               IsBusy="@_isRemoving"
               OnConfirm="ExecuteRemove"
@@ -187,12 +190,12 @@ else
                 <i class="ri-alert-line fs-2 text-danger flex-shrink-0" aria-hidden="true"></i>
                 <div>
                     <p class="mb-1">
-                        Vas a eliminar el placement de
+                        @L["Placement.AdminRemoveBodyPrefix"]
                         <strong>@_removeTarget.FullName</strong>
                         (@_removeTarget.MemberId).
                     </p>
                     <p class="mb-0 text-muted small">
-                        Acción admin: no usa oportunidad de placement.
+                        @L["Placement.AdminRemoveNote"]
                     </p>
                 </div>
             </div>
@@ -215,8 +218,8 @@ else
     private PlacementPage.PendingPlacementDto? _wizardPlacement;
     private PlacementPage.PendingPlacementDto? _removeTarget;
 
-    private readonly string[] _tabs = { "Todos", "Pendientes", "Colocados", "Bloqueados" };
-    private string _activeTab = "Todos";
+    private readonly string[] _tabs = { "All", "Pending", "Placed", "Blocked" };
+    private string _activeTab = "All";
 
     private int _pendingCount    => _placements.Count(p => p.PlacementStatus == "Unplaced");
     private int _placedCount     => _placements.Count(p => p.PlacementStatus is "Placed" or "AutoPlaced");
@@ -229,10 +232,10 @@ else
         {
             var filtered = _activeTab switch
             {
-                "Pendientes" => _placements.Where(p => p.PlacementStatus is "Unplaced" or "Expired"),
-                "Colocados"  => _placements.Where(p => p.PlacementStatus is "Placed" or "AutoPlaced"),
-                "Bloqueados" => _placements.Where(p => p.IsBlocked),
-                _            => _placements.AsEnumerable()
+                "Pending" => _placements.Where(p => p.PlacementStatus is "Unplaced" or "Expired"),
+                "Placed"  => _placements.Where(p => p.PlacementStatus is "Placed" or "AutoPlaced"),
+                "Blocked" => _placements.Where(p => p.IsBlocked),
+                _         => _placements.AsEnumerable()
             };
 
             if (!string.IsNullOrWhiteSpace(_sponsorFilter))
@@ -249,16 +252,24 @@ else
 
     private int GetTabCount(string tab) => tab switch
     {
-        "Pendientes" => _pendingCount,
-        "Colocados"  => _placedCount,
-        "Bloqueados" => _placements.Count(p => p.IsBlocked),
-        _            => _placements.Count
+        "Pending" => _pendingCount,
+        "Placed"  => _placedCount,
+        "Blocked" => _placements.Count(p => p.IsBlocked),
+        _         => _placements.Count
+    };
+
+    private string TabLabel(string tab) => tab switch
+    {
+        "Pending" => L["Placement.TabPending"].Value,
+        "Placed"  => L["Placement.TabPlaced"].Value,
+        "Blocked" => L["Placement.TabBlocked"].Value,
+        _         => L["Placement.TabAll"].Value
     };
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
-        new("Admin Dashboard", "/admin"),
-        new("Placement")
+        new(L["Placement.BreadcrumbAdminDashboard"], "/admin"),
+        new(L["Placement.BreadcrumbPlacement"])
     };
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
@@ -277,7 +288,7 @@ else
         }
         catch (Exception ex)
         {
-            _error = $"No se pudieron cargar los placements. {ex.Message}";
+            _error = $"{L["Placement.LoadFailed"]} {ex.Message}";
         }
         finally
         {
@@ -296,20 +307,20 @@ else
             if (resp.IsSuccessStatusCode)
             {
                 var result = await resp.Content.ReadFromJsonAsync<ApiResponse<AutoPlacementResultDto>>();
-                _autoMsg  = $"Auto-placement completado: {result?.Data?.PlacedCount ?? 0} miembro(s) colocado(s).";
+                _autoMsg  = string.Format(L["Placement.AutoPlacementCompleted"], result?.Data?.PlacedCount ?? 0);
                 _autoError = false;
                 await LoadAsync();
             }
             else
             {
                 var err = await resp.Content.ReadFromJsonAsync<ApiResponse<object>>();
-                _autoMsg  = err?.Message ?? "Error al ejecutar auto-placement.";
+                _autoMsg  = err?.Message ?? L["Placement.AutoPlacementError"];
                 _autoError = true;
             }
         }
         catch (Exception ex)
         {
-            _autoMsg  = $"Error inesperado: {ex.Message}";
+            _autoMsg  = $"{L["Placement.UnexpectedErrorPrefix"]} {ex.Message}";
             _autoError = true;
         }
         finally
@@ -342,13 +353,13 @@ else
             else
             {
                 var err = await resp.Content.ReadFromJsonAsync<ApiResponse<object>>();
-                _error        = err?.Message ?? "Error al eliminar el placement.";
+                _error        = err?.Message ?? L["Placement.RemoveError"];
                 _removeTarget = null;
             }
         }
         catch (Exception ex)
         {
-            _error        = $"Error inesperado: {ex.Message}";
+            _error        = $"{L["Placement.UnexpectedErrorPrefix"]} {ex.Message}";
             _removeTarget = null;
         }
         finally

@@ -1,8 +1,9 @@
 @page "/commissions/fast-start"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Ambassador")]
 @inject IViewContextService ViewContext
+@inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
 
-<PageTitle>Fast Start Bonus</PageTitle>
+<PageTitle>@L["Sidebar.FastStartBonus"]</PageTitle>
 
 <FastStartBonusReport MemberProfileId="@ViewContext.ViewingMemberId" />

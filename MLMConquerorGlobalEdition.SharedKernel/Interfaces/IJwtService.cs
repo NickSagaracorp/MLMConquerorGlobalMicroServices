@@ -9,7 +9,8 @@ public interface IJwtService
         string email,
         IEnumerable<string> roles,
         bool isImpersonating = false,
-        string? impersonatedBy = null);
+        string? impersonatedBy = null,
+        string? defaultLanguage = null);
 
     /// <summary>Generates a cryptographically random refresh token.</summary>
     string GenerateRefreshToken();

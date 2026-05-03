@@ -5,12 +5,13 @@ using Microsoft.AspNetCore.Localization;
 using MLMConquerorGlobalEdition.AdminWeb.Components;
 using MLMConquerorGlobalEdition.AdminWeb.Services;
 using MLMConquerorGlobalEdition.SharedComponents.Extensions;
+using MLMConquerorGlobalEdition.SharedKernel;
 using Syncfusion.Blazor;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Localization — supported cultures
-var supportedCultures = new[] { "en", "es", "pt", "fr", "it", "ko", "de", "ru" };
+// Localization — the 9 supported cultures, mapped from app codes by LanguageCodeMapper.
+var supportedCultures = LanguageCodeMapper.SupportedCultureNames.ToArray();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents(options =>
@@ -76,7 +77,7 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseRequestLocalization(new RequestLocalizationOptions()
-    .SetDefaultCulture("en")
+    .SetDefaultCulture(LanguageCodeMapper.DefaultCultureName)
     .AddSupportedCultures(supportedCultures)
     .AddSupportedUICultures(supportedCultures));
 app.UseAntiforgery();

@@ -14,6 +14,7 @@ public class ProfileDto
     public DateTime DateOfBirth    { get; set; }
     public string? BusinessName    { get; set; }
     public string? SsnLast4        { get; set; }                    // SSN displayed as ***-**-1234
+    public string? EinLast4        { get; set; }                    // EIN displayed as **-***1234
 
     // ─── Identity (allowed to change, security-sensitive — separate endpoints)
     public string  Email           { get; set; } = string.Empty;

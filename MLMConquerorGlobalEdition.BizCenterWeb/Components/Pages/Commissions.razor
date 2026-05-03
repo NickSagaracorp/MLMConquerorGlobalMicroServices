@@ -1,9 +1,10 @@
 ﻿@page "/commissions"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Ambassador")]
 @inject IViewContextService ViewContext
+@inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
 
-<PageTitle>Commissions</PageTitle>
+<PageTitle>@L["Sidebar.Commissions"]</PageTitle>
 
 <CommissionsDashboard MemberProfileId="@ViewContext.ViewingMemberId" />
 

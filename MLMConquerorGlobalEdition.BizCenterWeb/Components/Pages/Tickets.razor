@@ -1,9 +1,9 @@
-﻿@page "/tickets"
-@rendermode InteractiveServer
+@page "/tickets"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @inject IViewContextService ViewContext
+@inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
 
-<PageTitle>Support Tickets</PageTitle>
+<PageTitle>@L["PageTitle.Tickets"]</PageTitle>
 
 <TicketListPage MemberProfileId="@ViewContext.ViewingMemberId" />
-

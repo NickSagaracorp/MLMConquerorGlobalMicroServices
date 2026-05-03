@@ -27,8 +27,11 @@ public class MemberProfile : AuditChangesStringKey, IAuditable
     public string? Address { get; set; }
     public string? ZipCode { get; set; }
 
-    // Tax identity — stored encrypted; required for US residents
+    // Tax identity — stored encrypted; required for US residents (SSN for individuals,
+    // EIN for businesses). The plaintext is never returned to the client; only the
+    // last 4 digits are decrypted for display.
     public string? SsnEncrypted { get; set; }
+    public string? EinEncrypted { get; set; }
 
     // Business identity
     public string? BusinessName { get; set; }

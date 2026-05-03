@@ -20,9 +20,11 @@ public class DashboardsController : ControllerBase
     public DashboardsController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet("ceo")]
-    public async Task<IActionResult> GetCeo(CancellationToken ct = default)
+    public async Task<IActionResult> GetCeo(
+        [FromQuery] bool bypassCache = false,
+        CancellationToken ct = default)
     {
-        var result = await _mediator.Send(new GetCeoDashboardQuery(), ct);
+        var result = await _mediator.Send(new GetCeoDashboardQuery(bypassCache), ct);
 
         if (!result.IsSuccess)
             return BadRequest(ApiResponse<CeoDashboardDto>.Fail(result.ErrorCode!, result.Error!));
@@ -31,9 +33,11 @@ public class DashboardsController : ControllerBase
     }
 
     [HttpGet("financial")]
-    public async Task<IActionResult> GetFinancial(CancellationToken ct = default)
+    public async Task<IActionResult> GetFinancial(
+        [FromQuery] bool bypassCache = false,
+        CancellationToken ct = default)
     {
-        var result = await _mediator.Send(new GetFinancialDashboardQuery(), ct);
+        var result = await _mediator.Send(new GetFinancialDashboardQuery(bypassCache), ct);
 
         if (!result.IsSuccess)
             return BadRequest(ApiResponse<FinancialDashboardDto>.Fail(result.ErrorCode!, result.Error!));
@@ -42,9 +46,11 @@ public class DashboardsController : ControllerBase
     }
 
     [HttpGet("growth")]
-    public async Task<IActionResult> GetGrowth(CancellationToken ct = default)
+    public async Task<IActionResult> GetGrowth(
+        [FromQuery] bool bypassCache = false,
+        CancellationToken ct = default)
     {
-        var result = await _mediator.Send(new GetGrowthDashboardQuery(), ct);
+        var result = await _mediator.Send(new GetGrowthDashboardQuery(bypassCache), ct);
 
         if (!result.IsSuccess)
             return BadRequest(ApiResponse<GrowthDashboardDto>.Fail(result.ErrorCode!, result.Error!));
@@ -53,9 +59,11 @@ public class DashboardsController : ControllerBase
     }
 
     [HttpGet("health")]
-    public async Task<IActionResult> GetHealth(CancellationToken ct = default)
+    public async Task<IActionResult> GetHealth(
+        [FromQuery] bool bypassCache = false,
+        CancellationToken ct = default)
     {
-        var result = await _mediator.Send(new GetHealthDashboardQuery(), ct);
+        var result = await _mediator.Send(new GetHealthDashboardQuery(bypassCache), ct);
 
         if (!result.IsSuccess)
             return BadRequest(ApiResponse<HealthDashboardDto>.Fail(result.ErrorCode!, result.Error!));

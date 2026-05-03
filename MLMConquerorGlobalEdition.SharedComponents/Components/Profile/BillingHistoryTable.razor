@@ -1,4 +1,5 @@
 @inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
 
 @*
     Recent transactions list mirroring the template's "Recent Transactions"
@@ -11,9 +12,9 @@
     <div class="card-header bg-transparent py-3">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
             <h6 class="fs-18 mb-0 fw-semibold">
-                <i class="ri-bill-line me-2 text-primary"></i>Recent Transactions
+                <i class="ri-bill-line me-2 text-primary"></i>@L["BillingHistory.Title"]
             </h6>
-            <small class="text-muted">Showing @_items.Count of @_total</small>
+            <small class="text-muted">@L["BillingHistory.ShowingPrefix"] @_items.Count @L["Common.Of"] @_total</small>
         </div>
     </div>
     <div class="card-body p-0">
@@ -24,7 +25,7 @@
             {
                 <div class="text-center py-5">
                     <i class="ri-archive-line text-muted" style="font-size:2.5rem"></i>
-                    <p class="text-muted mt-2 mb-0">No transactions yet.</p>
+                    <p class="text-muted mt-2 mb-0">@L["BillingHistory.Empty"]</p>
                 </div>
             }
             else
@@ -33,12 +34,12 @@
                     <table class="table align-middle mb-0">
                         <thead>
                             <tr>
-                                <th>Transaction</th>
-                                <th>Date</th>
-                                <th>Description</th>
-                                <th class="text-end">Amount</th>
-                                <th>Status</th>
-                                <th>Source</th>
+                                <th>@L["BillingHistory.Transaction"]</th>
+                                <th>@L["Common.Date"]</th>
+                                <th>@L["Common.Description"]</th>
+                                <th class="text-end">@L["Common.Amount"]</th>
+                                <th>@L["Common.Status"]</th>
+                                <th>@L["Common.Source"]</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -110,7 +111,7 @@
                 _items = resp.Data.Items.Select(r => new BillingTx(
                     r.Id ?? r.TransactionId ?? r.OrderId ?? "—",
                     r.Date ?? r.CreationDate ?? r.PaymentDate ?? DateTime.MinValue,
-                    r.Description ?? r.MembershipLevel ?? r.Note ?? "Membership renewal",
+                    r.Description ?? r.MembershipLevel ?? r.Note ?? L["BillingHistory.MembershipRenewal"].Value,
                     r.Amount ?? 0m,
                     r.Status ?? r.PaymentStatus ?? "—",
                     r.Source ?? r.PaymentMethod ?? r.Gateway ?? "—"

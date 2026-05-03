@@ -1,5 +1,6 @@
 @inject HttpClient Http
 @inject NavigationManager Nav
+@inject IStringLocalizer<SharedResources> L
 
 @if (_visible)
 {
@@ -10,9 +11,9 @@
 
                 <div class="modal-header">
                     <h5 class="modal-title">
-                        <i class="ri-customer-service-2-line me-2"></i>Create New Ticket
+                        <i class="ri-customer-service-2-line me-2"></i>@L["TicketCreate.Title"]
                     </h5>
-                    <button type="button" class="btn-close" @onclick="Hide"></button>
+                    <button type="button" class="btn-close" @onclick="Hide" aria-label="@L["TicketCreate.CloseAria"]"></button>
                 </div>
 
                 <div class="modal-body">
@@ -22,38 +23,38 @@
                         <!-- Subject -->
                         <div class="mb-3">
                             <label class="form-label">
-                                Subject <span class="text-danger">*</span>
+                                @L["TicketCreate.SubjectLabel"] <span class="text-danger">*</span>
                             </label>
                             <InputText class="form-control"
                                        @bind-Value="_form.Subject"
-                                       placeholder="Briefly describe your issue (max 200 chars)" />
+                                       placeholder="@L["TicketCreate.SubjectPlaceholder"]" />
                             <ValidationMessage For="@(() => _form.Subject)" />
                         </div>
 
                         <div class="row g-3 mb-3">
                             <!-- Category -->
                             <div class="col-12 col-sm-6">
-                                <label class="form-label">Category</label>
+                                <label class="form-label">@L["TicketCreate.CategoryLabel"]</label>
                                 <InputSelect class="form-select" @bind-Value="_form.Category">
-                                    <option value="">Select a category…</option>
-                                    <option value="Billing">Billing</option>
-                                    <option value="Technical">Technical</option>
-                                    <option value="Commission">Commission</option>
-                                    <option value="Membership">Membership</option>
-                                    <option value="Account">Account</option>
-                                    <option value="Other">Other</option>
+                                    <option value="">@L["TicketCreate.CategorySelect"]</option>
+                                    <option value="Billing">@L["TicketCreate.CategoryBilling"]</option>
+                                    <option value="Technical">@L["TicketCreate.CategoryTechnical"]</option>
+                                    <option value="Commission">@L["TicketCreate.CategoryCommission"]</option>
+                                    <option value="Membership">@L["TicketCreate.CategoryMembership"]</option>
+                                    <option value="Account">@L["TicketCreate.CategoryAccount"]</option>
+                                    <option value="Other">@L["TicketCreate.CategoryOther"]</option>
                                 </InputSelect>
                                 <ValidationMessage For="@(() => _form.Category)" />
                             </div>
 
                             <!-- Priority -->
                             <div class="col-12 col-sm-6">
-                                <label class="form-label">Priority</label>
+                                <label class="form-label">@L["TicketCreate.PriorityLabel"]</label>
                                 <InputSelect class="form-select" @bind-Value="_form.Priority">
-                                    <option value="Low">Low</option>
-                                    <option value="Normal">Normal</option>
-                                    <option value="High">High</option>
-                                    <option value="Urgent">Urgent</option>
+                                    <option value="Low">@L["TicketCreate.PriorityLow"]</option>
+                                    <option value="Normal">@L["TicketCreate.PriorityNormal"]</option>
+                                    <option value="High">@L["TicketCreate.PriorityHigh"]</option>
+                                    <option value="Urgent">@L["TicketCreate.PriorityUrgent"]</option>
                                 </InputSelect>
                             </div>
                         </div>
@@ -61,20 +62,20 @@
                         <!-- Description -->
                         <div class="mb-3">
                             <label class="form-label">
-                                Description <span class="text-danger">*</span>
+                                @L["TicketCreate.DescriptionLabel"] <span class="text-danger">*</span>
                             </label>
                             <InputTextArea class="form-control"
                                            rows="5"
                                            @bind-Value="_form.Description"
-                                           placeholder="Provide full details about your issue…" />
+                                           placeholder="@L["TicketCreate.DescriptionPlaceholder"]" />
                             <ValidationMessage For="@(() => _form.Description)" />
                         </div>
 
                         <!-- File attachment (UI only — upload logic wired in later iteration) -->
                         <div class="mb-3">
-                            <label class="form-label">Attachment <span class="text-muted small">(optional)</span></label>
+                            <label class="form-label">@L["TicketCreate.AttachmentLabel"] <span class="text-muted small">@L["TicketCreate.AttachmentOptional"]</span></label>
                             <input type="file" class="form-control" accept="image/*,.pdf,.doc,.docx,.txt" />
-                            <div class="form-text">Supported: images, PDF, Word, TXT. Max 10 MB.</div>
+                            <div class="form-text">@L["TicketCreate.AttachmentHelp"]</div>
                         </div>
 
                         @if (!string.IsNullOrEmpty(_errorMessage))
@@ -86,14 +87,14 @@
                         <div class="d-flex gap-2 justify-content-end">
                             <button type="button" class="btn btn-secondary" @onclick="Hide"
                                     disabled="@_isBusy">
-                                Cancel
+                                @L["TicketCreate.Cancel"]
                             </button>
                             <button type="submit" class="btn btn-primary" disabled="@_isBusy">
                                 @if (_isBusy)
                                 {
                                     <span class="spinner-border spinner-border-sm me-2"></span>
                                 }
-                                Submit Ticket
+                                @L["TicketCreate.Submit"]
                             </button>
                         </div>
 
@@ -153,7 +154,7 @@
             }
             else
             {
-                _errorMessage = "Failed to create ticket. Please try again.";
+                _errorMessage = L["TicketCreate.ErrorGeneric"];
             }
         }
         catch (Exception ex)

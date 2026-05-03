@@ -1,8 +1,9 @@
-﻿@page "/team/placement"
-@rendermode InteractiveServer
+@page "/team/placement"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Ambassador")]
+@inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
 
-<PageTitle>Placement â€” Dual Team</PageTitle>
+<PageTitle>@L["PageTitle.Placement"]</PageTitle>
 
 <PlacementPage HistoryRoute="/team/placement/history" />
 

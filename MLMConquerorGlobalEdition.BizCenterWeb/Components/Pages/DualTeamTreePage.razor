@@ -2,8 +2,9 @@
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @inject IViewContextService ViewContext
+@inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
 
-<PageTitle>Dual Team Visualizer</PageTitle>
+<PageTitle>@L["PageTitle.DualTeamVisualizer"]</PageTitle>
 
 <DualTeamBinaryTree MemberProfileId="@ViewContext.ViewingMemberId"
                     ApiBaseUrl="api/v1/bizcenter/team"

@@ -1,7 +1,10 @@
 @inject HttpClient Http
 @inject IViewContextService ViewContext
 @inject NavigationManager Nav
+@inject IStringLocalizer<SharedResources> L
 
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
 @using Syncfusion.Blazor.Grids
 @using Syncfusion.Blazor.Inputs
 
@@ -11,18 +14,18 @@
     <div class="card-body p-0">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-3">
             <div class="d-flex align-items-center gap-2">
-                <SfTextBox Placeholder="Search name, ID…"
+                <SfTextBox Placeholder="@L["Team.CustomersSearchPlaceholder"]"
                            @bind-Value="_search"
                            CssClass="form-control form-control-sm"
                            style="min-width:240px" />
                 <button class="btn btn-primary btn-sm" @onclick="SearchAsync">
-                    <i class="ri-search-line me-1"></i>Search
+                    <i class="ri-search-line me-1"></i>@L["Common.Search"]
                 </button>
                 <button class="btn btn-outline-secondary btn-sm" @onclick="ClearAsync">
                     <i class="ri-refresh-line"></i>
                 </button>
             </div>
-            <small class="text-muted">@_totalCount customers</small>
+            <small class="text-muted">@_totalCount @L["Common.Customers"]</small>
         </div>
 
         @if (_isLoading)
@@ -42,54 +45,54 @@
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
                 <GridColumns>
 
-                    <GridColumn HeaderText="Join Date" Width="115" TextAlign="TextAlign.Center">
+                    <GridColumn HeaderText="@L["Reports.JoinDate"]" Width="115" TextAlign="TextAlign.Center">
                         <Template>@(((CustomerDto)context).EnrollDate.ToString("MM/dd/yyyy"))</Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="ID" Width="120">
+                    <GridColumn HeaderText="@L["Reports.Id"]" Width="120">
                         <Template><code class="text-primary">@(((CustomerDto)context).MemberId)</code></Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Name" Width="160">
+                    <GridColumn HeaderText="@L["Reports.Name"]" Width="160">
                         <Template>@(((CustomerDto)context).FullName)</Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Email" Width="200">
+                    <GridColumn HeaderText="@L["Reports.Email"]" Width="200">
                         <Template>@(((CustomerDto)context).Email)</Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Phone" Width="140">
+                    <GridColumn HeaderText="@L["Reports.Phone"]" Width="140">
                         <Template>@(((CustomerDto)context).Phone ?? "—")</Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Level" Width="80" TextAlign="TextAlign.Center">
+                    <GridColumn HeaderText="@L["Reports.Level"]" Width="80" TextAlign="TextAlign.Center">
                         <Template><span class="badge bg-secondary">L@(((CustomerDto)context).Level)</span></Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Country" Width="100">
+                    <GridColumn HeaderText="@L["Reports.Country"]" Width="100">
                         <Template>@(((CustomerDto)context).Country)</Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Sponsor" Width="150">
+                    <GridColumn HeaderText="@L["Reports.Sponsor"]" Width="150">
                         <Template>
                             @{ var c = (CustomerDto)context; }
                             @(c.SponsorFullName ?? c.SponsorMemberId ?? "—")
                         </Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Biz Status" Width="110" TextAlign="TextAlign.Center">
+                    <GridColumn HeaderText="@L["Reports.BizStatus"]" Width="110" TextAlign="TextAlign.Center">
                         <Template><StatusBadge Status="@(((CustomerDto)context).AccountStatus)" /></Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Membership Status" Width="140" TextAlign="TextAlign.Center">
+                    <GridColumn HeaderText="@L["Reports.MembershipStatus"]" Width="140" TextAlign="TextAlign.Center">
                         <Template><StatusBadge Status="@(((CustomerDto)context).MembershipStatus)" /></Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Membership" Width="200">
+                    <GridColumn HeaderText="@L["Reports.Membership"]" Width="200">
                         <Template>@(((CustomerDto)context).MembershipLevel ?? "—")</Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Points" Width="100" TextAlign="TextAlign.Right">
+                    <GridColumn HeaderText="@L["Reports.Points"]" Width="100" TextAlign="TextAlign.Right">
                         <Template>@(((CustomerDto)context).PersonalPoints.ToString("N0"))</Template>
                     </GridColumn>
 
@@ -99,7 +102,7 @@
                             <Template>
                                 <button class="btn btn-xs btn-outline-secondary"
                                         @onclick="@(() => Nav.NavigateTo($"/admin/members/{((CustomerDto)context).MemberId}"))"
-                                        title="View in Admin">
+                                        title="@L["Team.ViewInAdmin"]">
                                     <i class="ri-eye-line"></i>
                                 </button>
                             </Template>
@@ -125,9 +128,9 @@
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
-        new("Dashboard", "/dashboard"),
-        new("Enrollment Team"),
-        new("Customers")
+        new(L["Nav.Dashboard"], "/dashboard"),
+        new(L["Sidebar.EnrollmentTeam"]),
+        new(L["Sidebar.Customers"])
     };
 
     protected override async Task OnParametersSetAsync()
@@ -154,9 +157,9 @@
                 _items      = resp.Data.Items;
                 _totalCount = resp.Data.TotalCount;
             }
-            else { _error = resp?.Errors?.FirstOrDefault() ?? "Failed to load customers."; }
+            else { _error = resp?.Errors?.FirstOrDefault() ?? L["Team.LoadFailedCustomers"]; }
         }
-        catch (Exception ex) { _error = $"API error: {ex.Message}"; }
+        catch (Exception ex) { _error = $"{L["Team.ApiErrorPrefix"]} {ex.Message}"; }
         finally { _isLoading = false; }
     }
 

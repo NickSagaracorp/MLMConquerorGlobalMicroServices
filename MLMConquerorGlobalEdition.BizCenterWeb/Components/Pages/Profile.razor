@@ -1,9 +1,10 @@
 ﻿@page "/profile"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @inject IViewContextService ViewContext
+@inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
 
-<PageTitle>My Profile</PageTitle>
+<PageTitle>@L["Profile.PageTitle"]</PageTitle>
 
 <UserProfilePage MemberProfileId="@ViewContext.ViewingMemberId" />
 

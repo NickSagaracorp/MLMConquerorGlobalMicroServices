@@ -1,6 +1,10 @@
 @inject HttpClient Http
 @inject NavigationManager Nav
+@inject IStringLocalizer<SharedResources> L
 @using System.Net.Http.Json
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
+@using Syncfusion.Blazor.Grids
 
 @if (ShowBreadcrumb) { <BreadcrumbNav Items="@_breadcrumb" /> }
 
@@ -12,10 +16,21 @@
             <div class="position-relative table-src-form me-0">
                 <input type="text"
                        class="form-control"
-                       placeholder="Search here"
+                       placeholder="@L["Team.SearchPlaceholderHere"]"
                        value="@_search"
                        @oninput="OnSearchInput" />
                 <i class="ri-search-line position-absolute top-50 start-0 translate-middle-y"></i>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <small class="text-muted">@_total @L["Common.Members"]</small>
+                <button type="button"
+                        class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
+                        title="@L["Team.RefreshTitle"]"
+                        disabled="@_isLoading"
+                        @onclick="RefreshAsync">
+                    <i class="ri-refresh-line"></i>
+                    <span>@L["Common.Refresh"]</span>
+                </button>
             </div>
         </div>
 
@@ -30,115 +45,176 @@
         }
         else
         {
-            <div class="default-table-area style-two default-table-width">
-                <div class="table-responsive">
-                    <table class="table align-middle">
-                        <thead>
-                            <tr>
-                                <th>Join Date</th>
-                                <th>ID</th>
-                                <th>Name</th>
-                                <th>Level</th>
-                                <th>Leg</th>
-                                <th>Country</th>
-                                <th>Sponsor</th>
-                                <th>Dual Team Upline</th>
-                                <th>Biz Center Status</th>
-                                <th>Membership Status</th>
-                                <th>Qualified</th>
-                                <th>Membership</th>
-                                <th>Rank</th>
-                                <th>Rank Date</th>
-                                <th>Lifetime Rank</th>
-                                <th>Next Rank %</th>
-                                <th>Qual. Points</th>
-                                <th>Enroll. Team Pts</th>
-                                <th>Left Team Pts</th>
-                                <th>Right Team Pts</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @if (!_items.Any())
-                            {
-                                <tr>
-                                    <td colspan="20" class="text-center text-muted py-4">No records to display.</td>
-                                </tr>
-                            }
-                            @foreach (var m in _items)
-                            {
-                                <tr>
-                                    <td class="text-body">@m.JoinDate.ToString("MMM dd, yyyy")</td>
-                                    <td class="text-body"><code>@m.MemberId</code></td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <div style="width:32px;height:32px;border-radius:50%;background:#605DFF22;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                                <span style="font-size:12px;font-weight:700;color:#605DFF">
-                                                    @(m.FullName.Length > 0 ? m.FullName[0].ToString().ToUpper() : "?")
-                                                </span>
-                                            </div>
-                                            <span class="fw-medium">@m.FullName</span>
-                                        </div>
-                                    </td>
-                                    <td class="text-body">@m.Level</td>
-                                    <td>
-                                        <span class="badge @(m.Leg == "Left" ? "bg-primary bg-opacity-10 text-primary" : "bg-info bg-opacity-10 text-info") p-2 fs-12 fw-normal">
-                                            @m.Leg
-                                        </span>
-                                    </td>
-                                    <td class="text-body">@m.Country</td>
-                                    <td class="text-body">@(string.IsNullOrEmpty(m.SponsorName) ? "—" : m.SponsorName)</td>
-                                    <td class="text-body">@(string.IsNullOrEmpty(m.DualTeamUplineName) ? "—" : m.DualTeamUplineName)</td>
-                                    <td>@RenderStatusBadge(m.BizCenterStatus)</td>
-                                    <td>@RenderStatusBadge(m.MembershipStatus)</td>
-                                    <td>@RenderQualifiedBadge(m.QualifiedStatus)</td>
-                                    <td class="text-body">@(string.IsNullOrEmpty(m.MembershipName) ? "—" : m.MembershipName)</td>
-                                    <td class="text-body">@(string.IsNullOrEmpty(m.RankName) ? "—" : m.RankName)</td>
-                                    <td class="text-body">@(m.RankDate.HasValue ? m.RankDate.Value.ToString("MMM dd, yyyy") : "—")</td>
-                                    <td class="text-body">@(string.IsNullOrEmpty(m.LifetimeRankName) ? "—" : m.LifetimeRankName)</td>
-                                    <td>
-                                        @RenderNextRankDonut(m.NextRankPercent)
-                                    </td>
-                                    <td class="text-body">@m.QualificationPoints.ToString("N0")</td>
-                                    <td class="text-body">@m.EnrollmentTeamPoints.ToString("N0")</td>
-                                    <td class="text-body">@m.LeftTeamPoints.ToString("N0")</td>
-                                    <td class="text-body">@m.RightTeamPoints.ToString("N0")</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+            <SfGrid TValue="DualTeamMyTeamMemberDto" DataSource="@_items"
+                    AllowPaging="true" AllowSorting="true" AllowResizing="true"
+                    AllowFiltering="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="20" PageSizes="@(new int[]{20,50,100})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
 
-                @* ── Pagination ───────────────────────────────────────────── *@
-                <div class="p-4 pt-lg-4">
-                    <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
-                        <span class="fs-12 fw-medium">Showing @_items.Count of @_total Results</span>
-                        @if (_totalPages > 1)
-                        {
-                            <nav>
-                                <ul class="pagination mb-0 justify-content-center">
-                                    <li class="page-item @(_page <= 1 ? "disabled" : "")">
-                                        <button class="page-link icon" @onclick="() => LoadAsync(_page - 1)">
-                                            <i class="ri-arrow-left-s-line"></i>
-                                        </button>
-                                    </li>
-                                    @for (var pg = 1; pg <= _totalPages; pg++)
-                                    {
-                                        var p = pg;
-                                        <li class="page-item @(p == _page ? "active" : "")">
-                                            <button class="page-link" @onclick="() => LoadAsync(p)">@p</button>
-                                        </li>
-                                    }
-                                    <li class="page-item @(_page >= _totalPages ? "disabled" : "")">
-                                        <button class="page-link icon" @onclick="() => LoadAsync(_page + 1)">
-                                            <i class="ri-arrow-right-s-line"></i>
-                                        </button>
-                                    </li>
-                                </ul>
-                            </nav>
-                        }
-                    </div>
-                </div>
-            </div>
+                    <GridColumn Field="@nameof(DualTeamMyTeamMemberDto.EnrollDate)"
+                                HeaderText="@L["Reports.JoinDate"]" Width="125" TextAlign="TextAlign.Center"
+                                Format="MMM dd, yyyy" Type="ColumnType.Date">
+                        <Template>
+                            @(((DualTeamMyTeamMemberDto)context).EnrollDate.ToString("MMM dd, yyyy"))
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn Field="@nameof(DualTeamMyTeamMemberDto.MemberId)"
+                                HeaderText="@L["Reports.Id"]" Width="120" Type="ColumnType.String">
+                        <Template>
+                            <code>@(((DualTeamMyTeamMemberDto)context).MemberId)</code>
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn Field="@nameof(DualTeamMyTeamMemberDto.FullName)"
+                                HeaderText="@L["Reports.Name"]" Width="200" Type="ColumnType.String">
+                        <Template>
+                            @{ var m = (DualTeamMyTeamMemberDto)context; }
+                            <div class="d-flex align-items-center gap-2">
+                                <div style="width:32px;height:32px;border-radius:50%;background:#605DFF22;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <span style="font-size:12px;font-weight:700;color:#605DFF">
+                                        @(m.FullName.Length > 0 ? m.FullName[0].ToString().ToUpper() : "?")
+                                    </span>
+                                </div>
+                                <span class="fw-medium">@m.FullName</span>
+                            </div>
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn Field="@nameof(DualTeamMyTeamMemberDto.Level)"
+                                HeaderText="@L["Reports.Level"]" Width="80" TextAlign="TextAlign.Center"
+                                Type="ColumnType.Integer" />
+
+                    <GridColumn Field="@nameof(DualTeamMyTeamMemberDto.Leg)"
+                                HeaderText="@L["Reports.Leg"]" Width="100" TextAlign="TextAlign.Center"
+                                Type="ColumnType.String">
+                        <Template>
+                            @{ var lm = (DualTeamMyTeamMemberDto)context; }
+                            <span class="badge @(lm.Leg == "Left" ? "bg-primary bg-opacity-10 text-primary" : "bg-info bg-opacity-10 text-info") p-2 fs-12 fw-normal">
+                                @(string.IsNullOrEmpty(lm.Leg) ? "—" : (lm.Leg == "Left" ? L["Team.LegLeft"].Value : (lm.Leg == "Right" ? L["Team.LegRight"].Value : lm.Leg)))
+                            </span>
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn Field="@nameof(DualTeamMyTeamMemberDto.Country)"
+                                HeaderText="@L["Reports.Country"]" Width="110" Type="ColumnType.String" />
+
+                    <GridColumn Field="@nameof(DualTeamMyTeamMemberDto.SponsorFullName)"
+                                HeaderText="@L["Reports.Sponsor"]" Width="150" Type="ColumnType.String">
+                        <Template>
+                            @{ var sm = (DualTeamMyTeamMemberDto)context; }
+                            @(string.IsNullOrEmpty(sm.SponsorFullName) ? "—" : sm.SponsorFullName)
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn Field="@nameof(DualTeamMyTeamMemberDto.DualUplineFullName)"
+                                HeaderText="@L["Reports.DualTeamUpline"]" Width="160" Type="ColumnType.String">
+                        <Template>
+                            @{ var um = (DualTeamMyTeamMemberDto)context; }
+                            @(string.IsNullOrEmpty(um.DualUplineFullName) ? "—" : um.DualUplineFullName)
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn Field="@nameof(DualTeamMyTeamMemberDto.AccountStatus)"
+                                HeaderText="@L["Reports.BizCenterStatus"]" Width="140" TextAlign="TextAlign.Center"
+                                Type="ColumnType.String">
+                        <Template>
+                            @RenderStatusBadge(((DualTeamMyTeamMemberDto)context).AccountStatus)
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn Field="@nameof(DualTeamMyTeamMemberDto.MembershipStatus)"
+                                HeaderText="@L["Reports.MembershipStatus"]" Width="150" TextAlign="TextAlign.Center"
+                                Type="ColumnType.String">
+                        <Template>
+                            @RenderStatusBadge(((DualTeamMyTeamMemberDto)context).MembershipStatus)
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn Field="@nameof(DualTeamMyTeamMemberDto.IsQualified)"
+                                HeaderText="@L["Reports.Qualified"]" Width="120" TextAlign="TextAlign.Center"
+                                Type="ColumnType.Boolean">
+                        <Template>
+                            @RenderQualifiedBadge(((DualTeamMyTeamMemberDto)context).IsQualified)
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn Field="@nameof(DualTeamMyTeamMemberDto.MembershipLevelName)"
+                                HeaderText="@L["Reports.Membership"]" Width="180" Type="ColumnType.String">
+                        <Template>
+                            @{ var mm = (DualTeamMyTeamMemberDto)context; }
+                            @(string.IsNullOrEmpty(mm.MembershipLevelName) ? "—" : mm.MembershipLevelName)
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn Field="@nameof(DualTeamMyTeamMemberDto.CurrentRankName)"
+                                HeaderText="@L["Reports.Rank"]" Width="130" Type="ColumnType.String">
+                        <Template>
+                            @{ var rm = (DualTeamMyTeamMemberDto)context; }
+                            @(string.IsNullOrEmpty(rm.CurrentRankName) ? "—" : rm.CurrentRankName)
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn Field="@nameof(DualTeamMyTeamMemberDto.RankDate)"
+                                HeaderText="@L["Reports.RankDate"]" Width="125" TextAlign="TextAlign.Center"
+                                Format="MMM dd, yyyy" Type="ColumnType.Date">
+                        <Template>
+                            @{ var rd = ((DualTeamMyTeamMemberDto)context).RankDate; }
+                            @(rd.HasValue ? rd.Value.ToString("MMM dd, yyyy") : "—")
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn Field="@nameof(DualTeamMyTeamMemberDto.LifetimeRankName)"
+                                HeaderText="@L["Reports.LifetimeRank"]" Width="140" Type="ColumnType.String">
+                        <Template>
+                            @{ var ltm = (DualTeamMyTeamMemberDto)context; }
+                            @(string.IsNullOrEmpty(ltm.LifetimeRankName) ? "—" : ltm.LifetimeRankName)
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn Field="@nameof(DualTeamMyTeamMemberDto.NextRankPercent)"
+                                HeaderText="@L["Reports.NextRankPercent"]" Width="110" TextAlign="TextAlign.Center"
+                                Type="ColumnType.Integer">
+                        <Template>
+                            @RenderNextRankDonut(((DualTeamMyTeamMemberDto)context).NextRankPercent)
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn Field="@nameof(DualTeamMyTeamMemberDto.QualificationPoints)"
+                                HeaderText="@L["Reports.QualPoints"]" Width="115" TextAlign="TextAlign.Right"
+                                Type="ColumnType.Integer">
+                        <Template>
+                            @(((DualTeamMyTeamMemberDto)context).QualificationPoints.ToString("N0"))
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn Field="@nameof(DualTeamMyTeamMemberDto.EnrollmentTeamPoints)"
+                                HeaderText="@L["Reports.EnrollTeamPoints"]" Width="135" TextAlign="TextAlign.Right"
+                                Type="ColumnType.Integer">
+                        <Template>
+                            @(((DualTeamMyTeamMemberDto)context).EnrollmentTeamPoints.ToString("N0"))
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn Field="@nameof(DualTeamMyTeamMemberDto.LeftTeamPoints)"
+                                HeaderText="@L["Reports.LeftTeamPoints"]" Width="125" TextAlign="TextAlign.Right"
+                                Type="ColumnType.Decimal">
+                        <Template>
+                            @(((DualTeamMyTeamMemberDto)context).LeftTeamPoints.ToString("N0"))
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn Field="@nameof(DualTeamMyTeamMemberDto.RightTeamPoints)"
+                                HeaderText="@L["Reports.RightTeamPoints"]" Width="125" TextAlign="TextAlign.Right"
+                                Type="ColumnType.Decimal">
+                        <Template>
+                            @(((DualTeamMyTeamMemberDto)context).RightTeamPoints.ToString("N0"))
+                        </Template>
+                    </GridColumn>
+
+                </GridColumns>
+            </SfGrid>
         }
     </div>
 </div>
@@ -146,7 +222,7 @@
 @code {
     // ── Parameters ───────────────────────────────────────────────────────────
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
-    [Parameter] public string ApiBaseUrl      { get; set; } = "api/v1/bizcenter/team";
+    [Parameter] public string ApiBaseUrl      { get; set; } = "api/v1/bizcenter/team/dual-tree";
     [Parameter] public bool   ShowBreadcrumb  { get; set; } = true;
 
     // ── State ────────────────────────────────────────────────────────────────
@@ -155,16 +231,15 @@
     private string? _search;
     private int    _page       = 1;
     private int    _total;
-    private int    _totalPages;
     private const int PageSize = 20;
 
-    private List<DualTeamMemberDto> _items = new();
+    private List<DualTeamMyTeamMemberDto> _items = new();
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
-        new("Dashboard", "/dashboard"),
-        new("Dual Team"),
-        new("My Team")
+        new(L["Nav.Dashboard"], "/dashboard"),
+        new(L["Sidebar.DualTeam"]),
+        new(L["Sidebar.MyTeam"])
     };
 
     // ── Lifecycle ────────────────────────────────────────────────────────────
@@ -175,7 +250,14 @@
     }
 
     // ── Data loading ─────────────────────────────────────────────────────────
-    private async Task LoadAsync(int page)
+    /// <summary>
+    /// User-triggered "Refresh" action. Re-fetches the current page bypassing
+    /// the BizCenter API's 5-minute cache so the user can see fresh data on
+    /// demand (e.g., after a placement or rank change they expect to see).
+    /// </summary>
+    private Task RefreshAsync() => LoadAsync(_page, bypassCache: true);
+
+    private async Task LoadAsync(int page, bool bypassCache = false)
     {
         _page      = page;
         _isLoading = true;
@@ -184,25 +266,26 @@
 
         try
         {
-            var url = $"{ApiBaseUrl}/members?page={page}&pageSize={PageSize}";
+            var url = $"{ApiBaseUrl}/my-team?page={page}&pageSize={PageSize}";
             if (!string.IsNullOrWhiteSpace(_search))
                 url += $"&search={Uri.EscapeDataString(_search)}";
+            if (bypassCache)
+                url += "&bypassCache=true";
 
-            var resp = await Http.GetFromJsonAsync<ApiWrapper<PagedData<DualTeamMemberDto>>>(url);
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<PagedData<DualTeamMyTeamMemberDto>>>(url);
             if (resp?.Success == true && resp.Data is not null)
             {
-                _items      = resp.Data.Items;
-                _total      = resp.Data.TotalCount;
-                _totalPages = (int)Math.Ceiling((double)_total / PageSize);
+                _items = resp.Data.Items;
+                _total = resp.Data.TotalCount;
             }
             else
             {
-                _error = "Failed to load team members.";
+                _error = L["Team.LoadFailedDualMembers"];
             }
         }
         catch (Exception ex)
         {
-            _error = $"API error: {ex.Message}";
+            _error = $"{L["Team.ApiErrorPrefix"]} {ex.Message}";
         }
         finally
         {
@@ -253,15 +336,15 @@
         <span class="badge bg-@cls bg-opacity-10 text-@cls p-2 fs-12 fw-normal">@(status ?? "—")</span>
     };
 
-    private RenderFragment RenderQualifiedBadge(string status) => __builder =>
+    private RenderFragment RenderQualifiedBadge(bool isQualified) => __builder =>
     {
-        if (string.Equals(status, "Qualified", StringComparison.OrdinalIgnoreCase))
+        if (isQualified)
         {
-            <span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">Qualified</span>
+            <span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">@L["Reports.Qualified"]</span>
         }
         else
         {
-            <span class="badge bg-warning bg-opacity-10 text-warning p-2 fs-12 fw-normal">Unqualified</span>
+            <span class="badge bg-warning bg-opacity-10 text-warning p-2 fs-12 fw-normal">@L["Reports.Unqualified"]</span>
         }
     };
 
@@ -269,25 +352,34 @@
     private class ApiWrapper<T> { public bool Success { get; set; } public T? Data { get; set; } }
     private class PagedData<T>  { public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
 
-    private record DualTeamMemberDto(
-        string   MemberId,
-        string   FullName,
-        int      Level,
-        string   Leg,
-        string   Country,
-        string   SponsorName,
-        string   DualTeamUplineName,
-        string   BizCenterStatus,
-        string   MembershipStatus,
-        string   QualifiedStatus,
-        string   MembershipName,
-        string   RankName,
-        DateTime? RankDate,
-        string   LifetimeRankName,
-        int      NextRankPercent,
-        int      QualificationPoints,
-        int      EnrollmentTeamPoints,
-        int      LeftTeamPoints,
-        int      RightTeamPoints,
-        DateTime JoinDate);
+    // Field names match the backend DualTeamMyTeamMemberDto exactly so
+    // System.Text.Json deserializes without remapping. Public class with
+    // mutable properties is required by Syncfusion's reflection.
+    public class DualTeamMyTeamMemberDto
+    {
+        public string    MemberId             { get; set; } = string.Empty;
+        public string    FullName             { get; set; } = string.Empty;
+        public string    Email                { get; set; } = string.Empty;
+        public string?   Phone                { get; set; }
+        public string    Country              { get; set; } = string.Empty;
+        public int       Level                { get; set; }
+        public string    Leg                  { get; set; } = string.Empty;
+        public DateTime  EnrollDate           { get; set; }
+        public string?   SponsorMemberId      { get; set; }
+        public string?   SponsorFullName      { get; set; }
+        public string?   DualUplineMemberId   { get; set; }
+        public string?   DualUplineFullName   { get; set; }
+        public string    AccountStatus        { get; set; } = string.Empty;
+        public string    MembershipStatus     { get; set; } = string.Empty;
+        public bool      IsQualified          { get; set; }
+        public string?   MembershipLevelName  { get; set; }
+        public string?   CurrentRankName      { get; set; }
+        public DateTime? RankDate             { get; set; }
+        public string?   LifetimeRankName     { get; set; }
+        public int       NextRankPercent      { get; set; }
+        public int       QualificationPoints  { get; set; }
+        public int       EnrollmentTeamPoints { get; set; }
+        public decimal   LeftTeamPoints       { get; set; }
+        public decimal   RightTeamPoints      { get; set; }
+    }
 }

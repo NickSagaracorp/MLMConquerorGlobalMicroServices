@@ -9,7 +9,9 @@ using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.ForgotPassword;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Login;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Logout;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.RefreshToken;
+using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.ResendTwoFactor;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.ResetPassword;
+using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.VerifyTwoFactor;
 using System.Security.Claims;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Controllers;
@@ -39,9 +41,45 @@ public class AuthController : ControllerBase
             return Unauthorized(ApiResponse<AuthResponse>.Fail(result.ErrorCode!, result.Error!));
 
         var response = result.Value!;
+
+        // 2FA challenge — no refresh cookie yet; the client redeems the
+        // ChallengeToken via /api/v1/auth/two-factor/verify to obtain real tokens.
+        if (response.RequiresTwoFactor)
+            return Ok(ApiResponse<AuthResponse>.Ok(response));
+
         SetRefreshTokenCookie(response.RefreshToken);
         response.RefreshToken = string.Empty; // do not expose in response body
         return Ok(ApiResponse<AuthResponse>.Ok(response));
+    }
+
+    /// <summary>Verifies a 6-digit TOTP-style code emitted by the login challenge and issues real access/refresh tokens.</summary>
+    [HttpPost("two-factor/verify")]
+    [AllowAnonymous]
+    public async Task<IActionResult> VerifyTwoFactor(
+        [FromBody] VerifyTwoFactorRequest request,
+        CancellationToken ct)
+    {
+        var result = await _mediator.Send(new VerifyTwoFactorCommand(request), ct);
+        if (!result.IsSuccess)
+            return Unauthorized(ApiResponse<AuthResponse>.Fail(result.ErrorCode!, result.Error!));
+
+        var response = result.Value!;
+        SetRefreshTokenCookie(response.RefreshToken);
+        response.RefreshToken = string.Empty;
+        return Ok(ApiResponse<AuthResponse>.Ok(response));
+    }
+
+    /// <summary>Sends a fresh 6-digit code and returns a new ChallengeToken; rate-limited per IP via AspNetCoreRateLimit.</summary>
+    [HttpPost("two-factor/resend")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ResendTwoFactor(
+        [FromBody] ResendTwoFactorRequest request,
+        CancellationToken ct)
+    {
+        var result = await _mediator.Send(new ResendTwoFactorCommand(request), ct);
+        return result.IsSuccess
+            ? Ok(ApiResponse<AuthResponse>.Ok(result.Value!))
+            : BadRequest(ApiResponse<AuthResponse>.Fail(result.ErrorCode!, result.Error!));
     }
 
     /// <summary>Issues new access token using the HttpOnly refresh cookie.</summary>

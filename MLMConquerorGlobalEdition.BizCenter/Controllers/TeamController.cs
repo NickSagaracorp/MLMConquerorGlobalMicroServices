@@ -14,6 +14,7 @@ using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetVisualizerStats;
 using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetVisualizerChildren;
 using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetDualTreeNode;
 using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetDualTreeStats;
+using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetDualTeamMyTeam;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Controllers;
@@ -83,6 +84,32 @@ public class TeamController : ControllerBase
             return BadRequest(ApiResponse<PagedResult<EnrollmentMyTeamMemberDto>>
                 .Fail(result.ErrorCode!, result.Error!));
         return Ok(ApiResponse<PagedResult<EnrollmentMyTeamMemberDto>>.Ok(result.Value!));
+    }
+
+    /// <summary>
+    /// GET /api/v1/bizcenter/team/dual-tree/my-team — full enriched dual-tree
+    /// (binary) team list. Filters by the viewer's binary subtree, computes
+    /// each descendant's Leg (Left/Right) from the gateway-node Side, and
+    /// joins membership/rank/points data per member. Cached for 5 minutes per
+    /// (member, page, filter); pass <c>?bypassCache=true</c> to force a fresh
+    /// read when the user clicks the page's refresh button.
+    /// </summary>
+    [HttpGet("dual-tree/my-team")]
+    public async Task<IActionResult> GetDualTeamMyTeam(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        [FromQuery] bool bypassCache = false,
+        CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(
+            new GetDualTeamMyTeamQuery(page, pageSize, search, from, to, bypassCache), ct);
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<PagedResult<DualTeamMyTeamMemberDto>>
+                .Fail(result.ErrorCode!, result.Error!));
+        return Ok(ApiResponse<PagedResult<DualTeamMyTeamMemberDto>>.Ok(result.Value!));
     }
 
     /// <summary>GET /api/v1/bizcenter/team/enrollment/branches — direct sponsored branches with points and rank eligibility</summary>

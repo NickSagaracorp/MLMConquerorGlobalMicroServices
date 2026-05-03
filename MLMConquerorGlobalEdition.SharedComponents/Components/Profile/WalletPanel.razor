@@ -1,5 +1,6 @@
 @inject HttpClient Http
 @inject IViewContextService ViewContext
+@inject IStringLocalizer<SharedResources> L
 
 <LoadingSpinner IsLoading="@_isLoading" />
 
@@ -12,18 +13,18 @@
         </div>
     }
 
-    @* ─── Tabs: Payout Options (gateways) | Payment Method (cards) ───────── *@
+    @* ─── Tabs: Payment Method (cards + transactions) | Payout Options (gateways + history) ─── *@
     <ul class="nav nav-tabs mb-3" role="tablist">
-        <li class="nav-item">
-            <button class="nav-link @(_activeTab == "payout" ? "active" : "")"
-                    @onclick='() => _activeTab = "payout"'>
-                <i class="ri-wallet-3-line me-1"></i>Payout Options
-            </button>
-        </li>
         <li class="nav-item">
             <button class="nav-link @(_activeTab == "payment" ? "active" : "")"
                     @onclick='() => _activeTab = "payment"'>
-                <i class="ri-bank-card-line me-1"></i>Payment Method
+                <i class="ri-bank-card-line me-1"></i>@L["PaymentMethod.PaymentMethodTab"]
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link @(_activeTab == "payout" ? "active" : "")"
+                    @onclick='() => _activeTab = "payout"'>
+                <i class="ri-wallet-3-line me-1"></i>@L["PaymentMethod.PayoutOptionsTab"]
             </button>
         </li>
     </ul>
@@ -31,6 +32,9 @@
     @if (_activeTab == "payment")
     {
         <PaymentMethodTab />
+        <div class="mt-4">
+            <BillingHistoryTable />
+        </div>
     }
     else
     {
@@ -40,9 +44,9 @@
             <div class="card">
                 <div class="card-header py-3 d-flex align-items-center">
                     <h6 class="card-title mb-0 fw-semibold flex-grow-1">
-                        <i class="ri-wallet-3-line me-2 text-primary"></i>Payout Options
+                        <i class="ri-wallet-3-line me-2 text-primary"></i>@L["PaymentMethod.PayoutOptionsTitle"]
                     </h6>
-                    <small class="text-muted">Add or update each gateway separately. Mark one as default to receive commissions.</small>
+                    <small class="text-muted">@L["PaymentMethod.PayoutOptionsHint"]</small>
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
@@ -58,7 +62,7 @@
                                     {
                                         <div class="bg-success bg-opacity-10 border-bottom border-success py-2 px-3">
                                             <span class="text-success fw-semibold small">
-                                                <i class="ri-star-fill me-1"></i>Default — receiving commissions
+                                                <i class="ri-star-fill me-1"></i>@L["PaymentMethod.DefaultReceiving"]
                                             </span>
                                         </div>
                                     }
@@ -70,7 +74,7 @@
                                                 @if (info is not null)
                                                 {
                                                     <div class="small text-muted mt-1">
-                                                        <i class="ri-money-dollar-circle-line me-1"></i>Admin fee: <strong>@info.AdminFeeDisplay</strong> per payout
+                                                        <i class="ri-money-dollar-circle-line me-1"></i>@L["PaymentMethod.AdminFee"] <strong>@info.AdminFeeDisplay</strong> @L["PaymentMethod.PerPayout"]
                                                     </div>
                                                 }
                                             </div>
@@ -87,46 +91,46 @@
                                         @if (existing is not null)
                                         {
                                             <div class="small mb-1">
-                                                <span class="text-muted">Account:</span>
+                                                <span class="text-muted">@L["PaymentMethod.Account"]</span>
                                                 <code class="ms-1 text-break">@(existing.AccountIdentifier ?? "—")</code>
                                             </div>
                                             <div class="small mb-1">
-                                                <span class="text-muted">Status:</span>
+                                                <span class="text-muted">@L["PaymentMethod.Status"]</span>
                                                 <span class="badge @StatusBadgeClass(existing.Status) ms-1">@existing.StatusName</span>
                                             </div>
-                                            <div class="small text-muted mb-2">Updated @existing.LastUpdateDate.ToString("MMM dd, yyyy")</div>
+                                            <div class="small text-muted mb-2">@L["PaymentMethod.UpdatedPrefix"] @existing.LastUpdateDate.ToString("MMM dd, yyyy")</div>
                                         }
                                         else
                                         {
-                                            <div class="small text-muted mb-2 fst-italic">Not configured yet.</div>
+                                            <div class="small text-muted mb-2 fst-italic">@L["PaymentMethod.NotConfigured"]</div>
                                         }
 
                                         <div class="mt-auto d-grid gap-2">
                                             <button class="btn btn-sm btn-outline-primary"
                                                     @onclick="() => OpenEdit(gw)">
-                                                <i class="ri-edit-line me-1"></i>@(existing is null ? "Add account" : "Edit account")
+                                                <i class="ri-edit-line me-1"></i>@(existing is null ? L["PaymentMethod.AddAccount"].Value : L["PaymentMethod.EditAccount"].Value)
                                             </button>
 
                                             @if (isPreferred)
                                             {
                                                 <button class="btn btn-sm btn-success" disabled>
-                                                    <i class="ri-check-line me-1"></i>Currently default
+                                                    <i class="ri-check-line me-1"></i>@L["PaymentMethod.CurrentlyDefault"]
                                                 </button>
                                             }
                                             else if (canBeDefault)
                                             {
                                                 <button class="btn btn-sm btn-outline-success"
                                                         disabled="@_busy"
-                                                        title="Use this wallet to receive commission payouts"
+                                                        title="@L["PaymentMethod.SetAsDefaultTooltip"]"
                                                         @onclick="() => SetDefaultAsync(existing!.WalletType)">
-                                                    <i class="ri-star-line me-1"></i>Set as default
+                                                    <i class="ri-star-line me-1"></i>@L["PaymentMethod.SetAsDefault"]
                                                 </button>
                                             }
                                             else if (existing is not null && existing.StatusName != "Approved")
                                             {
                                                 <button class="btn btn-sm btn-outline-secondary" disabled
-                                                        title="The gateway must approve this account before it can be set as default">
-                                                    <i class="ri-lock-line me-1"></i>Pending approval
+                                                        title="@L["PaymentMethod.PendingApprovalTooltip"]">
+                                                    <i class="ri-lock-line me-1"></i>@L["PaymentMethod.PendingApproval"]
                                                 </button>
                                             }
                                         </div>
@@ -142,51 +146,75 @@
         @* ─── Wallet history (visible to member + admin; admin gets API logs too) ─── *@
         <div class="col-12">
             <div class="card">
-                <div class="card-header py-3">
-                    <h6 class="card-title mb-0 fw-semibold">
-                        <i class="ri-history-line me-2 text-warning"></i>Wallet Change History
-                        <small class="text-muted ms-2">— including account-identifier changes for fraud prevention</small>
+                <div class="card-header py-3 d-flex align-items-center">
+                    <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+                        <i class="ri-history-line me-2 text-warning"></i>@L["PaymentMethod.WalletHistoryTitle"]
                     </h6>
+                    <small class="text-muted">@L["PaymentMethod.WalletHistoryHint"]</small>
                 </div>
                 <div class="card-body p-0">
                     <LoadingSpinner IsLoading="@_historyLoading" />
                     @if (!_historyLoading)
                     {
                         <div class="table-responsive">
-                            <table class="table table-hover table-sm mb-0">
-                                <thead class="bg-light">
+                            <table class="table table-hover table-sm align-middle mb-0">
+                                <thead class="table-light">
                                     <tr>
-                                        <th>When</th>
-                                        <th>Gateway</th>
-                                        <th>Change</th>
-                                        <th>From → To</th>
-                                        <th>Status</th>
-                                        <th>By</th>
+                                        <th class="py-3 px-3 fw-semibold small text-uppercase text-muted">@L["Common.When"]</th>
+                                        <th class="py-3 px-3 fw-semibold small text-uppercase text-muted">@L["PaymentMethod.History.Gateway"]</th>
+                                        <th class="py-3 px-3 fw-semibold small text-uppercase text-muted">@L["PaymentMethod.History.Change"]</th>
+                                        <th class="py-3 px-3 fw-semibold small text-uppercase text-muted">@L["PaymentMethod.History.FromTo"]</th>
+                                        <th class="py-3 px-3 fw-semibold small text-uppercase text-muted">@L["Common.Status"]</th>
+                                        <th class="py-3 px-3 fw-semibold small text-uppercase text-muted">@L["Common.By"]</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @if (!_history.Any())
                                     {
-                                        <tr><td colspan="6" class="text-center text-muted py-4">No wallet changes yet.</td></tr>
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted py-5">
+                                                <i class="ri-history-line d-block mb-2 text-muted" style="font-size:2rem;opacity:0.5"></i>
+                                                @L["PaymentMethod.NoWalletChanges"]
+                                            </td>
+                                        </tr>
                                     }
                                     @foreach (var h in _history)
                                     {
-                                        <tr class="@(h.Action == "AccountChanged" ? "table-warning" : "")">
-                                            <td class="small">@h.OccurredAt.ToString("MMM dd, yyyy HH:mm")</td>
-                                            <td><span class="badge bg-light text-dark border">@h.WalletType</span></td>
-                                            <td>@FormatAction(h.Action)</td>
-                                            <td>@RenderTransition(h)</td>
-                                            <td>
+                                        var isAccountChange = h.Action == "AccountChanged";
+                                        var gatewayName     = ResolveGatewayName(h.WalletType);
+                                        var gatewayIcon     = ResolveGatewayIcon(h.WalletType);
+                                        <tr>
+                                            <td class="py-3 px-3 small text-nowrap"
+                                                style="@(isAccountChange ? "border-left: 3px solid var(--bs-warning);" : "")">
+                                                @h.OccurredAt.ToString("MMM dd, yyyy HH:mm")
+                                            </td>
+                                            <td class="py-3 px-3">
+                                                <span class="d-inline-flex align-items-center gap-1 badge bg-light text-dark border fw-normal">
+                                                    <i class="@gatewayIcon"></i>
+                                                    <span>@gatewayName</span>
+                                                </span>
+                                            </td>
+                                            <td class="py-3 px-3 small">@FormatAction(h.Action)</td>
+                                            <td class="py-3 px-3">@RenderTransition(h)</td>
+                                            <td class="py-3 px-3">
                                                 @if (h.OldStatus != h.NewStatus)
                                                 {
-                                                    <span class="small">@h.OldStatus → @h.NewStatus</span>
+                                                    <span class="d-inline-flex align-items-center gap-1 small">
+                                                        <span class="badge @StatusBadgeClass(h.OldStatus)">@StatusName(h.OldStatus)</span>
+                                                        <i class="ri-arrow-right-line text-muted"></i>
+                                                        <span class="badge @StatusBadgeClass(h.NewStatus)">@StatusName(h.NewStatus)</span>
+                                                    </span>
                                                 }
                                                 else
                                                 {
-                                                    <span class="small text-muted">—</span>
+                                                    <span class="small text-muted fst-italic">@L["PaymentMethod.History.NoChange"]</span>
                                                 }
                                             </td>
-                                            <td class="small text-muted">@h.ChangedBy</td>
+                                            <td class="py-3 px-3">
+                                                <code class="small text-muted" title="@h.ChangedBy">
+                                                    @TruncateId(h.ChangedBy)
+                                                </code>
+                                            </td>
                                         </tr>
                                     }
                                 </tbody>
@@ -204,8 +232,8 @@
                 <div class="card border-info">
                     <div class="card-header py-3">
                         <h6 class="card-title mb-0 fw-semibold">
-                            <i class="ri-code-s-slash-line me-2 text-info"></i>Gateway API Call Log
-                            <small class="text-muted ms-2">— request/response per gateway interaction (for support escalations)</small>
+                            <i class="ri-code-s-slash-line me-2 text-info"></i>@L["PaymentMethod.ApiLogTitle"]
+                            <small class="text-muted ms-2">@L["PaymentMethod.ApiLogHint"]</small>
                         </h6>
                     </div>
                     <div class="card-body p-0">
@@ -216,19 +244,19 @@
                                 <table class="table table-sm mb-0">
                                     <thead class="bg-light">
                                         <tr>
-                                            <th>When</th>
-                                            <th>Gateway</th>
-                                            <th>Operation</th>
-                                            <th>Endpoint</th>
-                                            <th>Status</th>
-                                            <th>Duration</th>
-                                            <th>Result</th>
+                                            <th>@L["Common.When"]</th>
+                                            <th>@L["PaymentMethod.History.Gateway"]</th>
+                                            <th>@L["PaymentMethod.Log.Operation"]</th>
+                                            <th>@L["PaymentMethod.Log.Endpoint"]</th>
+                                            <th>@L["Common.Status"]</th>
+                                            <th>@L["PaymentMethod.Log.Duration"]</th>
+                                            <th>@L["PaymentMethod.Log.Result"]</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @if (!_apiLogs.Any())
                                         {
-                                            <tr><td colspan="7" class="text-center text-muted py-4">No API calls logged.</td></tr>
+                                            <tr><td colspan="7" class="text-center text-muted py-4">@L["PaymentMethod.NoApiLogs"]</td></tr>
                                         }
                                         @foreach (var log in _apiLogs)
                                         {
@@ -243,7 +271,7 @@
                                                 <td class="small">@log.DurationMs ms</td>
                                                 <td>
                                                     <button class="btn btn-link btn-sm p-0" @onclick="() => _expandedLogId = (_expandedLogId == log.Id ? -1 : log.Id)">
-                                                        @(_expandedLogId == log.Id ? "Hide" : "View req/resp")
+                                                        @(_expandedLogId == log.Id ? L["PaymentMethod.Log.Hide"].Value : L["PaymentMethod.Log.View"].Value)
                                                     </button>
                                                 </td>
                                             </tr>
@@ -252,11 +280,11 @@
                                                 <tr><td colspan="7" class="bg-light p-3">
                                                     <div class="row g-2">
                                                         <div class="col-md-6">
-                                                            <div class="small fw-semibold text-muted mb-1">Request</div>
+                                                            <div class="small fw-semibold text-muted mb-1">@L["PaymentMethod.Log.Request"]</div>
                                                             <pre class="small mb-0" style="max-height:160px;overflow:auto">@(log.RequestBody ?? "—")</pre>
                                                         </div>
                                                         <div class="col-md-6">
-                                                            <div class="small fw-semibold text-muted mb-1">Response @(log.Success ? "" : "(error)")</div>
+                                                            <div class="small fw-semibold text-muted mb-1">@L["PaymentMethod.Log.Response"] @(log.Success ? "" : L["PaymentMethod.Log.ResponseError"].Value)</div>
                                                             <pre class="small mb-0" style="max-height:160px;overflow:auto">@(log.ResponseBody ?? log.ErrorMessage ?? "—")</pre>
                                                         </div>
                                                     </div>
@@ -294,21 +322,21 @@
                         @if (_editing.Code == 4) @* eWallet *@
                         {
                             <div class="mb-3">
-                                <label class="form-label small">eWallet Password (will be encrypted)</label>
+                                <label class="form-label small">@L["PaymentMethod.EWalletPasswordLabel"]</label>
                                 <input type="password" class="form-control" @bind="_editPassword" />
-                                <div class="form-text small">Required by I-Payout for the initial registration only.</div>
+                                <div class="form-text small">@L["PaymentMethod.EWalletPasswordHint"]</div>
                             </div>
                         }
                         <div class="mb-0">
-                            <label class="form-label small">Notes</label>
+                            <label class="form-label small">@L["PaymentMethod.NotesLabel"]</label>
                             <textarea class="form-control" rows="2" @bind="_editNotes"></textarea>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button class="btn btn-outline-secondary" @onclick="() => _editing = null">Cancel</button>
+                        <button class="btn btn-outline-secondary" @onclick="() => _editing = null">@L["Common.Cancel"]</button>
                         <button class="btn btn-primary" disabled="@_busy" @onclick="SaveEditAsync">
                             @if (_busy) { <span class="spinner-border spinner-border-sm me-2"></span> }
-                            Save
+                            @L["Common.Save"]
                         </button>
                     </div>
                 </div>
@@ -327,7 +355,7 @@
     private string? _alertMsg;
     private bool   _alertIsError;
     private long   _expandedLogId  = -1;
-    private string _activeTab      = "payout";  // "payout" | "payment"
+    private string _activeTab      = "payment";  // "payment" | "payout"
 
     private List<WalletDto>           _wallets       = new();
     private List<GatewayInfoDto>      _gatewayInfos  = new();
@@ -339,17 +367,19 @@
     private string?  _editPassword;
     private string?  _editNotes;
 
-    // Apex four gateways the company supports today.
-    private readonly List<GatewayDescriptor> _supportedGateways = new()
+    // Apex four gateways the company supports today. Built lazily so the
+    // localizer is available at construction time.
+    private List<GatewayDescriptor>? _supportedGatewaysCache;
+    private List<GatewayDescriptor> _supportedGateways => _supportedGatewaysCache ??= new()
     {
-        new(4,  "eWallet (I-Payout)", "ri-bank-card-line",  "I-Payout email", "user@example.com",
-            "I-Payout will email a confirmation to verify the account."),
-        new(1,  "Dwolla",             "ri-bank-line",       "Dwolla account email", "user@example.com",
-            "Use the email tied to your Dwolla account."),
-        new(9,  "Crypto",             "ri-coin-line",       "Wallet address",  "bc1qxy2k...x9k2",
-            "Provide the receiving wallet address for the asset you want payouts in."),
-        new(10, "Advancash",          "ri-wallet-line",     "Advancash account email", "user@example.com",
-            "Use the email tied to your AdvCash account.")
+        new(4,  L["PaymentMethod.Gateway.EWalletLabel"].Value,  "ri-bank-card-line",  L["PaymentMethod.Gateway.EWalletField"].Value,  L["PaymentMethod.Gateway.EmailPlaceholder"].Value,
+            L["PaymentMethod.Gateway.EWalletHelp"].Value),
+        new(1,  L["PaymentMethod.Gateway.DwollaLabel"].Value,   "ri-bank-line",       L["PaymentMethod.Gateway.DwollaField"].Value,   L["PaymentMethod.Gateway.EmailPlaceholder"].Value,
+            L["PaymentMethod.Gateway.DwollaHelp"].Value),
+        new(9,  L["PaymentMethod.Gateway.CryptoLabel"].Value,   "ri-coin-line",       L["PaymentMethod.Gateway.CryptoField"].Value,   L["PaymentMethod.Gateway.CryptoPlaceholder"].Value,
+            L["PaymentMethod.Gateway.CryptoHelp"].Value),
+        new(10, L["PaymentMethod.Gateway.AdvCashLabel"].Value,  "ri-wallet-line",     L["PaymentMethod.Gateway.AdvCashField"].Value,  L["PaymentMethod.Gateway.EmailPlaceholder"].Value,
+            L["PaymentMethod.Gateway.AdvCashHelp"].Value)
     };
 
     private string BizCenterBaseUrl => "api/v1/bizcenter/wallets";
@@ -434,7 +464,7 @@
     {
         if (_editing is null) return;
         if (string.IsNullOrWhiteSpace(_editAccountIdentifier))
-        { _alertMsg = "Account identifier is required."; _alertIsError = true; return; }
+        { _alertMsg = L["PaymentMethod.AccountIdRequired"]; _alertIsError = true; return; }
 
         // Pre-validate locally so the user gets instant feedback before the round trip.
         var trimmed     = _editAccountIdentifier!.Trim();
@@ -455,7 +485,7 @@
             var resp = await Http.PutAsJsonAsync(url, payload);
             if (resp.IsSuccessStatusCode)
             {
-                _alertMsg = $"{_editing.Label} updated."; _alertIsError = false;
+                _alertMsg = $"{_editing.Label} {L["PaymentMethod.WalletUpdatedSuffix"]}"; _alertIsError = false;
                 _editing = null;
                 await LoadWalletsAsync();
                 await LoadHistoryAsync();
@@ -469,12 +499,12 @@
                 _alertMsg = msg; _alertIsError = true;
             }
         }
-        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        catch (Exception ex) { _alertMsg = $"{L["PaymentMethod.ErrorPrefix"]} {ex.Message}"; _alertIsError = true; }
         finally { _busy = false; StateHasChanged(); }
     }
 
     /// <summary>Mirrors the server-side validation so the user gets instant feedback.</summary>
-    private static string? ValidateLocally(int walletTypeCode, string value)
+    private string? ValidateLocally(int walletTypeCode, string value)
     {
         var isEmail = System.Text.RegularExpressions.Regex.IsMatch(
             value, @"^[^\s@]+@[^\s@]+\.[^\s@]+$");
@@ -482,8 +512,7 @@
         if (walletTypeCode == 9) // Crypto
         {
             if (isEmail)
-                return "A crypto wallet address is required, not an email. " +
-                       "Provide a Bitcoin (bc1.../1.../3...), USDT-TRC20 (T...), or EVM (0x...) address.";
+                return L["PaymentMethod.Validation.CryptoRequired"];
 
             var looksLikeCrypto =
                 System.Text.RegularExpressions.Regex.IsMatch(value, @"^(bc1)[a-z0-9]{6,87}$") ||
@@ -492,12 +521,12 @@
                 System.Text.RegularExpressions.Regex.IsMatch(value, @"^T[1-9A-HJ-NP-Za-km-z]{33}$");
 
             return looksLikeCrypto ? null
-                : "Account does not look like a valid crypto wallet address.";
+                : L["PaymentMethod.Validation.CryptoInvalid"].Value;
         }
 
         // Email-based gateways (eWallet 4 / Dwolla 1 / Advancash 10)
         if (!isEmail)
-            return "This gateway expects a valid email address as the account identifier.";
+            return L["PaymentMethod.Validation.EmailRequired"];
 
         return null;
     }
@@ -526,47 +555,50 @@
             var resp = await Http.PutAsync($"{ListUrl}/{walletType}/default", null);
             if (resp.IsSuccessStatusCode)
             {
-                _alertMsg = "Default wallet updated."; _alertIsError = false;
+                _alertMsg = L["PaymentMethod.DefaultWalletUpdated"]; _alertIsError = false;
                 await LoadWalletsAsync();
                 await LoadHistoryAsync();
             }
             else
             {
                 var err = await resp.Content.ReadAsStringAsync();
-                _alertMsg = $"Could not set as default: {err}"; _alertIsError = true;
+                _alertMsg = $"{L["PaymentMethod.CouldNotSetWalletDefaultPrefix"]} {err}"; _alertIsError = true;
             }
         }
-        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        catch (Exception ex) { _alertMsg = $"{L["PaymentMethod.ErrorPrefix"]} {ex.Message}"; _alertIsError = true; }
         finally { _busy = false; StateHasChanged(); }
     }
 
-    private static string FormatAction(string action) => action switch
+    private string FormatAction(string action) => action switch
     {
-        "Created"        => "Account created",
-        "AccountChanged" => "Account changed",
-        "StatusChanged"  => "Status changed",
-        "SetAsDefault"   => "Set as default",
-        "UnsetAsDefault" => "Replaced as default",
-        "Deleted"        => "Account removed",
+        "Created"        => L["PaymentMethod.Action.Created"],
+        "AccountChanged" => L["PaymentMethod.Action.AccountChanged"],
+        "StatusChanged"  => L["PaymentMethod.Action.StatusChanged"],
+        "SetAsDefault"   => L["PaymentMethod.Action.SetAsDefault"],
+        "UnsetAsDefault" => L["PaymentMethod.Action.UnsetAsDefault"],
+        "Deleted"        => L["PaymentMethod.Action.Deleted"],
         _                => action
     };
+
+    private const string TruncateStyle =
+        "max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle;";
 
     private static RenderFragment RenderTransition(WalletHistoryItem h) => __builder =>
     {
         if (h.Action == "AccountChanged" && (!string.IsNullOrEmpty(h.OldAccountIdentifier) || !string.IsNullOrEmpty(h.NewAccountIdentifier)))
         {
-            <code class="small">@(h.OldAccountIdentifier ?? "—")</code>
+            <code class="small" style="@TruncateStyle" title="@(h.OldAccountIdentifier ?? "")">@(h.OldAccountIdentifier ?? "—")</code>
             <i class="ri-arrow-right-line mx-1 text-warning"></i>
-            <code class="small fw-semibold text-warning">@(h.NewAccountIdentifier ?? "—")</code>
+            <code class="small fw-semibold text-warning" style="@TruncateStyle" title="@(h.NewAccountIdentifier ?? "")">@(h.NewAccountIdentifier ?? "—")</code>
         }
         else if (h.Action == "Created")
         {
             <span class="text-muted">— → </span>
-            <code class="small">@(h.NewAccountIdentifier ?? "—")</code>
+            <code class="small" style="@TruncateStyle" title="@(h.NewAccountIdentifier ?? "")">@(h.NewAccountIdentifier ?? "—")</code>
         }
         else if (h.Action == "SetAsDefault" || h.Action == "UnsetAsDefault")
         {
-            <code class="small">@(h.NewAccountIdentifier ?? "—")</code>
+            <code class="small" style="@TruncateStyle" title="@(h.NewAccountIdentifier ?? "")">@(h.NewAccountIdentifier ?? "—")</code>
         }
         else
         {
@@ -581,6 +613,40 @@
         3 => "bg-danger",                 // Rejected
         _ => "bg-secondary"
     };
+
+    private string StatusName(int status) => status switch
+    {
+        1 => L["WalletStatus.Pending"],
+        2 => L["WalletStatus.Approved"],
+        3 => L["WalletStatus.Rejected"],
+        _ => "—"
+    };
+
+    private string ResolveGatewayName(int walletType)
+    {
+        var info = _gatewayInfos.FirstOrDefault(i => i.WalletType == walletType);
+        if (info is not null && !string.IsNullOrWhiteSpace(info.DisplayName))
+            return info.DisplayName;
+        if (info is not null && !string.IsNullOrWhiteSpace(info.WalletTypeName))
+            return info.WalletTypeName;
+
+        var supported = _supportedGateways.FirstOrDefault(g => g.Code == walletType);
+        if (supported is not null) return supported.Label;
+
+        return walletType.ToString();
+    }
+
+    private string ResolveGatewayIcon(int walletType)
+    {
+        var supported = _supportedGateways.FirstOrDefault(g => g.Code == walletType);
+        return supported?.Icon ?? "ri-wallet-3-line";
+    }
+
+    private static string TruncateId(string? id)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return "—";
+        return id.Length > 8 ? id.Substring(0, 8) + "…" : id;
+    }
 
     private record GatewayDescriptor(int Code, string Label, string Icon,
         string AccountFieldLabel, string AccountFieldPlaceholder, string HelpText);

@@ -1,9 +1,12 @@
 @page "/signup"
 @page "/signup/{SponsorSlug}"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @layout MLMConquerorGlobalEdition.SharedComponents.Components.Layout.BlankLayout
 @inject IHttpClientFactory HttpFactory
 @inject NavigationManager Navigation
+@inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
+
+<PageTitle>@L["PageTitle.Signup"]</PageTitle>
 
 @{
     var api = HttpFactory.CreateClient("SignupsApi");
@@ -13,25 +16,25 @@
     <div class="signup-card">
 
         <div class="signup-logo">
-            <h2>MLM Conqueror</h2>
-            <p class="text-muted">Create Your Account</p>
+            <h2>@L["Signup.BrandTitle"]</h2>
+            <p class="text-muted">@L["Signup.BrandSubtitle"]</p>
         </div>
 
         <!-- Progress bar -->
         <div class="progress-steps mb-4">
             <div class="step @(Step >= 1 ? "active" : "") @(Step > 1 ? "done" : "")">
                 <span class="step-dot">@(Step > 1 ? "✓" : "1")</span>
-                <span class="step-label">Personal Info</span>
+                <span class="step-label">@L["Signup.StepPersonal"]</span>
             </div>
             <div class="step-line"></div>
             <div class="step @(Step >= 2 ? "active" : "") @(Step > 2 ? "done" : "")">
                 <span class="step-dot">@(Step > 2 ? "✓" : "2")</span>
-                <span class="step-label">Products</span>
+                <span class="step-label">@L["Signup.StepProducts"]</span>
             </div>
             <div class="step-line"></div>
             <div class="step @(Step >= 3 ? "active" : "")">
                 <span class="step-dot">3</span>
-                <span class="step-label">Payment</span>
+                <span class="step-label">@L["Signup.StepPayment"]</span>
             </div>
         </div>
 
@@ -46,63 +49,63 @@
             @if (_sponsor is not null)
             {
                 <div class="sponsor-banner mb-3">
-                    <span class="badge bg-success me-2">Sponsor</span>
+                    <span class="badge bg-success me-2">@L["Signup.SponsorBadge"]</span>
                     <strong>@_sponsor.DisplayName</strong>
                 </div>
             }
 
             <div class="row g-2 mb-2">
                 <div class="col-6">
-                    <label class="form-label">First Name *</label>
+                    <label class="form-label">@L["Signup.FirstName"] *</label>
                     <input class="form-control" @bind="_form.FirstName" />
                 </div>
                 <div class="col-6">
-                    <label class="form-label">Last Name *</label>
+                    <label class="form-label">@L["Signup.LastName"] *</label>
                     <input class="form-control" @bind="_form.LastName" />
                 </div>
             </div>
             <div class="mb-2">
-                <label class="form-label">Email *</label>
+                <label class="form-label">@L["Signup.Email"] *</label>
                 <input class="form-control" type="email" @bind="_form.Email" />
             </div>
             <div class="row g-2 mb-2">
                 <div class="col-6">
-                    <label class="form-label">Password *</label>
+                    <label class="form-label">@L["Signup.Password"] *</label>
                     <input class="form-control" type="password" @bind="_form.Password" />
                 </div>
                 <div class="col-6">
-                    <label class="form-label">Confirm Password *</label>
+                    <label class="form-label">@L["Signup.ConfirmPassword"] *</label>
                     <input class="form-control" type="password" @bind="_form.ConfirmPassword" />
                 </div>
             </div>
             <div class="row g-2 mb-2">
                 <div class="col-6">
-                    <label class="form-label">Date of Birth *</label>
+                    <label class="form-label">@L["Signup.DateOfBirth"] *</label>
                     <input class="form-control" type="date" @bind="_form.DateOfBirth" />
                 </div>
                 <div class="col-6">
-                    <label class="form-label">Country *</label>
+                    <label class="form-label">@L["Signup.Country"] *</label>
                     <input class="form-control" @bind="_form.Country" placeholder="US" />
                 </div>
             </div>
             <div class="mb-2">
-                <label class="form-label">Phone</label>
+                <label class="form-label">@L["Signup.Phone"]</label>
                 <input class="form-control" @bind="_form.Phone" placeholder="+1 555 000 0000" />
             </div>
             <div class="mb-2">
-                <label class="form-label">Replicate Site Slug</label>
-                <input class="form-control" @bind="_form.ReplicateSiteSlug" placeholder="my-unique-site" />
+                <label class="form-label">@L["Signup.ReplicateSlug"]</label>
+                <input class="form-control" @bind="_form.ReplicateSiteSlug" placeholder="@L["Signup.ReplicateSlugPlaceholder"]" />
             </div>
             <div class="mb-3">
-                <label class="form-label">Membership Level *</label>
+                <label class="form-label">@L["Signup.MembershipLevel"] *</label>
                 @if (_levels.Count == 0)
                 {
-                    <div class="text-muted small">Loading membership levels…</div>
+                    <div class="text-muted small">@L["Signup.LoadingLevels"]</div>
                 }
                 else
                 {
                     <select class="form-select" @bind="_form.MembershipLevelId">
-                        <option value="0">— Select level —</option>
+                        <option value="0">@L["Signup.SelectLevel"]</option>
                         @foreach (var lvl in _levels)
                         {
                             <option value="@lvl.Id">@lvl.Name — $@lvl.Price.ToString("N2")</option>
@@ -112,18 +115,18 @@
             </div>
             <button class="btn btn-primary w-100" disabled="@_busy" @onclick="HandleStep1">
                 @if (_busy) { <span class="spinner-border spinner-border-sm me-2"></span> }
-                Continue
+                @L["Signup.Continue"]
             </button>
         }
 
         <!-- ── STEP 2 ─────────────────────────────────────────────────────── -->
         @if (Step == 2)
         {
-            <p class="text-muted small mb-3">Select the products to include with your signup.</p>
+            <p class="text-muted small mb-3">@L["Signup.ProductsIntro"]</p>
 
             @if (_products.Count == 0)
             {
-                <div class="alert alert-info">No additional products available. Click Continue to proceed.</div>
+                <div class="alert alert-info">@L["Signup.NoProducts"]</div>
             }
             else
             {
@@ -146,10 +149,10 @@
             }
 
             <div class="d-flex gap-2 mt-3">
-                <button class="btn btn-outline-secondary flex-fill" @onclick="() => Step = 1">Back</button>
+                <button class="btn btn-outline-secondary flex-fill" @onclick="() => Step = 1">@L["Signup.Back"]</button>
                 <button class="btn btn-primary flex-fill" disabled="@_busy" @onclick="HandleStep2">
                     @if (_busy) { <span class="spinner-border spinner-border-sm me-2"></span> }
-                    Continue
+                    @L["Signup.Continue"]
                 </button>
             </div>
         }
@@ -158,46 +161,46 @@
         @if (Step == 3)
         {
             <div class="mb-3">
-                <label class="form-label">Payment Method *</label>
+                <label class="form-label">@L["Signup.PaymentMethod"] *</label>
                 <select class="form-select" @bind="_paymentMethod">
-                    <option value="CreditCard">Credit Card</option>
-                    <option value="Crypto">Cryptocurrency</option>
-                    <option value="Token">Token / Guest Pass</option>
-                    <option value="DiscountCode">Discount Code</option>
+                    <option value="CreditCard">@L["Signup.PaymentCreditCard"]</option>
+                    <option value="Crypto">@L["Signup.PaymentCrypto"]</option>
+                    <option value="Token">@L["Signup.PaymentToken"]</option>
+                    <option value="DiscountCode">@L["Signup.PaymentDiscount"]</option>
                 </select>
             </div>
 
             @if (_paymentMethod == "CreditCard")
             {
                 <div class="mb-2">
-                    <label class="form-label">Gateway Token *</label>
+                    <label class="form-label">@L["Signup.GatewayToken"] *</label>
                     <input class="form-control" @bind="_cc.GatewayToken" placeholder="tok_..." />
                 </div>
                 <div class="row g-2 mb-2">
                     <div class="col-4">
-                        <label class="form-label">First 6</label>
+                        <label class="form-label">@L["Signup.First6"]</label>
                         <input class="form-control" @bind="_cc.First6" placeholder="411111" maxlength="6" />
                     </div>
                     <div class="col-4">
-                        <label class="form-label">Last 4 *</label>
+                        <label class="form-label">@L["Signup.Last4"] *</label>
                         <input class="form-control" @bind="_cc.Last4" placeholder="1111" maxlength="4" />
                     </div>
                     <div class="col-4">
-                        <label class="form-label">Brand</label>
+                        <label class="form-label">@L["Signup.CardBrand"]</label>
                         <input class="form-control" @bind="_cc.CardBrand" placeholder="Visa" />
                     </div>
                 </div>
                 <div class="row g-2 mb-2">
                     <div class="col-4">
-                        <label class="form-label">Exp Month</label>
+                        <label class="form-label">@L["Signup.ExpMonth"]</label>
                         <input class="form-control" type="number" @bind="_cc.ExpiryMonth" placeholder="12" />
                     </div>
                     <div class="col-4">
-                        <label class="form-label">Exp Year</label>
+                        <label class="form-label">@L["Signup.ExpYear"]</label>
                         <input class="form-control" type="number" @bind="_cc.ExpiryYear" placeholder="2028" />
                     </div>
                     <div class="col-4">
-                        <label class="form-label">Gateway</label>
+                        <label class="form-label">@L["Signup.Gateway"]</label>
                         <input class="form-control" @bind="_cc.Gateway" placeholder="Stripe" />
                     </div>
                 </div>
@@ -206,11 +209,11 @@
             @if (_paymentMethod == "Crypto")
             {
                 <div class="mb-2">
-                    <label class="form-label">Cryptocurrency</label>
+                    <label class="form-label">@L["Signup.Cryptocurrency"]</label>
                     <input class="form-control" @bind="_cryptoCurrency" placeholder="BTC, ETH…" />
                 </div>
                 <div class="mb-2">
-                    <label class="form-label">Transaction ID *</label>
+                    <label class="form-label">@L["Signup.TransactionId"] *</label>
                     <input class="form-control" @bind="_cryptoTxId" placeholder="0xabc..." />
                 </div>
             }
@@ -218,7 +221,7 @@
             @if (_paymentMethod == "Token")
             {
                 <div class="mb-2">
-                    <label class="form-label">Token / Guest Pass Code *</label>
+                    <label class="form-label">@L["Signup.TokenCode"] *</label>
                     <input class="form-control" @bind="_tokenCode" placeholder="TOKEN-XXXX-XXXX" />
                 </div>
             }
@@ -226,16 +229,16 @@
             @if (_paymentMethod == "DiscountCode")
             {
                 <div class="mb-2">
-                    <label class="form-label">Discount Code *</label>
+                    <label class="form-label">@L["Signup.DiscountCode"] *</label>
                     <input class="form-control" @bind="_discountCode" placeholder="PROMO2026" />
                 </div>
             }
 
             <div class="d-flex gap-2 mt-3">
-                <button class="btn btn-outline-secondary flex-fill" @onclick="() => Step = 2">Back</button>
+                <button class="btn btn-outline-secondary flex-fill" @onclick="() => Step = 2">@L["Signup.Back"]</button>
                 <button class="btn btn-success flex-fill" disabled="@_busy" @onclick="HandleStep3">
                     @if (_busy) { <span class="spinner-border spinner-border-sm me-2"></span> }
-                    Complete Signup
+                    @L["Signup.CompleteSignup"]
                 </button>
             </div>
         }
@@ -245,15 +248,15 @@
         {
             <div class="text-center py-4">
                 <div class="display-4 mb-3">🎉</div>
-                <h4>Welcome, @_completedEmail!</h4>
-                <p class="text-muted">Your account is active. <a href="/login">Sign in now</a></p>
+                <h4>@string.Format(L["Signup.Welcome"], _completedEmail)</h4>
+                <p class="text-muted">@((MarkupString)L["Signup.AccountActive"].Value)</p>
             </div>
         }
 
         @if (Step < 4)
         {
             <div class="mt-3 text-center">
-                <a href="/login" class="text-muted small">Already have an account? Sign in</a>
+                <a href="/login" class="text-muted small">@L["Signup.AlreadyHaveAccount"]</a>
             </div>
         }
 
@@ -338,15 +341,15 @@
     {
         _error = string.Empty;
         if (string.IsNullOrWhiteSpace(_form.FirstName) || string.IsNullOrWhiteSpace(_form.LastName))
-            { _error = "First and last name are required."; return; }
+            { _error = L["Signup.ErrorNameRequired"]; return; }
         if (string.IsNullOrWhiteSpace(_form.Email))
-            { _error = "Email is required."; return; }
+            { _error = L["Signup.ErrorEmailRequired"]; return; }
         if (string.IsNullOrWhiteSpace(_form.Password) || _form.Password != _form.ConfirmPassword)
-            { _error = "Passwords must match."; return; }
+            { _error = L["Signup.ErrorPasswordMismatch"]; return; }
         if (_form.MembershipLevelId == 0)
-            { _error = "Please select a membership level."; return; }
+            { _error = L["Signup.ErrorLevelRequired"]; return; }
         if (_form.DateOfBirth == default || _form.DateOfBirth > DateTime.UtcNow.AddYears(-18))
-            { _error = "You must be at least 18 years old."; return; }
+            { _error = L["Signup.ErrorAge18"]; return; }
 
         _busy = true;
         try
@@ -382,12 +385,12 @@
             }
             else
             {
-                _error = body?.Message ?? body?.Errors?.FirstOrDefault() ?? "Signup failed. Check your details.";
+                _error = body?.Message ?? body?.Errors?.FirstOrDefault() ?? L["Signup.ErrorGeneric"];
             }
         }
         catch (Exception ex)
         {
-            _error = $"Could not reach the server: {ex.Message}";
+            _error = string.Format(L["Signup.ErrorServerUnreachable"], ex.Message);
         }
         finally
         {
@@ -398,7 +401,7 @@
     private async Task HandleStep2()
     {
         if (_products.Count > 0 && _selectedProductIds.Count == 0)
-            { _error = "Please select at least one product."; return; }
+            { _error = L["Signup.ErrorProductRequired"]; return; }
 
         _error = string.Empty;
         _busy  = true;
@@ -414,7 +417,7 @@
                 var body = await resp.Content.ReadFromJsonAsync<ApiWrapper<bool>>();
                 if (body?.Success != true)
                 {
-                    _error = body?.Message ?? body?.Errors?.FirstOrDefault() ?? "Could not save product selection.";
+                    _error = body?.Message ?? body?.Errors?.FirstOrDefault() ?? L["Signup.ErrorProductsSave"];
                     return;
                 }
             }
@@ -423,7 +426,7 @@
         }
         catch (Exception ex)
         {
-            _error = $"Could not reach the server: {ex.Message}";
+            _error = string.Format(L["Signup.ErrorServerUnreachable"], ex.Message);
         }
         finally
         {
@@ -457,12 +460,12 @@
             }
             else
             {
-                _error = body?.Message ?? body?.Errors?.FirstOrDefault() ?? "Could not complete signup.";
+                _error = body?.Message ?? body?.Errors?.FirstOrDefault() ?? L["Signup.ErrorComplete"];
             }
         }
         catch (Exception ex)
         {
-            _error = $"Could not reach the server: {ex.Message}";
+            _error = string.Format(L["Signup.ErrorServerUnreachable"], ex.Message);
         }
         finally
         {

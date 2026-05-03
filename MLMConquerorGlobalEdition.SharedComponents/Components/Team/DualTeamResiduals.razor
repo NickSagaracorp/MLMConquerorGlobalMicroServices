@@ -1,5 +1,8 @@
 @inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
 @using System.Net.Http.Json
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
 
 @if (ShowBreadcrumb) { <BreadcrumbNav Items="@_breadcrumb" /> }
 
@@ -22,15 +25,15 @@
                         }
                         else
                         {
-                            <span class="text-muted fs-13">Actual Rank</span>
+                            <span class="text-muted fs-13">@L["Team.ActualRank"]</span>
                             <h4 class="fw-bold mb-2 mt-1">@(_rankData?.CurrentRankName ?? "—")</h4>
                             <div class="d-flex gap-3 flex-wrap mt-auto">
                                 <div>
-                                    <span class="fs-12 text-muted d-block">Dual Team Pts Required</span>
+                                    <span class="fs-12 text-muted d-block">@L["Team.DualPtsRequired"]</span>
                                     <span class="fw-semibold text-danger">@(_rankData?.CurrentRankDualTeamPoints.ToString("N0") ?? "—")</span>
                                 </div>
                                 <div>
-                                    <span class="fs-12 text-muted d-block">Enrollment Pts Required</span>
+                                    <span class="fs-12 text-muted d-block">@L["Team.EnrollmentPtsRequired"]</span>
                                     <span class="fw-semibold text-danger">@(_rankData?.CurrentRankEnrollmentPoints.ToString("N0") ?? "—")</span>
                                 </div>
                             </div>
@@ -56,15 +59,15 @@
                         }
                         else
                         {
-                            <span class="text-muted fs-13">Next Rank</span>
+                            <span class="text-muted fs-13">@L["Team.NextRank"]</span>
                             <h4 class="fw-bold mb-2 mt-1">@(_rankData?.NextRankName ?? "—")</h4>
                             <div class="d-flex gap-3 flex-wrap mt-auto">
                                 <div>
-                                    <span class="fs-12 text-muted d-block">Dual Team Pts Required</span>
+                                    <span class="fs-12 text-muted d-block">@L["Team.DualPtsRequired"]</span>
                                     <span class="fw-semibold text-success">@(_rankData?.NextRankDualTeamPoints.ToString("N0") ?? "—")</span>
                                 </div>
                                 <div>
-                                    <span class="fs-12 text-muted d-block">Enrollment Pts Required</span>
+                                    <span class="fs-12 text-muted d-block">@L["Team.EnrollmentPtsRequired"]</span>
                                     <span class="fw-semibold text-success">@(_rankData?.NextRankEnrollmentPoints.ToString("N0") ?? "—")</span>
                                 </div>
                             </div>
@@ -84,7 +87,7 @@
     <div class="col-12 col-md-6">
         <div class="card bg-white border-0 rounded-3 h-100">
             <div class="card-body p-4">
-                <h5 class="fw-semibold border-bottom pb-3 mb-3">Total Dual Team Points</h5>
+                <h5 class="fw-semibold border-bottom pb-3 mb-3">@L["Team.TotalDualTeamPoints"]</h5>
                 @if (_residualLoading)
                 {
                     <LoadingSpinner IsLoading="true" />
@@ -95,19 +98,19 @@
                         <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
                             <span class="d-flex align-items-center gap-2">
                                 <span class="badge" style="background:#605DFF;width:10px;height:10px;border-radius:50%;padding:0;display:inline-block"></span>
-                                Left Leg
+                                @L["Reports.LeftLeg"]
                             </span>
                             <span class="fw-semibold">@(_residualSummary?.LeftLegPoints.ToString("N0") ?? "—")</span>
                         </li>
                         <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
                             <span class="d-flex align-items-center gap-2">
                                 <span class="badge" style="background:#4299e1;width:10px;height:10px;border-radius:50%;padding:0;display:inline-block"></span>
-                                Right Leg
+                                @L["Reports.RightLeg"]
                             </span>
                             <span class="fw-semibold">@(_residualSummary?.RightLegPoints.ToString("N0") ?? "—")</span>
                         </li>
                         <li class="d-flex justify-content-between align-items-center py-2">
-                            <span class="fw-semibold">Total</span>
+                            <span class="fw-semibold">@L["Common.Total"]</span>
                             <span class="fw-bold text-primary fs-16">
                                 @((_residualSummary is not null ? _residualSummary.LeftLegPoints + _residualSummary.RightLegPoints : 0).ToString("N0"))
                             </span>
@@ -122,13 +125,13 @@
     <div class="col-12 col-md-6">
         <div class="card bg-white border-0 rounded-3 h-100">
             <div class="card-body p-4">
-                <h5 class="fw-semibold border-bottom pb-3 mb-3">Daily Residuals Earning</h5>
-                <span class="text-muted fs-13 d-block mb-3">Last 6 months</span>
+                <h5 class="fw-semibold border-bottom pb-3 mb-3">@L["Team.DailyResidualsEarning"]</h5>
+                <span class="text-muted fs-13 d-block mb-3">@L["Team.LastSixMonths"]</span>
                 <div class="d-flex flex-column align-items-center justify-content-center py-4 text-muted"
                      style="min-height:120px;background:#f8f9fb;border-radius:10px;border:2px dashed #dde1e7">
                     <i class="ri-bar-chart-2-line fs-2 mb-2 text-primary opacity-50"></i>
-                    <span class="fs-13">Chart coming soon</span>
-                    <span class="fs-12 text-muted mt-1">Historical residuals data will display here</span>
+                    <span class="fs-13">@L["Team.ChartComingSoon"]</span>
+                    <span class="fs-12 text-muted mt-1">@L["Team.HistoricalResidualsHint"]</span>
                 </div>
             </div>
         </div>
@@ -141,7 +144,7 @@
 <div class="card bg-white border-0 rounded-3 mb-4">
     <div class="card-body p-0">
         <div class="p-4 border-bottom">
-            <h5 class="fw-semibold mb-0">Dual Team Members</h5>
+            <h5 class="fw-semibold mb-0">@L["Team.DualTeamMembers"]</h5>
         </div>
         @if (_membersLoading)
         {
@@ -158,17 +161,17 @@
                     <table class="table align-middle">
                         <thead>
                             <tr>
-                                <th>Ambassador</th>
-                                <th>Qualification Points</th>
-                                <th>Current Rank (Eligible Pts)</th>
-                                <th>Next Rank (Eligible Pts)</th>
+                                <th>@L["Reports.Ambassador"]</th>
+                                <th>@L["Team.QualificationPoints"]</th>
+                                <th>@L["Team.CurrentRankEligible"]</th>
+                                <th>@L["Team.NextRankEligible"]</th>
                             </tr>
                         </thead>
                         <tbody>
                             @if (!_members.Any())
                             {
                                 <tr>
-                                    <td colspan="4" class="text-center text-muted py-4">No team members found.</td>
+                                    <td colspan="4" class="text-center text-muted py-4">@L["Team.NoTeamMembers"]</td>
                                 </tr>
                             }
                             @foreach (var m in _members)
@@ -184,7 +187,7 @@
                                             <div>
                                                 <span class="fw-medium d-block">@m.FullName</span>
                                                 <span class="badge @(m.Leg == "Left" ? "bg-primary bg-opacity-10 text-primary" : "bg-info bg-opacity-10 text-info") p-1 fs-11 fw-normal">
-                                                    @m.Leg Side
+                                                    @(m.Leg == "Left" ? L["Reports.LeftSide"] : L["Reports.RightSide"])
                                                 </span>
                                             </div>
                                         </div>
@@ -221,20 +224,20 @@
             <div class="position-relative table-src-form me-0">
                 <input type="text"
                        class="form-control"
-                       placeholder="Search here"
+                       placeholder="@L["Team.SearchPlaceholderHere"]"
                        value="@_residualSearch"
                        @oninput="OnResidualSearchInput" />
                 <i class="ri-search-line position-absolute top-50 start-0 translate-middle-y"></i>
             </div>
             <div class="d-flex gap-2 flex-wrap">
                 <div>
-                    <label class="form-label fs-12 mb-1 fw-medium">From</label>
+                    <label class="form-label fs-12 mb-1 fw-medium">@L["Common.From"]</label>
                     <input type="date" class="form-control form-control-sm"
                            value="@_fromDate"
                            @onchange="OnFromDateChange" />
                 </div>
                 <div>
-                    <label class="form-label fs-12 mb-1 fw-medium">To</label>
+                    <label class="form-label fs-12 mb-1 fw-medium">@L["Common.To"]</label>
                     <input type="date" class="form-control form-control-sm"
                            value="@_toDate"
                            @onchange="OnToDateChange" />
@@ -257,17 +260,17 @@
                     <table class="table align-middle">
                         <thead>
                             <tr>
-                                <th>Earned Date</th>
-                                <th>Amount</th>
-                                <th>Status</th>
-                                <th>Eligible Points</th>
+                                <th>@L["Reports.EarnedDate"]</th>
+                                <th>@L["Common.Amount"]</th>
+                                <th>@L["Common.Status"]</th>
+                                <th>@L["Reports.EligiblePoints"]</th>
                             </tr>
                         </thead>
                         <tbody>
                             @if (!_residuals.Any())
                             {
                                 <tr>
-                                    <td colspan="4" class="text-center text-muted py-4">No residual earnings to display.</td>
+                                    <td colspan="4" class="text-center text-muted py-4">@L["Team.NoResidualEarnings"]</td>
                                 </tr>
                             }
                             @foreach (var r in _residuals)
@@ -286,7 +289,7 @@
                 @* Pagination *@
                 <div class="p-4 pt-lg-4">
                     <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
-                        <span class="fs-12 fw-medium">Showing @_residuals.Count of @_residualTotal Results</span>
+                        <span class="fs-12 fw-medium">@L["Reports.Showing"] @_residuals.Count @L["Common.Of"] @_residualTotal @L["Reports.Results"]</span>
                         @if (_residualTotalPages > 1)
                         {
                             <nav>
@@ -351,9 +354,9 @@
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
-        new("Dashboard", "/dashboard"),
-        new("Dual Team"),
-        new("Residuals")
+        new(L["Nav.Dashboard"], "/dashboard"),
+        new(L["Sidebar.DualTeam"]),
+        new(L["Sidebar.Residuals"])
     };
 
     // ── Lifecycle ────────────────────────────────────────────────────────────
@@ -411,11 +414,11 @@
             if (resp?.Success == true && resp.Data is not null)
                 _members = resp.Data.Items;
             else
-                _membersError = "Failed to load team members.";
+                _membersError = L["Team.LoadFailedTeamMembers"];
         }
         catch (Exception ex)
         {
-            _membersError = $"API error: {ex.Message}";
+            _membersError = $"{L["Team.ApiErrorPrefix"]} {ex.Message}";
         }
         finally { _membersLoading = false; }
     }
@@ -445,12 +448,12 @@
             }
             else
             {
-                _residualsError = "Failed to load residual earnings.";
+                _residualsError = L["Team.LoadFailedResiduals"];
             }
         }
         catch (Exception ex)
         {
-            _residualsError = $"API error: {ex.Message}";
+            _residualsError = $"{L["Team.ApiErrorPrefix"]} {ex.Message}";
         }
         finally { _residualsLoading = false; }
     }

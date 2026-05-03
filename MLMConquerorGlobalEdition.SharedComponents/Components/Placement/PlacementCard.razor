@@ -1,9 +1,13 @@
+@inject IStringLocalizer<SharedResources> L
+
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
 @using MLMConquerorGlobalEdition.SharedComponents.Components.Placement
 
 @* Card for a single member pending placement or within correction window *@
 
 <article class="placement-card @CardClass"
-         aria-label="Placement: @Placement.FullName"
+         aria-label="@($"{L["Placement.AriaPrefix"]} {Placement.FullName}")"
          tabindex="0">
 
     <div class="d-flex align-items-start gap-3 flex-wrap">
@@ -12,7 +16,7 @@
             @if (!string.IsNullOrEmpty(Placement.PhotoUrl))
             {
                 <img src="@Placement.PhotoUrl"
-                     alt="Foto de @Placement.FullName"
+                     alt="@string.Format(L["Placement.PhotoAlt"], Placement.FullName)"
                      class="rounded-circle object-fit-cover"
                      style="width:48px;height:48px"
                      loading="lazy" />
@@ -35,15 +39,15 @@
                 <StatusBadge Status="@Placement.PlacementStatus" />
                 @if (Placement.PlacementStatus == "AutoPlaced")
                 {
-                    <span class="auto-placed-badge" title="Colocado automáticamente por el sistema">
+                    <span class="auto-placed-badge" title="@L["Placement.AutoBadgeTitle"]">
                         <i class="ri-robot-line" aria-hidden="true"></i>
-                        Auto
+                        @L["Placement.AutoBadge"]
                     </span>
                 }
             </div>
 
             <div class="text-muted small mb-2">
-                Reclutado el @Placement.EnrolledAt.ToString("dd MMM yyyy")
+                @string.Format(L["Placement.RecruitedOn"], Placement.EnrolledAt.ToString("dd MMM yyyy"))
             </div>
 
             @if (Placement.IsAlreadyPlaced)
@@ -52,8 +56,8 @@
                 <div class="d-flex align-items-center gap-2 small mb-2">
                     <i class="ri-map-pin-line text-success" aria-hidden="true"></i>
                     <span>
-                        Pierna <strong>@Placement.CurrentTreeSide</strong>
-                        bajo <strong>@(Placement.CurrentParentFullName ?? Placement.CurrentParentMemberId)</strong>
+                        @L["Placement.LegLabelStrong"] <strong>@Placement.CurrentTreeSide</strong>
+                        @L["Placement.UnderLabel"] <strong>@(Placement.CurrentParentFullName ?? Placement.CurrentParentMemberId)</strong>
                     </span>
                 </div>
 
@@ -62,12 +66,12 @@
                     <!-- Correction countdown -->
                     <div class="d-flex align-items-center gap-2 small text-warning mb-2"
                          role="timer"
-                         aria-label="Ventana de corrección: @Math.Floor(Placement.CorrectionHoursRemaining) horas restantes">
+                         aria-label="@string.Format(L["Placement.HoursLeftAriaLabel"], Math.Floor(Placement.CorrectionHoursRemaining))">
                         <i class="ri-timer-flash-line" aria-hidden="true"></i>
                         <span>
-                            Ventana de corrección:
+                            @L["Placement.CorrectionWindow"]
                             <strong>@Math.Floor(Placement.CorrectionHoursRemaining)h @(Math.Floor((Placement.CorrectionHoursRemaining % 1) * 60))m</strong>
-                            restantes
+                            @L["Placement.HoursMinutesRemaining"]
                         </span>
                     </div>
                 }
@@ -78,15 +82,15 @@
                 <!-- 30-day window progress bar -->
                 <div class="mb-2">
                     <div class="d-flex justify-content-between small text-muted mb-1">
-                        <span>Ventana de placement</span>
+                        <span>@L["Placement.WindowLabel"]</span>
                         <span aria-live="polite">
                             @if (Placement.DaysRemainingInWindow > 0)
                             {
-                                <span>@Placement.DaysRemainingInWindow día(s) restante(s)</span>
+                                <span>@string.Format(L["Placement.DaysRemaining"], Placement.DaysRemainingInWindow)</span>
                             }
                             else
                             {
-                                <span class="text-danger">Ventana cerrada</span>
+                                <span class="text-danger">@L["Placement.WindowClosed"]</span>
                             }
                         </span>
                     </div>
@@ -95,7 +99,7 @@
                          aria-valuenow="@((int)Placement.WindowPercentUsed)"
                          aria-valuemin="0"
                          aria-valuemax="100"
-                         aria-label="Progreso de la ventana de placement">
+                         aria-label="@L["Placement.WindowAria"]">
                         <div class="placement-window-bar-fill @WindowBarClass"
                              style="width:@((int)Placement.WindowPercentUsed)%"></div>
                     </div>
@@ -104,14 +108,14 @@
 
             <!-- Opportunities used -->
             <div class="d-flex align-items-center gap-2 small">
-                <span class="text-muted">Oportunidades:</span>
-                <div class="opportunity-pips" aria-label="@Placement.PlacementOpportunitiesUsed de 2 oportunidades usadas">
+                <span class="text-muted">@L["Placement.OpportunitiesLabel"]</span>
+                <div class="opportunity-pips" aria-label="@string.Format(L["Placement.OpportunitiesAria"], Placement.PlacementOpportunitiesUsed)">
                     <div class="opportunity-pip @(Placement.PlacementOpportunitiesUsed >= 1 ? "used" : "available")"
-                         title="Oportunidad 1"></div>
+                         title="@string.Format(L["Placement.OpportunityNumber"], 1)"></div>
                     <div class="opportunity-pip @(Placement.PlacementOpportunitiesUsed >= 2 ? "used" : "available")"
-                         title="Oportunidad 2"></div>
+                         title="@string.Format(L["Placement.OpportunityNumber"], 2)"></div>
                 </div>
-                <span class="text-muted">(@(Placement.PlacementOpportunitiesUsed)/2 usadas)</span>
+                <span class="text-muted">@string.Format(L["Placement.OpportunitiesUsedShort"], Placement.PlacementOpportunitiesUsed)</span>
             </div>
         </div>
 
@@ -119,16 +123,16 @@
         <div class="d-flex flex-column gap-2 flex-shrink-0 align-self-center">
             @if (Placement.IsBlocked)
             {
-                <span class="badge bg-secondary" title="Ambas oportunidades de placement agotadas">
+                <span class="badge bg-secondary" title="@L["Placement.BlockedTitle"]">
                     <i class="ri-lock-line me-1" aria-hidden="true"></i>
-                    Bloqueado
+                    @L["Placement.Blocked"]
                 </span>
             }
             else if (Placement.IsWindowExpired && !Placement.IsAlreadyPlaced)
             {
-                <span class="badge bg-danger-subtle text-danger" title="La ventana de 30 días ha expirado">
+                <span class="badge bg-danger-subtle text-danger" title="@L["Placement.ExpiredTitle"]">
                     <i class="ri-time-line me-1" aria-hidden="true"></i>
-                    Expirado
+                    @L["Placement.Expired"]
                 </span>
             }
             else if (!Placement.IsAlreadyPlaced)
@@ -136,9 +140,9 @@
                 <button class="btn btn-primary btn-sm"
                         @onclick="() => OnPlace.InvokeAsync(Placement)"
                         type="button"
-                        aria-label="Colocar a @Placement.FullName en el Dual Team">
+                        aria-label="@string.Format(L["Placement.PlaceAriaLabel"], Placement.FullName)">
                     <i class="ri-user-add-line me-1" aria-hidden="true"></i>
-                    Colocar
+                    @L["Placement.PlaceAction"]
                 </button>
             }
             else
@@ -148,16 +152,16 @@
                     <button class="btn btn-outline-warning btn-sm"
                             @onclick="() => OnMove.InvokeAsync(Placement)"
                             type="button"
-                            aria-label="Mover a @Placement.FullName a otro nodo">
+                            aria-label="@string.Format(L["Placement.MoveAriaLabel"], Placement.FullName)">
                         <i class="ri-drag-move-line me-1" aria-hidden="true"></i>
-                        Mover
+                        @L["Placement.MoveAction"]
                     </button>
                     <button class="btn btn-outline-danger btn-sm"
                             @onclick="() => OnRemove.InvokeAsync(Placement)"
                             type="button"
-                            aria-label="Eliminar placement de @Placement.FullName">
+                            aria-label="@string.Format(L["Placement.RemoveAriaLabel"], Placement.FullName)">
                         <i class="ri-delete-bin-line me-1" aria-hidden="true"></i>
-                        Quitar
+                        @L["Placement.RemoveAction"]
                     </button>
                 }
             }

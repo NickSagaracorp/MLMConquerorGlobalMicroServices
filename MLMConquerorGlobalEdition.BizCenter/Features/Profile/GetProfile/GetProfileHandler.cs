@@ -64,7 +64,8 @@ public class GetProfileHandler : IRequestHandler<GetProfileQuery, Result<Profile
             LastName          = member.LastName,
             DateOfBirth       = member.DateOfBirth,
             BusinessName      = member.BusinessName,
-            SsnLast4          = TryDecryptSsnLast4(member.SsnEncrypted),
+            SsnLast4          = TryDecryptLast4(member.SsnEncrypted),
+            EinLast4          = TryDecryptLast4(member.EinEncrypted),
 
             Email             = _currentUser.Email,
             ReplicateSiteSlug = member.ReplicateSiteSlug,
@@ -107,16 +108,18 @@ public class GetProfileHandler : IRequestHandler<GetProfileQuery, Result<Profile
     }
 
     /// <summary>
-    /// Decrypts the SSN and returns just the last 4 digits for display
-    /// (US tax ID convention "***-**-1234"). Never returns the full SSN.
+    /// Decrypts a tax-ID ciphertext and returns just the last 4 digits for display.
+    /// Used by both SSN ("***-**-1234") and EIN ("**-***1234"). Never returns the full ID.
     /// </summary>
-    private string? TryDecryptSsnLast4(string? ciphertext)
+    private string? TryDecryptLast4(string? ciphertext)
     {
         if (string.IsNullOrWhiteSpace(ciphertext)) return null;
         try
         {
             var plain = _encryption.Decrypt(ciphertext);
-            return plain.Length >= 4 ? plain[^4..] : plain;
+            // Strip non-digits in case the value was stored with hyphens (e.g. EIN "12-3456789").
+            var digits = new string(plain.Where(char.IsDigit).ToArray());
+            return digits.Length >= 4 ? digits[^4..] : digits;
         }
         catch { return null; }
     }

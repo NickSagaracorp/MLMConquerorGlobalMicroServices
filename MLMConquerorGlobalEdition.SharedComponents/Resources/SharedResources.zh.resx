@@ -1,0 +1,1173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+
+  <!-- Language Names — endonyms -->
+  <data name="Lang.en" xml:space="preserve"><value>English</value></data>
+  <data name="Lang.es" xml:space="preserve"><value>Español</value></data>
+  <data name="Lang.pt" xml:space="preserve"><value>Português</value></data>
+  <data name="Lang.fr" xml:space="preserve"><value>Français</value></data>
+  <data name="Lang.it" xml:space="preserve"><value>Italiano</value></data>
+  <data name="Lang.de" xml:space="preserve"><value>Deutsch</value></data>
+  <data name="Lang.zh" xml:space="preserve"><value>中文</value></data>
+  <data name="Lang.kr" xml:space="preserve"><value>한국어</value></data>
+  <data name="Lang.ge" xml:space="preserve"><value>ქართული</value></data>
+
+  <!-- Language Preference Card -->
+  <data name="LanguageCard.Title" xml:space="preserve"><value>默认语言</value></data>
+  <data name="LanguageCard.Description" xml:space="preserve"><value>有可用翻译时,我们将以这种语言发送通知、电子邮件和仪表板提示。</value></data>
+  <data name="LanguageCard.Saved" xml:space="preserve"><value>语言偏好已保存。</value></data>
+  <data name="LanguageCard.FailedPrefix" xml:space="preserve"><value>失败:</value></data>
+
+  <!-- Personal Info Card -->
+  <data name="PersonalInfo.Title" xml:space="preserve"><value>关于我</value></data>
+  <data name="PersonalInfo.WhyLocked" xml:space="preserve"><value>为什么这是锁定的?</value></data>
+  <data name="PersonalInfo.LockedHeadline" xml:space="preserve"><value>为了您的安全,身份字段已被锁定。</value></data>
+  <data name="PersonalInfo.LockedBody" xml:space="preserve"><value>名字、姓氏、出生日期、企业名称和 SSN 只能由我们的支持团队更改。如需更正,请从支持页面提交工单。</value></data>
+  <data name="PersonalInfo.FirstName" xml:space="preserve"><value>名字</value></data>
+  <data name="PersonalInfo.LastName" xml:space="preserve"><value>姓氏</value></data>
+  <data name="PersonalInfo.DateOfBirth" xml:space="preserve"><value>出生日期</value></data>
+  <data name="PersonalInfo.BusinessName" xml:space="preserve"><value>企业名称</value></data>
+  <data name="PersonalInfo.Ssn" xml:space="preserve"><value>SSN</value></data>
+  <data name="PersonalInfo.Ein" xml:space="preserve"><value>EIN</value></data>
+  <data name="PersonalInfo.Enrolled" xml:space="preserve"><value>注册</value></data>
+
+  <!-- Profile shared bits -->
+  <data name="Profile.NotOnFile" xml:space="preserve"><value>— 暂无记录 —</value></data>
+  <data name="Profile.PageTitle" xml:space="preserve"><value>我的资料</value></data>
+
+  <!-- Common Labels — F1 additions -->
+  <data name="Common.MemberId" xml:space="preserve"><value>会员 ID</value></data>
+  <data name="Common.Email" xml:space="preserve"><value>电子邮件</value></data>
+  <data name="Common.Phone" xml:space="preserve"><value>电话</value></data>
+  <data name="Common.WhatsApp" xml:space="preserve"><value>WhatsApp</value></data>
+  <data name="Common.Country" xml:space="preserve"><value>国家</value></data>
+  <data name="Common.City" xml:space="preserve"><value>城市</value></data>
+  <data name="Common.StateProvince" xml:space="preserve"><value>州 / 省</value></data>
+  <data name="Common.ZipPostal" xml:space="preserve"><value>邮政编码</value></data>
+  <data name="Common.Address" xml:space="preserve"><value>地址</value></data>
+  <data name="Common.When" xml:space="preserve"><value>时间</value></data>
+  <data name="Common.By" xml:space="preserve"><value>操作者</value></data>
+  <data name="Common.IpAddress" xml:space="preserve"><value>IP 地址</value></data>
+  <data name="Common.UserAgent" xml:space="preserve"><value>User Agent</value></data>
+  <data name="Common.Source" xml:space="preserve"><value>来源</value></data>
+  <data name="Common.Reset" xml:space="preserve"><value>重置</value></data>
+  <data name="Common.Status" xml:space="preserve"><value>状态</value></data>
+  <data name="Common.Date" xml:space="preserve"><value>日期</value></data>
+  <data name="Common.NoDataAvailable" xml:space="preserve"><value>暂无可用数据。</value></data>
+
+  <!-- Header — F1 additions -->
+  <data name="Header.SearchPlaceholder" xml:space="preserve"><value>在此搜索...</value></data>
+  <data name="Header.Notifications" xml:space="preserve"><value>通知</value></data>
+  <data name="Header.NoNotifications" xml:space="preserve"><value>没有新通知。</value></data>
+  <data name="Header.Profile" xml:space="preserve"><value>个人资料</value></data>
+  <data name="Header.Logout" xml:space="preserve"><value>退出登录</value></data>
+  <data name="Header.ToggleDarkMode" xml:space="preserve"><value>切换深色模式</value></data>
+  <data name="Header.ChangeLanguage" xml:space="preserve"><value>更改语言</value></data>
+  <data name="Header.ClearAll" xml:space="preserve"><value>清空</value></data>
+  <data name="Header.Messages" xml:space="preserve"><value>消息</value></data>
+  <data name="Header.GuestPasses" xml:space="preserve"><value>访客通行证</value></data>
+  <data name="Header.Marketing" xml:space="preserve"><value>市场营销</value></data>
+  <data name="Header.Support" xml:space="preserve"><value>支持</value></data>
+  <data name="Header.AdminFallback" xml:space="preserve"><value>管理员</value></data>
+  <data name="Header.MemberFallback" xml:space="preserve"><value>会员</value></data>
+  <data name="Header.ThemeSettingsTooltip" xml:space="preserve"><value>点击主题设置</value></data>
+
+  <!-- Layout -->
+  <data name="Layout.ErrorOccurred" xml:space="preserve"><value>发生错误</value></data>
+  <data name="Layout.ReloadPage" xml:space="preserve"><value>重新加载页面</value></data>
+
+  <!-- Impersonation Banner -->
+  <data name="Impersonation.ViewingAs" xml:space="preserve"><value>以会员身份查看:</value></data>
+  <data name="Impersonation.Exit" xml:space="preserve"><value>退出代登录</value></data>
+
+  <!-- Sidebar Menu -->
+  <data name="Sidebar.Menu" xml:space="preserve"><value>菜单</value></data>
+  <data name="Sidebar.Home" xml:space="preserve"><value>首页</value></data>
+  <data name="Sidebar.EnrollmentTeam" xml:space="preserve"><value>注册团队</value></data>
+  <data name="Sidebar.MyTeam" xml:space="preserve"><value>我的团队</value></data>
+  <data name="Sidebar.Visualizer" xml:space="preserve"><value>可视化</value></data>
+  <data name="Sidebar.Branches" xml:space="preserve"><value>分支</value></data>
+  <data name="Sidebar.Customers" xml:space="preserve"><value>客户</value></data>
+  <data name="Sidebar.DualTeam" xml:space="preserve"><value>双轨团队</value></data>
+  <data name="Sidebar.MyDualTeam" xml:space="preserve"><value>我的双轨团队</value></data>
+  <data name="Sidebar.Residuals" xml:space="preserve"><value>持续收入</value></data>
+  <data name="PageTitle.DualTeamResiduals" xml:space="preserve"><value>双轨团队持续收入</value></data>
+  <data name="PageTitle.DualTeamVisualizer" xml:space="preserve"><value>双轨团队可视化</value></data>
+  <data name="PageTitle.EnrollmentBranches" xml:space="preserve"><value>注册团队 — 分支</value></data>
+  <data name="PageTitle.EnrollmentCustomers" xml:space="preserve"><value>注册团队 — 客户</value></data>
+  <data name="PageTitle.EnrollmentMyTeam" xml:space="preserve"><value>注册团队 — 我的团队</value></data>
+  <data name="PageTitle.EnrollmentVisualizer" xml:space="preserve"><value>注册团队 — 可视化</value></data>
+  <data name="PageTitle.Placement" xml:space="preserve"><value>安置 — 双轨团队</value></data>
+  <data name="PageTitle.PlacementHistory" xml:space="preserve"><value>安置历史</value></data>
+  <data name="Sidebar.Commissions" xml:space="preserve"><value>佣金</value></data>
+  <data name="Sidebar.Overview" xml:space="preserve"><value>概览</value></data>
+  <data name="Sidebar.PresidentialBonus" xml:space="preserve"><value>总裁奖金</value></data>
+  <data name="Sidebar.CarBonus" xml:space="preserve"><value>汽车奖金</value></data>
+  <data name="Sidebar.FastStartBonus" xml:space="preserve"><value>快速启动奖金</value></data>
+  <data name="Sidebar.BoostBonus" xml:space="preserve"><value>助推奖金</value></data>
+  <data name="Sidebar.Tokens" xml:space="preserve"><value>代币</value></data>
+  <data name="Sidebar.LoyaltyPoints" xml:space="preserve"><value>忠诚积分</value></data>
+  <data name="Sidebar.Marketing" xml:space="preserve"><value>市场营销</value></data>
+  <data name="Sidebar.RankDashboard" xml:space="preserve"><value>等级面板</value></data>
+  <data name="Sidebar.MyProfile" xml:space="preserve"><value>我的资料</value></data>
+  <data name="Sidebar.Support" xml:space="preserve"><value>支持</value></data>
+  <data name="Sidebar.Logout" xml:space="preserve"><value>退出登录</value></data>
+
+  <!-- User Profile Page -->
+  <data name="UserProfile.Tab.Profile" xml:space="preserve"><value>个人资料</value></data>
+  <data name="UserProfile.Tab.Account" xml:space="preserve"><value>账户与安全</value></data>
+  <data name="UserProfile.Tab.Billing" xml:space="preserve"><value>账单与佣金</value></data>
+  <data name="UserProfile.EmailPasswordTitle" xml:space="preserve"><value>电子邮件与密码</value></data>
+  <data name="UserProfile.LoadFailed" xml:space="preserve"><value>无法加载资料。</value></data>
+  <data name="UserProfile.Breadcrumb.Dashboard" xml:space="preserve"><value>仪表板</value></data>
+  <data name="UserProfile.Breadcrumb.Profile" xml:space="preserve"><value>个人资料</value></data>
+
+  <!-- Profile Header Card -->
+  <data name="ProfileHeader.AvatarAlt" xml:space="preserve"><value>头像</value></data>
+  <data name="ProfileHeader.ChangePhoto" xml:space="preserve"><value>更换头像</value></data>
+  <data name="ProfileHeader.PhotoUpdated" xml:space="preserve"><value>头像已更新。</value></data>
+  <data name="ProfileHeader.PhotoFailed" xml:space="preserve"><value>头像更新失败。</value></data>
+  <data name="ProfileHeader.UploadFailed" xml:space="preserve"><value>上传失败:</value></data>
+  <data name="ProfileHeader.ImageTooLarge" xml:space="preserve"><value>图片大于 5 MB。请选择更小的文件。</value></data>
+
+  <!-- Contact Info Card -->
+  <data name="ContactInfo.Title" xml:space="preserve"><value>联系信息</value></data>
+  <data name="ContactInfo.EditContactAddress" xml:space="preserve"><value>编辑联系方式与地址</value></data>
+
+  <!-- Address Card -->
+  <data name="Address.Title" xml:space="preserve"><value>地址与联系方式</value></data>
+  <data name="Address.ViewHistory" xml:space="preserve"><value>查看地址历史</value></data>
+  <data name="Address.PhonePlaceholder" xml:space="preserve"><value>(+86) 138 0000 0000</value></data>
+  <data name="Address.AddressPlaceholder" xml:space="preserve"><value>街道、门牌号、单元</value></data>
+  <data name="Address.ReasonForChange" xml:space="preserve"><value>变更原因</value></data>
+  <data name="Address.ReasonHelp" xml:space="preserve"><value>(可选,有助于支持审计)</value></data>
+  <data name="Address.Saved" xml:space="preserve"><value>资料已保存。</value></data>
+  <data name="Address.SaveFailedPrefix" xml:space="preserve"><value>保存资料失败</value></data>
+
+  <!-- Address History Modal -->
+  <data name="AddressHistory.Title" xml:space="preserve"><value>地址变更历史</value></data>
+  <data name="AddressHistory.Empty" xml:space="preserve"><value>尚未记录地址变更。</value></data>
+  <data name="AddressHistory.New" xml:space="preserve"><value>新</value></data>
+  <data name="AddressHistory.Previous" xml:space="preserve"><value>原</value></data>
+  <data name="AddressHistory.Reason" xml:space="preserve"><value>原因</value></data>
+
+  <!-- Membership Card -->
+  <data name="Membership.Title" xml:space="preserve"><value>会员资格</value></data>
+  <data name="Membership.NoActive" xml:space="preserve"><value>无活跃会员资格。</value></data>
+  <data name="Membership.Started" xml:space="preserve"><value>开始</value></data>
+  <data name="Membership.Renews" xml:space="preserve"><value>续订</value></data>
+  <data name="Membership.Expires" xml:space="preserve"><value>到期</value></data>
+  <data name="Membership.AutoRenewOn" xml:space="preserve"><value>自动续订:开</value></data>
+  <data name="Membership.AutoRenewOff" xml:space="preserve"><value>自动续订:关</value></data>
+
+  <!-- Website Slug Card -->
+  <data name="WebsiteSlug.Title" xml:space="preserve"><value>我的网站</value></data>
+  <data name="WebsiteSlug.Description" xml:space="preserve"><value>选择潜在客户访问的公开地址。仅限小写字母、数字和连字符。必须以字母开头,长度为 3 至 40 个字符。</value></data>
+  <data name="WebsiteSlug.Placeholder" xml:space="preserve"><value>your-name</value></data>
+  <data name="WebsiteSlug.LocalError" xml:space="preserve"><value>请使用 3 到 40 个小写字母、数字或连字符,必须以字母开头。</value></data>
+  <data name="WebsiteSlug.SlugTaken" xml:space="preserve"><value>该网站名称已被占用。</value></data>
+  <data name="WebsiteSlug.SaveFailed" xml:space="preserve"><value>无法更新网站名称。</value></data>
+  <data name="WebsiteSlug.Saved" xml:space="preserve"><value>网站名称已更新。</value></data>
+  <data name="WebsiteSlug.OpenPublicPage" xml:space="preserve"><value>打开公开页面</value></data>
+  <data name="WebsiteSlug.SaveButton" xml:space="preserve"><value>保存网站名称</value></data>
+
+  <!-- Display Preferences Card -->
+  <data name="DisplayPrefs.Title" xml:space="preserve"><value>公开页面可见性</value></data>
+  <data name="DisplayPrefs.Description" xml:space="preserve"><value>选择访客在您公开网站上看到的内容。电话和邮件默认隐藏。</value></data>
+  <data name="DisplayPrefs.ShowBusinessName" xml:space="preserve"><value>显示企业名称</value></data>
+  <data name="DisplayPrefs.ShowBusinessNameHelp" xml:space="preserve"><value>访客将看到您注册的企业名称,而非个人姓名。</value></data>
+  <data name="DisplayPrefs.ShowEmail" xml:space="preserve"><value>在公开页面显示邮箱</value></data>
+  <data name="DisplayPrefs.ShowEmailHelp" xml:space="preserve"><value>到访您复制页面的任何人都能看到此地址。</value></data>
+  <data name="DisplayPrefs.ShowPhone" xml:space="preserve"><value>在公开页面显示电话</value></data>
+  <data name="DisplayPrefs.ShowPhoneHelp" xml:space="preserve"><value>访客将看到您的电话号码;请考虑 WhatsApp 隐私。</value></data>
+  <data name="DisplayPrefs.Saved" xml:space="preserve"><value>可见性偏好已保存。</value></data>
+  <data name="DisplayPrefs.SaveFailedPrefix" xml:space="preserve"><value>保存失败:</value></data>
+
+  <!-- Payout Frequency Card -->
+  <data name="PayoutFreq.Title" xml:space="preserve"><value>佣金支付频率</value></data>
+  <data name="PayoutFreq.Description" xml:space="preserve"><value>我们应多久将累积佣金转入您的默认支付通道?每日支付在下一个工作日结算;每周支付在每周五结算。</value></data>
+  <data name="PayoutFreq.Daily" xml:space="preserve"><value>每日</value></data>
+  <data name="PayoutFreq.Weekly" xml:space="preserve"><value>每周(周五)</value></data>
+  <data name="PayoutFreq.Aria" xml:space="preserve"><value>支付频率</value></data>
+  <data name="PayoutFreq.SavedDaily" xml:space="preserve"><value>支付将每日执行。</value></data>
+  <data name="PayoutFreq.SavedWeekly" xml:space="preserve"><value>支付将每周执行。</value></data>
+  <data name="PayoutFreq.FailedPrefix" xml:space="preserve"><value>失败:</value></data>
+
+  <!-- Billing Info Card -->
+  <data name="BillingInfo.Title" xml:space="preserve"><value>账单信息</value></data>
+  <data name="BillingInfo.ManageCards" xml:space="preserve"><value>管理卡片</value></data>
+  <data name="BillingInfo.EditBilling" xml:space="preserve"><value>编辑账单信息</value></data>
+
+  <!-- Commissions Card -->
+  <data name="Commissions.Title" xml:space="preserve"><value>佣金</value></data>
+  <data name="Commissions.EditButton" xml:space="preserve"><value>编辑佣金信息</value></data>
+  <data name="Commissions.PaymentFrequency" xml:space="preserve"><value>付款频率</value></data>
+  <data name="Commissions.PaymentMethod" xml:space="preserve"><value>付款方式</value></data>
+  <data name="Commissions.AccountLabel" xml:space="preserve"><value>{0} 账户</value></data>
+  <data name="Commissions.YourAccount" xml:space="preserve"><value>您的账户:</value></data>
+  <data name="Commissions.PortalAccess" xml:space="preserve"><value>点击此处立即访问!</value></data>
+  <data name="Commissions.NoMethodSelected" xml:space="preserve"><value>— 未选择方式 —</value></data>
+  <data name="Commissions.AddMethodFirst" xml:space="preserve"><value>请先添加付款方式。</value></data>
+  <data name="Commissions.Saved" xml:space="preserve"><value>佣金设置已保存。</value></data>
+  <data name="Commissions.SaveFailedPrefix" xml:space="preserve"><value>保存失败:</value></data>
+  <data name="Commissions.FrequencyDaily" xml:space="preserve"><value>每日</value></data>
+  <data name="Commissions.FrequencyWeekly" xml:space="preserve"><value>每周</value></data>
+  <data name="Commissions.SelectMethod" xml:space="preserve"><value>选择付款方式</value></data>
+  <data name="BillingInfo.NoDefaultCard" xml:space="preserve"><value>未保存默认卡片。请添加卡片以启用自动续订。</value></data>
+  <data name="BillingInfo.CreditCard" xml:space="preserve"><value>信用卡</value></data>
+  <data name="BillingInfo.CardHolder" xml:space="preserve"><value>持卡人</value></data>
+  <data name="BillingInfo.Exp" xml:space="preserve"><value>有效期</value></data>
+  <data name="BillingInfo.BillingAddress" xml:space="preserve"><value>账单地址</value></data>
+
+  <!-- Billing History Table -->
+  <data name="BillingHistory.Title" xml:space="preserve"><value>最近交易</value></data>
+  <data name="BillingHistory.ShowingPrefix" xml:space="preserve"><value>显示</value></data>
+  <data name="BillingHistory.Empty" xml:space="preserve"><value>暂无交易。</value></data>
+  <data name="BillingHistory.Transaction" xml:space="preserve"><value>交易</value></data>
+  <data name="BillingHistory.MembershipRenewal" xml:space="preserve"><value>会员续订</value></data>
+
+  <!-- Add Card Modal -->
+  <data name="AddCard.Title" xml:space="preserve"><value>添加信用卡</value></data>
+  <data name="AddCard.CardHolder" xml:space="preserve"><value>持卡人</value></data>
+  <data name="AddCard.FullNamePlaceholder" xml:space="preserve"><value>全名</value></data>
+  <data name="AddCard.Expires" xml:space="preserve"><value>有效期</value></data>
+  <data name="AddCard.Cvc" xml:space="preserve"><value>CVC</value></data>
+  <data name="AddCard.CardNumber" xml:space="preserve"><value>卡号</value></data>
+  <data name="AddCard.CardholderName" xml:space="preserve"><value>持卡人姓名</value></data>
+  <data name="AddCard.CardholderPlaceholder" xml:space="preserve"><value>与卡片印字一致</value></data>
+  <data name="AddCard.Expiration" xml:space="preserve"><value>到期日</value></data>
+  <data name="AddCard.SaveCard" xml:space="preserve"><value>保存卡片</value></data>
+  <data name="AddCard.InvalidExpiration" xml:space="preserve"><value>到期日无效。</value></data>
+  <data name="AddCard.AlreadyExpired" xml:space="preserve"><value>该卡已过期。请使用未来到期日的卡片。</value></data>
+  <data name="AddCard.NumberTooShort" xml:space="preserve"><value>卡号过短。</value></data>
+  <data name="AddCard.CvcTooShort" xml:space="preserve"><value>CVC 过短。</value></data>
+
+  <!-- Credentials Form -->
+  <data name="Credentials.ChangePassword" xml:space="preserve"><value>更改密码</value></data>
+  <data name="Credentials.CurrentPassword" xml:space="preserve"><value>当前密码</value></data>
+  <data name="Credentials.NewPassword" xml:space="preserve"><value>新密码</value></data>
+  <data name="Credentials.ConfirmPassword" xml:space="preserve"><value>确认新密码</value></data>
+  <data name="Credentials.UpdatePassword" xml:space="preserve"><value>更新密码</value></data>
+  <data name="Credentials.PasswordChanged" xml:space="preserve"><value>密码修改成功。</value></data>
+  <data name="Credentials.PasswordFailed" xml:space="preserve"><value>更新密码失败。请检查您的当前密码。</value></data>
+  <data name="Credentials.ChangeEmail" xml:space="preserve"><value>更改邮箱</value></data>
+  <data name="Credentials.NewEmail" xml:space="preserve"><value>新邮箱</value></data>
+  <data name="Credentials.UpdateEmail" xml:space="preserve"><value>更新邮箱</value></data>
+  <data name="Credentials.EmailUpdated" xml:space="preserve"><value>邮箱更新成功。已发送确认邮件。</value></data>
+  <data name="Credentials.EmailFailed" xml:space="preserve"><value>更新邮箱失败。请检查您的密码。</value></data>
+
+  <!-- Credentials History Table -->
+  <data name="CredentialsHistory.Title" xml:space="preserve"><value>凭据历史</value></data>
+  <data name="CredentialsHistory.Empty" xml:space="preserve"><value>尚未记录凭据变更。</value></data>
+  <data name="CredentialsHistory.Kind" xml:space="preserve"><value>类型</value></data>
+
+  <!-- Security Log Table -->
+  <data name="SecurityLog.Title" xml:space="preserve"><value>安全日志</value></data>
+  <data name="SecurityLog.Event" xml:space="preserve"><value>事件</value></data>
+
+  <!-- Payment Method Tab -->
+  <data name="PaymentMethod.PayoutOptionsTab" xml:space="preserve"><value>支付选项</value></data>
+  <data name="PaymentMethod.PaymentMethodTab" xml:space="preserve"><value>支付方式</value></data>
+  <data name="PaymentMethod.Title" xml:space="preserve"><value>支付方式</value></data>
+  <data name="PaymentMethod.Description" xml:space="preserve"><value>拖动卡片以设置公司尝试扣费的顺序。第一张成功的卡片胜出。</value></data>
+  <data name="PaymentMethod.AddCard" xml:space="preserve"><value>添加卡片</value></data>
+  <data name="PaymentMethod.NoCardsTitle" xml:space="preserve"><value>您尚未保存任何卡片。</value></data>
+  <data name="PaymentMethod.AddFirstCard" xml:space="preserve"><value>添加您的第一张卡片</value></data>
+  <data name="PaymentMethod.CreditCard" xml:space="preserve"><value>信用卡</value></data>
+  <data name="PaymentMethod.CardHolder" xml:space="preserve"><value>持卡人</value></data>
+  <data name="PaymentMethod.Default" xml:space="preserve"><value>默认</value></data>
+  <data name="PaymentMethod.Expired" xml:space="preserve"><value>已过期</value></data>
+  <data name="PaymentMethod.DragToReorder" xml:space="preserve"><value>拖动以重新排序</value></data>
+  <data name="PaymentMethod.SetDefault" xml:space="preserve"><value>设为默认</value></data>
+  <data name="PaymentMethod.RemoveCardTooltip" xml:space="preserve"><value>移除此卡片</value></data>
+  <data name="PaymentMethod.ConfirmRemove" xml:space="preserve"><value>移除此卡片?</value></data>
+  <data name="PaymentMethod.CardAdded" xml:space="preserve"><value>卡片添加成功。</value></data>
+  <data name="PaymentMethod.DefaultUpdated" xml:space="preserve"><value>默认卡片已更新。</value></data>
+  <data name="PaymentMethod.CardRemoved" xml:space="preserve"><value>卡片已移除。</value></data>
+  <data name="PaymentMethod.CouldNotLoadPrefix" xml:space="preserve"><value>无法加载卡片:</value></data>
+  <data name="PaymentMethod.CouldNotSetDefaultPrefix" xml:space="preserve"><value>无法设为默认:</value></data>
+  <data name="PaymentMethod.CouldNotRemovePrefix" xml:space="preserve"><value>无法移除:</value></data>
+  <data name="PaymentMethod.CouldNotSaveOrderPrefix" xml:space="preserve"><value>无法保存顺序:</value></data>
+  <data name="PaymentMethod.PayoutOptionsTitle" xml:space="preserve"><value>支付选项</value></data>
+  <data name="PaymentMethod.PayoutOptionsHint" xml:space="preserve"><value>分别添加或更新每个网关。请将其中一个标记为默认以接收佣金。</value></data>
+  <data name="PaymentMethod.DefaultReceiving" xml:space="preserve"><value>默认 — 正在接收佣金</value></data>
+  <data name="PaymentMethod.AdminFee" xml:space="preserve"><value>管理费:</value></data>
+  <data name="PaymentMethod.PerPayout" xml:space="preserve"><value>每次支付</value></data>
+  <data name="PaymentMethod.Account" xml:space="preserve"><value>账户:</value></data>
+  <data name="PaymentMethod.Status" xml:space="preserve"><value>状态:</value></data>
+  <data name="PaymentMethod.UpdatedPrefix" xml:space="preserve"><value>更新于</value></data>
+  <data name="PaymentMethod.NotConfigured" xml:space="preserve"><value>尚未配置。</value></data>
+  <data name="PaymentMethod.AddAccount" xml:space="preserve"><value>添加账户</value></data>
+  <data name="PaymentMethod.EditAccount" xml:space="preserve"><value>编辑账户</value></data>
+  <data name="PaymentMethod.CurrentlyDefault" xml:space="preserve"><value>当前默认</value></data>
+  <data name="PaymentMethod.SetAsDefault" xml:space="preserve"><value>设为默认</value></data>
+  <data name="PaymentMethod.SetAsDefaultTooltip" xml:space="preserve"><value>使用此钱包接收佣金支付</value></data>
+  <data name="PaymentMethod.PendingApproval" xml:space="preserve"><value>等待审批</value></data>
+  <data name="PaymentMethod.PendingApprovalTooltip" xml:space="preserve"><value>网关必须批准此账户后才能设为默认</value></data>
+  <data name="PaymentMethod.WalletHistoryTitle" xml:space="preserve"><value>钱包变更历史</value></data>
+  <data name="PaymentMethod.WalletHistoryHint" xml:space="preserve"><value>— 包含用于反欺诈的账户标识符变更</value></data>
+  <data name="PaymentMethod.NoWalletChanges" xml:space="preserve"><value>暂无钱包变更。</value></data>
+  <data name="PaymentMethod.History.Gateway" xml:space="preserve"><value>网关</value></data>
+  <data name="PaymentMethod.History.Change" xml:space="preserve"><value>变更</value></data>
+  <data name="PaymentMethod.History.FromTo" xml:space="preserve"><value>从 → 到</value></data>
+  <data name="PaymentMethod.History.NoChange" xml:space="preserve"><value>无变更</value></data>
+  <data name="WalletStatus.Pending" xml:space="preserve"><value>待处理</value></data>
+  <data name="WalletStatus.Approved" xml:space="preserve"><value>已批准</value></data>
+  <data name="WalletStatus.Rejected" xml:space="preserve"><value>已拒绝</value></data>
+  <data name="PaymentMethod.ApiLogTitle" xml:space="preserve"><value>网关 API 调用日志</value></data>
+  <data name="PaymentMethod.ApiLogHint" xml:space="preserve"><value>— 每次网关交互的请求/响应(用于支持升级)</value></data>
+  <data name="PaymentMethod.NoApiLogs" xml:space="preserve"><value>没有 API 调用记录。</value></data>
+  <data name="PaymentMethod.Log.Operation" xml:space="preserve"><value>操作</value></data>
+  <data name="PaymentMethod.Log.Endpoint" xml:space="preserve"><value>端点</value></data>
+  <data name="PaymentMethod.Log.Duration" xml:space="preserve"><value>耗时</value></data>
+  <data name="PaymentMethod.Log.Result" xml:space="preserve"><value>结果</value></data>
+  <data name="PaymentMethod.Log.Hide" xml:space="preserve"><value>隐藏</value></data>
+  <data name="PaymentMethod.Log.View" xml:space="preserve"><value>查看请求/响应</value></data>
+  <data name="PaymentMethod.Log.Request" xml:space="preserve"><value>请求</value></data>
+  <data name="PaymentMethod.Log.Response" xml:space="preserve"><value>响应</value></data>
+  <data name="PaymentMethod.Log.ResponseError" xml:space="preserve"><value>(错误)</value></data>
+  <data name="PaymentMethod.AccountIdRequired" xml:space="preserve"><value>账户标识符为必填。</value></data>
+  <data name="PaymentMethod.EWalletPasswordLabel" xml:space="preserve"><value>eWallet 密码(将加密)</value></data>
+  <data name="PaymentMethod.EWalletPasswordHint" xml:space="preserve"><value>仅在 I-Payout 初次注册时需要。</value></data>
+  <data name="PaymentMethod.NotesLabel" xml:space="preserve"><value>备注</value></data>
+  <data name="PaymentMethod.WalletUpdatedSuffix" xml:space="preserve"><value>已更新。</value></data>
+  <data name="PaymentMethod.DefaultWalletUpdated" xml:space="preserve"><value>默认钱包已更新。</value></data>
+  <data name="PaymentMethod.CouldNotSetWalletDefaultPrefix" xml:space="preserve"><value>无法设为默认:</value></data>
+  <data name="PaymentMethod.ErrorPrefix" xml:space="preserve"><value>错误:</value></data>
+  <data name="PaymentMethod.Action.Created" xml:space="preserve"><value>账户已创建</value></data>
+  <data name="PaymentMethod.Action.AccountChanged" xml:space="preserve"><value>账户已变更</value></data>
+  <data name="PaymentMethod.Action.StatusChanged" xml:space="preserve"><value>状态已变更</value></data>
+  <data name="PaymentMethod.Action.SetAsDefault" xml:space="preserve"><value>已设为默认</value></data>
+  <data name="PaymentMethod.Action.UnsetAsDefault" xml:space="preserve"><value>已替换为默认</value></data>
+  <data name="PaymentMethod.Action.Deleted" xml:space="preserve"><value>账户已移除</value></data>
+  <data name="PaymentMethod.Validation.CryptoRequired" xml:space="preserve"><value>需要加密货币钱包地址,而不是邮箱。请提供 Bitcoin (bc1.../1.../3...)、USDT-TRC20 (T...) 或 EVM (0x...) 地址。</value></data>
+  <data name="PaymentMethod.Validation.CryptoInvalid" xml:space="preserve"><value>该账户看起来不像有效的加密货币钱包地址。</value></data>
+  <data name="PaymentMethod.Validation.EmailRequired" xml:space="preserve"><value>该网关需要有效的邮箱地址作为账户标识符。</value></data>
+  <data name="PaymentMethod.Gateway.EWalletLabel" xml:space="preserve"><value>eWallet (I-Payout)</value></data>
+  <data name="PaymentMethod.Gateway.DwollaLabel" xml:space="preserve"><value>Dwolla</value></data>
+  <data name="PaymentMethod.Gateway.CryptoLabel" xml:space="preserve"><value>加密货币</value></data>
+  <data name="PaymentMethod.Gateway.AdvCashLabel" xml:space="preserve"><value>Advancash</value></data>
+  <data name="PaymentMethod.Gateway.EWalletField" xml:space="preserve"><value>I-Payout 邮箱</value></data>
+  <data name="PaymentMethod.Gateway.DwollaField" xml:space="preserve"><value>Dwolla 账户邮箱</value></data>
+  <data name="PaymentMethod.Gateway.CryptoField" xml:space="preserve"><value>钱包地址</value></data>
+  <data name="PaymentMethod.Gateway.AdvCashField" xml:space="preserve"><value>Advancash 账户邮箱</value></data>
+  <data name="PaymentMethod.Gateway.EmailPlaceholder" xml:space="preserve"><value>user@example.com</value></data>
+  <data name="PaymentMethod.Gateway.CryptoPlaceholder" xml:space="preserve"><value>bc1qxy2k...x9k2</value></data>
+  <data name="PaymentMethod.Gateway.EWalletHelp" xml:space="preserve"><value>I-Payout 将发送确认邮件以验证账户。</value></data>
+  <data name="PaymentMethod.Gateway.DwollaHelp" xml:space="preserve"><value>请使用与您 Dwolla 账户绑定的邮箱。</value></data>
+  <data name="PaymentMethod.Gateway.CryptoHelp" xml:space="preserve"><value>请提供您希望接收支付的资产的钱包接收地址。</value></data>
+  <data name="PaymentMethod.Gateway.AdvCashHelp" xml:space="preserve"><value>请使用与您 AdvCash 账户绑定的邮箱。</value></data>
+
+  <!-- Dashboard Page -->
+  <data name="Dashboard.PageTitle" xml:space="preserve"><value>仪表板</value></data>
+  <data name="Dashboard.Breadcrumb" xml:space="preserve"><value>仪表板</value></data>
+  <data name="Dashboard.TotalEarnings" xml:space="preserve"><value>总收入</value></data>
+  <data name="Dashboard.TeamSize" xml:space="preserve"><value>团队规模</value></data>
+  <data name="Dashboard.TokenBalance" xml:space="preserve"><value>代币余额</value></data>
+  <data name="Dashboard.CurrentRank" xml:space="preserve"><value>当前等级</value></data>
+  <data name="Dashboard.FsbWindowsTitle" xml:space="preserve"><value>快速启动奖金窗口</value></data>
+
+  <!-- Activity Feed -->
+  <data name="ActivityFeed.Title" xml:space="preserve"><value>近期活动</value></data>
+  <data name="ActivityFeed.EmptyTitle" xml:space="preserve"><value>暂无近期活动</value></data>
+  <data name="ActivityFeed.EmptyMessage" xml:space="preserve"><value>您的活动将显示在此处。</value></data>
+  <data name="ActivityFeed.Period" xml:space="preserve"><value>周期:</value></data>
+  <data name="ActivityFeed.Status" xml:space="preserve"><value>状态:</value></data>
+  <data name="ActivityFeed.MonthSuffix" xml:space="preserve"><value>个月前</value></data>
+  <data name="ActivityFeed.DaySuffix" xml:space="preserve"><value>天前</value></data>
+  <data name="ActivityFeed.HourSuffix" xml:space="preserve"><value>小时前</value></data>
+  <data name="ActivityFeed.MinuteSuffix" xml:space="preserve"><value>分钟前</value></data>
+
+  <!-- Fast Start Bonus Card -->
+  <data name="Fsb.Title" xml:space="preserve"><value>快速启动奖金</value></data>
+  <data name="Fsb.Locked" xml:space="preserve"><value>已锁定 — 即将推出</value></data>
+  <data name="Fsb.Completed" xml:space="preserve"><value>已完成!</value></data>
+
+  <!-- Token Balance Widget -->
+  <data name="TokenWidget.Title" xml:space="preserve"><value>代币余额</value></data>
+  <data name="TokenWidget.GrantTokens" xml:space="preserve"><value>发放代币</value></data>
+  <data name="TokenWidget.EmptyTitle" xml:space="preserve"><value>暂无代币</value></data>
+  <data name="TokenWidget.EmptyMessage" xml:space="preserve"><value>代币余额将显示在此处。</value></data>
+  <data name="TokenWidget.GrantModalTitle" xml:space="preserve"><value>发放代币</value></data>
+  <data name="TokenWidget.GrantModalMessage" xml:space="preserve"><value>管理员代币发放弹窗 — 待实现。</value></data>
+  <data name="TokenWidget.GrantConfirm" xml:space="preserve"><value>发放</value></data>
+
+  <!-- Account Tab (Email + Password card) -->
+  <data name="Account.Title" xml:space="preserve"><value>账户</value></data>
+  <data name="Account.EditButton" xml:space="preserve"><value>编辑账户信息</value></data>
+  <data name="Account.Email" xml:space="preserve"><value>电子邮件</value></data>
+  <data name="Account.Password" xml:space="preserve"><value>密码</value></data>
+  <data name="Account.PasswordMasked" xml:space="preserve"><value>XXXXXXXXX</value></data>
+
+  <!-- 分页 -->
+  <data name="Common.Previous" xml:space="preserve"><value>上一页</value></data>
+  <data name="Common.Next" xml:space="preserve"><value>下一页</value></data>
+
+  <!-- 报告通用列标题和标签 -->
+  <data name="Reports.Showing" xml:space="preserve"><value>显示</value></data>
+  <data name="Reports.Results" xml:space="preserve"><value>结果</value></data>
+  <data name="Reports.SearchPlaceholder" xml:space="preserve"><value>在此搜索</value></data>
+  <data name="Reports.EarnedDate" xml:space="preserve"><value>赚取日期</value></data>
+  <data name="Reports.PaymentDate" xml:space="preserve"><value>付款日期</value></data>
+  <data name="Reports.Paid" xml:space="preserve"><value>已支付</value></data>
+  <data name="Reports.Pending" xml:space="preserve"><value>待处理</value></data>
+  <data name="Reports.History" xml:space="preserve"><value>历史</value></data>
+  <data name="Reports.Detail" xml:space="preserve"><value>详情</value></data>
+  <data name="Reports.OrderNo" xml:space="preserve"><value>订单号</value></data>
+  <data name="Reports.MemberName" xml:space="preserve"><value>会员姓名</value></data>
+  <data name="Reports.MembershipType" xml:space="preserve"><value>会员类型</value></data>
+  <data name="Reports.Leg" xml:space="preserve"><value>分支</value></data>
+  <data name="Reports.EnrollmentDate" xml:space="preserve"><value>注册日期</value></data>
+  <data name="Reports.NextRebilling" xml:space="preserve"><value>下次扣款</value></data>
+  <data name="Reports.EligiblePoints" xml:space="preserve"><value>合格积分</value></data>
+  <data name="Reports.TotalPoints" xml:space="preserve"><value>总积分</value></data>
+  <data name="Reports.Type" xml:space="preserve"><value>类型</value></data>
+  <data name="Reports.Description" xml:space="preserve"><value>描述</value></data>
+  <data name="Reports.Frequency" xml:space="preserve"><value>频率</value></data>
+  <data name="Reports.Period" xml:space="preserve"><value>期间</value></data>
+  <data name="Reports.Month" xml:space="preserve"><value>月份</value></data>
+  <data name="Reports.Income" xml:space="preserve"><value>收入</value></data>
+
+  <!-- 佣金收益表 -->
+  <data name="CommissionEarnings.Title" xml:space="preserve"><value>佣金收益</value></data>
+  <data name="CommissionEarnings.ForcePay" xml:space="preserve"><value>强制支付</value></data>
+  <data name="CommissionEarnings.DeleteTitle" xml:space="preserve"><value>删除佣金</value></data>
+  <data name="CommissionEarnings.DeleteMessage" xml:space="preserve"><value>您确定要删除这笔未支付的佣金吗？此操作无法撤销。</value></data>
+
+  <!-- 佣金面板 -->
+  <data name="CommissionsDashboard.OnlyAmbassadors" xml:space="preserve"><value>佣金仅适用于大使。</value></data>
+  <data name="CommissionsDashboard.Resume" xml:space="preserve"><value>摘要</value></data>
+  <data name="CommissionsDashboard.HistoryCurrentYear" xml:space="preserve"><value>历史（本年度）</value></data>
+  <data name="CommissionsDashboard.NoPending" xml:space="preserve"><value>没有待处理的佣金。</value></data>
+  <data name="CommissionsDashboard.NoPaid" xml:space="preserve"><value>没有已支付的佣金。</value></data>
+  <data name="CommissionsDashboard.DownloadYearly" xml:space="preserve"><value>下载年度报告 ({0})</value></data>
+  <data name="CommissionsDashboard.NoHistory" xml:space="preserve"><value>没有可用的佣金历史记录。</value></data>
+  <data name="CommissionsDashboard.ModalTitle" xml:space="preserve"><value>佣金 ({0})</value></data>
+  <data name="CommissionsDashboard.NoBreakdown" xml:space="preserve"><value>没有明细数据。</value></data>
+  <data name="CommissionsDashboard.CommissionType" xml:space="preserve"><value>佣金类型</value></data>
+  <data name="CommissionsDashboard.NoDataPeriod" xml:space="preserve"><value>该期间没有数据。</value></data>
+  <data name="CommissionsDashboard.Ok" xml:space="preserve"><value>确定</value></data>
+
+  <!-- 双线残余报告 -->
+  <data name="DualResidual.LeftLeg" xml:space="preserve"><value>左线积分</value></data>
+  <data name="DualResidual.RightLeg" xml:space="preserve"><value>右线积分</value></data>
+  <data name="DualResidual.HistoryTitle" xml:space="preserve"><value>双线团队残余历史</value></data>
+  <data name="DualResidual.WeakLeg" xml:space="preserve"><value>弱线积分</value></data>
+  <data name="DualResidual.Breadcrumb" xml:space="preserve"><value>双线残余</value></data>
+
+  <!-- 快速启动奖金 -->
+  <data name="Fsb.Normal" xml:space="preserve"><value>常规</value></data>
+  <data name="Fsb.Promo2025" xml:space="preserve"><value>促销 2025</value></data>
+  <data name="Fsb.Window" xml:space="preserve"><value>快速启动奖金 {0}</value></data>
+  <data name="Fsb.NoMembersWindow" xml:space="preserve"><value>此窗口尚无会员注册。</value></data>
+  <data name="Fsb.MemberFullName" xml:space="preserve"><value>姓名</value></data>
+  <data name="Fsb.EnrollDate" xml:space="preserve"><value>注册日期</value></data>
+  <data name="Fsb.Service" xml:space="preserve"><value>服务</value></data>
+  <data name="Fsb.RenewalDate" xml:space="preserve"><value>续订日期</value></data>
+  <data name="Fsb.WindowSuffixPromo" xml:space="preserve"><value>— 促销 2025</value></data>
+  <data name="Fsb.WindowSuffixNormal" xml:space="preserve"><value>— 常规</value></data>
+  <data name="Fsb.Breadcrumb" xml:space="preserve"><value>快速启动奖金</value></data>
+
+  <!-- 总统奖金 -->
+  <data name="Presidential.Breadcrumb" xml:space="preserve"><value>总统奖金</value></data>
+  <data name="Presidential.TotalBonusEarned" xml:space="preserve"><value>已赚取总奖金</value></data>
+  <data name="Presidential.TotalAmountEarned" xml:space="preserve"><value>已赚取总金额</value></data>
+
+  <!-- 助推奖金 -->
+  <data name="Boost.Breadcrumb" xml:space="preserve"><value>助推奖金</value></data>
+  <data name="Boost.TitleWithLabel" xml:space="preserve"><value>助推奖金：{0}</value></data>
+  <data name="Boost.LoadingLabel" xml:space="preserve"><value>加载中...</value></data>
+  <data name="Boost.Gold" xml:space="preserve"><value>金牌</value></data>
+  <data name="Boost.Platinum" xml:space="preserve"><value>白金</value></data>
+  <data name="Boost.Enrollments" xml:space="preserve"><value>注册</value></data>
+  <data name="Boost.WeekSelectAria" xml:space="preserve"><value>选择周</value></data>
+  <data name="Boost.CurrentWeek" xml:space="preserve"><value>本周</value></data>
+  <data name="Boost.NoGoldEnrollments" xml:space="preserve"><value>本期间没有金牌注册（阈值：6）。</value></data>
+  <data name="Boost.NoPlatinumEnrollments" xml:space="preserve"><value>本期间没有白金注册（阈值：12）。</value></data>
+  <data name="Boost.TotalMembers" xml:space="preserve"><value>会员总数</value></data>
+  <data name="Boost.ActiveRebilling" xml:space="preserve"><value>活跃续费</value></data>
+  <data name="Boost.InactiveRebilling" xml:space="preserve"><value>非活跃续费</value></data>
+
+  <!-- 汽车奖金 -->
+  <data name="Car.Breadcrumb" xml:space="preserve"><value>汽车奖金</value></data>
+  <data name="Car.CurrentProgress" xml:space="preserve"><value>当前进度：{0}</value></data>
+  <data name="Car.TotalEligiblePoints" xml:space="preserve"><value>合格积分总数</value></data>
+  <data name="Car.Progress" xml:space="preserve"><value>进度</value></data>
+  <data name="Car.Ambassador" xml:space="preserve"><value>大使</value></data>
+  <data name="Car.NoCarBonusData" xml:space="preserve"><value>没有可用的汽车奖金数据。</value></data>
+  <data name="Car.BranchModalEnrollmentTeam" xml:space="preserve"><value>注册团队 • 分支</value></data>
+  <data name="Car.BranchModalTotalPoints" xml:space="preserve"><value>总积分：{0}</value></data>
+  <data name="Car.BranchModalNoMembers" xml:space="preserve"><value>此分支中未找到会员。</value></data>
+  <data name="Car.BranchModalFullName" xml:space="preserve"><value>全名</value></data>
+  <data name="Car.BranchModalMembershipLevel" xml:space="preserve"><value>会员级别</value></data>
+  <data name="Car.BranchModalExpirationDate" xml:space="preserve"><value>到期日期</value></data>
+  <data name="Car.BranchModalExportList" xml:space="preserve"><value>导出列表</value></data>
+
+
+  <data name="Common.From" xml:space="preserve"><value>从</value></data>
+  <data name="Common.To" xml:space="preserve"><value>到</value></data>
+  <data name="Common.Members" xml:space="preserve"><value>会员</value></data>
+  <data name="Common.Customers" xml:space="preserve"><value>客户</value></data>
+  <data name="Common.Ok" xml:space="preserve"><value>确定</value></data>
+  <data name="Common.Back" xml:space="preserve"><value>返回</value></data>
+  <data name="Common.Previous2" xml:space="preserve"><value>上一步</value></data>
+  <data name="Common.Pts" xml:space="preserve"><value>分</value></data>
+  <data name="Common.Of2" xml:space="preserve"><value>/</value></data>
+  <data name="Reports.JoinDate" xml:space="preserve"><value>加入日期</value></data>
+  <data name="Reports.Id" xml:space="preserve"><value>ID</value></data>
+  <data name="Reports.Name" xml:space="preserve"><value>姓名</value></data>
+  <data name="Reports.Email" xml:space="preserve"><value>邮箱</value></data>
+  <data name="Reports.Phone" xml:space="preserve"><value>电话</value></data>
+  <data name="Reports.Country" xml:space="preserve"><value>国家</value></data>
+  <data name="Reports.Level" xml:space="preserve"><value>级别</value></data>
+  <data name="Reports.Sponsor" xml:space="preserve"><value>推荐人</value></data>
+  <data name="Reports.DualUpline" xml:space="preserve"><value>双线上线</value></data>
+  <data name="Reports.DualTeamUpline" xml:space="preserve"><value>双团队上线</value></data>
+  <data name="Reports.BizStatus" xml:space="preserve"><value>BizCenter 状态</value></data>
+  <data name="Reports.BizCenterStatus" xml:space="preserve"><value>BizCenter 状态</value></data>
+  <data name="Reports.MembershipStatus" xml:space="preserve"><value>会员状态</value></data>
+  <data name="Reports.Membership" xml:space="preserve"><value>会员</value></data>
+  <data name="Reports.Rank" xml:space="preserve"><value>等级</value></data>
+  <data name="Reports.RankDate" xml:space="preserve"><value>等级日期</value></data>
+  <data name="Reports.LifetimeRank" xml:space="preserve"><value>终身等级</value></data>
+  <data name="Reports.NextRankPercent" xml:space="preserve"><value>下一等级 %</value></data>
+  <data name="Reports.Qualified" xml:space="preserve"><value>已合格</value></data>
+  <data name="Reports.Unqualified" xml:space="preserve"><value>未合格</value></data>
+  <data name="Reports.QualPoints" xml:space="preserve"><value>合格分</value></data>
+  <data name="Reports.EnrollPoints" xml:space="preserve"><value>注册分</value></data>
+  <data name="Reports.EnrollTeamPoints" xml:space="preserve"><value>注册团队分</value></data>
+  <data name="Reports.LeftPoints" xml:space="preserve"><value>左分</value></data>
+  <data name="Reports.RightPoints" xml:space="preserve"><value>右分</value></data>
+  <data name="Reports.LeftTeamPoints" xml:space="preserve"><value>左团队分</value></data>
+  <data name="Reports.RightTeamPoints" xml:space="preserve"><value>右团队分</value></data>
+  <data name="Reports.Points" xml:space="preserve"><value>积分</value></data>
+  <data name="Reports.PointsSuffix" xml:space="preserve"><value>积分</value></data>
+  <data name="Reports.Ambassador" xml:space="preserve"><value>大使</value></data>
+  <data name="Reports.Ambassadors" xml:space="preserve"><value>大使</value></data>
+  <data name="Reports.OnlyCustomers" xml:space="preserve"><value>仅客户</value></data>
+  <data name="Reports.LeftLeg" xml:space="preserve"><value>左腿</value></data>
+  <data name="Reports.RightLeg" xml:space="preserve"><value>右腿</value></data>
+  <data name="Reports.LeftSide" xml:space="preserve"><value>左侧</value></data>
+  <data name="Reports.RightSide" xml:space="preserve"><value>右侧</value></data>
+  <data name="Reports.QualifyHeaderTooltip" xml:space="preserve"><value>个人合格积分 — 来自该会员自身产品购买的 QualificationPoints 总和。</value></data>
+  <data name="Reports.EnrollPointsTooltip" xml:space="preserve"><value>注册团队积分 — 该会员下线累积的积分。0 表示尚未注册任何人。</value></data>
+  <data name="Reports.LeftPointsTooltip" xml:space="preserve"><value>双树左腿积分 — 该会员二叉树左腿累积的积分。0 表示该腿没有后代。</value></data>
+  <data name="Reports.RightPointsTooltip" xml:space="preserve"><value>双树右腿积分 — 该会员二叉树右腿累积的积分。0 表示该腿没有后代。</value></data>
+  <data name="Team.LeftLegPoints" xml:space="preserve"><value>左腿积分</value></data>
+  <data name="Team.RightLegPoints" xml:space="preserve"><value>右腿积分</value></data>
+  <data name="Team.LegendQualified" xml:space="preserve"><value>已合格</value></data>
+  <data name="Team.LegendUnqualified" xml:space="preserve"><value>未合格</value></data>
+  <data name="Team.LegendCancelled" xml:space="preserve"><value>已取消 / 不活跃</value></data>
+  <data name="Team.Root" xml:space="preserve"><value>根</value></data>
+  <data name="Team.NoTreeData" xml:space="preserve"><value>无可用的树数据。</value></data>
+  <data name="Team.LeftEmpty" xml:space="preserve"><value>左 空</value></data>
+  <data name="Team.RightEmpty" xml:space="preserve"><value>右 空</value></data>
+  <data name="Team.OpenSlot" xml:space="preserve"><value>空位</value></data>
+  <data name="Team.PlaceMemberTooltip" xml:space="preserve"><value>点击放置会员</value></data>
+  <data name="Team.DrillTooltipSuffix" xml:space="preserve"><value>点击展开</value></data>
+  <data name="Team.Expand" xml:space="preserve"><value>展开</value></data>
+  <data name="Team.RevertPlacement" xml:space="preserve"><value>撤销放置</value></data>
+  <data name="Team.SelectAmbassadorLeg" xml:space="preserve"><value>选择大使 — {0} 腿</value></data>
+  <data name="Team.LegLeft" xml:space="preserve"><value>左</value></data>
+  <data name="Team.LegRight" xml:space="preserve"><value>右</value></data>
+  <data name="Team.NoCandidatesAvailable" xml:space="preserve"><value>没有可放置的大使。</value></data>
+  <data name="Team.PlacementConfirmation" xml:space="preserve"><value>放置确认</value></data>
+  <data name="Team.AmbassadorLabel" xml:space="preserve"><value>大使：</value></data>
+  <data name="Team.UnderLabel" xml:space="preserve"><value>下方：</value></data>
+  <data name="Team.LegBadge" xml:space="preserve"><value>{0} 腿</value></data>
+  <data name="Team.PointsContributionPrefix" xml:space="preserve"><value>贡献积分给</value></data>
+  <data name="Team.PointSingular" xml:space="preserve"><value>分</value></data>
+  <data name="Team.PointsPlural" xml:space="preserve"><value>分</value></data>
+  <data name="Team.SubtreeSuffix" xml:space="preserve"><value>（本人 + 子树中 {0}）</value></data>
+  <data name="Team.ChangeSelection" xml:space="preserve"><value>更改选择</value></data>
+  <data name="Team.ConfirmPlacement" xml:space="preserve"><value>确认放置</value></data>
+  <data name="Team.ConfirmRevertPlacement" xml:space="preserve"><value>确认撤销放置</value></data>
+  <data name="Team.RevertConfirmQuestion" xml:space="preserve"><value>确定要撤销以下成员的放置吗？</value></data>
+  <data name="Team.RevertConfirmHelp" xml:space="preserve"><value>大使及其子树将与双树解除关联。可以稍后重新放置，子树会一同迁移。</value></data>
+  <data name="Team.ConfirmRevert" xml:space="preserve"><value>确认撤销</value></data>
+  <data name="Team.RevertError" xml:space="preserve"><value>撤销放置错误（{0}）。</value></data>
+  <data name="Team.RootPointsTooltipLine1" xml:space="preserve"><value>下线总积分（左腿 + 右腿）：{0}</value></data>
+  <data name="Team.RootPointsTooltipLine2" xml:space="preserve"><value>  • 个人积分（不含）：{0}</value></data>
+  <data name="Team.PointsTooltipLine1" xml:space="preserve"><value>对上线腿的贡献：{0}</value></data>
+  <data name="Team.PointsTooltipLine2" xml:space="preserve"><value>  • 个人积分：{0}</value></data>
+  <data name="Team.PointsTooltipLine3" xml:space="preserve"><value>  • 下线积分：{0}</value></data>
+  <data name="Team.LoadingError" xml:space="preserve"><value>未能加载树节点。</value></data>
+  <data name="Team.ApiErrorPrefix" xml:space="preserve"><value>API 错误：</value></data>
+  <data name="Team.ErrorPrefix" xml:space="preserve"><value>错误：</value></data>
+  <data name="Team.PlacementFailed" xml:space="preserve"><value>放置失败：</value></data>
+  <data name="Team.LoadCandidatesError" xml:space="preserve"><value>加载候选错误：</value></data>
+  <data name="Team.NoMembersForPlacement" xml:space="preserve"><value>没有可放置的会员。</value></data>
+  <data name="Team.SearchPlaceholderHere" xml:space="preserve"><value>在此搜索</value></data>
+  <data name="Team.RefreshTitle" xml:space="preserve"><value>从服务器刷新</value></data>
+  <data name="Team.LoadFailedDualMembers" xml:space="preserve"><value>未能加载双团队会员。</value></data>
+  <data name="Team.ActualRank" xml:space="preserve"><value>当前等级</value></data>
+  <data name="Team.NextRank" xml:space="preserve"><value>下一等级</value></data>
+  <data name="Team.DualPtsRequired" xml:space="preserve"><value>所需双团队积分</value></data>
+  <data name="Team.EnrollmentPtsRequired" xml:space="preserve"><value>所需注册积分</value></data>
+  <data name="Team.TotalDualTeamPoints" xml:space="preserve"><value>双团队总积分</value></data>
+  <data name="Team.DailyResidualsEarning" xml:space="preserve"><value>每日残差收益</value></data>
+  <data name="Team.LastSixMonths" xml:space="preserve"><value>最近 6 个月</value></data>
+  <data name="Team.ChartComingSoon" xml:space="preserve"><value>图表即将推出</value></data>
+  <data name="Team.HistoricalResidualsHint" xml:space="preserve"><value>历史残差数据将在此显示</value></data>
+  <data name="Team.DualTeamMembers" xml:space="preserve"><value>双团队成员</value></data>
+  <data name="Team.QualificationPoints" xml:space="preserve"><value>合格积分</value></data>
+  <data name="Team.CurrentRankEligible" xml:space="preserve"><value>当前等级（合格分）</value></data>
+  <data name="Team.NextRankEligible" xml:space="preserve"><value>下一等级（合格分）</value></data>
+  <data name="Team.NoTeamMembers" xml:space="preserve"><value>未找到团队成员。</value></data>
+  <data name="Team.NoResidualEarnings" xml:space="preserve"><value>没有残差收益可显示。</value></data>
+  <data name="Team.LoadFailedTeamMembers" xml:space="preserve"><value>未能加载团队成员。</value></data>
+  <data name="Team.LoadFailedResiduals" xml:space="preserve"><value>未能加载残差收益。</value></data>
+  <data name="Team.CurrentProgress" xml:space="preserve"><value>当前进度：{0}</value></data>
+  <data name="Team.TotalPoints" xml:space="preserve"><value>总积分</value></data>
+  <data name="Team.TotalEligibleCurrentRank" xml:space="preserve"><value>总合格积分（当前等级）</value></data>
+  <data name="Team.TotalEligibleNextRank" xml:space="preserve"><value>总合格积分（下一等级）</value></data>
+  <data name="Team.NoRecords" xml:space="preserve"><value>没有记录可显示。</value></data>
+  <data name="Team.PointsLabel" xml:space="preserve"><value>积分</value></data>
+  <data name="Team.AmbassadorsCount" xml:space="preserve"><value>大使（{0}）</value></data>
+  <data name="Team.OnlyCustomersCount" xml:space="preserve"><value>仅客户（{0}）</value></data>
+  <data name="Team.NoAmbassadorsBranch" xml:space="preserve"><value>此分支中没有大使。</value></data>
+  <data name="Team.NoCustomersBranch" xml:space="preserve"><value>此分支中没有客户。</value></data>
+  <data name="Team.LoadFailedBranches" xml:space="preserve"><value>未能加载分支。</value></data>
+  <data name="Team.StatusActive" xml:space="preserve"><value>活跃</value></data>
+  <data name="Team.StatusSuspended" xml:space="preserve"><value>已暂停</value></data>
+  <data name="Team.StatusCancelled" xml:space="preserve"><value>已取消</value></data>
+  <data name="Team.StatusInactive" xml:space="preserve"><value>不活跃</value></data>
+  <data name="Team.StatusNone" xml:space="preserve"><value>无</value></data>
+  <data name="Team.CustomersSearchPlaceholder" xml:space="preserve"><value>搜索姓名、ID…</value></data>
+  <data name="Team.LoadFailedCustomers" xml:space="preserve"><value>未能加载客户。</value></data>
+  <data name="Team.ViewInAdmin" xml:space="preserve"><value>在管理端查看</value></data>
+  <data name="Team.MyTeamSearchPlaceholder" xml:space="preserve"><value>搜索姓名、ID、邮箱…</value></data>
+  <data name="Team.JoinDateRange" xml:space="preserve"><value>加入日期范围</value></data>
+  <data name="Team.LoadFailedTeam" xml:space="preserve"><value>未能加载团队。</value></data>
+  <data name="Team.SuspensionDate" xml:space="preserve"><value>暂停日期：</value></data>
+  <data name="Team.CancellationDate" xml:space="preserve"><value>取消日期：</value></data>
+  <data name="Team.LastPaymentDate" xml:space="preserve"><value>上次付款日期：</value></data>
+  <data name="Team.RankLabel" xml:space="preserve"><value>等级：</value></data>
+  <data name="Team.RankDateLabel" xml:space="preserve"><value>等级日期：</value></data>
+  <data name="Team.LifetimeRankLabel" xml:space="preserve"><value>终身等级：</value></data>
+  <data name="Team.NextRankPercentLabel" xml:space="preserve"><value>下一等级 %：</value></data>
+  <data name="Team.QualificationPointsLabel" xml:space="preserve"><value>合格积分：</value></data>
+  <data name="Team.EnrollmentTeamPointsLabel" xml:space="preserve"><value>注册团队积分：</value></data>
+  <data name="Team.LeftTeamPointsLabel" xml:space="preserve"><value>左团队积分：</value></data>
+  <data name="Team.RightTeamPointsLabel" xml:space="preserve"><value>右团队积分：</value></data>
+  <data name="Team.IdLabel" xml:space="preserve"><value>ID：</value></data>
+  <data name="Team.JoinDateLabel" xml:space="preserve"><value>加入日期：</value></data>
+  <data name="Team.EmailLabel" xml:space="preserve"><value>邮箱：</value></data>
+  <data name="Team.PhoneLabel" xml:space="preserve"><value>电话：</value></data>
+  <data name="Team.LevelLabel" xml:space="preserve"><value>级别：</value></data>
+  <data name="Team.CountryLabel" xml:space="preserve"><value>国家：</value></data>
+  <data name="Team.SponsorLabel" xml:space="preserve"><value>推荐人：</value></data>
+  <data name="Team.DualTeamUplineLabel" xml:space="preserve"><value>双团队上线：</value></data>
+  <data name="Team.BizCenterStatusLabel" xml:space="preserve"><value>BizCenter 状态：</value></data>
+  <data name="Team.MembershipStatusLabel" xml:space="preserve"><value>会员状态：</value></data>
+  <data name="Team.QualifiedLabel" xml:space="preserve"><value>已合格：</value></data>
+  <data name="Team.MembershipLabel" xml:space="preserve"><value>会员：</value></data>
+  <data name="Team.Resume" xml:space="preserve"><value>概要</value></data>
+  <data name="Team.TotalMembers" xml:space="preserve"><value>成员总数</value></data>
+  <data name="Team.TotalQualifiedMembers" xml:space="preserve"><value>合格成员总数</value></data>
+  <data name="Team.TotalUnqualifiedMembers" xml:space="preserve"><value>未合格成员总数</value></data>
+  <data name="Team.TotalCancelledMembers" xml:space="preserve"><value>已取消成员总数</value></data>
+  <data name="Team.EnrollmentTeamTitle" xml:space="preserve"><value>注册团队</value></data>
+  <data name="Team.LegendCancelledShort" xml:space="preserve"><value>已取消</value></data>
+  <data name="Team.ShowCancelled" xml:space="preserve"><value>显示已取消</value></data>
+  <data name="Team.NoMembersDisplay" xml:space="preserve"><value>没有成员可显示。</value></data>
+  <data name="Team.TreeNoChildren" xml:space="preserve"><value>无子节点</value></data>
+  <data name="Team.TreeLoading" xml:space="preserve"><value>加载中</value></data>
+  <data name="Team.TreeCollapse" xml:space="preserve"><value>折叠</value></data>
+  <data name="Team.LoadTreeFailedPrefix" xml:space="preserve"><value>未能加载树：</value></data>
+  <data name="Team.PointsAriaSuffix" xml:space="preserve"><value>{0} 积分</value></data>
+  <data name="Placement.Title" xml:space="preserve"><value>放置管理</value></data>
+  <data name="Placement.Subtitle" xml:space="preserve"><value>管理您招募的会员在双团队中的位置。</value></data>
+  <data name="Placement.AdminTitle" xml:space="preserve"><value>放置 — 管理员视图</value></data>
+  <data name="Placement.AdminSubtitle" xml:space="preserve"><value>管理网络中所有成员的放置。无时间或机会限制。</value></data>
+  <data name="Placement.ViewHistory" xml:space="preserve"><value>查看历史</value></data>
+  <data name="Placement.AutoPlacement" xml:space="preserve"><value>自动放置</value></data>
+  <data name="Placement.AutoPlacementAriaLabel" xml:space="preserve"><value>手动运行自动放置</value></data>
+  <data name="Placement.Running" xml:space="preserve"><value>运行中…</value></data>
+  <data name="Placement.AutoPlacementCompleted" xml:space="preserve"><value>自动放置完成：{0} 名会员已放置。</value></data>
+  <data name="Placement.AutoPlacementError" xml:space="preserve"><value>运行自动放置错误。</value></data>
+  <data name="Placement.UnexpectedErrorPrefix" xml:space="preserve"><value>意外错误：</value></data>
+  <data name="Placement.SponsorLabel" xml:space="preserve"><value>推荐人：</value></data>
+  <data name="Placement.SponsorPlaceholder" xml:space="preserve"><value>推荐人 ID 或姓名…</value></data>
+  <data name="Placement.SponsorFilterAria" xml:space="preserve"><value>按推荐人过滤</value></data>
+  <data name="Placement.LoadingPlacements" xml:space="preserve"><value>加载放置…</value></data>
+  <data name="Placement.LoadingShort" xml:space="preserve"><value>加载中…</value></data>
+  <data name="Placement.LoadFailed" xml:space="preserve"><value>无法加载放置。</value></data>
+  <data name="Placement.NoneTitle" xml:space="preserve"><value>没有待处理的成员</value></data>
+  <data name="Placement.NoneMessage" xml:space="preserve"><value>您所有的招募都已分配放置。干得好！</value></data>
+  <data name="Placement.AdminNoneTitle" xml:space="preserve"><value>没有待处理的放置</value></data>
+  <data name="Placement.AdminNoneMessage" xml:space="preserve"><value>网络中没有待放置的成员。</value></data>
+  <data name="Placement.FilterAria" xml:space="preserve"><value>过滤放置</value></data>
+  <data name="Placement.ListAria" xml:space="preserve"><value>待放置成员列表</value></data>
+  <data name="Placement.TabAll" xml:space="preserve"><value>全部</value></data>
+  <data name="Placement.TabPending" xml:space="preserve"><value>待处理</value></data>
+  <data name="Placement.TabPlaced" xml:space="preserve"><value>已放置</value></data>
+  <data name="Placement.TabBlocked" xml:space="preserve"><value>已阻止</value></data>
+  <data name="Placement.StatPending" xml:space="preserve"><value>待处理</value></data>
+  <data name="Placement.StatPlaced" xml:space="preserve"><value>已放置</value></data>
+  <data name="Placement.StatAutoPlaced" xml:space="preserve"><value>自动放置</value></data>
+  <data name="Placement.StatExpired" xml:space="preserve"><value>已过期</value></data>
+  <data name="Placement.RemoveTitle" xml:space="preserve"><value>移除放置</value></data>
+  <data name="Placement.RemoveConfirmLabel" xml:space="preserve"><value>移除放置</value></data>
+  <data name="Placement.RemoveBodyPrefix" xml:space="preserve"><value>您将移除以下成员的放置：</value></data>
+  <data name="Placement.RemoveLegSuffix" xml:space="preserve"><value>在 {0} 腿。</value></data>
+  <data name="Placement.RemoveOpportunityNote" xml:space="preserve"><value>此操作将使用一次放置机会（剩余 {0} 次）。</value></data>
+  <data name="Placement.RemoveLastWarningTitle" xml:space="preserve"><value>注意：</value></data>
+  <data name="Placement.RemoveLastWarningBody" xml:space="preserve"><value>这是您最后一次重新放置的机会。下次放置将是最终的。</value></data>
+  <data name="Placement.AdminRemoveBodyPrefix" xml:space="preserve"><value>您将移除以下成员的放置：</value></data>
+  <data name="Placement.AdminRemoveNote" xml:space="preserve"><value>管理员操作：不消耗放置机会。</value></data>
+  <data name="Placement.RemoveError" xml:space="preserve"><value>移除放置错误。</value></data>
+  <data name="Placement.CloseAlert" xml:space="preserve"><value>关闭</value></data>
+  <data name="Placement.AriaPrefix" xml:space="preserve"><value>放置：</value></data>
+  <data name="Placement.PhotoAlt" xml:space="preserve"><value>{0} 的照片</value></data>
+  <data name="Placement.AutoBadgeTitle" xml:space="preserve"><value>由系统自动放置</value></data>
+  <data name="Placement.AutoBadge" xml:space="preserve"><value>自动</value></data>
+  <data name="Placement.RecruitedOn" xml:space="preserve"><value>在 {0} 招募</value></data>
+  <data name="Placement.LegLabelStrong" xml:space="preserve"><value>腿</value></data>
+  <data name="Placement.UnderLabel" xml:space="preserve"><value>下方</value></data>
+  <data name="Placement.CorrectionWindow" xml:space="preserve"><value>修正窗口：</value></data>
+  <data name="Placement.HoursLeftAriaLabel" xml:space="preserve"><value>修正窗口：剩余 {0} 小时</value></data>
+  <data name="Placement.HoursMinutesRemaining" xml:space="preserve"><value>剩余</value></data>
+  <data name="Placement.WindowLabel" xml:space="preserve"><value>放置窗口</value></data>
+  <data name="Placement.DaysRemaining" xml:space="preserve"><value>剩余 {0} 天</value></data>
+  <data name="Placement.WindowClosed" xml:space="preserve"><value>窗口已关闭</value></data>
+  <data name="Placement.WindowAria" xml:space="preserve"><value>放置窗口进度</value></data>
+  <data name="Placement.OpportunitiesLabel" xml:space="preserve"><value>机会：</value></data>
+  <data name="Placement.OpportunitiesAria" xml:space="preserve"><value>已使用 {0}/2 次机会</value></data>
+  <data name="Placement.OpportunityNumber" xml:space="preserve"><value>机会 {0}</value></data>
+  <data name="Placement.OpportunitiesUsedShort" xml:space="preserve"><value>（已使用 {0}/2）</value></data>
+  <data name="Placement.BlockedTitle" xml:space="preserve"><value>两次放置机会均已用尽</value></data>
+  <data name="Placement.Blocked" xml:space="preserve"><value>已阻止</value></data>
+  <data name="Placement.ExpiredTitle" xml:space="preserve"><value>30 天窗口已过期</value></data>
+  <data name="Placement.Expired" xml:space="preserve"><value>已过期</value></data>
+  <data name="Placement.PlaceAction" xml:space="preserve"><value>放置</value></data>
+  <data name="Placement.PlaceAriaLabel" xml:space="preserve"><value>将 {0} 放置到双团队</value></data>
+  <data name="Placement.MoveAction" xml:space="preserve"><value>移动</value></data>
+  <data name="Placement.MoveAriaLabel" xml:space="preserve"><value>将 {0} 移动到其他节点</value></data>
+  <data name="Placement.RemoveAction" xml:space="preserve"><value>移除</value></data>
+  <data name="Placement.RemoveAriaLabel" xml:space="preserve"><value>移除 {0} 的放置</value></data>
+  <data name="Placement.HistoryTitle" xml:space="preserve"><value>放置历史</value></data>
+  <data name="Placement.HistoryColMember" xml:space="preserve"><value>成员</value></data>
+  <data name="Placement.HistoryColAction" xml:space="preserve"><value>操作</value></data>
+  <data name="Placement.HistoryColTargetNode" xml:space="preserve"><value>目标节点</value></data>
+  <data name="Placement.HistoryColLeg" xml:space="preserve"><value>腿</value></data>
+  <data name="Placement.HistoryColExecutedBy" xml:space="preserve"><value>执行者</value></data>
+  <data name="Placement.HistoryColDate" xml:space="preserve"><value>日期</value></data>
+  <data name="Placement.HistoryRefreshAria" xml:space="preserve"><value>刷新历史</value></data>
+  <data name="Placement.HistorySideLeft" xml:space="preserve"><value>左</value></data>
+  <data name="Placement.HistorySideRight" xml:space="preserve"><value>右</value></data>
+  <data name="Placement.SelectorLegend" xml:space="preserve"><value>在双团队中选择节点和腿</value></data>
+  <data name="Placement.NoPositionsTitle" xml:space="preserve"><value>没有可用位置</value></data>
+  <data name="Placement.NoPositionsMessage" xml:space="preserve"><value>推荐人树中没有空闲槽的节点。</value></data>
+  <data name="Placement.SponsorRootLevel" xml:space="preserve"><value>推荐人（根级别）</value></data>
+  <data name="Placement.LevelN" xml:space="preserve"><value>级别 {0}</value></data>
+  <data name="Placement.NodeLabel" xml:space="preserve"><value>节点：</value></data>
+  <data name="Placement.LeftLeg" xml:space="preserve"><value>左</value></data>
+  <data name="Placement.RightLeg" xml:space="preserve"><value>右</value></data>
+  <data name="Placement.Available" xml:space="preserve"><value>可用</value></data>
+  <data name="Placement.Occupied" xml:space="preserve"><value>已占用</value></data>
+  <data name="Placement.OtherMember" xml:space="preserve"><value>其他成员</value></data>
+  <data name="Placement.SlotAriaAvailable" xml:space="preserve"><value>{1} 的 {0} 腿 — 可用。{2}</value></data>
+  <data name="Placement.SlotAriaOccupied" xml:space="preserve"><value>{1} 的 {0} 腿 — 由 {2} 占用</value></data>
+  <data name="Placement.Selected" xml:space="preserve"><value>已选。</value></data>
+  <data name="Placement.ClickToSelect" xml:space="preserve"><value>点击以选择。</value></data>
+  <data name="Placement.SelectionLabel" xml:space="preserve"><value>您选择了：</value></data>
+  <data name="Placement.SelectionUnderPrefix" xml:space="preserve"><value>下方</value></data>
+  <data name="Placement.LegStrongPrefix" xml:space="preserve"><value>腿</value></data>
+  <data name="Placement.WizardCloseAria" xml:space="preserve"><value>关闭向导</value></data>
+  <data name="Placement.WizardCancelAria" xml:space="preserve"><value>取消并关闭向导</value></data>
+  <data name="Placement.WizardStepperAria" xml:space="preserve"><value>向导步骤</value></data>
+  <data name="Placement.WizardTitleMove" xml:space="preserve"><value>移动放置</value></data>
+  <data name="Placement.WizardTitlePlace" xml:space="preserve"><value>放置到双团队</value></data>
+  <data name="Placement.StepMember" xml:space="preserve"><value>成员</value></data>
+  <data name="Placement.StepSelectNode" xml:space="preserve"><value>选择节点</value></data>
+  <data name="Placement.StepConfirm" xml:space="preserve"><value>确认</value></data>
+  <data name="Placement.Step0Heading" xml:space="preserve"><value>确认要放置的成员</value></data>
+  <data name="Placement.Recruited" xml:space="preserve"><value>招募：</value></data>
+  <data name="Placement.WindowInfo" xml:space="preserve"><value>您有 {0} 天来完成放置。剩余机会：{1}。</value></data>
+  <data name="Placement.Step1Heading" xml:space="preserve"><value>选择目标节点</value></data>
+  <data name="Placement.Step1Help" xml:space="preserve"><value>选择推荐人双团队中要放置成员的节点。</value></data>
+  <data name="Placement.LoadingTreeAria" xml:space="preserve"><value>加载树…</value></data>
+  <data name="Placement.LoadingTreeMsg" xml:space="preserve"><value>加载树结构…</value></data>
+  <data name="Placement.NoNodesTitle" xml:space="preserve"><value>没有可用节点</value></data>
+  <data name="Placement.NoNodesMessage" xml:space="preserve"><value>推荐人团队中没有可用位置。</value></data>
+  <data name="Placement.SponsorLabel2" xml:space="preserve"><value>推荐人：</value></data>
+  <data name="Placement.Step2Heading" xml:space="preserve"><value>确认放置</value></data>
+  <data name="Placement.MemberLabel" xml:space="preserve"><value>成员：</value></data>
+  <data name="Placement.TargetNodeLabel" xml:space="preserve"><value>目标节点：</value></data>
+  <data name="Placement.LegLabel" xml:space="preserve"><value>腿：</value></data>
+  <data name="Placement.OpportunitiesAfterLabel" xml:space="preserve"><value>放置后机会：</value></data>
+  <data name="Placement.RemainingSuffix" xml:space="preserve"><value>剩余</value></data>
+  <data name="Placement.LastOpportunityTitle" xml:space="preserve"><value>最后机会。</value></data>
+  <data name="Placement.LastOpportunityBody" xml:space="preserve"><value>这将是最终放置。您将无法再次移动。</value></data>
+  <data name="Placement.WizardCancel" xml:space="preserve"><value>取消</value></data>
+  <data name="Placement.WizardPrev" xml:space="preserve"><value>上一步</value></data>
+  <data name="Placement.WizardNext" xml:space="preserve"><value>下一步</value></data>
+  <data name="Placement.WizardConfirm" xml:space="preserve"><value>确认放置</value></data>
+  <data name="Placement.WizardConfirmAria" xml:space="preserve"><value>确认最终放置</value></data>
+  <data name="Placement.Processing" xml:space="preserve"><value>处理中…</value></data>
+  <data name="Placement.SelectNodeBeforeContinue" xml:space="preserve"><value>继续之前请选择节点和腿。</value></data>
+  <data name="Placement.LoadTreeError" xml:space="preserve"><value>无法加载树：</value></data>
+  <data name="Placement.SaveError" xml:space="preserve"><value>保存放置错误。</value></data>
+  <data name="Placement.BreadcrumbTeam" xml:space="preserve"><value>团队</value></data>
+  <data name="Placement.BreadcrumbPlacement" xml:space="preserve"><value>放置</value></data>
+  <data name="Placement.BreadcrumbHistory" xml:space="preserve"><value>历史</value></data>
+  <data name="Placement.BreadcrumbAdminDashboard" xml:space="preserve"><value>管理员仪表板</value></data>
+  <data name="Sidebar.MyTeam2" xml:space="preserve"><value>我的团队</value></data>
+
+  <!-- Tokens / Guest Passes (F4) -->
+  <data name="GuestPasses.Title" xml:space="preserve"><value>访客通行证</value></data>
+  <data name="GuestPasses.Code" xml:space="preserve"><value>代码</value></data>
+  <data name="GuestPasses.DistributedTo" xml:space="preserve"><value>分发至</value></data>
+  <data name="GuestPasses.UsedBy" xml:space="preserve"><value>使用者</value></data>
+  <data name="GuestPasses.UsedAt" xml:space="preserve"><value>使用时间</value></data>
+  <data name="GuestPasses.Used" xml:space="preserve"><value>已使用</value></data>
+  <data name="GuestPasses.Available" xml:space="preserve"><value>可用</value></data>
+
+  <data name="Tokens.Resume" xml:space="preserve"><value>令牌摘要</value></data>
+  <data name="Tokens.TotalTokens" xml:space="preserve"><value>令牌总数</value></data>
+  <data name="Tokens.TotalUsed" xml:space="preserve"><value>已使用总数</value></data>
+  <data name="Tokens.TotalAvailable" xml:space="preserve"><value>可用总数</value></data>
+  <data name="Tokens.PurchaseNote" xml:space="preserve"><value>注意：令牌可用于支付注册、Biz Center 费用和 Travel Advantage™。购买后，您可以将令牌分发给您的团队。令牌购买每月限购 10 个，且不可退款。</value></data>
+  <data name="Tokens.Amount" xml:space="preserve"><value>数量：</value></data>
+  <data name="Tokens.TokensSuffix" xml:space="preserve"><value>令牌</value></data>
+  <data name="Tokens.TokenType" xml:space="preserve"><value>令牌类型</value></data>
+  <data name="Tokens.BuyNow" xml:space="preserve"><value>立即购买</value></data>
+  <data name="Tokens.TabCommissions" xml:space="preserve"><value>佣金</value></data>
+  <data name="Tokens.TabEWallet" xml:space="preserve"><value>eWallet</value></data>
+  <data name="Tokens.TabCreditCard" xml:space="preserve"><value>信用卡</value></data>
+  <data name="Tokens.TabCrypto" xml:space="preserve"><value>加密货币</value></data>
+  <data name="Tokens.CommissionBalanceLabel" xml:space="preserve"><value>您的佣金余额为</value></data>
+  <data name="Tokens.EWalletBalanceLabel" xml:space="preserve"><value>您的 eWallet 余额为</value></data>
+  <data name="Tokens.CreditCard" xml:space="preserve"><value>信用卡</value></data>
+  <data name="Tokens.AddNewCard" xml:space="preserve"><value>添加新卡</value></data>
+  <data name="Tokens.NoCreditCards" xml:space="preserve"><value>无已登记的信用卡。</value></data>
+  <data name="Tokens.PoweredByNowPayments" xml:space="preserve"><value>由 NowPayments 提供支持</value></data>
+  <data name="Tokens.ColDate" xml:space="preserve"><value>日期</value></data>
+  <data name="Tokens.ColOwner" xml:space="preserve"><value>所有者</value></data>
+  <data name="Tokens.ColTokenCode" xml:space="preserve"><value>令牌代码</value></data>
+  <data name="Tokens.ColType" xml:space="preserve"><value>类型</value></data>
+  <data name="Tokens.ColUseDate" xml:space="preserve"><value>使用日期</value></data>
+  <data name="Tokens.ColUsedBy" xml:space="preserve"><value>使用者</value></data>
+  <data name="Tokens.StatusAvailable" xml:space="preserve"><value>可用</value></data>
+  <data name="Tokens.Distribution" xml:space="preserve"><value>分发</value></data>
+  <data name="Tokens.DistributeButton" xml:space="preserve"><value>分发</value></data>
+  <data name="Tokens.DistributionNote" xml:space="preserve"><value>注意：您可以将令牌分发给您的团队和成员。所有令牌分发都是最终的。</value></data>
+  <data name="Tokens.Member" xml:space="preserve"><value>成员</value></data>
+  <data name="Tokens.SearchMemberPlaceholder" xml:space="preserve"><value>搜索成员...</value></data>
+  <data name="Tokens.Clear" xml:space="preserve"><value>清除</value></data>
+  <data name="Tokens.BreadcrumbGuestPasses" xml:space="preserve"><value>访客通行证</value></data>
+
+  <!-- Loyalty (F4) -->
+  <data name="Loyalty.TotalPoints" xml:space="preserve"><value>总积分</value></data>
+  <data name="Loyalty.UnlockedPoints" xml:space="preserve"><value>已解锁积分</value></data>
+  <data name="Loyalty.LockedPoints" xml:space="preserve"><value>已锁定积分</value></data>
+  <data name="Loyalty.History" xml:space="preserve"><value>忠诚度积分历史</value></data>
+  <data name="Loyalty.ColMonth" xml:space="preserve"><value>月份</value></data>
+  <data name="Loyalty.ColPoints" xml:space="preserve"><value>积分</value></data>
+  <data name="Loyalty.ColLocked" xml:space="preserve"><value>已锁定</value></data>
+  <data name="Loyalty.ColMissedPayment" xml:space="preserve"><value>错过付款</value></data>
+  <data name="Loyalty.Admin" xml:space="preserve"><value>管理员</value></data>
+  <data name="Loyalty.MissedYes" xml:space="preserve"><value>⚠ 是</value></data>
+  <data name="Loyalty.StatusLocked" xml:space="preserve"><value>已锁定</value></data>
+  <data name="Loyalty.StatusUnlocked" xml:space="preserve"><value>已解锁</value></data>
+  <data name="Loyalty.ManualUnlock" xml:space="preserve"><value>手动解锁</value></data>
+
+  <!-- Ranks (F4) -->
+  <data name="Ranks.OnlyForAmbassadors" xml:space="preserve"><value>仅限大使使用等级。</value></data>
+  <data name="Ranks.CurrentRank" xml:space="preserve"><value>当前等级</value></data>
+  <data name="Ranks.PointsToNext" xml:space="preserve"><value>距下一等级所需积分</value></data>
+  <data name="Ranks.QualifiedMonths" xml:space="preserve"><value>合格月份总数</value></data>
+  <data name="Ranks.ProgressTitle" xml:space="preserve"><value>下一等级进度</value></data>
+  <data name="Ranks.AdminOverrideTitle" xml:space="preserve"><value>管理员覆盖</value></data>
+  <data name="Ranks.AdminOverrideMessage" xml:space="preserve"><value>在正常资格规则之外手动设置此成员的等级。</value></data>
+  <data name="Ranks.ManualOverrideButton" xml:space="preserve"><value>手动覆盖</value></data>
+  <data name="Ranks.OverrideModalTitle" xml:space="preserve"><value>手动等级覆盖</value></data>
+  <data name="Ranks.OverrideModalMessage" xml:space="preserve"><value>您即将手动覆盖此成员的等级。此操作将被记录。继续？</value></data>
+  <data name="Ranks.OverrideModalConfirm" xml:space="preserve"><value>覆盖等级</value></data>
+  <data name="Ranks.BreadcrumbHome" xml:space="preserve"><value>主页</value></data>
+  <data name="Ranks.BreadcrumbProgress" xml:space="preserve"><value>进度</value></data>
+  <data name="Ranks.HistoryTitle" xml:space="preserve"><value>等级达成历史</value></data>
+  <data name="Ranks.ColAchievedDate" xml:space="preserve"><value>达成日期</value></data>
+  <data name="Ranks.ColRank" xml:space="preserve"><value>等级</value></data>
+  <data name="Ranks.ColQualificationPeriod" xml:space="preserve"><value>资格期间</value></data>
+  <data name="Ranks.ColTriggeredBy" xml:space="preserve"><value>触发者</value></data>
+  <data name="Ranks.ColCertificate" xml:space="preserve"><value>证书</value></data>
+  <data name="Ranks.TriggerManual" xml:space="preserve"><value>手动</value></data>
+  <data name="Ranks.TriggerAutomatic" xml:space="preserve"><value>自动</value></data>
+  <data name="Ranks.CertificateNotGenerated" xml:space="preserve"><value>未生成</value></data>
+  <data name="Ranks.BreadcrumbHistory" xml:space="preserve"><value>历史</value></data>
+
+  <!-- Marketing (F4) -->
+  <data name="Marketing.Title" xml:space="preserve"><value>营销</value></data>
+  <data name="Marketing.NoDocsTitle" xml:space="preserve"><value>无可用文档</value></data>
+  <data name="Marketing.NoDocsMessage" xml:space="preserve"><value>目前没有可用的营销文档。</value></data>
+  <data name="Marketing.LoadFailed" xml:space="preserve"><value>无法加载营销文档。</value></data>
+  <data name="Marketing.ColFile" xml:space="preserve"><value>文件</value></data>
+  <data name="Marketing.ColDownload" xml:space="preserve"><value>下载</value></data>
+  <data name="Marketing.FileSingular" xml:space="preserve"><value>个文件</value></data>
+  <data name="Marketing.FilePlural" xml:space="preserve"><value>个文件</value></data>
+  <data name="Marketing.DownloadAria" xml:space="preserve"><value>下载 {0}（{1}）</value></data>
+  <data name="Marketing.DownloadFailed" xml:space="preserve"><value>无法生成下载链接。请重试。</value></data>
+
+  <!-- PageTitle (F4) -->
+  <data name="PageTitle.TokensGuestPasses" xml:space="preserve"><value>令牌和访客通行证</value></data>
+  <data name="PageTitle.Loyalty" xml:space="preserve"><value>忠诚度积分</value></data>
+  <data name="PageTitle.Ranks" xml:space="preserve"><value>等级</value></data>
+  <data name="PageTitle.Marketing" xml:space="preserve"><value>营销</value></data>
+
+  <!-- F4 — additional keys -->
+  <data name="Tokens.CardExpiryPrefix" xml:space="preserve"><value>有效期 :</value></data>
+  <data name="Tokens.PaginationAria" xml:space="preserve"><value>令牌分页</value></data>
+  <data name="GuestPasses.PaginationAria" xml:space="preserve"><value>访客通行证分页</value></data>
+  <data name="Loyalty.PaginationAria" xml:space="preserve"><value>忠诚度积分分页</value></data>
+  <data name="Ranks.HistoryPaginationAria" xml:space="preserve"><value>等级历史分页</value></data>
+  <data name="Marketing.TabsAria" xml:space="preserve"><value>营销文档类型</value></data>
+
+  <!-- F4 — Nav fallbacks (zh) -->
+  <data name="Nav.Tokens" xml:space="preserve"><value>令牌</value></data>
+  <data name="Nav.Ranks" xml:space="preserve"><value>等级</value></data>
+  <data name="Nav.LoyaltyPoints" xml:space="preserve"><value>忠诚度积分</value></data>
+  <data name="Nav.Dashboard" xml:space="preserve"><value>仪表板</value></data>
+  <data name="Common.Download" xml:space="preserve"><value>下载</value></data>
+
+  <!-- Tickets — F5 -->
+  <data name="Tickets.FilterStatus" xml:space="preserve"><value>状态</value></data>
+  <data name="Tickets.AllStatuses" xml:space="preserve"><value>所有状态</value></data>
+  <data name="Tickets.StatusOpen" xml:space="preserve"><value>开放</value></data>
+  <data name="Tickets.StatusInProgress" xml:space="preserve"><value>处理中</value></data>
+  <data name="Tickets.StatusEscalated" xml:space="preserve"><value>已升级</value></data>
+  <data name="Tickets.StatusResolved" xml:space="preserve"><value>已解决</value></data>
+  <data name="Tickets.StatusClosed" xml:space="preserve"><value>已关闭</value></data>
+  <data name="Tickets.FilterPriority" xml:space="preserve"><value>优先级</value></data>
+  <data name="Tickets.AllPriorities" xml:space="preserve"><value>所有优先级</value></data>
+  <data name="Tickets.PriorityLow" xml:space="preserve"><value>低</value></data>
+  <data name="Tickets.PriorityNormal" xml:space="preserve"><value>普通</value></data>
+  <data name="Tickets.PriorityHigh" xml:space="preserve"><value>高</value></data>
+  <data name="Tickets.PriorityUrgent" xml:space="preserve"><value>紧急</value></data>
+  <data name="Tickets.CreateNew" xml:space="preserve"><value>创建新工单</value></data>
+  <data name="Tickets.HeaderAll" xml:space="preserve"><value>所有工单</value></data>
+  <data name="Tickets.HeaderMine" xml:space="preserve"><value>我的工单</value></data>
+  <data name="Tickets.ColTicketNumber" xml:space="preserve"><value>工单 #</value></data>
+  <data name="Tickets.ColSubject" xml:space="preserve"><value>主题</value></data>
+  <data name="Tickets.ColCategory" xml:space="preserve"><value>类别</value></data>
+  <data name="Tickets.ColPriority" xml:space="preserve"><value>优先级</value></data>
+  <data name="Tickets.ColStatus" xml:space="preserve"><value>状态</value></data>
+  <data name="Tickets.ColCreated" xml:space="preserve"><value>创建时间</value></data>
+  <data name="Tickets.ColActions" xml:space="preserve"><value>操作</value></data>
+  <data name="Tickets.NoData" xml:space="preserve"><value>暂无数据。</value></data>
+  <data name="Tickets.ActionView" xml:space="preserve"><value>查看</value></data>
+  <data name="Tickets.ActionAssign" xml:space="preserve"><value>分配</value></data>
+  <data name="Tickets.PaginationAria" xml:space="preserve"><value>工单分页</value></data>
+  <data name="Tickets.BreadcrumbHome" xml:space="preserve"><value>首页</value></data>
+  <data name="Tickets.BreadcrumbTickets" xml:space="preserve"><value>工单</value></data>
+
+  <!-- Ticket Detail — F5 -->
+  <data name="TicketDetail.LabelCategory" xml:space="preserve"><value>类别</value></data>
+  <data name="TicketDetail.LabelPriority" xml:space="preserve"><value>优先级</value></data>
+  <data name="TicketDetail.LabelAssignedTo" xml:space="preserve"><value>分配给</value></data>
+  <data name="TicketDetail.LabelCreated" xml:space="preserve"><value>创建时间</value></data>
+  <data name="TicketDetail.Unassigned" xml:space="preserve"><value>未分配</value></data>
+  <data name="TicketDetail.CommentsHeader" xml:space="preserve"><value>评论 ({0})</value></data>
+  <data name="TicketDetail.NoComments" xml:space="preserve"><value>暂无评论。第一个回复吧。</value></data>
+  <data name="TicketDetail.StaffBadge" xml:space="preserve"><value>员工</value></data>
+  <data name="TicketDetail.CommentPlaceholder" xml:space="preserve"><value>写评论…</value></data>
+  <data name="TicketDetail.PostComment" xml:space="preserve"><value>发布评论</value></data>
+  <data name="TicketDetail.ActionsHeader" xml:space="preserve"><value>操作</value></data>
+  <data name="TicketDetail.AssignLabel" xml:space="preserve"><value>分配给（坐席 ID/姓名）</value></data>
+  <data name="TicketDetail.AssignPlaceholder" xml:space="preserve"><value>输入坐席姓名…</value></data>
+  <data name="TicketDetail.AssignConfirm" xml:space="preserve"><value>确认</value></data>
+  <data name="TicketDetail.AssignCancel" xml:space="preserve"><value>取消</value></data>
+  <data name="TicketDetail.AssignAgent" xml:space="preserve"><value>分配坐席</value></data>
+  <data name="TicketDetail.ResolveTicket" xml:space="preserve"><value>解决工单</value></data>
+  <data name="TicketDetail.MergeTicket" xml:space="preserve"><value>合并工单</value></data>
+  <data name="TicketDetail.Escalate" xml:space="preserve"><value>升级</value></data>
+  <data name="TicketDetail.EscalateLevel2" xml:space="preserve"><value>二级支持</value></data>
+  <data name="TicketDetail.EscalateLevel3" xml:space="preserve"><value>三级支持</value></data>
+  <data name="TicketDetail.EscalateIT" xml:space="preserve"><value>IT 部门</value></data>
+  <data name="TicketDetail.ResolveModalTitle" xml:space="preserve"><value>解决工单</value></data>
+  <data name="TicketDetail.ResolveModalMessage" xml:space="preserve"><value>将此工单标记为已解决吗？将通知会员。</value></data>
+  <data name="TicketDetail.ResolveModalConfirm" xml:space="preserve"><value>解决</value></data>
+  <data name="TicketDetail.EscalationLevel1" xml:space="preserve"><value>一级</value></data>
+  <data name="TicketDetail.EscalationLevel2" xml:space="preserve"><value>二级</value></data>
+  <data name="TicketDetail.EscalationLevel3" xml:space="preserve"><value>三级</value></data>
+  <data name="TicketDetail.EscalationIT" xml:space="preserve"><value>IT</value></data>
+  <data name="TicketDetail.EscalationOther" xml:space="preserve"><value>{0} 级</value></data>
+  <data name="TicketDetail.BreadcrumbHome" xml:space="preserve"><value>首页</value></data>
+  <data name="TicketDetail.BreadcrumbTickets" xml:space="preserve"><value>工单</value></data>
+
+  <!-- Ticket Create — F5 -->
+  <data name="TicketCreate.Title" xml:space="preserve"><value>创建新工单</value></data>
+  <data name="TicketCreate.CloseAria" xml:space="preserve"><value>关闭对话框</value></data>
+  <data name="TicketCreate.SubjectLabel" xml:space="preserve"><value>主题</value></data>
+  <data name="TicketCreate.SubjectPlaceholder" xml:space="preserve"><value>简要描述你的问题（最多 200 字符）</value></data>
+  <data name="TicketCreate.CategoryLabel" xml:space="preserve"><value>类别</value></data>
+  <data name="TicketCreate.CategorySelect" xml:space="preserve"><value>选择类别…</value></data>
+  <data name="TicketCreate.CategoryBilling" xml:space="preserve"><value>账单</value></data>
+  <data name="TicketCreate.CategoryTechnical" xml:space="preserve"><value>技术</value></data>
+  <data name="TicketCreate.CategoryCommission" xml:space="preserve"><value>佣金</value></data>
+  <data name="TicketCreate.CategoryMembership" xml:space="preserve"><value>会员资格</value></data>
+  <data name="TicketCreate.CategoryAccount" xml:space="preserve"><value>账户</value></data>
+  <data name="TicketCreate.CategoryOther" xml:space="preserve"><value>其他</value></data>
+  <data name="TicketCreate.PriorityLabel" xml:space="preserve"><value>优先级</value></data>
+  <data name="TicketCreate.PriorityLow" xml:space="preserve"><value>低</value></data>
+  <data name="TicketCreate.PriorityNormal" xml:space="preserve"><value>普通</value></data>
+  <data name="TicketCreate.PriorityHigh" xml:space="preserve"><value>高</value></data>
+  <data name="TicketCreate.PriorityUrgent" xml:space="preserve"><value>紧急</value></data>
+  <data name="TicketCreate.DescriptionLabel" xml:space="preserve"><value>描述</value></data>
+  <data name="TicketCreate.DescriptionPlaceholder" xml:space="preserve"><value>提供问题的完整详细信息…</value></data>
+  <data name="TicketCreate.AttachmentLabel" xml:space="preserve"><value>附件</value></data>
+  <data name="TicketCreate.AttachmentOptional" xml:space="preserve"><value>（可选）</value></data>
+  <data name="TicketCreate.AttachmentHelp" xml:space="preserve"><value>支持：图像、PDF、Word、TXT。最大 10 MB。</value></data>
+  <data name="TicketCreate.Cancel" xml:space="preserve"><value>取消</value></data>
+  <data name="TicketCreate.Submit" xml:space="preserve"><value>提交工单</value></data>
+  <data name="TicketCreate.ErrorGeneric" xml:space="preserve"><value>创建工单失败。请重试。</value></data>
+
+  <!-- Login — F5 -->
+  <data name="Login.PosterAlt" xml:space="preserve"><value>登录插图</value></data>
+  <data name="Login.LogoAlt" xml:space="preserve"><value>MLM Conqueror 标志</value></data>
+  <data name="Login.WelcomeBack" xml:space="preserve"><value>欢迎回来！</value></data>
+  <data name="Login.PleaseSignIn" xml:space="preserve"><value>请登录您的账户</value></data>
+  <data name="Login.ErrorInvalid" xml:space="preserve"><value>电子邮件或密码无效。</value></data>
+  <data name="Login.ErrorInactive" xml:space="preserve"><value>您的账户已停用。请联系支持。</value></data>
+  <data name="Login.ErrorSessionExpired" xml:space="preserve"><value>您的会话已过期。请重新登录。</value></data>
+  <data name="Login.EmailLabel" xml:space="preserve"><value>电子邮件地址</value></data>
+  <data name="Login.EmailPlaceholder" xml:space="preserve"><value>输入您的电子邮件</value></data>
+  <data name="Login.PasswordLabel" xml:space="preserve"><value>密码</value></data>
+  <data name="Login.PasswordPlaceholder" xml:space="preserve"><value>输入密码</value></data>
+  <data name="Login.ForgotPassword" xml:space="preserve"><value>忘记密码？</value></data>
+  <data name="Login.SignInButton" xml:space="preserve"><value>登录</value></data>
+  <data name="Login.NoAccount" xml:space="preserve"><value>还没有账户？</value></data>
+  <data name="Login.ContactSupport" xml:space="preserve"><value>联系我们的支持团队</value></data>
+
+  <!-- Signup — F5 -->
+  <data name="Signup.BrandTitle" xml:space="preserve"><value>MLM Conqueror</value></data>
+  <data name="Signup.BrandSubtitle" xml:space="preserve"><value>创建您的账户</value></data>
+  <data name="Signup.StepPersonal" xml:space="preserve"><value>个人信息</value></data>
+  <data name="Signup.StepProducts" xml:space="preserve"><value>产品</value></data>
+  <data name="Signup.StepPayment" xml:space="preserve"><value>付款</value></data>
+  <data name="Signup.SponsorBadge" xml:space="preserve"><value>赞助人</value></data>
+  <data name="Signup.FirstName" xml:space="preserve"><value>名</value></data>
+  <data name="Signup.LastName" xml:space="preserve"><value>姓</value></data>
+  <data name="Signup.Email" xml:space="preserve"><value>电子邮件</value></data>
+  <data name="Signup.Password" xml:space="preserve"><value>密码</value></data>
+  <data name="Signup.ConfirmPassword" xml:space="preserve"><value>确认密码</value></data>
+  <data name="Signup.DateOfBirth" xml:space="preserve"><value>出生日期</value></data>
+  <data name="Signup.Country" xml:space="preserve"><value>国家</value></data>
+  <data name="Signup.Phone" xml:space="preserve"><value>电话</value></data>
+  <data name="Signup.ReplicateSlug" xml:space="preserve"><value>副本站点 Slug</value></data>
+  <data name="Signup.ReplicateSlugPlaceholder" xml:space="preserve"><value>my-unique-site</value></data>
+  <data name="Signup.MembershipLevel" xml:space="preserve"><value>会员等级</value></data>
+  <data name="Signup.LoadingLevels" xml:space="preserve"><value>正在加载会员等级…</value></data>
+  <data name="Signup.SelectLevel" xml:space="preserve"><value>— 选择等级 —</value></data>
+  <data name="Signup.Continue" xml:space="preserve"><value>继续</value></data>
+  <data name="Signup.Back" xml:space="preserve"><value>返回</value></data>
+  <data name="Signup.ProductsIntro" xml:space="preserve"><value>选择要包含在您的注册中的产品。</value></data>
+  <data name="Signup.NoProducts" xml:space="preserve"><value>暂无其他产品。点击继续以前进。</value></data>
+  <data name="Signup.PaymentMethod" xml:space="preserve"><value>付款方式</value></data>
+  <data name="Signup.PaymentCreditCard" xml:space="preserve"><value>信用卡</value></data>
+  <data name="Signup.PaymentCrypto" xml:space="preserve"><value>加密货币</value></data>
+  <data name="Signup.PaymentToken" xml:space="preserve"><value>令牌 / 访客通行证</value></data>
+  <data name="Signup.PaymentDiscount" xml:space="preserve"><value>折扣码</value></data>
+  <data name="Signup.GatewayToken" xml:space="preserve"><value>网关令牌</value></data>
+  <data name="Signup.First6" xml:space="preserve"><value>前 6 位</value></data>
+  <data name="Signup.Last4" xml:space="preserve"><value>后 4 位</value></data>
+  <data name="Signup.CardBrand" xml:space="preserve"><value>品牌</value></data>
+  <data name="Signup.ExpMonth" xml:space="preserve"><value>到期月</value></data>
+  <data name="Signup.ExpYear" xml:space="preserve"><value>到期年</value></data>
+  <data name="Signup.Gateway" xml:space="preserve"><value>网关</value></data>
+  <data name="Signup.Cryptocurrency" xml:space="preserve"><value>加密货币</value></data>
+  <data name="Signup.TransactionId" xml:space="preserve"><value>交易 ID</value></data>
+  <data name="Signup.TokenCode" xml:space="preserve"><value>令牌 / 访客通行证代码</value></data>
+  <data name="Signup.DiscountCode" xml:space="preserve"><value>折扣码</value></data>
+  <data name="Signup.CompleteSignup" xml:space="preserve"><value>完成注册</value></data>
+  <data name="Signup.Welcome" xml:space="preserve"><value>欢迎，{0}！</value></data>
+  <data name="Signup.AccountActive" xml:space="preserve"><value>您的账户已激活。&lt;a href="/login"&gt;立即登录&lt;/a&gt;</value></data>
+  <data name="Signup.AlreadyHaveAccount" xml:space="preserve"><value>已经有账户？登录</value></data>
+  <data name="Signup.ErrorNameRequired" xml:space="preserve"><value>姓名是必填项。</value></data>
+  <data name="Signup.ErrorEmailRequired" xml:space="preserve"><value>电子邮件是必填项。</value></data>
+  <data name="Signup.ErrorPasswordMismatch" xml:space="preserve"><value>密码必须匹配。</value></data>
+  <data name="Signup.ErrorLevelRequired" xml:space="preserve"><value>请选择会员等级。</value></data>
+  <data name="Signup.ErrorAge18" xml:space="preserve"><value>您必须年满 18 岁。</value></data>
+  <data name="Signup.ErrorGeneric" xml:space="preserve"><value>注册失败。请检查您的资料。</value></data>
+  <data name="Signup.ErrorServerUnreachable" xml:space="preserve"><value>无法连接到服务器：{0}</value></data>
+  <data name="Signup.ErrorProductRequired" xml:space="preserve"><value>请至少选择一个产品。</value></data>
+  <data name="Signup.ErrorProductsSave" xml:space="preserve"><value>无法保存产品选择。</value></data>
+  <data name="Signup.ErrorComplete" xml:space="preserve"><value>无法完成注册。</value></data>
+
+  <!-- Error page — F5 -->
+  <data name="Error.Title" xml:space="preserve"><value>错误。</value></data>
+  <data name="Error.Subtitle" xml:space="preserve"><value>处理您的请求时发生错误。</value></data>
+  <data name="Error.RequestIdLabel" xml:space="preserve"><value>请求 ID：</value></data>
+  <data name="Error.DevModeHeader" xml:space="preserve"><value>开发模式</value></data>
+  <data name="Error.DevModeIntro" xml:space="preserve"><value>切换到 &lt;strong&gt;Development&lt;/strong&gt; 环境将显示有关所发生错误的更详细信息。</value></data>
+  <data name="Error.DevModeWarning" xml:space="preserve"><value>&lt;strong&gt;不应在已部署的应用程序中启用 Development 环境。&lt;/strong&gt; 它可能向最终用户显示来自异常的敏感信息。要进行本地调试，请将 &lt;strong&gt;ASPNETCORE_ENVIRONMENT&lt;/strong&gt; 环境变量设置为 &lt;strong&gt;Development&lt;/strong&gt;，然后重新启动应用程序，以启用 &lt;strong&gt;Development&lt;/strong&gt; 环境。</value></data>
+
+  <!-- Not Found — F5 -->
+  <data name="NotFound.Title" xml:space="preserve"><value>未找到页面</value></data>
+  <data name="NotFound.Message" xml:space="preserve"><value>抱歉，该页面不存在。</value></data>
+  <data name="NotFound.GoToDashboard" xml:space="preserve"><value>前往仪表板</value></data>
+
+  <!-- ForgotPassword — Auth -->
+  <data name="ForgotPassword.Title" xml:space="preserve"><value>忘记密码？</value></data>
+  <data name="ForgotPassword.Subtitle" xml:space="preserve"><value>请输入您的电子邮件，我们将向您发送重置链接。</value></data>
+  <data name="ForgotPassword.EmailLabel" xml:space="preserve"><value>电子邮件地址</value></data>
+  <data name="ForgotPassword.EmailPlaceholder" xml:space="preserve"><value>请输入电子邮件</value></data>
+  <data name="ForgotPassword.SendButton" xml:space="preserve"><value>发送重置链接</value></data>
+  <data name="ForgotPassword.BackToLogin" xml:space="preserve"><value>返回登录</value></data>
+  <data name="ForgotPassword.SuccessMessage" xml:space="preserve"><value>如果该电子邮件对应的账户存在，您将很快收到重置链接。</value></data>
+  <data name="ForgotPassword.ErrorEmailRequired" xml:space="preserve"><value>电子邮件为必填项。</value></data>
+  <data name="ForgotPassword.ErrorEmailInvalid" xml:space="preserve"><value>请输入有效的电子邮件地址。</value></data>
+  <data name="ForgotPassword.ServerError" xml:space="preserve"><value>无法连接到服务器。请稍后再试。</value></data>
+
+  <!-- ResetPassword — Auth -->
+  <data name="ResetPassword.Title" xml:space="preserve"><value>重置密码</value></data>
+  <data name="ResetPassword.Subtitle" xml:space="preserve"><value>为您的账户选择一个新密码。</value></data>
+  <data name="ResetPassword.EmailLabel" xml:space="preserve"><value>电子邮件地址</value></data>
+  <data name="ResetPassword.NewPasswordLabel" xml:space="preserve"><value>新密码</value></data>
+  <data name="ResetPassword.NewPasswordPlaceholder" xml:space="preserve"><value>请输入新密码</value></data>
+  <data name="ResetPassword.ConfirmPasswordLabel" xml:space="preserve"><value>确认新密码</value></data>
+  <data name="ResetPassword.ConfirmPasswordPlaceholder" xml:space="preserve"><value>请再次输入密码</value></data>
+  <data name="ResetPassword.PasswordHint" xml:space="preserve"><value>至少 8 位，包含至少一个大写字母和一个数字。</value></data>
+  <data name="ResetPassword.SubmitButton" xml:space="preserve"><value>重置密码</value></data>
+  <data name="ResetPassword.BackToLogin" xml:space="preserve"><value>返回登录</value></data>
+  <data name="ResetPassword.GoToLogin" xml:space="preserve"><value>前往登录</value></data>
+  <data name="ResetPassword.SuccessMessage" xml:space="preserve"><value>您的密码已重置。您现在可以使用新密码登录。</value></data>
+  <data name="ResetPassword.InvalidLink" xml:space="preserve"><value>此重置链接无效或已过期。</value></data>
+  <data name="ResetPassword.RequestNew" xml:space="preserve"><value>请求新链接</value></data>
+  <data name="ResetPassword.ErrorRequired" xml:space="preserve"><value>两个密码字段都是必填的。</value></data>
+  <data name="ResetPassword.ErrorWeak" xml:space="preserve"><value>密码至少 8 位，必须包含一个大写字母和一个数字。</value></data>
+  <data name="ResetPassword.ErrorMismatch" xml:space="preserve"><value>两次输入的密码不一致。</value></data>
+  <data name="ResetPassword.ErrorGeneric" xml:space="preserve"><value>无法重置密码。链接可能无效或已过期。</value></data>
+  <data name="ResetPassword.ServerError" xml:space="preserve"><value>无法连接到服务器。请稍后再试。</value></data>
+
+  <!-- TwoFactor — Auth (UI shell; verify endpoint TBD) -->
+  <data name="TwoFactor.Title" xml:space="preserve"><value>两步验证</value></data>
+  <data name="TwoFactor.Subtitle" xml:space="preserve"><value>请输入 6 位数字代码以完成登录。</value></data>
+  <data name="TwoFactor.SentTo" xml:space="preserve"><value>我们已向 {0} 发送了验证码。</value></data>
+  <data name="TwoFactor.CodeLabel" xml:space="preserve"><value>验证码</value></data>
+  <data name="TwoFactor.CodePlaceholder" xml:space="preserve"><value>123456</value></data>
+  <data name="TwoFactor.CodeHint" xml:space="preserve"><value>6 位数字，仅限数字。</value></data>
+  <data name="TwoFactor.VerifyButton" xml:space="preserve"><value>验证</value></data>
+  <data name="TwoFactor.NoCodeQuestion" xml:space="preserve"><value>没有收到验证码？</value></data>
+  <data name="TwoFactor.ResendLink" xml:space="preserve"><value>重新发送</value></data>
+  <data name="TwoFactor.ResentNotice" xml:space="preserve"><value>如果该地址已注册，已发送新的验证码。</value></data>
+  <data name="TwoFactor.CancelLink" xml:space="preserve"><value>取消并返回登录</value></data>
+  <data name="TwoFactor.ErrorInvalidCode" xml:space="preserve"><value>请输入 6 位数字代码。</value></data>
+  <data name="TwoFactor.ErrorNotImplemented" xml:space="preserve"><value>两步验证暂未启用。请从登录页面继续。</value></data>
+  <data name="TwoFactor.ServerError" xml:space="preserve"><value>无法连接到服务器。请稍后再试。</value></data>
+
+  <!-- PageTitle — F5 -->
+  <data name="PageTitle.Tickets" xml:space="preserve"><value>支持工单</value></data>
+  <data name="PageTitle.TicketDetail" xml:space="preserve"><value>工单详情</value></data>
+  <data name="PageTitle.Login" xml:space="preserve"><value>MLM Conqueror - 登录</value></data>
+  <data name="PageTitle.Signup" xml:space="preserve"><value>MLM Conqueror - 注册</value></data>
+  <data name="PageTitle.Error" xml:space="preserve"><value>错误</value></data>
+  <data name="PageTitle.NotFound" xml:space="preserve"><value>未找到页面</value></data>
+  <data name="PageTitle.ForgotPassword" xml:space="preserve"><value>MLM Conqueror - 忘记密码</value></data>
+  <data name="PageTitle.ResetPassword" xml:space="preserve"><value>MLM Conqueror - 重置密码</value></data>
+  <data name="PageTitle.TwoFactor" xml:space="preserve"><value>MLM Conqueror - 两步验证</value></data>
+
+</root>

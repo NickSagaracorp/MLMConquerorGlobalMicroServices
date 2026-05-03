@@ -1,3 +1,5 @@
+@inject IStringLocalizer<SharedResources> L
+
 @*
     Summary card for the Billing tab. Renders the default-charge card visually
     (matches the template's Visa-on-blue layout) plus the billing address.
@@ -8,11 +10,11 @@
     <div class="card-body p-4">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom pb-3 mb-3">
             <h6 class="fs-18 mb-0 fw-semibold">
-                <i class="ri-bank-card-line me-2 text-primary"></i>Billing Info
+                <i class="ri-bank-card-line me-2 text-primary"></i>@L["BillingInfo.Title"]
             </h6>
             <button class="btn btn-sm btn-outline-primary"
                     @onclick="() => OnManageCardsRequested.InvokeAsync()">
-                <i class="ri-edit-line me-1"></i>Manage cards
+                <i class="ri-edit-line me-1"></i>@L["BillingInfo.EditBilling"]
             </button>
         </div>
 
@@ -22,14 +24,14 @@
                 {
                     <div class="bd-empty-card border rounded-3 p-4 text-center">
                         <i class="ri-bank-card-2-line text-muted" style="font-size:2rem"></i>
-                        <p class="text-muted small mb-0 mt-2">No default card on file. Add a card to start auto-renewal.</p>
+                        <p class="text-muted small mb-0 mt-2">@L["BillingInfo.NoDefaultCard"]</p>
                     </div>
                 }
                 else
                 {
                     <div class="bd-card-preview pm-bg-@DefaultCard.Brand.ToLowerInvariant()">
                         <div class="d-flex justify-content-between align-items-start">
-                            <div class="bd-card-label">Credit Card</div>
+                            <div class="bd-card-label">@L["BillingInfo.CreditCard"]</div>
                             <div class="bd-card-brand">@FormatBrand(DefaultCard.Brand)</div>
                         </div>
                         <div class="bd-chip"></div>
@@ -38,11 +40,11 @@
                         </div>
                         <div class="d-flex justify-content-between align-items-end">
                             <div>
-                                <div class="bd-card-mini-lbl">Card holder</div>
+                                <div class="bd-card-mini-lbl">@L["BillingInfo.CardHolder"]</div>
                                 <div class="bd-card-mini-val">@(string.IsNullOrEmpty(DefaultCard.Holder) ? "—" : DefaultCard.Holder.ToUpperInvariant())</div>
                             </div>
                             <div class="text-end">
-                                <div class="bd-card-mini-lbl">EXP</div>
+                                <div class="bd-card-mini-lbl">@L["BillingInfo.Exp"]</div>
                                 <div class="bd-card-mini-val">@DefaultCard.ExpiryMonth.ToString("00") / @DefaultCard.ExpiryYear</div>
                             </div>
                         </div>
@@ -51,13 +53,13 @@
             </div>
 
             <div class="col-12 col-lg-6">
-                <h6 class="fs-16 fw-medium mb-2">Billing Address</h6>
+                <h6 class="fs-16 fw-medium mb-2">@L["BillingInfo.BillingAddress"]</h6>
                 <div class="small">
-                    <div><span class="text-muted">Address:</span> @DisplayOrDash(Address)</div>
-                    <div><span class="text-muted">City:</span> @DisplayOrDash(City)</div>
-                    <div><span class="text-muted">State / Province:</span> @DisplayOrDash(State)</div>
-                    <div><span class="text-muted">ZIP / Postal:</span> @DisplayOrDash(ZipCode)</div>
-                    <div><span class="text-muted">Country:</span> @DisplayOrDash(Country)</div>
+                    <div><span class="text-muted">@L["Common.Address"]:</span> @DisplayOrDash(Address)</div>
+                    <div><span class="text-muted">@L["Common.City"]:</span> @DisplayOrDash(City)</div>
+                    <div><span class="text-muted">@L["Common.StateProvince"]:</span> @DisplayOrDash(State)</div>
+                    <div><span class="text-muted">@L["Common.ZipPostal"]:</span> @DisplayOrDash(ZipCode)</div>
+                    <div><span class="text-muted">@L["Common.Country"]:</span> @DisplayOrDash(Country)</div>
                 </div>
             </div>
         </div>

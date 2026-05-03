@@ -1,3 +1,5 @@
+@inject IStringLocalizer<SharedResources> L
+
 @*
     Compact "Membership" card. Shows current level, status, dates and auto-renew
     state. Shows a friendly empty state when the member has no active
@@ -7,14 +9,14 @@
 <div class="card border-0 shadow-sm rounded-3 mb-4">
     <div class="card-body p-4">
         <h6 class="fs-18 mb-3 fw-semibold">
-            <i class="ri-vip-crown-line me-2 text-primary"></i>Membership
+            <i class="ri-vip-crown-line me-2 text-primary"></i>@L["Membership.Title"]
         </h6>
 
         @if (Snapshot is null)
         {
             <div class="text-center py-3">
                 <i class="ri-emotion-sad-line text-muted" style="font-size: 2rem"></i>
-                <p class="text-muted small mb-0 mt-2">No active membership.</p>
+                <p class="text-muted small mb-0 mt-2">@L["Membership.NoActive"]</p>
             </div>
         }
         else
@@ -28,11 +30,11 @@
 
             <div class="row g-2 small">
                 <div class="col-6">
-                    <div class="text-muted">Started</div>
+                    <div class="text-muted">@L["Membership.Started"]</div>
                     <div class="fw-medium">@Snapshot.StartDate.ToString("MMM dd, yyyy")</div>
                 </div>
                 <div class="col-6">
-                    <div class="text-muted">@(Snapshot.ExpireDate.HasValue ? "Renews" : "Expires")</div>
+                    <div class="text-muted">@(Snapshot.ExpireDate.HasValue ? L["Membership.Renews"] : L["Membership.Expires"])</div>
                     <div class="fw-medium">
                         @(Snapshot.ExpireDate?.ToString("MMM dd, yyyy") ?? "—")
                     </div>
@@ -43,7 +45,7 @@
                                id="autoRenewSwitch"
                                checked="@Snapshot.IsAutoRenew" disabled />
                         <label class="form-check-label small" for="autoRenewSwitch">
-                            Auto-renew is @(Snapshot.IsAutoRenew ? "ON" : "OFF")
+                            @(Snapshot.IsAutoRenew ? L["Membership.AutoRenewOn"] : L["Membership.AutoRenewOff"])
                         </label>
                     </div>
                 </div>

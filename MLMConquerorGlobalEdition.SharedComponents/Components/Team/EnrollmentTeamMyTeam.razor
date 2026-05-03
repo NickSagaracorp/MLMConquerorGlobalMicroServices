@@ -1,7 +1,10 @@
 @inject HttpClient Http
 @inject IViewContextService ViewContext
 @inject NavigationManager Nav
+@inject IStringLocalizer<SharedResources> L
 
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
 @using Syncfusion.Blazor.Grids
 @using Syncfusion.Blazor.Calendars
 @using Syncfusion.Blazor.Inputs
@@ -14,23 +17,23 @@
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-3">
             <div class="d-flex align-items-center gap-2 flex-wrap">
                 <div class="position-relative" style="min-width:240px">
-                    <SfTextBox Placeholder="Search name, ID, email…"
+                    <SfTextBox Placeholder="@L["Team.MyTeamSearchPlaceholder"]"
                                @bind-Value="_search"
                                CssClass="form-control form-control-sm" />
                 </div>
-                <SfDateRangePicker TValue="DateTime?" Placeholder="Join Date range"
+                <SfDateRangePicker TValue="DateTime?" Placeholder="@L["Team.JoinDateRange"]"
                                    CssClass="form-control form-control-sm"
                                    Style="min-width:220px"
                                    @bind-StartDate="_from"
                                    @bind-EndDate="_to" />
                 <button class="btn btn-primary btn-sm" @onclick="SearchAsync">
-                    <i class="ri-search-line me-1"></i>Search
+                    <i class="ri-search-line me-1"></i>@L["Common.Search"]
                 </button>
                 <button class="btn btn-outline-secondary btn-sm" @onclick="ClearAsync">
                     <i class="ri-refresh-line"></i>
                 </button>
             </div>
-            <small class="text-muted">@_totalCount members</small>
+            <small class="text-muted">@_totalCount @L["Common.Members"]</small>
         </div>
 
         @if (_isLoading)
@@ -51,109 +54,133 @@
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
                 <GridColumns>
 
-                    <GridColumn HeaderText="Join Date" Width="115" TextAlign="TextAlign.Center">
+                    <GridColumn Field="@nameof(EnrollmentMyTeamMemberDto.EnrollDate)"
+                                HeaderText="@L["Reports.JoinDate"]" Width="115" TextAlign="TextAlign.Center"
+                                Format="MM/dd/yyyy" Type="ColumnType.Date">
                         <Template>
                             @(((EnrollmentMyTeamMemberDto)context).EnrollDate.ToString("MM/dd/yyyy"))
                         </Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="ID" Width="120">
+                    <GridColumn Field="@nameof(EnrollmentMyTeamMemberDto.MemberId)"
+                                HeaderText="@L["Reports.Id"]" Width="120" Type="ColumnType.String">
                         <Template>
                             <code class="text-primary">@(((EnrollmentMyTeamMemberDto)context).MemberId)</code>
                         </Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Name" Width="160">
+                    <GridColumn Field="@nameof(EnrollmentMyTeamMemberDto.FullName)"
+                                HeaderText="@L["Reports.Name"]" Width="160" Type="ColumnType.String">
                         <Template>
                             @(((EnrollmentMyTeamMemberDto)context).FullName)
                         </Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Email" Width="200">
+                    <GridColumn Field="@nameof(EnrollmentMyTeamMemberDto.Email)"
+                                HeaderText="@L["Reports.Email"]" Width="200" Type="ColumnType.String">
                         <Template>
                             @(((EnrollmentMyTeamMemberDto)context).Email)
                         </Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Phone" Width="140">
+                    <GridColumn Field="@nameof(EnrollmentMyTeamMemberDto.Phone)"
+                                HeaderText="@L["Reports.Phone"]" Width="140" Type="ColumnType.String">
                         <Template>
                             @(((EnrollmentMyTeamMemberDto)context).Phone ?? "—")
                         </Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Level" Width="80" TextAlign="TextAlign.Center">
+                    <GridColumn Field="@nameof(EnrollmentMyTeamMemberDto.Level)"
+                                HeaderText="@L["Reports.Level"]" Width="80" TextAlign="TextAlign.Center"
+                                Type="ColumnType.Integer">
                         <Template>
                             <span class="badge bg-secondary">L@(((EnrollmentMyTeamMemberDto)context).Level)</span>
                         </Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Country" Width="100">
+                    <GridColumn Field="@nameof(EnrollmentMyTeamMemberDto.Country)"
+                                HeaderText="@L["Reports.Country"]" Width="100" Type="ColumnType.String">
                         <Template>
                             @(((EnrollmentMyTeamMemberDto)context).Country)
                         </Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Sponsor" Width="150">
+                    <GridColumn Field="@nameof(EnrollmentMyTeamMemberDto.SponsorFullName)"
+                                HeaderText="@L["Reports.Sponsor"]" Width="150" Type="ColumnType.String">
                         <Template>
                             @{ var m = (EnrollmentMyTeamMemberDto)context; }
                             @(m.SponsorFullName ?? m.SponsorMemberId ?? "—")
                         </Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Dual Upline" Width="150">
+                    <GridColumn Field="@nameof(EnrollmentMyTeamMemberDto.DualUplineFullName)"
+                                HeaderText="@L["Reports.DualUpline"]" Width="150" Type="ColumnType.String">
                         <Template>
                             @{ var m2 = (EnrollmentMyTeamMemberDto)context; }
                             @(m2.DualUplineFullName ?? m2.DualUplineMemberId ?? "—")
                         </Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Biz Status" Width="110" TextAlign="TextAlign.Center">
+                    <GridColumn Field="@nameof(EnrollmentMyTeamMemberDto.AccountStatus)"
+                                HeaderText="@L["Reports.BizStatus"]" Width="110" TextAlign="TextAlign.Center"
+                                Type="ColumnType.String">
                         <Template>
                             <StatusBadge Status="@(((EnrollmentMyTeamMemberDto)context).AccountStatus)" />
                         </Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Membership Status" Width="140" TextAlign="TextAlign.Center">
+                    <GridColumn Field="@nameof(EnrollmentMyTeamMemberDto.MembershipStatus)"
+                                HeaderText="@L["Reports.MembershipStatus"]" Width="140" TextAlign="TextAlign.Center"
+                                Type="ColumnType.String">
                         <Template>
                             <StatusBadge Status="@(((EnrollmentMyTeamMemberDto)context).MembershipStatus)" />
                         </Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Qualified" Width="110" TextAlign="TextAlign.Center">
+                    <GridColumn Field="@nameof(EnrollmentMyTeamMemberDto.IsQualified)"
+                                HeaderText="@L["Reports.Qualified"]" Width="110" TextAlign="TextAlign.Center"
+                                Type="ColumnType.Boolean" DisplayAsCheckBox="false">
                         <Template>
                             @{ var isQ = ((EnrollmentMyTeamMemberDto)context).IsQualified; }
                             <span class="badge @(isQ ? "bg-success bg-opacity-10 text-success" : "bg-warning bg-opacity-10 text-warning") p-2 fs-12 fw-normal">
-                                @(isQ ? "Qualified" : "Unqualified")
+                                @(isQ ? L["Reports.Qualified"] : L["Reports.Unqualified"])
                             </span>
                         </Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Membership" Width="200">
+                    <GridColumn Field="@nameof(EnrollmentMyTeamMemberDto.MembershipLevelName)"
+                                HeaderText="@L["Reports.Membership"]" Width="200" Type="ColumnType.String">
                         <Template>
                             @(((EnrollmentMyTeamMemberDto)context).MembershipLevelName ?? "—")
                         </Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Rank" Width="130">
+                    <GridColumn Field="@nameof(EnrollmentMyTeamMemberDto.CurrentRankName)"
+                                HeaderText="@L["Reports.Rank"]" Width="130" Type="ColumnType.String">
                         <Template>
                             @(((EnrollmentMyTeamMemberDto)context).CurrentRankName ?? "—")
                         </Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Rank Date" Width="110" TextAlign="TextAlign.Center">
+                    <GridColumn Field="@nameof(EnrollmentMyTeamMemberDto.RankDate)"
+                                HeaderText="@L["Reports.RankDate"]" Width="110" TextAlign="TextAlign.Center"
+                                Format="MM/dd/yyyy" Type="ColumnType.Date">
                         <Template>
                             @{ var rd = ((EnrollmentMyTeamMemberDto)context).RankDate; }
                             @(rd.HasValue ? rd.Value.ToString("MM/dd/yyyy") : "—")
                         </Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Lifetime Rank" Width="130">
+                    <GridColumn Field="@nameof(EnrollmentMyTeamMemberDto.LifetimeRankName)"
+                                HeaderText="@L["Reports.LifetimeRank"]" Width="130" Type="ColumnType.String">
                         <Template>
                             @(((EnrollmentMyTeamMemberDto)context).LifetimeRankName ?? "—")
                         </Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Next Rank %" Width="100" TextAlign="TextAlign.Center">
+                    <GridColumn Field="@nameof(EnrollmentMyTeamMemberDto.NextRankPercent)"
+                                HeaderText="@L["Reports.NextRankPercent"]" Width="100" TextAlign="TextAlign.Center"
+                                Type="ColumnType.Integer">
                         <Template>
                             @{ var pct = ((EnrollmentMyTeamMemberDto)context).NextRankPercent; }
                             <div style="position:relative;width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:conic-gradient(#605DFF @(pct)%, #ECEEF2 @(pct)%);margin:auto">
@@ -164,10 +191,12 @@
                         </Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Qual. Points" Width="115" TextAlign="TextAlign.Right">
+                    <GridColumn Field="@nameof(EnrollmentMyTeamMemberDto.QualificationPoints)"
+                                HeaderText="@L["Reports.QualPoints"]" Width="115" TextAlign="TextAlign.Right"
+                                Type="ColumnType.Integer">
                         <HeaderTemplate>
-                            <span title="Personal qualification points — sum of QualificationPoints from this member's own product purchases.">
-                                Qual. Points <i class="ri-information-line text-muted small"></i>
+                            <span title="@L["Reports.QualifyHeaderTooltip"]">
+                                @L["Reports.QualPoints"] <i class="ri-information-line text-muted small"></i>
                             </span>
                         </HeaderTemplate>
                         <Template>
@@ -175,10 +204,12 @@
                         </Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Enroll. Points" Width="120" TextAlign="TextAlign.Right">
+                    <GridColumn Field="@nameof(EnrollmentMyTeamMemberDto.EnrollmentTeamPoints)"
+                                HeaderText="@L["Reports.EnrollPoints"]" Width="120" TextAlign="TextAlign.Right"
+                                Type="ColumnType.Integer">
                         <HeaderTemplate>
-                            <span title="Enrollment-team points — points accumulated from this member's own downline (their sponsored members and below). 0 means they haven't enrolled anyone yet.">
-                                Enroll. Points <i class="ri-information-line text-muted small"></i>
+                            <span title="@L["Reports.EnrollPointsTooltip"]">
+                                @L["Reports.EnrollPoints"] <i class="ri-information-line text-muted small"></i>
                             </span>
                         </HeaderTemplate>
                         <Template>
@@ -186,10 +217,12 @@
                         </Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Left Points" Width="110" TextAlign="TextAlign.Right">
+                    <GridColumn Field="@nameof(EnrollmentMyTeamMemberDto.LeftTeamPoints)"
+                                HeaderText="@L["Reports.LeftPoints"]" Width="110" TextAlign="TextAlign.Right"
+                                Type="ColumnType.Decimal">
                         <HeaderTemplate>
-                            <span title="Dual-tree left-leg points — accumulated points on this member's binary-tree LEFT leg. 0 means no descendants on that leg.">
-                                Left Points <i class="ri-information-line text-muted small"></i>
+                            <span title="@L["Reports.LeftPointsTooltip"]">
+                                @L["Reports.LeftPoints"] <i class="ri-information-line text-muted small"></i>
                             </span>
                         </HeaderTemplate>
                         <Template>
@@ -197,10 +230,12 @@
                         </Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Right Points" Width="110" TextAlign="TextAlign.Right">
+                    <GridColumn Field="@nameof(EnrollmentMyTeamMemberDto.RightTeamPoints)"
+                                HeaderText="@L["Reports.RightPoints"]" Width="110" TextAlign="TextAlign.Right"
+                                Type="ColumnType.Decimal">
                         <HeaderTemplate>
-                            <span title="Dual-tree right-leg points — accumulated points on this member's binary-tree RIGHT leg. 0 means no descendants on that leg.">
-                                Right Points <i class="ri-information-line text-muted small"></i>
+                            <span title="@L["Reports.RightPointsTooltip"]">
+                                @L["Reports.RightPoints"] <i class="ri-information-line text-muted small"></i>
                             </span>
                         </HeaderTemplate>
                         <Template>
@@ -210,11 +245,12 @@
 
                     @if (ViewContext.IsAdminContext)
                     {
-                        <GridColumn HeaderText="" Width="80" TextAlign="TextAlign.Center">
+                        <GridColumn HeaderText="" Width="80" TextAlign="TextAlign.Center"
+                                    AllowSorting="false" AllowFiltering="false">
                             <Template>
                                 <button class="btn btn-xs btn-outline-secondary"
                                         @onclick="@(() => Nav.NavigateTo($"/admin/members/{((EnrollmentMyTeamMemberDto)context).MemberId}"))"
-                                        title="View in Admin">
+                                        title="@L["Team.ViewInAdmin"]">
                                     <i class="ri-eye-line"></i>
                                 </button>
                             </Template>
@@ -233,89 +269,89 @@
     <div class="offcanvas offcanvas-end show" style="visibility:visible" tabindex="-1" aria-labelledby="mm-offcanvas-title">
         <div class="offcanvas-header border-bottom p-4">
             <h5 class="offcanvas-title fs-18 mb-0" id="mm-offcanvas-title">@_selected.FullName</h5>
-            <button type="button" class="btn-close" @onclick="() => _selected = null" aria-label="Close"></button>
+            <button type="button" class="btn-close" @onclick="() => _selected = null" aria-label="@L["Common.Close"]"></button>
         </div>
         <div class="offcanvas-body p-4">
             <div class="form-group mb-4">
-                <strong>ID:</strong> <code class="text-primary">@_selected.MemberId</code>
+                <strong>@L["Team.IdLabel"]</strong> <code class="text-primary">@_selected.MemberId</code>
             </div>
             <div class="form-group mb-4">
-                <strong>Join Date:</strong> @_selected.EnrollDate.ToString("MM/dd/yyyy")
+                <strong>@L["Team.JoinDateLabel"]</strong> @_selected.EnrollDate.ToString("MM/dd/yyyy")
             </div>
             <div class="form-group mb-4">
-                <strong>Email:</strong> @_selected.Email
+                <strong>@L["Team.EmailLabel"]</strong> @_selected.Email
             </div>
             <div class="form-group mb-4">
-                <strong>Phone:</strong> @(_selected.Phone ?? "—")
+                <strong>@L["Team.PhoneLabel"]</strong> @(_selected.Phone ?? "—")
             </div>
             <div class="form-group mb-4">
-                <strong>Level:</strong> <span class="badge bg-secondary">L@(_selected.Level)</span>
+                <strong>@L["Team.LevelLabel"]</strong> <span class="badge bg-secondary">L@(_selected.Level)</span>
             </div>
             <div class="form-group mb-4">
-                <strong>Country:</strong> @_selected.Country
+                <strong>@L["Team.CountryLabel"]</strong> @_selected.Country
             </div>
             <div class="form-group mb-4">
-                <strong>Sponsor:</strong> @(_selected.SponsorFullName ?? _selected.SponsorMemberId ?? "—")
+                <strong>@L["Team.SponsorLabel"]</strong> @(_selected.SponsorFullName ?? _selected.SponsorMemberId ?? "—")
             </div>
             <div class="form-group mb-4">
-                <strong>Dual Team Upline:</strong> @(_selected.DualUplineFullName ?? _selected.DualUplineMemberId ?? "—")
+                <strong>@L["Team.DualTeamUplineLabel"]</strong> @(_selected.DualUplineFullName ?? _selected.DualUplineMemberId ?? "—")
             </div>
 
             <div class="form-group mb-4">
-                <strong>Biz Center Status:</strong>
+                <strong>@L["Team.BizCenterStatusLabel"]</strong>
                 <StatusBadge Status="@_selected.AccountStatus" />
             </div>
             <div class="form-group mb-4">
-                <strong>Membership Status:</strong>
+                <strong>@L["Team.MembershipStatusLabel"]</strong>
                 <StatusBadge Status="@_selected.MembershipStatus" />
             </div>
             <div class="form-group mb-4">
-                <strong>Qualified:</strong>
+                <strong>@L["Team.QualifiedLabel"]</strong>
                 <span class="badge @(_selected.IsQualified ? "bg-success bg-opacity-10 text-success" : "bg-warning bg-opacity-10 text-warning") p-2 fs-12 fw-normal">
-                    @(_selected.IsQualified ? "Qualified" : "Unqualified")
+                    @(_selected.IsQualified ? L["Reports.Qualified"] : L["Reports.Unqualified"])
                 </span>
             </div>
 
             <div class="form-group mb-4">
-                <strong>Membership:</strong> @(_selected.MembershipLevelName ?? "—")
+                <strong>@L["Team.MembershipLabel"]</strong> @(_selected.MembershipLevelName ?? "—")
             </div>
             <div class="form-group mb-4">
-                <strong>Rank:</strong> @(_selected.CurrentRankName ?? "—")
+                <strong>@L["Team.RankLabel"]</strong> @(_selected.CurrentRankName ?? "—")
             </div>
             <div class="form-group mb-4">
-                <strong>Rank Date:</strong> @(_selected.RankDate.HasValue ? _selected.RankDate.Value.ToString("MM/dd/yyyy") : "—")
+                <strong>@L["Team.RankDateLabel"]</strong> @(_selected.RankDate.HasValue ? _selected.RankDate.Value.ToString("MM/dd/yyyy") : "—")
             </div>
             <div class="form-group mb-4">
-                <strong>Lifetime Rank:</strong> @(_selected.LifetimeRankName ?? "—")
+                <strong>@L["Team.LifetimeRankLabel"]</strong> @(_selected.LifetimeRankName ?? "—")
             </div>
             <div class="form-group mb-4">
-                <strong>Next Rank %:</strong> @(_selected.NextRankPercent)%
+                <strong>@L["Team.NextRankPercentLabel"]</strong> @(_selected.NextRankPercent)%
             </div>
 
             <div class="form-group mb-4">
-                <strong>Qualification Points:</strong> @(_selected.QualificationPoints.ToString("N0"))
+                <strong>@L["Team.QualificationPointsLabel"]</strong> @(_selected.QualificationPoints.ToString("N0"))
             </div>
             <div class="form-group mb-4">
-                <strong>Enrollment Team Points:</strong> @(_selected.EnrollmentTeamPoints.ToString("N0"))
+                <strong>@L["Team.EnrollmentTeamPointsLabel"]</strong> @(_selected.EnrollmentTeamPoints.ToString("N0"))
             </div>
             <div class="form-group mb-4">
-                <strong>Left Team Points:</strong> @(_selected.LeftTeamPoints.ToString("N0"))
+                <strong>@L["Team.LeftTeamPointsLabel"]</strong> @(_selected.LeftTeamPoints.ToString("N0"))
             </div>
             <div class="form-group mb-4">
-                <strong>Right Team Points:</strong> @(_selected.RightTeamPoints.ToString("N0"))
+                <strong>@L["Team.RightTeamPointsLabel"]</strong> @(_selected.RightTeamPoints.ToString("N0"))
             </div>
 
             @if (_selected.MembershipStatus == "Cancelled")
             {
                 <div class="form-group mb-4">
-                    <strong>Cancellation Date:</strong>
+                    <strong>@L["Team.CancellationDate"]</strong>
                     @(_selected.CancellationDate.HasValue ? _selected.CancellationDate.Value.ToString("MM/dd/yyyy") : "—")
                 </div>
             }
             else if (_selected.MembershipStatus == "Suspended")
             {
                 <div class="form-group mb-4">
-                    <strong>Suspension Date:</strong>
+                    <strong>@L["Team.SuspensionDate"]</strong>
                     @(_selected.SuspensionDate.HasValue ? _selected.SuspensionDate.Value.ToString("MM/dd/yyyy") : "—")
                 </div>
             }
@@ -323,7 +359,7 @@
             @if (!_selected.IsQualified)
             {
                 <div class="form-group mb-4">
-                    <strong>Last Payment Date:</strong>
+                    <strong>@L["Team.LastPaymentDate"]</strong>
                     @(_selected.LastPaymentDate.HasValue ? _selected.LastPaymentDate.Value.ToString("MM/dd/yyyy") : "—")
                 </div>
             }
@@ -333,7 +369,7 @@
                         @onclick="() => _selected = null">
                     <span class="py-sm-1 d-block">
                         <i class="ri-close-line text-white"></i>
-                        <span>Close</span>
+                        <span>@L["Common.Close"]</span>
                     </span>
                 </button>
             </div>
@@ -359,9 +395,9 @@
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
-        new("Dashboard", "/dashboard"),
-        new("Enrollment Team"),
-        new("My Team")
+        new(L["Nav.Dashboard"], "/dashboard"),
+        new(L["Sidebar.EnrollmentTeam"]),
+        new(L["Sidebar.MyTeam"])
     };
 
     protected override async Task OnParametersSetAsync()
@@ -397,9 +433,9 @@
                 _items      = resp.Data.Items;
                 _totalCount = resp.Data.TotalCount;
             }
-            else { _error = resp?.Errors?.FirstOrDefault() ?? "Failed to load team."; }
+            else { _error = resp?.Errors?.FirstOrDefault() ?? L["Team.LoadFailedTeam"]; }
         }
-        catch (Exception ex) { _error = $"API error: {ex.Message}"; }
+        catch (Exception ex) { _error = $"{L["Team.ApiErrorPrefix"]} {ex.Message}"; }
         finally { _isLoading = false; }
     }
 

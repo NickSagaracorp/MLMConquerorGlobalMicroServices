@@ -1,12 +1,13 @@
 @inject HttpClient Http
 @inject IViewContextService ViewContext
 @inject NavigationManager Nav
+@inject IStringLocalizer<SharedResources> L
 
 @using MLMConquerorGlobalEdition.SharedComponents.Constants
 
 @if (!ViewContext.IsInAnyRole(AppRoles.Ambassador) && !ViewContext.IsAdminContext)
 {
-    <div class="alert alert-warning">Ranks are only available for Ambassadors.</div>
+    <div class="alert alert-warning">@L["Ranks.OnlyForAmbassadors"]</div>
     return;
 }
 
@@ -19,19 +20,19 @@
     <!-- Stat Cards -->
     <div class="row g-3 mb-4">
         <div class="col-12 col-sm-4">
-            <StatCard Title="Current Rank"
+            <StatCard Title="@L["Ranks.CurrentRank"]"
                       Value="@_progress.CurrentRank"
                       Icon="ri-medal-line"
                       Color="warning" />
         </div>
         <div class="col-12 col-sm-4">
-            <StatCard Title="Points to Next Rank"
+            <StatCard Title="@L["Ranks.PointsToNext"]"
                       Value="@_progress.PointsToNext.ToString("N0")"
                       Icon="ri-bar-chart-2-line"
                       Color="primary" />
         </div>
         <div class="col-12 col-sm-4">
-            <StatCard Title="Total Qualified Months"
+            <StatCard Title="@L["Ranks.QualifiedMonths"]"
                       Value="@_progress.QualifiedMonths.ToString()"
                       Icon="ri-calendar-check-line"
                       Color="success" />
@@ -41,7 +42,7 @@
     <!-- Progress toward next rank -->
     <div class="card mb-4">
         <div class="card-header py-3">
-            <h6 class="card-title mb-0 fw-semibold">Progress to Next Rank</h6>
+            <h6 class="card-title mb-0 fw-semibold">@L["Ranks.ProgressTitle"]</h6>
         </div>
         <div class="card-body">
             @foreach (var req in _requirements)
@@ -68,11 +69,11 @@
         <div class="card border-warning mb-4">
             <div class="card-body d-flex align-items-center justify-content-between">
                 <div>
-                    <h6 class="fw-semibold mb-1 text-warning">Admin Override</h6>
-                    <p class="text-muted small mb-0">Manually set this member's rank outside normal qualification rules.</p>
+                    <h6 class="fw-semibold mb-1 text-warning">@L["Ranks.AdminOverrideTitle"]</h6>
+                    <p class="text-muted small mb-0">@L["Ranks.AdminOverrideMessage"]</p>
                 </div>
                 <button class="btn btn-warning btn-sm" @onclick="@(() => _showOverrideModal = true)">
-                    <i class="ri-edit-line me-1"></i>Manual Override
+                    <i class="ri-edit-line me-1"></i>@L["Ranks.ManualOverrideButton"]
                 </button>
             </div>
         </div>
@@ -85,9 +86,9 @@
 @if (_showOverrideModal)
 {
     <ConfirmModal IsVisible="true"
-                  Title="Manual Rank Override"
-                  Message="You are about to manually override this member's rank. This action will be logged. Proceed?"
-                  ConfirmLabel="Override Rank"
+                  Title="@L["Ranks.OverrideModalTitle"]"
+                  Message="@L["Ranks.OverrideModalMessage"]"
+                  ConfirmLabel="@L["Ranks.OverrideModalConfirm"]"
                   ConfirmColor="warning"
                   OnConfirm="@HandleOverrideConfirmedAsync"
                   OnCancel="@(() => _showOverrideModal = false)" />
@@ -103,9 +104,9 @@
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
-        new("Home",  "/dashboard"),
-        new("Ranks", "/ranks"),
-        new("Progress")
+        new(L["Ranks.BreadcrumbHome"].Value,  "/dashboard"),
+        new(L["Nav.Ranks"].Value, "/ranks"),
+        new(L["Ranks.BreadcrumbProgress"].Value)
     };
 
     protected override async Task OnParametersSetAsync()

@@ -1,13 +1,13 @@
-﻿@page "/tickets/{TicketId}"
-@rendermode InteractiveServer
+@page "/tickets/{TicketId}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @inject IViewContextService ViewContext
+@inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
 
-<PageTitle>Ticket Detail</PageTitle>
+<PageTitle>@L["PageTitle.TicketDetail"]</PageTitle>
 
 <TicketDetailPage TicketId="@TicketId" MemberProfileId="@ViewContext.ViewingMemberId" />
 
 @code {
     [Parameter] public string TicketId { get; set; } = string.Empty;
 }
-

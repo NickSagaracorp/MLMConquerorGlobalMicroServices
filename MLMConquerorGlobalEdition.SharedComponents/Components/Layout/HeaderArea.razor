@@ -62,7 +62,7 @@
                             <div class="dropdown-menu dropdown-lg p-0 border-0 dropdown-menu-end">
                                 <div class="d-flex justify-content-between align-items-center title">
                                     <span class="fw-semibold fs-15 text-secondary">@L["Header.Notifications"]</span>
-                                    <button class="p-0 m-0 bg-transparent border-0 fs-14 text-primary">Clear All</button>
+                                    <button class="p-0 m-0 bg-transparent border-0 fs-14 text-primary">@L["Header.ClearAll"]</button>
                                 </div>
                                 <div class="max-h-217" data-simplebar>
                                     <p class="text-muted small p-3 mb-0">@L["Header.NoNotifications"]</p>
@@ -132,19 +132,19 @@
                                         <li>
                                             <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="#">
                                                 <i class="material-symbols-outlined">chat</i>
-                                                <span class="ms-2">Messages</span>
+                                                <span class="ms-2">@L["Header.Messages"]</span>
                                             </a>
                                         </li>
                                         <li>
                                             <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="/tokens/guest-passes">
                                                 <i class="material-symbols-outlined">confirmation_number</i>
-                                                <span class="ms-2">Guest Passes</span>
+                                                <span class="ms-2">@L["Header.GuestPasses"]</span>
                                             </a>
                                         </li>
                                         <li>
                                             <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="/marketing">
                                                 <i class="material-symbols-outlined">format_list_bulleted</i>
-                                                <span class="ms-2">Marketing</span>
+                                                <span class="ms-2">@L["Header.Marketing"]</span>
                                             </a>
                                         </li>
                                     }
@@ -156,7 +156,7 @@
                                         <li>
                                             <a class="dropdown-item admin-item-link d-flex align-items-center text-body" href="/tickets">
                                                 <i class="material-symbols-outlined">support</i>
-                                                <span class="ms-2">Support</span>
+                                                <span class="ms-2">@L["Header.Support"]</span>
                                             </a>
                                         </li>
                                     }
@@ -176,7 +176,7 @@
                                 data-bs-toggle="offcanvas" data-bs-target="#offcanvasScrolling"
                                 aria-controls="offcanvasScrolling">
                             <i class="material-symbols-outlined" data-bs-toggle="tooltip" data-bs-placement="left"
-                               data-bs-title="Click On Theme Settings">settings</i>
+                               data-bs-title="@L["Header.ThemeSettingsTooltip"]">settings</i>
                         </button>
                     </li>
                 </ul>
@@ -187,7 +187,7 @@
 
 @code {
     private string _displayName => string.IsNullOrWhiteSpace(ViewContext.MemberFullName)
-        ? (ViewContext.IsAdminContext ? "Admin" : "Member")
+        ? (ViewContext.IsAdminContext ? L["Header.AdminFallback"].Value : L["Header.MemberFallback"].Value)
         : ViewContext.MemberFullName;
 
     private string _rankLabel => ViewContext.MemberRankLabel ?? string.Empty;

@@ -1,3 +1,5 @@
+@inject IStringLocalizer<SharedResources> L
+
 @*
     Read-only Contact Info card on the Profile tab. The "Edit" button surfaces
     the editable contact + address modal owned by the parent UserProfilePage.
@@ -7,7 +9,7 @@
     <div class="card-body p-4">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom pb-3 mb-3">
             <h6 class="fs-18 mb-0 fw-semibold">
-                <i class="ri-phone-line me-2 text-primary"></i>Contact Info
+                <i class="ri-phone-line me-2 text-primary"></i>@L["ContactInfo.Title"]
             </h6>
             @if (CanEdit)
             {
@@ -15,30 +17,30 @@
                         class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
                         @onclick="() => OnEditRequested.InvokeAsync()">
                     <i class="ri-edit-line"></i>
-                    <span>Edit Contact &amp; Address</span>
+                    <span>@L["ContactInfo.EditContactAddress"]</span>
                 </button>
             }
         </div>
 
         <div class="row g-3">
             <div class="col-12 col-md-6">
-                <label class="form-label text-muted small mb-1">Phone</label>
+                <label class="form-label text-muted small mb-1">@L["Common.Phone"]</label>
                 <div class="fw-medium">@DisplayOrDash(Phone)</div>
             </div>
             <div class="col-12 col-md-6">
-                <label class="form-label text-muted small mb-1">WhatsApp</label>
+                <label class="form-label text-muted small mb-1">@L["Common.WhatsApp"]</label>
                 <div class="fw-medium">@DisplayOrDash(WhatsApp)</div>
             </div>
             <div class="col-12 col-md-6">
-                <label class="form-label text-muted small mb-1">Email</label>
+                <label class="form-label text-muted small mb-1">@L["Common.Email"]</label>
                 <div class="fw-medium text-break">@DisplayOrDash(Email)</div>
             </div>
             <div class="col-12 col-md-6">
-                <label class="form-label text-muted small mb-1">Country</label>
+                <label class="form-label text-muted small mb-1">@L["Common.Country"]</label>
                 <div class="fw-medium">@DisplayOrDash(Country)</div>
             </div>
             <div class="col-12">
-                <label class="form-label text-muted small mb-1">Address</label>
+                <label class="form-label text-muted small mb-1">@L["Common.Address"]</label>
                 <div class="fw-medium">@FormatAddress()</div>
             </div>
         </div>

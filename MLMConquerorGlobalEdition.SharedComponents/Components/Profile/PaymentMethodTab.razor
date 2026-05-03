@@ -1,5 +1,6 @@
 @inject HttpClient Http
 @inject IJSRuntime JS
+@inject IStringLocalizer<SharedResources> L
 
 <LoadingSpinner IsLoading="@_loading" />
 
@@ -14,14 +15,13 @@
 
     <div class="d-flex align-items-start mb-3">
         <div class="flex-grow-1">
-            <h6 class="fw-semibold mb-1"><i class="ri-bank-card-line me-2 text-primary"></i>Payment Method</h6>
+            <h6 class="fw-semibold mb-1"><i class="ri-bank-card-line me-2 text-primary"></i>@L["PaymentMethod.Title"]</h6>
             <small class="text-muted">
-                Drag the cards to set the order in which the company should try to charge your membership.
-                The first one that succeeds wins.
+                @L["PaymentMethod.Description"]
             </small>
         </div>
         <button class="btn btn-primary btn-sm" @onclick="() => _showAddModal = true">
-            <i class="ri-add-line me-1"></i>Add card
+            <i class="ri-add-line me-1"></i>@L["PaymentMethod.AddCard"]
         </button>
     </div>
 
@@ -29,8 +29,8 @@
     {
         <div class="text-center py-5 border rounded bg-light">
             <i class="ri-bank-card-2-line text-muted" style="font-size:2.5rem"></i>
-            <p class="text-muted mt-2 mb-0">You don't have any cards on file yet.</p>
-            <button class="btn btn-link" @onclick="() => _showAddModal = true">Add your first card</button>
+            <p class="text-muted mt-2 mb-0">@L["PaymentMethod.NoCardsTitle"]</p>
+            <button class="btn btn-link" @onclick="() => _showAddModal = true">@L["PaymentMethod.AddFirstCard"]</button>
         </div>
     }
     else
@@ -47,14 +47,14 @@
                     @ondragend="OnDragEnd">
                     <div class="pm-mini-card pm-bg-@card.CardBrand.ToLowerInvariant()">
                         <div class="pm-mini-top">
-                            <div class="pm-mini-label">Credit Card</div>
+                            <div class="pm-mini-label">@L["PaymentMethod.CreditCard"]</div>
                             <div class="pm-mini-brand">@card.CardBrand</div>
                         </div>
                         <div class="pm-mini-chip"></div>
                         <div class="pm-mini-number">•••• •••• •••• @card.Last4</div>
                         <div class="pm-mini-bottom">
-                            <span class="pm-mini-holder">Card Holder</span>
-                            <span class="pm-mini-exp">EXP @card.ExpiryMonth.ToString("00")/@card.ExpiryYear.ToString().Substring(2)</span>
+                            <span class="pm-mini-holder">@L["PaymentMethod.CardHolder"]</span>
+                            <span class="pm-mini-exp">@L["BillingInfo.Exp"] @card.ExpiryMonth.ToString("00")/@card.ExpiryYear.ToString().Substring(2)</span>
                         </div>
                     </div>
                     <div class="pm-meta">
@@ -62,14 +62,14 @@
                             <span class="badge bg-secondary">#@(index + 1)</span>
                             @if (card.IsDefault)
                             {
-                                <span class="badge bg-success"><i class="ri-star-fill me-1"></i>Default</span>
+                                <span class="badge bg-success"><i class="ri-star-fill me-1"></i>@L["PaymentMethod.Default"]</span>
                             }
                             @if (card.IsExpired)
                             {
-                                <span class="badge bg-danger">Expired</span>
+                                <span class="badge bg-danger">@L["PaymentMethod.Expired"]</span>
                             }
                         </div>
-                        <div class="small text-muted mt-1"><i class="ri-drag-move-2-line me-1"></i>Drag to reorder</div>
+                        <div class="small text-muted mt-1"><i class="ri-drag-move-2-line me-1"></i>@L["PaymentMethod.DragToReorder"]</div>
                     </div>
                     <div class="pm-actions">
                         @if (!card.IsDefault && !card.IsExpired)
@@ -77,13 +77,13 @@
                             <button class="btn btn-sm btn-outline-success"
                                     disabled="@_busy"
                                     @onclick="() => SetDefaultAsync(card.Id)">
-                                <i class="ri-star-line me-1"></i>Set default
+                                <i class="ri-star-line me-1"></i>@L["PaymentMethod.SetDefault"]
                             </button>
                         }
                         <button class="btn btn-sm btn-outline-danger"
                                 disabled="@_busy"
                                 @onclick="() => DeleteAsync(card.Id)"
-                                title="Remove this card">
+                                title="@L["PaymentMethod.RemoveCardTooltip"]">
                             <i class="ri-delete-bin-line"></i>
                         </button>
                     </div>
@@ -122,7 +122,7 @@
         }
         catch (Exception ex)
         {
-            _alertMsg = $"Could not load cards: {ex.Message}"; _alertIsError = true;
+            _alertMsg = $"{L["PaymentMethod.CouldNotLoadPrefix"]} {ex.Message}"; _alertIsError = true;
         }
         finally { _loading = false; StateHasChanged(); }
     }
@@ -130,7 +130,7 @@
     private async Task OnCardAddedAsync()
     {
         _showAddModal = false;
-        _alertMsg = "Card added successfully."; _alertIsError = false;
+        _alertMsg = L["PaymentMethod.CardAdded"]; _alertIsError = false;
         await LoadAsync();
     }
 
@@ -143,12 +143,12 @@
                 $"api/v1/bizcenter/billing/credit-cards/{cardId}/default", null);
             if (resp.IsSuccessStatusCode)
             {
-                _alertMsg = "Default card updated."; _alertIsError = false;
+                _alertMsg = L["PaymentMethod.DefaultUpdated"]; _alertIsError = false;
                 await LoadAsync();
             }
             else
             {
-                _alertMsg = $"Could not set default: {await resp.Content.ReadAsStringAsync()}";
+                _alertMsg = $"{L["PaymentMethod.CouldNotSetDefaultPrefix"]} {await resp.Content.ReadAsStringAsync()}";
                 _alertIsError = true;
             }
         }
@@ -158,7 +158,7 @@
 
     private async Task DeleteAsync(string cardId)
     {
-        if (!await JS.InvokeAsync<bool>("confirm", "Remove this card?")) return;
+        if (!await JS.InvokeAsync<bool>("confirm", L["PaymentMethod.ConfirmRemove"].Value)) return;
         _busy = true; StateHasChanged();
         try
         {
@@ -166,12 +166,12 @@
                 $"api/v1/bizcenter/billing/credit-cards/{cardId}");
             if (resp.IsSuccessStatusCode)
             {
-                _alertMsg = "Card removed."; _alertIsError = false;
+                _alertMsg = L["PaymentMethod.CardRemoved"]; _alertIsError = false;
                 await LoadAsync();
             }
             else
             {
-                _alertMsg = $"Could not remove: {await resp.Content.ReadAsStringAsync()}";
+                _alertMsg = $"{L["PaymentMethod.CouldNotRemovePrefix"]} {await resp.Content.ReadAsStringAsync()}";
                 _alertIsError = true;
             }
         }
@@ -208,7 +208,7 @@
                 "api/v1/bizcenter/billing/credit-cards/reorder", payload);
             if (!resp.IsSuccessStatusCode)
             {
-                _alertMsg = $"Could not save order: {await resp.Content.ReadAsStringAsync()}";
+                _alertMsg = $"{L["PaymentMethod.CouldNotSaveOrderPrefix"]} {await resp.Content.ReadAsStringAsync()}";
                 _alertIsError = true;
                 await LoadAsync(); // revert UI
             }

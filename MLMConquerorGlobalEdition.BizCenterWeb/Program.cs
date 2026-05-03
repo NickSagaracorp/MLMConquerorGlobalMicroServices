@@ -5,12 +5,13 @@ using MLMConquerorGlobalEdition.BizCenterWeb.Components;
 using MLMConquerorGlobalEdition.BizCenterWeb.Middleware;
 using MLMConquerorGlobalEdition.BizCenterWeb.Services;
 using MLMConquerorGlobalEdition.SharedComponents.Extensions;
+using MLMConquerorGlobalEdition.SharedKernel;
 using Syncfusion.Blazor;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Localization — supported cultures
-var supportedCultures = new[] { "en", "es", "pt", "fr", "it", "ko", "de", "ru" };
+// Localization — the 9 supported cultures, mapped from app codes by LanguageCodeMapper.
+var supportedCultures = LanguageCodeMapper.SupportedCultureNames.ToArray();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
@@ -74,7 +75,7 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseRequestLocalization(new RequestLocalizationOptions()
-    .SetDefaultCulture("en")
+    .SetDefaultCulture(LanguageCodeMapper.DefaultCultureName)
     .AddSupportedCultures(supportedCultures)
     .AddSupportedUICultures(supportedCultures));
 app.UseAntiforgery();
@@ -90,6 +91,11 @@ app.MapRazorComponents<App>()
 app.MapPost("/account/login",  (Delegate)AuthEndpoints.LoginAsync).DisableAntiforgery();
 app.MapPost("/account/logout", (Delegate)AuthEndpoints.LogoutAsync).DisableAntiforgery();
 app.MapGet("/account/logout",  (Delegate)AuthEndpoints.LogoutAsync);
+
+// 2FA challenge endpoints — antiforgery disabled (form posts on
+// unauthenticated /two-factor page, identity carried in HttpOnly cookie).
+app.MapPost("/account/two-factor/verify", (Delegate)AuthEndpoints.VerifyTwoFactorAsync).DisableAntiforgery();
+app.MapPost("/account/two-factor/resend", (Delegate)AuthEndpoints.ResendTwoFactorAsync).DisableAntiforgery();
 
 // Culture selection endpoint — sets cookie and redirects back
 app.MapGet("/culture", (HttpContext ctx, string culture, string redirectUri) =>

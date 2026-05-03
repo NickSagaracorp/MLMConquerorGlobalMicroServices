@@ -4,4 +4,4 @@ using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Features.Dashboards.GetHealthDashboard;
 
-public record GetHealthDashboardQuery : IRequest<Result<HealthDashboardDto>>;
+public record GetHealthDashboardQuery(bool BypassCache = false) : IRequest<Result<HealthDashboardDto>>;

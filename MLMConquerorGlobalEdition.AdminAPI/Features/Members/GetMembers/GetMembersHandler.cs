@@ -1,21 +1,46 @@
+using System.Security.Cryptography;
+using System.Text;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.AdminAPI.DTOs.Members;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
+using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Features.Members.GetMembers;
 
+/// <summary>
+/// Paginated admin member list with sponsor / dual-upline / membership / rank
+/// joins. Heavy multi-table query — cached for 2 minutes per page+filter so
+/// rapid pagination and back-and-forth navigation hits the in-process / Redis
+/// cache instead of re-running the joins. Pass <c>BypassCache = true</c>
+/// (controller surfaces it as <c>?bypassCache=true</c>) when the admin clicks
+/// "Refresh" and expects fresh data.
+/// </summary>
 public class GetMembersHandler : IRequestHandler<GetMembersQuery, Result<PagedResult<AdminMemberDto>>>
 {
-    private readonly AppDbContext _db;
+    private readonly AppDbContext  _db;
+    private readonly ICacheService _cache;
 
-    public GetMembersHandler(AppDbContext db) => _db = db;
+    public GetMembersHandler(AppDbContext db, ICacheService cache)
+    {
+        _db    = db;
+        _cache = cache;
+    }
 
     public async Task<Result<PagedResult<AdminMemberDto>>> Handle(
         GetMembersQuery request, CancellationToken cancellationToken)
     {
+        var fingerprint = BuildFilterFingerprint(request.StatusFilter, request.SponsorId, request.SearchTerm);
+        var cacheKey    = CacheKeys.AdminMembers(request.Page.Page, request.Page.PageSize, fingerprint);
+
+        if (!request.BypassCache)
+        {
+            var cached = await _cache.GetAsync<PagedResult<AdminMemberDto>>(cacheKey, cancellationToken);
+            if (cached is not null) return Result<PagedResult<AdminMemberDto>>.Success(cached);
+        }
+
         var query = _db.MemberProfiles.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(request.StatusFilter) &&
@@ -141,6 +166,20 @@ public class GetMembersHandler : IRequestHandler<GetMembersQuery, Result<PagedRe
             PageSize = request.Page.PageSize
         };
 
+        await _cache.SetAsync(cacheKey, result, CacheKeys.AdminMembersTtl, cancellationToken);
         return Result<PagedResult<AdminMemberDto>>.Success(result);
+    }
+
+    /// <summary>
+    /// Short, deterministic fingerprint of the filter trio so each combination
+    /// gets its own cache slot without bloating the key with the raw search
+    /// string. SHA256 truncated to 12 hex chars is plenty for cache buckets.
+    /// </summary>
+    private static string BuildFilterFingerprint(string? status, string? sponsor, string? search)
+    {
+        var raw = $"{status ?? ""}|{sponsor ?? ""}|{search ?? ""}";
+        if (raw == "||") return "none";
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(raw));
+        return Convert.ToHexString(bytes.AsSpan(0, 6)).ToLowerInvariant();
     }
 }

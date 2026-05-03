@@ -1,20 +1,29 @@
 @inject HttpClient Http
+@inject NavigationManager Nav
+@inject IStringLocalizer<SharedResources> L
+
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
+@using MLMConquerorGlobalEdition.SharedKernel
 
 @*
     Language picker. The persisted value drives default-language behavior across
-    the app; the actual translation tables can land later. Five locales are
-    pre-wired here (en/es/pt/fr/de). The card writes the entire profile back
-    via PUT /profile because that endpoint is the editable surface today.
+    the app. After persisting through PUT /profile we hit the host's /culture
+    endpoint so the .NET RequestLocalization cookie gets refreshed and the new
+    language applies to the current session immediately (full reload, by design).
+
+    Visible strings come from SharedResources.{culture}.resx via IStringLocalizer.
+    Each language button label uses the "Lang.{code}" key, so the endonym is
+    pulled from the resx (with English fallback) instead of being hardcoded.
 *@
 
 <div class="card border-0 shadow-sm rounded-3 mb-4">
     <div class="card-body p-4">
         <h6 class="fs-18 mb-1 fw-semibold">
-            <i class="ri-translate-2 me-2 text-primary"></i>Default Language
+            <i class="ri-translate-2 me-2 text-primary"></i>@L["LanguageCard.Title"]
         </h6>
         <p class="text-muted small mb-3">
-            We'll send notifications, emails and dashboard hints in this
-            language whenever a translation is available.
+            @L["LanguageCard.Description"]
         </p>
 
         <div class="row g-2">
@@ -24,10 +33,9 @@
                 <div class="col-6 col-md-4">
                     <button type="button"
                             class="btn w-100 text-start d-flex align-items-center gap-2 @(isActive ? "btn-primary" : "btn-outline-secondary")"
-                            disabled="@_busy"
                             @onclick="() => SelectAsync(lang.Code)">
                         <span class="fs-5">@lang.Flag</span>
-                        <span class="flex-grow-1">@lang.Label</span>
+                        <span class="flex-grow-1">@L[$"Lang.{lang.Code}"]</span>
                         @if (isActive)
                         {
                             <i class="ri-check-line"></i>
@@ -36,13 +44,6 @@
                 </div>
             }
         </div>
-
-        @if (_alert is not null)
-        {
-            <div class="alert alert-@(_alertOk ? "success" : "danger") small mt-3 mb-0 py-2">
-                @_alert
-            </div>
-        }
     </div>
 </div>
 
@@ -62,21 +63,21 @@
 
     [Parameter] public EventCallback<string> OnLanguageChanged { get; set; }
 
-    private record Language(string Code, string Label, string Flag);
+    private record Language(string Code, string Flag);
     private readonly List<Language> _languages = new()
     {
-        new("en", "English",    "🇺🇸"),
-        new("es", "Español",    "🇪🇸"),
-        new("pt", "Português",  "🇵🇹"),
-        new("fr", "Français",   "🇫🇷"),
-        new("de", "Deutsch",    "🇩🇪"),
-        new("zh", "中文",        "🇨🇳")
+        new("en", "🇺🇸"),
+        new("es", "🇪🇸"),
+        new("pt", "🇵🇹"),
+        new("fr", "🇫🇷"),
+        new("de", "🇩🇪"),
+        new("zh", "🇨🇳"),
+        new("it", "🇮🇹"),
+        new("kr", "🇰🇷"),
+        new("ge", "🇬🇪")
     };
 
     private string _selected = "en";
-    private bool   _busy;
-    private string? _alert;
-    private bool   _alertOk;
 
     protected override void OnParametersSet()
     {
@@ -84,48 +85,33 @@
             _selected = CurrentLanguage!;
     }
 
-    private async Task SelectAsync(string code)
+    private void SelectAsync(string code)
     {
         if (_selected == code) return;
-        var previous = _selected;
         _selected = code;
-        StateHasChanged();
 
-        _busy = true; _alert = null;
-        try
+        // Fire-and-forget the persistence PUT so we don't make the user wait
+        // ~200-500ms for the API roundtrip before the language visibly
+        // changes. The HttpClient request goes out immediately and reaches
+        // the server even if the navigation below tears down the circuit
+        // moments later. Worst case (network drop): the cookie still applied
+        // for this session, but the preference reverts to the old value next
+        // login — acceptable degradation for a 5x perceived speed win.
+        _ = Http.PutAsJsonAsync("api/v1/bizcenter/profile", new
         {
-            var resp = await Http.PutAsJsonAsync("api/v1/bizcenter/profile", new
-            {
-                Phone, WhatsApp, Country, State, City, Address, ZipCode,
-                AddressChangeReason = (string?)null,
-                DefaultLanguage = code,
-                PayoutFrequency,
-                ShowBusinessName, IsEmailPublic, IsPhonePublic
-            });
+            Phone, WhatsApp, Country, State, City, Address, ZipCode,
+            AddressChangeReason = (string?)null,
+            DefaultLanguage = code,
+            PayoutFrequency,
+            ShowBusinessName, IsEmailPublic, IsPhonePublic
+        });
 
-            if (resp.IsSuccessStatusCode)
-            {
-                _alert = "Language preference saved.";
-                _alertOk = true;
-                await OnLanguageChanged.InvokeAsync(code);
-            }
-            else
-            {
-                _selected = previous;
-                _alert    = $"Failed: {resp.StatusCode}";
-                _alertOk  = false;
-            }
-        }
-        catch (Exception ex)
-        {
-            _selected = previous;
-            _alert    = ex.Message;
-            _alertOk  = false;
-        }
-        finally
-        {
-            _busy = false;
-            StateHasChanged();
-        }
+        // Navigate immediately so the RequestLocalization cookie flips and
+        // the new culture is visible on the next request.
+        var cultureName = LanguageCodeMapper.ToCultureName(code);
+        var redirectTo  = Uri.EscapeDataString(Nav.Uri);
+        Nav.NavigateTo(
+            $"/culture?culture={Uri.EscapeDataString(cultureName)}&redirectUri={redirectTo}",
+            forceLoad: true);
     }
 }

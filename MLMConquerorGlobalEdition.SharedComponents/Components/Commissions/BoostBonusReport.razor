@@ -1,4 +1,5 @@
 @inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
 @using System.Net.Http.Json
 
 @if (ShowBreadcrumb)
@@ -12,7 +13,7 @@
         <div class="card bg-white border-0 rounded-3 mb-4">
             <div class="card-body p-4" style="padding-bottom: 0 !important;">
                 <div class="mb-3 mb-lg-4">
-                    <h3 class="mb-0">Boost Bonus: @(_weekStats?.WeekLabel ?? "Loading...")</h3>
+                    <h3 class="mb-0">@string.Format(L["Boost.TitleWithLabel"].Value, _weekStats?.WeekLabel ?? L["Boost.LoadingLabel"].Value)</h3>
                 </div>
                 <LoadingSpinner IsLoading="@_weekLoading" />
                 @if (!_weekLoading && _weekStats is not null)
@@ -26,7 +27,7 @@
                                             <i class="material-symbols-outlined fs-40 text-black">rewarded_ads</i>
                                         </div>
                                         <div class="flex-grow-1 ms-2">
-                                            <span>Gold</span>
+                                            <span>@L["Boost.Gold"]</span>
                                             <h3 class="fs-20 mt-1 mb-0">@_weekStats.GoldPoints/@_weekStats.GoldPointsTarget</h3>
                                         </div>
                                     </div>
@@ -41,7 +42,7 @@
                                             <i class="material-symbols-outlined fs-40 text-black">diamond</i>
                                         </div>
                                         <div class="flex-grow-1 ms-2">
-                                            <span>Platinum</span>
+                                            <span>@L["Boost.Platinum"]</span>
                                             <h3 class="fs-20 mt-1 mb-0">@_weekStats.PlatinumPoints/@_weekStats.PlatinumPointsTarget</h3>
                                         </div>
                                     </div>
@@ -61,9 +62,9 @@
         <div class="card bg-white border-0 rounded-3 mb-4">
             <div class="card-body p-4">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
-                    <h3 class="mb-0">Enrollments</h3>
+                    <h3 class="mb-0">@L["Boost.Enrollments"]</h3>
                     <div class="position-relative">
-                        <select class="form-select form-control w-auto bg-border-color border-color bg-transparent" aria-label="Week select"
+                        <select class="form-select form-control w-auto bg-border-color border-color bg-transparent" aria-label="@L["Boost.WeekSelectAria"]"
                                 value="@_selectedWeek"
                                 @onchange="OnWeekChange">
                             @if (_availableWeeks.Any())
@@ -75,7 +76,7 @@
                             }
                             else
                             {
-                                <option value="current">Current Week</option>
+                                <option value="current">@L["Boost.CurrentWeek"]</option>
                             }
                         </select>
                     </div>
@@ -96,7 +97,7 @@
                                 aria-controls="gold-tab-pane"
                                 aria-selected="@(_enrollmentTab == "gold" ? "true" : "false")"
                                 @onclick='() => _enrollmentTab = "gold"'>
-                            GOLD (@_goldEnrollments.Count.ToString("00"))
+                            @L["Boost.Gold"].Value.ToUpperInvariant() (@_goldEnrollments.Count.ToString("00"))
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
@@ -107,7 +108,7 @@
                                 aria-controls="platinum-tab-pane"
                                 aria-selected="@(_enrollmentTab == "platinum" ? "true" : "false")"
                                 @onclick='() => _enrollmentTab = "platinum"'>
-                            PLATINUM (@_platinumEnrollments.Count.ToString("00"))
+                            @L["Boost.Platinum"].Value.ToUpperInvariant() (@_platinumEnrollments.Count.ToString("00"))
                         </button>
                     </li>
                 </ul>
@@ -127,13 +128,13 @@
                                     <table class="table align-middle border-0">
                                         <thead>
                                             <tr>
-                                                <th>Order No</th>
-                                                <th>Member Name</th>
-                                                <th>Membership Type</th>
-                                                <th>Leg</th>
-                                                <th>Enrollment Date</th>
-                                                <th>Next Rebilling</th>
-                                                <th>Points</th>
+                                                <th>@L["Reports.OrderNo"]</th>
+                                                <th>@L["Reports.MemberName"]</th>
+                                                <th>@L["Reports.MembershipType"]</th>
+                                                <th>@L["Reports.Leg"]</th>
+                                                <th>@L["Reports.EnrollmentDate"]</th>
+                                                <th>@L["Reports.NextRebilling"]</th>
+                                                <th>@L["Common.Points"]</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -174,13 +175,13 @@
                                                         }
                                                     </td>
                                                     <td>
-                                                        <span class="d-inline-block py-1 px-2 @pointsBgClass">@en.Points Points</span>
+                                                        <span class="d-inline-block py-1 px-2 @pointsBgClass">@en.Points @L["Common.Points"]</span>
                                                     </td>
                                                 </tr>
                                             }
                                             @if (!_goldEnrollments.Any())
                                             {
-                                                <tr><td colspan="7" class="text-center text-muted py-4">No Gold enrollments for this period (threshold: 6).</td></tr>
+                                                <tr><td colspan="7" class="text-center text-muted py-4">@L["Boost.NoGoldEnrollments"]</td></tr>
                                             }
                                         </tbody>
                                     </table>
@@ -199,13 +200,13 @@
                                     <table class="table align-middle border-0">
                                         <thead>
                                             <tr>
-                                                <th>Order No</th>
-                                                <th>Member Name</th>
-                                                <th>Membership Type</th>
-                                                <th>Leg</th>
-                                                <th>Enrollment Date</th>
-                                                <th>Next Rebilling</th>
-                                                <th>Points</th>
+                                                <th>@L["Reports.OrderNo"]</th>
+                                                <th>@L["Reports.MemberName"]</th>
+                                                <th>@L["Reports.MembershipType"]</th>
+                                                <th>@L["Reports.Leg"]</th>
+                                                <th>@L["Reports.EnrollmentDate"]</th>
+                                                <th>@L["Reports.NextRebilling"]</th>
+                                                <th>@L["Common.Points"]</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -246,13 +247,13 @@
                                                         }
                                                     </td>
                                                     <td>
-                                                        <span class="d-inline-block py-1 px-2 @pointsBgClass">@en.Points Points</span>
+                                                        <span class="d-inline-block py-1 px-2 @pointsBgClass">@en.Points @L["Common.Points"]</span>
                                                     </td>
                                                 </tr>
                                             }
                                             @if (!_platinumEnrollments.Any())
                                             {
-                                                <tr><td colspan="7" class="text-center text-muted py-4">No Platinum enrollments for this period (threshold: 12).</td></tr>
+                                                <tr><td colspan="7" class="text-center text-muted py-4">@L["Boost.NoPlatinumEnrollments"]</td></tr>
                                             }
                                         </tbody>
                                     </table>
@@ -280,7 +281,7 @@
                                         <i class="material-symbols-outlined fs-40 text-primary">group</i>
                                     </div>
                                     <div class="flex-grow-1 ms-2">
-                                        <span>Total Members</span>
+                                        <span>@L["Boost.TotalMembers"]</span>
                                         @if (_memberLoading) { <h3 class="fs-20 mt-1 mb-0"><span class="placeholder col-6"></span></h3> }
                                         else { <h3 class="fs-20 mt-1 mb-0">@(_memberSummary?.TotalMembers ?? 0)</h3> }
                                     </div>
@@ -296,7 +297,7 @@
                                         <i class="material-symbols-outlined fs-40 text-success">paid</i>
                                     </div>
                                     <div class="flex-grow-1 ms-2">
-                                        <span>Active Rebilling</span>
+                                        <span>@L["Boost.ActiveRebilling"]</span>
                                         @if (_memberLoading) { <h3 class="fs-20 mt-1 mb-0"><span class="placeholder col-6"></span></h3> }
                                         else { <h3 class="fs-20 mt-1 mb-0">@(_memberSummary?.ActiveRebilling ?? 0)</h3> }
                                     </div>
@@ -312,7 +313,7 @@
                                         <i class="material-symbols-outlined fs-40 text-danger">person_cancel</i>
                                     </div>
                                     <div class="flex-grow-1 ms-2">
-                                        <span>Inactive Rebilling</span>
+                                        <span>@L["Boost.InactiveRebilling"]</span>
                                         @if (_memberLoading) { <h3 class="fs-20 mt-1 mb-0"><span class="placeholder col-6"></span></h3> }
                                         else { <h3 class="fs-20 mt-1 mb-0">@(_memberSummary?.InactiveRebilling ?? 0)</h3> }
                                     </div>
@@ -331,7 +332,7 @@
     <div class="card-body p-0">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
             <form class="position-relative table-src-form me-0">
-                <input type="text" class="form-control" placeholder="Search here"
+                <input type="text" class="form-control" placeholder="@L["Reports.SearchPlaceholder"]"
                        value="@_search"
                        @oninput="OnSearchInput" />
                 <i class="material-symbols-outlined position-absolute top-50 start-0 translate-middle-y">search</i>
@@ -356,10 +357,10 @@
                     <table class="table align-middle">
                         <thead>
                             <tr>
-                                <th scope="col">Earned Date</th>
-                                <th scope="col">Amount</th>
-                                <th scope="col">Eligible Points</th>
-                                <th scope="col">Paid</th>
+                                <th scope="col">@L["Reports.EarnedDate"]</th>
+                                <th scope="col">@L["Common.Amount"]</th>
+                                <th scope="col">@L["Reports.EligiblePoints"]</th>
+                                <th scope="col">@L["Reports.Paid"]</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -380,21 +381,21 @@
                             }
                             @if (!Filtered.Any())
                             {
-                                <tr><td colspan="4" class="text-center text-muted py-4">No data available.</td></tr>
+                                <tr><td colspan="4" class="text-center text-muted py-4">@L["Common.NoDataAvailable"]</td></tr>
                             }
                         </tbody>
                     </table>
                 </div>
                 <div class="p-4 pt-lg-4">
                     <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
-                        <span class="fs-12 fw-medium">Showing @Filtered.Count() of @_total Results</span>
+                        <span class="fs-12 fw-medium">@L["Reports.Showing"] @Filtered.Count() @L["Common.Of"] @_total @L["Reports.Results"]</span>
                         @if (_total > _pageSize)
                         {
                             var totalPages = (int)Math.Ceiling((double)_total / _pageSize);
-                            <nav aria-label="Boost Bonus pagination">
+                            <nav aria-label="@L["Sidebar.BoostBonus"]">
                                 <ul class="pagination mb-0 justify-content-center">
                                     <li class="page-item @(_page <= 1 ? "disabled" : "")">
-                                        <button type="button" class="page-link icon" @onclick="() => LoadPageAsync(_page - 1)" aria-label="Previous">
+                                        <button type="button" class="page-link icon" @onclick="() => LoadPageAsync(_page - 1)" aria-label="@L["Common.Previous"]">
                                             <i class="material-symbols-outlined">keyboard_arrow_left</i>
                                         </button>
                                     </li>
@@ -406,7 +407,7 @@
                                         </li>
                                     }
                                     <li class="page-item @(_page >= totalPages ? "disabled" : "")">
-                                        <button type="button" class="page-link icon" @onclick="() => LoadPageAsync(_page + 1)" aria-label="Next">
+                                        <button type="button" class="page-link icon" @onclick="() => LoadPageAsync(_page + 1)" aria-label="@L["Common.Next"]">
                                             <i class="material-symbols-outlined">keyboard_arrow_right</i>
                                         </button>
                                     </li>
@@ -453,9 +454,9 @@
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
-        new("Dashboard", "/dashboard"),
-        new("Commissions", "/commissions"),
-        new("Boost Bonus")
+        new(L["UserProfile.Breadcrumb.Dashboard"].Value, "/dashboard"),
+        new(L["Sidebar.Commissions"].Value, "/commissions"),
+        new(L["Boost.Breadcrumb"].Value)
     };
 
     protected override async Task OnParametersSetAsync()

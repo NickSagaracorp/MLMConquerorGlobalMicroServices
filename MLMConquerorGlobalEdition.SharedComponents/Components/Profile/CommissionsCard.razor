@@ -1,0 +1,317 @@
+@inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
+
+@*
+    Commissions card for the Billing tab. Displays the member's payout
+    frequency and their default payout method (preferred wallet) in read
+    mode, and offers an inline edit that persists both:
+      • PUT /api/v1/bizcenter/profile        — payout frequency
+      • PUT /api/v1/bizcenter/wallets/{wt}/default — default wallet
+
+    Wallets are loaded from /api/v1/bizcenter/wallets so we always show the
+    correct preferred gateway and account identifier without forcing the
+    parent page to know about the wallet shape.
+*@
+
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3 flex-wrap gap-2">
+            <h6 class="fs-18 mb-0 fw-semibold">
+                <i class="ri-line-chart-line me-2 text-primary"></i>@L["Commissions.Title"]
+            </h6>
+            @if (CanEdit && !_isEditing)
+            {
+                <button class="btn btn-sm btn-outline-primary" @onclick="EnterEditMode" disabled="@_busy">
+                    <i class="ri-edit-line me-1"></i>@L["Commissions.EditButton"]
+                </button>
+            }
+        </div>
+
+        @if (_alert is not null)
+        {
+            <div class="alert alert-@(_alertOk ? "success" : "danger") small py-2 mb-3">
+                @_alert
+            </div>
+        }
+
+        @if (!_isEditing)
+        {
+            @* ─── Read mode ──────────────────────────────────────────────── *@
+            <div class="mb-3">
+                <div class="text-muted small mb-1">@L["Commissions.PaymentFrequency"]</div>
+                <div class="fw-medium">@DisplayFrequency()</div>
+            </div>
+
+            <div class="mb-3">
+                <div class="text-muted small mb-1">@L["Commissions.PaymentMethod"]</div>
+                <div class="fw-medium">
+                    @(_preferredWallet?.WalletTypeName ?? L["Commissions.NoMethodSelected"].Value)
+                </div>
+            </div>
+
+            @if (_preferredWallet is not null)
+            {
+                <div class="mb-0">
+                    <div class="text-muted small mb-1">
+                        @string.Format(L["Commissions.AccountLabel"].Value, _preferredWallet.WalletTypeName)
+                    </div>
+                    <div class="fw-medium font-monospace">
+                        <strong>@L["Commissions.YourAccount"]</strong>
+                        <span class="ms-1">@(string.IsNullOrWhiteSpace(_preferredWallet.AccountIdentifier) ? "—" : _preferredWallet.AccountIdentifier)</span>
+                    </div>
+                    @{
+                        var portalUrl = ResolvePortalUrl(_preferredWallet.WalletType);
+                    }
+                    @if (!string.IsNullOrEmpty(portalUrl))
+                    {
+                        <a href="@portalUrl" target="_blank" rel="noopener noreferrer" class="small d-inline-block mt-2">
+                            <i class="ri-external-link-line me-1"></i>@L["Commissions.PortalAccess"]
+                        </a>
+                    }
+                </div>
+            }
+        }
+        else
+        {
+            @* ─── Edit mode ──────────────────────────────────────────────── *@
+            <div class="mb-3">
+                <label class="form-label small text-muted mb-2">@L["Commissions.PaymentFrequency"]</label>
+                <div class="d-flex gap-2 flex-wrap">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" id="commFreqDaily"
+                               name="commissionFrequency"
+                               checked="@(_editFrequency == "Daily")"
+                               @onchange='() => _editFrequency = "Daily"' />
+                        <label class="form-check-label" for="commFreqDaily">@L["Commissions.FrequencyDaily"]</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" id="commFreqWeekly"
+                               name="commissionFrequency"
+                               checked="@(_editFrequency == "Weekly")"
+                               @onchange='() => _editFrequency = "Weekly"' />
+                        <label class="form-check-label" for="commFreqWeekly">@L["Commissions.FrequencyWeekly"]</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="commPayoutMethod" class="form-label small text-muted mb-1">
+                    @L["Commissions.PaymentMethod"]
+                </label>
+                @{
+                    var approved = _wallets.Where(w => w.StatusName == "Approved").ToList();
+                }
+                @if (!approved.Any())
+                {
+                    <div class="alert alert-warning small py-2 mb-0">
+                        <i class="ri-error-warning-line me-1"></i>@L["Commissions.AddMethodFirst"]
+                    </div>
+                }
+                else
+                {
+                    <select id="commPayoutMethod" class="form-select form-select-sm"
+                            @bind="_editWalletType">
+                        <option value="0">@L["Commissions.SelectMethod"]</option>
+                        @foreach (var w in approved)
+                        {
+                            <option value="@w.WalletType">@w.WalletTypeName — @(string.IsNullOrWhiteSpace(w.AccountIdentifier) ? "—" : w.AccountIdentifier)</option>
+                        }
+                    </select>
+                }
+            </div>
+
+            <div class="d-flex gap-2 justify-content-end">
+                <button class="btn btn-sm btn-outline-secondary" @onclick="CancelEdit" disabled="@_busy">
+                    @L["Common.Cancel"]
+                </button>
+                <button class="btn btn-sm btn-primary"
+                        @onclick="SaveAsync"
+                        disabled="@(_busy || !approved.Any() || _editWalletType == 0)">
+                    @if (_busy) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                    @L["Common.Save"]
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+    [Parameter] public bool CanEdit { get; set; }
+
+    // Profile fields — required because PUT /profile expects the full editable surface,
+    // matching how PayoutFrequencyCard / LanguagePreferenceCard already work.
+    [Parameter] public string? CurrentFrequency { get; set; }
+    [Parameter] public string? Phone            { get; set; }
+    [Parameter] public string? WhatsApp         { get; set; }
+    [Parameter] public string? Country          { get; set; }
+    [Parameter] public string? State            { get; set; }
+    [Parameter] public string? City             { get; set; }
+    [Parameter] public string? Address          { get; set; }
+    [Parameter] public string? ZipCode          { get; set; }
+    [Parameter] public string? DefaultLanguage  { get; set; }
+    [Parameter] public bool    ShowBusinessName { get; set; }
+    [Parameter] public bool    IsEmailPublic    { get; set; }
+    [Parameter] public bool    IsPhonePublic    { get; set; }
+
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private List<WalletDto> _wallets = new();
+    private WalletDto? _preferredWallet;
+
+    private bool   _isEditing;
+    private bool   _busy;
+    private string? _alert;
+    private bool   _alertOk;
+
+    private string _editFrequency = "Weekly";
+    private int    _editWalletType;
+    private string _initialFrequency = "Weekly";
+    private int    _initialWalletType;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _initialFrequency = string.IsNullOrEmpty(CurrentFrequency) ? "Weekly" : CurrentFrequency!;
+        if (!_isEditing) _editFrequency = _initialFrequency;
+        await LoadWalletsAsync();
+    }
+
+    private async Task LoadWalletsAsync()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<WalletDto>>>(
+                "api/v1/bizcenter/wallets");
+            if (resp?.Success == true)
+            {
+                _wallets = resp.Data ?? new();
+                _preferredWallet = _wallets.FirstOrDefault(w => w.IsPreferred);
+                _initialWalletType = _preferredWallet?.WalletType ?? 0;
+                if (!_isEditing) _editWalletType = _initialWalletType;
+            }
+        }
+        catch
+        {
+            // Silent degrade — read-mode will simply show "no method selected".
+        }
+    }
+
+    private void EnterEditMode()
+    {
+        _editFrequency = _initialFrequency;
+        _editWalletType = _initialWalletType;
+        _alert = null;
+        _isEditing = true;
+    }
+
+    private void CancelEdit()
+    {
+        _isEditing = false;
+        _alert = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        _busy = true; _alert = null; StateHasChanged();
+        try
+        {
+            // 1) Persist payout frequency via PUT /profile (full payload required).
+            if (_editFrequency != _initialFrequency)
+            {
+                var profileResp = await Http.PutAsJsonAsync("api/v1/bizcenter/profile", new
+                {
+                    Phone, WhatsApp, Country, State, City, Address, ZipCode,
+                    AddressChangeReason = (string?)null,
+                    DefaultLanguage,
+                    PayoutFrequency = _editFrequency,
+                    ShowBusinessName, IsEmailPublic, IsPhonePublic
+                });
+                if (!profileResp.IsSuccessStatusCode)
+                {
+                    _alert = $"{L["Commissions.SaveFailedPrefix"]} {profileResp.StatusCode}";
+                    _alertOk = false;
+                    return;
+                }
+            }
+
+            // 2) Update preferred wallet if it changed.
+            if (_editWalletType != 0 && _editWalletType != _initialWalletType)
+            {
+                var walletResp = await Http.PutAsync(
+                    $"api/v1/bizcenter/wallets/{_editWalletType}/default", null);
+                if (!walletResp.IsSuccessStatusCode)
+                {
+                    var body = await walletResp.Content.ReadAsStringAsync();
+                    _alert = $"{L["Commissions.SaveFailedPrefix"]} {body}";
+                    _alertOk = false;
+                    return;
+                }
+            }
+
+            _alert = L["Commissions.Saved"].Value;
+            _alertOk = true;
+            _isEditing = false;
+
+            // Reload local wallet state immediately — the parent's profile reload
+            // refreshes ProfileDto fields but does NOT refresh _preferredWallet,
+            // which comes from /api/v1/bizcenter/wallets. Without this call the
+            // card kept showing the previous Crypto wallet after switching method.
+            await LoadWalletsAsync();
+
+            await OnSaved.InvokeAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            _alert = $"{L["Commissions.SaveFailedPrefix"]} {ex.Message}";
+            _alertOk = false;
+        }
+        finally
+        {
+            _busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private string DisplayFrequency()
+    {
+        var f = string.IsNullOrEmpty(CurrentFrequency) ? "Weekly" : CurrentFrequency!;
+        return f.Equals("Daily", StringComparison.OrdinalIgnoreCase)
+            ? L["Commissions.FrequencyDaily"].Value
+            : L["Commissions.FrequencyWeekly"].Value;
+    }
+
+    /// <summary>
+    /// Maps a known WalletType to its self-service portal URL. Only providers
+    /// the company actually integrates with are listed; unknown types return
+    /// null so the link is hidden rather than guessed.
+    /// </summary>
+    private static string? ResolvePortalUrl(int walletType) => walletType switch
+    {
+        1  => "https://www.dwolla.com/login",       // Dwolla
+        2  => "https://www.propay.com/login",        // Propay
+        4  => "https://www.i-payout.com/",           // eWallet (I-Payout)
+        5  => "https://www.paypal.com/signin",       // PayPal
+        6  => "https://account.volet.com/",          // Volet
+        7  => "https://yestransfer.com/",            // Yestransfer
+        10 => "https://wallet.advcash.com/",         // AdvCash
+        _  => null
+    };
+
+    private class ApiWrapper<T>
+    {
+        public bool Success { get; set; }
+        public T?   Data    { get; set; }
+    }
+
+    public class WalletDto
+    {
+        public string  WalletId          { get; set; } = string.Empty;
+        public int     WalletType        { get; set; }
+        public string  WalletTypeName    { get; set; } = string.Empty;
+        public int     Status            { get; set; }
+        public string  StatusName        { get; set; } = string.Empty;
+        public string? AccountIdentifier { get; set; }
+        public bool    IsPreferred       { get; set; }
+    }
+}

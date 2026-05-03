@@ -1,4 +1,5 @@
 @inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
 
 @*
     Replicate-site (public website) slug editor. The visible prefix mirrors what
@@ -10,13 +11,11 @@
 <div class="card border-0 shadow-sm rounded-3 mb-4">
     <div class="card-body p-4">
         <h6 class="fs-18 mb-3 fw-semibold">
-            <i class="ri-global-line me-2 text-primary"></i>My Website
+            <i class="ri-global-line me-2 text-primary"></i>@L["WebsiteSlug.Title"]
         </h6>
 
         <p class="text-muted small mb-3">
-            Choose the public address where prospects will land. Lowercase
-            letters, digits and dashes only. Must start with a letter and be
-            between 3 and 40 characters long.
+            @L["WebsiteSlug.Description"]
         </p>
 
         <div class="input-group input-group-lg mb-2">
@@ -24,7 +23,7 @@
             <input type="text"
                    class="form-control @(_localError is null ? "" : "is-invalid")"
                    @bind="_slug" @bind:event="oninput"
-                   placeholder="your-name"
+                   placeholder="@L["WebsiteSlug.Placeholder"]"
                    maxlength="40" />
         </div>
 
@@ -44,12 +43,12 @@
         <div class="d-flex justify-content-between align-items-center">
             <a href="@($"{UrlPrefix}{_slug}")" target="_blank" rel="noopener"
                class="small text-decoration-none @(_isValidLocally ? "" : "disabled-link")">
-                <i class="ri-external-link-line me-1"></i>Open public page
+                <i class="ri-external-link-line me-1"></i>@L["WebsiteSlug.OpenPublicPage"]
             </a>
             <button class="btn btn-primary btn-sm" disabled="@(_busy || !_isValidLocally || _slug == InitialSlug)"
                     @onclick="SaveAsync">
                 @if (_busy) { <span class="spinner-border spinner-border-sm me-2"></span> }
-                Save website name
+                @L["WebsiteSlug.SaveButton"]
             </button>
         </div>
     </div>
@@ -83,7 +82,7 @@
             if (string.IsNullOrEmpty(_slug)) return false;
             if (!SlugRegex.IsMatch(_slug))
             {
-                _localError = "Use 3–40 lowercase letters, digits or dashes. Must start with a letter.";
+                _localError = L["WebsiteSlug.LocalError"];
                 return false;
             }
             return true;
@@ -99,20 +98,20 @@
                 "api/v1/bizcenter/profile/replicate-site", new { Slug = _slug });
             if (resp.IsSuccessStatusCode)
             {
-                _success = "Website name updated.";
+                _success = L["WebsiteSlug.Saved"];
                 await OnSaved.InvokeAsync(_slug);
             }
             else
             {
                 var body = await resp.Content.ReadAsStringAsync();
-                _serverError = TryExtractError(body) ?? "Could not update the website name.";
+                _serverError = TryExtractError(body) ?? L["WebsiteSlug.SaveFailed"].Value;
             }
         }
         catch (Exception ex) { _serverError = ex.Message; }
         finally { _busy = false; StateHasChanged(); }
     }
 
-    private static string? TryExtractError(string body)
+    private string? TryExtractError(string body)
     {
         try
         {
@@ -120,7 +119,7 @@
             if (doc.RootElement.TryGetProperty("errorCode", out var code)
                 && code.ValueKind == System.Text.Json.JsonValueKind.String
                 && code.GetString() == "SLUG_TAKEN")
-                return "That website name is already taken.";
+                return L["WebsiteSlug.SlugTaken"];
             if (doc.RootElement.TryGetProperty("message", out var m)
                 && m.ValueKind == System.Text.Json.JsonValueKind.String)
                 return m.GetString();

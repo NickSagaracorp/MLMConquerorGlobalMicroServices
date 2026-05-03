@@ -15,15 +15,18 @@ public class UpdateMemberStatusHandler : IRequestHandler<UpdateMemberStatusComma
     private readonly AppDbContext _db;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _dateTime;
+    private readonly ICacheService _cache;
 
     public UpdateMemberStatusHandler(
         AppDbContext db,
         ICurrentUserService currentUser,
-        IDateTimeProvider dateTime)
+        IDateTimeProvider dateTime,
+        ICacheService cache)
     {
         _db = db;
         _currentUser = currentUser;
         _dateTime = dateTime;
+        _cache = cache;
     }
 
     public async Task<Result<AdminMemberDto>> Handle(
@@ -90,6 +93,16 @@ public class UpdateMemberStatusHandler : IRequestHandler<UpdateMemberStatusComma
         }
 
         await _db.SaveChangesAsync(cancellationToken);
+
+        // Cache invalidation — the member's profile snapshot in BizCenter and
+        // any admin/CEO dashboards that aggregated by status are stale now.
+        // We can't pattern-delete the admin:members:p{x}:s{y}:f{z} list keys
+        // without Redis SCAN, so those rely on their 2-minute TTL. Cleared:
+        await _cache.RemoveAsync(CacheKeys.MemberProfile(member.MemberId), cancellationToken);
+        await _cache.RemoveAsync(CacheKeys.AdminCeoDashboard, cancellationToken);
+        await _cache.RemoveAsync(CacheKeys.AdminFinancialDashboard, cancellationToken);
+        await _cache.RemoveAsync(CacheKeys.AdminGrowthDashboard, cancellationToken);
+        await _cache.RemoveAsync(CacheKeys.AdminHealthDashboard, cancellationToken);
 
         var dto = new AdminMemberDto
         {

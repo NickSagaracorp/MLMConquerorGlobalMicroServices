@@ -1,8 +1,8 @@
-﻿@page "/marketing"
-@rendermode InteractiveServer
+@page "/marketing"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
 
-<PageTitle>Marketing</PageTitle>
+<PageTitle>@L["PageTitle.Marketing"]</PageTitle>
 
 <MarketingDocumentsPage />
-

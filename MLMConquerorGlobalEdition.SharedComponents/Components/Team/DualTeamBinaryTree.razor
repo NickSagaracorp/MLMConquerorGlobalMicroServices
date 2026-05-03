@@ -1,7 +1,10 @@
 @inject HttpClient Http
 @inject NavigationManager Nav
 @inject IJSRuntime JS
+@inject IStringLocalizer<SharedResources> L
 @using System.Net.Http.Json
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
 @implements IAsyncDisposable
 
 @if (ShowBreadcrumb) { <BreadcrumbNav Items="@_breadcrumb" /> }
@@ -144,7 +147,7 @@
                                 <i class="ri-arrow-left-circle-line fs-40 text-white"></i>
                             </div>
                             <div class="flex-grow-1 ms-3">
-                                <span class="text-white opacity-75 fs-13">Left Leg Points</span>
+                                <span class="text-white opacity-75 fs-13">@L["Team.LeftLegPoints"]</span>
                                 <h3 class="fs-22 mt-1 mb-0 text-white fw-bold">
                                     @if (_statsLoading)
                                     {
@@ -168,7 +171,7 @@
                                 <i class="ri-arrow-right-circle-line fs-40 text-white"></i>
                             </div>
                             <div class="flex-grow-1 ms-3">
-                                <span class="text-white opacity-75 fs-13">Right Leg Points</span>
+                                <span class="text-white opacity-75 fs-13">@L["Team.RightLegPoints"]</span>
                                 <h3 class="fs-22 mt-1 mb-0 text-white fw-bold">
                                     @if (_statsLoading)
                                     {
@@ -190,15 +193,15 @@
         <div class="d-flex gap-3 mb-3 flex-wrap">
             <span class="d-flex align-items-center gap-2 fs-13">
                 <span style="width:12px;height:12px;border-radius:50%;background:#2ecc71;display:inline-block"></span>
-                Qualified
+                @L["Team.LegendQualified"]
             </span>
             <span class="d-flex align-items-center gap-2 fs-13">
                 <span style="width:12px;height:12px;border-radius:50%;background:#7d2a3b;display:inline-block"></span>
-                Unqualified
+                @L["Team.LegendUnqualified"]
             </span>
             <span class="d-flex align-items-center gap-2 fs-13">
                 <span style="width:12px;height:12px;border-radius:50%;background:#9aa0a6;display:inline-block"></span>
-                Cancelled / Inactive
+                @L["Team.LegendCancelled"]
             </span>
         </div>
 
@@ -207,7 +210,7 @@
         {
             <div class="d-flex align-items-center gap-1 flex-wrap mb-3">
                 <button class="btn btn-outline-secondary btn-sm" @onclick="NavigateToRoot">
-                    <i class="ri-home-line me-1"></i>Root
+                    <i class="ri-home-line me-1"></i>@L["Team.Root"]
                 </button>
                 @foreach (var (nodeId, name) in _navStack)
                 {
@@ -243,7 +246,7 @@
         {
             <div class="text-center py-5 text-muted">
                 <i class="ri-share-circle-line fs-2 d-block mb-2"></i>
-                No tree data available.
+                @L["Team.NoTreeData"]
             </div>
         }
 
@@ -264,7 +267,7 @@
                     <div class="modal-content">
                         <div class="modal-header">
                             <h5 class="modal-title">
-                                Seleccionar ambassador — pierna <strong>@_placementSide</strong>
+                                @string.Format(L["Team.SelectAmbassadorLeg"], _placementSide)
                             </h5>
                             <button type="button" class="btn-close"
                                     disabled="@_placingMember"
@@ -284,7 +287,7 @@
                             }
                             else if (!_placementCandidates.Any() && _placementModalError is null)
                             {
-                                <div class="alert alert-warning m-3">No hay ambassadors disponibles para placement.</div>
+                                <div class="alert alert-warning m-3">@L["Team.NoCandidatesAvailable"]</div>
                             }
                             else
                             {
@@ -335,29 +338,29 @@
                                 <div class="rounded-3 p-3" style="background:#f8f9ff;border:1px solid #dde3ff">
                                     <div class="d-flex align-items-center gap-2 mb-2">
                                         <i class="ri-user-add-line text-primary"></i>
-                                        <span class="fw-semibold" style="font-size:13px">Confirmación de Placement</span>
+                                        <span class="fw-semibold" style="font-size:13px">@L["Team.PlacementConfirmation"]</span>
                                     </div>
                                     <div style="font-size:13px;line-height:1.6">
                                         <div>
-                                            <span class="text-muted">Ambassador:</span>
+                                            <span class="text-muted">@L["Team.AmbassadorLabel"]</span>
                                             <strong class="ms-1">@sel.FullName</strong>
                                         </div>
                                         <div>
-                                            <span class="text-muted">Bajo:</span>
+                                            <span class="text-muted">@L["Team.UnderLabel"]</span>
                                             <strong class="ms-1">@_placementTargetParentName</strong>
-                                            <span class="badge ms-1" style="background:#605DFF;font-size:10px">pierna @_placementSide</span>
+                                            <span class="badge ms-1" style="background:#605DFF;font-size:10px">@string.Format(L["Team.LegBadge"], _placementSide)</span>
                                         </div>
                                         <div class="mt-1">
-                                            <span class="text-muted">Puntos que aportará a</span>
+                                            <span class="text-muted">@L["Team.PointsContributionPrefix"]</span>
                                             <strong class="ms-1">@_placementTargetParentName</strong>
                                             <span class="ms-1">:</span>
                                             <span class="badge bg-success ms-1" style="font-size:11px">
-                                                +@pts @(pts == 1 ? "punto" : "puntos")
+                                                +@pts @(pts == 1 ? L["Team.PointSingular"].Value : L["Team.PointsPlural"].Value)
                                             </span>
                                             @if (sel.FloatingSubtreeSize > 0)
                                             {
                                                 <span class="text-muted ms-1" style="font-size:11px">
-                                                    (él + @sel.FloatingSubtreeSize en su subárbol)
+                                                    @string.Format(L["Team.SubtreeSuffix"], sel.FloatingSubtreeSize)
                                                 </span>
                                             }
                                         </div>
@@ -367,7 +370,7 @@
                                     <button class="btn btn-outline-secondary btn-sm"
                                             disabled="@_placingMember"
                                             @onclick="() => _selectedPlacementCandidate = null">
-                                        Cambiar selección
+                                        @L["Team.ChangeSelection"]
                                     </button>
                                     <button class="btn btn-primary btn-sm"
                                             disabled="@_placingMember"
@@ -376,7 +379,7 @@
                                         {
                                             <span class="spinner-border spinner-border-sm me-1"></span>
                                         }
-                                        Confirmar Placement
+                                        @L["Team.ConfirmPlacement"]
                                     </button>
                                 </div>
                             </div>
@@ -387,7 +390,7 @@
                                 <button class="btn btn-secondary btn-sm"
                                         disabled="@_placingMember"
                                         @onclick="() => _placementModalVisible = false">
-                                    Cancelar
+                                    @L["Common.Cancel"]
                                 </button>
                             </div>
                         }
@@ -404,7 +407,7 @@
                     <div class="modal-content">
                         <div class="modal-header border-0 pb-0">
                             <h5 class="modal-title text-danger">
-                                <i class="ri-error-warning-line me-2"></i>Confirmar Revert Placement
+                                <i class="ri-error-warning-line me-2"></i>@L["Team.ConfirmRevertPlacement"]
                             </h5>
                             <button type="button" class="btn-close"
                                     @onclick="() => _confirmUnplaceMemberId = null"
@@ -412,19 +415,18 @@
                         </div>
                         <div class="modal-body pt-2">
                             <p class="mb-1">
-                                ¿Está seguro que desea revertir el placement de
+                                @L["Team.RevertConfirmQuestion"]
                                 <strong>@_confirmUnplaceMemberName</strong>?
                             </p>
                             <p class="text-muted" style="font-size:13px">
-                                El ambassador y su subárbol quedarán desvinculados del árbol dual.
-                                Podrán ser re-colocados posteriormente y su subárbol los acompañará.
+                                @L["Team.RevertConfirmHelp"]
                             </p>
                         </div>
                         <div class="modal-footer border-0 pt-0">
                             <button class="btn btn-secondary btn-sm"
                                     @onclick="() => _confirmUnplaceMemberId = null"
                                     disabled="@(_unplacingMemberId is not null)">
-                                Cancelar
+                                @L["Common.Cancel"]
                             </button>
                             <button class="btn btn-danger btn-sm"
                                     disabled="@(_unplacingMemberId is not null)"
@@ -437,7 +439,7 @@
                                 {
                                     <span class="spinner-border spinner-border-sm me-1"></span>
                                 }
-                                Confirmar Revert
+                                @L["Team.ConfirmRevert"]
                             </button>
                         </div>
                     </div>
@@ -492,9 +494,9 @@
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
-        new("Dashboard", "/dashboard"),
-        new("Dual Team"),
-        new("Visualizer")
+        new(L["Nav.Dashboard"], "/dashboard"),
+        new(L["Sidebar.DualTeam"]),
+        new(L["Sidebar.Visualizer"])
     };
 
     // ── Lifecycle ────────────────────────────────────────────────────────────
@@ -535,11 +537,11 @@
             var resp = await Http.GetFromJsonAsync<ApiWrapper<DualTreeNodeDto>>(
                 $"{ApiBaseUrl}/dual-tree/node/{Uri.EscapeDataString(memberId)}");
             _rootNode = resp?.Success == true ? resp.Data : null;
-            if (_rootNode is null) _treeError = "Failed to load tree node.";
+            if (_rootNode is null) _treeError = L["Team.LoadingError"];
         }
         catch (Exception ex)
         {
-            _treeError = $"API error: {ex.Message}";
+            _treeError = $"{L["Team.ApiErrorPrefix"]} {ex.Message}";
         }
         finally
         {
@@ -615,7 +617,7 @@
     {
         _placementTargetParentId    = targetParentMemberId;
         _placementTargetParentName  = parentName;
-        _placementSide              = side == "L" ? "Left" : "Right";
+        _placementSide              = side == "L" ? L["Team.LegLeft"].Value : L["Team.LegRight"].Value;
         _placementModalError        = null;
         _placementCandidates        = new();
         _selectedPlacementCandidate = null;
@@ -629,11 +631,11 @@
                 $"{ApiBaseUrl}/dual-tree/available-for-placement");
             _placementCandidates = resp?.Success == true ? resp.Data ?? new() : new();
             if (!_placementCandidates.Any())
-                _placementModalError = "No members available for placement.";
+                _placementModalError = L["Team.NoMembersForPlacement"];
         }
         catch (Exception ex)
         {
-            _placementModalError = $"Error loading candidates: {ex.Message}";
+            _placementModalError = $"{L["Team.LoadCandidatesError"]} {ex.Message}";
         }
         finally
         {
@@ -664,12 +666,12 @@
             }
             else
             {
-                _placementModalError = $"Placement failed: {response.StatusCode}";
+                _placementModalError = $"{L["Team.PlacementFailed"]} {response.StatusCode}";
             }
         }
         catch (Exception ex)
         {
-            _placementModalError = $"Error: {ex.Message}";
+            _placementModalError = $"{L["Team.ErrorPrefix"]} {ex.Message}";
         }
         finally
         {
@@ -689,11 +691,11 @@
             if (response.IsSuccessStatusCode)
                 await Task.WhenAll(LoadNodeAsync(_currentRootId), LoadStatsAsync(_currentRootId));
             else
-                _unplacementError = $"Error al revertir placement ({(int)response.StatusCode}).";
+                _unplacementError = string.Format(L["Team.RevertError"], (int)response.StatusCode);
         }
         catch (Exception ex)
         {
-            _unplacementError = $"Error: {ex.Message}";
+            _unplacementError = $"{L["Team.ErrorPrefix"]} {ex.Message}";
         }
         finally
         {
@@ -708,14 +710,14 @@
         var statusClass = ResolveStatusClass(node.StatusCode);
         <div class="member-view-box @statusClass">
             <div class="member-header">@node.StatusCode</div>
-            <div class="member-avatar" title="@node.FullName — Click to drill in"
+            <div class="member-avatar" title="@($"{node.FullName} — {L["Team.DrillTooltipSuffix"]}")"
                  @onclick="() => { }">
                 @(node.FullName.Length > 0 ? node.FullName[0].ToString().ToUpper() : "?")
             </div>
             <div class="member-footer" style="white-space:normal;word-break:break-word">@node.FullName</div>
             <div style="font-size:11px;color:#888;margin-top:2px;cursor:help"
                  title="@BuildRootPointsTooltip(node.Points, node.PersonalPoints)">
-                @node.Points.ToString("N0") pts
+                @node.Points.ToString("N0") @L["Common.Pts"]
             </div>
         </div>
 
@@ -759,7 +761,7 @@
                 <div style="margin-top:8px">
                     <button class="btn btn-outline-primary btn-sm" style="font-size:11px"
                             @onclick="async () => await DrillIntoNodeById(n.MemberId, n.FullName, _currentRootId, _rootNode?.FullName ?? string.Empty)">
-                        <i class="ri-expand-diagonal-line me-1"></i>Expand
+                        <i class="ri-expand-diagonal-line me-1"></i>@L["Team.Expand"]
                     </button>
                 </div>
             }
@@ -772,14 +774,14 @@
         var capturedChild = child;
         <div class="member-view-box @statusClass">
             <div class="member-header">@child.StatusCode</div>
-            <div class="member-avatar" title="@child.FullName — Click to drill in"
+            <div class="member-avatar" title="@($"{child.FullName} — {L["Team.DrillTooltipSuffix"]}")"
                  @onclick="async () => await DrillIntoNode(capturedChild)">
                 @(child.FullName.Length > 0 ? child.FullName[0].ToString().ToUpper() : "?")
             </div>
             <div class="member-footer" style="white-space:normal;word-break:break-word">@child.FullName</div>
             <div style="font-size:11px;color:#888;margin-top:2px;cursor:help"
                  title="@BuildPointsTooltip(child.Points, child.PersonalPoints)">
-                @((child.Points + child.PersonalPoints).ToString("N0")) pts
+                @((child.Points + child.PersonalPoints).ToString("N0")) @L["Common.Pts"]
             </div>
             @if (AllowUnplacement)
             {
@@ -789,7 +791,7 @@
                 <button class="revert-btn" disabled="@busy"
                         @onclick:stopPropagation="true"
                         @onclick="() => { _confirmUnplaceMemberId = mid; _confirmUnplaceMemberName = name; }">
-                    @(busy ? "..." : "Revert Placement")
+                    @(busy ? "..." : L["Team.RevertPlacement"].Value)
                 </button>
             }
         </div>
@@ -830,7 +832,7 @@
         var capturedParent = parent;
         var statusClass    = ResolveStatusClass(gc.StatusCode);
         <div class="member-view-box @statusClass" style="cursor:pointer"
-             title="@gc.FullName — Click to drill in"
+             title="@($"{gc.FullName} — {L["Team.DrillTooltipSuffix"]}")"
              @onclick="async () => await DrillIntoNodeById(capturedGc.MemberId, capturedGc.FullName, capturedParent.MemberId, capturedParent.FullName)">
             <div class="member-header">@gc.StatusCode</div>
             <div class="member-avatar">
@@ -839,12 +841,12 @@
             <div class="member-footer" style="white-space:normal;word-break:break-word">@gc.FullName</div>
             <div style="font-size:11px;color:#888;margin-top:2px;cursor:help"
                  title="@BuildPointsTooltip(gc.Points, gc.PersonalPoints)">
-                @((gc.Points + gc.PersonalPoints).ToString("N0")) pts
+                @((gc.Points + gc.PersonalPoints).ToString("N0")) @L["Common.Pts"]
             </div>
             @if (gc.HasLeft || gc.HasRight)
             {
                 <div style="font-size:10px;color:#888;margin-top:2px">
-                    <i class="ri-expand-diagonal-line"></i> expand
+                    <i class="ri-expand-diagonal-line"></i> @L["Team.Expand"]
                 </div>
             }
             @if (AllowUnplacement)
@@ -855,7 +857,7 @@
                 <button class="revert-btn" disabled="@busy"
                         @onclick:stopPropagation="true"
                         @onclick="() => { _confirmUnplaceMemberId = mid; _confirmUnplaceMemberName = name; }">
-                    @(busy ? "..." : "Revert Placement")
+                    @(busy ? "..." : L["Team.RevertPlacement"].Value)
                 </button>
             }
         </div>
@@ -868,11 +870,11 @@
         var capturedSide       = side;
         <div class="member-view-box" style="opacity:.65;cursor:pointer"
              @onclick="async () => await OpenPlacementModal(capturedParent, capturedParentName, capturedSide)">
-            <div class="member-header" style="background:#b0b8c1">@side Empty</div>
-            <div class="placeholder-node" title="Click to place a member">
+            <div class="member-header" style="background:#b0b8c1">@(side == "L" ? L["Team.LeftEmpty"] : L["Team.RightEmpty"])</div>
+            <div class="placeholder-node" title="@L["Team.PlaceMemberTooltip"]">
                 <i class="ri-add-line"></i>
             </div>
-            <div class="member-footer" style="color:#b0b8c1;font-size:12px">Open Slot</div>
+            <div class="member-footer" style="color:#b0b8c1;font-size:12px">@L["Team.OpenSlot"]</div>
         </div>
     };
 
@@ -936,22 +938,22 @@
     /// Tooltip for non-root nodes: the visible number IS the contribution to the
     /// upline's leg. The tooltip breaks it down into personal + downline.
     /// </summary>
-    private static string BuildPointsTooltip(int downlinePts, int personalPts)
+    private string BuildPointsTooltip(int downlinePts, int personalPts)
     {
         var contribution = downlinePts + personalPts;
-        return $"Contribution to upline's leg: {contribution:N0}\n" +
-               $"  • Personal points: {personalPts:N0}\n" +
-               $"  • Downline points: {downlinePts:N0}";
+        return string.Format(L["Team.PointsTooltipLine1"], contribution.ToString("N0")) + "\n" +
+               string.Format(L["Team.PointsTooltipLine2"], personalPts.ToString("N0")) + "\n" +
+               string.Format(L["Team.PointsTooltipLine3"], downlinePts.ToString("N0"));
     }
 
     /// <summary>
     /// Tooltip for the root node: the visible number is the sum of both legs
     /// (= total downline points). No "upline contribution" since the root has no parent here.
     /// </summary>
-    private static string BuildRootPointsTooltip(int downlinePts, int personalPts)
+    private string BuildRootPointsTooltip(int downlinePts, int personalPts)
     {
-        return $"Total downline points (left + right legs): {downlinePts:N0}\n" +
-               $"  • Personal points (not included): {personalPts:N0}";
+        return string.Format(L["Team.RootPointsTooltipLine1"], downlinePts.ToString("N0")) + "\n" +
+               string.Format(L["Team.RootPointsTooltipLine2"], personalPts.ToString("N0"));
     }
 
     private class DualTreeStatsDto

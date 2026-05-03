@@ -37,7 +37,8 @@ public class JwtService : IJwtService
         string email,
         IEnumerable<string> roles,
         bool isImpersonating = false,
-        string? impersonatedBy = null)
+        string? impersonatedBy = null,
+        string? defaultLanguage = null)
     {
         var claims = new List<Claim>
         {
@@ -50,6 +51,9 @@ public class JwtService : IJwtService
 
         if (!string.IsNullOrEmpty(impersonatedBy))
             claims.Add(new Claim("impersonatedBy", impersonatedBy));
+
+        if (!string.IsNullOrEmpty(defaultLanguage))
+            claims.Add(new Claim("default_language", defaultLanguage));
 
         foreach (var role in roles)
             claims.Add(new Claim(ClaimTypes.Role, role));

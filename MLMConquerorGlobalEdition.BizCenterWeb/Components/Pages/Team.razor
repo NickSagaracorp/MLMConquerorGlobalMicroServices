@@ -1,9 +1,10 @@
-﻿@page "/team"
-@rendermode InteractiveServer
+@page "/team"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Ambassador")]
 @inject IViewContextService ViewContext
+@inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
 
-<PageTitle>My Team</PageTitle>
+<PageTitle>@L["Sidebar.MyTeam"]</PageTitle>
 
 <DualTeamMyTeam MemberProfileId="@ViewContext.ViewingMemberId" />
 

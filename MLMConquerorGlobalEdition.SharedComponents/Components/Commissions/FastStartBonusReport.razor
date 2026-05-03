@@ -1,4 +1,5 @@
 @inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
 @using System.Net.Http.Json
 @implements IDisposable
 
@@ -14,12 +15,12 @@
             <li class="nav-item" role="presentation">
                 <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_fsbTab == "normal" ? "active" : "")"
                         type="button"
-                        @onclick='() => _fsbTab = "normal"'>Normal</button>
+                        @onclick='() => _fsbTab = "normal"'>@L["Fsb.Normal"]</button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_fsbTab == "promo" ? "active" : "")"
                         type="button"
-                        @onclick='() => _fsbTab = "promo"'>Promo 2025</button>
+                        @onclick='() => _fsbTab = "promo"'>@L["Fsb.Promo2025"]</button>
             </li>
         </ul>
 
@@ -73,7 +74,7 @@
                             </div>
                             @if (w.State == FsbState.Locked)
                             {
-                                <div class="fsb-black-layer"><i class="ri-lock-line" aria-hidden="true"></i>Locked &mdash; Coming Soon</div>
+                                <div class="fsb-black-layer"><i class="ri-lock-line" aria-hidden="true"></i>@L["Fsb.Locked"]</div>
                             }
                         </div>
                         <div class="@footerClass">
@@ -91,19 +92,19 @@
 <div class="card bg-white border-0 rounded-3 mb-4">
     <div class="card-body p-0">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
-            <h3 class="mb-0">History</h3>
+            <h3 class="mb-0">@L["Reports.History"]</h3>
         </div>
 
         <ul class="nav nav-tabs bg-transparent border-bottom gap-2 gap-sm-5 p-4" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_histTab == "normal" ? "active" : "")"
                         type="button"
-                        @onclick='() => { _histTab = "normal"; }'>Normal</button>
+                        @onclick='() => { _histTab = "normal"; }'>@L["Fsb.Normal"]</button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_histTab == "promo" ? "active" : "")"
                         type="button"
-                        @onclick='() => { _histTab = "promo"; }'>Promo 2025</button>
+                        @onclick='() => { _histTab = "promo"; }'>@L["Fsb.Promo2025"]</button>
             </li>
         </ul>
 
@@ -115,11 +116,11 @@
                     <table class="table align-middle border-0">
                         <thead>
                             <tr>
-                                <th>Type</th>
-                                <th>Description</th>
-                                <th>Earned Date</th>
-                                <th>Payment Date</th>
-                                <th>Status</th>
+                                <th>@L["Reports.Type"]</th>
+                                <th>@L["Reports.Description"]</th>
+                                <th>@L["Reports.EarnedDate"]</th>
+                                <th>@L["Reports.PaymentDate"]</th>
+                                <th>@L["Common.Status"]</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -141,21 +142,21 @@
                             }
                             @if (!Filtered.Any())
                             {
-                                <tr><td colspan="5" class="text-center text-muted py-4">No data available.</td></tr>
+                                <tr><td colspan="5" class="text-center text-muted py-4">@L["Common.NoDataAvailable"]</td></tr>
                             }
                         </tbody>
                     </table>
                 </div>
                 <div class="p-4 pt-lg-4">
                     <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
-                        <span class="fs-12 fw-medium">Showing @Filtered.Count() of @_total Results</span>
+                        <span class="fs-12 fw-medium">@L["Reports.Showing"] @Filtered.Count() @L["Common.Of"] @_total @L["Reports.Results"]</span>
                         @if (_total > _pageSize)
                         {
                             var totalPages = (int)Math.Ceiling((double)_total / _pageSize);
-                            <nav aria-label="FSB History pagination">
+                            <nav aria-label="@L["Sidebar.FastStartBonus"]">
                                 <ul class="pagination mb-0 justify-content-center">
                                     <li class="page-item @(_page <= 1 ? "disabled" : "")">
-                                        <button type="button" class="page-link icon" @onclick="() => LoadPageAsync(_page - 1)" aria-label="Previous">
+                                        <button type="button" class="page-link icon" @onclick="() => LoadPageAsync(_page - 1)" aria-label="@L["Common.Previous"]">
                                             <i class="material-symbols-outlined">keyboard_arrow_left</i>
                                         </button>
                                     </li>
@@ -167,7 +168,7 @@
                                         </li>
                                     }
                                     <li class="page-item @(_page >= totalPages ? "disabled" : "")">
-                                        <button type="button" class="page-link icon" @onclick="() => LoadPageAsync(_page + 1)" aria-label="Next">
+                                        <button type="button" class="page-link icon" @onclick="() => LoadPageAsync(_page + 1)" aria-label="@L["Common.Next"]">
                                             <i class="material-symbols-outlined">keyboard_arrow_right</i>
                                         </button>
                                     </li>
@@ -202,16 +203,16 @@
                                         <table class="table align-middle">
                                             <thead>
                                                 <tr>
-                                                    <th scope="col">Name</th>
-                                                    <th scope="col">Enroll Date</th>
-                                                    <th scope="col">Service</th>
-                                                    <th scope="col">Renewal Date</th>
+                                                    <th scope="col">@L["Fsb.MemberFullName"]</th>
+                                                    <th scope="col">@L["Fsb.EnrollDate"]</th>
+                                                    <th scope="col">@L["Fsb.Service"]</th>
+                                                    <th scope="col">@L["Fsb.RenewalDate"]</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 @if (!_modalMembers.Any())
                                                 {
-                                                    <tr><td colspan="4" class="text-center text-muted py-4">No members enrolled in this window yet.</td></tr>
+                                                    <tr><td colspan="4" class="text-center text-muted py-4">@L["Fsb.NoMembersWindow"]</td></tr>
                                                 }
                                                 @foreach (var m in _modalMembers)
                                                 {
@@ -240,7 +241,7 @@
                     </div>
                 </div>
                 <div class="modal-footer border-0 p-0">
-                    <button type="button" class="btn btn-info text-white px-3" @onclick="() => _modalOpen = false">OK</button>
+                    <button type="button" class="btn btn-info text-white px-3" @onclick="() => _modalOpen = false">@L["CommissionsDashboard.Ok"]</button>
                 </div>
             </div>
         </div>
@@ -269,19 +270,9 @@
     // Countdown timer (fires every second for active windows)
     private System.Threading.Timer? _countdownTimer;
 
-    // FSB window cards
-    private List<FsbWindowCard> _normalWindows = new()
-    {
-        new FsbWindowCard { Title = "FAST START BONUS 1", State = FsbState.Locked },
-        new FsbWindowCard { Title = "FAST START BONUS 2", State = FsbState.Locked },
-        new FsbWindowCard { Title = "FAST START BONUS 3", State = FsbState.Locked },
-    };
-    private List<FsbWindowCard> _promoWindows = new()
-    {
-        new FsbWindowCard { Title = "FAST START BONUS 1", State = FsbState.Locked },
-        new FsbWindowCard { Title = "FAST START BONUS 2", State = FsbState.Locked },
-        new FsbWindowCard { Title = "FAST START BONUS 3", State = FsbState.Locked },
-    };
+    // FSB window cards — titles populated from localization in OnParametersSetAsync
+    private List<FsbWindowCard> _normalWindows = new();
+    private List<FsbWindowCard> _promoWindows  = new();
 
     // Modal state
     private bool   _modalOpen    = false;
@@ -303,16 +294,16 @@
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
-        new("Dashboard", "/dashboard"),
-        new("Commissions", "/commissions"),
-        new("Fast Start Bonus")
+        new(L["UserProfile.Breadcrumb.Dashboard"].Value, "/dashboard"),
+        new(L["Sidebar.Commissions"].Value, "/commissions"),
+        new(L["Fsb.Breadcrumb"].Value)
     };
 
     // Returns display string for the fsb-timer element
     private string GetTimerDisplay(FsbWindowCard win)
     {
         if (win.State == FsbState.Complete)
-            return win.Amount > 0 ? win.Amount.ToString("C") : "COMPLETED!";
+            return win.Amount > 0 ? win.Amount.ToString("C") : L["Fsb.Completed"].Value;
 
         if (win.State == FsbState.Active && win.EndDate.HasValue)
             return FmtDHMS(win.EndDate.Value - DateTime.UtcNow);
@@ -323,17 +314,29 @@
         return "--D --H --M --S";
     }
 
-    private static string FmtDHMS(TimeSpan remaining)
+    private string FmtDHMS(TimeSpan remaining)
     {
-        if (remaining.TotalSeconds <= 0) return "COMPLETED!";
+        if (remaining.TotalSeconds <= 0) return L["Fsb.Completed"].Value;
         return $"{(int)remaining.TotalDays}D {remaining.Hours}H {remaining.Minutes}M {remaining.Seconds}S";
     }
 
     protected override async Task OnParametersSetAsync()
     {
+        // Initialize default locked window cards with localized titles. We rebuild on every render
+        // so titles follow the active culture; LoadSummaryAsync will overwrite with API data.
+        _normalWindows = BuildDefaultLockedWindows();
+        _promoWindows  = BuildDefaultLockedWindows();
+
         if (string.IsNullOrEmpty(MemberProfileId)) return;
         await Task.WhenAll(LoadSummaryAsync(), LoadPageAsync(1));
     }
+
+    private List<FsbWindowCard> BuildDefaultLockedWindows() => new()
+    {
+        new FsbWindowCard { Title = string.Format(L["Fsb.Window"].Value, 1), State = FsbState.Locked },
+        new FsbWindowCard { Title = string.Format(L["Fsb.Window"].Value, 2), State = FsbState.Locked },
+        new FsbWindowCard { Title = string.Format(L["Fsb.Window"].Value, 3), State = FsbState.Locked },
+    };
 
     protected override void OnAfterRender(bool firstRender)
     {
@@ -392,17 +395,18 @@
             StartCountdownTimer();
     }
 
-    private static List<FsbWindowCard> BuildWindowCards(List<FsbWindowData>? windows, bool isPromo)
+    private List<FsbWindowCard> BuildWindowCards(List<FsbWindowData>? windows, bool isPromo)
     {
         var result = new List<FsbWindowCard>();
         for (int i = 1; i <= 3; i++)
         {
-            var win = windows?.FirstOrDefault(w => w.WindowNumber == i && w.IsPromo == isPromo);
+            var win   = windows?.FirstOrDefault(w => w.WindowNumber == i && w.IsPromo == isPromo);
+            var title = string.Format(L["Fsb.Window"].Value, i);
             result.Add(win is null
-                ? new FsbWindowCard { Title = $"FAST START BONUS {i}", State = FsbState.Locked }
+                ? new FsbWindowCard { Title = title, State = FsbState.Locked }
                 : new FsbWindowCard
                 {
-                    Title          = $"FAST START BONUS {i}",
+                    Title          = title,
                     WindowNumber   = i,
                     IsPromo        = isPromo,
                     Amount         = win.Amount,
@@ -439,7 +443,8 @@
 
     private async Task OpenFsbModal(FsbWindowCard win)
     {
-        _modalTitle   = $"{win.Title}{(win.IsPromo ? " — Promo 2025" : " — Normal")}";
+        var suffix = win.IsPromo ? L["Fsb.WindowSuffixPromo"].Value : L["Fsb.WindowSuffixNormal"].Value;
+        _modalTitle   = $"{win.Title} {suffix}";
         _modalOpen    = true;
         _modalLoading = true;
         _modalMembers = new();

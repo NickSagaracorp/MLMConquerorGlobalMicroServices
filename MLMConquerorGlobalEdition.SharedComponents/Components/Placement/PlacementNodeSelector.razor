@@ -1,16 +1,20 @@
+@inject IStringLocalizer<SharedResources> L
+
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
 @using MLMConquerorGlobalEdition.SharedComponents.Components.Placement
 
 @* Visual tile-based binary tree node selector.
    Fully accessible: keyboard navigable, ARIA roles, no canvas required. *@
 
 <fieldset class="border-0 p-0 m-0">
-    <legend class="visually-hidden">Seleccionar nodo y pierna en el Dual Team</legend>
+    <legend class="visually-hidden">@L["Placement.SelectorLegend"]</legend>
 
     @if (!Nodes.Any())
     {
         <EmptyState Icon="ri-node-tree"
-                    Title="Sin posiciones disponibles"
-                    Message="No hay nodos con slots libres en el árbol del sponsor." />
+                    Title="@L["Placement.NoPositionsTitle"]"
+                    Message="@L["Placement.NoPositionsMessage"]" />
     }
     else
     {
@@ -20,7 +24,7 @@
             <div class="mb-4">
                 <div class="text-muted small mb-2 text-uppercase fw-semibold"
                      style="letter-spacing:.05em">
-                    @(depth == 0 ? "Sponsor (Nivel raíz)" : $"Nivel {depth}")
+                    @(depth == 0 ? L["Placement.SponsorRootLevel"].Value : string.Format(L["Placement.LevelN"], depth))
                 </div>
 
                 <div class="d-flex flex-wrap gap-3">
@@ -30,7 +34,7 @@
                         <div class="placement-node">
                             <!-- Parent node (occupied) -->
                             <div class="placement-node-sponsor"
-                                 aria-label="Nodo: @node.FullName (@node.MemberCode)">
+                                 aria-label="@($"{L["Placement.NodeLabel"]} {node.FullName} ({node.MemberCode})")">
                                 @if (!string.IsNullOrEmpty(node.PhotoUrl))
                                 {
                                     <img src="@node.PhotoUrl"
@@ -60,21 +64,21 @@
                                     <button type="button"
                                             class='placement-node-slot @(IsSelected(node.MemberId, "Left") ? "selected" : "")'
                                             @onclick='() => Select(node.MemberId, "Left", node.FullName)'
-                                            aria-label='Pierna izquierda de @node.FullName — disponible. @(IsSelected(node.MemberId, "Left") ? "Seleccionado." : "Haz clic para seleccionar.")'
+                                            aria-label='@string.Format(L["Placement.SlotAriaAvailable"], L["Placement.LeftLeg"], node.FullName, IsSelected(node.MemberId, "Left") ? L["Placement.Selected"].Value : L["Placement.ClickToSelect"].Value)'
                                             aria-pressed='@IsSelected(node.MemberId, "Left").ToString().ToLower()'>
                                         <i class="ri-add-circle-line text-primary d-block mb-1 fs-5" aria-hidden="true"></i>
-                                        <div class="small fw-semibold text-primary">Izquierda</div>
-                                        <div class="text-muted" style="font-size:10px">Disponible</div>
+                                        <div class="small fw-semibold text-primary">@L["Placement.LeftLeg"]</div>
+                                        <div class="text-muted" style="font-size:10px">@L["Placement.Available"]</div>
                                     </button>
                                 }
                                 else
                                 {
                                     <div class="placement-node-slot occupied"
-                                         aria-label="Pierna izquierda de @node.FullName — ocupada por @(node.LeftChildName ?? "otro miembro")">
+                                         aria-label="@string.Format(L["Placement.SlotAriaOccupied"], L["Placement.LeftLeg"], node.FullName, node.LeftChildName ?? L["Placement.OtherMember"].Value)">
                                         <i class="ri-user-line d-block mb-1 fs-5 text-muted" aria-hidden="true"></i>
-                                        <div class="small text-muted fw-semibold">Izquierda</div>
+                                        <div class="small text-muted fw-semibold">@L["Placement.LeftLeg"]</div>
                                         <div class="text-muted text-truncate" style="font-size:10px;max-width:100px">
-                                            @(node.LeftChildName ?? "Ocupado")
+                                            @(node.LeftChildName ?? L["Placement.Occupied"].Value)
                                         </div>
                                     </div>
                                 }
@@ -85,21 +89,21 @@
                                     <button type="button"
                                             class='placement-node-slot @(IsSelected(node.MemberId, "Right") ? "selected" : "")'
                                             @onclick='() => Select(node.MemberId, "Right", node.FullName)'
-                                            aria-label='Pierna derecha de @node.FullName — disponible. @(IsSelected(node.MemberId, "Right") ? "Seleccionado." : "Haz clic para seleccionar.")'
+                                            aria-label='@string.Format(L["Placement.SlotAriaAvailable"], L["Placement.RightLeg"], node.FullName, IsSelected(node.MemberId, "Right") ? L["Placement.Selected"].Value : L["Placement.ClickToSelect"].Value)'
                                             aria-pressed='@IsSelected(node.MemberId, "Right").ToString().ToLower()'>
                                         <i class="ri-add-circle-line text-info d-block mb-1 fs-5" aria-hidden="true"></i>
-                                        <div class="small fw-semibold text-info">Derecha</div>
-                                        <div class="text-muted" style="font-size:10px">Disponible</div>
+                                        <div class="small fw-semibold text-info">@L["Placement.RightLeg"]</div>
+                                        <div class="text-muted" style="font-size:10px">@L["Placement.Available"]</div>
                                     </button>
                                 }
                                 else
                                 {
                                     <div class="placement-node-slot occupied"
-                                         aria-label="Pierna derecha de @node.FullName — ocupada por @(node.RightChildName ?? "otro miembro")">
+                                         aria-label="@string.Format(L["Placement.SlotAriaOccupied"], L["Placement.RightLeg"], node.FullName, node.RightChildName ?? L["Placement.OtherMember"].Value)">
                                         <i class="ri-user-line d-block mb-1 fs-5 text-muted" aria-hidden="true"></i>
-                                        <div class="small text-muted fw-semibold">Derecha</div>
+                                        <div class="small text-muted fw-semibold">@L["Placement.RightLeg"]</div>
                                         <div class="text-muted text-truncate" style="font-size:10px;max-width:100px">
-                                            @(node.RightChildName ?? "Ocupado")
+                                            @(node.RightChildName ?? L["Placement.Occupied"].Value)
                                         </div>
                                     </div>
                                 }
@@ -117,9 +121,9 @@
                  aria-live="polite">
                 <i class="ri-checkbox-circle-line flex-shrink-0" aria-hidden="true"></i>
                 <div>
-                    Seleccionaste: pierna
-                    <strong>@(SelectedSide == "Left" ? "Izquierda" : "Derecha")</strong>
-                    bajo <strong>@_selectedParentName</strong>.
+                    @L["Placement.SelectionLabel"] @L["Placement.LegStrongPrefix"]
+                    <strong>@(SelectedSide == "Left" ? L["Placement.LeftLeg"] : L["Placement.RightLeg"])</strong>
+                    @L["Placement.SelectionUnderPrefix"] <strong>@_selectedParentName</strong>.
                 </div>
             </div>
         }

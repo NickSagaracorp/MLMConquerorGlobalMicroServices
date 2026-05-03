@@ -1,9 +1,9 @@
-﻿@page "/loyalty"
-@rendermode InteractiveServer
+@page "/loyalty"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @inject IViewContextService ViewContext
+@inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
 
-<PageTitle>Loyalty Points</PageTitle>
+<PageTitle>@L["PageTitle.Loyalty"]</PageTitle>
 
 <LoyaltyPointsPage MemberProfileId="@ViewContext.ViewingMemberId" />
-

@@ -74,10 +74,57 @@ builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IS3StorageService, S3StorageService>();
 
-builder.Services.AddStackExchangeRedisCache(options =>
+// Cache backend — probe Redis at startup. Cache:Mode controls behavior on
+// failure: "Required" (production) → throw. "Optional" (dev) → fall back
+// to in-process memory cache. CacheBackendInfo is a singleton the
+// /health/cache endpoint reads.
 {
-    options.Configuration = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
-});
+    var redisConn = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+    var mode      = (builder.Configuration["Cache:Mode"] ?? "Optional").Trim();
+    var required  = mode.Equals("Required", StringComparison.OrdinalIgnoreCase);
+
+    var redisReachable = false;
+    try
+    {
+        using var probe = StackExchange.Redis.ConnectionMultiplexer.Connect(
+            new StackExchange.Redis.ConfigurationOptions
+            {
+                EndPoints          = { redisConn },
+                ConnectTimeout     = 250,
+                AbortOnConnectFail = false
+            });
+        redisReachable = probe.IsConnected;
+    }
+    catch { redisReachable = false; }
+
+    MLMConquerorGlobalEdition.SharedKernel.Services.CacheBackendInfo info;
+    if (redisReachable)
+    {
+        builder.Services.AddStackExchangeRedisCache(o => o.Configuration = redisConn);
+        info = new MLMConquerorGlobalEdition.SharedKernel.Services.CacheBackendInfo
+        {
+            Backend = "Redis", ConnectionHint = redisConn,
+            Mode = required ? "Required" : "Optional"
+        };
+        Console.WriteLine($"[Cache] Redis reachable at {redisConn} — distributed cache enabled (mode={info.Mode}).");
+    }
+    else if (required)
+    {
+        throw new InvalidOperationException(
+            $"[Cache] Cache:Mode is 'Required' but Redis at '{redisConn}' is unreachable. " +
+            "Refusing to start with in-process memory cache.");
+    }
+    else
+    {
+        builder.Services.AddDistributedMemoryCache();
+        info = new MLMConquerorGlobalEdition.SharedKernel.Services.CacheBackendInfo
+        {
+            Backend = "Memory", ConnectionHint = "in-process", Mode = "Optional"
+        };
+        Console.WriteLine($"[Cache] Redis unreachable at {redisConn} — falling back to in-process memory cache (mode=Optional).");
+    }
+    builder.Services.AddSingleton(info);
+}
 builder.Services.AddSingleton<ICacheService, CacheService>();
 builder.Services.AddTransient<IEmailService, NullEmailService>();
 
@@ -227,5 +274,18 @@ app.MapGet("/health", async (AppDbContext db, CancellationToken ct) =>
         timestamp = DateTime.UtcNow
     });
 }).AllowAnonymous();
+
+// Cache backend introspection — see notes on BizCenter API. "Memory" in
+// production means Redis is down and admins are working on stale data.
+app.MapGet("/health/cache", (MLMConquerorGlobalEdition.SharedKernel.Services.CacheBackendInfo info) =>
+    Results.Ok(new
+    {
+        service        = "MLMConquerorGlobalEdition.AdminAPI",
+        backend        = info.Backend,
+        connectionHint = info.ConnectionHint,
+        mode           = info.Mode,
+        memoryFallback = info.IsMemoryFallback,
+        timestamp      = DateTime.UtcNow
+    })).AllowAnonymous();
 
 app.Run();

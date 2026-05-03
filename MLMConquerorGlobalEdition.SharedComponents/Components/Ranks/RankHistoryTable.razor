@@ -1,6 +1,7 @@
 @inject HttpClient Http
 @inject IViewContextService ViewContext
 @inject NavigationManager Nav
+@inject IStringLocalizer<SharedResources> L
 
 @using MLMConquerorGlobalEdition.SharedComponents.Constants
 
@@ -8,7 +9,7 @@
 
 <div class="card">
     <div class="card-header py-3">
-        <h6 class="card-title mb-0 fw-semibold">Rank Achievement History</h6>
+        <h6 class="card-title mb-0 fw-semibold">@L["Ranks.HistoryTitle"]</h6>
     </div>
     <div class="card-body p-0">
         <LoadingSpinner IsLoading="@_isLoading" />
@@ -18,17 +19,17 @@
                 <table class="table table-hover table-sm mb-0">
                     <thead>
                         <tr>
-                            <th>Achieved Date</th>
-                            <th>Rank</th>
-                            <th>Qualification Period</th>
-                            <th>Triggered By</th>
-                            <th>Certificate</th>
+                            <th>@L["Ranks.ColAchievedDate"]</th>
+                            <th>@L["Ranks.ColRank"]</th>
+                            <th>@L["Ranks.ColQualificationPeriod"]</th>
+                            <th>@L["Ranks.ColTriggeredBy"]</th>
+                            <th>@L["Ranks.ColCertificate"]</th>
                         </tr>
                     </thead>
                     <tbody>
                         @if (!_items.Any())
                         {
-                            <tr><td colspan="5" class="text-center text-muted py-4">No data available.</td></tr>
+                            <tr><td colspan="5" class="text-center text-muted py-4">@L["Common.NoDataAvailable"]</td></tr>
                         }
                         @foreach (var r in _items)
                         {
@@ -43,13 +44,13 @@
                                             @if (r.IsManualOverride)
                                             {
                                                 <span class="badge bg-warning text-dark">
-                                                    <i class="ri-user-settings-line me-1"></i>Manual
+                                                    <i class="ri-user-settings-line me-1"></i>@L["Ranks.TriggerManual"]
                                                 </span>
                                             }
                                             else
                                             {
                                                 <span class="badge bg-success">
-                                                    <i class="ri-settings-3-line me-1"></i>Automatic
+                                                    <i class="ri-settings-3-line me-1"></i>@L["Ranks.TriggerAutomatic"]
                                                 </span>
                                             }
                                         </AdminOnlyWrapper>
@@ -63,12 +64,12 @@
                                     @if (!string.IsNullOrEmpty(r.CertificateUrl))
                                     {
                                         <a href="@r.CertificateUrl" target="_blank" class="btn btn-sm btn-outline-primary">
-                                            <i class="ri-file-pdf-line me-1"></i>Download
+                                            <i class="ri-file-pdf-line me-1"></i>@L["Common.Download"]
                                         </a>
                                     }
                                     else
                                     {
-                                        <span class="text-muted small">Not generated</span>
+                                        <span class="text-muted small">@L["Ranks.CertificateNotGenerated"]</span>
                                     }
                                 </td>
                             </tr>
@@ -80,10 +81,10 @@
             {
                 var totalPages = (int)Math.Ceiling((double)_total / _pageSize);
                 <div class="d-flex justify-content-center py-3">
-                    <nav>
+                    <nav aria-label="@L["Ranks.HistoryPaginationAria"]">
                         <ul class="pagination pagination-sm mb-0">
                             <li class="page-item @(_page <= 1 ? "disabled" : "")">
-                                <button class="page-link" @onclick="() => ChangePage(_page - 1)">&#x2039;</button>
+                                <button class="page-link" @onclick="() => ChangePage(_page - 1)" aria-label="@L["Common.Previous"]">&#x2039;</button>
                             </li>
                             @for (var pg = 1; pg <= totalPages; pg++)
                             {
@@ -93,7 +94,7 @@
                                 </li>
                             }
                             <li class="page-item @(_page >= totalPages ? "disabled" : "")">
-                                <button class="page-link" @onclick="() => ChangePage(_page + 1)">&#x203A;</button>
+                                <button class="page-link" @onclick="() => ChangePage(_page + 1)" aria-label="@L["Common.Next"]">&#x203A;</button>
                             </li>
                         </ul>
                     </nav>
@@ -112,9 +113,9 @@
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
-        new("Home",  "/dashboard"),
-        new("Ranks", "/ranks"),
-        new("History")
+        new(L["Ranks.BreadcrumbHome"].Value,  "/dashboard"),
+        new(L["Nav.Ranks"].Value, "/ranks"),
+        new(L["Ranks.BreadcrumbHistory"].Value)
     };
 
     protected override async Task OnParametersSetAsync()

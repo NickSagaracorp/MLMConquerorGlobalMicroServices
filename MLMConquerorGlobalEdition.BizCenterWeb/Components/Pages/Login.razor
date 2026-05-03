@@ -1,5 +1,6 @@
 @page "/login"
 @layout MLMConquerorGlobalEdition.SharedComponents.Components.Layout.BlankLayout
+@inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
 
 @* Matches UI-Templates/login.html structure EXACTLY:
      <div class="container">
@@ -16,70 +17,70 @@
      </div>
    BlankLayout renders only @Body, so no sidebar/header interferes. *@
 
-<PageTitle>MLM Conqueror - Log In</PageTitle>
+<PageTitle>@L["PageTitle.Login"]</PageTitle>
 
 <div class="container">
     <div class="main-content d-flex flex-column p-0">
         <div class="m-auto m-1230">
             <div class="row align-items-center">
                 <div class="col-lg-6 d-none d-lg-block">
-                    <img src="assets/images/poster-login.webp" class="rounded-3" alt="login">
+                    <img src="assets/images/poster-login.webp" class="rounded-3" alt="@L["Login.PosterAlt"]">
                 </div>
                 <div class="col-lg-6">
                     <div class="mw-480 ms-lg-auto">
                         <div class="d-inline-block mb-4">
-                            <img src="assets/images/logo.svg" class="rounded-3 for-light-logo" alt="logo">
-                            <img src="assets/images/logo.svg" class="rounded-3 for-dark-logo" alt="logo">
+                            <img src="assets/images/logo.svg" class="rounded-3 for-light-logo" alt="@L["Login.LogoAlt"]">
+                            <img src="assets/images/logo.svg" class="rounded-3 for-dark-logo" alt="@L["Login.LogoAlt"]">
                         </div>
-                        <h3 class="fs-28 mb-2">Welcome Back!</h3>
-                        <p class="fw-medium fs-16 mb-4">Please Log In to Your Account</p>
+                        <h3 class="fs-28 mb-2">@L["Login.WelcomeBack"]</h3>
+                        <p class="fw-medium fs-16 mb-4">@L["Login.PleaseSignIn"]</p>
 
                         @if (Error == "invalid")
                         {
-                            <div class="alert alert-danger mb-3">Invalid email or password.</div>
+                            <div class="alert alert-danger mb-3">@L["Login.ErrorInvalid"]</div>
                         }
                         else if (Error == "inactive")
                         {
                             <div class="alert alert-warning mb-3">
-                                Your account is inactive. Please contact support.
+                                @L["Login.ErrorInactive"]
                             </div>
                         }
                         else if (Error == "session_expired")
                         {
                             <div class="alert alert-info mb-3">
-                                Your session has expired. Please sign in again.
+                                @L["Login.ErrorSessionExpired"]
                             </div>
                         }
 
                         <form method="post" action="/account/login">
                             <div class="form-group mb-4">
-                                <label class="label text-secondary">Email Address</label>
+                                <label class="label text-secondary">@L["Login.EmailLabel"]</label>
                                 <input name="Email" type="email" class="form-control h-55"
-                                       placeholder="Enter your email" required autocomplete="username" />
+                                       placeholder="@L["Login.EmailPlaceholder"]" required autocomplete="username" />
                             </div>
                             <div class="form-group mb-4">
-                                <label class="label text-secondary">Password</label>
+                                <label class="label text-secondary">@L["Login.PasswordLabel"]</label>
                                 <input name="Password" type="password" class="form-control h-55"
-                                       placeholder="Enter password" required autocomplete="current-password" />
+                                       placeholder="@L["Login.PasswordPlaceholder"]" required autocomplete="current-password" />
                             </div>
                             <div class="form-group mb-4">
                                 <a href="/forgot-password" class="text-decoration-none text-primary fw-semibold">
-                                    Forgot Password?
+                                    @L["Login.ForgotPassword"]
                                 </a>
                             </div>
                             <div class="form-group mb-4">
                                 <button type="submit" class="btn btn-primary fw-medium py-2 px-3 w-100">
                                     <div class="d-flex align-items-center justify-content-center py-1">
                                         <i class="material-symbols-outlined text-white fs-20 me-2">login</i>
-                                        <span>SIGN IN</span>
+                                        <span>@L["Login.SignInButton"]</span>
                                     </div>
                                 </button>
                             </div>
                             <div class="form-group">
                                 <p>
-                                    Don't have an account?
+                                    @L["Login.NoAccount"]
                                     <a href="/signup" class="fw-medium text-primary text-decoration-none">
-                                        Contact our support team
+                                        @L["Login.ContactSupport"]
                                     </a>
                                 </p>
                             </div>

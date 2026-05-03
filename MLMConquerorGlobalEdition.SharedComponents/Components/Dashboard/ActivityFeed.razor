@@ -1,8 +1,9 @@
 @inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
 
 <div class="card h-100">
     <div class="card-header py-3">
-        <h6 class="card-title mb-0 fw-semibold">Recent Activity</h6>
+        <h6 class="card-title mb-0 fw-semibold">@L["ActivityFeed.Title"]</h6>
     </div>
     <div class="card-body p-0">
         <LoadingSpinner IsLoading="@_isLoading" />
@@ -10,7 +11,7 @@
         {
             @if (!_activities.Any())
             {
-                <EmptyState Icon="ri-history-line" Title="No recent activity" Message="Your activity will appear here." />
+                <EmptyState Icon="ri-history-line" Title="@L["ActivityFeed.EmptyTitle"]" Message="@L["ActivityFeed.EmptyMessage"]" />
             }
             else
             {
@@ -60,7 +61,7 @@
                         Icon:        "ri-money-dollar-circle-line",
                         Color:       "success",
                         Title:       $"{c.CommissionType} — {c.Amount:C}",
-                        Description: $"Period: {c.PeriodDate:MMM yyyy} · Status: {c.Status}",
+                        Description: $"{L["ActivityFeed.Period"]} {c.PeriodDate:MMM yyyy} · {L["ActivityFeed.Status"]} {c.Status}",
                         TimeAgo:     FormatTimeAgo(c.PeriodDate)))
                     .ToList();
             }
@@ -72,13 +73,13 @@
         }
     }
 
-    private static string FormatTimeAgo(DateTime dt)
+    private string FormatTimeAgo(DateTime dt)
     {
         var diff = DateTime.UtcNow - dt;
-        if (diff.TotalDays >= 30)  return $"{(int)(diff.TotalDays / 30)}mo ago";
-        if (diff.TotalDays >= 1)   return $"{(int)diff.TotalDays}d ago";
-        if (diff.TotalHours >= 1)  return $"{(int)diff.TotalHours}h ago";
-        return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalDays >= 30)  return $"{(int)(diff.TotalDays / 30)}{L["ActivityFeed.MonthSuffix"]}";
+        if (diff.TotalDays >= 1)   return $"{(int)diff.TotalDays}{L["ActivityFeed.DaySuffix"]}";
+        if (diff.TotalHours >= 1)  return $"{(int)diff.TotalHours}{L["ActivityFeed.HourSuffix"]}";
+        return $"{(int)diff.TotalMinutes}{L["ActivityFeed.MinuteSuffix"]}";
     }
 
     private class ApiResponse<T> { public bool Success { get; set; } public T? Data { get; set; } }

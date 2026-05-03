@@ -45,6 +45,12 @@ public class SignupAmbassadorValidator : AbstractValidator<SignupAmbassadorComma
             RuleFor(x => x.Request.Ssn)
                 .NotEmpty().WithMessage("SSN is required for United States residents.")
                 .Matches(@"^\d{3}-\d{2}-\d{4}$").WithMessage("SSN must be in the format XXX-XX-XXXX.");
+
+            // EIN is optional (only applies to ambassadors who operate as a business),
+            // but when provided it must follow the IRS format XX-XXXXXXX.
+            RuleFor(x => x.Request.Ein)
+                .Matches(@"^\d{2}-\d{7}$").WithMessage("EIN must be in the format XX-XXXXXXX.")
+                .When(x => !string.IsNullOrEmpty(x.Request.Ein));
         });
     }
 

@@ -1,0 +1,1173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+
+  <!-- Language Names — endonyms -->
+  <data name="Lang.en" xml:space="preserve"><value>English</value></data>
+  <data name="Lang.es" xml:space="preserve"><value>Español</value></data>
+  <data name="Lang.pt" xml:space="preserve"><value>Português</value></data>
+  <data name="Lang.fr" xml:space="preserve"><value>Français</value></data>
+  <data name="Lang.it" xml:space="preserve"><value>Italiano</value></data>
+  <data name="Lang.de" xml:space="preserve"><value>Deutsch</value></data>
+  <data name="Lang.zh" xml:space="preserve"><value>中文</value></data>
+  <data name="Lang.kr" xml:space="preserve"><value>한국어</value></data>
+  <data name="Lang.ge" xml:space="preserve"><value>ქართული</value></data>
+
+  <!-- Language Preference Card -->
+  <data name="LanguageCard.Title" xml:space="preserve"><value>ნაგულისხმევი ენა</value></data>
+  <data name="LanguageCard.Description" xml:space="preserve"><value>როდესაც თარგმანი ხელმისაწვდომია, შეტყობინებებს, ელფოსტებსა და დაფის მინიშნებებს ამ ენაზე გამოგიგზავნით.</value></data>
+  <data name="LanguageCard.Saved" xml:space="preserve"><value>ენის პარამეტრი შენახულია.</value></data>
+  <data name="LanguageCard.FailedPrefix" xml:space="preserve"><value>ვერ მოხერხდა:</value></data>
+
+  <!-- Personal Info Card -->
+  <data name="PersonalInfo.Title" xml:space="preserve"><value>ჩემს შესახებ</value></data>
+  <data name="PersonalInfo.WhyLocked" xml:space="preserve"><value>რატომ არის ჩაკეტილი?</value></data>
+  <data name="PersonalInfo.LockedHeadline" xml:space="preserve"><value>პერსონალური ველები ჩაკეტილია უსაფრთხოებისთვის.</value></data>
+  <data name="PersonalInfo.LockedBody" xml:space="preserve"><value>სახელი, გვარი, დაბადების თარიღი, ბიზნესის სახელი და SSN-ის შეცვლა შესაძლებელია მხოლოდ მხარდაჭერის გუნდის მიერ. გახსენით ბილეთი მხარდაჭერის გვერდიდან, თუ რამე საჭიროებს გამოსწორებას.</value></data>
+  <data name="PersonalInfo.FirstName" xml:space="preserve"><value>სახელი</value></data>
+  <data name="PersonalInfo.LastName" xml:space="preserve"><value>გვარი</value></data>
+  <data name="PersonalInfo.DateOfBirth" xml:space="preserve"><value>დაბადების თარიღი</value></data>
+  <data name="PersonalInfo.BusinessName" xml:space="preserve"><value>ბიზნესის სახელი</value></data>
+  <data name="PersonalInfo.Ssn" xml:space="preserve"><value>SSN</value></data>
+  <data name="PersonalInfo.Ein" xml:space="preserve"><value>EIN</value></data>
+  <data name="PersonalInfo.Enrolled" xml:space="preserve"><value>დარეგისტრებული</value></data>
+
+  <!-- Profile shared bits -->
+  <data name="Profile.NotOnFile" xml:space="preserve"><value>— არ არის შეყვანილი —</value></data>
+  <data name="Profile.PageTitle" xml:space="preserve"><value>ჩემი პროფილი</value></data>
+
+  <!-- Common Labels — F1 additions -->
+  <data name="Common.MemberId" xml:space="preserve"><value>წევრის ID</value></data>
+  <data name="Common.Email" xml:space="preserve"><value>ელფოსტა</value></data>
+  <data name="Common.Phone" xml:space="preserve"><value>ტელეფონი</value></data>
+  <data name="Common.WhatsApp" xml:space="preserve"><value>WhatsApp</value></data>
+  <data name="Common.Country" xml:space="preserve"><value>ქვეყანა</value></data>
+  <data name="Common.City" xml:space="preserve"><value>ქალაქი</value></data>
+  <data name="Common.StateProvince" xml:space="preserve"><value>შტატი / რეგიონი</value></data>
+  <data name="Common.ZipPostal" xml:space="preserve"><value>საფოსტო ინდექსი</value></data>
+  <data name="Common.Address" xml:space="preserve"><value>მისამართი</value></data>
+  <data name="Common.When" xml:space="preserve"><value>როდის</value></data>
+  <data name="Common.By" xml:space="preserve"><value>ვინ</value></data>
+  <data name="Common.IpAddress" xml:space="preserve"><value>IP მისამართი</value></data>
+  <data name="Common.UserAgent" xml:space="preserve"><value>User Agent</value></data>
+  <data name="Common.Source" xml:space="preserve"><value>წყარო</value></data>
+  <data name="Common.Reset" xml:space="preserve"><value>გადატვირთვა</value></data>
+  <data name="Common.Status" xml:space="preserve"><value>სტატუსი</value></data>
+  <data name="Common.Date" xml:space="preserve"><value>თარიღი</value></data>
+  <data name="Common.NoDataAvailable" xml:space="preserve"><value>მონაცემები არ არის ხელმისაწვდომი.</value></data>
+
+  <!-- Header — F1 additions -->
+  <data name="Header.SearchPlaceholder" xml:space="preserve"><value>მოძებნეთ აქ...</value></data>
+  <data name="Header.Notifications" xml:space="preserve"><value>შეტყობინებები</value></data>
+  <data name="Header.NoNotifications" xml:space="preserve"><value>ახალი შეტყობინებები არ არის.</value></data>
+  <data name="Header.Profile" xml:space="preserve"><value>პროფილი</value></data>
+  <data name="Header.Logout" xml:space="preserve"><value>გასვლა</value></data>
+  <data name="Header.ToggleDarkMode" xml:space="preserve"><value>მუქი რეჟიმის ჩართვა</value></data>
+  <data name="Header.ChangeLanguage" xml:space="preserve"><value>ენის შეცვლა</value></data>
+  <data name="Header.ClearAll" xml:space="preserve"><value>ყველას გასუფთავება</value></data>
+  <data name="Header.Messages" xml:space="preserve"><value>შეტყობინებები</value></data>
+  <data name="Header.GuestPasses" xml:space="preserve"><value>სტუმრის ბილეთები</value></data>
+  <data name="Header.Marketing" xml:space="preserve"><value>მარკეტინგი</value></data>
+  <data name="Header.Support" xml:space="preserve"><value>მხარდაჭერა</value></data>
+  <data name="Header.AdminFallback" xml:space="preserve"><value>ადმინისტრატორი</value></data>
+  <data name="Header.MemberFallback" xml:space="preserve"><value>წევრი</value></data>
+  <data name="Header.ThemeSettingsTooltip" xml:space="preserve"><value>დააჭირეთ თემის პარამეტრებზე</value></data>
+
+  <!-- Layout -->
+  <data name="Layout.ErrorOccurred" xml:space="preserve"><value>დაფიქსირდა შეცდომა</value></data>
+  <data name="Layout.ReloadPage" xml:space="preserve"><value>გვერდის გადატვირთვა</value></data>
+
+  <!-- Impersonation Banner -->
+  <data name="Impersonation.ViewingAs" xml:space="preserve"><value>ნახვა წევრად:</value></data>
+  <data name="Impersonation.Exit" xml:space="preserve"><value>იმპერსონაციიდან გასვლა</value></data>
+
+  <!-- Sidebar Menu -->
+  <data name="Sidebar.Menu" xml:space="preserve"><value>მენიუ</value></data>
+  <data name="Sidebar.Home" xml:space="preserve"><value>მთავარი</value></data>
+  <data name="Sidebar.EnrollmentTeam" xml:space="preserve"><value>რეგისტრაციის გუნდი</value></data>
+  <data name="Sidebar.MyTeam" xml:space="preserve"><value>ჩემი გუნდი</value></data>
+  <data name="Sidebar.Visualizer" xml:space="preserve"><value>ვიზუალიზატორი</value></data>
+  <data name="Sidebar.Branches" xml:space="preserve"><value>განშტოებები</value></data>
+  <data name="Sidebar.Customers" xml:space="preserve"><value>კლიენტები</value></data>
+  <data name="Sidebar.DualTeam" xml:space="preserve"><value>ორმაგი გუნდი</value></data>
+  <data name="Sidebar.MyDualTeam" xml:space="preserve"><value>ჩემი ორმაგი გუნდი</value></data>
+  <data name="Sidebar.Residuals" xml:space="preserve"><value>ნარჩენები</value></data>
+  <data name="PageTitle.DualTeamResiduals" xml:space="preserve"><value>ორმაგი გუნდის ნარჩენები</value></data>
+  <data name="PageTitle.DualTeamVisualizer" xml:space="preserve"><value>ორმაგი გუნდის ვიზუალიზატორი</value></data>
+  <data name="PageTitle.EnrollmentBranches" xml:space="preserve"><value>რეგისტრაციის გუნდი — ფილიალები</value></data>
+  <data name="PageTitle.EnrollmentCustomers" xml:space="preserve"><value>რეგისტრაციის გუნდი — მომხმარებლები</value></data>
+  <data name="PageTitle.EnrollmentMyTeam" xml:space="preserve"><value>რეგისტრაციის გუნდი — ჩემი გუნდი</value></data>
+  <data name="PageTitle.EnrollmentVisualizer" xml:space="preserve"><value>რეგისტრაციის გუნდი — ვიზუალიზატორი</value></data>
+  <data name="PageTitle.Placement" xml:space="preserve"><value>განთავსება — ორმაგი გუნდი</value></data>
+  <data name="PageTitle.PlacementHistory" xml:space="preserve"><value>განთავსების ისტორია</value></data>
+  <data name="Sidebar.Commissions" xml:space="preserve"><value>კომისიები</value></data>
+  <data name="Sidebar.Overview" xml:space="preserve"><value>მიმოხილვა</value></data>
+  <data name="Sidebar.PresidentialBonus" xml:space="preserve"><value>პრეზიდენტის ბონუსი</value></data>
+  <data name="Sidebar.CarBonus" xml:space="preserve"><value>მანქანის ბონუსი</value></data>
+  <data name="Sidebar.FastStartBonus" xml:space="preserve"><value>სწრაფი სტარტის ბონუსი</value></data>
+  <data name="Sidebar.BoostBonus" xml:space="preserve"><value>Boost ბონუსი</value></data>
+  <data name="Sidebar.Tokens" xml:space="preserve"><value>ტოკენები</value></data>
+  <data name="Sidebar.LoyaltyPoints" xml:space="preserve"><value>ლოიალურობის ქულები</value></data>
+  <data name="Sidebar.Marketing" xml:space="preserve"><value>მარკეტინგი</value></data>
+  <data name="Sidebar.RankDashboard" xml:space="preserve"><value>რანგის დაფა</value></data>
+  <data name="Sidebar.MyProfile" xml:space="preserve"><value>ჩემი პროფილი</value></data>
+  <data name="Sidebar.Support" xml:space="preserve"><value>მხარდაჭერა</value></data>
+  <data name="Sidebar.Logout" xml:space="preserve"><value>გასვლა</value></data>
+
+  <!-- User Profile Page -->
+  <data name="UserProfile.Tab.Profile" xml:space="preserve"><value>პროფილი</value></data>
+  <data name="UserProfile.Tab.Account" xml:space="preserve"><value>ანგარიში და უსაფრთხოება</value></data>
+  <data name="UserProfile.Tab.Billing" xml:space="preserve"><value>გადახდები და კომისიები</value></data>
+  <data name="UserProfile.EmailPasswordTitle" xml:space="preserve"><value>ელფოსტა და პაროლი</value></data>
+  <data name="UserProfile.LoadFailed" xml:space="preserve"><value>პროფილის ჩატვირთვა ვერ მოხერხდა.</value></data>
+  <data name="UserProfile.Breadcrumb.Dashboard" xml:space="preserve"><value>დაფა</value></data>
+  <data name="UserProfile.Breadcrumb.Profile" xml:space="preserve"><value>პროფილი</value></data>
+
+  <!-- Profile Header Card -->
+  <data name="ProfileHeader.AvatarAlt" xml:space="preserve"><value>პროფილის ავატარი</value></data>
+  <data name="ProfileHeader.ChangePhoto" xml:space="preserve"><value>პროფილის ფოტოს შეცვლა</value></data>
+  <data name="ProfileHeader.PhotoUpdated" xml:space="preserve"><value>პროფილის ფოტო განახლდა.</value></data>
+  <data name="ProfileHeader.PhotoFailed" xml:space="preserve"><value>ფოტოს განახლება ვერ მოხერხდა.</value></data>
+  <data name="ProfileHeader.UploadFailed" xml:space="preserve"><value>ატვირთვა ვერ მოხერხდა:</value></data>
+  <data name="ProfileHeader.ImageTooLarge" xml:space="preserve"><value>სურათი 5 MB-ზე დიდია. გთხოვთ აირჩიოთ უფრო პატარა ფაილი.</value></data>
+
+  <!-- Contact Info Card -->
+  <data name="ContactInfo.Title" xml:space="preserve"><value>საკონტაქტო ინფორმაცია</value></data>
+  <data name="ContactInfo.EditContactAddress" xml:space="preserve"><value>კონტაქტის და მისამართის რედაქტირება</value></data>
+
+  <!-- Address Card -->
+  <data name="Address.Title" xml:space="preserve"><value>მისამართი და კონტაქტი</value></data>
+  <data name="Address.ViewHistory" xml:space="preserve"><value>მისამართის ისტორიის ნახვა</value></data>
+  <data name="Address.PhonePlaceholder" xml:space="preserve"><value>(+995) 555 12 34 56</value></data>
+  <data name="Address.AddressPlaceholder" xml:space="preserve"><value>ქუჩა, ნომერი, ბინა</value></data>
+  <data name="Address.ReasonForChange" xml:space="preserve"><value>ცვლილების მიზეზი</value></data>
+  <data name="Address.ReasonHelp" xml:space="preserve"><value>(არასავალდებულო, ეხმარება მხარდაჭერის აუდიტს)</value></data>
+  <data name="Address.Saved" xml:space="preserve"><value>პროფილი შენახულია.</value></data>
+  <data name="Address.SaveFailedPrefix" xml:space="preserve"><value>პროფილის შენახვა ვერ მოხერხდა</value></data>
+
+  <!-- Address History Modal -->
+  <data name="AddressHistory.Title" xml:space="preserve"><value>მისამართის ცვლილებების ისტორია</value></data>
+  <data name="AddressHistory.Empty" xml:space="preserve"><value>მისამართის ცვლილებები ჯერ არ ფიქსირდება.</value></data>
+  <data name="AddressHistory.New" xml:space="preserve"><value>ახალი</value></data>
+  <data name="AddressHistory.Previous" xml:space="preserve"><value>წინა</value></data>
+  <data name="AddressHistory.Reason" xml:space="preserve"><value>მიზეზი</value></data>
+
+  <!-- Membership Card -->
+  <data name="Membership.Title" xml:space="preserve"><value>წევრობა</value></data>
+  <data name="Membership.NoActive" xml:space="preserve"><value>აქტიური წევრობა არ არის.</value></data>
+  <data name="Membership.Started" xml:space="preserve"><value>დაიწყო</value></data>
+  <data name="Membership.Renews" xml:space="preserve"><value>განახლდება</value></data>
+  <data name="Membership.Expires" xml:space="preserve"><value>ვადა გასდის</value></data>
+  <data name="Membership.AutoRenewOn" xml:space="preserve"><value>ავტო-განახლება ჩართულია</value></data>
+  <data name="Membership.AutoRenewOff" xml:space="preserve"><value>ავტო-განახლება გამორთულია</value></data>
+
+  <!-- Website Slug Card -->
+  <data name="WebsiteSlug.Title" xml:space="preserve"><value>ჩემი ვებსაიტი</value></data>
+  <data name="WebsiteSlug.Description" xml:space="preserve"><value>აირჩიეთ საჯარო მისამართი, სადაც პოტენციური კლიენტები მიადგებიან. დაშვებულია მხოლოდ პატარა ასოები, ციფრები და ტირეები. უნდა იწყებოდეს ასოთი და ჰქონდეს 3-დან 40 სიმბოლომდე.</value></data>
+  <data name="WebsiteSlug.Placeholder" xml:space="preserve"><value>your-name</value></data>
+  <data name="WebsiteSlug.LocalError" xml:space="preserve"><value>გამოიყენეთ 3–40 პატარა ასო, ციფრი ან ტირე. უნდა იწყებოდეს ასოთი.</value></data>
+  <data name="WebsiteSlug.SlugTaken" xml:space="preserve"><value>ეს ვებსაიტის სახელი უკვე დაკავებულია.</value></data>
+  <data name="WebsiteSlug.SaveFailed" xml:space="preserve"><value>ვებსაიტის სახელის განახლება ვერ მოხერხდა.</value></data>
+  <data name="WebsiteSlug.Saved" xml:space="preserve"><value>ვებსაიტის სახელი განახლდა.</value></data>
+  <data name="WebsiteSlug.OpenPublicPage" xml:space="preserve"><value>საჯარო გვერდის გახსნა</value></data>
+  <data name="WebsiteSlug.SaveButton" xml:space="preserve"><value>ვებსაიტის სახელის შენახვა</value></data>
+
+  <!-- Display Preferences Card -->
+  <data name="DisplayPrefs.Title" xml:space="preserve"><value>საჯარო გვერდის ხილვადობა</value></data>
+  <data name="DisplayPrefs.Description" xml:space="preserve"><value>აირჩიეთ რას დაინახავენ ვიზიტორები თქვენს საჯარო ვებსაიტზე. ტელეფონი და ელფოსტა ნაგულისხმევად დამალულია.</value></data>
+  <data name="DisplayPrefs.ShowBusinessName" xml:space="preserve"><value>ბიზნესის სახელის ჩვენება</value></data>
+  <data name="DisplayPrefs.ShowBusinessNameHelp" xml:space="preserve"><value>ვიზიტორები იხილავენ თქვენი რეგისტრირებული ბიზნესის სახელს, ნაცვლად პერსონალური სახელისა.</value></data>
+  <data name="DisplayPrefs.ShowEmail" xml:space="preserve"><value>ელფოსტის ჩვენება საჯარო გვერდზე</value></data>
+  <data name="DisplayPrefs.ShowEmailHelp" xml:space="preserve"><value>ნებისმიერ ვიზიტორს შეუძლია ნახოს ეს მისამართი თქვენს რეპლიკულ გვერდზე.</value></data>
+  <data name="DisplayPrefs.ShowPhone" xml:space="preserve"><value>ტელეფონის ჩვენება საჯარო გვერდზე</value></data>
+  <data name="DisplayPrefs.ShowPhoneHelp" xml:space="preserve"><value>ვიზიტორები იხილავენ თქვენს ტელეფონის ნომერს; გაითვალისწინეთ WhatsApp-ის კონფიდენციალურობა.</value></data>
+  <data name="DisplayPrefs.Saved" xml:space="preserve"><value>ხილვადობის პარამეტრი შენახულია.</value></data>
+  <data name="DisplayPrefs.SaveFailedPrefix" xml:space="preserve"><value>შენახვა ვერ მოხერხდა:</value></data>
+
+  <!-- Payout Frequency Card -->
+  <data name="PayoutFreq.Title" xml:space="preserve"><value>კომისიის გადახდის სიხშირე</value></data>
+  <data name="PayoutFreq.Description" xml:space="preserve"><value>რა სიხშირით გადავიტანოთ დაგროვილი კომისიები თქვენს ნაგულისხმევ გადახდის გზაზე? დღიური გადახდები გადახდილია მომდევნო სამუშაო დღეს; ყოველკვირეული — ყოველი პარასკევი.</value></data>
+  <data name="PayoutFreq.Daily" xml:space="preserve"><value>ყოველდღიური</value></data>
+  <data name="PayoutFreq.Weekly" xml:space="preserve"><value>ყოველკვირეული (პარასკევი)</value></data>
+  <data name="PayoutFreq.Aria" xml:space="preserve"><value>გადახდის სიხშირე</value></data>
+  <data name="PayoutFreq.SavedDaily" xml:space="preserve"><value>გადახდები შესრულდება ყოველდღიურად.</value></data>
+  <data name="PayoutFreq.SavedWeekly" xml:space="preserve"><value>გადახდები შესრულდება ყოველკვირეულად.</value></data>
+  <data name="PayoutFreq.FailedPrefix" xml:space="preserve"><value>ვერ მოხერხდა:</value></data>
+
+  <!-- Billing Info Card -->
+  <data name="BillingInfo.Title" xml:space="preserve"><value>გადახდის ინფორმაცია</value></data>
+  <data name="BillingInfo.ManageCards" xml:space="preserve"><value>ბარათების მართვა</value></data>
+  <data name="BillingInfo.EditBilling" xml:space="preserve"><value>გადახდის ინფორმაციის რედაქტირება</value></data>
+
+  <!-- Commissions Card -->
+  <data name="Commissions.Title" xml:space="preserve"><value>საკომისიოები</value></data>
+  <data name="Commissions.EditButton" xml:space="preserve"><value>საკომისიოს ინფორმაციის რედაქტირება</value></data>
+  <data name="Commissions.PaymentFrequency" xml:space="preserve"><value>გადახდის სიხშირე</value></data>
+  <data name="Commissions.PaymentMethod" xml:space="preserve"><value>გადახდის მეთოდი</value></data>
+  <data name="Commissions.AccountLabel" xml:space="preserve"><value>{0} ანგარიში</value></data>
+  <data name="Commissions.YourAccount" xml:space="preserve"><value>თქვენი ანგარიში:</value></data>
+  <data name="Commissions.PortalAccess" xml:space="preserve"><value>დააჭირეთ აქ დაუყოვნებელი წვდომისთვის!</value></data>
+  <data name="Commissions.NoMethodSelected" xml:space="preserve"><value>— მეთოდი არ არის არჩეული —</value></data>
+  <data name="Commissions.AddMethodFirst" xml:space="preserve"><value>ჯერ დაამატეთ გადახდის მეთოდი.</value></data>
+  <data name="Commissions.Saved" xml:space="preserve"><value>საკომისიოს პარამეტრები შენახულია.</value></data>
+  <data name="Commissions.SaveFailedPrefix" xml:space="preserve"><value>შენახვა ვერ მოხერხდა:</value></data>
+  <data name="Commissions.FrequencyDaily" xml:space="preserve"><value>ყოველდღიური</value></data>
+  <data name="Commissions.FrequencyWeekly" xml:space="preserve"><value>ყოველკვირეული</value></data>
+  <data name="Commissions.SelectMethod" xml:space="preserve"><value>აირჩიეთ გადახდის მეთოდი</value></data>
+  <data name="BillingInfo.NoDefaultCard" xml:space="preserve"><value>ნაგულისხმევი ბარათი არ არის. დაამატეთ ბარათი ავტო-განახლების გასააქტიურებლად.</value></data>
+  <data name="BillingInfo.CreditCard" xml:space="preserve"><value>საკრედიტო ბარათი</value></data>
+  <data name="BillingInfo.CardHolder" xml:space="preserve"><value>ბარათის მფლობელი</value></data>
+  <data name="BillingInfo.Exp" xml:space="preserve"><value>ვადა</value></data>
+  <data name="BillingInfo.BillingAddress" xml:space="preserve"><value>გადახდის მისამართი</value></data>
+
+  <!-- Billing History Table -->
+  <data name="BillingHistory.Title" xml:space="preserve"><value>ბოლო ტრანზაქციები</value></data>
+  <data name="BillingHistory.ShowingPrefix" xml:space="preserve"><value>ნაჩვენებია</value></data>
+  <data name="BillingHistory.Empty" xml:space="preserve"><value>ტრანზაქციები ჯერ არ არის.</value></data>
+  <data name="BillingHistory.Transaction" xml:space="preserve"><value>ტრანზაქცია</value></data>
+  <data name="BillingHistory.MembershipRenewal" xml:space="preserve"><value>წევრობის განახლება</value></data>
+
+  <!-- Add Card Modal -->
+  <data name="AddCard.Title" xml:space="preserve"><value>საკრედიტო ბარათის დამატება</value></data>
+  <data name="AddCard.CardHolder" xml:space="preserve"><value>ბარათის მფლობელი</value></data>
+  <data name="AddCard.FullNamePlaceholder" xml:space="preserve"><value>სრული სახელი</value></data>
+  <data name="AddCard.Expires" xml:space="preserve"><value>ვადა</value></data>
+  <data name="AddCard.Cvc" xml:space="preserve"><value>CVC</value></data>
+  <data name="AddCard.CardNumber" xml:space="preserve"><value>ბარათის ნომერი</value></data>
+  <data name="AddCard.CardholderName" xml:space="preserve"><value>მფლობელის სახელი</value></data>
+  <data name="AddCard.CardholderPlaceholder" xml:space="preserve"><value>როგორც ბარათზეა დაბეჭდილი</value></data>
+  <data name="AddCard.Expiration" xml:space="preserve"><value>ვადის გასვლა</value></data>
+  <data name="AddCard.SaveCard" xml:space="preserve"><value>ბარათის შენახვა</value></data>
+  <data name="AddCard.InvalidExpiration" xml:space="preserve"><value>ვადის გასვლის თარიღი არასწორია.</value></data>
+  <data name="AddCard.AlreadyExpired" xml:space="preserve"><value>ამ ბარათს ვადა უკვე გაუვიდა. გთხოვთ გამოიყენოთ ბარათი მომავალი ვადით.</value></data>
+  <data name="AddCard.NumberTooShort" xml:space="preserve"><value>ბარათის ნომერი ძალიან მოკლეა.</value></data>
+  <data name="AddCard.CvcTooShort" xml:space="preserve"><value>CVC ძალიან მოკლეა.</value></data>
+
+  <!-- Credentials Form -->
+  <data name="Credentials.ChangePassword" xml:space="preserve"><value>პაროლის შეცვლა</value></data>
+  <data name="Credentials.CurrentPassword" xml:space="preserve"><value>მიმდინარე პაროლი</value></data>
+  <data name="Credentials.NewPassword" xml:space="preserve"><value>ახალი პაროლი</value></data>
+  <data name="Credentials.ConfirmPassword" xml:space="preserve"><value>დაადასტურეთ ახალი პაროლი</value></data>
+  <data name="Credentials.UpdatePassword" xml:space="preserve"><value>პაროლის განახლება</value></data>
+  <data name="Credentials.PasswordChanged" xml:space="preserve"><value>პაროლი წარმატებით შეიცვალა.</value></data>
+  <data name="Credentials.PasswordFailed" xml:space="preserve"><value>პაროლის განახლება ვერ მოხერხდა. შეამოწმეთ მიმდინარე პაროლი.</value></data>
+  <data name="Credentials.ChangeEmail" xml:space="preserve"><value>ელფოსტის შეცვლა</value></data>
+  <data name="Credentials.NewEmail" xml:space="preserve"><value>ახალი ელფოსტა</value></data>
+  <data name="Credentials.UpdateEmail" xml:space="preserve"><value>ელფოსტის განახლება</value></data>
+  <data name="Credentials.EmailUpdated" xml:space="preserve"><value>ელფოსტა წარმატებით განახლდა. დადასტურება გამოგზავნილია.</value></data>
+  <data name="Credentials.EmailFailed" xml:space="preserve"><value>ელფოსტის განახლება ვერ მოხერხდა. შეამოწმეთ თქვენი პაროლი.</value></data>
+
+  <!-- Credentials History Table -->
+  <data name="CredentialsHistory.Title" xml:space="preserve"><value>სარწმუნოებების ისტორია</value></data>
+  <data name="CredentialsHistory.Empty" xml:space="preserve"><value>სარწმუნოებების ცვლილებები ჯერ არ არის ჩაწერილი.</value></data>
+  <data name="CredentialsHistory.Kind" xml:space="preserve"><value>ტიპი</value></data>
+
+  <!-- Security Log Table -->
+  <data name="SecurityLog.Title" xml:space="preserve"><value>უსაფრთხოების ჟურნალი</value></data>
+  <data name="SecurityLog.Event" xml:space="preserve"><value>მოვლენა</value></data>
+
+  <!-- Payment Method Tab -->
+  <data name="PaymentMethod.PayoutOptionsTab" xml:space="preserve"><value>გადახდის ვარიანტები</value></data>
+  <data name="PaymentMethod.PaymentMethodTab" xml:space="preserve"><value>გადახდის მეთოდი</value></data>
+  <data name="PaymentMethod.Title" xml:space="preserve"><value>გადახდის მეთოდი</value></data>
+  <data name="PaymentMethod.Description" xml:space="preserve"><value>გადაიტანეთ ბარათები იმ თანმიმდევრობის დასაწესებლად, რომლითაც კომპანიამ უნდა სცადოს თქვენი წევრობის ჩამოჭრა. პირველი წარმატებული ბარათი მოგებულია.</value></data>
+  <data name="PaymentMethod.AddCard" xml:space="preserve"><value>ბარათის დამატება</value></data>
+  <data name="PaymentMethod.NoCardsTitle" xml:space="preserve"><value>თქვენ ჯერ არ გაქვთ ბარათები.</value></data>
+  <data name="PaymentMethod.AddFirstCard" xml:space="preserve"><value>დაამატეთ პირველი ბარათი</value></data>
+  <data name="PaymentMethod.CreditCard" xml:space="preserve"><value>საკრედიტო ბარათი</value></data>
+  <data name="PaymentMethod.CardHolder" xml:space="preserve"><value>ბარათის მფლობელი</value></data>
+  <data name="PaymentMethod.Default" xml:space="preserve"><value>ნაგულისხმევი</value></data>
+  <data name="PaymentMethod.Expired" xml:space="preserve"><value>ვადაგასული</value></data>
+  <data name="PaymentMethod.DragToReorder" xml:space="preserve"><value>გადაიტანეთ თანმიმდევრობის შესაცვლელად</value></data>
+  <data name="PaymentMethod.SetDefault" xml:space="preserve"><value>ნაგულისხმევად დაყენება</value></data>
+  <data name="PaymentMethod.RemoveCardTooltip" xml:space="preserve"><value>ამ ბარათის წაშლა</value></data>
+  <data name="PaymentMethod.ConfirmRemove" xml:space="preserve"><value>ამ ბარათის წაშლა?</value></data>
+  <data name="PaymentMethod.CardAdded" xml:space="preserve"><value>ბარათი წარმატებით დაემატა.</value></data>
+  <data name="PaymentMethod.DefaultUpdated" xml:space="preserve"><value>ნაგულისხმევი ბარათი განახლდა.</value></data>
+  <data name="PaymentMethod.CardRemoved" xml:space="preserve"><value>ბარათი წაიშალა.</value></data>
+  <data name="PaymentMethod.CouldNotLoadPrefix" xml:space="preserve"><value>ბარათების ჩატვირთვა ვერ მოხერხდა:</value></data>
+  <data name="PaymentMethod.CouldNotSetDefaultPrefix" xml:space="preserve"><value>ნაგულისხმევად დაყენება ვერ მოხერხდა:</value></data>
+  <data name="PaymentMethod.CouldNotRemovePrefix" xml:space="preserve"><value>წაშლა ვერ მოხერხდა:</value></data>
+  <data name="PaymentMethod.CouldNotSaveOrderPrefix" xml:space="preserve"><value>თანმიმდევრობის შენახვა ვერ მოხერხდა:</value></data>
+  <data name="PaymentMethod.PayoutOptionsTitle" xml:space="preserve"><value>გადახდის ვარიანტები</value></data>
+  <data name="PaymentMethod.PayoutOptionsHint" xml:space="preserve"><value>დაამატეთ ან განაახლეთ თითოეული Gateway ცალ-ცალკე. მონიშნეთ ერთი ნაგულისხმევად კომისიების მისაღებად.</value></data>
+  <data name="PaymentMethod.DefaultReceiving" xml:space="preserve"><value>ნაგულისხმევი — კომისიის მიღება</value></data>
+  <data name="PaymentMethod.AdminFee" xml:space="preserve"><value>ადმინისტრაციული საფასური:</value></data>
+  <data name="PaymentMethod.PerPayout" xml:space="preserve"><value>თითო გადახდაზე</value></data>
+  <data name="PaymentMethod.Account" xml:space="preserve"><value>ანგარიში:</value></data>
+  <data name="PaymentMethod.Status" xml:space="preserve"><value>სტატუსი:</value></data>
+  <data name="PaymentMethod.UpdatedPrefix" xml:space="preserve"><value>განახლდა</value></data>
+  <data name="PaymentMethod.NotConfigured" xml:space="preserve"><value>ჯერ არ არის დაყენებული.</value></data>
+  <data name="PaymentMethod.AddAccount" xml:space="preserve"><value>ანგარიშის დამატება</value></data>
+  <data name="PaymentMethod.EditAccount" xml:space="preserve"><value>ანგარიშის რედაქტირება</value></data>
+  <data name="PaymentMethod.CurrentlyDefault" xml:space="preserve"><value>ამჟამად ნაგულისხმევი</value></data>
+  <data name="PaymentMethod.SetAsDefault" xml:space="preserve"><value>ნაგულისხმევად დაყენება</value></data>
+  <data name="PaymentMethod.SetAsDefaultTooltip" xml:space="preserve"><value>გამოიყენეთ ეს საფულე კომისიების მისაღებად</value></data>
+  <data name="PaymentMethod.PendingApproval" xml:space="preserve"><value>დადასტურების მოლოდინში</value></data>
+  <data name="PaymentMethod.PendingApprovalTooltip" xml:space="preserve"><value>Gateway-მ უნდა დაადასტუროს ეს ანგარიში, სანამ ნაგულისხმევად დაიყენებთ</value></data>
+  <data name="PaymentMethod.WalletHistoryTitle" xml:space="preserve"><value>საფულის ცვლილებების ისტორია</value></data>
+  <data name="PaymentMethod.WalletHistoryHint" xml:space="preserve"><value>— მოიცავს ანგარიშის იდენტიფიკატორის ცვლილებებს თაღლითობის პრევენციისთვის</value></data>
+  <data name="PaymentMethod.NoWalletChanges" xml:space="preserve"><value>საფულის ცვლილებები ჯერ არ არის.</value></data>
+  <data name="PaymentMethod.History.Gateway" xml:space="preserve"><value>Gateway</value></data>
+  <data name="PaymentMethod.History.Change" xml:space="preserve"><value>ცვლილება</value></data>
+  <data name="PaymentMethod.History.FromTo" xml:space="preserve"><value>დან → მდე</value></data>
+  <data name="PaymentMethod.History.NoChange" xml:space="preserve"><value>ცვლილება არ არის</value></data>
+  <data name="WalletStatus.Pending" xml:space="preserve"><value>მოლოდინში</value></data>
+  <data name="WalletStatus.Approved" xml:space="preserve"><value>დამტკიცებული</value></data>
+  <data name="WalletStatus.Rejected" xml:space="preserve"><value>უარყოფილი</value></data>
+  <data name="PaymentMethod.ApiLogTitle" xml:space="preserve"><value>Gateway API გამოძახების ჟურნალი</value></data>
+  <data name="PaymentMethod.ApiLogHint" xml:space="preserve"><value>— Gateway-ის თითოეული ურთიერთქმედების მოთხოვნა/პასუხი (მხარდაჭერის ესკალაციისთვის)</value></data>
+  <data name="PaymentMethod.NoApiLogs" xml:space="preserve"><value>API გამოძახებები არ ჩანს.</value></data>
+  <data name="PaymentMethod.Log.Operation" xml:space="preserve"><value>ოპერაცია</value></data>
+  <data name="PaymentMethod.Log.Endpoint" xml:space="preserve"><value>Endpoint</value></data>
+  <data name="PaymentMethod.Log.Duration" xml:space="preserve"><value>ხანგრძლივობა</value></data>
+  <data name="PaymentMethod.Log.Result" xml:space="preserve"><value>შედეგი</value></data>
+  <data name="PaymentMethod.Log.Hide" xml:space="preserve"><value>დამალვა</value></data>
+  <data name="PaymentMethod.Log.View" xml:space="preserve"><value>მოთხოვნა/პასუხის ნახვა</value></data>
+  <data name="PaymentMethod.Log.Request" xml:space="preserve"><value>მოთხოვნა</value></data>
+  <data name="PaymentMethod.Log.Response" xml:space="preserve"><value>პასუხი</value></data>
+  <data name="PaymentMethod.Log.ResponseError" xml:space="preserve"><value>(შეცდომა)</value></data>
+  <data name="PaymentMethod.AccountIdRequired" xml:space="preserve"><value>ანგარიშის იდენტიფიკატორი სავალდებულოა.</value></data>
+  <data name="PaymentMethod.EWalletPasswordLabel" xml:space="preserve"><value>eWallet პაროლი (დაშიფრული იქნება)</value></data>
+  <data name="PaymentMethod.EWalletPasswordHint" xml:space="preserve"><value>I-Payout-ისთვის საჭიროა მხოლოდ თავდაპირველი რეგისტრაციის დროს.</value></data>
+  <data name="PaymentMethod.NotesLabel" xml:space="preserve"><value>შენიშვნები</value></data>
+  <data name="PaymentMethod.WalletUpdatedSuffix" xml:space="preserve"><value>განახლდა.</value></data>
+  <data name="PaymentMethod.DefaultWalletUpdated" xml:space="preserve"><value>ნაგულისხმევი საფულე განახლდა.</value></data>
+  <data name="PaymentMethod.CouldNotSetWalletDefaultPrefix" xml:space="preserve"><value>ნაგულისხმევად დაყენება ვერ მოხერხდა:</value></data>
+  <data name="PaymentMethod.ErrorPrefix" xml:space="preserve"><value>შეცდომა:</value></data>
+  <data name="PaymentMethod.Action.Created" xml:space="preserve"><value>ანგარიში შეიქმნა</value></data>
+  <data name="PaymentMethod.Action.AccountChanged" xml:space="preserve"><value>ანგარიში შეიცვალა</value></data>
+  <data name="PaymentMethod.Action.StatusChanged" xml:space="preserve"><value>სტატუსი შეიცვალა</value></data>
+  <data name="PaymentMethod.Action.SetAsDefault" xml:space="preserve"><value>დაყენებულია ნაგულისხმევად</value></data>
+  <data name="PaymentMethod.Action.UnsetAsDefault" xml:space="preserve"><value>ჩანაცვლდა ნაგულისხმევად</value></data>
+  <data name="PaymentMethod.Action.Deleted" xml:space="preserve"><value>ანგარიში წაიშალა</value></data>
+  <data name="PaymentMethod.Validation.CryptoRequired" xml:space="preserve"><value>საჭიროა კრიპტო-საფულის მისამართი, არა ელფოსტა. მიუთითეთ Bitcoin (bc1.../1.../3...), USDT-TRC20 (T...) ან EVM (0x...) მისამართი.</value></data>
+  <data name="PaymentMethod.Validation.CryptoInvalid" xml:space="preserve"><value>ანგარიში არ ჰგავს ვალიდურ კრიპტო-საფულის მისამართს.</value></data>
+  <data name="PaymentMethod.Validation.EmailRequired" xml:space="preserve"><value>ეს Gateway ელოდება ვალიდურ ელფოსტას ანგარიშის იდენტიფიკატორის სახით.</value></data>
+  <data name="PaymentMethod.Gateway.EWalletLabel" xml:space="preserve"><value>eWallet (I-Payout)</value></data>
+  <data name="PaymentMethod.Gateway.DwollaLabel" xml:space="preserve"><value>Dwolla</value></data>
+  <data name="PaymentMethod.Gateway.CryptoLabel" xml:space="preserve"><value>კრიპტო</value></data>
+  <data name="PaymentMethod.Gateway.AdvCashLabel" xml:space="preserve"><value>Advancash</value></data>
+  <data name="PaymentMethod.Gateway.EWalletField" xml:space="preserve"><value>I-Payout ელფოსტა</value></data>
+  <data name="PaymentMethod.Gateway.DwollaField" xml:space="preserve"><value>Dwolla ანგარიშის ელფოსტა</value></data>
+  <data name="PaymentMethod.Gateway.CryptoField" xml:space="preserve"><value>საფულის მისამართი</value></data>
+  <data name="PaymentMethod.Gateway.AdvCashField" xml:space="preserve"><value>Advancash ანგარიშის ელფოსტა</value></data>
+  <data name="PaymentMethod.Gateway.EmailPlaceholder" xml:space="preserve"><value>user@example.com</value></data>
+  <data name="PaymentMethod.Gateway.CryptoPlaceholder" xml:space="preserve"><value>bc1qxy2k...x9k2</value></data>
+  <data name="PaymentMethod.Gateway.EWalletHelp" xml:space="preserve"><value>I-Payout გამოგიგზავნით დადასტურების ელფოსტას ანგარიშის ვერიფიცირებისთვის.</value></data>
+  <data name="PaymentMethod.Gateway.DwollaHelp" xml:space="preserve"><value>გამოიყენეთ ელფოსტა, რომელიც დაკავშირებულია თქვენს Dwolla ანგარიშთან.</value></data>
+  <data name="PaymentMethod.Gateway.CryptoHelp" xml:space="preserve"><value>მიუთითეთ მიმღები საფულის მისამართი იმ აქტივისთვის, რომლითაც გსურთ გადახდის მიღება.</value></data>
+  <data name="PaymentMethod.Gateway.AdvCashHelp" xml:space="preserve"><value>გამოიყენეთ ელფოსტა, რომელიც დაკავშირებულია თქვენს AdvCash ანგარიშთან.</value></data>
+
+  <!-- Dashboard Page -->
+  <data name="Dashboard.PageTitle" xml:space="preserve"><value>დაფა</value></data>
+  <data name="Dashboard.Breadcrumb" xml:space="preserve"><value>დაფა</value></data>
+  <data name="Dashboard.TotalEarnings" xml:space="preserve"><value>მთლიანი შემოსავალი</value></data>
+  <data name="Dashboard.TeamSize" xml:space="preserve"><value>გუნდის ზომა</value></data>
+  <data name="Dashboard.TokenBalance" xml:space="preserve"><value>ტოკენების ბალანსი</value></data>
+  <data name="Dashboard.CurrentRank" xml:space="preserve"><value>მიმდინარე რანგი</value></data>
+  <data name="Dashboard.FsbWindowsTitle" xml:space="preserve"><value>სწრაფი სტარტის ბონუსის ფანჯრები</value></data>
+
+  <!-- Activity Feed -->
+  <data name="ActivityFeed.Title" xml:space="preserve"><value>ბოლო აქტივობა</value></data>
+  <data name="ActivityFeed.EmptyTitle" xml:space="preserve"><value>ბოლო აქტივობა არ არის</value></data>
+  <data name="ActivityFeed.EmptyMessage" xml:space="preserve"><value>თქვენი აქტივობა აქ გამოჩნდება.</value></data>
+  <data name="ActivityFeed.Period" xml:space="preserve"><value>პერიოდი:</value></data>
+  <data name="ActivityFeed.Status" xml:space="preserve"><value>სტატუსი:</value></data>
+  <data name="ActivityFeed.MonthSuffix" xml:space="preserve"><value>თვის წინ</value></data>
+  <data name="ActivityFeed.DaySuffix" xml:space="preserve"><value>დღის წინ</value></data>
+  <data name="ActivityFeed.HourSuffix" xml:space="preserve"><value>საათის წინ</value></data>
+  <data name="ActivityFeed.MinuteSuffix" xml:space="preserve"><value>წუთის წინ</value></data>
+
+  <!-- Fast Start Bonus Card -->
+  <data name="Fsb.Title" xml:space="preserve"><value>სწრაფი სტარტის ბონუსი</value></data>
+  <data name="Fsb.Locked" xml:space="preserve"><value>ჩაკეტილი — მალე</value></data>
+  <data name="Fsb.Completed" xml:space="preserve"><value>დასრულებული!</value></data>
+
+  <!-- Token Balance Widget -->
+  <data name="TokenWidget.Title" xml:space="preserve"><value>ტოკენების ბალანსი</value></data>
+  <data name="TokenWidget.GrantTokens" xml:space="preserve"><value>ტოკენების მინიჭება</value></data>
+  <data name="TokenWidget.EmptyTitle" xml:space="preserve"><value>ტოკენები არ არის</value></data>
+  <data name="TokenWidget.EmptyMessage" xml:space="preserve"><value>ტოკენების ბალანსები აქ გამოჩნდება.</value></data>
+  <data name="TokenWidget.GrantModalTitle" xml:space="preserve"><value>ტოკენების მინიჭება</value></data>
+  <data name="TokenWidget.GrantModalMessage" xml:space="preserve"><value>ადმინისტრატორის ტოკენის მინიჭების მოდალი — განვითარების პროცესშია.</value></data>
+  <data name="TokenWidget.GrantConfirm" xml:space="preserve"><value>მინიჭება</value></data>
+
+  <!-- Account Tab (Email + Password card) -->
+  <data name="Account.Title" xml:space="preserve"><value>ანგარიში</value></data>
+  <data name="Account.EditButton" xml:space="preserve"><value>ანგარიშის ინფორმაციის რედაქტირება</value></data>
+  <data name="Account.Email" xml:space="preserve"><value>ელფოსტა</value></data>
+  <data name="Account.Password" xml:space="preserve"><value>პაროლი</value></data>
+  <data name="Account.PasswordMasked" xml:space="preserve"><value>XXXXXXXXX</value></data>
+
+  <!-- გვერდის ნავიგაცია -->
+  <data name="Common.Previous" xml:space="preserve"><value>წინა</value></data>
+  <data name="Common.Next" xml:space="preserve"><value>შემდეგი</value></data>
+
+  <!-- ანგარიშის საერთო სვეტების სათაურები და ლეიბლები -->
+  <data name="Reports.Showing" xml:space="preserve"><value>ჩვენება</value></data>
+  <data name="Reports.Results" xml:space="preserve"><value>შედეგები</value></data>
+  <data name="Reports.SearchPlaceholder" xml:space="preserve"><value>ძებნა აქ</value></data>
+  <data name="Reports.EarnedDate" xml:space="preserve"><value>გამომუშავების თარიღი</value></data>
+  <data name="Reports.PaymentDate" xml:space="preserve"><value>გადახდის თარიღი</value></data>
+  <data name="Reports.Paid" xml:space="preserve"><value>გადახდილი</value></data>
+  <data name="Reports.Pending" xml:space="preserve"><value>მოლოდინში</value></data>
+  <data name="Reports.History" xml:space="preserve"><value>ისტორია</value></data>
+  <data name="Reports.Detail" xml:space="preserve"><value>დეტალი</value></data>
+  <data name="Reports.OrderNo" xml:space="preserve"><value>შეკვეთის ნომერი</value></data>
+  <data name="Reports.MemberName" xml:space="preserve"><value>წევრის სახელი</value></data>
+  <data name="Reports.MembershipType" xml:space="preserve"><value>წევრობის ტიპი</value></data>
+  <data name="Reports.Leg" xml:space="preserve"><value>ფეხი</value></data>
+  <data name="Reports.EnrollmentDate" xml:space="preserve"><value>რეგისტრაციის თარიღი</value></data>
+  <data name="Reports.NextRebilling" xml:space="preserve"><value>შემდეგი გადახდა</value></data>
+  <data name="Reports.EligiblePoints" xml:space="preserve"><value>შესაფერისი ქულები</value></data>
+  <data name="Reports.TotalPoints" xml:space="preserve"><value>სულ ქულები</value></data>
+  <data name="Reports.Type" xml:space="preserve"><value>ტიპი</value></data>
+  <data name="Reports.Description" xml:space="preserve"><value>აღწერა</value></data>
+  <data name="Reports.Frequency" xml:space="preserve"><value>სიხშირე</value></data>
+  <data name="Reports.Period" xml:space="preserve"><value>პერიოდი</value></data>
+  <data name="Reports.Month" xml:space="preserve"><value>თვე</value></data>
+  <data name="Reports.Income" xml:space="preserve"><value>შემოსავალი</value></data>
+
+  <!-- კომისიის შემოსავლების ცხრილი -->
+  <data name="CommissionEarnings.Title" xml:space="preserve"><value>კომისიის შემოსავლები</value></data>
+  <data name="CommissionEarnings.ForcePay" xml:space="preserve"><value>იძულებითი გადახდა</value></data>
+  <data name="CommissionEarnings.DeleteTitle" xml:space="preserve"><value>კომისიის წაშლა</value></data>
+  <data name="CommissionEarnings.DeleteMessage" xml:space="preserve"><value>დარწმუნებული ხართ, რომ გსურთ ამ გადაუხდელი კომისიის წაშლა? ეს მოქმედება ვერ გაუქმდება.</value></data>
+
+  <!-- კომისიების დაფა -->
+  <data name="CommissionsDashboard.OnlyAmbassadors" xml:space="preserve"><value>კომისიები ხელმისაწვდომია მხოლოდ ელჩებისთვის.</value></data>
+  <data name="CommissionsDashboard.Resume" xml:space="preserve"><value>რეზიუმე</value></data>
+  <data name="CommissionsDashboard.HistoryCurrentYear" xml:space="preserve"><value>ისტორია (მიმდინარე წელი)</value></data>
+  <data name="CommissionsDashboard.NoPending" xml:space="preserve"><value>მოლოდინში მყოფი კომისიები არ არის.</value></data>
+  <data name="CommissionsDashboard.NoPaid" xml:space="preserve"><value>გადახდილი კომისიები არ არის.</value></data>
+  <data name="CommissionsDashboard.DownloadYearly" xml:space="preserve"><value>ჩამოტვირთეთ წლიური ანგარიში ({0})</value></data>
+  <data name="CommissionsDashboard.NoHistory" xml:space="preserve"><value>კომისიების ისტორია მიუწვდომელია.</value></data>
+  <data name="CommissionsDashboard.ModalTitle" xml:space="preserve"><value>კომისიები ({0})</value></data>
+  <data name="CommissionsDashboard.NoBreakdown" xml:space="preserve"><value>დეტალური მონაცემები არ არის.</value></data>
+  <data name="CommissionsDashboard.CommissionType" xml:space="preserve"><value>კომისიის ტიპი</value></data>
+  <data name="CommissionsDashboard.NoDataPeriod" xml:space="preserve"><value>ამ პერიოდისთვის მონაცემები არ არის.</value></data>
+  <data name="CommissionsDashboard.Ok" xml:space="preserve"><value>კარგი</value></data>
+
+  <!-- ორმაგი ნარჩენი ანგარიში -->
+  <data name="DualResidual.LeftLeg" xml:space="preserve"><value>მარცხენა ფეხის ქულები</value></data>
+  <data name="DualResidual.RightLeg" xml:space="preserve"><value>მარჯვენა ფეხის ქულები</value></data>
+  <data name="DualResidual.HistoryTitle" xml:space="preserve"><value>ორმაგი გუნდის ნარჩენების ისტორია</value></data>
+  <data name="DualResidual.WeakLeg" xml:space="preserve"><value>სუსტი ფეხის ქულები</value></data>
+  <data name="DualResidual.Breadcrumb" xml:space="preserve"><value>ორმაგი ნარჩენი</value></data>
+
+  <!-- სწრაფი დაწყების ბონუსი -->
+  <data name="Fsb.Normal" xml:space="preserve"><value>ნორმალური</value></data>
+  <data name="Fsb.Promo2025" xml:space="preserve"><value>აქცია 2025</value></data>
+  <data name="Fsb.Window" xml:space="preserve"><value>სწრაფი დაწყების ბონუსი {0}</value></data>
+  <data name="Fsb.NoMembersWindow" xml:space="preserve"><value>ამ ფანჯარაში ჯერ არცერთი წევრი არ არის რეგისტრირებული.</value></data>
+  <data name="Fsb.MemberFullName" xml:space="preserve"><value>სახელი</value></data>
+  <data name="Fsb.EnrollDate" xml:space="preserve"><value>რეგისტრაციის თარიღი</value></data>
+  <data name="Fsb.Service" xml:space="preserve"><value>სერვისი</value></data>
+  <data name="Fsb.RenewalDate" xml:space="preserve"><value>განახლების თარიღი</value></data>
+  <data name="Fsb.WindowSuffixPromo" xml:space="preserve"><value>— აქცია 2025</value></data>
+  <data name="Fsb.WindowSuffixNormal" xml:space="preserve"><value>— ნორმალური</value></data>
+  <data name="Fsb.Breadcrumb" xml:space="preserve"><value>სწრაფი დაწყების ბონუსი</value></data>
+
+  <!-- პრეზიდენტის ბონუსი -->
+  <data name="Presidential.Breadcrumb" xml:space="preserve"><value>პრეზიდენტის ბონუსი</value></data>
+  <data name="Presidential.TotalBonusEarned" xml:space="preserve"><value>სულ მოპოვებული ბონუსი</value></data>
+  <data name="Presidential.TotalAmountEarned" xml:space="preserve"><value>სულ მოპოვებული თანხა</value></data>
+
+  <!-- ბუსტ ბონუსი -->
+  <data name="Boost.Breadcrumb" xml:space="preserve"><value>ბუსტ ბონუსი</value></data>
+  <data name="Boost.TitleWithLabel" xml:space="preserve"><value>ბუსტ ბონუსი: {0}</value></data>
+  <data name="Boost.LoadingLabel" xml:space="preserve"><value>იტვირთება...</value></data>
+  <data name="Boost.Gold" xml:space="preserve"><value>ოქრო</value></data>
+  <data name="Boost.Platinum" xml:space="preserve"><value>პლატინა</value></data>
+  <data name="Boost.Enrollments" xml:space="preserve"><value>რეგისტრაციები</value></data>
+  <data name="Boost.WeekSelectAria" xml:space="preserve"><value>კვირის არჩევა</value></data>
+  <data name="Boost.CurrentWeek" xml:space="preserve"><value>მიმდინარე კვირა</value></data>
+  <data name="Boost.NoGoldEnrollments" xml:space="preserve"><value>ამ პერიოდისთვის ოქროს რეგისტრაციები არ არის (ზღვარი: 6).</value></data>
+  <data name="Boost.NoPlatinumEnrollments" xml:space="preserve"><value>ამ პერიოდისთვის პლატინის რეგისტრაციები არ არის (ზღვარი: 12).</value></data>
+  <data name="Boost.TotalMembers" xml:space="preserve"><value>სულ წევრები</value></data>
+  <data name="Boost.ActiveRebilling" xml:space="preserve"><value>აქტიური გადახდა</value></data>
+  <data name="Boost.InactiveRebilling" xml:space="preserve"><value>არააქტიური გადახდა</value></data>
+
+  <!-- მანქანის ბონუსი -->
+  <data name="Car.Breadcrumb" xml:space="preserve"><value>მანქანის ბონუსი</value></data>
+  <data name="Car.CurrentProgress" xml:space="preserve"><value>მიმდინარე პროგრესი: {0}</value></data>
+  <data name="Car.TotalEligiblePoints" xml:space="preserve"><value>სულ შესაფერისი ქულები</value></data>
+  <data name="Car.Progress" xml:space="preserve"><value>პროგრესი</value></data>
+  <data name="Car.Ambassador" xml:space="preserve"><value>ელჩი</value></data>
+  <data name="Car.NoCarBonusData" xml:space="preserve"><value>მანქანის ბონუსის მონაცემები მიუწვდომელია.</value></data>
+  <data name="Car.BranchModalEnrollmentTeam" xml:space="preserve"><value>რეგისტრაციის გუნდი • ფილიალი</value></data>
+  <data name="Car.BranchModalTotalPoints" xml:space="preserve"><value>სულ ქულები: {0}</value></data>
+  <data name="Car.BranchModalNoMembers" xml:space="preserve"><value>ამ ფილიალში წევრები არ მოიძებნა.</value></data>
+  <data name="Car.BranchModalFullName" xml:space="preserve"><value>სრული სახელი</value></data>
+  <data name="Car.BranchModalMembershipLevel" xml:space="preserve"><value>წევრობის დონე</value></data>
+  <data name="Car.BranchModalExpirationDate" xml:space="preserve"><value>ვადის ამოწურვის თარიღი</value></data>
+  <data name="Car.BranchModalExportList" xml:space="preserve"><value>სიის ექსპორტი</value></data>
+
+
+  <data name="Common.From" xml:space="preserve"><value>დან</value></data>
+  <data name="Common.To" xml:space="preserve"><value>მდე</value></data>
+  <data name="Common.Members" xml:space="preserve"><value>წევრები</value></data>
+  <data name="Common.Customers" xml:space="preserve"><value>კლიენტები</value></data>
+  <data name="Common.Ok" xml:space="preserve"><value>კარგი</value></data>
+  <data name="Common.Back" xml:space="preserve"><value>უკან</value></data>
+  <data name="Common.Previous2" xml:space="preserve"><value>წინა</value></data>
+  <data name="Common.Pts" xml:space="preserve"><value>ქულა</value></data>
+  <data name="Common.Of2" xml:space="preserve"><value>/</value></data>
+  <data name="Reports.JoinDate" xml:space="preserve"><value>გაწევრიანების თარიღი</value></data>
+  <data name="Reports.Id" xml:space="preserve"><value>ID</value></data>
+  <data name="Reports.Name" xml:space="preserve"><value>სახელი</value></data>
+  <data name="Reports.Email" xml:space="preserve"><value>ელფოსტა</value></data>
+  <data name="Reports.Phone" xml:space="preserve"><value>ტელეფონი</value></data>
+  <data name="Reports.Country" xml:space="preserve"><value>ქვეყანა</value></data>
+  <data name="Reports.Level" xml:space="preserve"><value>დონე</value></data>
+  <data name="Reports.Sponsor" xml:space="preserve"><value>სპონსორი</value></data>
+  <data name="Reports.DualUpline" xml:space="preserve"><value>Dual Upline</value></data>
+  <data name="Reports.DualTeamUpline" xml:space="preserve"><value>Dual Team Upline</value></data>
+  <data name="Reports.BizStatus" xml:space="preserve"><value>BizCenter სტატუსი</value></data>
+  <data name="Reports.BizCenterStatus" xml:space="preserve"><value>BizCenter სტატუსი</value></data>
+  <data name="Reports.MembershipStatus" xml:space="preserve"><value>წევრობის სტატუსი</value></data>
+  <data name="Reports.Membership" xml:space="preserve"><value>წევრობა</value></data>
+  <data name="Reports.Rank" xml:space="preserve"><value>რანგი</value></data>
+  <data name="Reports.RankDate" xml:space="preserve"><value>რანგის თარიღი</value></data>
+  <data name="Reports.LifetimeRank" xml:space="preserve"><value>სიცოცხლის რანგი</value></data>
+  <data name="Reports.NextRankPercent" xml:space="preserve"><value>შემდეგი რანგი %</value></data>
+  <data name="Reports.Qualified" xml:space="preserve"><value>კვალიფიცირებული</value></data>
+  <data name="Reports.Unqualified" xml:space="preserve"><value>არაკვალიფიცირებული</value></data>
+  <data name="Reports.QualPoints" xml:space="preserve"><value>კვალ. ქულები</value></data>
+  <data name="Reports.EnrollPoints" xml:space="preserve"><value>რეგ. ქულები</value></data>
+  <data name="Reports.EnrollTeamPoints" xml:space="preserve"><value>რეგ. გუნდის ქულები</value></data>
+  <data name="Reports.LeftPoints" xml:space="preserve"><value>მარცხ. ქულები</value></data>
+  <data name="Reports.RightPoints" xml:space="preserve"><value>მარჯვ. ქულები</value></data>
+  <data name="Reports.LeftTeamPoints" xml:space="preserve"><value>მარცხ. გუნდის ქულები</value></data>
+  <data name="Reports.RightTeamPoints" xml:space="preserve"><value>მარჯვ. გუნდის ქულები</value></data>
+  <data name="Reports.Points" xml:space="preserve"><value>ქულები</value></data>
+  <data name="Reports.PointsSuffix" xml:space="preserve"><value>ქულები</value></data>
+  <data name="Reports.Ambassador" xml:space="preserve"><value>ელჩი</value></data>
+  <data name="Reports.Ambassadors" xml:space="preserve"><value>ელჩები</value></data>
+  <data name="Reports.OnlyCustomers" xml:space="preserve"><value>მხოლოდ კლიენტები</value></data>
+  <data name="Reports.LeftLeg" xml:space="preserve"><value>მარცხენა ფეხი</value></data>
+  <data name="Reports.RightLeg" xml:space="preserve"><value>მარჯვენა ფეხი</value></data>
+  <data name="Reports.LeftSide" xml:space="preserve"><value>მარცხენა მხარე</value></data>
+  <data name="Reports.RightSide" xml:space="preserve"><value>მარჯვენა მხარე</value></data>
+  <data name="Reports.QualifyHeaderTooltip" xml:space="preserve"><value>პირადი კვალიფიკაციის ქულები — წევრის საკუთარი შესყიდვებიდან QualificationPoints-ის ჯამი.</value></data>
+  <data name="Reports.EnrollPointsTooltip" xml:space="preserve"><value>რეგისტრაციის გუნდის ქულები — წევრის downline-დან დაგროვებული. 0 ნიშნავს, რომ არავინ არ აქვს რეგისტრირებული.</value></data>
+  <data name="Reports.LeftPointsTooltip" xml:space="preserve"><value>ბინარული ხის მარცხენა ფეხის ქულები — დაგროვებული წევრის მარცხენა ფეხზე. 0 = შთამომავლები არ არის.</value></data>
+  <data name="Reports.RightPointsTooltip" xml:space="preserve"><value>ბინარული ხის მარჯვენა ფეხის ქულები — დაგროვებული წევრის მარჯვენა ფეხზე. 0 = შთამომავლები არ არის.</value></data>
+  <data name="Team.LeftLegPoints" xml:space="preserve"><value>მარცხენა ფეხის ქულები</value></data>
+  <data name="Team.RightLegPoints" xml:space="preserve"><value>მარჯვენა ფეხის ქულები</value></data>
+  <data name="Team.LegendQualified" xml:space="preserve"><value>კვალიფიცირებული</value></data>
+  <data name="Team.LegendUnqualified" xml:space="preserve"><value>არაკვალიფიცირებული</value></data>
+  <data name="Team.LegendCancelled" xml:space="preserve"><value>გაუქმებული / არააქტიური</value></data>
+  <data name="Team.Root" xml:space="preserve"><value>ფესვი</value></data>
+  <data name="Team.NoTreeData" xml:space="preserve"><value>ხის მონაცემები არ არის ხელმისაწვდომი.</value></data>
+  <data name="Team.LeftEmpty" xml:space="preserve"><value>მარცხ. ცარიელი</value></data>
+  <data name="Team.RightEmpty" xml:space="preserve"><value>მარჯვ. ცარიელი</value></data>
+  <data name="Team.OpenSlot" xml:space="preserve"><value>თავისუფალი სლოტი</value></data>
+  <data name="Team.PlaceMemberTooltip" xml:space="preserve"><value>დააჭირეთ წევრის განსათავსებლად</value></data>
+  <data name="Team.DrillTooltipSuffix" xml:space="preserve"><value>დააჭირეთ გასაშლელად</value></data>
+  <data name="Team.Expand" xml:space="preserve"><value>გაშლა</value></data>
+  <data name="Team.RevertPlacement" xml:space="preserve"><value>Placement-ის უკან დაბრუნება</value></data>
+  <data name="Team.SelectAmbassadorLeg" xml:space="preserve"><value>აირჩიეთ ელჩი — ფეხი {0}</value></data>
+  <data name="Team.LegLeft" xml:space="preserve"><value>მარცხენა</value></data>
+  <data name="Team.LegRight" xml:space="preserve"><value>მარჯვენა</value></data>
+  <data name="Team.NoCandidatesAvailable" xml:space="preserve"><value>Placement-ისთვის ხელმისაწვდომი ელჩები არ არის.</value></data>
+  <data name="Team.PlacementConfirmation" xml:space="preserve"><value>Placement-ის დადასტურება</value></data>
+  <data name="Team.AmbassadorLabel" xml:space="preserve"><value>ელჩი:</value></data>
+  <data name="Team.UnderLabel" xml:space="preserve"><value>ქვეშ:</value></data>
+  <data name="Team.LegBadge" xml:space="preserve"><value>ფეხი {0}</value></data>
+  <data name="Team.PointsContributionPrefix" xml:space="preserve"><value>ქულები რომლებიც წვლილს შეიტანენ</value></data>
+  <data name="Team.PointSingular" xml:space="preserve"><value>ქულა</value></data>
+  <data name="Team.PointsPlural" xml:space="preserve"><value>ქულა</value></data>
+  <data name="Team.SubtreeSuffix" xml:space="preserve"><value>(თვითონ + {0} ქვექსოვილში)</value></data>
+  <data name="Team.ChangeSelection" xml:space="preserve"><value>არჩევანის შეცვლა</value></data>
+  <data name="Team.ConfirmPlacement" xml:space="preserve"><value>Placement-ის დადასტურება</value></data>
+  <data name="Team.ConfirmRevertPlacement" xml:space="preserve"><value>Placement-ის უკან დაბრუნების დადასტურება</value></data>
+  <data name="Team.RevertConfirmQuestion" xml:space="preserve"><value>დარწმუნებული ხართ რომ გსურთ Placement-ის უკან დაბრუნება შემდეგი წევრისთვის</value></data>
+  <data name="Team.RevertConfirmHelp" xml:space="preserve"><value>ელჩი და მისი ქვექსოვილი გამოეყოფა ბინარულ ხეს. შესაძლებელი იქნება მათი თავიდან განთავსება, ქვექსოვილი მიჰყვება.</value></data>
+  <data name="Team.ConfirmRevert" xml:space="preserve"><value>უკან დაბრუნების დადასტურება</value></data>
+  <data name="Team.RevertError" xml:space="preserve"><value>შეცდომა Placement-ის უკან დაბრუნებისას ({0}).</value></data>
+  <data name="Team.RootPointsTooltipLine1" xml:space="preserve"><value>Downline-ის ჯამური ქულები (მარცხ. + მარჯვ. ფეხები): {0}</value></data>
+  <data name="Team.RootPointsTooltipLine2" xml:space="preserve"><value>  • პირადი ქულები (არ შედის): {0}</value></data>
+  <data name="Team.PointsTooltipLine1" xml:space="preserve"><value>წვლილი Upline-ის ფეხში: {0}</value></data>
+  <data name="Team.PointsTooltipLine2" xml:space="preserve"><value>  • პირადი ქულები: {0}</value></data>
+  <data name="Team.PointsTooltipLine3" xml:space="preserve"><value>  • Downline-ის ქულები: {0}</value></data>
+  <data name="Team.LoadingError" xml:space="preserve"><value>ხის კვანძის ჩატვირთვა ვერ მოხერხდა.</value></data>
+  <data name="Team.ApiErrorPrefix" xml:space="preserve"><value>API შეცდომა:</value></data>
+  <data name="Team.ErrorPrefix" xml:space="preserve"><value>შეცდომა:</value></data>
+  <data name="Team.PlacementFailed" xml:space="preserve"><value>Placement-მა ვერ გაიარა:</value></data>
+  <data name="Team.LoadCandidatesError" xml:space="preserve"><value>კანდიდატების ჩატვირთვის შეცდომა:</value></data>
+  <data name="Team.NoMembersForPlacement" xml:space="preserve"><value>Placement-ისთვის ხელმისაწვდომი წევრები არ არის.</value></data>
+  <data name="Team.SearchPlaceholderHere" xml:space="preserve"><value>ძებნა აქ</value></data>
+  <data name="Team.RefreshTitle" xml:space="preserve"><value>სერვერიდან განახლება</value></data>
+  <data name="Team.LoadFailedDualMembers" xml:space="preserve"><value>Dual Team-ის წევრების ჩატვირთვა ვერ მოხერხდა.</value></data>
+  <data name="Team.ActualRank" xml:space="preserve"><value>მიმდინარე რანგი</value></data>
+  <data name="Team.NextRank" xml:space="preserve"><value>შემდეგი რანგი</value></data>
+  <data name="Team.DualPtsRequired" xml:space="preserve"><value>საჭირო Dual Team ქულები</value></data>
+  <data name="Team.EnrollmentPtsRequired" xml:space="preserve"><value>საჭირო რეგისტრაციის ქულები</value></data>
+  <data name="Team.TotalDualTeamPoints" xml:space="preserve"><value>Dual Team-ის ჯამური ქულები</value></data>
+  <data name="Team.DailyResidualsEarning" xml:space="preserve"><value>ყოველდღიური ნარჩენი შემოსავალი</value></data>
+  <data name="Team.LastSixMonths" xml:space="preserve"><value>ბოლო 6 თვე</value></data>
+  <data name="Team.ChartComingSoon" xml:space="preserve"><value>გრაფიკი მალე</value></data>
+  <data name="Team.HistoricalResidualsHint" xml:space="preserve"><value>ისტორიული ნარჩენების მონაცემები გამოჩნდება აქ</value></data>
+  <data name="Team.DualTeamMembers" xml:space="preserve"><value>Dual Team-ის წევრები</value></data>
+  <data name="Team.QualificationPoints" xml:space="preserve"><value>კვალიფიკაციის ქულები</value></data>
+  <data name="Team.CurrentRankEligible" xml:space="preserve"><value>მიმდინარე რანგი (კვალიფ. ქულები)</value></data>
+  <data name="Team.NextRankEligible" xml:space="preserve"><value>შემდეგი რანგი (კვალიფ. ქულები)</value></data>
+  <data name="Team.NoTeamMembers" xml:space="preserve"><value>გუნდის წევრები ვერ მოიძებნა.</value></data>
+  <data name="Team.NoResidualEarnings" xml:space="preserve"><value>ნარჩენი შემოსავალი არ არის ნაჩვენებად.</value></data>
+  <data name="Team.LoadFailedTeamMembers" xml:space="preserve"><value>გუნდის წევრების ჩატვირთვა ვერ მოხერხდა.</value></data>
+  <data name="Team.LoadFailedResiduals" xml:space="preserve"><value>ნარჩენი შემოსავლის ჩატვირთვა ვერ მოხერხდა.</value></data>
+  <data name="Team.CurrentProgress" xml:space="preserve"><value>მიმდინარე პროგრესი: {0}</value></data>
+  <data name="Team.TotalPoints" xml:space="preserve"><value>ჯამური ქულები</value></data>
+  <data name="Team.TotalEligibleCurrentRank" xml:space="preserve"><value>ჯამური კვალიფ. ქულები (მიმდინარე რანგი)</value></data>
+  <data name="Team.TotalEligibleNextRank" xml:space="preserve"><value>ჯამური კვალიფ. ქულები (შემდეგი რანგი)</value></data>
+  <data name="Team.NoRecords" xml:space="preserve"><value>ჩანაწერები არ არის ნაჩვენებად.</value></data>
+  <data name="Team.PointsLabel" xml:space="preserve"><value>ქულები</value></data>
+  <data name="Team.AmbassadorsCount" xml:space="preserve"><value>ელჩები ({0})</value></data>
+  <data name="Team.OnlyCustomersCount" xml:space="preserve"><value>მხოლოდ კლიენტები ({0})</value></data>
+  <data name="Team.NoAmbassadorsBranch" xml:space="preserve"><value>ამ ფილიალში ელჩები არ არიან.</value></data>
+  <data name="Team.NoCustomersBranch" xml:space="preserve"><value>ამ ფილიალში კლიენტები არ არიან.</value></data>
+  <data name="Team.LoadFailedBranches" xml:space="preserve"><value>ფილიალების ჩატვირთვა ვერ მოხერხდა.</value></data>
+  <data name="Team.StatusActive" xml:space="preserve"><value>აქტიური</value></data>
+  <data name="Team.StatusSuspended" xml:space="preserve"><value>დროებით შეჩერებული</value></data>
+  <data name="Team.StatusCancelled" xml:space="preserve"><value>გაუქმებული</value></data>
+  <data name="Team.StatusInactive" xml:space="preserve"><value>არააქტიური</value></data>
+  <data name="Team.StatusNone" xml:space="preserve"><value>არ არის</value></data>
+  <data name="Team.CustomersSearchPlaceholder" xml:space="preserve"><value>ძებნა სახელით, ID-ით…</value></data>
+  <data name="Team.LoadFailedCustomers" xml:space="preserve"><value>კლიენტების ჩატვირთვა ვერ მოხერხდა.</value></data>
+  <data name="Team.ViewInAdmin" xml:space="preserve"><value>Admin-ში ნახვა</value></data>
+  <data name="Team.MyTeamSearchPlaceholder" xml:space="preserve"><value>ძებნა სახელით, ID-ით, ელფოსტით…</value></data>
+  <data name="Team.JoinDateRange" xml:space="preserve"><value>გაწევრიანების თარიღის დიაპაზონი</value></data>
+  <data name="Team.LoadFailedTeam" xml:space="preserve"><value>გუნდის ჩატვირთვა ვერ მოხერხდა.</value></data>
+  <data name="Team.SuspensionDate" xml:space="preserve"><value>დაყოვნების თარიღი:</value></data>
+  <data name="Team.CancellationDate" xml:space="preserve"><value>გაუქმების თარიღი:</value></data>
+  <data name="Team.LastPaymentDate" xml:space="preserve"><value>ბოლო გადახდის თარიღი:</value></data>
+  <data name="Team.RankLabel" xml:space="preserve"><value>რანგი:</value></data>
+  <data name="Team.RankDateLabel" xml:space="preserve"><value>რანგის თარიღი:</value></data>
+  <data name="Team.LifetimeRankLabel" xml:space="preserve"><value>სიცოცხლის რანგი:</value></data>
+  <data name="Team.NextRankPercentLabel" xml:space="preserve"><value>შემდეგი რანგი %:</value></data>
+  <data name="Team.QualificationPointsLabel" xml:space="preserve"><value>კვალიფიკაციის ქულები:</value></data>
+  <data name="Team.EnrollmentTeamPointsLabel" xml:space="preserve"><value>რეგ. გუნდის ქულები:</value></data>
+  <data name="Team.LeftTeamPointsLabel" xml:space="preserve"><value>მარცხ. გუნდის ქულები:</value></data>
+  <data name="Team.RightTeamPointsLabel" xml:space="preserve"><value>მარჯვ. გუნდის ქულები:</value></data>
+  <data name="Team.IdLabel" xml:space="preserve"><value>ID:</value></data>
+  <data name="Team.JoinDateLabel" xml:space="preserve"><value>გაწევრიანების თარიღი:</value></data>
+  <data name="Team.EmailLabel" xml:space="preserve"><value>ელფოსტა:</value></data>
+  <data name="Team.PhoneLabel" xml:space="preserve"><value>ტელეფონი:</value></data>
+  <data name="Team.LevelLabel" xml:space="preserve"><value>დონე:</value></data>
+  <data name="Team.CountryLabel" xml:space="preserve"><value>ქვეყანა:</value></data>
+  <data name="Team.SponsorLabel" xml:space="preserve"><value>სპონსორი:</value></data>
+  <data name="Team.DualTeamUplineLabel" xml:space="preserve"><value>Dual Team Upline:</value></data>
+  <data name="Team.BizCenterStatusLabel" xml:space="preserve"><value>BizCenter სტატუსი:</value></data>
+  <data name="Team.MembershipStatusLabel" xml:space="preserve"><value>წევრობის სტატუსი:</value></data>
+  <data name="Team.QualifiedLabel" xml:space="preserve"><value>კვალიფიცირებული:</value></data>
+  <data name="Team.MembershipLabel" xml:space="preserve"><value>წევრობა:</value></data>
+  <data name="Team.Resume" xml:space="preserve"><value>შეჯამება</value></data>
+  <data name="Team.TotalMembers" xml:space="preserve"><value>სულ წევრები</value></data>
+  <data name="Team.TotalQualifiedMembers" xml:space="preserve"><value>სულ კვალიფიცირებული წევრები</value></data>
+  <data name="Team.TotalUnqualifiedMembers" xml:space="preserve"><value>სულ არაკვალიფიცირებული წევრები</value></data>
+  <data name="Team.TotalCancelledMembers" xml:space="preserve"><value>სულ გაუქმებული წევრები</value></data>
+  <data name="Team.EnrollmentTeamTitle" xml:space="preserve"><value>რეგისტრაციის გუნდი</value></data>
+  <data name="Team.LegendCancelledShort" xml:space="preserve"><value>გაუქმებული</value></data>
+  <data name="Team.ShowCancelled" xml:space="preserve"><value>გაუქმებულების ჩვენება</value></data>
+  <data name="Team.NoMembersDisplay" xml:space="preserve"><value>წევრები არ არის ნაჩვენებად.</value></data>
+  <data name="Team.TreeNoChildren" xml:space="preserve"><value>შვილების გარეშე</value></data>
+  <data name="Team.TreeLoading" xml:space="preserve"><value>იტვირთება</value></data>
+  <data name="Team.TreeCollapse" xml:space="preserve"><value>ჩაკეცვა</value></data>
+  <data name="Team.LoadTreeFailedPrefix" xml:space="preserve"><value>ხის ჩატვირთვა ვერ მოხერხდა:</value></data>
+  <data name="Team.PointsAriaSuffix" xml:space="preserve"><value>{0} ქულა</value></data>
+  <data name="Placement.Title" xml:space="preserve"><value>Placement მართვა</value></data>
+  <data name="Placement.Subtitle" xml:space="preserve"><value>მართეთ თქვენი დარეკრუტებული წევრების პოზიცია Dual Team-ში.</value></data>
+  <data name="Placement.AdminTitle" xml:space="preserve"><value>Placement — ადმინისტრატორის ხედი</value></data>
+  <data name="Placement.AdminSubtitle" xml:space="preserve"><value>მართეთ ქსელის ყველა წევრის Placement. დროის ან შესაძლებლობების შეზღუდვის გარეშე.</value></data>
+  <data name="Placement.ViewHistory" xml:space="preserve"><value>ისტორიის ნახვა</value></data>
+  <data name="Placement.AutoPlacement" xml:space="preserve"><value>Auto-Placement</value></data>
+  <data name="Placement.AutoPlacementAriaLabel" xml:space="preserve"><value>Auto-placement-ის ხელით გაშვება</value></data>
+  <data name="Placement.Running" xml:space="preserve"><value>მიმდინარეობს…</value></data>
+  <data name="Placement.AutoPlacementCompleted" xml:space="preserve"><value>Auto-placement დასრულდა: {0} წევრი განთავსდა.</value></data>
+  <data name="Placement.AutoPlacementError" xml:space="preserve"><value>Auto-placement-ის გაშვების შეცდომა.</value></data>
+  <data name="Placement.UnexpectedErrorPrefix" xml:space="preserve"><value>მოულოდნელი შეცდომა:</value></data>
+  <data name="Placement.SponsorLabel" xml:space="preserve"><value>სპონსორი:</value></data>
+  <data name="Placement.SponsorPlaceholder" xml:space="preserve"><value>სპონსორის ID ან სახელი…</value></data>
+  <data name="Placement.SponsorFilterAria" xml:space="preserve"><value>სპონსორით ფილტრი</value></data>
+  <data name="Placement.LoadingPlacements" xml:space="preserve"><value>Placement-ების ჩატვირთვა…</value></data>
+  <data name="Placement.LoadingShort" xml:space="preserve"><value>იტვირთება…</value></data>
+  <data name="Placement.LoadFailed" xml:space="preserve"><value>Placement-ების ჩატვირთვა ვერ მოხერხდა.</value></data>
+  <data name="Placement.NoneTitle" xml:space="preserve"><value>მოლოდინში წევრები არ არიან</value></data>
+  <data name="Placement.NoneMessage" xml:space="preserve"><value>თქვენი ყველა რეკრუტი უკვე განთავსებულია. კარგი სამუშაოა!</value></data>
+  <data name="Placement.AdminNoneTitle" xml:space="preserve"><value>მოლოდინში Placement-ები არ არის</value></data>
+  <data name="Placement.AdminNoneMessage" xml:space="preserve"><value>ქსელში მოლოდინში Placement-ის წევრები არ არიან.</value></data>
+  <data name="Placement.FilterAria" xml:space="preserve"><value>Placement-ების ფილტრი</value></data>
+  <data name="Placement.ListAria" xml:space="preserve"><value>Placement-ისთვის წევრების სია</value></data>
+  <data name="Placement.TabAll" xml:space="preserve"><value>ყველა</value></data>
+  <data name="Placement.TabPending" xml:space="preserve"><value>მოლოდინში</value></data>
+  <data name="Placement.TabPlaced" xml:space="preserve"><value>განთავსებული</value></data>
+  <data name="Placement.TabBlocked" xml:space="preserve"><value>დაბლოკილი</value></data>
+  <data name="Placement.StatPending" xml:space="preserve"><value>მოლოდინში</value></data>
+  <data name="Placement.StatPlaced" xml:space="preserve"><value>განთავსებული</value></data>
+  <data name="Placement.StatAutoPlaced" xml:space="preserve"><value>Auto-განთავსებული</value></data>
+  <data name="Placement.StatExpired" xml:space="preserve"><value>ვადაგასული</value></data>
+  <data name="Placement.RemoveTitle" xml:space="preserve"><value>Placement-ის წაშლა</value></data>
+  <data name="Placement.RemoveConfirmLabel" xml:space="preserve"><value>Placement-ის წაშლა</value></data>
+  <data name="Placement.RemoveBodyPrefix" xml:space="preserve"><value>თქვენ წაშლით Placement-ს შემდეგი წევრისთვის</value></data>
+  <data name="Placement.RemoveLegSuffix" xml:space="preserve"><value>{0} ფეხიდან.</value></data>
+  <data name="Placement.RemoveOpportunityNote" xml:space="preserve"><value>ეს მოქმედება მოიხმარს Placement-ის შესაძლებლობას ({0} დარჩენილი).</value></data>
+  <data name="Placement.RemoveLastWarningTitle" xml:space="preserve"><value>ყურადღება:</value></data>
+  <data name="Placement.RemoveLastWarningBody" xml:space="preserve"><value>ეს თქვენი ბოლო რელოკაციის შესაძლებლობაა. შემდეგი Placement საბოლოო იქნება.</value></data>
+  <data name="Placement.AdminRemoveBodyPrefix" xml:space="preserve"><value>თქვენ წაშლით Placement-ს შემდეგი წევრისთვის</value></data>
+  <data name="Placement.AdminRemoveNote" xml:space="preserve"><value>Admin მოქმედება: არ მოიხმარს Placement-ის შესაძლებლობას.</value></data>
+  <data name="Placement.RemoveError" xml:space="preserve"><value>Placement-ის წაშლის შეცდომა.</value></data>
+  <data name="Placement.CloseAlert" xml:space="preserve"><value>დახურვა</value></data>
+  <data name="Placement.AriaPrefix" xml:space="preserve"><value>Placement:</value></data>
+  <data name="Placement.PhotoAlt" xml:space="preserve"><value>{0}-ის ფოტო</value></data>
+  <data name="Placement.AutoBadgeTitle" xml:space="preserve"><value>სისტემის მიერ ავტომატურად განთავსებული</value></data>
+  <data name="Placement.AutoBadge" xml:space="preserve"><value>Auto</value></data>
+  <data name="Placement.RecruitedOn" xml:space="preserve"><value>დარეკრუტდა {0}-ზე</value></data>
+  <data name="Placement.LegLabelStrong" xml:space="preserve"><value>ფეხი</value></data>
+  <data name="Placement.UnderLabel" xml:space="preserve"><value>ქვეშ</value></data>
+  <data name="Placement.CorrectionWindow" xml:space="preserve"><value>კორექციის ფანჯარა:</value></data>
+  <data name="Placement.HoursLeftAriaLabel" xml:space="preserve"><value>კორექციის ფანჯარა: დარჩა {0} საათი</value></data>
+  <data name="Placement.HoursMinutesRemaining" xml:space="preserve"><value>დარჩა</value></data>
+  <data name="Placement.WindowLabel" xml:space="preserve"><value>Placement-ის ფანჯარა</value></data>
+  <data name="Placement.DaysRemaining" xml:space="preserve"><value>დარჩა {0} დღე</value></data>
+  <data name="Placement.WindowClosed" xml:space="preserve"><value>ფანჯარა დაიხურა</value></data>
+  <data name="Placement.WindowAria" xml:space="preserve"><value>Placement-ის ფანჯრის პროგრესი</value></data>
+  <data name="Placement.OpportunitiesLabel" xml:space="preserve"><value>შესაძლებლობები:</value></data>
+  <data name="Placement.OpportunitiesAria" xml:space="preserve"><value>{0}/2 შესაძლებლობა გამოყენებული</value></data>
+  <data name="Placement.OpportunityNumber" xml:space="preserve"><value>შესაძლებლობა {0}</value></data>
+  <data name="Placement.OpportunitiesUsedShort" xml:space="preserve"><value>({0}/2 გამოყენებული)</value></data>
+  <data name="Placement.BlockedTitle" xml:space="preserve"><value>Placement-ის ორივე შესაძლებლობა ამოიწურა</value></data>
+  <data name="Placement.Blocked" xml:space="preserve"><value>დაბლოკილი</value></data>
+  <data name="Placement.ExpiredTitle" xml:space="preserve"><value>30 დღიანი ფანჯარა ვადაგასულია</value></data>
+  <data name="Placement.Expired" xml:space="preserve"><value>ვადაგასული</value></data>
+  <data name="Placement.PlaceAction" xml:space="preserve"><value>განთავსება</value></data>
+  <data name="Placement.PlaceAriaLabel" xml:space="preserve"><value>{0}-ის განთავსება Dual Team-ში</value></data>
+  <data name="Placement.MoveAction" xml:space="preserve"><value>გადატანა</value></data>
+  <data name="Placement.MoveAriaLabel" xml:space="preserve"><value>{0}-ის სხვა კვანძში გადატანა</value></data>
+  <data name="Placement.RemoveAction" xml:space="preserve"><value>მოხსნა</value></data>
+  <data name="Placement.RemoveAriaLabel" xml:space="preserve"><value>{0}-ის Placement-ის მოხსნა</value></data>
+  <data name="Placement.HistoryTitle" xml:space="preserve"><value>Placement-ების ისტორია</value></data>
+  <data name="Placement.HistoryColMember" xml:space="preserve"><value>წევრი</value></data>
+  <data name="Placement.HistoryColAction" xml:space="preserve"><value>მოქმედება</value></data>
+  <data name="Placement.HistoryColTargetNode" xml:space="preserve"><value>სამიზნე კვანძი</value></data>
+  <data name="Placement.HistoryColLeg" xml:space="preserve"><value>ფეხი</value></data>
+  <data name="Placement.HistoryColExecutedBy" xml:space="preserve"><value>შეასრულა</value></data>
+  <data name="Placement.HistoryColDate" xml:space="preserve"><value>თარიღი</value></data>
+  <data name="Placement.HistoryRefreshAria" xml:space="preserve"><value>ისტორიის განახლება</value></data>
+  <data name="Placement.HistorySideLeft" xml:space="preserve"><value>მარცხენა</value></data>
+  <data name="Placement.HistorySideRight" xml:space="preserve"><value>მარჯვენა</value></data>
+  <data name="Placement.SelectorLegend" xml:space="preserve"><value>კვანძის და ფეხის არჩევა Dual Team-ში</value></data>
+  <data name="Placement.NoPositionsTitle" xml:space="preserve"><value>ხელმისაწვდომი პოზიცია არ არის</value></data>
+  <data name="Placement.NoPositionsMessage" xml:space="preserve"><value>სპონსორის ხეზე თავისუფალი სლოტებიანი კვანძები არ არის.</value></data>
+  <data name="Placement.SponsorRootLevel" xml:space="preserve"><value>სპონსორი (ფესვის დონე)</value></data>
+  <data name="Placement.LevelN" xml:space="preserve"><value>დონე {0}</value></data>
+  <data name="Placement.NodeLabel" xml:space="preserve"><value>კვანძი:</value></data>
+  <data name="Placement.LeftLeg" xml:space="preserve"><value>მარცხენა</value></data>
+  <data name="Placement.RightLeg" xml:space="preserve"><value>მარჯვენა</value></data>
+  <data name="Placement.Available" xml:space="preserve"><value>ხელმისაწვდომი</value></data>
+  <data name="Placement.Occupied" xml:space="preserve"><value>დაკავებული</value></data>
+  <data name="Placement.OtherMember" xml:space="preserve"><value>სხვა წევრი</value></data>
+  <data name="Placement.SlotAriaAvailable" xml:space="preserve"><value>{1}-ის ფეხი {0} — ხელმისაწვდომი. {2}</value></data>
+  <data name="Placement.SlotAriaOccupied" xml:space="preserve"><value>{1}-ის ფეხი {0} — დაკავებული {2}-ის მიერ</value></data>
+  <data name="Placement.Selected" xml:space="preserve"><value>არჩეული.</value></data>
+  <data name="Placement.ClickToSelect" xml:space="preserve"><value>დააჭირეთ ასარჩევად.</value></data>
+  <data name="Placement.SelectionLabel" xml:space="preserve"><value>თქვენ აირჩიეთ:</value></data>
+  <data name="Placement.SelectionUnderPrefix" xml:space="preserve"><value>ქვეშ</value></data>
+  <data name="Placement.LegStrongPrefix" xml:space="preserve"><value>ფეხი</value></data>
+  <data name="Placement.WizardCloseAria" xml:space="preserve"><value>ოსტატის დახურვა</value></data>
+  <data name="Placement.WizardCancelAria" xml:space="preserve"><value>გაუქმება და ოსტატის დახურვა</value></data>
+  <data name="Placement.WizardStepperAria" xml:space="preserve"><value>ოსტატის ნაბიჯები</value></data>
+  <data name="Placement.WizardTitleMove" xml:space="preserve"><value>Placement-ის გადატანა</value></data>
+  <data name="Placement.WizardTitlePlace" xml:space="preserve"><value>Dual Team-ში განთავსება</value></data>
+  <data name="Placement.StepMember" xml:space="preserve"><value>წევრი</value></data>
+  <data name="Placement.StepSelectNode" xml:space="preserve"><value>კვანძის არჩევა</value></data>
+  <data name="Placement.StepConfirm" xml:space="preserve"><value>დადასტურება</value></data>
+  <data name="Placement.Step0Heading" xml:space="preserve"><value>განსათავსებელი წევრის დადასტურება</value></data>
+  <data name="Placement.Recruited" xml:space="preserve"><value>დარეკრუტდა:</value></data>
+  <data name="Placement.WindowInfo" xml:space="preserve"><value>გაქვთ {0} დღე Placement-ის დასასრულებლად. დარჩენილი შესაძლებლობები: {1}.</value></data>
+  <data name="Placement.Step1Heading" xml:space="preserve"><value>სამიზნე კვანძის არჩევა</value></data>
+  <data name="Placement.Step1Help" xml:space="preserve"><value>აირჩიეთ თქვენი სპონსორის Dual Team-ის კვანძი, სადაც გსურთ წევრის განთავსება.</value></data>
+  <data name="Placement.LoadingTreeAria" xml:space="preserve"><value>ხის ჩატვირთვა…</value></data>
+  <data name="Placement.LoadingTreeMsg" xml:space="preserve"><value>ხის სტრუქტურის ჩატვირთვა…</value></data>
+  <data name="Placement.NoNodesTitle" xml:space="preserve"><value>ხელმისაწვდომი კვანძები არ არის</value></data>
+  <data name="Placement.NoNodesMessage" xml:space="preserve"><value>სპონსორის გუნდში ხელმისაწვდომი პოზიციები არ არის.</value></data>
+  <data name="Placement.SponsorLabel2" xml:space="preserve"><value>სპონსორი:</value></data>
+  <data name="Placement.Step2Heading" xml:space="preserve"><value>Placement-ის დადასტურება</value></data>
+  <data name="Placement.MemberLabel" xml:space="preserve"><value>წევრი:</value></data>
+  <data name="Placement.TargetNodeLabel" xml:space="preserve"><value>სამიზნე კვანძი:</value></data>
+  <data name="Placement.LegLabel" xml:space="preserve"><value>ფეხი:</value></data>
+  <data name="Placement.OpportunitiesAfterLabel" xml:space="preserve"><value>შესაძლებლობები Placement-ის შემდეგ:</value></data>
+  <data name="Placement.RemainingSuffix" xml:space="preserve"><value>დარჩენილი</value></data>
+  <data name="Placement.LastOpportunityTitle" xml:space="preserve"><value>ბოლო შესაძლებლობა.</value></data>
+  <data name="Placement.LastOpportunityBody" xml:space="preserve"><value>ეს იქნება საბოლოო Placement. ვერ შეძლებთ მის ხელახლა გადატანას.</value></data>
+  <data name="Placement.WizardCancel" xml:space="preserve"><value>გაუქმება</value></data>
+  <data name="Placement.WizardPrev" xml:space="preserve"><value>წინა</value></data>
+  <data name="Placement.WizardNext" xml:space="preserve"><value>შემდეგი</value></data>
+  <data name="Placement.WizardConfirm" xml:space="preserve"><value>Placement-ის დადასტურება</value></data>
+  <data name="Placement.WizardConfirmAria" xml:space="preserve"><value>საბოლოო Placement-ის დადასტურება</value></data>
+  <data name="Placement.Processing" xml:space="preserve"><value>მუშავდება…</value></data>
+  <data name="Placement.SelectNodeBeforeContinue" xml:space="preserve"><value>გაგრძელებამდე აირჩიეთ კვანძი და ფეხი.</value></data>
+  <data name="Placement.LoadTreeError" xml:space="preserve"><value>ხის ჩატვირთვა ვერ მოხერხდა:</value></data>
+  <data name="Placement.SaveError" xml:space="preserve"><value>Placement-ის შენახვის შეცდომა.</value></data>
+  <data name="Placement.BreadcrumbTeam" xml:space="preserve"><value>გუნდი</value></data>
+  <data name="Placement.BreadcrumbPlacement" xml:space="preserve"><value>Placement</value></data>
+  <data name="Placement.BreadcrumbHistory" xml:space="preserve"><value>ისტორია</value></data>
+  <data name="Placement.BreadcrumbAdminDashboard" xml:space="preserve"><value>Admin Dashboard</value></data>
+  <data name="Sidebar.MyTeam2" xml:space="preserve"><value>ჩემი გუნდი</value></data>
+
+  <!-- Tokens / Guest Passes (F4) -->
+  <data name="GuestPasses.Title" xml:space="preserve"><value>სტუმრის ბილეთები</value></data>
+  <data name="GuestPasses.Code" xml:space="preserve"><value>კოდი</value></data>
+  <data name="GuestPasses.DistributedTo" xml:space="preserve"><value>გადაცემული</value></data>
+  <data name="GuestPasses.UsedBy" xml:space="preserve"><value>გამოყენებული მიერ</value></data>
+  <data name="GuestPasses.UsedAt" xml:space="preserve"><value>გამოყენების თარიღი</value></data>
+  <data name="GuestPasses.Used" xml:space="preserve"><value>გამოყენებული</value></data>
+  <data name="GuestPasses.Available" xml:space="preserve"><value>ხელმისაწვდომი</value></data>
+
+  <data name="Tokens.Resume" xml:space="preserve"><value>ტოკენების შემაჯამებელი</value></data>
+  <data name="Tokens.TotalTokens" xml:space="preserve"><value>სულ ტოკენი</value></data>
+  <data name="Tokens.TotalUsed" xml:space="preserve"><value>სულ გამოყენებული</value></data>
+  <data name="Tokens.TotalAvailable" xml:space="preserve"><value>სულ ხელმისაწვდომი</value></data>
+  <data name="Tokens.PurchaseNote" xml:space="preserve"><value>შენიშვნა: ტოკენები შეიძლება გამოყენებულ იქნას რეგისტრაციისთვის, Biz Center-ის საფასურისთვის და Travel Advantage™-ისთვის. შეძენის შემდეგ შეგიძლიათ ტოკენების განაწილება თქვენს გუნდში. ტოკენების შეძენა შეზღუდულია 10-მდე თვეში და არ ექვემდებარება დაბრუნებას.</value></data>
+  <data name="Tokens.Amount" xml:space="preserve"><value>რაოდენობა:</value></data>
+  <data name="Tokens.TokensSuffix" xml:space="preserve"><value>ტოკენი</value></data>
+  <data name="Tokens.TokenType" xml:space="preserve"><value>ტოკენის ტიპი</value></data>
+  <data name="Tokens.BuyNow" xml:space="preserve"><value>ახლავე შეძენა</value></data>
+  <data name="Tokens.TabCommissions" xml:space="preserve"><value>კომისიები</value></data>
+  <data name="Tokens.TabEWallet" xml:space="preserve"><value>eWallet</value></data>
+  <data name="Tokens.TabCreditCard" xml:space="preserve"><value>საკრედიტო ბარათი</value></data>
+  <data name="Tokens.TabCrypto" xml:space="preserve"><value>კრიპტო</value></data>
+  <data name="Tokens.CommissionBalanceLabel" xml:space="preserve"><value>თქვენი კომისიის ბალანსია</value></data>
+  <data name="Tokens.EWalletBalanceLabel" xml:space="preserve"><value>თქვენი eWallet-ის ბალანსია</value></data>
+  <data name="Tokens.CreditCard" xml:space="preserve"><value>საკრედიტო ბარათი</value></data>
+  <data name="Tokens.AddNewCard" xml:space="preserve"><value>ახალი ბარათის დამატება</value></data>
+  <data name="Tokens.NoCreditCards" xml:space="preserve"><value>საკრედიტო ბარათები არ არის შენახული.</value></data>
+  <data name="Tokens.PoweredByNowPayments" xml:space="preserve"><value>Powered by NowPayments</value></data>
+  <data name="Tokens.ColDate" xml:space="preserve"><value>თარიღი</value></data>
+  <data name="Tokens.ColOwner" xml:space="preserve"><value>მფლობელი</value></data>
+  <data name="Tokens.ColTokenCode" xml:space="preserve"><value>ტოკენის კოდი</value></data>
+  <data name="Tokens.ColType" xml:space="preserve"><value>ტიპი</value></data>
+  <data name="Tokens.ColUseDate" xml:space="preserve"><value>გამოყენების თარიღი</value></data>
+  <data name="Tokens.ColUsedBy" xml:space="preserve"><value>გამოყენებული მიერ</value></data>
+  <data name="Tokens.StatusAvailable" xml:space="preserve"><value>ხელმისაწვდომი</value></data>
+  <data name="Tokens.Distribution" xml:space="preserve"><value>განაწილება</value></data>
+  <data name="Tokens.DistributeButton" xml:space="preserve"><value>განაწილება</value></data>
+  <data name="Tokens.DistributionNote" xml:space="preserve"><value>შენიშვნა: შეგიძლიათ ტოკენების განაწილება თქვენს გუნდსა და წევრებზე. ყველა ტოკენის განაწილება საბოლოოა.</value></data>
+  <data name="Tokens.Member" xml:space="preserve"><value>წევრი</value></data>
+  <data name="Tokens.SearchMemberPlaceholder" xml:space="preserve"><value>მოძებნეთ წევრი...</value></data>
+  <data name="Tokens.Clear" xml:space="preserve"><value>გასუფთავება</value></data>
+  <data name="Tokens.BreadcrumbGuestPasses" xml:space="preserve"><value>სტუმრის ბილეთები</value></data>
+
+  <!-- Loyalty (F4) -->
+  <data name="Loyalty.TotalPoints" xml:space="preserve"><value>სულ ქულა</value></data>
+  <data name="Loyalty.UnlockedPoints" xml:space="preserve"><value>განბლოკილი ქულები</value></data>
+  <data name="Loyalty.LockedPoints" xml:space="preserve"><value>დაბლოკილი ქულები</value></data>
+  <data name="Loyalty.History" xml:space="preserve"><value>ერთგულების ქულების ისტორია</value></data>
+  <data name="Loyalty.ColMonth" xml:space="preserve"><value>თვე</value></data>
+  <data name="Loyalty.ColPoints" xml:space="preserve"><value>ქულები</value></data>
+  <data name="Loyalty.ColLocked" xml:space="preserve"><value>დაბლოკილი</value></data>
+  <data name="Loyalty.ColMissedPayment" xml:space="preserve"><value>გაცდენილი გადახდა</value></data>
+  <data name="Loyalty.Admin" xml:space="preserve"><value>ადმინი</value></data>
+  <data name="Loyalty.MissedYes" xml:space="preserve"><value>⚠ კი</value></data>
+  <data name="Loyalty.StatusLocked" xml:space="preserve"><value>დაბლოკილი</value></data>
+  <data name="Loyalty.StatusUnlocked" xml:space="preserve"><value>განბლოკილი</value></data>
+  <data name="Loyalty.ManualUnlock" xml:space="preserve"><value>ხელით განბლოკვა</value></data>
+
+  <!-- Ranks (F4) -->
+  <data name="Ranks.OnlyForAmbassadors" xml:space="preserve"><value>რანგები ხელმისაწვდომია მხოლოდ ელჩებისთვის.</value></data>
+  <data name="Ranks.CurrentRank" xml:space="preserve"><value>მიმდინარე რანგი</value></data>
+  <data name="Ranks.PointsToNext" xml:space="preserve"><value>ქულები შემდეგ რანგამდე</value></data>
+  <data name="Ranks.QualifiedMonths" xml:space="preserve"><value>კვალიფიცირებული თვეების ჯამი</value></data>
+  <data name="Ranks.ProgressTitle" xml:space="preserve"><value>პროგრესი შემდეგ რანგამდე</value></data>
+  <data name="Ranks.AdminOverrideTitle" xml:space="preserve"><value>ადმინისტრატორის გადაფარვა</value></data>
+  <data name="Ranks.AdminOverrideMessage" xml:space="preserve"><value>დაუყენეთ ხელით ამ წევრის რანგი ჩვეულებრივი კვალიფიკაციის წესების მიღმა.</value></data>
+  <data name="Ranks.ManualOverrideButton" xml:space="preserve"><value>ხელით გადაფარვა</value></data>
+  <data name="Ranks.OverrideModalTitle" xml:space="preserve"><value>რანგის ხელით გადაფარვა</value></data>
+  <data name="Ranks.OverrideModalMessage" xml:space="preserve"><value>აპირებთ ხელით გადაფაროთ ამ წევრის რანგი. მოქმედება დაფიქსირდება ჟურნალში. გავაგრძელოთ?</value></data>
+  <data name="Ranks.OverrideModalConfirm" xml:space="preserve"><value>რანგის გადაფარვა</value></data>
+  <data name="Ranks.BreadcrumbHome" xml:space="preserve"><value>მთავარი</value></data>
+  <data name="Ranks.BreadcrumbProgress" xml:space="preserve"><value>პროგრესი</value></data>
+  <data name="Ranks.HistoryTitle" xml:space="preserve"><value>რანგის მიღწევის ისტორია</value></data>
+  <data name="Ranks.ColAchievedDate" xml:space="preserve"><value>მიღწევის თარიღი</value></data>
+  <data name="Ranks.ColRank" xml:space="preserve"><value>რანგი</value></data>
+  <data name="Ranks.ColQualificationPeriod" xml:space="preserve"><value>კვალიფიკაციის პერიოდი</value></data>
+  <data name="Ranks.ColTriggeredBy" xml:space="preserve"><value>გამოწვეული</value></data>
+  <data name="Ranks.ColCertificate" xml:space="preserve"><value>სერტიფიკატი</value></data>
+  <data name="Ranks.TriggerManual" xml:space="preserve"><value>ხელით</value></data>
+  <data name="Ranks.TriggerAutomatic" xml:space="preserve"><value>ავტომატური</value></data>
+  <data name="Ranks.CertificateNotGenerated" xml:space="preserve"><value>არ არის გენერირებული</value></data>
+  <data name="Ranks.BreadcrumbHistory" xml:space="preserve"><value>ისტორია</value></data>
+
+  <!-- Marketing (F4) -->
+  <data name="Marketing.Title" xml:space="preserve"><value>მარკეტინგი</value></data>
+  <data name="Marketing.NoDocsTitle" xml:space="preserve"><value>დოკუმენტები ხელმისაწვდომი არ არის</value></data>
+  <data name="Marketing.NoDocsMessage" xml:space="preserve"><value>ამ მომენტში მარკეტინგული დოკუმენტები ხელმისაწვდომი არ არის.</value></data>
+  <data name="Marketing.LoadFailed" xml:space="preserve"><value>მარკეტინგული დოკუმენტების ჩატვირთვა ვერ მოხერხდა.</value></data>
+  <data name="Marketing.ColFile" xml:space="preserve"><value>ფაილი</value></data>
+  <data name="Marketing.ColDownload" xml:space="preserve"><value>ჩამოტვირთვა</value></data>
+  <data name="Marketing.FileSingular" xml:space="preserve"><value>ფაილი</value></data>
+  <data name="Marketing.FilePlural" xml:space="preserve"><value>ფაილი</value></data>
+  <data name="Marketing.DownloadAria" xml:space="preserve"><value>{0}-ის ({1}) ჩამოტვირთვა</value></data>
+  <data name="Marketing.DownloadFailed" xml:space="preserve"><value>ჩამოტვირთვის ბმულის გენერირება ვერ მოხერხდა. სცადეთ ხელახლა.</value></data>
+
+  <!-- PageTitle (F4) -->
+  <data name="PageTitle.TokensGuestPasses" xml:space="preserve"><value>ტოკენები და სტუმრის ბილეთები</value></data>
+  <data name="PageTitle.Loyalty" xml:space="preserve"><value>ერთგულების ქულები</value></data>
+  <data name="PageTitle.Ranks" xml:space="preserve"><value>რანგები</value></data>
+  <data name="PageTitle.Marketing" xml:space="preserve"><value>მარკეტინგი</value></data>
+
+  <!-- F4 — additional keys -->
+  <data name="Tokens.CardExpiryPrefix" xml:space="preserve"><value>ვადა :</value></data>
+  <data name="Tokens.PaginationAria" xml:space="preserve"><value>ტოკენების გვერდის ნავიგაცია</value></data>
+  <data name="GuestPasses.PaginationAria" xml:space="preserve"><value>სტუმრის ბილეთების გვერდის ნავიგაცია</value></data>
+  <data name="Loyalty.PaginationAria" xml:space="preserve"><value>ერთგულების ქულების გვერდის ნავიგაცია</value></data>
+  <data name="Ranks.HistoryPaginationAria" xml:space="preserve"><value>რანგის ისტორიის გვერდის ნავიგაცია</value></data>
+  <data name="Marketing.TabsAria" xml:space="preserve"><value>მარკეტინგული დოკუმენტების ტიპები</value></data>
+
+  <!-- F4 — Nav fallbacks (ka) -->
+  <data name="Nav.Tokens" xml:space="preserve"><value>ტოკენები</value></data>
+  <data name="Nav.Ranks" xml:space="preserve"><value>რანგები</value></data>
+  <data name="Nav.LoyaltyPoints" xml:space="preserve"><value>ერთგულების ქულები</value></data>
+  <data name="Nav.Dashboard" xml:space="preserve"><value>დაშბორდი</value></data>
+  <data name="Common.Download" xml:space="preserve"><value>ჩამოტვირთვა</value></data>
+
+  <!-- Tickets — F5 -->
+  <data name="Tickets.FilterStatus" xml:space="preserve"><value>სტატუსი</value></data>
+  <data name="Tickets.AllStatuses" xml:space="preserve"><value>ყველა სტატუსი</value></data>
+  <data name="Tickets.StatusOpen" xml:space="preserve"><value>ღია</value></data>
+  <data name="Tickets.StatusInProgress" xml:space="preserve"><value>მიმდინარე</value></data>
+  <data name="Tickets.StatusEscalated" xml:space="preserve"><value>გადაცემული</value></data>
+  <data name="Tickets.StatusResolved" xml:space="preserve"><value>გადაწყვეტილი</value></data>
+  <data name="Tickets.StatusClosed" xml:space="preserve"><value>დახურული</value></data>
+  <data name="Tickets.FilterPriority" xml:space="preserve"><value>პრიორიტეტი</value></data>
+  <data name="Tickets.AllPriorities" xml:space="preserve"><value>ყველა პრიორიტეტი</value></data>
+  <data name="Tickets.PriorityLow" xml:space="preserve"><value>დაბალი</value></data>
+  <data name="Tickets.PriorityNormal" xml:space="preserve"><value>ნორმალური</value></data>
+  <data name="Tickets.PriorityHigh" xml:space="preserve"><value>მაღალი</value></data>
+  <data name="Tickets.PriorityUrgent" xml:space="preserve"><value>გადაუდებელი</value></data>
+  <data name="Tickets.CreateNew" xml:space="preserve"><value>ახალი ბილეთის შექმნა</value></data>
+  <data name="Tickets.HeaderAll" xml:space="preserve"><value>ყველა ბილეთი</value></data>
+  <data name="Tickets.HeaderMine" xml:space="preserve"><value>ჩემი ბილეთები</value></data>
+  <data name="Tickets.ColTicketNumber" xml:space="preserve"><value>ბილეთი #</value></data>
+  <data name="Tickets.ColSubject" xml:space="preserve"><value>თემა</value></data>
+  <data name="Tickets.ColCategory" xml:space="preserve"><value>კატეგორია</value></data>
+  <data name="Tickets.ColPriority" xml:space="preserve"><value>პრიორიტეტი</value></data>
+  <data name="Tickets.ColStatus" xml:space="preserve"><value>სტატუსი</value></data>
+  <data name="Tickets.ColCreated" xml:space="preserve"><value>შექმნის დრო</value></data>
+  <data name="Tickets.ColActions" xml:space="preserve"><value>მოქმედებები</value></data>
+  <data name="Tickets.NoData" xml:space="preserve"><value>მონაცემები არ არის ხელმისაწვდომი.</value></data>
+  <data name="Tickets.ActionView" xml:space="preserve"><value>ნახვა</value></data>
+  <data name="Tickets.ActionAssign" xml:space="preserve"><value>მინიჭება</value></data>
+  <data name="Tickets.PaginationAria" xml:space="preserve"><value>ბილეთების გვერდის ნავიგაცია</value></data>
+  <data name="Tickets.BreadcrumbHome" xml:space="preserve"><value>მთავარი</value></data>
+  <data name="Tickets.BreadcrumbTickets" xml:space="preserve"><value>ბილეთები</value></data>
+
+  <!-- Ticket Detail — F5 -->
+  <data name="TicketDetail.LabelCategory" xml:space="preserve"><value>კატეგორია</value></data>
+  <data name="TicketDetail.LabelPriority" xml:space="preserve"><value>პრიორიტეტი</value></data>
+  <data name="TicketDetail.LabelAssignedTo" xml:space="preserve"><value>მინიჭებული</value></data>
+  <data name="TicketDetail.LabelCreated" xml:space="preserve"><value>შექმნის დრო</value></data>
+  <data name="TicketDetail.Unassigned" xml:space="preserve"><value>მიუნიჭებელი</value></data>
+  <data name="TicketDetail.CommentsHeader" xml:space="preserve"><value>კომენტარები ({0})</value></data>
+  <data name="TicketDetail.NoComments" xml:space="preserve"><value>ჯერ არცერთი კომენტარი არ არის. იყავი პირველი, ვინც უპასუხებს.</value></data>
+  <data name="TicketDetail.StaffBadge" xml:space="preserve"><value>თანამშრომელი</value></data>
+  <data name="TicketDetail.CommentPlaceholder" xml:space="preserve"><value>დაწერე კომენტარი…</value></data>
+  <data name="TicketDetail.PostComment" xml:space="preserve"><value>კომენტარის გამოქვეყნება</value></data>
+  <data name="TicketDetail.ActionsHeader" xml:space="preserve"><value>მოქმედებები</value></data>
+  <data name="TicketDetail.AssignLabel" xml:space="preserve"><value>მინიჭება (აგენტის ID/სახელი)</value></data>
+  <data name="TicketDetail.AssignPlaceholder" xml:space="preserve"><value>შეიყვანე აგენტის სახელი…</value></data>
+  <data name="TicketDetail.AssignConfirm" xml:space="preserve"><value>დადასტურება</value></data>
+  <data name="TicketDetail.AssignCancel" xml:space="preserve"><value>გაუქმება</value></data>
+  <data name="TicketDetail.AssignAgent" xml:space="preserve"><value>აგენტის მინიჭება</value></data>
+  <data name="TicketDetail.ResolveTicket" xml:space="preserve"><value>ბილეთის გადაწყვეტა</value></data>
+  <data name="TicketDetail.MergeTicket" xml:space="preserve"><value>ბილეთის გაერთიანება</value></data>
+  <data name="TicketDetail.Escalate" xml:space="preserve"><value>გადაცემა</value></data>
+  <data name="TicketDetail.EscalateLevel2" xml:space="preserve"><value>დონე 2 მხარდაჭერა</value></data>
+  <data name="TicketDetail.EscalateLevel3" xml:space="preserve"><value>დონე 3 მხარდაჭერა</value></data>
+  <data name="TicketDetail.EscalateIT" xml:space="preserve"><value>IT დეპარტამენტი</value></data>
+  <data name="TicketDetail.ResolveModalTitle" xml:space="preserve"><value>ბილეთის გადაწყვეტა</value></data>
+  <data name="TicketDetail.ResolveModalMessage" xml:space="preserve"><value>მონიშნოთ ეს ბილეთი როგორც გადაწყვეტილი? წევრს გაეგზავნება შეტყობინება.</value></data>
+  <data name="TicketDetail.ResolveModalConfirm" xml:space="preserve"><value>გადაწყვეტა</value></data>
+  <data name="TicketDetail.EscalationLevel1" xml:space="preserve"><value>დონე 1</value></data>
+  <data name="TicketDetail.EscalationLevel2" xml:space="preserve"><value>დონე 2</value></data>
+  <data name="TicketDetail.EscalationLevel3" xml:space="preserve"><value>დონე 3</value></data>
+  <data name="TicketDetail.EscalationIT" xml:space="preserve"><value>IT</value></data>
+  <data name="TicketDetail.EscalationOther" xml:space="preserve"><value>დონე {0}</value></data>
+  <data name="TicketDetail.BreadcrumbHome" xml:space="preserve"><value>მთავარი</value></data>
+  <data name="TicketDetail.BreadcrumbTickets" xml:space="preserve"><value>ბილეთები</value></data>
+
+  <!-- Ticket Create — F5 -->
+  <data name="TicketCreate.Title" xml:space="preserve"><value>ახალი ბილეთის შექმნა</value></data>
+  <data name="TicketCreate.CloseAria" xml:space="preserve"><value>დიალოგის დახურვა</value></data>
+  <data name="TicketCreate.SubjectLabel" xml:space="preserve"><value>თემა</value></data>
+  <data name="TicketCreate.SubjectPlaceholder" xml:space="preserve"><value>მოკლედ აღწერე შენი პრობლემა (მაქს. 200 სიმბოლო)</value></data>
+  <data name="TicketCreate.CategoryLabel" xml:space="preserve"><value>კატეგორია</value></data>
+  <data name="TicketCreate.CategorySelect" xml:space="preserve"><value>აირჩიე კატეგორია…</value></data>
+  <data name="TicketCreate.CategoryBilling" xml:space="preserve"><value>ბილინგი</value></data>
+  <data name="TicketCreate.CategoryTechnical" xml:space="preserve"><value>ტექნიკური</value></data>
+  <data name="TicketCreate.CategoryCommission" xml:space="preserve"><value>კომისია</value></data>
+  <data name="TicketCreate.CategoryMembership" xml:space="preserve"><value>წევრობა</value></data>
+  <data name="TicketCreate.CategoryAccount" xml:space="preserve"><value>ანგარიში</value></data>
+  <data name="TicketCreate.CategoryOther" xml:space="preserve"><value>სხვა</value></data>
+  <data name="TicketCreate.PriorityLabel" xml:space="preserve"><value>პრიორიტეტი</value></data>
+  <data name="TicketCreate.PriorityLow" xml:space="preserve"><value>დაბალი</value></data>
+  <data name="TicketCreate.PriorityNormal" xml:space="preserve"><value>ნორმალური</value></data>
+  <data name="TicketCreate.PriorityHigh" xml:space="preserve"><value>მაღალი</value></data>
+  <data name="TicketCreate.PriorityUrgent" xml:space="preserve"><value>გადაუდებელი</value></data>
+  <data name="TicketCreate.DescriptionLabel" xml:space="preserve"><value>აღწერა</value></data>
+  <data name="TicketCreate.DescriptionPlaceholder" xml:space="preserve"><value>მიუთითე ყველა დეტალი პრობლემის შესახებ…</value></data>
+  <data name="TicketCreate.AttachmentLabel" xml:space="preserve"><value>დანართი</value></data>
+  <data name="TicketCreate.AttachmentOptional" xml:space="preserve"><value>(არასავალდებულო)</value></data>
+  <data name="TicketCreate.AttachmentHelp" xml:space="preserve"><value>მხარდაჭერილი: სურათები, PDF, Word, TXT. მაქს. 10 MB.</value></data>
+  <data name="TicketCreate.Cancel" xml:space="preserve"><value>გაუქმება</value></data>
+  <data name="TicketCreate.Submit" xml:space="preserve"><value>ბილეთის გაგზავნა</value></data>
+  <data name="TicketCreate.ErrorGeneric" xml:space="preserve"><value>ბილეთის შექმნა ვერ მოხერხდა. სცადეთ ხელახლა.</value></data>
+
+  <!-- Login — F5 -->
+  <data name="Login.PosterAlt" xml:space="preserve"><value>ავტორიზაციის ილუსტრაცია</value></data>
+  <data name="Login.LogoAlt" xml:space="preserve"><value>MLM Conqueror-ის ლოგო</value></data>
+  <data name="Login.WelcomeBack" xml:space="preserve"><value>კეთილი იყოს თქვენი დაბრუნება!</value></data>
+  <data name="Login.PleaseSignIn" xml:space="preserve"><value>გთხოვთ, შეხვიდეთ თქვენს ანგარიშში</value></data>
+  <data name="Login.ErrorInvalid" xml:space="preserve"><value>არასწორი ელ. ფოსტა ან პაროლი.</value></data>
+  <data name="Login.ErrorInactive" xml:space="preserve"><value>თქვენი ანგარიში არააქტიურია. გთხოვთ, დაუკავშირდეთ მხარდაჭერას.</value></data>
+  <data name="Login.ErrorSessionExpired" xml:space="preserve"><value>თქვენი სესიის დრო ამოიწურა. გთხოვთ, შეხვიდეთ ხელახლა.</value></data>
+  <data name="Login.EmailLabel" xml:space="preserve"><value>ელ. ფოსტის მისამართი</value></data>
+  <data name="Login.EmailPlaceholder" xml:space="preserve"><value>შეიყვანეთ თქვენი ელ. ფოსტა</value></data>
+  <data name="Login.PasswordLabel" xml:space="preserve"><value>პაროლი</value></data>
+  <data name="Login.PasswordPlaceholder" xml:space="preserve"><value>შეიყვანეთ პაროლი</value></data>
+  <data name="Login.ForgotPassword" xml:space="preserve"><value>დაგავიწყდათ პაროლი?</value></data>
+  <data name="Login.SignInButton" xml:space="preserve"><value>შესვლა</value></data>
+  <data name="Login.NoAccount" xml:space="preserve"><value>არ გაქვთ ანგარიში?</value></data>
+  <data name="Login.ContactSupport" xml:space="preserve"><value>დაუკავშირდით ჩვენს მხარდაჭერის გუნდს</value></data>
+
+  <!-- Signup — F5 -->
+  <data name="Signup.BrandTitle" xml:space="preserve"><value>MLM Conqueror</value></data>
+  <data name="Signup.BrandSubtitle" xml:space="preserve"><value>შექმენით თქვენი ანგარიში</value></data>
+  <data name="Signup.StepPersonal" xml:space="preserve"><value>პირადი ინფორმაცია</value></data>
+  <data name="Signup.StepProducts" xml:space="preserve"><value>პროდუქტები</value></data>
+  <data name="Signup.StepPayment" xml:space="preserve"><value>გადახდა</value></data>
+  <data name="Signup.SponsorBadge" xml:space="preserve"><value>სპონსორი</value></data>
+  <data name="Signup.FirstName" xml:space="preserve"><value>სახელი</value></data>
+  <data name="Signup.LastName" xml:space="preserve"><value>გვარი</value></data>
+  <data name="Signup.Email" xml:space="preserve"><value>ელ. ფოსტა</value></data>
+  <data name="Signup.Password" xml:space="preserve"><value>პაროლი</value></data>
+  <data name="Signup.ConfirmPassword" xml:space="preserve"><value>პაროლის დადასტურება</value></data>
+  <data name="Signup.DateOfBirth" xml:space="preserve"><value>დაბადების თარიღი</value></data>
+  <data name="Signup.Country" xml:space="preserve"><value>ქვეყანა</value></data>
+  <data name="Signup.Phone" xml:space="preserve"><value>ტელეფონი</value></data>
+  <data name="Signup.ReplicateSlug" xml:space="preserve"><value>რეპლიცირებული საიტის Slug</value></data>
+  <data name="Signup.ReplicateSlugPlaceholder" xml:space="preserve"><value>my-unique-site</value></data>
+  <data name="Signup.MembershipLevel" xml:space="preserve"><value>წევრობის დონე</value></data>
+  <data name="Signup.LoadingLevels" xml:space="preserve"><value>წევრობის დონეების ჩატვირთვა…</value></data>
+  <data name="Signup.SelectLevel" xml:space="preserve"><value>— აირჩიე დონე —</value></data>
+  <data name="Signup.Continue" xml:space="preserve"><value>გაგრძელება</value></data>
+  <data name="Signup.Back" xml:space="preserve"><value>უკან</value></data>
+  <data name="Signup.ProductsIntro" xml:space="preserve"><value>აირჩიე პროდუქტები რეგისტრაციაში ჩასართავად.</value></data>
+  <data name="Signup.NoProducts" xml:space="preserve"><value>დამატებითი პროდუქტები არ არის ხელმისაწვდომი. დააჭირე გაგრძელებას.</value></data>
+  <data name="Signup.PaymentMethod" xml:space="preserve"><value>გადახდის მეთოდი</value></data>
+  <data name="Signup.PaymentCreditCard" xml:space="preserve"><value>საკრედიტო ბარათი</value></data>
+  <data name="Signup.PaymentCrypto" xml:space="preserve"><value>კრიპტოვალუტა</value></data>
+  <data name="Signup.PaymentToken" xml:space="preserve"><value>ტოკენი / სტუმრის ბილეთი</value></data>
+  <data name="Signup.PaymentDiscount" xml:space="preserve"><value>ფასდაკლების კოდი</value></data>
+  <data name="Signup.GatewayToken" xml:space="preserve"><value>გეითვეის ტოკენი</value></data>
+  <data name="Signup.First6" xml:space="preserve"><value>პირველი 6</value></data>
+  <data name="Signup.Last4" xml:space="preserve"><value>ბოლო 4</value></data>
+  <data name="Signup.CardBrand" xml:space="preserve"><value>ბრენდი</value></data>
+  <data name="Signup.ExpMonth" xml:space="preserve"><value>ვადის თვე</value></data>
+  <data name="Signup.ExpYear" xml:space="preserve"><value>ვადის წელი</value></data>
+  <data name="Signup.Gateway" xml:space="preserve"><value>გეითვეი</value></data>
+  <data name="Signup.Cryptocurrency" xml:space="preserve"><value>კრიპტოვალუტა</value></data>
+  <data name="Signup.TransactionId" xml:space="preserve"><value>ტრანზაქციის ID</value></data>
+  <data name="Signup.TokenCode" xml:space="preserve"><value>ტოკენის / სტუმრის ბილეთის კოდი</value></data>
+  <data name="Signup.DiscountCode" xml:space="preserve"><value>ფასდაკლების კოდი</value></data>
+  <data name="Signup.CompleteSignup" xml:space="preserve"><value>რეგისტრაციის დასრულება</value></data>
+  <data name="Signup.Welcome" xml:space="preserve"><value>კეთილი იყოს თქვენი მობრძანება, {0}!</value></data>
+  <data name="Signup.AccountActive" xml:space="preserve"><value>თქვენი ანგარიში აქტიურია. &lt;a href="/login"&gt;შესვლა ახლა&lt;/a&gt;</value></data>
+  <data name="Signup.AlreadyHaveAccount" xml:space="preserve"><value>უკვე გაქვთ ანგარიში? შესვლა</value></data>
+  <data name="Signup.ErrorNameRequired" xml:space="preserve"><value>სახელი და გვარი სავალდებულოა.</value></data>
+  <data name="Signup.ErrorEmailRequired" xml:space="preserve"><value>ელ. ფოსტა სავალდებულოა.</value></data>
+  <data name="Signup.ErrorPasswordMismatch" xml:space="preserve"><value>პაროლები უნდა ემთხვეოდეს.</value></data>
+  <data name="Signup.ErrorLevelRequired" xml:space="preserve"><value>გთხოვთ, აირჩიეთ წევრობის დონე.</value></data>
+  <data name="Signup.ErrorAge18" xml:space="preserve"><value>თქვენ უნდა იყოთ მინიმუმ 18 წლის.</value></data>
+  <data name="Signup.ErrorGeneric" xml:space="preserve"><value>რეგისტრაცია ვერ მოხერხდა. შეამოწმეთ თქვენი მონაცემები.</value></data>
+  <data name="Signup.ErrorServerUnreachable" xml:space="preserve"><value>სერვერთან დაკავშირება ვერ მოხერხდა: {0}</value></data>
+  <data name="Signup.ErrorProductRequired" xml:space="preserve"><value>გთხოვთ, აირჩიეთ მინიმუმ ერთი პროდუქტი.</value></data>
+  <data name="Signup.ErrorProductsSave" xml:space="preserve"><value>პროდუქტის არჩევანის შენახვა ვერ მოხერხდა.</value></data>
+  <data name="Signup.ErrorComplete" xml:space="preserve"><value>რეგისტრაციის დასრულება ვერ მოხერხდა.</value></data>
+
+  <!-- Error page — F5 -->
+  <data name="Error.Title" xml:space="preserve"><value>შეცდომა.</value></data>
+  <data name="Error.Subtitle" xml:space="preserve"><value>თქვენი მოთხოვნის დამუშავებისას მოხდა შეცდომა.</value></data>
+  <data name="Error.RequestIdLabel" xml:space="preserve"><value>მოთხოვნის ID:</value></data>
+  <data name="Error.DevModeHeader" xml:space="preserve"><value>დეველოპერული რეჟიმი</value></data>
+  <data name="Error.DevModeIntro" xml:space="preserve"><value>&lt;strong&gt;Development&lt;/strong&gt; გარემოზე გადასვლა აჩვენებს უფრო დეტალურ ინფორმაციას მომხდარი შეცდომის შესახებ.</value></data>
+  <data name="Error.DevModeWarning" xml:space="preserve"><value>&lt;strong&gt;Development გარემო არ უნდა იყოს ჩართული განთავსებულ აპლიკაციებში.&lt;/strong&gt; ამან შეიძლება გამოიწვიოს გამონაკლისებიდან მგრძნობიარე ინფორმაციის გამოჩენა საბოლოო მომხმარებლებისთვის. ლოკალური დებაგისთვის, ჩართეთ &lt;strong&gt;Development&lt;/strong&gt; გარემო — დააყენეთ &lt;strong&gt;ASPNETCORE_ENVIRONMENT&lt;/strong&gt; ცვლადი &lt;strong&gt;Development&lt;/strong&gt;-ად და გადატვირთეთ აპი.</value></data>
+
+  <!-- Not Found — F5 -->
+  <data name="NotFound.Title" xml:space="preserve"><value>გვერდი ვერ მოიძებნა</value></data>
+  <data name="NotFound.Message" xml:space="preserve"><value>ვწუხვართ, ეს გვერდი არ არსებობს.</value></data>
+  <data name="NotFound.GoToDashboard" xml:space="preserve"><value>დაშბორდზე გადასვლა</value></data>
+
+  <!-- ForgotPassword — Auth -->
+  <data name="ForgotPassword.Title" xml:space="preserve"><value>დაგავიწყდათ პაროლი?</value></data>
+  <data name="ForgotPassword.Subtitle" xml:space="preserve"><value>შეიყვანეთ თქვენი ელფოსტა და ჩვენ გამოგიგზავნით აღდგენის ბმულს.</value></data>
+  <data name="ForgotPassword.EmailLabel" xml:space="preserve"><value>ელფოსტის მისამართი</value></data>
+  <data name="ForgotPassword.EmailPlaceholder" xml:space="preserve"><value>შეიყვანეთ ელფოსტა</value></data>
+  <data name="ForgotPassword.SendButton" xml:space="preserve"><value>აღდგენის ბმულის გაგზავნა</value></data>
+  <data name="ForgotPassword.BackToLogin" xml:space="preserve"><value>უკან, შესვლის გვერდზე</value></data>
+  <data name="ForgotPassword.SuccessMessage" xml:space="preserve"><value>თუ ამ ელფოსტისთვის ანგარიში არსებობს, მალე მიიღებთ აღდგენის ბმულს.</value></data>
+  <data name="ForgotPassword.ErrorEmailRequired" xml:space="preserve"><value>ელფოსტა აუცილებელია.</value></data>
+  <data name="ForgotPassword.ErrorEmailInvalid" xml:space="preserve"><value>გთხოვთ, შეიყვანოთ მართებული ელფოსტა.</value></data>
+  <data name="ForgotPassword.ServerError" xml:space="preserve"><value>სერვერთან კავშირი ვერ ხერხდება. სცადეთ მოგვიანებით.</value></data>
+
+  <!-- ResetPassword — Auth -->
+  <data name="ResetPassword.Title" xml:space="preserve"><value>პაროლის აღდგენა</value></data>
+  <data name="ResetPassword.Subtitle" xml:space="preserve"><value>აირჩიეთ ახალი პაროლი თქვენი ანგარიშისთვის.</value></data>
+  <data name="ResetPassword.EmailLabel" xml:space="preserve"><value>ელფოსტის მისამართი</value></data>
+  <data name="ResetPassword.NewPasswordLabel" xml:space="preserve"><value>ახალი პაროლი</value></data>
+  <data name="ResetPassword.NewPasswordPlaceholder" xml:space="preserve"><value>შეიყვანეთ ახალი პაროლი</value></data>
+  <data name="ResetPassword.ConfirmPasswordLabel" xml:space="preserve"><value>ახალი პაროლის დადასტურება</value></data>
+  <data name="ResetPassword.ConfirmPasswordPlaceholder" xml:space="preserve"><value>თავიდან შეიყვანეთ პაროლი</value></data>
+  <data name="ResetPassword.PasswordHint" xml:space="preserve"><value>მინიმუმ 8 სიმბოლო, მინიმუმ ერთი დიდი ასო და ერთი ციფრი.</value></data>
+  <data name="ResetPassword.SubmitButton" xml:space="preserve"><value>პაროლის აღდგენა</value></data>
+  <data name="ResetPassword.BackToLogin" xml:space="preserve"><value>უკან, შესვლის გვერდზე</value></data>
+  <data name="ResetPassword.GoToLogin" xml:space="preserve"><value>გადასვლა შესვლის გვერდზე</value></data>
+  <data name="ResetPassword.SuccessMessage" xml:space="preserve"><value>თქვენი პაროლი აღდგენილია. ახლა შეგიძლიათ შეხვიდეთ ახალი პაროლით.</value></data>
+  <data name="ResetPassword.InvalidLink" xml:space="preserve"><value>ეს აღდგენის ბმული არასწორია ან ვადაგასულია.</value></data>
+  <data name="ResetPassword.RequestNew" xml:space="preserve"><value>ახალი ბმულის მოთხოვნა</value></data>
+  <data name="ResetPassword.ErrorRequired" xml:space="preserve"><value>პაროლის ორივე ველი აუცილებელია.</value></data>
+  <data name="ResetPassword.ErrorWeak" xml:space="preserve"><value>პაროლი უნდა შეიცავდეს მინიმუმ 8 სიმბოლოს, ერთ დიდ ასოს და ერთ ციფრს.</value></data>
+  <data name="ResetPassword.ErrorMismatch" xml:space="preserve"><value>პაროლები არ ემთხვევა.</value></data>
+  <data name="ResetPassword.ErrorGeneric" xml:space="preserve"><value>პაროლის აღდგენა ვერ მოხერხდა. ბმული შესაძლოა არასწორი ან ვადაგასული იყოს.</value></data>
+  <data name="ResetPassword.ServerError" xml:space="preserve"><value>სერვერთან კავშირი ვერ ხერხდება. სცადეთ მოგვიანებით.</value></data>
+
+  <!-- TwoFactor — Auth (UI shell; verify endpoint TBD) -->
+  <data name="TwoFactor.Title" xml:space="preserve"><value>ორფაქტორიანი ვერიფიკაცია</value></data>
+  <data name="TwoFactor.Subtitle" xml:space="preserve"><value>შესვლის დასასრულებლად შეიყვანეთ 6-ციფრიანი კოდი.</value></data>
+  <data name="TwoFactor.SentTo" xml:space="preserve"><value>კოდი გავგზავნეთ მისამართზე {0}.</value></data>
+  <data name="TwoFactor.CodeLabel" xml:space="preserve"><value>ვერიფიკაციის კოდი</value></data>
+  <data name="TwoFactor.CodePlaceholder" xml:space="preserve"><value>123456</value></data>
+  <data name="TwoFactor.CodeHint" xml:space="preserve"><value>6 ციფრი, მხოლოდ რიცხვები.</value></data>
+  <data name="TwoFactor.VerifyButton" xml:space="preserve"><value>დადასტურება</value></data>
+  <data name="TwoFactor.NoCodeQuestion" xml:space="preserve"><value>კოდი არ მიიღეთ?</value></data>
+  <data name="TwoFactor.ResendLink" xml:space="preserve"><value>თავიდან გაგზავნა</value></data>
+  <data name="TwoFactor.ResentNotice" xml:space="preserve"><value>თუ მისამართი დარეგისტრირებულია, ახალი კოდი გამოიგზავნა.</value></data>
+  <data name="TwoFactor.CancelLink" xml:space="preserve"><value>გაუქმება და შესვლის გვერდზე დაბრუნება</value></data>
+  <data name="TwoFactor.ErrorInvalidCode" xml:space="preserve"><value>გთხოვთ, შეიყვანოთ 6-ციფრიანი ციფრული კოდი.</value></data>
+  <data name="TwoFactor.ErrorNotImplemented" xml:space="preserve"><value>ორფაქტორიანი ვერიფიკაცია ჯერ არ არის ხელმისაწვდომი. გააგრძელეთ შესვლის გვერდიდან.</value></data>
+  <data name="TwoFactor.ServerError" xml:space="preserve"><value>სერვერთან კავშირი ვერ ხერხდება. სცადეთ მოგვიანებით.</value></data>
+
+  <!-- PageTitle — F5 -->
+  <data name="PageTitle.Tickets" xml:space="preserve"><value>მხარდაჭერის ბილეთები</value></data>
+  <data name="PageTitle.TicketDetail" xml:space="preserve"><value>ბილეთის დეტალი</value></data>
+  <data name="PageTitle.Login" xml:space="preserve"><value>MLM Conqueror - შესვლა</value></data>
+  <data name="PageTitle.Signup" xml:space="preserve"><value>MLM Conqueror - რეგისტრაცია</value></data>
+  <data name="PageTitle.Error" xml:space="preserve"><value>შეცდომა</value></data>
+  <data name="PageTitle.NotFound" xml:space="preserve"><value>გვერდი ვერ მოიძებნა</value></data>
+  <data name="PageTitle.ForgotPassword" xml:space="preserve"><value>MLM Conqueror - პაროლის აღდგენის მოთხოვნა</value></data>
+  <data name="PageTitle.ResetPassword" xml:space="preserve"><value>MLM Conqueror - პაროლის აღდგენა</value></data>
+  <data name="PageTitle.TwoFactor" xml:space="preserve"><value>MLM Conqueror - ორფაქტორიანი ვერიფიკაცია</value></data>
+
+</root>

@@ -1,8 +1,9 @@
 @page "/commissions/boost"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Ambassador")]
 @inject IViewContextService ViewContext
+@inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
 
-<PageTitle>Boost Bonus</PageTitle>
+<PageTitle>@L["Sidebar.BoostBonus"]</PageTitle>
 
 <BoostBonusReport MemberProfileId="@ViewContext.ViewingMemberId" />

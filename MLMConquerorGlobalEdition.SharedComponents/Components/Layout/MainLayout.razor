@@ -2,6 +2,7 @@
 @implements IDisposable
 @inject IThemeService Theme
 @inject IViewContextService ViewContext
+@inject IStringLocalizer<SharedResources> L
 
 @* Matches UI-Templates/event_details.html layout structure:
      <body class="boxed-size">
@@ -34,10 +35,10 @@
                     <ChildContent>@Body</ChildContent>
                     <ErrorContent Context="ex">
                         <div class="alert alert-danger m-3">
-                            <h5 class="alert-heading"><i class="ri-error-warning-line me-2"></i>An error occurred</h5>
+                            <h5 class="alert-heading"><i class="ri-error-warning-line me-2"></i>@L["Layout.ErrorOccurred"]</h5>
                             <p class="mb-1">@ex.Message</p>
                             <pre class="small text-muted mt-2" style="white-space:pre-wrap;">@ex.ToString()</pre>
-                            <button class="btn btn-sm btn-outline-danger mt-2" onclick="window.location.reload()">Reload Page</button>
+                            <button class="btn btn-sm btn-outline-danger mt-2" onclick="window.location.reload()">@L["Layout.ReloadPage"]</button>
                         </div>
                     </ErrorContent>
                 </ErrorBoundary>

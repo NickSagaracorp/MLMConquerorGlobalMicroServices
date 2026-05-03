@@ -1,6 +1,7 @@
 @inject IViewContextService ViewContext
 @inject HttpClient Http
 @inject IJSRuntime JS
+@inject IStringLocalizer<SharedResources> L
 
 @*
     Orchestrator for the My Profile experience. Loads the full ProfileDto once,
@@ -33,7 +34,7 @@
         <li class="nav-item">
             <button class="nav-link @(_tab == "profile" ? "active" : "")"
                     @onclick='() => _tab = "profile"' type="button">
-                <i class="ri-user-line me-1"></i>Profile
+                <i class="ri-user-line me-1"></i>@L["UserProfile.Tab.Profile"]
             </button>
         </li>
         @if (_canEdit)
@@ -41,14 +42,14 @@
             <li class="nav-item">
                 <button class="nav-link @(_tab == "account" ? "active" : "")"
                         @onclick='() => _tab = "account"' type="button">
-                    <i class="ri-shield-keyhole-line me-1"></i>Account &amp; Security
+                    <i class="ri-shield-keyhole-line me-1"></i>@L["UserProfile.Tab.Account"]
                 </button>
             </li>
         }
         <li class="nav-item">
             <button class="nav-link @(_tab == "billing" ? "active" : "")"
                     @onclick='() => _tab = "billing"' type="button">
-                <i class="ri-bank-card-line me-1"></i>Billing &amp; Commissions
+                <i class="ri-bank-card-line me-1"></i>@L["UserProfile.Tab.Billing"]
             </button>
         </li>
     </ul>
@@ -63,6 +64,7 @@
                                   DateOfBirth="@_profile.DateOfBirth"
                                   BusinessName="@_profile.BusinessName"
                                   SsnLast4="@_profile.SsnLast4"
+                                  EinLast4="@_profile.EinLast4"
                                   EnrollDate="@_profile.EnrollDate" />
 
                 <ContactInfoCard Phone="@_profile.Phone"
@@ -140,19 +142,56 @@
     else if (_tab == "account" && _canEdit)
     {
         <div class="row g-4">
-            <div class="col-12 col-xl-8">
+            <div class="col-12">
                 <div class="card border-0 shadow-sm rounded-3 mb-4">
                     <div class="card-body p-4">
-                        <h6 class="fs-18 mb-3 fw-semibold">
-                            <i class="ri-key-2-line me-2 text-primary"></i>Email &amp; Password
-                        </h6>
-                        <CredentialsForm MemberProfileId="@MemberProfileId" />
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom pb-3 mb-3">
+                            <h6 class="fs-18 mb-0 fw-semibold">
+                                <i class="ri-shield-keyhole-line me-2 text-primary"></i>@L["Account.Title"]
+                            </h6>
+                            @if (!_accountEditing)
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
+                                        @onclick="() => _accountEditing = true">
+                                    <i class="ri-edit-line"></i>
+                                    <span>@L["Account.EditButton"]</span>
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
+                                        @onclick="() => _accountEditing = false">
+                                    <i class="ri-close-line"></i>
+                                    <span>@L["Common.Close"]</span>
+                                </button>
+                            }
+                        </div>
+
+                        @if (!_accountEditing)
+                        {
+                            <div class="row g-3">
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label text-muted small mb-1">@L["Account.Email"]</label>
+                                    <div class="fw-medium text-break">@(_profile.Email ?? "—")</div>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label text-muted small mb-1">@L["Account.Password"]</label>
+                                    <div class="fw-medium font-monospace">@L["Account.PasswordMasked"]</div>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <CredentialsForm MemberProfileId="@MemberProfileId" />
+                        }
                     </div>
                 </div>
+            </div>
 
+            <div class="col-12 col-lg-6">
                 <CredentialsHistoryTable />
             </div>
-            <div class="col-12 col-xl-4">
+            <div class="col-12 col-lg-6">
                 <SecurityLogTable MemberProfileId="@MemberProfileId" />
             </div>
         </div>
@@ -160,7 +199,7 @@
     else if (_tab == "billing")
     {
         <div class="row g-4">
-            <div class="col-12 col-lg-7">
+            <div class="col-12 col-lg-8">
                 <BillingInfoCard DefaultCard="@_defaultCard"
                                  Address="@_profile.Address"
                                  City="@_profile.City"
@@ -168,34 +207,29 @@
                                  ZipCode="@_profile.ZipCode"
                                  Country="@_profile.Country"
                                  OnManageCardsRequested="ScrollToCards" />
-
-                <div id="cards-section">
-                    <PaymentMethodTab @ref="_paymentTabRef" />
-                </div>
             </div>
-            <div class="col-12 col-lg-5">
-                @if (_canEdit)
-                {
-                    <PayoutFrequencyCard CurrentFrequency="@_profile.PayoutFrequency"
-                                         Phone="@_profile.Phone"
-                                         WhatsApp="@_profile.WhatsApp"
-                                         Country="@_profile.Country"
-                                         State="@_profile.State"
-                                         City="@_profile.City"
-                                         Address="@_profile.Address"
-                                         ZipCode="@_profile.ZipCode"
-                                         DefaultLanguage="@_profile.DefaultLanguage"
-                                         ShowBusinessName="@_profile.ShowBusinessName"
-                                         IsEmailPublic="@_profile.IsEmailPublic"
-                                         IsPhonePublic="@_profile.IsPhonePublic"
-                                         OnChanged="OnPayoutFrequencyChangedAsync" />
-                }
-
-                <WalletPanel MemberProfileId="@MemberProfileId" />
+            <div class="col-12 col-lg-4">
+                <CommissionsCard MemberProfileId="@MemberProfileId"
+                                 CanEdit="@_canEdit"
+                                 CurrentFrequency="@_profile.PayoutFrequency"
+                                 Phone="@_profile.Phone"
+                                 WhatsApp="@_profile.WhatsApp"
+                                 Country="@_profile.Country"
+                                 State="@_profile.State"
+                                 City="@_profile.City"
+                                 Address="@_profile.Address"
+                                 ZipCode="@_profile.ZipCode"
+                                 DefaultLanguage="@_profile.DefaultLanguage"
+                                 ShowBusinessName="@_profile.ShowBusinessName"
+                                 IsEmailPublic="@_profile.IsEmailPublic"
+                                 IsPhonePublic="@_profile.IsPhonePublic"
+                                 OnSaved="LoadProfileAsync" />
             </div>
 
             <div class="col-12">
-                <BillingHistoryTable />
+                <div id="cards-section">
+                    <WalletPanel MemberProfileId="@MemberProfileId" />
+                </div>
             </div>
         </div>
     }
@@ -216,24 +250,32 @@
     private string  _tab       = "profile";
     private string? _error;
     private bool    _showAddressHistory;
+    private bool    _accountEditing;
 
     private ProfileApiDto? _profile;
     private MembershipCard.MembershipSnapshot? _membershipSnapshot;
     private BillingInfoCard.DefaultCardInfo?   _defaultCard;
-    private PaymentMethodTab? _paymentTabRef;
 
     // The public-page URL prefix shown next to the slug input. Could later
     // come from config; hardcoding the dominant brand is fine for now.
     private const string _websitePrefix = "mlmconqueror.com/";
 
+    // The viewer can edit when they're authenticated as a member (BizCenter case
+    // — ViewingMemberId is the user's own memberId from the JWT claim) OR when
+    // they hold an explicit admin context (AdminWeb impersonation flow). The
+    // previous comparison ViewingMemberId == ViewerUserId was always false
+    // because ViewerUserId is the user's GUID (NameIdentifier) while
+    // ViewingMemberId is the short member id (e.g. AMB-671841) — different
+    // value spaces. The non-empty check correctly identifies an authenticated
+    // owner without leaking any cross-member edit rights.
     private bool _canEdit =>
-        ViewContext.ViewingMemberId == ViewContext.ViewerUserId
+        !string.IsNullOrEmpty(ViewContext.ViewingMemberId)
         || ViewContext.IsAdminContext;
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
-        new("Dashboard", "/dashboard"),
-        new("Profile")
+        new(L["UserProfile.Breadcrumb.Dashboard"].Value, "/dashboard"),
+        new(L["UserProfile.Breadcrumb.Profile"].Value)
     };
 
     protected override async Task OnParametersSetAsync()
@@ -265,7 +307,7 @@
             }
             else
             {
-                _error = resp?.Message ?? "Failed to load profile.";
+                _error = resp?.Message ?? L["UserProfile.LoadFailed"].Value;
             }
         }
         catch (Exception ex) { _error = ex.Message; }
@@ -314,13 +356,6 @@
         return Task.CompletedTask;
     }
 
-    private Task OnPayoutFrequencyChangedAsync(string freq)
-    {
-        if (_profile is not null) _profile.PayoutFrequency = freq;
-        StateHasChanged();
-        return Task.CompletedTask;
-    }
-
     private async Task ScrollToAddressEditor()
     {
         // Scroll the editable AddressCard into view so the user knows what
@@ -359,6 +394,7 @@
         public DateTime DateOfBirth      { get; set; }
         public string?  BusinessName     { get; set; }
         public string?  SsnLast4         { get; set; }
+        public string?  EinLast4         { get; set; }
         public string   Email            { get; set; } = string.Empty;
         public string?  ReplicateSiteSlug{ get; set; }
         public string?  PhotoUrl         { get; set; }

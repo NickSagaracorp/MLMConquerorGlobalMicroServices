@@ -1,9 +1,10 @@
-﻿@page "/team/enrollment/my-team"
-@rendermode InteractiveServer
+@page "/team/enrollment/my-team"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @inject IViewContextService ViewContext
+@inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
 
-<PageTitle>Enrollment Team â€” My Team</PageTitle>
+<PageTitle>@L["PageTitle.EnrollmentMyTeam"]</PageTitle>
 
 <EnrollmentTeamMyTeam MemberProfileId="@ViewContext.ViewingMemberId" />
 

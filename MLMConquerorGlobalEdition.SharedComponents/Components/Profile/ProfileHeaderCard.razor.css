@@ -3,48 +3,91 @@
 }
 
 .profile-header-cover {
-    height: 140px;
-    background:
-        linear-gradient(135deg, rgba(96, 93, 255, 0.92) 0%, rgba(176, 106, 179, 0.85) 100%),
-        radial-gradient(circle at 80% 30%, rgba(255, 255, 255, 0.18), transparent 40%);
+    height: 220px;
+    background-image: url('/assets/images/profile-bg.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
 .profile-header-avatar-wrapper {
     position: relative;
-    margin-top: -64px;
+    margin-top: -100px;
 }
 
 .profile-header-avatar {
-    width: 128px;
-    height: 128px;
+    width: 180px;
+    height: 180px;
     object-fit: cover;
     background-color: #f1f3f5;
+    border-width: 4px !important;
 }
 
 .profile-header-avatar-edit {
     position: absolute;
-    bottom: 4px;
-    right: 4px;
-    width: 36px;
-    height: 36px;
+    bottom: 6px;
+    right: 6px;
+    width: 44px;
+    height: 44px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     padding: 0;
     line-height: 1;
+    /* 3px white ring + soft drop-shadow so the camera badge always reads
+       on top of any avatar photo (light or dark) and is unambiguously
+       interactive — fixes the discoverability complaint. */
+    border: 3px solid #fff !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.04);
+    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+    cursor: pointer;
+}
+
+.profile-header-avatar-edit:hover:not(:disabled),
+.profile-header-avatar-edit:focus-visible {
+    transform: scale(1.08);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0, 0, 0, 0.04);
 }
 
 .profile-header-avatar-edit i {
-    font-size: 16px;
+    font-size: 20px;
 }
 
-@media (max-width: 767.98px) {
+@media (max-width: 991.98px) {
+    .profile-header-cover {
+        height: 180px;
+    }
+
     .profile-header-avatar-wrapper {
-        margin-top: -54px;
+        margin-top: -80px;
     }
 
     .profile-header-avatar {
-        width: 108px;
-        height: 108px;
+        width: 150px;
+        height: 150px;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .profile-header-cover {
+        height: 150px;
+    }
+
+    .profile-header-avatar-wrapper {
+        margin-top: -64px;
+    }
+
+    .profile-header-avatar {
+        width: 120px;
+        height: 120px;
+    }
+
+    .profile-header-avatar-edit {
+        width: 32px;
+        height: 32px;
+    }
+
+    .profile-header-avatar-edit i {
+        font-size: 14px;
     }
 }

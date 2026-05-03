@@ -1,6 +1,7 @@
 @inject HttpClient Http
 @inject IViewContextService ViewContext
 @inject NavigationManager Nav
+@inject IStringLocalizer<SharedResources> L
 
 @using MLMConquerorGlobalEdition.SharedComponents.Constants
 
@@ -33,16 +34,16 @@
                     <p class="mb-3">@_ticket.Description</p>
                     <div class="row g-2 text-muted small">
                         <div class="col-6">
-                            Category: <strong class="text-body">@_ticket.Category</strong>
+                            @L["TicketDetail.LabelCategory"]: <strong class="text-body">@_ticket.Category</strong>
                         </div>
                         <div class="col-6">
-                            Priority: <strong class="text-body">@_ticket.Priority</strong>
+                            @L["TicketDetail.LabelPriority"]: <strong class="text-body">@_ticket.Priority</strong>
                         </div>
                         <div class="col-6">
-                            Assigned To: <strong class="text-body">@(_ticket.AssignedTo ?? "Unassigned")</strong>
+                            @L["TicketDetail.LabelAssignedTo"]: <strong class="text-body">@(_ticket.AssignedTo ?? L["TicketDetail.Unassigned"].Value)</strong>
                         </div>
                         <div class="col-6">
-                            Created: <strong class="text-body">@_ticket.CreatedAt.ToString("MMM dd, yyyy HH:mm")</strong>
+                            @L["TicketDetail.LabelCreated"]: <strong class="text-body">@_ticket.CreatedAt.ToString("MMM dd, yyyy HH:mm")</strong>
                         </div>
                     </div>
                 </div>
@@ -52,13 +53,13 @@
             <div class="card">
                 <div class="card-header py-3">
                     <h6 class="card-title mb-0 fw-semibold">
-                        Comments (@_comments.Count)
+                        @string.Format(L["TicketDetail.CommentsHeader"], _comments.Count)
                     </h6>
                 </div>
                 <div class="card-body p-0">
                     @if (_comments.Count == 0)
                     {
-                        <div class="text-center py-4 text-muted small">No comments yet. Be the first to reply.</div>
+                        <div class="text-center py-4 text-muted small">@L["TicketDetail.NoComments"]</div>
                     }
                     else
                     {
@@ -70,7 +71,7 @@
                                         <strong class="text-body">@c.Author</strong>
                                         @if (c.IsStaff)
                                         {
-                                            <span class="badge bg-secondary ms-2">Staff</span>
+                                            <span class="badge bg-secondary ms-2">@L["TicketDetail.StaffBadge"]</span>
                                         }
                                     </div>
                                     <span>@c.CreatedAt.ToString("MMM dd, yyyy HH:mm")</span>
@@ -84,7 +85,7 @@
                 <div class="card-footer">
                     <textarea class="form-control mb-2"
                               rows="3"
-                              placeholder="Write a comment…"
+                              placeholder="@L["TicketDetail.CommentPlaceholder"]"
                               @bind="_newComment"></textarea>
                     <button class="btn btn-primary btn-sm"
                             @onclick="AddCommentAsync"
@@ -93,7 +94,7 @@
                         {
                             <span class="spinner-border spinner-border-sm me-1"></span>
                         }
-                        Post Comment
+                        @L["TicketDetail.PostComment"]
                     </button>
                 </div>
             </div>
@@ -103,7 +104,7 @@
         <div class="col-12 col-lg-4">
             <div class="card">
                 <div class="card-body">
-                    <h6 class="fw-semibold mb-3">Actions</h6>
+                    <h6 class="fw-semibold mb-3">@L["TicketDetail.ActionsHeader"]</h6>
                     <div class="d-grid gap-2">
 
                         <!-- Assign -->
@@ -111,9 +112,9 @@
                             @if (_showAssignForm)
                             {
                                 <div class="border rounded p-2 mb-1">
-                                    <label class="form-label small mb-1">Assign To (Agent ID / Name)</label>
+                                    <label class="form-label small mb-1">@L["TicketDetail.AssignLabel"]</label>
                                     <input class="form-control form-control-sm mb-2"
-                                           placeholder="Enter agent name…"
+                                           placeholder="@L["TicketDetail.AssignPlaceholder"]"
                                            @bind="_assignTarget" />
                                     <div class="d-flex gap-1">
                                         <button class="btn btn-sm btn-primary flex-grow-1"
@@ -123,11 +124,11 @@
                                             {
                                                 <span class="spinner-border spinner-border-sm me-1"></span>
                                             }
-                                            Confirm
+                                            @L["TicketDetail.AssignConfirm"]
                                         </button>
                                         <button class="btn btn-sm btn-secondary"
                                                 @onclick="@(() => _showAssignForm = false)">
-                                            Cancel
+                                            @L["TicketDetail.AssignCancel"]
                                         </button>
                                     </div>
                                 </div>
@@ -136,7 +137,7 @@
                             {
                                 <button class="btn btn-outline-secondary btn-sm"
                                         @onclick="@(() => _showAssignForm = true)">
-                                    <i class="ri-user-add-line me-1"></i>Assign Agent
+                                    <i class="ri-user-add-line me-1"></i>@L["TicketDetail.AssignAgent"]
                                 </button>
                             }
                         </AdminOnlyWrapper>
@@ -145,14 +146,14 @@
                         <AdminOnlyWrapper Permission="@Permissions.Ticket.Resolve">
                             <button class="btn btn-success btn-sm"
                                     @onclick="@(() => _showResolveModal = true)">
-                                <i class="ri-check-double-line me-1"></i>Resolve Ticket
+                                <i class="ri-check-double-line me-1"></i>@L["TicketDetail.ResolveTicket"]
                             </button>
                         </AdminOnlyWrapper>
 
                         <!-- Merge -->
                         <AdminOnlyWrapper Permission="@Permissions.Ticket.Merge">
                             <button class="btn btn-outline-secondary btn-sm">
-                                <i class="ri-git-merge-line me-1"></i>Merge Ticket
+                                <i class="ri-git-merge-line me-1"></i>@L["TicketDetail.MergeTicket"]
                             </button>
                         </AdminOnlyWrapper>
 
@@ -163,7 +164,7 @@
                                         type="button"
                                         data-bs-toggle="dropdown"
                                         aria-expanded="false">
-                                    <i class="ri-arrow-up-line me-1"></i>Escalate
+                                    <i class="ri-arrow-up-line me-1"></i>@L["TicketDetail.Escalate"]
                                 </button>
                                 <ul class="dropdown-menu w-100">
                                     @if (ViewContext.HasPermission(Permissions.Ticket.EscalateToL2))
@@ -171,7 +172,7 @@
                                         <li>
                                             <button class="dropdown-item"
                                                     @onclick="@(() => EscalateAsync(2))">
-                                                Level 2 Support
+                                                @L["TicketDetail.EscalateLevel2"]
                                             </button>
                                         </li>
                                     }
@@ -180,7 +181,7 @@
                                         <li>
                                             <button class="dropdown-item"
                                                     @onclick="@(() => EscalateAsync(3))">
-                                                Level 3 Support
+                                                @L["TicketDetail.EscalateLevel3"]
                                             </button>
                                         </li>
                                     }
@@ -189,7 +190,7 @@
                                         <li>
                                             <button class="dropdown-item text-danger"
                                                     @onclick="@(() => EscalateAsync(4))">
-                                                IT Department
+                                                @L["TicketDetail.EscalateIT"]
                                             </button>
                                         </li>
                                     }
@@ -209,9 +210,9 @@
 @if (_showResolveModal)
 {
     <ConfirmModal IsVisible="true"
-                  Title="Resolve Ticket"
-                  Message="Mark this ticket as resolved? The member will be notified."
-                  ConfirmLabel="Resolve"
+                  Title="@L["TicketDetail.ResolveModalTitle"]"
+                  Message="@L["TicketDetail.ResolveModalMessage"]"
+                  ConfirmLabel="@L["TicketDetail.ResolveModalConfirm"]"
                   ConfirmColor="success"
                   IsBusy="@_busyResolve"
                   OnConfirm="ResolveTicketAsync"
@@ -236,8 +237,8 @@
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
-        new("Home",    "/dashboard"),
-        new("Tickets", "/tickets"),
+        new(L["TicketDetail.BreadcrumbHome"].Value,    "/dashboard"),
+        new(L["TicketDetail.BreadcrumbTickets"].Value, "/tickets"),
         new($"#{_ticket?.TicketNumber ?? TicketId}")
     };
 
@@ -309,13 +310,13 @@
         finally { _busyAssign = false; }
     }
 
-    private static string EscalationLabel(int level) => level switch
+    private string EscalationLabel(int level) => level switch
     {
-        1 => "Level 1",
-        2 => "Level 2",
-        3 => "Level 3",
-        4 => "IT",
-        _ => $"Level {level}"
+        1 => L["TicketDetail.EscalationLevel1"],
+        2 => L["TicketDetail.EscalationLevel2"],
+        3 => L["TicketDetail.EscalationLevel3"],
+        4 => L["TicketDetail.EscalationIT"],
+        _ => string.Format(L["TicketDetail.EscalationOther"], level)
     };
 
     // ── Local data models ─────────────────────────────────────────────────────

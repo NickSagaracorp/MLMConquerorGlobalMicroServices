@@ -1,7 +1,10 @@
 @inject HttpClient Http
 @inject IViewContextService ViewContext
 @inject NavigationManager Nav
+@inject IStringLocalizer<SharedResources> L
 @using System.Net.Http.Json
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
 
 @if (ShowBreadcrumb) { <BreadcrumbNav Items="@_breadcrumb" /> }
 
@@ -12,7 +15,7 @@
         <div class="card bg-white border-0 rounded-3 mb-4">
         <div class="card-body p-4" style="padding-bottom:0 !important">
             <div class="mb-3 mb-lg-4">
-                <h3 class="mb-0">Current Progress: @_currentMonthName</h3>
+                <h3 class="mb-0">@string.Format(L["Team.CurrentProgress"], _currentMonthName)</h3>
             </div>
             <div class="row">
                 <div class="col-xxl-4 col-xl-4 col-sm-4">
@@ -23,7 +26,7 @@
                                     <i class="ri-bar-chart-box-line fs-40 text-white"></i>
                                 </div>
                                 <div class="flex-grow-1 ms-2">
-                                    <span class="text-white">Total Points</span>
+                                    <span class="text-white">@L["Team.TotalPoints"]</span>
                                     <h3 class="fs-20 mt-1 mb-0 text-white">@_result.TotalPoints.ToString("N0")</h3>
                                 </div>
                             </div>
@@ -38,7 +41,7 @@
                                     <i class="ri-close-circle-line fs-40 text-danger"></i>
                                 </div>
                                 <div class="flex-grow-1 ms-2">
-                                    <span>Total Eligible Points (Current Rank)</span>
+                                    <span>@L["Team.TotalEligibleCurrentRank"]</span>
                                     <h3 class="fs-20 mt-1 mb-0">@_result.TotalEligibleCurrentRank.ToString("N0")</h3>
                                 </div>
                             </div>
@@ -53,7 +56,7 @@
                                     <i class="ri-checkbox-circle-line fs-40 text-success"></i>
                                 </div>
                                 <div class="flex-grow-1 ms-2">
-                                    <span>Total Eligible Points (Next Rank)</span>
+                                    <span>@L["Team.TotalEligibleNextRank"]</span>
                                     <h3 class="fs-20 mt-1 mb-0">@_result.TotalEligibleNextRank.ToString("N0")</h3>
                                 </div>
                             </div>
@@ -75,7 +78,7 @@
             <div class="position-relative table-src-form me-0">
                 <input type="text"
                        class="form-control"
-                       placeholder="Search here"
+                       placeholder="@L["Team.SearchPlaceholderHere"]"
                        value="@_search"
                        @oninput="OnSearchInput" />
                 <i class="ri-search-line position-absolute top-50 start-0 translate-middle-y"></i>
@@ -97,17 +100,17 @@
                     <table class="table align-middle">
                         <thead>
                             <tr>
-                                <th>Ambassador</th>
-                                <th>Total Points</th>
-                                <th>Eligible Points (Current Rank)</th>
-                                <th>Eligible Points (Next Rank)</th>
+                                <th>@L["Reports.Ambassador"]</th>
+                                <th>@L["Team.TotalPoints"]</th>
+                                <th>@L["Team.CurrentRankEligible"]</th>
+                                <th>@L["Team.NextRankEligible"]</th>
                             </tr>
                         </thead>
                         <tbody>
                             @if (!_branches.Any())
                             {
                                 <tr>
-                                    <td colspan="4" class="text-center text-muted py-4">No records to display.</td>
+                                    <td colspan="4" class="text-center text-muted py-4">@L["Team.NoRecords"]</td>
                                 </tr>
                             }
                             @foreach (var b in _branches)
@@ -131,7 +134,7 @@
                 @* Pagination *@
                 <div class="p-4 pt-lg-4">
                     <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
-                        <span class="fs-12 fw-medium">Showing @_branches.Count of @_total Results</span>
+                        <span class="fs-12 fw-medium">@L["Reports.Showing"] @_branches.Count @L["Common.Of"] @_total @L["Reports.Results"]</span>
                         @if (_totalPages > 1)
                         {
                             <nav>
@@ -181,7 +184,7 @@
                     <div class="modal-header p-0 border-0">
                         <div>
                             <h3 class="mb-0">@_detail.BranchMemberName</h3>
-                            <h5 class="mb-0">@_detail.TotalPoints.ToString("N0") Points</h5>
+                            <h5 class="mb-0">@_detail.TotalPoints.ToString("N0") @L["Reports.Points"]</h5>
                         </div>
                         <button type="button" class="btn-close ms-auto" @onclick="CloseModal"></button>
                     </div>
@@ -194,13 +197,13 @@
                         <li class="nav-item">
                             <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_activeTab == "ambassadors" ? "active" : "")"
                                     @onclick='() => _activeTab = "ambassadors"'>
-                                Ambassadors (@_detail.Ambassadors.Count)
+                                @string.Format(L["Team.AmbassadorsCount"], _detail.Ambassadors.Count)
                             </button>
                         </li>
                         <li class="nav-item">
                             <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_activeTab == "customers" ? "active" : "")"
                                     @onclick='() => _activeTab = "customers"'>
-                                Only Customers (@_detail.Customers.Count)
+                                @string.Format(L["Team.OnlyCustomersCount"], _detail.Customers.Count)
                             </button>
                         </li>
                     </ul>
@@ -216,19 +219,19 @@
                                                 <thead>
                                                     <tr>
                                                         <th>#</th>
-                                                        <th>Level</th>
-                                                        <th>Name</th>
-                                                        <th>Biz Center Status</th>
-                                                        <th>Membership Status</th>
-                                                        <th>Qualified</th>
-                                                        <th>Membership</th>
-                                                        <th>Points</th>
+                                                        <th>@L["Reports.Level"]</th>
+                                                        <th>@L["Reports.Name"]</th>
+                                                        <th>@L["Reports.BizCenterStatus"]</th>
+                                                        <th>@L["Reports.MembershipStatus"]</th>
+                                                        <th>@L["Reports.Qualified"]</th>
+                                                        <th>@L["Reports.Membership"]</th>
+                                                        <th>@L["Reports.Points"]</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     @if (!_detail.Ambassadors.Any())
                                                     {
-                                                        <tr><td colspan="8" class="text-center text-muted py-3">No ambassadors in this branch.</td></tr>
+                                                        <tr><td colspan="8" class="text-center text-muted py-3">@L["Team.NoAmbassadorsBranch"]</td></tr>
                                                     }
                                                     @foreach (var a in _detail.Ambassadors)
                                                     {
@@ -267,17 +270,17 @@
                                                 <thead>
                                                     <tr>
                                                         <th>#</th>
-                                                        <th>Level</th>
-                                                        <th>Name</th>
-                                                        <th>Status</th>
-                                                        <th>Membership</th>
-                                                        <th>Points</th>
+                                                        <th>@L["Reports.Level"]</th>
+                                                        <th>@L["Reports.Name"]</th>
+                                                        <th>@L["Common.Status"]</th>
+                                                        <th>@L["Reports.Membership"]</th>
+                                                        <th>@L["Reports.Points"]</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     @if (!_detail.Customers.Any())
                                                     {
-                                                        <tr><td colspan="6" class="text-center text-muted py-3">No customers in this branch.</td></tr>
+                                                        <tr><td colspan="6" class="text-center text-muted py-3">@L["Team.NoCustomersBranch"]</td></tr>
                                                     }
                                                     @foreach (var c in _detail.Customers)
                                                     {
@@ -307,7 +310,7 @@
                     </div>
 
                     <div class="modal-footer border-0 p-0">
-                        <button type="button" class="btn btn-info text-white px-3" @onclick="CloseModal">OK</button>
+                        <button type="button" class="btn btn-info text-white px-3" @onclick="CloseModal">@L["Common.Ok"]</button>
                     </div>
                 }
             </div>
@@ -342,9 +345,9 @@
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
-        new("Dashboard", "/dashboard"),
-        new("Enrollment Team"),
-        new("Branches")
+        new(L["Nav.Dashboard"], "/dashboard"),
+        new(L["Sidebar.EnrollmentTeam"]),
+        new(L["Sidebar.Branches"])
     };
 
     // ── Lifecycle ────────────────────────────────────────────────────────────
@@ -378,12 +381,12 @@
             }
             else
             {
-                _error = "Failed to load branches.";
+                _error = L["Team.LoadFailedBranches"];
             }
         }
         catch (Exception ex)
         {
-            _error = $"API error: {ex.Message}";
+            _error = $"{L["Team.ApiErrorPrefix"]} {ex.Message}";
         }
         finally
         {
@@ -467,11 +470,11 @@
     {
         var (cls, label) = status?.ToLower() switch
         {
-            "active"    => ("success", "Active"),
-            "suspended" => ("warning", "Suspended"),
-            "cancelled" => ("danger",  "Cancelled"),
-            "inactive"  => ("warning", "Inactive"),
-            "none"      => ("secondary","None"),
+            "active"    => ("success", L["Team.StatusActive"].Value),
+            "suspended" => ("warning", L["Team.StatusSuspended"].Value),
+            "cancelled" => ("danger",  L["Team.StatusCancelled"].Value),
+            "inactive"  => ("warning", L["Team.StatusInactive"].Value),
+            "none"      => ("secondary", L["Team.StatusNone"].Value),
             _           => ("secondary", status ?? "—")
         };
         <span class="badge bg-@cls bg-opacity-10 text-@cls p-2 fs-12 fw-normal">@label</span>
@@ -481,18 +484,18 @@
     {
         if (isQualified)
         {
-            <span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">Qualified</span>
+            <span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">@L["Reports.Qualified"]</span>
         }
         else
         {
-            <span class="badge bg-warning bg-opacity-10 text-warning p-2 fs-12 fw-normal">Unqualified</span>
+            <span class="badge bg-warning bg-opacity-10 text-warning p-2 fs-12 fw-normal">@L["Reports.Unqualified"]</span>
         }
     };
 
     private RenderFragment PointsBadge(int pts) => __builder =>
     {
         var cls = pts > 0 ? "success" : "danger";
-        <span class="badge bg-@cls bg-opacity-10 text-@cls p-2 fs-12 fw-normal">@pts Points</span>
+        <span class="badge bg-@cls bg-opacity-10 text-@cls p-2 fs-12 fw-normal">@pts @L["Reports.Points"]</span>
     };
 
     // ── Local deserialization types ──────────────────────────────────────────

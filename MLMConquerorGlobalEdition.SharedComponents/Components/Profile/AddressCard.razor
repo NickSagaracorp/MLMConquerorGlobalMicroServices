@@ -1,4 +1,5 @@
 @inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
 
 @*
     Address editor. PUT /profile is the only place the server logs changes to
@@ -10,51 +11,51 @@
     <div class="card-body p-4">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom pb-3 mb-3">
             <h6 class="fs-18 mb-0 fw-semibold">
-                <i class="ri-map-pin-line me-2 text-primary"></i>Address &amp; Contact
+                <i class="ri-map-pin-line me-2 text-primary"></i>@L["Address.Title"]
             </h6>
             <button class="btn btn-sm btn-outline-secondary"
                     @onclick="() => OnHistoryRequested.InvokeAsync()">
-                <i class="ri-history-line me-1"></i>View address history
+                <i class="ri-history-line me-1"></i>@L["Address.ViewHistory"]
             </button>
         </div>
 
         <EditForm Model="_form" OnValidSubmit="SaveAsync">
             <div class="row g-3">
                 <div class="col-12 col-md-6">
-                    <label class="form-label small">Phone</label>
-                    <InputText class="form-control" @bind-Value="_form.Phone" placeholder="(+1) 555 123 4567" />
+                    <label class="form-label small">@L["Common.Phone"]</label>
+                    <InputText class="form-control" @bind-Value="_form.Phone" placeholder="@L["Address.PhonePlaceholder"]" />
                 </div>
                 <div class="col-12 col-md-6">
-                    <label class="form-label small">WhatsApp</label>
-                    <InputText class="form-control" @bind-Value="_form.WhatsApp" placeholder="(+1) 555 123 4567" />
+                    <label class="form-label small">@L["Common.WhatsApp"]</label>
+                    <InputText class="form-control" @bind-Value="_form.WhatsApp" placeholder="@L["Address.PhonePlaceholder"]" />
                 </div>
 
                 <div class="col-12 col-md-6">
-                    <label class="form-label small">Country</label>
+                    <label class="form-label small">@L["Common.Country"]</label>
                     <InputText class="form-control" @bind-Value="_form.Country" />
                 </div>
                 <div class="col-12 col-md-6">
-                    <label class="form-label small">State / Province</label>
+                    <label class="form-label small">@L["Common.StateProvince"]</label>
                     <InputText class="form-control" @bind-Value="_form.State" />
                 </div>
 
                 <div class="col-12 col-md-6">
-                    <label class="form-label small">City</label>
+                    <label class="form-label small">@L["Common.City"]</label>
                     <InputText class="form-control" @bind-Value="_form.City" />
                 </div>
                 <div class="col-12 col-md-6">
-                    <label class="form-label small">ZIP / Postal Code</label>
+                    <label class="form-label small">@L["Common.ZipPostal"]</label>
                     <InputText class="form-control" @bind-Value="_form.ZipCode" />
                 </div>
 
                 <div class="col-12">
-                    <label class="form-label small">Address</label>
-                    <InputText class="form-control" @bind-Value="_form.Address" placeholder="Street, number, unit" />
+                    <label class="form-label small">@L["Common.Address"]</label>
+                    <InputText class="form-control" @bind-Value="_form.Address" placeholder="@L["Address.AddressPlaceholder"]" />
                 </div>
 
                 <div class="col-12">
                     <label class="form-label small">
-                        Reason for change <span class="text-muted">(optional, helps support audit)</span>
+                        @L["Address.ReasonForChange"] <span class="text-muted">@L["Address.ReasonHelp"]</span>
                     </label>
                     <InputTextArea class="form-control" rows="2" @bind-Value="_form.AddressChangeReason" />
                 </div>
@@ -62,11 +63,11 @@
 
             <div class="mt-3 d-flex justify-content-end gap-2">
                 <button type="button" class="btn btn-outline-secondary" disabled="@_busy" @onclick="ResetForm">
-                    Reset
+                    @L["Common.Reset"]
                 </button>
                 <button type="submit" class="btn btn-primary" disabled="@(_busy || !HasChanges())">
                     @if (_busy) { <span class="spinner-border spinner-border-sm me-2"></span> }
-                    Save changes
+                    @L["Common.Save"]
                 </button>
             </div>
 
@@ -169,7 +170,7 @@
 
             if (resp.IsSuccessStatusCode)
             {
-                _success = "Profile saved.";
+                _success = L["Address.Saved"];
                 _initial = Clone(_form);
                 _form.AddressChangeReason = string.Empty;
                 await OnSaved.InvokeAsync();
@@ -177,7 +178,7 @@
             else
             {
                 var body = await resp.Content.ReadAsStringAsync();
-                _error = $"Failed to save profile ({(int)resp.StatusCode}). {body}";
+                _error = $"{L["Address.SaveFailedPrefix"]} ({(int)resp.StatusCode}). {body}";
             }
         }
         catch (Exception ex) { _error = ex.Message; }

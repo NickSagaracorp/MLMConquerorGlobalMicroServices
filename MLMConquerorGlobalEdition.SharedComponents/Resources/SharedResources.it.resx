@@ -55,6 +55,7 @@
   <data name="Common.Download" xml:space="preserve"><value>Scarica</value></data>
   <data name="Common.Import" xml:space="preserve"><value>Importa</value></data>
   <data name="Common.Export" xml:space="preserve"><value>Esporta</value></data>
+  <data name="Common.Reset" xml:space="preserve"><value>Reimposta</value></data>
 
   <!-- Common Labels -->
   <data name="Common.Actions" xml:space="preserve"><value>Azioni</value></data>
@@ -74,6 +75,7 @@
   <data name="Common.Of" xml:space="preserve"><value>di</value></data>
   <data name="Common.Records" xml:space="preserve"><value>record</value></data>
   <data name="Common.NoData" xml:space="preserve"><value>Nessun dato trovato.</value></data>
+  <data name="Common.NoDataAvailable" xml:space="preserve"><value>Nessun dato disponibile.</value></data>
   <data name="Common.Required" xml:space="preserve"><value>Obbligatorio</value></data>
   <data name="Common.Optional" xml:space="preserve"><value>Opzionale</value></data>
   <data name="Common.Error" xml:space="preserve"><value>Errore</value></data>
@@ -84,6 +86,18 @@
   <data name="Common.Role" xml:space="preserve"><value>Ruolo</value></data>
   <data name="Common.Amount" xml:space="preserve"><value>Importo</value></data>
   <data name="Common.Points" xml:space="preserve"><value>Punti</value></data>
+  <data name="Common.Phone" xml:space="preserve"><value>Telefono</value></data>
+  <data name="Common.WhatsApp" xml:space="preserve"><value>WhatsApp</value></data>
+  <data name="Common.Country" xml:space="preserve"><value>Paese</value></data>
+  <data name="Common.City" xml:space="preserve"><value>Città</value></data>
+  <data name="Common.StateProvince" xml:space="preserve"><value>Stato / Provincia</value></data>
+  <data name="Common.ZipPostal" xml:space="preserve"><value>CAP</value></data>
+  <data name="Common.Address" xml:space="preserve"><value>Indirizzo</value></data>
+  <data name="Common.When" xml:space="preserve"><value>Quando</value></data>
+  <data name="Common.By" xml:space="preserve"><value>Da</value></data>
+  <data name="Common.IpAddress" xml:space="preserve"><value>Indirizzo IP</value></data>
+  <data name="Common.UserAgent" xml:space="preserve"><value>User Agent</value></data>
+  <data name="Common.Source" xml:space="preserve"><value>Origine</value></data>
 
   <!-- Header -->
   <data name="Header.SearchPlaceholder" xml:space="preserve"><value>Cerca qui...</value></data>
@@ -93,14 +107,1136 @@
   <data name="Header.Logout" xml:space="preserve"><value>Disconnetti</value></data>
   <data name="Header.ToggleDarkMode" xml:space="preserve"><value>Modalità scura</value></data>
   <data name="Header.ChangeLanguage" xml:space="preserve"><value>Cambia lingua</value></data>
+  <data name="Header.ClearAll" xml:space="preserve"><value>Cancella tutto</value></data>
+  <data name="Header.Messages" xml:space="preserve"><value>Messaggi</value></data>
+  <data name="Header.GuestPasses" xml:space="preserve"><value>Pass Ospite</value></data>
+  <data name="Header.Marketing" xml:space="preserve"><value>Marketing</value></data>
+  <data name="Header.Support" xml:space="preserve"><value>Supporto</value></data>
+  <data name="Header.AdminFallback" xml:space="preserve"><value>Amministratore</value></data>
+  <data name="Header.MemberFallback" xml:space="preserve"><value>Membro</value></data>
+  <data name="Header.ThemeSettingsTooltip" xml:space="preserve"><value>Clicca su Impostazioni Tema</value></data>
 
-  <!-- Language Names -->
+  <!-- Layout -->
+  <data name="Layout.ErrorOccurred" xml:space="preserve"><value>Si è verificato un errore</value></data>
+  <data name="Layout.ReloadPage" xml:space="preserve"><value>Ricarica pagina</value></data>
+
+  <!-- Impersonation Banner -->
+  <data name="Impersonation.ViewingAs" xml:space="preserve"><value>Visualizzando come membro:</value></data>
+  <data name="Impersonation.Exit" xml:space="preserve"><value>Esci dall'impersonificazione</value></data>
+
+  <!-- Sidebar Menu -->
+  <data name="Sidebar.Menu" xml:space="preserve"><value>MENU</value></data>
+  <data name="Sidebar.Home" xml:space="preserve"><value>Home</value></data>
+  <data name="Sidebar.EnrollmentTeam" xml:space="preserve"><value>Team di Iscrizione</value></data>
+  <data name="Sidebar.MyTeam" xml:space="preserve"><value>Il Mio Team</value></data>
+  <data name="Sidebar.Visualizer" xml:space="preserve"><value>Visualizzatore</value></data>
+  <data name="Sidebar.Branches" xml:space="preserve"><value>Rami</value></data>
+  <data name="Sidebar.Customers" xml:space="preserve"><value>Clienti</value></data>
+  <data name="Sidebar.DualTeam" xml:space="preserve"><value>Team Duale</value></data>
+  <data name="Sidebar.MyDualTeam" xml:space="preserve"><value>Il Mio Team Duale</value></data>
+  <data name="Sidebar.Residuals" xml:space="preserve"><value>Residui</value></data>
+  <data name="PageTitle.DualTeamResiduals" xml:space="preserve"><value>Residui del Team Duale</value></data>
+  <data name="PageTitle.DualTeamVisualizer" xml:space="preserve"><value>Visualizzatore del Team Duale</value></data>
+  <data name="PageTitle.EnrollmentBranches" xml:space="preserve"><value>Team di Iscrizione — Rami</value></data>
+  <data name="PageTitle.EnrollmentCustomers" xml:space="preserve"><value>Team di Iscrizione — Clienti</value></data>
+  <data name="PageTitle.EnrollmentMyTeam" xml:space="preserve"><value>Team di Iscrizione — Il Mio Team</value></data>
+  <data name="PageTitle.EnrollmentVisualizer" xml:space="preserve"><value>Team di Iscrizione — Visualizzatore</value></data>
+  <data name="PageTitle.Placement" xml:space="preserve"><value>Posizionamento — Team Duale</value></data>
+  <data name="PageTitle.PlacementHistory" xml:space="preserve"><value>Cronologia Posizionamenti</value></data>
+  <data name="Sidebar.Commissions" xml:space="preserve"><value>Commissioni</value></data>
+  <data name="Sidebar.Overview" xml:space="preserve"><value>Panoramica</value></data>
+  <data name="Sidebar.PresidentialBonus" xml:space="preserve"><value>Bonus Presidenziale</value></data>
+  <data name="Sidebar.CarBonus" xml:space="preserve"><value>Bonus Auto</value></data>
+  <data name="Sidebar.FastStartBonus" xml:space="preserve"><value>Bonus Avvio Rapido</value></data>
+  <data name="Sidebar.BoostBonus" xml:space="preserve"><value>Bonus Boost</value></data>
+  <data name="Sidebar.Tokens" xml:space="preserve"><value>Token</value></data>
+  <data name="Sidebar.LoyaltyPoints" xml:space="preserve"><value>Punti Fedeltà</value></data>
+  <data name="Sidebar.Marketing" xml:space="preserve"><value>Marketing</value></data>
+  <data name="Sidebar.RankDashboard" xml:space="preserve"><value>Pannello Ranghi</value></data>
+  <data name="Sidebar.MyProfile" xml:space="preserve"><value>Il Mio Profilo</value></data>
+  <data name="Sidebar.Support" xml:space="preserve"><value>Supporto</value></data>
+  <data name="Sidebar.Logout" xml:space="preserve"><value>Disconnetti</value></data>
+
+  <!-- Language Names — endonyms -->
   <data name="Lang.en" xml:space="preserve"><value>English</value></data>
   <data name="Lang.es" xml:space="preserve"><value>Español</value></data>
   <data name="Lang.pt" xml:space="preserve"><value>Português</value></data>
   <data name="Lang.fr" xml:space="preserve"><value>Français</value></data>
   <data name="Lang.it" xml:space="preserve"><value>Italiano</value></data>
-  <data name="Lang.ko" xml:space="preserve"><value>한국어</value></data>
   <data name="Lang.de" xml:space="preserve"><value>Deutsch</value></data>
-  <data name="Lang.ru" xml:space="preserve"><value>Русский</value></data>
+  <data name="Lang.zh" xml:space="preserve"><value>中文</value></data>
+  <data name="Lang.kr" xml:space="preserve"><value>한국어</value></data>
+  <data name="Lang.ge" xml:space="preserve"><value>ქართული</value></data>
+
+  <!-- Language Preference Card -->
+  <data name="LanguageCard.Title" xml:space="preserve"><value>Lingua predefinita</value></data>
+  <data name="LanguageCard.Description" xml:space="preserve"><value>Invieremo notifiche, e-mail e suggerimenti del pannello in questa lingua quando una traduzione è disponibile.</value></data>
+  <data name="LanguageCard.Saved" xml:space="preserve"><value>Preferenza di lingua salvata.</value></data>
+  <data name="LanguageCard.FailedPrefix" xml:space="preserve"><value>Errore:</value></data>
+
+  <!-- Personal Info Card -->
+  <data name="PersonalInfo.Title" xml:space="preserve"><value>Su di me</value></data>
+  <data name="PersonalInfo.WhyLocked" xml:space="preserve"><value>Perché è bloccato?</value></data>
+  <data name="PersonalInfo.LockedHeadline" xml:space="preserve"><value>I campi di identità sono bloccati per la tua sicurezza.</value></data>
+  <data name="PersonalInfo.LockedBody" xml:space="preserve"><value>Nome, cognome, data di nascita, nome dell'attività e SSN possono essere modificati solo dal nostro team di supporto. Apri un ticket dalla pagina Supporto se è necessario correggerne uno.</value></data>
+  <data name="PersonalInfo.FirstName" xml:space="preserve"><value>Nome</value></data>
+  <data name="PersonalInfo.LastName" xml:space="preserve"><value>Cognome</value></data>
+  <data name="PersonalInfo.DateOfBirth" xml:space="preserve"><value>Data di nascita</value></data>
+  <data name="PersonalInfo.BusinessName" xml:space="preserve"><value>Nome dell'attività</value></data>
+  <data name="PersonalInfo.Ssn" xml:space="preserve"><value>SSN</value></data>
+  <data name="PersonalInfo.Ein" xml:space="preserve"><value>EIN</value></data>
+  <data name="PersonalInfo.Enrolled" xml:space="preserve"><value>Iscritto</value></data>
+
+  <!-- Profile shared bits -->
+  <data name="Profile.NotOnFile" xml:space="preserve"><value>— non disponibile —</value></data>
+  <data name="Profile.PageTitle" xml:space="preserve"><value>Il Mio Profilo</value></data>
+
+  <!-- User Profile Page -->
+  <data name="UserProfile.Tab.Profile" xml:space="preserve"><value>Profilo</value></data>
+  <data name="UserProfile.Tab.Account" xml:space="preserve"><value>Account e Sicurezza</value></data>
+  <data name="UserProfile.Tab.Billing" xml:space="preserve"><value>Fatturazione e Commissioni</value></data>
+  <data name="UserProfile.EmailPasswordTitle" xml:space="preserve"><value>E-mail e Password</value></data>
+  <data name="UserProfile.LoadFailed" xml:space="preserve"><value>Impossibile caricare il profilo.</value></data>
+  <data name="UserProfile.Breadcrumb.Dashboard" xml:space="preserve"><value>Pannello di Controllo</value></data>
+  <data name="UserProfile.Breadcrumb.Profile" xml:space="preserve"><value>Profilo</value></data>
+
+  <!-- Profile Header Card -->
+  <data name="ProfileHeader.AvatarAlt" xml:space="preserve"><value>avatar profilo</value></data>
+  <data name="ProfileHeader.ChangePhoto" xml:space="preserve"><value>Cambia foto profilo</value></data>
+  <data name="ProfileHeader.PhotoUpdated" xml:space="preserve"><value>Foto profilo aggiornata.</value></data>
+  <data name="ProfileHeader.PhotoFailed" xml:space="preserve"><value>Aggiornamento foto fallito.</value></data>
+  <data name="ProfileHeader.UploadFailed" xml:space="preserve"><value>Caricamento fallito:</value></data>
+  <data name="ProfileHeader.ImageTooLarge" xml:space="preserve"><value>L'immagine supera 5 MB. Scegli un file più piccolo.</value></data>
+
+  <!-- Contact Info Card -->
+  <data name="ContactInfo.Title" xml:space="preserve"><value>Informazioni di Contatto</value></data>
+  <data name="ContactInfo.EditContactAddress" xml:space="preserve"><value>Modifica Contatti e Indirizzo</value></data>
+
+  <!-- Address Card -->
+  <data name="Address.Title" xml:space="preserve"><value>Indirizzo e Contatti</value></data>
+  <data name="Address.ViewHistory" xml:space="preserve"><value>Visualizza storico indirizzi</value></data>
+  <data name="Address.PhonePlaceholder" xml:space="preserve"><value>(+39) 333 123 4567</value></data>
+  <data name="Address.AddressPlaceholder" xml:space="preserve"><value>Via, numero, unità</value></data>
+  <data name="Address.ReasonForChange" xml:space="preserve"><value>Motivo della modifica</value></data>
+  <data name="Address.ReasonHelp" xml:space="preserve"><value>(opzionale, aiuta nell'audit del supporto)</value></data>
+  <data name="Address.Saved" xml:space="preserve"><value>Profilo salvato.</value></data>
+  <data name="Address.SaveFailedPrefix" xml:space="preserve"><value>Salvataggio del profilo fallito</value></data>
+
+  <!-- Address History Modal -->
+  <data name="AddressHistory.Title" xml:space="preserve"><value>Storico Modifiche di Indirizzo</value></data>
+  <data name="AddressHistory.Empty" xml:space="preserve"><value>Nessuna modifica di indirizzo ancora registrata.</value></data>
+  <data name="AddressHistory.New" xml:space="preserve"><value>Nuovo</value></data>
+  <data name="AddressHistory.Previous" xml:space="preserve"><value>Precedente</value></data>
+  <data name="AddressHistory.Reason" xml:space="preserve"><value>Motivo</value></data>
+
+  <!-- Membership Card -->
+  <data name="Membership.Title" xml:space="preserve"><value>Iscrizione</value></data>
+  <data name="Membership.NoActive" xml:space="preserve"><value>Nessuna iscrizione attiva.</value></data>
+  <data name="Membership.Started" xml:space="preserve"><value>Iniziata</value></data>
+  <data name="Membership.Renews" xml:space="preserve"><value>Rinnova</value></data>
+  <data name="Membership.Expires" xml:space="preserve"><value>Scade</value></data>
+  <data name="Membership.AutoRenewOn" xml:space="preserve"><value>Rinnovo automatico ATTIVO</value></data>
+  <data name="Membership.AutoRenewOff" xml:space="preserve"><value>Rinnovo automatico DISATTIVATO</value></data>
+
+  <!-- Website Slug Card -->
+  <data name="WebsiteSlug.Title" xml:space="preserve"><value>Il Mio Sito Web</value></data>
+  <data name="WebsiteSlug.Description" xml:space="preserve"><value>Scegli l'indirizzo pubblico dove arriveranno i prospect. Solo lettere minuscole, cifre e trattini. Deve iniziare con una lettera e avere da 3 a 40 caratteri.</value></data>
+  <data name="WebsiteSlug.Placeholder" xml:space="preserve"><value>tuo-nome</value></data>
+  <data name="WebsiteSlug.LocalError" xml:space="preserve"><value>Usa da 3 a 40 lettere minuscole, cifre o trattini. Deve iniziare con una lettera.</value></data>
+  <data name="WebsiteSlug.SlugTaken" xml:space="preserve"><value>Quel nome di sito è già in uso.</value></data>
+  <data name="WebsiteSlug.SaveFailed" xml:space="preserve"><value>Impossibile aggiornare il nome del sito.</value></data>
+  <data name="WebsiteSlug.Saved" xml:space="preserve"><value>Nome del sito aggiornato.</value></data>
+  <data name="WebsiteSlug.OpenPublicPage" xml:space="preserve"><value>Apri pagina pubblica</value></data>
+  <data name="WebsiteSlug.SaveButton" xml:space="preserve"><value>Salva nome sito</value></data>
+
+  <!-- Display Preferences Card -->
+  <data name="DisplayPrefs.Title" xml:space="preserve"><value>Visibilità della Pagina Pubblica</value></data>
+  <data name="DisplayPrefs.Description" xml:space="preserve"><value>Scegli cosa vedranno i visitatori sul tuo sito pubblico. Telefono ed e-mail sono nascosti per impostazione predefinita.</value></data>
+  <data name="DisplayPrefs.ShowBusinessName" xml:space="preserve"><value>Mostra nome attività</value></data>
+  <data name="DisplayPrefs.ShowBusinessNameHelp" xml:space="preserve"><value>I visitatori vedranno il tuo nome aziendale registrato anziché quello personale.</value></data>
+  <data name="DisplayPrefs.ShowEmail" xml:space="preserve"><value>Mostra e-mail nella pagina pubblica</value></data>
+  <data name="DisplayPrefs.ShowEmailHelp" xml:space="preserve"><value>Chiunque arrivi sulla tua pagina replicata può vedere questo indirizzo.</value></data>
+  <data name="DisplayPrefs.ShowPhone" xml:space="preserve"><value>Mostra telefono nella pagina pubblica</value></data>
+  <data name="DisplayPrefs.ShowPhoneHelp" xml:space="preserve"><value>I visitatori vedranno il tuo numero; valuta la privacy di WhatsApp.</value></data>
+  <data name="DisplayPrefs.Saved" xml:space="preserve"><value>Preferenza di visibilità salvata.</value></data>
+  <data name="DisplayPrefs.SaveFailedPrefix" xml:space="preserve"><value>Salvataggio fallito:</value></data>
+
+  <!-- Payout Frequency Card -->
+  <data name="PayoutFreq.Title" xml:space="preserve"><value>Frequenza di Pagamento Commissioni</value></data>
+  <data name="PayoutFreq.Description" xml:space="preserve"><value>Con quale frequenza dobbiamo trasferire le commissioni accumulate al tuo gateway di pagamento predefinito? I pagamenti giornalieri sono regolati il giorno lavorativo successivo; quelli settimanali ogni venerdì.</value></data>
+  <data name="PayoutFreq.Daily" xml:space="preserve"><value>Giornaliero</value></data>
+  <data name="PayoutFreq.Weekly" xml:space="preserve"><value>Settimanale (Venerdì)</value></data>
+  <data name="PayoutFreq.Aria" xml:space="preserve"><value>Frequenza di pagamento</value></data>
+  <data name="PayoutFreq.SavedDaily" xml:space="preserve"><value>I pagamenti saranno effettuati giornalmente.</value></data>
+  <data name="PayoutFreq.SavedWeekly" xml:space="preserve"><value>I pagamenti saranno effettuati settimanalmente.</value></data>
+  <data name="PayoutFreq.FailedPrefix" xml:space="preserve"><value>Errore:</value></data>
+
+  <!-- Billing Info Card -->
+  <data name="BillingInfo.Title" xml:space="preserve"><value>Informazioni di Fatturazione</value></data>
+  <data name="BillingInfo.ManageCards" xml:space="preserve"><value>Gestisci carte</value></data>
+  <data name="BillingInfo.EditBilling" xml:space="preserve"><value>Modifica informazioni di fatturazione</value></data>
+
+  <!-- Commissions Card -->
+  <data name="Commissions.Title" xml:space="preserve"><value>Commissioni</value></data>
+  <data name="Commissions.EditButton" xml:space="preserve"><value>Modifica informazioni commissioni</value></data>
+  <data name="Commissions.PaymentFrequency" xml:space="preserve"><value>Frequenza di pagamento</value></data>
+  <data name="Commissions.PaymentMethod" xml:space="preserve"><value>Metodo di pagamento</value></data>
+  <data name="Commissions.AccountLabel" xml:space="preserve"><value>Conto {0}</value></data>
+  <data name="Commissions.YourAccount" xml:space="preserve"><value>Il tuo conto:</value></data>
+  <data name="Commissions.PortalAccess" xml:space="preserve"><value>Clicca qui per l'accesso immediato!</value></data>
+  <data name="Commissions.NoMethodSelected" xml:space="preserve"><value>— nessun metodo selezionato —</value></data>
+  <data name="Commissions.AddMethodFirst" xml:space="preserve"><value>Aggiungi prima un metodo di pagamento.</value></data>
+  <data name="Commissions.Saved" xml:space="preserve"><value>Impostazioni commissioni salvate.</value></data>
+  <data name="Commissions.SaveFailedPrefix" xml:space="preserve"><value>Salvataggio non riuscito:</value></data>
+  <data name="Commissions.FrequencyDaily" xml:space="preserve"><value>Giornaliera</value></data>
+  <data name="Commissions.FrequencyWeekly" xml:space="preserve"><value>Settimanale</value></data>
+  <data name="Commissions.SelectMethod" xml:space="preserve"><value>Seleziona metodo di pagamento</value></data>
+  <data name="BillingInfo.NoDefaultCard" xml:space="preserve"><value>Nessuna carta predefinita registrata. Aggiungi una carta per attivare il rinnovo automatico.</value></data>
+  <data name="BillingInfo.CreditCard" xml:space="preserve"><value>Carta di Credito</value></data>
+  <data name="BillingInfo.CardHolder" xml:space="preserve"><value>Titolare</value></data>
+  <data name="BillingInfo.Exp" xml:space="preserve"><value>SCAD</value></data>
+  <data name="BillingInfo.BillingAddress" xml:space="preserve"><value>Indirizzo di Fatturazione</value></data>
+
+  <!-- Billing History Table -->
+  <data name="BillingHistory.Title" xml:space="preserve"><value>Transazioni Recenti</value></data>
+  <data name="BillingHistory.ShowingPrefix" xml:space="preserve"><value>Visualizzando</value></data>
+  <data name="BillingHistory.Empty" xml:space="preserve"><value>Nessuna transazione ancora.</value></data>
+  <data name="BillingHistory.Transaction" xml:space="preserve"><value>Transazione</value></data>
+  <data name="BillingHistory.MembershipRenewal" xml:space="preserve"><value>Rinnovo iscrizione</value></data>
+
+  <!-- Add Card Modal -->
+  <data name="AddCard.Title" xml:space="preserve"><value>Aggiungi carta di credito</value></data>
+  <data name="AddCard.CardHolder" xml:space="preserve"><value>Titolare</value></data>
+  <data name="AddCard.FullNamePlaceholder" xml:space="preserve"><value>NOME COMPLETO</value></data>
+  <data name="AddCard.Expires" xml:space="preserve"><value>Scade</value></data>
+  <data name="AddCard.Cvc" xml:space="preserve"><value>CVC</value></data>
+  <data name="AddCard.CardNumber" xml:space="preserve"><value>Numero carta</value></data>
+  <data name="AddCard.CardholderName" xml:space="preserve"><value>Nome del titolare</value></data>
+  <data name="AddCard.CardholderPlaceholder" xml:space="preserve"><value>Come stampato sulla carta</value></data>
+  <data name="AddCard.Expiration" xml:space="preserve"><value>Scadenza</value></data>
+  <data name="AddCard.SaveCard" xml:space="preserve"><value>Salva carta</value></data>
+  <data name="AddCard.InvalidExpiration" xml:space="preserve"><value>Data di scadenza non valida.</value></data>
+  <data name="AddCard.AlreadyExpired" xml:space="preserve"><value>Questa carta è già scaduta. Usa una carta con scadenza futura.</value></data>
+  <data name="AddCard.NumberTooShort" xml:space="preserve"><value>Il numero della carta è troppo corto.</value></data>
+  <data name="AddCard.CvcTooShort" xml:space="preserve"><value>Il CVC è troppo corto.</value></data>
+
+  <!-- Credentials Form -->
+  <data name="Credentials.ChangePassword" xml:space="preserve"><value>Cambia Password</value></data>
+  <data name="Credentials.CurrentPassword" xml:space="preserve"><value>Password Attuale</value></data>
+  <data name="Credentials.NewPassword" xml:space="preserve"><value>Nuova Password</value></data>
+  <data name="Credentials.ConfirmPassword" xml:space="preserve"><value>Conferma Nuova Password</value></data>
+  <data name="Credentials.UpdatePassword" xml:space="preserve"><value>Aggiorna Password</value></data>
+  <data name="Credentials.PasswordChanged" xml:space="preserve"><value>Password modificata con successo.</value></data>
+  <data name="Credentials.PasswordFailed" xml:space="preserve"><value>Aggiornamento password fallito. Verifica la password attuale.</value></data>
+  <data name="Credentials.ChangeEmail" xml:space="preserve"><value>Cambia E-mail</value></data>
+  <data name="Credentials.NewEmail" xml:space="preserve"><value>Nuova E-mail</value></data>
+  <data name="Credentials.UpdateEmail" xml:space="preserve"><value>Aggiorna E-mail</value></data>
+  <data name="Credentials.EmailUpdated" xml:space="preserve"><value>E-mail aggiornata con successo. È stata inviata una conferma.</value></data>
+  <data name="Credentials.EmailFailed" xml:space="preserve"><value>Aggiornamento e-mail fallito. Verifica la tua password.</value></data>
+
+  <!-- Credentials History Table -->
+  <data name="CredentialsHistory.Title" xml:space="preserve"><value>Storico Credenziali</value></data>
+  <data name="CredentialsHistory.Empty" xml:space="preserve"><value>Nessuna modifica delle credenziali ancora registrata.</value></data>
+  <data name="CredentialsHistory.Kind" xml:space="preserve"><value>Tipo</value></data>
+
+  <!-- Security Log Table -->
+  <data name="SecurityLog.Title" xml:space="preserve"><value>Registro di Sicurezza</value></data>
+  <data name="SecurityLog.Event" xml:space="preserve"><value>Evento</value></data>
+
+  <!-- Payment Method Tab -->
+  <data name="PaymentMethod.PayoutOptionsTab" xml:space="preserve"><value>Opzioni di Pagamento</value></data>
+  <data name="PaymentMethod.PaymentMethodTab" xml:space="preserve"><value>Metodo di Pagamento</value></data>
+  <data name="PaymentMethod.Title" xml:space="preserve"><value>Metodo di Pagamento</value></data>
+  <data name="PaymentMethod.Description" xml:space="preserve"><value>Trascina le carte per impostare l'ordine in cui l'azienda deve provare ad addebitare la tua iscrizione. La prima che ha successo vince.</value></data>
+  <data name="PaymentMethod.AddCard" xml:space="preserve"><value>Aggiungi carta</value></data>
+  <data name="PaymentMethod.NoCardsTitle" xml:space="preserve"><value>Non hai ancora carte registrate.</value></data>
+  <data name="PaymentMethod.AddFirstCard" xml:space="preserve"><value>Aggiungi la tua prima carta</value></data>
+  <data name="PaymentMethod.CreditCard" xml:space="preserve"><value>Carta di Credito</value></data>
+  <data name="PaymentMethod.CardHolder" xml:space="preserve"><value>Titolare</value></data>
+  <data name="PaymentMethod.Default" xml:space="preserve"><value>Predefinita</value></data>
+  <data name="PaymentMethod.Expired" xml:space="preserve"><value>Scaduta</value></data>
+  <data name="PaymentMethod.DragToReorder" xml:space="preserve"><value>Trascina per riordinare</value></data>
+  <data name="PaymentMethod.SetDefault" xml:space="preserve"><value>Imposta predefinita</value></data>
+  <data name="PaymentMethod.RemoveCardTooltip" xml:space="preserve"><value>Rimuovi questa carta</value></data>
+  <data name="PaymentMethod.ConfirmRemove" xml:space="preserve"><value>Rimuovere questa carta?</value></data>
+  <data name="PaymentMethod.CardAdded" xml:space="preserve"><value>Carta aggiunta con successo.</value></data>
+  <data name="PaymentMethod.DefaultUpdated" xml:space="preserve"><value>Carta predefinita aggiornata.</value></data>
+  <data name="PaymentMethod.CardRemoved" xml:space="preserve"><value>Carta rimossa.</value></data>
+  <data name="PaymentMethod.CouldNotLoadPrefix" xml:space="preserve"><value>Impossibile caricare le carte:</value></data>
+  <data name="PaymentMethod.CouldNotSetDefaultPrefix" xml:space="preserve"><value>Impossibile impostare predefinita:</value></data>
+  <data name="PaymentMethod.CouldNotRemovePrefix" xml:space="preserve"><value>Impossibile rimuovere:</value></data>
+  <data name="PaymentMethod.CouldNotSaveOrderPrefix" xml:space="preserve"><value>Impossibile salvare l'ordine:</value></data>
+  <data name="PaymentMethod.PayoutOptionsTitle" xml:space="preserve"><value>Opzioni di Pagamento</value></data>
+  <data name="PaymentMethod.PayoutOptionsHint" xml:space="preserve"><value>Aggiungi o aggiorna ogni gateway separatamente. Imposta uno come predefinito per ricevere le commissioni.</value></data>
+  <data name="PaymentMethod.DefaultReceiving" xml:space="preserve"><value>Predefinito — ricevendo commissioni</value></data>
+  <data name="PaymentMethod.AdminFee" xml:space="preserve"><value>Commissione amministrativa:</value></data>
+  <data name="PaymentMethod.PerPayout" xml:space="preserve"><value>per pagamento</value></data>
+  <data name="PaymentMethod.Account" xml:space="preserve"><value>Account:</value></data>
+  <data name="PaymentMethod.Status" xml:space="preserve"><value>Stato:</value></data>
+  <data name="PaymentMethod.UpdatedPrefix" xml:space="preserve"><value>Aggiornato</value></data>
+  <data name="PaymentMethod.NotConfigured" xml:space="preserve"><value>Non ancora configurato.</value></data>
+  <data name="PaymentMethod.AddAccount" xml:space="preserve"><value>Aggiungi account</value></data>
+  <data name="PaymentMethod.EditAccount" xml:space="preserve"><value>Modifica account</value></data>
+  <data name="PaymentMethod.CurrentlyDefault" xml:space="preserve"><value>Attualmente predefinito</value></data>
+  <data name="PaymentMethod.SetAsDefault" xml:space="preserve"><value>Imposta come predefinito</value></data>
+  <data name="PaymentMethod.SetAsDefaultTooltip" xml:space="preserve"><value>Usa questo wallet per ricevere i pagamenti delle commissioni</value></data>
+  <data name="PaymentMethod.PendingApproval" xml:space="preserve"><value>Approvazione in sospeso</value></data>
+  <data name="PaymentMethod.PendingApprovalTooltip" xml:space="preserve"><value>Il gateway deve approvare questo account prima che possa essere impostato come predefinito</value></data>
+  <data name="PaymentMethod.WalletHistoryTitle" xml:space="preserve"><value>Storico Modifiche Wallet</value></data>
+  <data name="PaymentMethod.WalletHistoryHint" xml:space="preserve"><value>— incluse le modifiche dell'identificatore di account per la prevenzione delle frodi</value></data>
+  <data name="PaymentMethod.NoWalletChanges" xml:space="preserve"><value>Ancora nessuna modifica al wallet.</value></data>
+  <data name="PaymentMethod.History.Gateway" xml:space="preserve"><value>Gateway</value></data>
+  <data name="PaymentMethod.History.Change" xml:space="preserve"><value>Modifica</value></data>
+  <data name="PaymentMethod.History.FromTo" xml:space="preserve"><value>Da → A</value></data>
+  <data name="PaymentMethod.History.NoChange" xml:space="preserve"><value>nessuna modifica</value></data>
+  <data name="WalletStatus.Pending" xml:space="preserve"><value>In attesa</value></data>
+  <data name="WalletStatus.Approved" xml:space="preserve"><value>Approvato</value></data>
+  <data name="WalletStatus.Rejected" xml:space="preserve"><value>Rifiutato</value></data>
+  <data name="PaymentMethod.ApiLogTitle" xml:space="preserve"><value>Registro Chiamate API Gateway</value></data>
+  <data name="PaymentMethod.ApiLogHint" xml:space="preserve"><value>— richiesta/risposta per ogni interazione con il gateway (per escalation di supporto)</value></data>
+  <data name="PaymentMethod.NoApiLogs" xml:space="preserve"><value>Nessuna chiamata API registrata.</value></data>
+  <data name="PaymentMethod.Log.Operation" xml:space="preserve"><value>Operazione</value></data>
+  <data name="PaymentMethod.Log.Endpoint" xml:space="preserve"><value>Endpoint</value></data>
+  <data name="PaymentMethod.Log.Duration" xml:space="preserve"><value>Durata</value></data>
+  <data name="PaymentMethod.Log.Result" xml:space="preserve"><value>Risultato</value></data>
+  <data name="PaymentMethod.Log.Hide" xml:space="preserve"><value>Nascondi</value></data>
+  <data name="PaymentMethod.Log.View" xml:space="preserve"><value>Vedi rich/risp</value></data>
+  <data name="PaymentMethod.Log.Request" xml:space="preserve"><value>Richiesta</value></data>
+  <data name="PaymentMethod.Log.Response" xml:space="preserve"><value>Risposta</value></data>
+  <data name="PaymentMethod.Log.ResponseError" xml:space="preserve"><value>(errore)</value></data>
+  <data name="PaymentMethod.AccountIdRequired" xml:space="preserve"><value>L'identificatore dell'account è obbligatorio.</value></data>
+  <data name="PaymentMethod.EWalletPasswordLabel" xml:space="preserve"><value>Password eWallet (sarà crittografata)</value></data>
+  <data name="PaymentMethod.EWalletPasswordHint" xml:space="preserve"><value>Richiesta da I-Payout solo per la registrazione iniziale.</value></data>
+  <data name="PaymentMethod.NotesLabel" xml:space="preserve"><value>Note</value></data>
+  <data name="PaymentMethod.WalletUpdatedSuffix" xml:space="preserve"><value>aggiornato.</value></data>
+  <data name="PaymentMethod.DefaultWalletUpdated" xml:space="preserve"><value>Wallet predefinito aggiornato.</value></data>
+  <data name="PaymentMethod.CouldNotSetWalletDefaultPrefix" xml:space="preserve"><value>Impossibile impostare come predefinito:</value></data>
+  <data name="PaymentMethod.ErrorPrefix" xml:space="preserve"><value>Errore:</value></data>
+  <data name="PaymentMethod.Action.Created" xml:space="preserve"><value>Account creato</value></data>
+  <data name="PaymentMethod.Action.AccountChanged" xml:space="preserve"><value>Account modificato</value></data>
+  <data name="PaymentMethod.Action.StatusChanged" xml:space="preserve"><value>Stato modificato</value></data>
+  <data name="PaymentMethod.Action.SetAsDefault" xml:space="preserve"><value>Impostato come predefinito</value></data>
+  <data name="PaymentMethod.Action.UnsetAsDefault" xml:space="preserve"><value>Sostituito come predefinito</value></data>
+  <data name="PaymentMethod.Action.Deleted" xml:space="preserve"><value>Account rimosso</value></data>
+  <data name="PaymentMethod.Validation.CryptoRequired" xml:space="preserve"><value>È richiesto un indirizzo di wallet crypto, non un'e-mail. Fornisci un indirizzo Bitcoin (bc1.../1.../3...), USDT-TRC20 (T...) o EVM (0x...).</value></data>
+  <data name="PaymentMethod.Validation.CryptoInvalid" xml:space="preserve"><value>L'account non sembra un indirizzo di wallet crypto valido.</value></data>
+  <data name="PaymentMethod.Validation.EmailRequired" xml:space="preserve"><value>Questo gateway richiede un'e-mail valida come identificatore di account.</value></data>
+  <data name="PaymentMethod.Gateway.EWalletLabel" xml:space="preserve"><value>eWallet (I-Payout)</value></data>
+  <data name="PaymentMethod.Gateway.DwollaLabel" xml:space="preserve"><value>Dwolla</value></data>
+  <data name="PaymentMethod.Gateway.CryptoLabel" xml:space="preserve"><value>Crypto</value></data>
+  <data name="PaymentMethod.Gateway.AdvCashLabel" xml:space="preserve"><value>Advancash</value></data>
+  <data name="PaymentMethod.Gateway.EWalletField" xml:space="preserve"><value>E-mail I-Payout</value></data>
+  <data name="PaymentMethod.Gateway.DwollaField" xml:space="preserve"><value>E-mail account Dwolla</value></data>
+  <data name="PaymentMethod.Gateway.CryptoField" xml:space="preserve"><value>Indirizzo wallet</value></data>
+  <data name="PaymentMethod.Gateway.AdvCashField" xml:space="preserve"><value>E-mail account Advancash</value></data>
+  <data name="PaymentMethod.Gateway.EmailPlaceholder" xml:space="preserve"><value>utente@esempio.com</value></data>
+  <data name="PaymentMethod.Gateway.CryptoPlaceholder" xml:space="preserve"><value>bc1qxy2k...x9k2</value></data>
+  <data name="PaymentMethod.Gateway.EWalletHelp" xml:space="preserve"><value>I-Payout invierà un'e-mail di conferma per verificare l'account.</value></data>
+  <data name="PaymentMethod.Gateway.DwollaHelp" xml:space="preserve"><value>Usa l'e-mail collegata al tuo account Dwolla.</value></data>
+  <data name="PaymentMethod.Gateway.CryptoHelp" xml:space="preserve"><value>Fornisci l'indirizzo del wallet ricevente per l'asset desiderato.</value></data>
+  <data name="PaymentMethod.Gateway.AdvCashHelp" xml:space="preserve"><value>Usa l'e-mail collegata al tuo account AdvCash.</value></data>
+
+  <!-- Dashboard Page -->
+  <data name="Dashboard.PageTitle" xml:space="preserve"><value>Pannello di Controllo</value></data>
+  <data name="Dashboard.Breadcrumb" xml:space="preserve"><value>Pannello di Controllo</value></data>
+  <data name="Dashboard.TotalEarnings" xml:space="preserve"><value>Guadagni Totali</value></data>
+  <data name="Dashboard.TeamSize" xml:space="preserve"><value>Dimensione del Team</value></data>
+  <data name="Dashboard.TokenBalance" xml:space="preserve"><value>Saldo Token</value></data>
+  <data name="Dashboard.CurrentRank" xml:space="preserve"><value>Rango Attuale</value></data>
+  <data name="Dashboard.FsbWindowsTitle" xml:space="preserve"><value>Finestre Bonus Avvio Rapido</value></data>
+
+  <!-- Activity Feed -->
+  <data name="ActivityFeed.Title" xml:space="preserve"><value>Attività Recente</value></data>
+  <data name="ActivityFeed.EmptyTitle" xml:space="preserve"><value>Nessuna attività recente</value></data>
+  <data name="ActivityFeed.EmptyMessage" xml:space="preserve"><value>La tua attività apparirà qui.</value></data>
+  <data name="ActivityFeed.Period" xml:space="preserve"><value>Periodo:</value></data>
+  <data name="ActivityFeed.Status" xml:space="preserve"><value>Stato:</value></data>
+  <data name="ActivityFeed.MonthSuffix" xml:space="preserve"><value>mese fa</value></data>
+  <data name="ActivityFeed.DaySuffix" xml:space="preserve"><value>g fa</value></data>
+  <data name="ActivityFeed.HourSuffix" xml:space="preserve"><value>h fa</value></data>
+  <data name="ActivityFeed.MinuteSuffix" xml:space="preserve"><value>min fa</value></data>
+
+  <!-- Fast Start Bonus Card -->
+  <data name="Fsb.Title" xml:space="preserve"><value>BONUS AVVIO RAPIDO</value></data>
+  <data name="Fsb.Locked" xml:space="preserve"><value>Bloccato — Prossimamente</value></data>
+  <data name="Fsb.Completed" xml:space="preserve"><value>COMPLETATO!</value></data>
+
+  <!-- Token Balance Widget -->
+  <data name="TokenWidget.Title" xml:space="preserve"><value>Saldo Token</value></data>
+  <data name="TokenWidget.GrantTokens" xml:space="preserve"><value>Concedi Token</value></data>
+  <data name="TokenWidget.EmptyTitle" xml:space="preserve"><value>Nessun token</value></data>
+  <data name="TokenWidget.EmptyMessage" xml:space="preserve"><value>I saldi dei token appariranno qui.</value></data>
+  <data name="TokenWidget.GrantModalTitle" xml:space="preserve"><value>Concedi Token</value></data>
+  <data name="TokenWidget.GrantModalMessage" xml:space="preserve"><value>Modal di concessione token amministratore — da implementare.</value></data>
+  <data name="TokenWidget.GrantConfirm" xml:space="preserve"><value>Concedi</value></data>
+
+  <!-- Account Tab (Email + Password card) -->
+  <data name="Account.Title" xml:space="preserve"><value>Account</value></data>
+  <data name="Account.EditButton" xml:space="preserve"><value>Modifica Informazioni Account</value></data>
+  <data name="Account.Email" xml:space="preserve"><value>E-mail</value></data>
+  <data name="Account.Password" xml:space="preserve"><value>Password</value></data>
+  <data name="Account.PasswordMasked" xml:space="preserve"><value>XXXXXXXXX</value></data>
+
+  <!-- Paginazione -->
+  <data name="Common.Previous" xml:space="preserve"><value>Precedente</value></data>
+  <data name="Common.Next" xml:space="preserve"><value>Successivo</value></data>
+
+  <!-- Intestazioni ed etichette condivise dei report -->
+  <data name="Reports.Showing" xml:space="preserve"><value>Mostrando</value></data>
+  <data name="Reports.Results" xml:space="preserve"><value>Risultati</value></data>
+  <data name="Reports.SearchPlaceholder" xml:space="preserve"><value>Cerca qui</value></data>
+  <data name="Reports.EarnedDate" xml:space="preserve"><value>Data Maturazione</value></data>
+  <data name="Reports.PaymentDate" xml:space="preserve"><value>Data Pagamento</value></data>
+  <data name="Reports.Paid" xml:space="preserve"><value>Pagato</value></data>
+  <data name="Reports.Pending" xml:space="preserve"><value>In sospeso</value></data>
+  <data name="Reports.History" xml:space="preserve"><value>Cronologia</value></data>
+  <data name="Reports.Detail" xml:space="preserve"><value>Dettaglio</value></data>
+  <data name="Reports.OrderNo" xml:space="preserve"><value>N° Ordine</value></data>
+  <data name="Reports.MemberName" xml:space="preserve"><value>Nome Membro</value></data>
+  <data name="Reports.MembershipType" xml:space="preserve"><value>Tipo di Membership</value></data>
+  <data name="Reports.Leg" xml:space="preserve"><value>Gamba</value></data>
+  <data name="Reports.EnrollmentDate" xml:space="preserve"><value>Data Iscrizione</value></data>
+  <data name="Reports.NextRebilling" xml:space="preserve"><value>Prossimo Rinnovo</value></data>
+  <data name="Reports.EligiblePoints" xml:space="preserve"><value>Punti Idonei</value></data>
+  <data name="Reports.TotalPoints" xml:space="preserve"><value>Punti Totali</value></data>
+  <data name="Reports.Type" xml:space="preserve"><value>Tipo</value></data>
+  <data name="Reports.Description" xml:space="preserve"><value>Descrizione</value></data>
+  <data name="Reports.Frequency" xml:space="preserve"><value>Frequenza</value></data>
+  <data name="Reports.Period" xml:space="preserve"><value>Periodo</value></data>
+  <data name="Reports.Month" xml:space="preserve"><value>Mese</value></data>
+  <data name="Reports.Income" xml:space="preserve"><value>Reddito</value></data>
+
+  <!-- Tabella Provvigioni -->
+  <data name="CommissionEarnings.Title" xml:space="preserve"><value>Provvigioni Maturate</value></data>
+  <data name="CommissionEarnings.ForcePay" xml:space="preserve"><value>Forza Pagamento</value></data>
+  <data name="CommissionEarnings.DeleteTitle" xml:space="preserve"><value>Elimina Provvigione</value></data>
+  <data name="CommissionEarnings.DeleteMessage" xml:space="preserve"><value>Sei sicuro di voler eliminare questa provvigione non pagata? Questa azione non può essere annullata.</value></data>
+
+  <!-- Dashboard Provvigioni -->
+  <data name="CommissionsDashboard.OnlyAmbassadors" xml:space="preserve"><value>Le provvigioni sono disponibili solo per gli Ambasciatori.</value></data>
+  <data name="CommissionsDashboard.Resume" xml:space="preserve"><value>Riepilogo</value></data>
+  <data name="CommissionsDashboard.HistoryCurrentYear" xml:space="preserve"><value>Cronologia (Anno Corrente)</value></data>
+  <data name="CommissionsDashboard.NoPending" xml:space="preserve"><value>Nessuna provvigione in sospeso.</value></data>
+  <data name="CommissionsDashboard.NoPaid" xml:space="preserve"><value>Nessuna provvigione pagata.</value></data>
+  <data name="CommissionsDashboard.DownloadYearly" xml:space="preserve"><value>Scarica Report Annuale ({0})</value></data>
+  <data name="CommissionsDashboard.NoHistory" xml:space="preserve"><value>Nessuna cronologia provvigioni disponibile.</value></data>
+  <data name="CommissionsDashboard.ModalTitle" xml:space="preserve"><value>Provvigioni ({0})</value></data>
+  <data name="CommissionsDashboard.NoBreakdown" xml:space="preserve"><value>Nessun dato di dettaglio.</value></data>
+  <data name="CommissionsDashboard.CommissionType" xml:space="preserve"><value>Tipo di Provvigione</value></data>
+  <data name="CommissionsDashboard.NoDataPeriod" xml:space="preserve"><value>Nessun dato per questo periodo.</value></data>
+  <data name="CommissionsDashboard.Ok" xml:space="preserve"><value>OK</value></data>
+
+  <!-- Report Residuale Dual -->
+  <data name="DualResidual.LeftLeg" xml:space="preserve"><value>Punti Gamba Sinistra</value></data>
+  <data name="DualResidual.RightLeg" xml:space="preserve"><value>Punti Gamba Destra</value></data>
+  <data name="DualResidual.HistoryTitle" xml:space="preserve"><value>Cronologia Residuale Team Dual</value></data>
+  <data name="DualResidual.WeakLeg" xml:space="preserve"><value>Punti Gamba Debole</value></data>
+  <data name="DualResidual.Breadcrumb" xml:space="preserve"><value>Residuale Dual</value></data>
+
+  <!-- Bonus di Avvio Rapido -->
+  <data name="Fsb.Normal" xml:space="preserve"><value>Normale</value></data>
+  <data name="Fsb.Promo2025" xml:space="preserve"><value>Promo 2025</value></data>
+  <data name="Fsb.Window" xml:space="preserve"><value>BONUS DI AVVIO RAPIDO {0}</value></data>
+  <data name="Fsb.NoMembersWindow" xml:space="preserve"><value>Nessun membro iscritto in questa finestra al momento.</value></data>
+  <data name="Fsb.MemberFullName" xml:space="preserve"><value>Nome</value></data>
+  <data name="Fsb.EnrollDate" xml:space="preserve"><value>Data Iscrizione</value></data>
+  <data name="Fsb.Service" xml:space="preserve"><value>Servizio</value></data>
+  <data name="Fsb.RenewalDate" xml:space="preserve"><value>Data Rinnovo</value></data>
+  <data name="Fsb.WindowSuffixPromo" xml:space="preserve"><value>— Promo 2025</value></data>
+  <data name="Fsb.WindowSuffixNormal" xml:space="preserve"><value>— Normale</value></data>
+  <data name="Fsb.Breadcrumb" xml:space="preserve"><value>Bonus di Avvio Rapido</value></data>
+
+  <!-- Bonus Presidenziale -->
+  <data name="Presidential.Breadcrumb" xml:space="preserve"><value>Bonus Presidenziale</value></data>
+  <data name="Presidential.TotalBonusEarned" xml:space="preserve"><value>Bonus Totale Maturato</value></data>
+  <data name="Presidential.TotalAmountEarned" xml:space="preserve"><value>Importo Totale Maturato</value></data>
+
+  <!-- Bonus Boost -->
+  <data name="Boost.Breadcrumb" xml:space="preserve"><value>Bonus Boost</value></data>
+  <data name="Boost.TitleWithLabel" xml:space="preserve"><value>Bonus Boost: {0}</value></data>
+  <data name="Boost.LoadingLabel" xml:space="preserve"><value>Caricamento...</value></data>
+  <data name="Boost.Gold" xml:space="preserve"><value>Oro</value></data>
+  <data name="Boost.Platinum" xml:space="preserve"><value>Platino</value></data>
+  <data name="Boost.Enrollments" xml:space="preserve"><value>Iscrizioni</value></data>
+  <data name="Boost.WeekSelectAria" xml:space="preserve"><value>Selezione settimana</value></data>
+  <data name="Boost.CurrentWeek" xml:space="preserve"><value>Settimana Corrente</value></data>
+  <data name="Boost.NoGoldEnrollments" xml:space="preserve"><value>Nessuna iscrizione Oro per questo periodo (soglia: 6).</value></data>
+  <data name="Boost.NoPlatinumEnrollments" xml:space="preserve"><value>Nessuna iscrizione Platino per questo periodo (soglia: 12).</value></data>
+  <data name="Boost.TotalMembers" xml:space="preserve"><value>Membri Totali</value></data>
+  <data name="Boost.ActiveRebilling" xml:space="preserve"><value>Rinnovo Attivo</value></data>
+  <data name="Boost.InactiveRebilling" xml:space="preserve"><value>Rinnovo Inattivo</value></data>
+
+  <!-- Bonus Auto -->
+  <data name="Car.Breadcrumb" xml:space="preserve"><value>Bonus Auto</value></data>
+  <data name="Car.CurrentProgress" xml:space="preserve"><value>Progresso Attuale: {0}</value></data>
+  <data name="Car.TotalEligiblePoints" xml:space="preserve"><value>Punti Idonei Totali</value></data>
+  <data name="Car.Progress" xml:space="preserve"><value>Progresso</value></data>
+  <data name="Car.Ambassador" xml:space="preserve"><value>Ambasciatore</value></data>
+  <data name="Car.NoCarBonusData" xml:space="preserve"><value>Nessun dato bonus auto disponibile.</value></data>
+  <data name="Car.BranchModalEnrollmentTeam" xml:space="preserve"><value>Team di Iscrizione • Ramo</value></data>
+  <data name="Car.BranchModalTotalPoints" xml:space="preserve"><value>Punti Totali: {0}</value></data>
+  <data name="Car.BranchModalNoMembers" xml:space="preserve"><value>Nessun membro trovato in questo ramo.</value></data>
+  <data name="Car.BranchModalFullName" xml:space="preserve"><value>Nome Completo</value></data>
+  <data name="Car.BranchModalMembershipLevel" xml:space="preserve"><value>Livello di Membership</value></data>
+  <data name="Car.BranchModalExpirationDate" xml:space="preserve"><value>Data di Scadenza</value></data>
+  <data name="Car.BranchModalExportList" xml:space="preserve"><value>Esporta lista</value></data>
+
+
+  <data name="Common.From" xml:space="preserve"><value>Da</value></data>
+  <data name="Common.To" xml:space="preserve"><value>A</value></data>
+  <data name="Common.Members" xml:space="preserve"><value>membri</value></data>
+  <data name="Common.Customers" xml:space="preserve"><value>clienti</value></data>
+  <data name="Common.Ok" xml:space="preserve"><value>OK</value></data>
+  <data name="Common.Back" xml:space="preserve"><value>Indietro</value></data>
+  <data name="Common.Previous2" xml:space="preserve"><value>Precedente</value></data>
+  <data name="Common.Pts" xml:space="preserve"><value>pt</value></data>
+  <data name="Common.Of2" xml:space="preserve"><value>di</value></data>
+  <data name="Reports.JoinDate" xml:space="preserve"><value>Data Iscrizione</value></data>
+  <data name="Reports.Id" xml:space="preserve"><value>ID</value></data>
+  <data name="Reports.Name" xml:space="preserve"><value>Nome</value></data>
+  <data name="Reports.Email" xml:space="preserve"><value>Email</value></data>
+  <data name="Reports.Phone" xml:space="preserve"><value>Telefono</value></data>
+  <data name="Reports.Country" xml:space="preserve"><value>Paese</value></data>
+  <data name="Reports.Level" xml:space="preserve"><value>Livello</value></data>
+  <data name="Reports.Sponsor" xml:space="preserve"><value>Sponsor</value></data>
+  <data name="Reports.DualUpline" xml:space="preserve"><value>Upline Dual</value></data>
+  <data name="Reports.DualTeamUpline" xml:space="preserve"><value>Upline Team Dual</value></data>
+  <data name="Reports.BizStatus" xml:space="preserve"><value>Stato BizCenter</value></data>
+  <data name="Reports.BizCenterStatus" xml:space="preserve"><value>Stato del BizCenter</value></data>
+  <data name="Reports.MembershipStatus" xml:space="preserve"><value>Stato Membership</value></data>
+  <data name="Reports.Membership" xml:space="preserve"><value>Membership</value></data>
+  <data name="Reports.Rank" xml:space="preserve"><value>Rango</value></data>
+  <data name="Reports.RankDate" xml:space="preserve"><value>Data Rango</value></data>
+  <data name="Reports.LifetimeRank" xml:space="preserve"><value>Rango a Vita</value></data>
+  <data name="Reports.NextRankPercent" xml:space="preserve"><value>% Prossimo Rango</value></data>
+  <data name="Reports.Qualified" xml:space="preserve"><value>Qualificato</value></data>
+  <data name="Reports.Unqualified" xml:space="preserve"><value>Non Qualificato</value></data>
+  <data name="Reports.QualPoints" xml:space="preserve"><value>Pt Qual.</value></data>
+  <data name="Reports.EnrollPoints" xml:space="preserve"><value>Pt Iscr.</value></data>
+  <data name="Reports.EnrollTeamPoints" xml:space="preserve"><value>Pt Team Iscr.</value></data>
+  <data name="Reports.LeftPoints" xml:space="preserve"><value>Pt Sinistra</value></data>
+  <data name="Reports.RightPoints" xml:space="preserve"><value>Pt Destra</value></data>
+  <data name="Reports.LeftTeamPoints" xml:space="preserve"><value>Pt Team Sinistra</value></data>
+  <data name="Reports.RightTeamPoints" xml:space="preserve"><value>Pt Team Destra</value></data>
+  <data name="Reports.Points" xml:space="preserve"><value>Punti</value></data>
+  <data name="Reports.PointsSuffix" xml:space="preserve"><value>Punti</value></data>
+  <data name="Reports.Ambassador" xml:space="preserve"><value>Ambasciatore</value></data>
+  <data name="Reports.Ambassadors" xml:space="preserve"><value>Ambasciatori</value></data>
+  <data name="Reports.OnlyCustomers" xml:space="preserve"><value>Solo Clienti</value></data>
+  <data name="Reports.LeftLeg" xml:space="preserve"><value>Gamba Sinistra</value></data>
+  <data name="Reports.RightLeg" xml:space="preserve"><value>Gamba Destra</value></data>
+  <data name="Reports.LeftSide" xml:space="preserve"><value>Lato Sinistro</value></data>
+  <data name="Reports.RightSide" xml:space="preserve"><value>Lato Destro</value></data>
+  <data name="Reports.QualifyHeaderTooltip" xml:space="preserve"><value>Punti personali di qualificazione — somma dei QualificationPoints dagli acquisti del membro.</value></data>
+  <data name="Reports.EnrollPointsTooltip" xml:space="preserve"><value>Punti del team di iscrizione — accumulati dalla downline del membro. 0 indica nessun iscritto.</value></data>
+  <data name="Reports.LeftPointsTooltip" xml:space="preserve"><value>Punti gamba sinistra dell'albero dual — accumulati sulla gamba SINISTRA. 0 = nessun discendente.</value></data>
+  <data name="Reports.RightPointsTooltip" xml:space="preserve"><value>Punti gamba destra dell'albero dual — accumulati sulla gamba DESTRA. 0 = nessun discendente.</value></data>
+  <data name="Team.LeftLegPoints" xml:space="preserve"><value>Punti Gamba Sinistra</value></data>
+  <data name="Team.RightLegPoints" xml:space="preserve"><value>Punti Gamba Destra</value></data>
+  <data name="Team.LegendQualified" xml:space="preserve"><value>Qualificato</value></data>
+  <data name="Team.LegendUnqualified" xml:space="preserve"><value>Non Qualificato</value></data>
+  <data name="Team.LegendCancelled" xml:space="preserve"><value>Annullato / Inattivo</value></data>
+  <data name="Team.Root" xml:space="preserve"><value>Radice</value></data>
+  <data name="Team.NoTreeData" xml:space="preserve"><value>Nessun dato dell'albero disponibile.</value></data>
+  <data name="Team.LeftEmpty" xml:space="preserve"><value>S Vuoto</value></data>
+  <data name="Team.RightEmpty" xml:space="preserve"><value>D Vuoto</value></data>
+  <data name="Team.OpenSlot" xml:space="preserve"><value>Slot Libero</value></data>
+  <data name="Team.PlaceMemberTooltip" xml:space="preserve"><value>Clicca per piazzare un membro</value></data>
+  <data name="Team.DrillTooltipSuffix" xml:space="preserve"><value>Clicca per esplorare</value></data>
+  <data name="Team.Expand" xml:space="preserve"><value>Espandi</value></data>
+  <data name="Team.RevertPlacement" xml:space="preserve"><value>Annulla Piazzamento</value></data>
+  <data name="Team.SelectAmbassadorLeg" xml:space="preserve"><value>Seleziona ambasciatore — gamba {0}</value></data>
+  <data name="Team.LegLeft" xml:space="preserve"><value>Sinistra</value></data>
+  <data name="Team.LegRight" xml:space="preserve"><value>Destra</value></data>
+  <data name="Team.NoCandidatesAvailable" xml:space="preserve"><value>Nessun ambasciatore disponibile per il piazzamento.</value></data>
+  <data name="Team.PlacementConfirmation" xml:space="preserve"><value>Conferma Piazzamento</value></data>
+  <data name="Team.AmbassadorLabel" xml:space="preserve"><value>Ambasciatore:</value></data>
+  <data name="Team.UnderLabel" xml:space="preserve"><value>Sotto:</value></data>
+  <data name="Team.LegBadge" xml:space="preserve"><value>gamba {0}</value></data>
+  <data name="Team.PointsContributionPrefix" xml:space="preserve"><value>Punti che contribuiranno a</value></data>
+  <data name="Team.PointSingular" xml:space="preserve"><value>punto</value></data>
+  <data name="Team.PointsPlural" xml:space="preserve"><value>punti</value></data>
+  <data name="Team.SubtreeSuffix" xml:space="preserve"><value>(lui + {0} nel suo sottoalbero)</value></data>
+  <data name="Team.ChangeSelection" xml:space="preserve"><value>Cambia selezione</value></data>
+  <data name="Team.ConfirmPlacement" xml:space="preserve"><value>Conferma Piazzamento</value></data>
+  <data name="Team.ConfirmRevertPlacement" xml:space="preserve"><value>Conferma Annullamento Piazzamento</value></data>
+  <data name="Team.RevertConfirmQuestion" xml:space="preserve"><value>Sei sicuro di voler annullare il piazzamento di</value></data>
+  <data name="Team.RevertConfirmHelp" xml:space="preserve"><value>L'ambasciatore e il suo sottoalbero saranno scollegati dall'albero dual. Potranno essere ripiazzati in seguito e il sottoalbero li seguirà.</value></data>
+  <data name="Team.ConfirmRevert" xml:space="preserve"><value>Conferma Annullamento</value></data>
+  <data name="Team.RevertError" xml:space="preserve"><value>Errore nell'annullamento del piazzamento ({0}).</value></data>
+  <data name="Team.RootPointsTooltipLine1" xml:space="preserve"><value>Punti totali della downline (gambe sin. + des.): {0}</value></data>
+  <data name="Team.RootPointsTooltipLine2" xml:space="preserve"><value>  • Punti personali (non inclusi): {0}</value></data>
+  <data name="Team.PointsTooltipLine1" xml:space="preserve"><value>Contributo alla gamba dell'upline: {0}</value></data>
+  <data name="Team.PointsTooltipLine2" xml:space="preserve"><value>  • Punti personali: {0}</value></data>
+  <data name="Team.PointsTooltipLine3" xml:space="preserve"><value>  • Punti della downline: {0}</value></data>
+  <data name="Team.LoadingError" xml:space="preserve"><value>Impossibile caricare il nodo dell'albero.</value></data>
+  <data name="Team.ApiErrorPrefix" xml:space="preserve"><value>Errore API:</value></data>
+  <data name="Team.ErrorPrefix" xml:space="preserve"><value>Errore:</value></data>
+  <data name="Team.PlacementFailed" xml:space="preserve"><value>Piazzamento fallito:</value></data>
+  <data name="Team.LoadCandidatesError" xml:space="preserve"><value>Errore caricamento candidati:</value></data>
+  <data name="Team.NoMembersForPlacement" xml:space="preserve"><value>Nessun membro disponibile per il piazzamento.</value></data>
+  <data name="Team.SearchPlaceholderHere" xml:space="preserve"><value>Cerca qui</value></data>
+  <data name="Team.RefreshTitle" xml:space="preserve"><value>Aggiorna dal server</value></data>
+  <data name="Team.LoadFailedDualMembers" xml:space="preserve"><value>Impossibile caricare i membri del team dual.</value></data>
+  <data name="Team.ActualRank" xml:space="preserve"><value>Rango Attuale</value></data>
+  <data name="Team.NextRank" xml:space="preserve"><value>Prossimo Rango</value></data>
+  <data name="Team.DualPtsRequired" xml:space="preserve"><value>Pt Team Dual Richiesti</value></data>
+  <data name="Team.EnrollmentPtsRequired" xml:space="preserve"><value>Pt Iscrizione Richiesti</value></data>
+  <data name="Team.TotalDualTeamPoints" xml:space="preserve"><value>Punti Totali Team Dual</value></data>
+  <data name="Team.DailyResidualsEarning" xml:space="preserve"><value>Guadagni Residui Giornalieri</value></data>
+  <data name="Team.LastSixMonths" xml:space="preserve"><value>Ultimi 6 mesi</value></data>
+  <data name="Team.ChartComingSoon" xml:space="preserve"><value>Grafico in arrivo</value></data>
+  <data name="Team.HistoricalResidualsHint" xml:space="preserve"><value>I dati storici dei residui appariranno qui</value></data>
+  <data name="Team.DualTeamMembers" xml:space="preserve"><value>Membri del Team Dual</value></data>
+  <data name="Team.QualificationPoints" xml:space="preserve"><value>Punti di Qualificazione</value></data>
+  <data name="Team.CurrentRankEligible" xml:space="preserve"><value>Rango Attuale (Pt Idonei)</value></data>
+  <data name="Team.NextRankEligible" xml:space="preserve"><value>Prossimo Rango (Pt Idonei)</value></data>
+  <data name="Team.NoTeamMembers" xml:space="preserve"><value>Nessun membro del team trovato.</value></data>
+  <data name="Team.NoResidualEarnings" xml:space="preserve"><value>Nessun guadagno residuo da mostrare.</value></data>
+  <data name="Team.LoadFailedTeamMembers" xml:space="preserve"><value>Impossibile caricare i membri del team.</value></data>
+  <data name="Team.LoadFailedResiduals" xml:space="preserve"><value>Impossibile caricare i guadagni residui.</value></data>
+  <data name="Team.CurrentProgress" xml:space="preserve"><value>Progresso Attuale: {0}</value></data>
+  <data name="Team.TotalPoints" xml:space="preserve"><value>Punti Totali</value></data>
+  <data name="Team.TotalEligibleCurrentRank" xml:space="preserve"><value>Pt Idonei Totali (Rango Attuale)</value></data>
+  <data name="Team.TotalEligibleNextRank" xml:space="preserve"><value>Pt Idonei Totali (Prossimo Rango)</value></data>
+  <data name="Team.NoRecords" xml:space="preserve"><value>Nessun record da mostrare.</value></data>
+  <data name="Team.PointsLabel" xml:space="preserve"><value>Punti</value></data>
+  <data name="Team.AmbassadorsCount" xml:space="preserve"><value>Ambasciatori ({0})</value></data>
+  <data name="Team.OnlyCustomersCount" xml:space="preserve"><value>Solo Clienti ({0})</value></data>
+  <data name="Team.NoAmbassadorsBranch" xml:space="preserve"><value>Nessun ambasciatore in questo ramo.</value></data>
+  <data name="Team.NoCustomersBranch" xml:space="preserve"><value>Nessun cliente in questo ramo.</value></data>
+  <data name="Team.LoadFailedBranches" xml:space="preserve"><value>Impossibile caricare i rami.</value></data>
+  <data name="Team.StatusActive" xml:space="preserve"><value>Attivo</value></data>
+  <data name="Team.StatusSuspended" xml:space="preserve"><value>Sospeso</value></data>
+  <data name="Team.StatusCancelled" xml:space="preserve"><value>Annullato</value></data>
+  <data name="Team.StatusInactive" xml:space="preserve"><value>Inattivo</value></data>
+  <data name="Team.StatusNone" xml:space="preserve"><value>Nessuno</value></data>
+  <data name="Team.CustomersSearchPlaceholder" xml:space="preserve"><value>Cerca nome, ID…</value></data>
+  <data name="Team.LoadFailedCustomers" xml:space="preserve"><value>Impossibile caricare i clienti.</value></data>
+  <data name="Team.ViewInAdmin" xml:space="preserve"><value>Vedi in Admin</value></data>
+  <data name="Team.MyTeamSearchPlaceholder" xml:space="preserve"><value>Cerca nome, ID, email…</value></data>
+  <data name="Team.JoinDateRange" xml:space="preserve"><value>Intervallo Data Iscrizione</value></data>
+  <data name="Team.LoadFailedTeam" xml:space="preserve"><value>Impossibile caricare il team.</value></data>
+  <data name="Team.SuspensionDate" xml:space="preserve"><value>Data Sospensione:</value></data>
+  <data name="Team.CancellationDate" xml:space="preserve"><value>Data Annullamento:</value></data>
+  <data name="Team.LastPaymentDate" xml:space="preserve"><value>Ultimo Pagamento:</value></data>
+  <data name="Team.RankLabel" xml:space="preserve"><value>Rango:</value></data>
+  <data name="Team.RankDateLabel" xml:space="preserve"><value>Data Rango:</value></data>
+  <data name="Team.LifetimeRankLabel" xml:space="preserve"><value>Rango a Vita:</value></data>
+  <data name="Team.NextRankPercentLabel" xml:space="preserve"><value>% Prossimo Rango:</value></data>
+  <data name="Team.QualificationPointsLabel" xml:space="preserve"><value>Punti di Qualificazione:</value></data>
+  <data name="Team.EnrollmentTeamPointsLabel" xml:space="preserve"><value>Punti Team Iscrizione:</value></data>
+  <data name="Team.LeftTeamPointsLabel" xml:space="preserve"><value>Punti Team Sinistra:</value></data>
+  <data name="Team.RightTeamPointsLabel" xml:space="preserve"><value>Punti Team Destra:</value></data>
+  <data name="Team.IdLabel" xml:space="preserve"><value>ID:</value></data>
+  <data name="Team.JoinDateLabel" xml:space="preserve"><value>Data Iscrizione:</value></data>
+  <data name="Team.EmailLabel" xml:space="preserve"><value>Email:</value></data>
+  <data name="Team.PhoneLabel" xml:space="preserve"><value>Telefono:</value></data>
+  <data name="Team.LevelLabel" xml:space="preserve"><value>Livello:</value></data>
+  <data name="Team.CountryLabel" xml:space="preserve"><value>Paese:</value></data>
+  <data name="Team.SponsorLabel" xml:space="preserve"><value>Sponsor:</value></data>
+  <data name="Team.DualTeamUplineLabel" xml:space="preserve"><value>Upline Team Dual:</value></data>
+  <data name="Team.BizCenterStatusLabel" xml:space="preserve"><value>Stato del BizCenter:</value></data>
+  <data name="Team.MembershipStatusLabel" xml:space="preserve"><value>Stato Membership:</value></data>
+  <data name="Team.QualifiedLabel" xml:space="preserve"><value>Qualificato:</value></data>
+  <data name="Team.MembershipLabel" xml:space="preserve"><value>Membership:</value></data>
+  <data name="Team.Resume" xml:space="preserve"><value>Riepilogo</value></data>
+  <data name="Team.TotalMembers" xml:space="preserve"><value>Totale Membri</value></data>
+  <data name="Team.TotalQualifiedMembers" xml:space="preserve"><value>Totale Membri Qualificati</value></data>
+  <data name="Team.TotalUnqualifiedMembers" xml:space="preserve"><value>Totale Membri Non Qualificati</value></data>
+  <data name="Team.TotalCancelledMembers" xml:space="preserve"><value>Totale Membri Annullati</value></data>
+  <data name="Team.EnrollmentTeamTitle" xml:space="preserve"><value>Team di Iscrizione</value></data>
+  <data name="Team.LegendCancelledShort" xml:space="preserve"><value>Annullato</value></data>
+  <data name="Team.ShowCancelled" xml:space="preserve"><value>Mostra Annullati</value></data>
+  <data name="Team.NoMembersDisplay" xml:space="preserve"><value>Nessun membro da mostrare.</value></data>
+  <data name="Team.TreeNoChildren" xml:space="preserve"><value>Senza figli</value></data>
+  <data name="Team.TreeLoading" xml:space="preserve"><value>Caricamento</value></data>
+  <data name="Team.TreeCollapse" xml:space="preserve"><value>Comprimi</value></data>
+  <data name="Team.LoadTreeFailedPrefix" xml:space="preserve"><value>Impossibile caricare l'albero:</value></data>
+  <data name="Team.PointsAriaSuffix" xml:space="preserve"><value>{0} punti</value></data>
+  <data name="Placement.Title" xml:space="preserve"><value>Gestione Piazzamento</value></data>
+  <data name="Placement.Subtitle" xml:space="preserve"><value>Gestisci la posizione dei tuoi membri reclutati nel Team Dual.</value></data>
+  <data name="Placement.AdminTitle" xml:space="preserve"><value>Piazzamento — Vista Admin</value></data>
+  <data name="Placement.AdminSubtitle" xml:space="preserve"><value>Gestisci i piazzamenti di tutti i membri della rete. Senza restrizioni di tempo o opportunità.</value></data>
+  <data name="Placement.ViewHistory" xml:space="preserve"><value>Vedi cronologia</value></data>
+  <data name="Placement.AutoPlacement" xml:space="preserve"><value>Auto-Piazzamento</value></data>
+  <data name="Placement.AutoPlacementAriaLabel" xml:space="preserve"><value>Esegui auto-piazzamento manualmente</value></data>
+  <data name="Placement.Running" xml:space="preserve"><value>Esecuzione…</value></data>
+  <data name="Placement.AutoPlacementCompleted" xml:space="preserve"><value>Auto-piazzamento completato: {0} membro(i) piazzato(i).</value></data>
+  <data name="Placement.AutoPlacementError" xml:space="preserve"><value>Errore nell'esecuzione dell'auto-piazzamento.</value></data>
+  <data name="Placement.UnexpectedErrorPrefix" xml:space="preserve"><value>Errore imprevisto:</value></data>
+  <data name="Placement.SponsorLabel" xml:space="preserve"><value>Sponsor:</value></data>
+  <data name="Placement.SponsorPlaceholder" xml:space="preserve"><value>ID o nome dello sponsor…</value></data>
+  <data name="Placement.SponsorFilterAria" xml:space="preserve"><value>Filtra per sponsor</value></data>
+  <data name="Placement.LoadingPlacements" xml:space="preserve"><value>Caricamento piazzamenti…</value></data>
+  <data name="Placement.LoadingShort" xml:space="preserve"><value>Caricamento…</value></data>
+  <data name="Placement.LoadFailed" xml:space="preserve"><value>Impossibile caricare i piazzamenti.</value></data>
+  <data name="Placement.NoneTitle" xml:space="preserve"><value>Nessun membro in attesa</value></data>
+  <data name="Placement.NoneMessage" xml:space="preserve"><value>Tutti i tuoi reclutati hanno già un piazzamento. Ben fatto!</value></data>
+  <data name="Placement.AdminNoneTitle" xml:space="preserve"><value>Nessun piazzamento in attesa</value></data>
+  <data name="Placement.AdminNoneMessage" xml:space="preserve"><value>Non ci sono membri in attesa di piazzamento nella rete.</value></data>
+  <data name="Placement.FilterAria" xml:space="preserve"><value>Filtra piazzamenti</value></data>
+  <data name="Placement.ListAria" xml:space="preserve"><value>Lista membri per piazzamento</value></data>
+  <data name="Placement.TabAll" xml:space="preserve"><value>Tutti</value></data>
+  <data name="Placement.TabPending" xml:space="preserve"><value>In attesa</value></data>
+  <data name="Placement.TabPlaced" xml:space="preserve"><value>Piazzati</value></data>
+  <data name="Placement.TabBlocked" xml:space="preserve"><value>Bloccati</value></data>
+  <data name="Placement.StatPending" xml:space="preserve"><value>In attesa</value></data>
+  <data name="Placement.StatPlaced" xml:space="preserve"><value>Piazzati</value></data>
+  <data name="Placement.StatAutoPlaced" xml:space="preserve"><value>Auto-piazzati</value></data>
+  <data name="Placement.StatExpired" xml:space="preserve"><value>Scaduti</value></data>
+  <data name="Placement.RemoveTitle" xml:space="preserve"><value>Rimuovi Piazzamento</value></data>
+  <data name="Placement.RemoveConfirmLabel" xml:space="preserve"><value>Rimuovi piazzamento</value></data>
+  <data name="Placement.RemoveBodyPrefix" xml:space="preserve"><value>Stai per rimuovere il piazzamento di</value></data>
+  <data name="Placement.RemoveLegSuffix" xml:space="preserve"><value>dalla gamba {0}.</value></data>
+  <data name="Placement.RemoveOpportunityNote" xml:space="preserve"><value>Questa azione consumerà un'opportunità di piazzamento ({0} restante(i)).</value></data>
+  <data name="Placement.RemoveLastWarningTitle" xml:space="preserve"><value>Attenzione:</value></data>
+  <data name="Placement.RemoveLastWarningBody" xml:space="preserve"><value>Questa è la tua ultima opportunità di ricollocazione. Il prossimo piazzamento sarà definitivo.</value></data>
+  <data name="Placement.AdminRemoveBodyPrefix" xml:space="preserve"><value>Stai per rimuovere il piazzamento di</value></data>
+  <data name="Placement.AdminRemoveNote" xml:space="preserve"><value>Azione admin: non consuma opportunità di piazzamento.</value></data>
+  <data name="Placement.RemoveError" xml:space="preserve"><value>Errore nella rimozione del piazzamento.</value></data>
+  <data name="Placement.CloseAlert" xml:space="preserve"><value>Chiudi</value></data>
+  <data name="Placement.AriaPrefix" xml:space="preserve"><value>Piazzamento:</value></data>
+  <data name="Placement.PhotoAlt" xml:space="preserve"><value>Foto di {0}</value></data>
+  <data name="Placement.AutoBadgeTitle" xml:space="preserve"><value>Piazzato automaticamente dal sistema</value></data>
+  <data name="Placement.AutoBadge" xml:space="preserve"><value>Auto</value></data>
+  <data name="Placement.RecruitedOn" xml:space="preserve"><value>Reclutato il {0}</value></data>
+  <data name="Placement.LegLabelStrong" xml:space="preserve"><value>Gamba</value></data>
+  <data name="Placement.UnderLabel" xml:space="preserve"><value>sotto</value></data>
+  <data name="Placement.CorrectionWindow" xml:space="preserve"><value>Finestra di correzione:</value></data>
+  <data name="Placement.HoursLeftAriaLabel" xml:space="preserve"><value>Finestra di correzione: {0} ore restanti</value></data>
+  <data name="Placement.HoursMinutesRemaining" xml:space="preserve"><value>restanti</value></data>
+  <data name="Placement.WindowLabel" xml:space="preserve"><value>Finestra di piazzamento</value></data>
+  <data name="Placement.DaysRemaining" xml:space="preserve"><value>{0} giorno(i) restante(i)</value></data>
+  <data name="Placement.WindowClosed" xml:space="preserve"><value>Finestra chiusa</value></data>
+  <data name="Placement.WindowAria" xml:space="preserve"><value>Progresso della finestra di piazzamento</value></data>
+  <data name="Placement.OpportunitiesLabel" xml:space="preserve"><value>Opportunità:</value></data>
+  <data name="Placement.OpportunitiesAria" xml:space="preserve"><value>{0} di 2 opportunità usate</value></data>
+  <data name="Placement.OpportunityNumber" xml:space="preserve"><value>Opportunità {0}</value></data>
+  <data name="Placement.OpportunitiesUsedShort" xml:space="preserve"><value>({0}/2 usate)</value></data>
+  <data name="Placement.BlockedTitle" xml:space="preserve"><value>Entrambe le opportunità di piazzamento esaurite</value></data>
+  <data name="Placement.Blocked" xml:space="preserve"><value>Bloccato</value></data>
+  <data name="Placement.ExpiredTitle" xml:space="preserve"><value>La finestra di 30 giorni è scaduta</value></data>
+  <data name="Placement.Expired" xml:space="preserve"><value>Scaduto</value></data>
+  <data name="Placement.PlaceAction" xml:space="preserve"><value>Piazza</value></data>
+  <data name="Placement.PlaceAriaLabel" xml:space="preserve"><value>Piazza {0} nel Team Dual</value></data>
+  <data name="Placement.MoveAction" xml:space="preserve"><value>Sposta</value></data>
+  <data name="Placement.MoveAriaLabel" xml:space="preserve"><value>Sposta {0} su un altro nodo</value></data>
+  <data name="Placement.RemoveAction" xml:space="preserve"><value>Rimuovi</value></data>
+  <data name="Placement.RemoveAriaLabel" xml:space="preserve"><value>Rimuovi piazzamento di {0}</value></data>
+  <data name="Placement.HistoryTitle" xml:space="preserve"><value>Cronologia Piazzamenti</value></data>
+  <data name="Placement.HistoryColMember" xml:space="preserve"><value>Membro</value></data>
+  <data name="Placement.HistoryColAction" xml:space="preserve"><value>Azione</value></data>
+  <data name="Placement.HistoryColTargetNode" xml:space="preserve"><value>Nodo di destinazione</value></data>
+  <data name="Placement.HistoryColLeg" xml:space="preserve"><value>Gamba</value></data>
+  <data name="Placement.HistoryColExecutedBy" xml:space="preserve"><value>Eseguito da</value></data>
+  <data name="Placement.HistoryColDate" xml:space="preserve"><value>Data</value></data>
+  <data name="Placement.HistoryRefreshAria" xml:space="preserve"><value>Aggiorna cronologia</value></data>
+  <data name="Placement.HistorySideLeft" xml:space="preserve"><value>Sinistra</value></data>
+  <data name="Placement.HistorySideRight" xml:space="preserve"><value>Destra</value></data>
+  <data name="Placement.SelectorLegend" xml:space="preserve"><value>Seleziona nodo e gamba nel Team Dual</value></data>
+  <data name="Placement.NoPositionsTitle" xml:space="preserve"><value>Nessuna posizione disponibile</value></data>
+  <data name="Placement.NoPositionsMessage" xml:space="preserve"><value>Non ci sono nodi con slot liberi nell'albero dello sponsor.</value></data>
+  <data name="Placement.SponsorRootLevel" xml:space="preserve"><value>Sponsor (Livello radice)</value></data>
+  <data name="Placement.LevelN" xml:space="preserve"><value>Livello {0}</value></data>
+  <data name="Placement.NodeLabel" xml:space="preserve"><value>Nodo:</value></data>
+  <data name="Placement.LeftLeg" xml:space="preserve"><value>Sinistra</value></data>
+  <data name="Placement.RightLeg" xml:space="preserve"><value>Destra</value></data>
+  <data name="Placement.Available" xml:space="preserve"><value>Disponibile</value></data>
+  <data name="Placement.Occupied" xml:space="preserve"><value>Occupato</value></data>
+  <data name="Placement.OtherMember" xml:space="preserve"><value>un altro membro</value></data>
+  <data name="Placement.SlotAriaAvailable" xml:space="preserve"><value>Gamba {0} di {1} — disponibile. {2}</value></data>
+  <data name="Placement.SlotAriaOccupied" xml:space="preserve"><value>Gamba {0} di {1} — occupata da {2}</value></data>
+  <data name="Placement.Selected" xml:space="preserve"><value>Selezionato.</value></data>
+  <data name="Placement.ClickToSelect" xml:space="preserve"><value>Clicca per selezionare.</value></data>
+  <data name="Placement.SelectionLabel" xml:space="preserve"><value>Hai selezionato:</value></data>
+  <data name="Placement.SelectionUnderPrefix" xml:space="preserve"><value>sotto</value></data>
+  <data name="Placement.LegStrongPrefix" xml:space="preserve"><value>gamba</value></data>
+  <data name="Placement.WizardCloseAria" xml:space="preserve"><value>Chiudi assistente</value></data>
+  <data name="Placement.WizardCancelAria" xml:space="preserve"><value>Annulla e chiudi assistente</value></data>
+  <data name="Placement.WizardStepperAria" xml:space="preserve"><value>Passi dell'assistente</value></data>
+  <data name="Placement.WizardTitleMove" xml:space="preserve"><value>Sposta Piazzamento</value></data>
+  <data name="Placement.WizardTitlePlace" xml:space="preserve"><value>Piazza nel Team Dual</value></data>
+  <data name="Placement.StepMember" xml:space="preserve"><value>Membro</value></data>
+  <data name="Placement.StepSelectNode" xml:space="preserve"><value>Seleziona nodo</value></data>
+  <data name="Placement.StepConfirm" xml:space="preserve"><value>Conferma</value></data>
+  <data name="Placement.Step0Heading" xml:space="preserve"><value>Conferma membro da piazzare</value></data>
+  <data name="Placement.Recruited" xml:space="preserve"><value>Reclutato:</value></data>
+  <data name="Placement.WindowInfo" xml:space="preserve"><value>Hai {0} giorno(i) per completare il piazzamento. Opportunità restanti: {1}.</value></data>
+  <data name="Placement.Step1Heading" xml:space="preserve"><value>Seleziona il nodo di destinazione</value></data>
+  <data name="Placement.Step1Help" xml:space="preserve"><value>Scegli il nodo del Team Dual del tuo sponsor dove vuoi piazzare il membro.</value></data>
+  <data name="Placement.LoadingTreeAria" xml:space="preserve"><value>Caricamento albero…</value></data>
+  <data name="Placement.LoadingTreeMsg" xml:space="preserve"><value>Caricamento struttura dell'albero…</value></data>
+  <data name="Placement.NoNodesTitle" xml:space="preserve"><value>Nessun nodo disponibile</value></data>
+  <data name="Placement.NoNodesMessage" xml:space="preserve"><value>Non ci sono posizioni disponibili nel team dello sponsor.</value></data>
+  <data name="Placement.SponsorLabel2" xml:space="preserve"><value>Sponsor:</value></data>
+  <data name="Placement.Step2Heading" xml:space="preserve"><value>Conferma piazzamento</value></data>
+  <data name="Placement.MemberLabel" xml:space="preserve"><value>Membro:</value></data>
+  <data name="Placement.TargetNodeLabel" xml:space="preserve"><value>Nodo di destinazione:</value></data>
+  <data name="Placement.LegLabel" xml:space="preserve"><value>Gamba:</value></data>
+  <data name="Placement.OpportunitiesAfterLabel" xml:space="preserve"><value>Opportunità dopo il piazzamento:</value></data>
+  <data name="Placement.RemainingSuffix" xml:space="preserve"><value>restante(i)</value></data>
+  <data name="Placement.LastOpportunityTitle" xml:space="preserve"><value>Ultima opportunità.</value></data>
+  <data name="Placement.LastOpportunityBody" xml:space="preserve"><value>Questo sarà il piazzamento definitivo. Non potrai più spostarlo.</value></data>
+  <data name="Placement.WizardCancel" xml:space="preserve"><value>Annulla</value></data>
+  <data name="Placement.WizardPrev" xml:space="preserve"><value>Precedente</value></data>
+  <data name="Placement.WizardNext" xml:space="preserve"><value>Avanti</value></data>
+  <data name="Placement.WizardConfirm" xml:space="preserve"><value>Conferma Piazzamento</value></data>
+  <data name="Placement.WizardConfirmAria" xml:space="preserve"><value>Conferma piazzamento definitivo</value></data>
+  <data name="Placement.Processing" xml:space="preserve"><value>Elaborazione…</value></data>
+  <data name="Placement.SelectNodeBeforeContinue" xml:space="preserve"><value>Seleziona un nodo e una gamba prima di continuare.</value></data>
+  <data name="Placement.LoadTreeError" xml:space="preserve"><value>Impossibile caricare l'albero:</value></data>
+  <data name="Placement.SaveError" xml:space="preserve"><value>Errore nel salvataggio del piazzamento.</value></data>
+  <data name="Placement.BreadcrumbTeam" xml:space="preserve"><value>Team</value></data>
+  <data name="Placement.BreadcrumbPlacement" xml:space="preserve"><value>Piazzamento</value></data>
+  <data name="Placement.BreadcrumbHistory" xml:space="preserve"><value>Cronologia</value></data>
+  <data name="Placement.BreadcrumbAdminDashboard" xml:space="preserve"><value>Dashboard Admin</value></data>
+  <data name="Sidebar.MyTeam2" xml:space="preserve"><value>Il Mio Team</value></data>
+
+  <!-- Tokens / Guest Passes (F4) -->
+  <data name="GuestPasses.Title" xml:space="preserve"><value>Pass Ospite</value></data>
+  <data name="GuestPasses.Code" xml:space="preserve"><value>Codice</value></data>
+  <data name="GuestPasses.DistributedTo" xml:space="preserve"><value>Distribuito a</value></data>
+  <data name="GuestPasses.UsedBy" xml:space="preserve"><value>Usato da</value></data>
+  <data name="GuestPasses.UsedAt" xml:space="preserve"><value>Usato il</value></data>
+  <data name="GuestPasses.Used" xml:space="preserve"><value>Usato</value></data>
+  <data name="GuestPasses.Available" xml:space="preserve"><value>Disponibile</value></data>
+
+  <data name="Tokens.Resume" xml:space="preserve"><value>Riepilogo Token</value></data>
+  <data name="Tokens.TotalTokens" xml:space="preserve"><value>Token Totali</value></data>
+  <data name="Tokens.TotalUsed" xml:space="preserve"><value>Totale Usati</value></data>
+  <data name="Tokens.TotalAvailable" xml:space="preserve"><value>Totale Disponibili</value></data>
+  <data name="Tokens.PurchaseNote" xml:space="preserve"><value>Nota: I token possono essere usati per pagare iscrizioni, quote del Biz Center e Travel Advantage™. Una volta acquistati, puoi distribuire i token al tuo team. Gli acquisti di token sono limitati a 10 al mese e non sono rimborsabili.</value></data>
+  <data name="Tokens.Amount" xml:space="preserve"><value>Quantità:</value></data>
+  <data name="Tokens.TokensSuffix" xml:space="preserve"><value>Token</value></data>
+  <data name="Tokens.TokenType" xml:space="preserve"><value>Tipo di Token</value></data>
+  <data name="Tokens.BuyNow" xml:space="preserve"><value>Acquista Ora</value></data>
+  <data name="Tokens.TabCommissions" xml:space="preserve"><value>Commissioni</value></data>
+  <data name="Tokens.TabEWallet" xml:space="preserve"><value>eWallet</value></data>
+  <data name="Tokens.TabCreditCard" xml:space="preserve"><value>Carta di Credito</value></data>
+  <data name="Tokens.TabCrypto" xml:space="preserve"><value>Cripto</value></data>
+  <data name="Tokens.CommissionBalanceLabel" xml:space="preserve"><value>Il tuo saldo commissioni è</value></data>
+  <data name="Tokens.EWalletBalanceLabel" xml:space="preserve"><value>Il tuo saldo eWallet è</value></data>
+  <data name="Tokens.CreditCard" xml:space="preserve"><value>Carta di Credito</value></data>
+  <data name="Tokens.AddNewCard" xml:space="preserve"><value>Aggiungi Nuova Carta</value></data>
+  <data name="Tokens.NoCreditCards" xml:space="preserve"><value>Nessuna carta di credito registrata.</value></data>
+  <data name="Tokens.PoweredByNowPayments" xml:space="preserve"><value>Fornito da NowPayments</value></data>
+  <data name="Tokens.ColDate" xml:space="preserve"><value>Data</value></data>
+  <data name="Tokens.ColOwner" xml:space="preserve"><value>Proprietario</value></data>
+  <data name="Tokens.ColTokenCode" xml:space="preserve"><value>Codice Token</value></data>
+  <data name="Tokens.ColType" xml:space="preserve"><value>Tipo</value></data>
+  <data name="Tokens.ColUseDate" xml:space="preserve"><value>Data di Utilizzo</value></data>
+  <data name="Tokens.ColUsedBy" xml:space="preserve"><value>Usato da</value></data>
+  <data name="Tokens.StatusAvailable" xml:space="preserve"><value>Disponibile</value></data>
+  <data name="Tokens.Distribution" xml:space="preserve"><value>Distribuzione</value></data>
+  <data name="Tokens.DistributeButton" xml:space="preserve"><value>Distribuisci</value></data>
+  <data name="Tokens.DistributionNote" xml:space="preserve"><value>Nota: Puoi distribuire token al tuo team e ai membri. Tutte le distribuzioni di token sono definitive.</value></data>
+  <data name="Tokens.Member" xml:space="preserve"><value>Membro</value></data>
+  <data name="Tokens.SearchMemberPlaceholder" xml:space="preserve"><value>Cerca membro...</value></data>
+  <data name="Tokens.Clear" xml:space="preserve"><value>Cancella</value></data>
+  <data name="Tokens.BreadcrumbGuestPasses" xml:space="preserve"><value>Pass Ospite</value></data>
+
+  <!-- Loyalty (F4) -->
+  <data name="Loyalty.TotalPoints" xml:space="preserve"><value>Punti Totali</value></data>
+  <data name="Loyalty.UnlockedPoints" xml:space="preserve"><value>Punti Sbloccati</value></data>
+  <data name="Loyalty.LockedPoints" xml:space="preserve"><value>Punti Bloccati</value></data>
+  <data name="Loyalty.History" xml:space="preserve"><value>Storico Punti Fedeltà</value></data>
+  <data name="Loyalty.ColMonth" xml:space="preserve"><value>Mese</value></data>
+  <data name="Loyalty.ColPoints" xml:space="preserve"><value>Punti</value></data>
+  <data name="Loyalty.ColLocked" xml:space="preserve"><value>Bloccato</value></data>
+  <data name="Loyalty.ColMissedPayment" xml:space="preserve"><value>Pagamento Mancato</value></data>
+  <data name="Loyalty.Admin" xml:space="preserve"><value>Admin</value></data>
+  <data name="Loyalty.MissedYes" xml:space="preserve"><value>⚠ Sì</value></data>
+  <data name="Loyalty.StatusLocked" xml:space="preserve"><value>Bloccato</value></data>
+  <data name="Loyalty.StatusUnlocked" xml:space="preserve"><value>Sbloccato</value></data>
+  <data name="Loyalty.ManualUnlock" xml:space="preserve"><value>Sblocco Manuale</value></data>
+
+  <!-- Ranks (F4) -->
+  <data name="Ranks.OnlyForAmbassadors" xml:space="preserve"><value>I rank sono disponibili solo per gli Ambasciatori.</value></data>
+  <data name="Ranks.CurrentRank" xml:space="preserve"><value>Rank Attuale</value></data>
+  <data name="Ranks.PointsToNext" xml:space="preserve"><value>Punti al Prossimo Rank</value></data>
+  <data name="Ranks.QualifiedMonths" xml:space="preserve"><value>Mesi Qualificati Totali</value></data>
+  <data name="Ranks.ProgressTitle" xml:space="preserve"><value>Progresso al Prossimo Rank</value></data>
+  <data name="Ranks.AdminOverrideTitle" xml:space="preserve"><value>Override Admin</value></data>
+  <data name="Ranks.AdminOverrideMessage" xml:space="preserve"><value>Imposta manualmente il rank di questo membro al di fuori delle normali regole di qualificazione.</value></data>
+  <data name="Ranks.ManualOverrideButton" xml:space="preserve"><value>Override Manuale</value></data>
+  <data name="Ranks.OverrideModalTitle" xml:space="preserve"><value>Override Manuale del Rank</value></data>
+  <data name="Ranks.OverrideModalMessage" xml:space="preserve"><value>Stai per sovrascrivere manualmente il rank di questo membro. Questa azione verrà registrata. Procedere?</value></data>
+  <data name="Ranks.OverrideModalConfirm" xml:space="preserve"><value>Sovrascrivi Rank</value></data>
+  <data name="Ranks.BreadcrumbHome" xml:space="preserve"><value>Home</value></data>
+  <data name="Ranks.BreadcrumbProgress" xml:space="preserve"><value>Progresso</value></data>
+  <data name="Ranks.HistoryTitle" xml:space="preserve"><value>Storico Rank Raggiunti</value></data>
+  <data name="Ranks.ColAchievedDate" xml:space="preserve"><value>Data Raggiunta</value></data>
+  <data name="Ranks.ColRank" xml:space="preserve"><value>Rank</value></data>
+  <data name="Ranks.ColQualificationPeriod" xml:space="preserve"><value>Periodo di Qualificazione</value></data>
+  <data name="Ranks.ColTriggeredBy" xml:space="preserve"><value>Attivato da</value></data>
+  <data name="Ranks.ColCertificate" xml:space="preserve"><value>Certificato</value></data>
+  <data name="Ranks.TriggerManual" xml:space="preserve"><value>Manuale</value></data>
+  <data name="Ranks.TriggerAutomatic" xml:space="preserve"><value>Automatico</value></data>
+  <data name="Ranks.CertificateNotGenerated" xml:space="preserve"><value>Non generato</value></data>
+  <data name="Ranks.BreadcrumbHistory" xml:space="preserve"><value>Storico</value></data>
+
+  <!-- Marketing (F4) -->
+  <data name="Marketing.Title" xml:space="preserve"><value>Marketing</value></data>
+  <data name="Marketing.NoDocsTitle" xml:space="preserve"><value>Nessun documento disponibile</value></data>
+  <data name="Marketing.NoDocsMessage" xml:space="preserve"><value>Non ci sono documenti di marketing disponibili al momento.</value></data>
+  <data name="Marketing.LoadFailed" xml:space="preserve"><value>Impossibile caricare i documenti di marketing.</value></data>
+  <data name="Marketing.ColFile" xml:space="preserve"><value>File</value></data>
+  <data name="Marketing.ColDownload" xml:space="preserve"><value>Scarica</value></data>
+  <data name="Marketing.FileSingular" xml:space="preserve"><value>file</value></data>
+  <data name="Marketing.FilePlural" xml:space="preserve"><value>file</value></data>
+  <data name="Marketing.DownloadAria" xml:space="preserve"><value>Scarica {0} in {1}</value></data>
+  <data name="Marketing.DownloadFailed" xml:space="preserve"><value>Impossibile generare il link di download. Riprovare.</value></data>
+
+  <!-- PageTitle (F4) -->
+  <data name="PageTitle.TokensGuestPasses" xml:space="preserve"><value>Token e Pass Ospite</value></data>
+  <data name="PageTitle.Loyalty" xml:space="preserve"><value>Punti Fedeltà</value></data>
+  <data name="PageTitle.Ranks" xml:space="preserve"><value>Ranghi</value></data>
+  <data name="PageTitle.Marketing" xml:space="preserve"><value>Marketing</value></data>
+
+  <!-- F4 — additional keys -->
+  <data name="Tokens.CardExpiryPrefix" xml:space="preserve"><value>SCAD :</value></data>
+  <data name="Tokens.PaginationAria" xml:space="preserve"><value>Paginazione token</value></data>
+  <data name="GuestPasses.PaginationAria" xml:space="preserve"><value>Paginazione pass ospite</value></data>
+  <data name="Loyalty.PaginationAria" xml:space="preserve"><value>Paginazione punti fedeltà</value></data>
+  <data name="Ranks.HistoryPaginationAria" xml:space="preserve"><value>Paginazione cronologia ranghi</value></data>
+  <data name="Marketing.TabsAria" xml:space="preserve"><value>Tipi di documento di marketing</value></data>
+
+  <!-- Tickets — F5 -->
+  <data name="Tickets.FilterStatus" xml:space="preserve"><value>Stato</value></data>
+  <data name="Tickets.AllStatuses" xml:space="preserve"><value>Tutti gli stati</value></data>
+  <data name="Tickets.StatusOpen" xml:space="preserve"><value>Aperto</value></data>
+  <data name="Tickets.StatusInProgress" xml:space="preserve"><value>In corso</value></data>
+  <data name="Tickets.StatusEscalated" xml:space="preserve"><value>Escalato</value></data>
+  <data name="Tickets.StatusResolved" xml:space="preserve"><value>Risolto</value></data>
+  <data name="Tickets.StatusClosed" xml:space="preserve"><value>Chiuso</value></data>
+  <data name="Tickets.FilterPriority" xml:space="preserve"><value>Priorità</value></data>
+  <data name="Tickets.AllPriorities" xml:space="preserve"><value>Tutte le priorità</value></data>
+  <data name="Tickets.PriorityLow" xml:space="preserve"><value>Bassa</value></data>
+  <data name="Tickets.PriorityNormal" xml:space="preserve"><value>Normale</value></data>
+  <data name="Tickets.PriorityHigh" xml:space="preserve"><value>Alta</value></data>
+  <data name="Tickets.PriorityUrgent" xml:space="preserve"><value>Urgente</value></data>
+  <data name="Tickets.CreateNew" xml:space="preserve"><value>Crea nuovo ticket</value></data>
+  <data name="Tickets.HeaderAll" xml:space="preserve"><value>Tutti i ticket</value></data>
+  <data name="Tickets.HeaderMine" xml:space="preserve"><value>I miei ticket</value></data>
+  <data name="Tickets.ColTicketNumber" xml:space="preserve"><value>N° ticket</value></data>
+  <data name="Tickets.ColSubject" xml:space="preserve"><value>Oggetto</value></data>
+  <data name="Tickets.ColCategory" xml:space="preserve"><value>Categoria</value></data>
+  <data name="Tickets.ColPriority" xml:space="preserve"><value>Priorità</value></data>
+  <data name="Tickets.ColStatus" xml:space="preserve"><value>Stato</value></data>
+  <data name="Tickets.ColCreated" xml:space="preserve"><value>Creato</value></data>
+  <data name="Tickets.ColActions" xml:space="preserve"><value>Azioni</value></data>
+  <data name="Tickets.NoData" xml:space="preserve"><value>Nessun dato disponibile.</value></data>
+  <data name="Tickets.ActionView" xml:space="preserve"><value>Visualizza</value></data>
+  <data name="Tickets.ActionAssign" xml:space="preserve"><value>Assegna</value></data>
+  <data name="Tickets.PaginationAria" xml:space="preserve"><value>Paginazione ticket</value></data>
+  <data name="Tickets.BreadcrumbHome" xml:space="preserve"><value>Home</value></data>
+  <data name="Tickets.BreadcrumbTickets" xml:space="preserve"><value>Ticket</value></data>
+
+  <!-- Ticket Detail — F5 -->
+  <data name="TicketDetail.LabelCategory" xml:space="preserve"><value>Categoria</value></data>
+  <data name="TicketDetail.LabelPriority" xml:space="preserve"><value>Priorità</value></data>
+  <data name="TicketDetail.LabelAssignedTo" xml:space="preserve"><value>Assegnato a</value></data>
+  <data name="TicketDetail.LabelCreated" xml:space="preserve"><value>Creato</value></data>
+  <data name="TicketDetail.Unassigned" xml:space="preserve"><value>Non assegnato</value></data>
+  <data name="TicketDetail.CommentsHeader" xml:space="preserve"><value>Commenti ({0})</value></data>
+  <data name="TicketDetail.NoComments" xml:space="preserve"><value>Nessun commento ancora. Sii il primo a rispondere.</value></data>
+  <data name="TicketDetail.StaffBadge" xml:space="preserve"><value>Staff</value></data>
+  <data name="TicketDetail.CommentPlaceholder" xml:space="preserve"><value>Scrivi un commento…</value></data>
+  <data name="TicketDetail.PostComment" xml:space="preserve"><value>Pubblica commento</value></data>
+  <data name="TicketDetail.ActionsHeader" xml:space="preserve"><value>Azioni</value></data>
+  <data name="TicketDetail.AssignLabel" xml:space="preserve"><value>Assegna a (ID/Nome agente)</value></data>
+  <data name="TicketDetail.AssignPlaceholder" xml:space="preserve"><value>Inserisci il nome dell'agente…</value></data>
+  <data name="TicketDetail.AssignConfirm" xml:space="preserve"><value>Conferma</value></data>
+  <data name="TicketDetail.AssignCancel" xml:space="preserve"><value>Annulla</value></data>
+  <data name="TicketDetail.AssignAgent" xml:space="preserve"><value>Assegna agente</value></data>
+  <data name="TicketDetail.ResolveTicket" xml:space="preserve"><value>Risolvi ticket</value></data>
+  <data name="TicketDetail.MergeTicket" xml:space="preserve"><value>Unisci ticket</value></data>
+  <data name="TicketDetail.Escalate" xml:space="preserve"><value>Escalation</value></data>
+  <data name="TicketDetail.EscalateLevel2" xml:space="preserve"><value>Supporto Livello 2</value></data>
+  <data name="TicketDetail.EscalateLevel3" xml:space="preserve"><value>Supporto Livello 3</value></data>
+  <data name="TicketDetail.EscalateIT" xml:space="preserve"><value>Reparto IT</value></data>
+  <data name="TicketDetail.ResolveModalTitle" xml:space="preserve"><value>Risolvi ticket</value></data>
+  <data name="TicketDetail.ResolveModalMessage" xml:space="preserve"><value>Contrassegnare questo ticket come risolto? Il membro verrà notificato.</value></data>
+  <data name="TicketDetail.ResolveModalConfirm" xml:space="preserve"><value>Risolvi</value></data>
+  <data name="TicketDetail.EscalationLevel1" xml:space="preserve"><value>Livello 1</value></data>
+  <data name="TicketDetail.EscalationLevel2" xml:space="preserve"><value>Livello 2</value></data>
+  <data name="TicketDetail.EscalationLevel3" xml:space="preserve"><value>Livello 3</value></data>
+  <data name="TicketDetail.EscalationIT" xml:space="preserve"><value>IT</value></data>
+  <data name="TicketDetail.EscalationOther" xml:space="preserve"><value>Livello {0}</value></data>
+  <data name="TicketDetail.BreadcrumbHome" xml:space="preserve"><value>Home</value></data>
+  <data name="TicketDetail.BreadcrumbTickets" xml:space="preserve"><value>Ticket</value></data>
+
+  <!-- Ticket Create — F5 -->
+  <data name="TicketCreate.Title" xml:space="preserve"><value>Crea nuovo ticket</value></data>
+  <data name="TicketCreate.CloseAria" xml:space="preserve"><value>Chiudi finestra</value></data>
+  <data name="TicketCreate.SubjectLabel" xml:space="preserve"><value>Oggetto</value></data>
+  <data name="TicketCreate.SubjectPlaceholder" xml:space="preserve"><value>Descrivi brevemente il problema (max 200 caratteri)</value></data>
+  <data name="TicketCreate.CategoryLabel" xml:space="preserve"><value>Categoria</value></data>
+  <data name="TicketCreate.CategorySelect" xml:space="preserve"><value>Seleziona una categoria…</value></data>
+  <data name="TicketCreate.CategoryBilling" xml:space="preserve"><value>Fatturazione</value></data>
+  <data name="TicketCreate.CategoryTechnical" xml:space="preserve"><value>Tecnico</value></data>
+  <data name="TicketCreate.CategoryCommission" xml:space="preserve"><value>Commissione</value></data>
+  <data name="TicketCreate.CategoryMembership" xml:space="preserve"><value>Iscrizione</value></data>
+  <data name="TicketCreate.CategoryAccount" xml:space="preserve"><value>Account</value></data>
+  <data name="TicketCreate.CategoryOther" xml:space="preserve"><value>Altro</value></data>
+  <data name="TicketCreate.PriorityLabel" xml:space="preserve"><value>Priorità</value></data>
+  <data name="TicketCreate.PriorityLow" xml:space="preserve"><value>Bassa</value></data>
+  <data name="TicketCreate.PriorityNormal" xml:space="preserve"><value>Normale</value></data>
+  <data name="TicketCreate.PriorityHigh" xml:space="preserve"><value>Alta</value></data>
+  <data name="TicketCreate.PriorityUrgent" xml:space="preserve"><value>Urgente</value></data>
+  <data name="TicketCreate.DescriptionLabel" xml:space="preserve"><value>Descrizione</value></data>
+  <data name="TicketCreate.DescriptionPlaceholder" xml:space="preserve"><value>Fornisci tutti i dettagli sul problema…</value></data>
+  <data name="TicketCreate.AttachmentLabel" xml:space="preserve"><value>Allegato</value></data>
+  <data name="TicketCreate.AttachmentOptional" xml:space="preserve"><value>(opzionale)</value></data>
+  <data name="TicketCreate.AttachmentHelp" xml:space="preserve"><value>Supportati: immagini, PDF, Word, TXT. Max 10 MB.</value></data>
+  <data name="TicketCreate.Cancel" xml:space="preserve"><value>Annulla</value></data>
+  <data name="TicketCreate.Submit" xml:space="preserve"><value>Invia ticket</value></data>
+  <data name="TicketCreate.ErrorGeneric" xml:space="preserve"><value>Impossibile creare il ticket. Riprova.</value></data>
+
+  <!-- Login — F5 -->
+  <data name="Login.PosterAlt" xml:space="preserve"><value>Illustrazione di accesso</value></data>
+  <data name="Login.LogoAlt" xml:space="preserve"><value>Logo MLM Conqueror</value></data>
+  <data name="Login.WelcomeBack" xml:space="preserve"><value>Bentornato!</value></data>
+  <data name="Login.PleaseSignIn" xml:space="preserve"><value>Accedi al tuo account</value></data>
+  <data name="Login.ErrorInvalid" xml:space="preserve"><value>E-mail o password non validi.</value></data>
+  <data name="Login.ErrorInactive" xml:space="preserve"><value>Il tuo account è inattivo. Contatta il supporto.</value></data>
+  <data name="Login.ErrorSessionExpired" xml:space="preserve"><value>La sessione è scaduta. Accedi di nuovo.</value></data>
+  <data name="Login.EmailLabel" xml:space="preserve"><value>Indirizzo e-mail</value></data>
+  <data name="Login.EmailPlaceholder" xml:space="preserve"><value>Inserisci la tua e-mail</value></data>
+  <data name="Login.PasswordLabel" xml:space="preserve"><value>Password</value></data>
+  <data name="Login.PasswordPlaceholder" xml:space="preserve"><value>Inserisci la password</value></data>
+  <data name="Login.ForgotPassword" xml:space="preserve"><value>Password dimenticata?</value></data>
+  <data name="Login.SignInButton" xml:space="preserve"><value>ACCEDI</value></data>
+  <data name="Login.NoAccount" xml:space="preserve"><value>Non hai un account?</value></data>
+  <data name="Login.ContactSupport" xml:space="preserve"><value>Contatta il nostro team di supporto</value></data>
+
+  <!-- Signup — F5 -->
+  <data name="Signup.BrandTitle" xml:space="preserve"><value>MLM Conqueror</value></data>
+  <data name="Signup.BrandSubtitle" xml:space="preserve"><value>Crea il tuo account</value></data>
+  <data name="Signup.StepPersonal" xml:space="preserve"><value>Dati personali</value></data>
+  <data name="Signup.StepProducts" xml:space="preserve"><value>Prodotti</value></data>
+  <data name="Signup.StepPayment" xml:space="preserve"><value>Pagamento</value></data>
+  <data name="Signup.SponsorBadge" xml:space="preserve"><value>Sponsor</value></data>
+  <data name="Signup.FirstName" xml:space="preserve"><value>Nome</value></data>
+  <data name="Signup.LastName" xml:space="preserve"><value>Cognome</value></data>
+  <data name="Signup.Email" xml:space="preserve"><value>E-mail</value></data>
+  <data name="Signup.Password" xml:space="preserve"><value>Password</value></data>
+  <data name="Signup.ConfirmPassword" xml:space="preserve"><value>Conferma password</value></data>
+  <data name="Signup.DateOfBirth" xml:space="preserve"><value>Data di nascita</value></data>
+  <data name="Signup.Country" xml:space="preserve"><value>Paese</value></data>
+  <data name="Signup.Phone" xml:space="preserve"><value>Telefono</value></data>
+  <data name="Signup.ReplicateSlug" xml:space="preserve"><value>Slug del sito replicato</value></data>
+  <data name="Signup.ReplicateSlugPlaceholder" xml:space="preserve"><value>il-mio-sito-unico</value></data>
+  <data name="Signup.MembershipLevel" xml:space="preserve"><value>Livello di iscrizione</value></data>
+  <data name="Signup.LoadingLevels" xml:space="preserve"><value>Caricamento livelli di iscrizione…</value></data>
+  <data name="Signup.SelectLevel" xml:space="preserve"><value>— Seleziona livello —</value></data>
+  <data name="Signup.Continue" xml:space="preserve"><value>Continua</value></data>
+  <data name="Signup.Back" xml:space="preserve"><value>Indietro</value></data>
+  <data name="Signup.ProductsIntro" xml:space="preserve"><value>Seleziona i prodotti da includere nella tua iscrizione.</value></data>
+  <data name="Signup.NoProducts" xml:space="preserve"><value>Nessun prodotto aggiuntivo disponibile. Clicca Continua per procedere.</value></data>
+  <data name="Signup.PaymentMethod" xml:space="preserve"><value>Metodo di pagamento</value></data>
+  <data name="Signup.PaymentCreditCard" xml:space="preserve"><value>Carta di credito</value></data>
+  <data name="Signup.PaymentCrypto" xml:space="preserve"><value>Criptovaluta</value></data>
+  <data name="Signup.PaymentToken" xml:space="preserve"><value>Token / Pass ospite</value></data>
+  <data name="Signup.PaymentDiscount" xml:space="preserve"><value>Codice sconto</value></data>
+  <data name="Signup.GatewayToken" xml:space="preserve"><value>Token gateway</value></data>
+  <data name="Signup.First6" xml:space="preserve"><value>Prime 6</value></data>
+  <data name="Signup.Last4" xml:space="preserve"><value>Ultime 4</value></data>
+  <data name="Signup.CardBrand" xml:space="preserve"><value>Marca</value></data>
+  <data name="Signup.ExpMonth" xml:space="preserve"><value>Mese scad.</value></data>
+  <data name="Signup.ExpYear" xml:space="preserve"><value>Anno scad.</value></data>
+  <data name="Signup.Gateway" xml:space="preserve"><value>Gateway</value></data>
+  <data name="Signup.Cryptocurrency" xml:space="preserve"><value>Criptovaluta</value></data>
+  <data name="Signup.TransactionId" xml:space="preserve"><value>ID transazione</value></data>
+  <data name="Signup.TokenCode" xml:space="preserve"><value>Codice token / pass</value></data>
+  <data name="Signup.DiscountCode" xml:space="preserve"><value>Codice sconto</value></data>
+  <data name="Signup.CompleteSignup" xml:space="preserve"><value>Completa iscrizione</value></data>
+  <data name="Signup.Welcome" xml:space="preserve"><value>Benvenuto, {0}!</value></data>
+  <data name="Signup.AccountActive" xml:space="preserve"><value>Il tuo account è attivo. &lt;a href="/login"&gt;Accedi ora&lt;/a&gt;</value></data>
+  <data name="Signup.AlreadyHaveAccount" xml:space="preserve"><value>Hai già un account? Accedi</value></data>
+  <data name="Signup.ErrorNameRequired" xml:space="preserve"><value>Nome e cognome sono obbligatori.</value></data>
+  <data name="Signup.ErrorEmailRequired" xml:space="preserve"><value>L'e-mail è obbligatoria.</value></data>
+  <data name="Signup.ErrorPasswordMismatch" xml:space="preserve"><value>Le password devono coincidere.</value></data>
+  <data name="Signup.ErrorLevelRequired" xml:space="preserve"><value>Seleziona un livello di iscrizione.</value></data>
+  <data name="Signup.ErrorAge18" xml:space="preserve"><value>Devi avere almeno 18 anni.</value></data>
+  <data name="Signup.ErrorGeneric" xml:space="preserve"><value>Iscrizione fallita. Verifica i tuoi dati.</value></data>
+  <data name="Signup.ErrorServerUnreachable" xml:space="preserve"><value>Impossibile raggiungere il server: {0}</value></data>
+  <data name="Signup.ErrorProductRequired" xml:space="preserve"><value>Seleziona almeno un prodotto.</value></data>
+  <data name="Signup.ErrorProductsSave" xml:space="preserve"><value>Impossibile salvare la selezione dei prodotti.</value></data>
+  <data name="Signup.ErrorComplete" xml:space="preserve"><value>Impossibile completare l'iscrizione.</value></data>
+
+  <!-- Error page — F5 -->
+  <data name="Error.Title" xml:space="preserve"><value>Errore.</value></data>
+  <data name="Error.Subtitle" xml:space="preserve"><value>Si è verificato un errore durante l'elaborazione della richiesta.</value></data>
+  <data name="Error.RequestIdLabel" xml:space="preserve"><value>ID richiesta:</value></data>
+  <data name="Error.DevModeHeader" xml:space="preserve"><value>Modalità sviluppo</value></data>
+  <data name="Error.DevModeIntro" xml:space="preserve"><value>Passare all'ambiente &lt;strong&gt;Development&lt;/strong&gt; mostrerà informazioni più dettagliate sull'errore.</value></data>
+  <data name="Error.DevModeWarning" xml:space="preserve"><value>&lt;strong&gt;L'ambiente Development non deve essere abilitato sulle applicazioni distribuite.&lt;/strong&gt; Può rivelare informazioni sensibili dalle eccezioni agli utenti finali. Per il debug locale, abilita l'ambiente &lt;strong&gt;Development&lt;/strong&gt; impostando &lt;strong&gt;ASPNETCORE_ENVIRONMENT&lt;/strong&gt; su &lt;strong&gt;Development&lt;/strong&gt; e riavviando l'app.</value></data>
+
+  <!-- Not Found — F5 -->
+  <data name="NotFound.Title" xml:space="preserve"><value>Pagina non trovata</value></data>
+  <data name="NotFound.Message" xml:space="preserve"><value>Spiacenti, questa pagina non esiste.</value></data>
+  <data name="NotFound.GoToDashboard" xml:space="preserve"><value>Vai alla dashboard</value></data>
+
+  <!-- ForgotPassword — Auth -->
+  <data name="ForgotPassword.Title" xml:space="preserve"><value>Hai dimenticato la password?</value></data>
+  <data name="ForgotPassword.Subtitle" xml:space="preserve"><value>Inserisci la tua e-mail e ti invieremo un link per reimpostarla.</value></data>
+  <data name="ForgotPassword.EmailLabel" xml:space="preserve"><value>Indirizzo e-mail</value></data>
+  <data name="ForgotPassword.EmailPlaceholder" xml:space="preserve"><value>Inserisci la tua e-mail</value></data>
+  <data name="ForgotPassword.SendButton" xml:space="preserve"><value>INVIA LINK</value></data>
+  <data name="ForgotPassword.BackToLogin" xml:space="preserve"><value>Torna all'accesso</value></data>
+  <data name="ForgotPassword.SuccessMessage" xml:space="preserve"><value>Se esiste un account per quell'e-mail, riceverai a breve un link per reimpostare la password.</value></data>
+  <data name="ForgotPassword.ErrorEmailRequired" xml:space="preserve"><value>L'e-mail è obbligatoria.</value></data>
+  <data name="ForgotPassword.ErrorEmailInvalid" xml:space="preserve"><value>Inserisci un indirizzo e-mail valido.</value></data>
+  <data name="ForgotPassword.ServerError" xml:space="preserve"><value>Impossibile contattare il server. Riprova più tardi.</value></data>
+
+  <!-- ResetPassword — Auth -->
+  <data name="ResetPassword.Title" xml:space="preserve"><value>Reimposta la password</value></data>
+  <data name="ResetPassword.Subtitle" xml:space="preserve"><value>Scegli una nuova password per il tuo account.</value></data>
+  <data name="ResetPassword.EmailLabel" xml:space="preserve"><value>Indirizzo e-mail</value></data>
+  <data name="ResetPassword.NewPasswordLabel" xml:space="preserve"><value>Nuova password</value></data>
+  <data name="ResetPassword.NewPasswordPlaceholder" xml:space="preserve"><value>Inserisci la nuova password</value></data>
+  <data name="ResetPassword.ConfirmPasswordLabel" xml:space="preserve"><value>Conferma nuova password</value></data>
+  <data name="ResetPassword.ConfirmPasswordPlaceholder" xml:space="preserve"><value>Reinserisci la password</value></data>
+  <data name="ResetPassword.PasswordHint" xml:space="preserve"><value>Almeno 8 caratteri, con almeno una maiuscola e un numero.</value></data>
+  <data name="ResetPassword.SubmitButton" xml:space="preserve"><value>REIMPOSTA PASSWORD</value></data>
+  <data name="ResetPassword.BackToLogin" xml:space="preserve"><value>Torna all'accesso</value></data>
+  <data name="ResetPassword.GoToLogin" xml:space="preserve"><value>VAI ALL'ACCESSO</value></data>
+  <data name="ResetPassword.SuccessMessage" xml:space="preserve"><value>La tua password è stata reimpostata. Ora puoi accedere con la nuova password.</value></data>
+  <data name="ResetPassword.InvalidLink" xml:space="preserve"><value>Questo link di reimpostazione non è valido o è scaduto.</value></data>
+  <data name="ResetPassword.RequestNew" xml:space="preserve"><value>RICHIEDI UN NUOVO LINK</value></data>
+  <data name="ResetPassword.ErrorRequired" xml:space="preserve"><value>Entrambi i campi della password sono obbligatori.</value></data>
+  <data name="ResetPassword.ErrorWeak" xml:space="preserve"><value>La password deve avere almeno 8 caratteri, una maiuscola e un numero.</value></data>
+  <data name="ResetPassword.ErrorMismatch" xml:space="preserve"><value>Le password non corrispondono.</value></data>
+  <data name="ResetPassword.ErrorGeneric" xml:space="preserve"><value>Impossibile reimpostare la password. Il link potrebbe non essere valido o essere scaduto.</value></data>
+  <data name="ResetPassword.ServerError" xml:space="preserve"><value>Impossibile contattare il server. Riprova più tardi.</value></data>
+
+  <!-- TwoFactor — Auth (UI shell; verify endpoint TBD) -->
+  <data name="TwoFactor.Title" xml:space="preserve"><value>Verifica in due passaggi</value></data>
+  <data name="TwoFactor.Subtitle" xml:space="preserve"><value>Inserisci il codice a 6 cifre per completare l'accesso.</value></data>
+  <data name="TwoFactor.SentTo" xml:space="preserve"><value>Abbiamo inviato un codice a {0}.</value></data>
+  <data name="TwoFactor.CodeLabel" xml:space="preserve"><value>Codice di verifica</value></data>
+  <data name="TwoFactor.CodePlaceholder" xml:space="preserve"><value>123456</value></data>
+  <data name="TwoFactor.CodeHint" xml:space="preserve"><value>6 cifre, solo numeri.</value></data>
+  <data name="TwoFactor.VerifyButton" xml:space="preserve"><value>VERIFICA</value></data>
+  <data name="TwoFactor.NoCodeQuestion" xml:space="preserve"><value>Non hai ricevuto il codice?</value></data>
+  <data name="TwoFactor.ResendLink" xml:space="preserve"><value>Invia di nuovo</value></data>
+  <data name="TwoFactor.ResentNotice" xml:space="preserve"><value>Se l'indirizzo è registrato, è stato inviato un nuovo codice.</value></data>
+  <data name="TwoFactor.CancelLink" xml:space="preserve"><value>Annulla e torna all'accesso</value></data>
+  <data name="TwoFactor.ErrorInvalidCode" xml:space="preserve"><value>Inserisci il codice numerico a 6 cifre.</value></data>
+  <data name="TwoFactor.ErrorNotImplemented" xml:space="preserve"><value>La verifica in due passaggi non è ancora disponibile. Continua dalla pagina di accesso.</value></data>
+  <data name="TwoFactor.ServerError" xml:space="preserve"><value>Impossibile contattare il server. Riprova più tardi.</value></data>
+
+  <!-- PageTitle — F5 -->
+  <data name="PageTitle.Tickets" xml:space="preserve"><value>Ticket di supporto</value></data>
+  <data name="PageTitle.TicketDetail" xml:space="preserve"><value>Dettaglio ticket</value></data>
+  <data name="PageTitle.Login" xml:space="preserve"><value>MLM Conqueror - Accedi</value></data>
+  <data name="PageTitle.Signup" xml:space="preserve"><value>MLM Conqueror - Registrati</value></data>
+  <data name="PageTitle.Error" xml:space="preserve"><value>Errore</value></data>
+  <data name="PageTitle.NotFound" xml:space="preserve"><value>Pagina non trovata</value></data>
+  <data name="PageTitle.ForgotPassword" xml:space="preserve"><value>MLM Conqueror - Recupera password</value></data>
+  <data name="PageTitle.ResetPassword" xml:space="preserve"><value>MLM Conqueror - Reimposta password</value></data>
+  <data name="PageTitle.TwoFactor" xml:space="preserve"><value>MLM Conqueror - Verifica in due passaggi</value></data>
+
 </root>

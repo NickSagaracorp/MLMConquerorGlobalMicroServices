@@ -4,5 +4,10 @@ using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Features.Members.GetMembers;
 
-public record GetMembersQuery(PagedRequest Page, string? StatusFilter, string? SponsorId = null, string? SearchTerm = null)
-    : IRequest<Result<PagedResult<AdminMemberDto>>>;
+public record GetMembersQuery(
+    PagedRequest Page,
+    string?      StatusFilter,
+    string?      SponsorId   = null,
+    string?      SearchTerm  = null,
+    bool         BypassCache = false
+) : IRequest<Result<PagedResult<AdminMemberDto>>>;

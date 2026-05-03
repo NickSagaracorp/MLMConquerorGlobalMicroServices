@@ -1,8 +1,9 @@
 @inject IViewContextService ViewContext
 @inject HttpClient Http
 @inject NavigationManager Nav
+@inject IStringLocalizer<SharedResources> L
 
-<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Dashboard") })" />
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new(L["Dashboard.Breadcrumb"].Value) })" />
 
 @if (_isLoading)
 {
@@ -13,16 +14,16 @@ else
     <!-- KPI Stats Row -->
     <div class="row g-3 mb-4">
         <div class="col-12 col-sm-6 col-xl-3">
-            <StatCard Title="Total Earnings" Value="@_totalEarnings" Icon="ri-money-dollar-circle-line" Color="primary" Trend="@_earningsTrend" TrendUp="@_earningsTrendUp" />
+            <StatCard Title="@L["Dashboard.TotalEarnings"]" Value="@_totalEarnings" Icon="ri-money-dollar-circle-line" Color="primary" Trend="@_earningsTrend" TrendUp="@_earningsTrendUp" />
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
-            <StatCard Title="Team Size" Value="@_teamSize" Icon="ri-group-line" Color="success" />
+            <StatCard Title="@L["Dashboard.TeamSize"]" Value="@_teamSize" Icon="ri-group-line" Color="success" />
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
-            <StatCard Title="Token Balance" Value="@_tokenBalance" Icon="ri-copper-coin-line" Color="warning" />
+            <StatCard Title="@L["Dashboard.TokenBalance"]" Value="@_tokenBalance" Icon="ri-copper-coin-line" Color="warning" />
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
-            <StatCard Title="Current Rank" Value="@_currentRank" Icon="ri-medal-line" Color="info" />
+            <StatCard Title="@L["Dashboard.CurrentRank"]" Value="@_currentRank" Icon="ri-medal-line" Color="info" />
         </div>
     </div>
 
@@ -30,7 +31,7 @@ else
     @if (ViewContext.IsInAnyRole(AppRoles.Ambassador) || ViewContext.IsAdminContext)
     {
         <div class="mb-4">
-            <h6 class="fw-semibold mb-3">Fast Start Bonus Windows</h6>
+            <h6 class="fw-semibold mb-3">@L["Dashboard.FsbWindowsTitle"]</h6>
             <div class="fsb-row">
                 @foreach (var fsb in _fsbWindows)
                 {

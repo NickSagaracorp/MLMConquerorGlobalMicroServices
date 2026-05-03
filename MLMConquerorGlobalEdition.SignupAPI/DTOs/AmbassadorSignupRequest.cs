@@ -24,6 +24,9 @@ public class AmbassadorSignupRequest
     /// <summary>Required only when Country is United States (US).</summary>
     public string? Ssn { get; set; }
 
+    /// <summary>Optional Employer Identification Number (US business tax ID, format XX-XXXXXXX).</summary>
+    public string? Ein { get; set; }
+
     public string? BusinessName { get; set; }
     public bool ShowBusinessName { get; set; }
 

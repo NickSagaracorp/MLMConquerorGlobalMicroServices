@@ -25,13 +25,21 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         if (myNode is null) return new PagedResult<EnrollmentMyTeamMemberView>();
 
         var pathPrefix = myNode.HierarchyPath;
+        var rootLevel  = myNode.Level;
+
+        // Exclude the viewer themselves: their own HierarchyPath naturally
+        // starts with `pathPrefix`, so without this filter they show up at
+        // their own absolute genealogy level. The "My Team" view is for
+        // descendants only.
         var downlineNodes = await _db.GenealogyTree.AsNoTracking()
-            .Where(g => g.HierarchyPath.StartsWith(pathPrefix))
+            .Where(g => g.HierarchyPath.StartsWith(pathPrefix) && g.MemberId != memberId)
             .Select(g => new { g.MemberId, g.Level })
             .ToListAsync(ct);
 
         var downlineIds = downlineNodes.Select(x => x.MemberId).ToList();
-        var levelMap    = downlineNodes.ToDictionary(x => x.MemberId, x => x.Level);
+        // Levels are stored as absolute depth in the genealogy tree; rebase
+        // them so the viewer's direct downline appears as Level 1.
+        var levelMap    = downlineNodes.ToDictionary(x => x.MemberId, x => x.Level - rootLevel);
         if (!downlineIds.Any()) return new PagedResult<EnrollmentMyTeamMemberView>();
 
         var profileQuery = _db.MemberProfiles.AsNoTracking()

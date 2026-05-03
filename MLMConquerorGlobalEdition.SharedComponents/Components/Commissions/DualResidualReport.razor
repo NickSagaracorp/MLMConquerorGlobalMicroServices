@@ -1,19 +1,20 @@
 @inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
 
 <BreadcrumbNav Items="@_breadcrumb" />
 
 <div class="row g-3 mb-4">
     <div class="col-12 col-sm-6">
-        <StatCard Title="Left Leg Points" Value="@_leftPoints.ToString("N0")" Icon="ri-arrow-left-circle-line" Color="primary" />
+        <StatCard Title="@L["DualResidual.LeftLeg"].Value" Value="@_leftPoints.ToString("N0")" Icon="ri-arrow-left-circle-line" Color="primary" />
     </div>
     <div class="col-12 col-sm-6">
-        <StatCard Title="Right Leg Points" Value="@_rightPoints.ToString("N0")" Icon="ri-arrow-right-circle-line" Color="info" />
+        <StatCard Title="@L["DualResidual.RightLeg"].Value" Value="@_rightPoints.ToString("N0")" Icon="ri-arrow-right-circle-line" Color="info" />
     </div>
 </div>
 
 <div class="card">
     <div class="card-header py-3">
-        <h6 class="card-title mb-0 fw-semibold">Dual Team Residual History</h6>
+        <h6 class="card-title mb-0 fw-semibold">@L["DualResidual.HistoryTitle"]</h6>
     </div>
     <div class="card-body p-0">
         <LoadingSpinner IsLoading="@_isLoading" />
@@ -23,17 +24,17 @@
                 <table class="table table-hover table-sm mb-0">
                     <thead>
                         <tr>
-                            <th>Period</th>
-                            <th>Weak Leg Points</th>
-                            <th>Amount</th>
-                            <th>Payment Date</th>
-                            <th>Status</th>
+                            <th>@L["Reports.Period"]</th>
+                            <th>@L["DualResidual.WeakLeg"]</th>
+                            <th>@L["Common.Amount"]</th>
+                            <th>@L["Reports.PaymentDate"]</th>
+                            <th>@L["Common.Status"]</th>
                         </tr>
                     </thead>
                     <tbody>
                         @if (!_items.Any())
                         {
-                            <tr><td colspan="5" class="text-center text-muted py-4">No data available.</td></tr>
+                            <tr><td colspan="5" class="text-center text-muted py-4">@L["Common.NoDataAvailable"]</td></tr>
                         }
                         @foreach (var dr in _items)
                         {
@@ -86,9 +87,9 @@
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
-        new("Dashboard", "/dashboard"),
-        new("Commissions", "/commissions"),
-        new("Dual Residual")
+        new(L["UserProfile.Breadcrumb.Dashboard"].Value, "/dashboard"),
+        new(L["Sidebar.Commissions"].Value, "/commissions"),
+        new(L["DualResidual.Breadcrumb"].Value)
     };
 
     protected override async Task OnParametersSetAsync()

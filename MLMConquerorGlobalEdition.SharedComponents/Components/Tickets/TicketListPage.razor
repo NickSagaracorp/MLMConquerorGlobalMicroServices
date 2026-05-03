@@ -1,6 +1,7 @@
 @inject HttpClient Http
 @inject IViewContextService ViewContext
 @inject NavigationManager Nav
+@inject IStringLocalizer<SharedResources> L
 
 @using MLMConquerorGlobalEdition.SharedComponents.Constants
 
@@ -11,31 +12,31 @@
     <div class="card-body py-2">
         <div class="row g-2 align-items-end">
             <div class="col-12 col-sm-auto">
-                <label class="form-label small mb-1">Status</label>
+                <label class="form-label small mb-1">@L["Tickets.FilterStatus"]</label>
                 <select class="form-select form-select-sm" style="min-width:140px;"
                         @bind="_statusFilter" @bind:after="ApplyFiltersAsync">
-                    <option value="">All Statuses</option>
-                    <option value="Open">Open</option>
-                    <option value="InProgress">In Progress</option>
-                    <option value="Escalated">Escalated</option>
-                    <option value="Resolved">Resolved</option>
-                    <option value="Closed">Closed</option>
+                    <option value="">@L["Tickets.AllStatuses"]</option>
+                    <option value="Open">@L["Tickets.StatusOpen"]</option>
+                    <option value="InProgress">@L["Tickets.StatusInProgress"]</option>
+                    <option value="Escalated">@L["Tickets.StatusEscalated"]</option>
+                    <option value="Resolved">@L["Tickets.StatusResolved"]</option>
+                    <option value="Closed">@L["Tickets.StatusClosed"]</option>
                 </select>
             </div>
             <div class="col-12 col-sm-auto">
-                <label class="form-label small mb-1">Priority</label>
+                <label class="form-label small mb-1">@L["Tickets.FilterPriority"]</label>
                 <select class="form-select form-select-sm" style="min-width:130px;"
                         @bind="_priorityFilter" @bind:after="ApplyFiltersAsync">
-                    <option value="">All Priorities</option>
-                    <option value="Low">Low</option>
-                    <option value="Normal">Normal</option>
-                    <option value="High">High</option>
-                    <option value="Urgent">Urgent</option>
+                    <option value="">@L["Tickets.AllPriorities"]</option>
+                    <option value="Low">@L["Tickets.PriorityLow"]</option>
+                    <option value="Normal">@L["Tickets.PriorityNormal"]</option>
+                    <option value="High">@L["Tickets.PriorityHigh"]</option>
+                    <option value="Urgent">@L["Tickets.PriorityUrgent"]</option>
                 </select>
             </div>
             <div class="col-12 col-sm-auto ms-sm-auto">
                 <button class="btn btn-primary btn-sm" @onclick="@(() => { _showCreateModal = true; _pendingShow = true; })">
-                    <i class="ri-add-line me-1"></i>Create New Ticket
+                    <i class="ri-add-line me-1"></i>@L["Tickets.CreateNew"]
                 </button>
             </div>
         </div>
@@ -45,7 +46,7 @@
 <div class="card">
     <div class="card-header py-3">
         <h6 class="card-title mb-0 fw-semibold">
-            @(ViewContext.HasPermission(Permissions.Ticket.ViewAll) ? "All Tickets" : "My Tickets")
+            @(ViewContext.HasPermission(Permissions.Ticket.ViewAll) ? L["Tickets.HeaderAll"] : L["Tickets.HeaderMine"])
         </h6>
     </div>
     <div class="card-body p-0">
@@ -56,19 +57,19 @@
                 <table class="table table-hover table-sm mb-0">
                     <thead>
                         <tr>
-                            <th>Ticket #</th>
-                            <th>Subject</th>
-                            <th>Category</th>
-                            <th>Priority</th>
-                            <th>Status</th>
-                            <th>Created</th>
-                            <th>Actions</th>
+                            <th>@L["Tickets.ColTicketNumber"]</th>
+                            <th>@L["Tickets.ColSubject"]</th>
+                            <th>@L["Tickets.ColCategory"]</th>
+                            <th>@L["Tickets.ColPriority"]</th>
+                            <th>@L["Tickets.ColStatus"]</th>
+                            <th>@L["Tickets.ColCreated"]</th>
+                            <th>@L["Tickets.ColActions"]</th>
                         </tr>
                     </thead>
                     <tbody>
                         @if (!_items.Any())
                         {
-                            <tr><td colspan="7" class="text-center text-muted py-4">No data available.</td></tr>
+                            <tr><td colspan="7" class="text-center text-muted py-4">@L["Tickets.NoData"]</td></tr>
                         }
                         @foreach (var t in _items)
                         {
@@ -83,11 +84,11 @@
                                     <div class="d-flex gap-1 flex-wrap">
                                         <button class="btn btn-xs btn-outline-primary"
                                                 @onclick="@(() => Nav.NavigateTo($"/tickets/{t.TicketId}"))">
-                                            <i class="ri-eye-line me-1"></i>View
+                                            <i class="ri-eye-line me-1"></i>@L["Tickets.ActionView"]
                                         </button>
                                         <AdminOnlyWrapper Permission="@Permissions.Ticket.Assign">
                                             <button class="btn btn-xs btn-outline-secondary">
-                                                <i class="ri-user-add-line me-1"></i>Assign
+                                                <i class="ri-user-add-line me-1"></i>@L["Tickets.ActionAssign"]
                                             </button>
                                         </AdminOnlyWrapper>
                                     </div>
@@ -101,7 +102,7 @@
             {
                 var totalPages = (int)Math.Ceiling((double)_total / _pageSize);
                 <div class="d-flex justify-content-center py-3">
-                    <nav>
+                    <nav aria-label="@L["Tickets.PaginationAria"]">
                         <ul class="pagination pagination-sm mb-0">
                             <li class="page-item @(_page <= 1 ? "disabled" : "")">
                                 <button class="page-link" @onclick="() => ChangePage(_page - 1)">&#x2039;</button>
@@ -146,8 +147,8 @@
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
-        new("Home",    "/dashboard"),
-        new("Tickets")
+        new(L["Tickets.BreadcrumbHome"].Value,    "/dashboard"),
+        new(L["Tickets.BreadcrumbTickets"].Value)
     };
 
     protected override async Task OnParametersSetAsync()

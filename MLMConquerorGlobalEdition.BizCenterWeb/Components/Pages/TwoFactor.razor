@@ -1,0 +1,116 @@
+@page "/two-factor"
+@layout MLMConquerorGlobalEdition.SharedComponents.Components.Layout.BlankLayout
+@inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
+
+<PageTitle>@L["PageTitle.TwoFactor"]</PageTitle>
+
+<div class="container">
+    <div class="main-content d-flex flex-column p-0">
+        <div class="m-auto m-1230">
+            <div class="row align-items-center">
+                <div class="col-lg-6 d-none d-lg-block">
+                    <img src="assets/images/poster-login.webp" class="rounded-3" alt="@L["Login.PosterAlt"]">
+                </div>
+                <div class="col-lg-6">
+                    <div class="mw-480 ms-lg-auto">
+                        <div class="d-inline-block mb-4">
+                            <img src="assets/images/logo.svg" class="rounded-3 for-light-logo" alt="@L["Login.LogoAlt"]">
+                            <img src="assets/images/logo.svg" class="rounded-3 for-dark-logo" alt="@L["Login.LogoAlt"]">
+                        </div>
+                        <h3 class="fs-28 mb-2">@L["TwoFactor.Title"]</h3>
+                        <p class="fw-medium fs-16 mb-2">@L["TwoFactor.Subtitle"]</p>
+                        @if (!string.IsNullOrEmpty(_maskedEmail))
+                        {
+                            <p class="fw-medium fs-14 text-secondary mb-4">
+                                @string.Format((string)L["TwoFactor.SentTo"], _maskedEmail)
+                            </p>
+                        }
+                        else
+                        {
+                            <div class="mb-4"></div>
+                        }
+
+                        @if (Resent == "1")
+                        {
+                            <div class="alert alert-info mb-3">
+                                @L["TwoFactor.ResentNotice"]
+                            </div>
+                        }
+
+                        @if (Error == "invalid_code")
+                        {
+                            <div class="alert alert-danger mb-3">@L["TwoFactor.ErrorInvalidCode"]</div>
+                        }
+
+                        <form method="post" action="/account/two-factor/verify">
+                            <div class="form-group mb-4">
+                                <label class="label text-secondary">@L["TwoFactor.CodeLabel"]</label>
+                                <input name="Code"
+                                       type="text"
+                                       class="form-control h-55"
+                                       inputmode="numeric"
+                                       autocomplete="one-time-code"
+                                       maxlength="6"
+                                       pattern="[0-9]{6}"
+                                       placeholder="@L["TwoFactor.CodePlaceholder"]"
+                                       required />
+                                <small class="text-secondary fs-12">@L["TwoFactor.CodeHint"]</small>
+                            </div>
+                            <div class="form-group mb-4">
+                                <button type="submit" class="btn btn-primary fw-medium py-2 px-3 w-100">
+                                    <div class="d-flex align-items-center justify-content-center py-1">
+                                        <i class="material-symbols-outlined text-white fs-20 me-2">verified_user</i>
+                                        <span>@L["TwoFactor.VerifyButton"]</span>
+                                    </div>
+                                </button>
+                            </div>
+                        </form>
+
+                        <form method="post" action="/account/two-factor/resend" class="mb-3">
+                            <p class="mb-1">
+                                @L["TwoFactor.NoCodeQuestion"]
+                                <button type="submit"
+                                        class="btn btn-link p-0 fw-medium text-primary text-decoration-none align-baseline">
+                                    @L["TwoFactor.ResendLink"]
+                                </button>
+                            </p>
+                        </form>
+
+                        <p>
+                            <a href="/login" class="fw-medium text-primary text-decoration-none">
+                                @L["TwoFactor.CancelLink"]
+                            </a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? Email { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Resent { get; set; }
+
+    private string _maskedEmail = string.Empty;
+
+    protected override void OnInitialized()
+        => _maskedEmail = MaskEmail(Email);
+
+    private static string MaskEmail(string? email)
+    {
+        if (string.IsNullOrWhiteSpace(email)) return string.Empty;
+        var atIndex = email.IndexOf('@');
+        if (atIndex <= 0) return email;
+        var local  = email[..atIndex];
+        var domain = email[(atIndex + 1)..];
+        var visible = local.Length <= 1 ? local : local[..1];
+        return $"{visible}{new string('*', Math.Max(1, local.Length - 1))}@{domain}";
+    }
+}

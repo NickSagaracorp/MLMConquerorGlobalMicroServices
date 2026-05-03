@@ -1,4 +1,5 @@
 @inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
 
 @*
     Paginated table of past address changes. Each row shows previous/new
@@ -13,7 +14,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title fw-semibold">
-                        <i class="ri-history-line me-2"></i>Address Change History
+                        <i class="ri-history-line me-2"></i>@L["AddressHistory.Title"]
                     </h5>
                     <button type="button" class="btn-close" @onclick="OnClose"></button>
                 </div>
@@ -25,7 +26,7 @@
                         {
                             <div class="text-center py-5">
                                 <i class="ri-archive-line text-muted" style="font-size:2.5rem"></i>
-                                <p class="text-muted mt-2 mb-0">No address changes recorded yet.</p>
+                                <p class="text-muted mt-2 mb-0">@L["AddressHistory.Empty"]</p>
                             </div>
                         }
                         else
@@ -34,11 +35,11 @@
                                 <table class="table table-sm align-middle mb-0">
                                     <thead class="bg-light">
                                         <tr>
-                                            <th>When</th>
-                                            <th>Previous</th>
-                                            <th>New</th>
-                                            <th>Reason</th>
-                                            <th>By</th>
+                                            <th>@L["Common.When"]</th>
+                                            <th>@L["AddressHistory.Previous"]</th>
+                                            <th>@L["AddressHistory.New"]</th>
+                                            <th>@L["AddressHistory.Reason"]</th>
+                                            <th>@L["Common.By"]</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -82,7 +83,7 @@
                     }
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-outline-secondary" @onclick="OnClose">Close</button>
+                    <button class="btn btn-outline-secondary" @onclick="OnClose">@L["Common.Close"]</button>
                 </div>
             </div>
         </div>

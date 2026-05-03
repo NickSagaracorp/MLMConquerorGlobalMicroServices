@@ -1,4 +1,5 @@
 @inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
 @using System.Net.Http.Json
 
 <BreadcrumbNav Items="@_breadcrumb" />
@@ -9,7 +10,7 @@
         <div class="card bg-white border-0 rounded-3 mb-4">
             <div class="card-body p-4" style="padding-bottom: 0 !important;">
                 <div class="mb-3 mb-lg-4">
-                    <h3 class="mb-0">Tokens Resume</h3>
+                    <h3 class="mb-0">@L["Tokens.Resume"]</h3>
                 </div>
                 <div class="row">
                     <div class="col-xxl-4 col-xl-4 col-sm-4">
@@ -20,7 +21,7 @@
                                         <i class="material-symbols-outlined fs-40 text-primary">content_paste</i>
                                     </div>
                                     <div class="flex-grow-1 ms-2">
-                                        <span>Total Tokens</span>
+                                        <span>@L["Tokens.TotalTokens"]</span>
                                         @if (_summaryLoading) { <span class="placeholder col-6 d-block mt-1"></span> }
                                         else { <h3 class="fs-20 mt-1 mb-0">@_totalTokens</h3> }
                                     </div>
@@ -36,7 +37,7 @@
                                         <i class="material-symbols-outlined fs-40 text-info">done_all</i>
                                     </div>
                                     <div class="flex-grow-1 ms-2">
-                                        <span>Total Used</span>
+                                        <span>@L["Tokens.TotalUsed"]</span>
                                         @if (_summaryLoading) { <span class="placeholder col-6 d-block mt-1"></span> }
                                         else { <h3 class="fs-20 mt-1 mb-0">@_totalUsed</h3> }
                                     </div>
@@ -52,7 +53,7 @@
                                         <i class="material-symbols-outlined fs-40 text-success">lock_open_right</i>
                                     </div>
                                     <div class="flex-grow-1 ms-2">
-                                        <span>Total Available</span>
+                                        <span>@L["Tokens.TotalAvailable"]</span>
                                         @if (_summaryLoading) { <span class="placeholder col-6 d-block mt-1"></span> }
                                         else { <h3 class="fs-20 mt-1 mb-0">@_totalAvailable</h3> }
                                     </div>
@@ -71,13 +72,13 @@
     <div class="card-body p-0">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
             <div class="mb-4" style="width: 100% !important;">
-                <h4 class="fs-14 mb-0">Note: Tokens may be used to pay for enrollments, Biz Center fees and Travel Advantage™. Once purchased, you may distribute tokens to your team. Token purchases are limited to 10 per month and are non-refundable.</h4>
+                <h4 class="fs-14 mb-0">@L["Tokens.PurchaseNote"]</h4>
             </div>
             <div>
                 <div class="dropdown d-inline-block">
                     <button class="btn btn-primary text-white py-2 px-3 dropdown-toggle" type="button"
                             data-bs-toggle="dropdown" aria-expanded="false">
-                        Amount: <span>@_purchaseAmount Tokens</span>
+                        @L["Tokens.Amount"] <span>@_purchaseAmount @L["Tokens.TokensSuffix"]</span>
                     </button>
                     <ul class="dropdown-menu bg-primary">
                         @for (var n = 1; n <= 10; n++)
@@ -91,7 +92,7 @@
                 <div class="dropdown d-inline-block">
                     <button class="btn btn-primary text-white py-2 px-3 dropdown-toggle" type="button"
                             data-bs-toggle="dropdown" aria-expanded="false">
-                        @(_purchaseTokenTypeId == null ? "Token Type" : _purchaseTokenTypeName)
+                        @(_purchaseTokenTypeId == null ? L["Tokens.TokenType"].Value : _purchaseTokenTypeName)
                     </button>
                     <ul class="dropdown-menu bg-primary">
                         @foreach (var tt in _tokenTypes)
@@ -104,26 +105,26 @@
 
             <button class="btn btn-outline-primary d-flex align-items-center gap-1 hover-bg" @onclick="PurchaseTokensAsync">
                 <i class="ri-coins-fill fw-medium fs-18 me-1"></i>
-                <span>Buy Now</span>
+                <span>@L["Tokens.BuyNow"]</span>
             </button>
         </div>
 
         <ul class="nav nav-tabs bg-transparent border-bottom gap-2 gap-sm-5 p-4" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_payTab == "commissions" ? "active" : "")"
-                        type="button" @onclick='() => _payTab = "commissions"'>Commissions</button>
+                        type="button" @onclick='() => _payTab = "commissions"'>@L["Tokens.TabCommissions"]</button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_payTab == "ewallet" ? "active" : "")"
-                        type="button" @onclick='() => _payTab = "ewallet"'>eWallet</button>
+                        type="button" @onclick='() => _payTab = "ewallet"'>@L["Tokens.TabEWallet"]</button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_payTab == "creditcard" ? "active" : "")"
-                        type="button" @onclick='() => _payTab = "creditcard"'>Credit Card</button>
+                        type="button" @onclick='() => _payTab = "creditcard"'>@L["Tokens.TabCreditCard"]</button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_payTab == "crypto" ? "active" : "")"
-                        type="button" @onclick='() => _payTab = "crypto"'>Crypto</button>
+                        type="button" @onclick='() => _payTab = "crypto"'>@L["Tokens.TabCrypto"]</button>
             </li>
         </ul>
 
@@ -138,7 +139,7 @@
                                     <i class="material-symbols-outlined fs-40 text-danger">paid</i>
                                 </div>
                                 <div class="flex-grow-1 ms-2">
-                                    <span>Your commission balance is</span>
+                                    <span>@L["Tokens.CommissionBalanceLabel"]</span>
                                     @if (_balanceLoading) { <span class="placeholder col-6 d-block mt-1"></span> }
                                     else { <h3 class="fs-20 mt-1 mb-0">@_commissionBalance.ToString("C")</h3> }
                                 </div>
@@ -157,7 +158,7 @@
                                     <i class="material-symbols-outlined fs-40 text-success">paid</i>
                                 </div>
                                 <div class="flex-grow-1 ms-2">
-                                    <span>Your eWallet balance is</span>
+                                    <span>@L["Tokens.EWalletBalanceLabel"]</span>
                                     @if (_balanceLoading) { <span class="placeholder col-6 d-block mt-1"></span> }
                                     else { <h3 class="fs-20 mt-1 mb-0">@_eWalletBalance.ToString("C")</h3> }
                                 </div>
@@ -172,10 +173,10 @@
                     <div class="card bg-white border-0 rounded-3 mb-4 stats-box style-three">
                         <div class="card-body p-4">
                             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom pb-4 mb-4">
-                                <h4 class="fs-18 mb-0">Credit Card</h4>
+                                <h4 class="fs-18 mb-0">@L["Tokens.CreditCard"]</h4>
                                 <button class="btn btn-outline-primary d-flex align-items-center gap-1 hover-bg">
                                     <i class="ri-add-fill fw-medium fs-18 me-1"></i>
-                                    <span>Add New Card</span>
+                                    <span>@L["Tokens.AddNewCard"]</span>
                                 </button>
                             </div>
                             @if (_cardsLoading)
@@ -184,7 +185,7 @@
                             }
                             else if (!_creditCards.Any())
                             {
-                                <p class="text-muted text-center py-3">No credit cards on file.</p>
+                                <p class="text-muted text-center py-3">@L["Tokens.NoCreditCards"]</p>
                             }
                             else
                             {
@@ -197,7 +198,7 @@
                                                  tabindex="0" @onclick="() => _selectedCardId = card.Id">
                                                 <div class="d-flex align-content-center justify-content-between">
                                                     <div>
-                                                        <span class="text-white fs-12 fw-medium d-block mb-12">Credit Card</span>
+                                                        <span class="text-white fs-12 fw-medium d-block mb-12">@L["Tokens.CreditCard"]</span>
                                                     </div>
                                                     <i class="ri-visa-fill fs-35 text-white lh-1"></i>
                                                 </div>
@@ -206,7 +207,7 @@
                                                 </h3>
                                                 <div class="d-flex align-content-center justify-content-between">
                                                     <span class="text-white">@card.HolderName</span>
-                                                    <span class="text-white fs-12">EXP : @card.ExpiryDisplay</span>
+                                                    <span class="text-white fs-12">@L["Tokens.CardExpiryPrefix"] @card.ExpiryDisplay</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -223,7 +224,7 @@
                     <div class="card bg-opacity-10 border-white border-opacity-10 rounded-3 mb-4 stats-box style-three" style="background-color: #53647B;">
                         <div class="card-body p-4">
                             <div class="d-flex align-items-center text-center">
-                                <span class="text-white fw-semibold fs-16">Powered by NowPayments</span>
+                                <span class="text-white fw-semibold fs-16">@L["Tokens.PoweredByNowPayments"]</span>
                             </div>
                         </div>
                     </div>
@@ -238,7 +239,7 @@
     <div class="card-body p-0">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
             <form class="position-relative table-src-form me-0">
-                <input type="text" class="form-control" placeholder="Search here"
+                <input type="text" class="form-control" placeholder="@L["Reports.SearchPlaceholder"]"
                        value="@_search"
                        @oninput="OnSearchInput" />
                 <i class="material-symbols-outlined position-absolute top-50 start-0 translate-middle-y">search</i>
@@ -263,12 +264,12 @@
                     <table class="table align-middle">
                         <thead>
                             <tr>
-                                <th scope="col">Date</th>
-                                <th scope="col">Owner</th>
-                                <th scope="col">Token Code</th>
-                                <th scope="col">Type</th>
-                                <th scope="col">Use Date</th>
-                                <th scope="col">Used By</th>
+                                <th scope="col">@L["Tokens.ColDate"]</th>
+                                <th scope="col">@L["Tokens.ColOwner"]</th>
+                                <th scope="col">@L["Tokens.ColTokenCode"]</th>
+                                <th scope="col">@L["Tokens.ColType"]</th>
+                                <th scope="col">@L["Tokens.ColUseDate"]</th>
+                                <th scope="col">@L["Tokens.ColUsedBy"]</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -305,7 +306,7 @@
                                         }
                                         else
                                         {
-                                            <span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">Available</span>
+                                            <span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">@L["Tokens.StatusAvailable"]</span>
                                         }
                                     </td>
                                     <td>
@@ -330,21 +331,21 @@
                             }
                             @if (!_items.Any())
                             {
-                                <tr><td colspan="6" class="text-center text-muted py-4">No data available.</td></tr>
+                                <tr><td colspan="6" class="text-center text-muted py-4">@L["Common.NoDataAvailable"]</td></tr>
                             }
                         </tbody>
                     </table>
                 </div>
                 <div class="p-4 pt-lg-4">
                     <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
-                        <span class="fs-12 fw-medium">Showing @_items.Count of @_total Results</span>
+                        <span class="fs-12 fw-medium">@L["Reports.Showing"] @_items.Count @L["Common.Of"] @_total @L["Reports.Results"]</span>
                         @if (_total > _pageSize)
                         {
                             var totalPages = (int)Math.Ceiling((double)_total / _pageSize);
-                            <nav aria-label="Tokens pagination">
+                            <nav aria-label="@L["Tokens.PaginationAria"]">
                                 <ul class="pagination mb-0 justify-content-center">
                                     <li class="page-item @(_page <= 1 ? "disabled" : "")">
-                                        <button type="button" class="page-link icon" @onclick="() => LoadPageAsync(_page - 1)" aria-label="Previous">
+                                        <button type="button" class="page-link icon" @onclick="() => LoadPageAsync(_page - 1)" aria-label="@L["Common.Previous"]">
                                             <i class="material-symbols-outlined">keyboard_arrow_left</i>
                                         </button>
                                     </li>
@@ -356,7 +357,7 @@
                                         </li>
                                     }
                                     <li class="page-item @(_page >= totalPages ? "disabled" : "")">
-                                        <button type="button" class="page-link icon" @onclick="() => LoadPageAsync(_page + 1)" aria-label="Next">
+                                        <button type="button" class="page-link icon" @onclick="() => LoadPageAsync(_page + 1)" aria-label="@L["Common.Next"]">
                                             <i class="material-symbols-outlined">keyboard_arrow_right</i>
                                         </button>
                                     </li>
@@ -374,22 +375,22 @@
 <div class="card bg-white border-0 rounded-3 mb-4">
     <div class="card-body p-0">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
-            <h4 class="fs-18 mb-0">Distribution</h4>
+            <h4 class="fs-18 mb-0">@L["Tokens.Distribution"]</h4>
 
             <button class="btn btn-outline-primary d-flex align-items-center gap-1 hover-bg" @onclick="DistributeTokensAsync">
                 <i class="ri-token-swap-fill fw-medium fs-18 me-1"></i>
-                <span>Distribute</span>
+                <span>@L["Tokens.DistributeButton"]</span>
             </button>
 
             <div class="mb-4" style="width: 100% !important;">
-                <h4 class="fs-14 mb-0">Note: You may distribute tokens to your team and members. All token distributions are final.</h4>
+                <h4 class="fs-14 mb-0">@L["Tokens.DistributionNote"]</h4>
             </div>
 
             <div class="col-xxl-12 col-xl-12 col-lg-12 col-md-12 col-sm-12">
                 <div class="dropdown d-inline-block" style="float: left;">
                     <button class="btn btn-primary text-white py-2 px-3 dropdown-toggle" type="button"
                             data-bs-toggle="dropdown" aria-expanded="false">
-                        Amount: <span>@_distributeAmount Tokens</span>
+                        @L["Tokens.Amount"] <span>@_distributeAmount @L["Tokens.TokensSuffix"]</span>
                     </button>
                     <ul class="dropdown-menu bg-primary">
                         @for (var n = 1; n <= 10; n++)
@@ -403,7 +404,7 @@
                 <div class="dropdown d-inline-block" style="float: right;">
                     <button class="btn btn-primary text-white py-2 px-3 dropdown-toggle" type="button"
                             data-bs-toggle="dropdown" aria-expanded="false">
-                        @(_distributeTokenTypeId == null ? "Token Type" : _distributeTokenTypeName)
+                        @(_distributeTokenTypeId == null ? L["Tokens.TokenType"].Value : _distributeTokenTypeName)
                     </button>
                     <ul class="dropdown-menu bg-primary">
                         @foreach (var tt in _tokenTypes)
@@ -416,12 +417,12 @@
 
             <div class="col-xxl-12 col-xl-12 col-lg-12 col-md-12 col-sm-12" style="clear:both;">
                 <div class="position-relative" style="width: 100%;">
-                    <label class="form-label small mb-1">Member</label>
+                    <label class="form-label small mb-1">@L["Tokens.Member"]</label>
                     @if (_selectedMember is null)
                     {
                         <div class="input-group">
                             <span class="input-group-text"><i class="ri-search-line"></i></span>
-                            <input type="text" class="form-control" placeholder="Search member..."
+                            <input type="text" class="form-control" placeholder="@L["Tokens.SearchMemberPlaceholder"]"
                                    autocomplete="off"
                                    value="@_memberSearchInput"
                                    @oninput="OnMemberSearchInput" />
@@ -446,7 +447,7 @@
                                 <span style="width:22px;height:22px;border-radius:50%;background:#e2e8f0;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;margin-right:.35rem;">@(_selectedMember.FullName.FirstOrDefault())</span>
                                 <span>@_selectedMember.FullName</span>
                             </span>
-                            <button type="button" class="btn btn-sm btn-link text-secondary ms-1 p-0" @onclick="ClearMember">Clear</button>
+                            <button type="button" class="btn btn-sm btn-link text-secondary ms-1 p-0" @onclick="ClearMember">@L["Tokens.Clear"]</button>
                         </div>
                     }
                 </div>
@@ -512,8 +513,8 @@
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
-        new("Dashboard", "/dashboard"),
-        new("Tokens")
+        new(L["Nav.Dashboard"].Value, "/dashboard"),
+        new(L["Nav.Tokens"].Value)
     };
 
     protected override async Task OnParametersSetAsync()

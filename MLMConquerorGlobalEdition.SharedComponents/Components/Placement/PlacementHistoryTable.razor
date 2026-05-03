@@ -1,9 +1,13 @@
 @inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
+
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
 
 <BreadcrumbNav Items="@_breadcrumb" />
 
 <PagedTable TItem="PlacementHistoryItem"
-            Title="Historial de Placements"
+            Title="@L["Placement.HistoryTitle"]"
             Items="@_items"
             TotalCount="@_total"
             PageSize="@_pageSize"
@@ -11,12 +15,12 @@
             IsLoading="@_isLoading"
             OnPageChange="@OnPageChange">
     <HeaderTemplate>
-        <th scope="col">Miembro</th>
-        <th scope="col">Acción</th>
-        <th scope="col">Nodo destino</th>
-        <th scope="col">Pierna</th>
-        <th scope="col">Ejecutado por</th>
-        <th scope="col">Fecha</th>
+        <th scope="col">@L["Placement.HistoryColMember"]</th>
+        <th scope="col">@L["Placement.HistoryColAction"]</th>
+        <th scope="col">@L["Placement.HistoryColTargetNode"]</th>
+        <th scope="col">@L["Placement.HistoryColLeg"]</th>
+        <th scope="col">@L["Placement.HistoryColExecutedBy"]</th>
+        <th scope="col">@L["Placement.HistoryColDate"]</th>
     </HeaderTemplate>
     <RowTemplate Context="item">
         <tr>
@@ -36,7 +40,7 @@
                 @if (!string.IsNullOrEmpty(item.Side))
                 {
                     <span class="badge bg-@(item.Side == "Left" ? "primary" : "info") bg-opacity-10 text-@(item.Side == "Left" ? "primary" : "info")">
-                        @(item.Side == "Left" ? "Izquierda" : "Derecha")
+                        @(item.Side == "Left" ? L["Placement.HistorySideLeft"] : L["Placement.HistorySideRight"])
                     </span>
                 }
                 else
@@ -58,7 +62,7 @@
         <button class="btn btn-outline-secondary btn-sm"
                 @onclick="LoadAsync"
                 type="button"
-                aria-label="Refrescar historial">
+                aria-label="@L["Placement.HistoryRefreshAria"]">
             <i class="ri-refresh-line" aria-hidden="true"></i>
         </button>
     </HeaderActions>
@@ -75,10 +79,10 @@
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
-        new("Dashboard",  "/dashboard"),
-        new("Equipo",     "/team"),
-        new("Placement",  BackRoute),
-        new("Historial")
+        new(L["Nav.Dashboard"],  "/dashboard"),
+        new(L["Placement.BreadcrumbTeam"],     "/team"),
+        new(L["Placement.BreadcrumbPlacement"],  BackRoute),
+        new(L["Placement.BreadcrumbHistory"])
     };
 
     protected override async Task OnInitializedAsync() => await LoadAsync();

@@ -1,4 +1,5 @@
 @inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
 
 @*
     Pay-frequency picker. The chosen value is part of the editable profile —
@@ -9,22 +10,20 @@
 <div class="card border-0 shadow-sm rounded-3 mb-4">
     <div class="card-body p-4">
         <h6 class="fs-18 mb-1 fw-semibold">
-            <i class="ri-time-line me-2 text-primary"></i>Commission Payout Frequency
+            <i class="ri-time-line me-2 text-primary"></i>@L["PayoutFreq.Title"]
         </h6>
         <p class="text-muted small mb-3">
-            How often should we move accrued commissions into your default
-            payout gateway? Daily payouts settle the next business day; weekly
-            payouts settle every Friday.
+            @L["PayoutFreq.Description"]
         </p>
 
-        <div class="btn-group" role="group" aria-label="Payout frequency">
+        <div class="btn-group" role="group" aria-label="@L["PayoutFreq.Aria"]">
             <button type="button" class="btn @(_selected == "Daily" ? "btn-primary" : "btn-outline-primary")"
                     disabled="@_busy" @onclick='() => SaveAsync("Daily")'>
-                <i class="ri-calendar-line me-1"></i>Daily
+                <i class="ri-calendar-line me-1"></i>@L["PayoutFreq.Daily"]
             </button>
             <button type="button" class="btn @(_selected == "Weekly" ? "btn-primary" : "btn-outline-primary")"
                     disabled="@_busy" @onclick='() => SaveAsync("Weekly")'>
-                <i class="ri-calendar-2-line me-1"></i>Weekly (Fridays)
+                <i class="ri-calendar-2-line me-1"></i>@L["PayoutFreq.Weekly"]
             </button>
         </div>
 
@@ -81,14 +80,14 @@
             });
             if (resp.IsSuccessStatusCode)
             {
-                _alert = $"Payouts will run {value.ToLowerInvariant()}.";
+                _alert = (value == "Daily" ? L["PayoutFreq.SavedDaily"] : L["PayoutFreq.SavedWeekly"]).Value;
                 _alertOk = true;
                 await OnChanged.InvokeAsync(value);
             }
             else
             {
                 _selected = previous;
-                _alert    = $"Failed: {resp.StatusCode}";
+                _alert    = $"{L["PayoutFreq.FailedPrefix"]} {resp.StatusCode}";
                 _alertOk  = false;
             }
         }

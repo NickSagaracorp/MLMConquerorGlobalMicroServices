@@ -12,20 +12,35 @@ using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Features.Dashboards.GetCeoDashboard;
 
+/// <summary>
+/// Executive dashboard handler. Runs ~30 aggregation queries (counts, sums,
+/// group-bys) against the entire member/order/commission/ticket fact tables
+/// — easily 1-3 seconds on a populated DB. Cached for 3 minutes globally;
+/// admins clicking "Refresh" pass <c>BypassCache = true</c> to force a fresh
+/// recompute.
+/// </summary>
 public class GetCeoDashboardHandler : IRequestHandler<GetCeoDashboardQuery, Result<CeoDashboardDto>>
 {
-    private readonly AppDbContext _db;
+    private readonly AppDbContext      _db;
     private readonly IDateTimeProvider _dateTime;
+    private readonly ICacheService     _cache;
 
-    public GetCeoDashboardHandler(AppDbContext db, IDateTimeProvider dateTime)
+    public GetCeoDashboardHandler(AppDbContext db, IDateTimeProvider dateTime, ICacheService cache)
     {
-        _db = db;
+        _db       = db;
         _dateTime = dateTime;
+        _cache    = cache;
     }
 
     public async Task<Result<CeoDashboardDto>> Handle(
         GetCeoDashboardQuery request, CancellationToken ct)
     {
+        if (!request.BypassCache)
+        {
+            var cached = await _cache.GetAsync<CeoDashboardDto>(CacheKeys.AdminCeoDashboard, ct);
+            if (cached is not null) return Result<CeoDashboardDto>.Success(cached);
+        }
+
         var now = _dateTime.Now;
         var today = now.Date;
         var startOfMonth = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -351,6 +366,7 @@ public class GetCeoDashboardHandler : IRequestHandler<GetCeoDashboardQuery, Resu
             LastBillingRun           = lastBillingRun,
         };
 
+        await _cache.SetAsync(CacheKeys.AdminCeoDashboard, dto, CacheKeys.AdminCeoDashboardTtl, ct);
         return Result<CeoDashboardDto>.Success(dto);
     }
 }

@@ -4,4 +4,4 @@ using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Features.Dashboards.GetFinancialDashboard;
 
-public record GetFinancialDashboardQuery : IRequest<Result<FinancialDashboardDto>>;
+public record GetFinancialDashboardQuery(bool BypassCache = false) : IRequest<Result<FinancialDashboardDto>>;

@@ -698,6 +698,54 @@ public class SignupAmbassadorHandlerTests
         enc.Verify(e => e.Encrypt(It.IsAny<string>()), Times.Never);
     }
 
+    // ─── EIN encryption ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Handle_WhenEinProvided_StoresEinEncrypted()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await db.MembershipLevels.AddAsync(BuildLevel());
+        await db.SaveChangesAsync();
+
+        var enc     = BuildEncryption();
+        var handler = BuildHandler(db, encryption: enc);
+        var req     = BuildRequest();
+        req.Country = "US";
+        req.Ssn     = "123-45-6789";
+        req.Ein     = "12-3456789";
+
+        var result = await handler.Handle(new SignupAmbassadorCommand(req), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+
+        var member = await db.MemberProfiles.FirstAsync(m => m.MemberId == result.Value!.MemberId);
+        member.EinEncrypted.Should().Be("ENC:12-3456789");
+        enc.Verify(e => e.Encrypt("12-3456789"), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenEinNotProvided_EinEncryptedIsNull()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await db.MembershipLevels.AddAsync(BuildLevel());
+        await db.SaveChangesAsync();
+
+        var enc     = BuildEncryption();
+        var handler = BuildHandler(db, encryption: enc);
+        var req     = BuildRequest();
+        req.Country = "US";
+        req.Ssn     = "123-45-6789";
+        req.Ein     = null;
+
+        var result = await handler.Handle(new SignupAmbassadorCommand(req), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+
+        var member = await db.MemberProfiles.FirstAsync(m => m.MemberId == result.Value!.MemberId);
+        member.EinEncrypted.Should().BeNull();
+        enc.Verify(e => e.Encrypt("12-3456789"), Times.Never);
+    }
+
     // ─── Sponsor lookup by slug ──────────────────────────────────────────────────
 
     [Fact]

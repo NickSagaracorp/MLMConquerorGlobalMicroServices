@@ -1,8 +1,9 @@
 @page "/commissions/presidential"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Ambassador")]
 @inject IViewContextService ViewContext
+@inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
 
-<PageTitle>Presidential Bonus</PageTitle>
+<PageTitle>@L["Sidebar.PresidentialBonus"]</PageTitle>
 
 <PresidentialBonusReport MemberProfileId="@ViewContext.ViewingMemberId" />

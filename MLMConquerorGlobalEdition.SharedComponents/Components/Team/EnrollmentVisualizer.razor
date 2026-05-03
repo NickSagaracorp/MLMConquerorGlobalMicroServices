@@ -1,5 +1,8 @@
 @inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
 @using System.Net.Http.Json
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
 
 @if (ShowBreadcrumb) { <BreadcrumbNav Items="@_breadcrumb" /> }
 
@@ -7,7 +10,7 @@
 <div class="card bg-white border-0 rounded-3 mb-4">
     <div class="card bg-white border-0 rounded-3 mb-4">
         <div class="card-body p-4" style="padding-bottom: 0 !important;">
-            <div class="mb-3 mb-lg-4"><h3 class="mb-0">Resume</h3></div>
+            <div class="mb-3 mb-lg-4"><h3 class="mb-0">@L["Team.Resume"]</h3></div>
             <div class="row">
                 <div class="col-xxl-3 col-xl-3 col-sm-6">
                     <div class="card bg-primary bg-opacity-10 border-primary border-opacity-10 rounded-3 mb-4 stats-box style-three">
@@ -17,7 +20,7 @@
                                     <i class="ri-group-line fs-40 text-primary"></i>
                                 </div>
                                 <div class="flex-grow-1 ms-2">
-                                    <span>Total Members</span>
+                                    <span>@L["Team.TotalMembers"]</span>
                                     <h3 class="fs-20 mt-1 mb-0">
                                         @if (_statsLoading) { <span class="placeholder col-4"></span> }
                                         else { @(_stats?.TotalMembers.ToString("N0") ?? "0") }
@@ -35,7 +38,7 @@
                                     <i class="ri-checkbox-circle-line fs-40 text-success"></i>
                                 </div>
                                 <div class="flex-grow-1 ms-2">
-                                    <span>Total Qualified Members</span>
+                                    <span>@L["Team.TotalQualifiedMembers"]</span>
                                     <h3 class="fs-20 mt-1 mb-0">
                                         @if (_statsLoading) { <span class="placeholder col-4"></span> }
                                         else { @(_stats?.TotalQualified.ToString("N0") ?? "0") }
@@ -53,7 +56,7 @@
                                     <i class="ri-close-circle-line fs-40 text-danger"></i>
                                 </div>
                                 <div class="flex-grow-1 ms-2">
-                                    <span>Total Unqualified Members</span>
+                                    <span>@L["Team.TotalUnqualifiedMembers"]</span>
                                     <h3 class="fs-20 mt-1 mb-0">
                                         @if (_statsLoading) { <span class="placeholder col-4"></span> }
                                         else { @(_stats?.TotalUnqualified.ToString("N0") ?? "0") }
@@ -71,7 +74,7 @@
                                     <i class="ri-forbid-line fs-40 text-dark"></i>
                                 </div>
                                 <div class="flex-grow-1 ms-2">
-                                    <span>Total Cancelled Members</span>
+                                    <span>@L["Team.TotalCancelledMembers"]</span>
                                     <h3 class="fs-20 mt-1 mb-0">
                                         @if (_statsLoading) { <span class="placeholder col-4"></span> }
                                         else { @(_stats?.TotalCancelled.ToString("N0") ?? "0") }
@@ -93,11 +96,11 @@
 
             @* Header: title + legend *@
             <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-                <h3 class="mb-0">Enrollment Team</h3>
+                <h3 class="mb-0">@L["Team.EnrollmentTeamTitle"]</h3>
                 <div class="d-flex align-items-center gap-3">
-                    <div class="legend-chip"><span class="legend-dot dot-q"></span>Qualified</div>
-                    <div class="legend-chip"><span class="legend-dot dot-u"></span>Unqualified</div>
-                    <div class="legend-chip"><span class="legend-dot dot-c"></span>Cancelled</div>
+                    <div class="legend-chip"><span class="legend-dot dot-q"></span>@L["Team.LegendQualified"]</div>
+                    <div class="legend-chip"><span class="legend-dot dot-u"></span>@L["Team.LegendUnqualified"]</div>
+                    <div class="legend-chip"><span class="legend-dot dot-c"></span>@L["Team.LegendCancelledShort"]</div>
                 </div>
             </div>
 
@@ -106,7 +109,7 @@
                 <div class="position-relative table-src-form me-0">
                     <input type="text"
                            class="form-control"
-                           placeholder="Search here"
+                           placeholder="@L["Team.SearchPlaceholderHere"]"
                            value="@_search"
                            @oninput="OnSearchInput" />
                     <i class="ri-search-line position-absolute top-50 start-0 translate-middle-y"></i>
@@ -115,7 +118,7 @@
                     <input class="form-check-input" type="checkbox" id="et-toggle-cancelled"
                            checked="@_showCancelled"
                            @onchange="OnShowCancelledChanged" />
-                    <label class="form-check-label" for="et-toggle-cancelled">Show Cancelled</label>
+                    <label class="form-check-label" for="et-toggle-cancelled">@L["Team.ShowCancelled"]</label>
                 </div>
             </div>
 
@@ -134,7 +137,7 @@
                     <ul id="enrollTree" class="enroll-tree list-unstyled mb-0" role="tree">
                         @if (!_flatVisible.Any())
                         {
-                            <li class="py-4 text-center text-muted">No members to display.</li>
+                            <li class="py-4 text-center text-muted">@L["Team.NoMembersDisplay"]</li>
                         }
                         else
                         {
@@ -148,26 +151,26 @@
                                         @* Caret / expand button *@
                                         @if (!n.HasChildren)
                                         {
-                                            <button type="button" class="caret" disabled aria-label="No children">
+                                            <button type="button" class="caret" disabled aria-label="@L["Team.TreeNoChildren"]">
                                                 <i class="ri-arrow-right-s-line"></i>
                                             </button>
                                         }
                                         else if (n.IsLoading)
                                         {
-                                            <button type="button" class="caret" disabled aria-label="Loading">
+                                            <button type="button" class="caret" disabled aria-label="@L["Team.TreeLoading"]">
                                                 <span class="spinner-border spinner-border-sm" role="status" style="width:14px;height:14px;"></span>
                                             </button>
                                         }
                                         else if (n.IsExpanded)
                                         {
-                                            <button type="button" class="caret" aria-label="Collapse"
+                                            <button type="button" class="caret" aria-label="@L["Team.TreeCollapse"]"
                                                     @onclick="() => CollapseNode(n)">
                                                 <i class="ri-arrow-up-s-line"></i>
                                             </button>
                                         }
                                         else
                                         {
-                                            <button type="button" class="caret" aria-label="Expand"
+                                            <button type="button" class="caret" aria-label="@L["Team.Expand"]"
                                                     @onclick="() => ExpandNodeAsync(n)">
                                                 <i class="ri-arrow-down-s-line"></i>
                                             </button>
@@ -185,8 +188,8 @@
                                         </span>
 
                                         @* Points badge *@
-                                        <span class="badge-points" aria-label="@n.Points points">
-                                            @n.Points.ToString("N0") pts
+                                        <span class="badge-points" aria-label="@string.Format(L["Team.PointsAriaSuffix"], n.Points)">
+                                            @n.Points.ToString("N0") @L["Common.Pts"]
                                         </span>
                                     </div>
                                 </li>
@@ -251,9 +254,9 @@
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
-        new("Dashboard", "/dashboard"),
-        new("Enrollment Team"),
-        new("Visualizer")
+        new(L["Nav.Dashboard"], "/dashboard"),
+        new(L["Sidebar.EnrollmentTeam"]),
+        new(L["Sidebar.Visualizer"])
     };
 
     // ── Lifecycle ────────────────────────────────────────────────────────────
@@ -312,7 +315,7 @@
         }
         catch (Exception ex)
         {
-            _treeError = $"Failed to load tree: {ex.Message}";
+            _treeError = $"{L["Team.LoadTreeFailedPrefix"]} {ex.Message}";
         }
         finally
         {
@@ -456,11 +459,11 @@
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
-    private static string StatusLabel(string code) => code switch
+    private string StatusLabel(string code) => code switch
     {
-        "Q" => "Qualified",
-        "U" => "Unqualified",
-        _   => "Cancelled"
+        "Q" => L["Reports.Qualified"].Value,
+        "U" => L["Reports.Unqualified"].Value,
+        _   => L["Team.LegendCancelledShort"].Value
     };
 
     private static TreeNode MapToTreeNode(NodeDto d, int level) => new()

@@ -64,6 +64,8 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.I
                             MLMConquerorGlobalEdition.Repository.Services.Teams.DualTreeNodeService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IEnrollmentTeamService,
                             MLMConquerorGlobalEdition.Repository.Services.Teams.EnrollmentTeamService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTeamService,
+                            MLMConquerorGlobalEdition.Repository.Services.Teams.DualTeamService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Commissions.ICommissionsService,
                             MLMConquerorGlobalEdition.Repository.Services.Commissions.CommissionsService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Wallets.IMemberWalletService,
@@ -92,10 +94,61 @@ builder.Services.AddSingleton<MLMConquerorGlobalEdition.SharedKernel.Interfaces.
     sp => sp.GetRequiredService<IDateTimeProvider>());
 builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
 
-builder.Services.AddStackExchangeRedisCache(options =>
+// Cache backend — probe Redis at startup. Cache:Mode controls behavior on
+// failure: "Required" (production) → throw, refuse to start with memory
+// cache that wouldn't be safe across multiple instances. "Optional" (dev)
+// → fall back to in-process memory cache so dev keeps working without
+// Redis. CacheBackendInfo is a singleton the /health/cache endpoint reads.
 {
-    options.Configuration = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
-});
+    var redisConn = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+    var mode      = (builder.Configuration["Cache:Mode"] ?? "Optional").Trim();
+    var required  = mode.Equals("Required", StringComparison.OrdinalIgnoreCase);
+
+    var redisReachable = false;
+    try
+    {
+        using var probe = StackExchange.Redis.ConnectionMultiplexer.Connect(
+            new StackExchange.Redis.ConfigurationOptions
+            {
+                EndPoints          = { redisConn },
+                ConnectTimeout     = 250,
+                AbortOnConnectFail = false
+            });
+        redisReachable = probe.IsConnected;
+    }
+    catch { redisReachable = false; }
+
+    MLMConquerorGlobalEdition.SharedKernel.Services.CacheBackendInfo info;
+    if (redisReachable)
+    {
+        builder.Services.AddStackExchangeRedisCache(o => o.Configuration = redisConn);
+        info = new MLMConquerorGlobalEdition.SharedKernel.Services.CacheBackendInfo
+        {
+            Backend        = "Redis",
+            ConnectionHint = redisConn,
+            Mode           = required ? "Required" : "Optional"
+        };
+        Console.WriteLine($"[Cache] Redis reachable at {redisConn} — distributed cache enabled (mode={info.Mode}).");
+    }
+    else if (required)
+    {
+        throw new InvalidOperationException(
+            $"[Cache] Cache:Mode is 'Required' but Redis at '{redisConn}' is unreachable. " +
+            "Refusing to start with in-process memory cache.");
+    }
+    else
+    {
+        builder.Services.AddDistributedMemoryCache();
+        info = new MLMConquerorGlobalEdition.SharedKernel.Services.CacheBackendInfo
+        {
+            Backend        = "Memory",
+            ConnectionHint = "in-process",
+            Mode           = "Optional"
+        };
+        Console.WriteLine($"[Cache] Redis unreachable at {redisConn} — falling back to in-process memory cache (mode=Optional).");
+    }
+    builder.Services.AddSingleton(info);
+}
 builder.Services.AddSingleton<ICacheService, CacheService>();
 
 builder.Services.AddSingleton<IPushNotificationService, FirebasePushNotificationService>();
@@ -278,5 +331,19 @@ app.MapGet("/health", async (AppDbContext db, CancellationToken ct) =>
         timestamp = DateTime.UtcNow
     });
 }).AllowAnonymous();
+
+// Cache backend introspection — operations team should monitor this. If
+// "backend":"Memory" shows up in production, Redis is down and the API is
+// running on per-instance fallback (NOT safe for multi-instance deploys).
+app.MapGet("/health/cache", (MLMConquerorGlobalEdition.SharedKernel.Services.CacheBackendInfo info) =>
+    Results.Ok(new
+    {
+        service        = "MLMConquerorGlobalEdition.BizCenter",
+        backend        = info.Backend,
+        connectionHint = info.ConnectionHint,
+        mode           = info.Mode,
+        memoryFallback = info.IsMemoryFallback,
+        timestamp      = DateTime.UtcNow
+    })).AllowAnonymous();
 
 app.Run();

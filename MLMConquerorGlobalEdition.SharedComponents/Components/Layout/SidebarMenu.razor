@@ -1,5 +1,6 @@
 @inject IViewContextService ViewContext
 @inject NavigationManager Nav
+@inject IStringLocalizer<SharedResources> L
 
 <div class="logo position-relative">
     <a href="/dashboard" class="d-block text-decoration-none position-relative">
@@ -15,14 +16,14 @@
     <ul class="menu-inner">
 
         <li class="menu-title small text-uppercase">
-            <span class="menu-title-text">MENU</span>
+            <span class="menu-title-text">@L["Sidebar.Menu"]</span>
         </li>
 
         <!-- Dashboard -->
         <li class="menu-item @IsActive("/dashboard")">
             <a href="/dashboard" class="menu-link">
                 <span class="material-symbols-outlined menu-icon">home</span>
-                <span class="title">Home</span>
+                <span class="title">@L["Sidebar.Home"]</span>
             </a>
         </li>
 
@@ -30,21 +31,21 @@
         <li class="menu-item @(IsEnrollmentActive() ? "active open" : "")">
             <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <span class="material-symbols-outlined menu-icon">group</span>
-                <span class="title">Enrollment Team</span>
+                <span class="title">@L["Sidebar.EnrollmentTeam"]</span>
                 <span class="count">4</span>
             </a>
             <ul class="menu-sub">
                 <li class="menu-item @IsActive("/team/enrollment/my-team")">
-                    <a href="/team/enrollment/my-team" class="menu-link">My Team</a>
+                    <a href="/team/enrollment/my-team" class="menu-link">@L["Sidebar.MyTeam"]</a>
                 </li>
                 <li class="menu-item @IsActive("/team/enrollment/visualizer")">
-                    <a href="/team/enrollment/visualizer" class="menu-link">Visualizer</a>
+                    <a href="/team/enrollment/visualizer" class="menu-link">@L["Sidebar.Visualizer"]</a>
                 </li>
                 <li class="menu-item @IsActive("/team/enrollment/branches")">
-                    <a href="/team/enrollment/branches" class="menu-link">Branches</a>
+                    <a href="/team/enrollment/branches" class="menu-link">@L["Sidebar.Branches"]</a>
                 </li>
                 <li class="menu-item @IsActive("/team/enrollment/customers")">
-                    <a href="/team/enrollment/customers" class="menu-link">Customers</a>
+                    <a href="/team/enrollment/customers" class="menu-link">@L["Sidebar.Customers"]</a>
                 </li>
             </ul>
         </li>
@@ -55,18 +56,18 @@
             <li class="menu-item @(IsDualTeamActive() ? "active open" : "")">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <span class="material-symbols-outlined menu-icon">share</span>
-                    <span class="title">Dual Team</span>
+                    <span class="title">@L["Sidebar.DualTeam"]</span>
                     <span class="count">3</span>
                 </a>
                 <ul class="menu-sub">
                     <li class="menu-item @IsActive("/team/dual-myteam")">
-                        <a href="/team/dual-myteam" class="menu-link">My Dual Team</a>
+                        <a href="/team/dual-myteam" class="menu-link">@L["Sidebar.MyDualTeam"]</a>
                     </li>
                     <li class="menu-item @IsActive("/team/dual-tree")">
-                        <a href="/team/dual-tree" class="menu-link">Visualizer</a>
+                        <a href="/team/dual-tree" class="menu-link">@L["Sidebar.Visualizer"]</a>
                     </li>
                     <li class="menu-item @IsActive("/team/residuals")">
-                        <a href="/team/residuals" class="menu-link">Residuals</a>
+                        <a href="/team/residuals" class="menu-link">@L["Sidebar.Residuals"]</a>
                     </li>
                 </ul>
             </li>
@@ -78,24 +79,24 @@
             <li class="menu-item @(IsCommissionsActive() ? "active open" : "")">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <span class="material-symbols-outlined menu-icon">paid</span>
-                    <span class="title">Commissions</span>
+                    <span class="title">@L["Sidebar.Commissions"]</span>
                     <span class="count">5</span>
                 </a>
                 <ul class="menu-sub">
                     <li class="menu-item @IsExact("/commissions")">
-                        <a href="/commissions" class="menu-link">Overview</a>
+                        <a href="/commissions" class="menu-link">@L["Sidebar.Overview"]</a>
                     </li>
                     <li class="menu-item @IsActive("/commissions/presidential")">
-                        <a href="/commissions/presidential" class="menu-link">Presidential Bonus</a>
+                        <a href="/commissions/presidential" class="menu-link">@L["Sidebar.PresidentialBonus"]</a>
                     </li>
                     <li class="menu-item @IsActive("/commissions/car-bonus")">
-                        <a href="/commissions/car-bonus" class="menu-link">Car Bonus</a>
+                        <a href="/commissions/car-bonus" class="menu-link">@L["Sidebar.CarBonus"]</a>
                     </li>
                     <li class="menu-item @IsActive("/commissions/fast-start")">
-                        <a href="/commissions/fast-start" class="menu-link">Fast Start Bonus</a>
+                        <a href="/commissions/fast-start" class="menu-link">@L["Sidebar.FastStartBonus"]</a>
                     </li>
                     <li class="menu-item @IsActive("/commissions/boost")">
-                        <a href="/commissions/boost" class="menu-link">Boost Bonus</a>
+                        <a href="/commissions/boost" class="menu-link">@L["Sidebar.BoostBonus"]</a>
                     </li>
                 </ul>
             </li>
@@ -105,7 +106,7 @@
         <li class="menu-item @IsActive("/tokens")">
             <a href="/tokens" class="menu-link">
                 <span class="material-symbols-outlined menu-icon">content_paste</span>
-                <span class="title">Tokens</span>
+                <span class="title">@L["Sidebar.Tokens"]</span>
             </a>
         </li>
 
@@ -115,7 +116,7 @@
         <li class="menu-item @IsActive("/loyalty")">
             <a href="/loyalty" class="menu-link">
                 <span class="material-symbols-outlined menu-icon">favorite</span>
-                <span class="title">Loyalty Points</span>
+                <span class="title">@L["Sidebar.LoyaltyPoints"]</span>
             </a>
         </li>
 
@@ -123,7 +124,7 @@
         <li class="menu-item @IsActive("/marketing")">
             <a href="/marketing" class="menu-link">
                 <span class="material-symbols-outlined menu-icon">campaign</span>
-                <span class="title">Marketing</span>
+                <span class="title">@L["Sidebar.Marketing"]</span>
             </a>
         </li>
 
@@ -133,7 +134,7 @@
             <li class="menu-item @IsActive("/ranks")">
                 <a href="/ranks" class="menu-link">
                     <span class="material-symbols-outlined menu-icon">workspace_premium</span>
-                    <span class="title">Rank Dashboard</span>
+                    <span class="title">@L["Sidebar.RankDashboard"]</span>
                 </a>
             </li>
         }
@@ -142,7 +143,7 @@
         <li class="menu-item @IsActive("/profile")">
             <a href="/profile" class="menu-link">
                 <span class="material-symbols-outlined menu-icon">account_circle</span>
-                <span class="title">My Profile</span>
+                <span class="title">@L["Sidebar.MyProfile"]</span>
             </a>
         </li>
 
@@ -150,7 +151,7 @@
         <li class="menu-item @IsActive("/tickets")">
             <a href="/tickets" class="menu-link">
                 <span class="material-symbols-outlined menu-icon">support</span>
-                <span class="title">Support</span>
+                <span class="title">@L["Sidebar.Support"]</span>
             </a>
         </li>
 
@@ -158,7 +159,7 @@
         <li class="menu-item">
             <a href="/account/logout" class="menu-link">
                 <span class="material-symbols-outlined menu-icon">logout</span>
-                <span class="title">Logout</span>
+                <span class="title">@L["Sidebar.Logout"]</span>
             </a>
         </li>
 

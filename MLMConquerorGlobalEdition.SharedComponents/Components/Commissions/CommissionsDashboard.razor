@@ -1,10 +1,11 @@
 @inject IViewContextService ViewContext
 @inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
 @using System.Net.Http.Json
 
 @if (!IsAdminView && !ViewContext.IsInAnyRole(AppRoles.Ambassador) && !ViewContext.IsAdminContext)
 {
-    <div class="alert alert-warning">Commissions are only available for Ambassadors.</div>
+    <div class="alert alert-warning">@L["CommissionsDashboard.OnlyAmbassadors"]</div>
     return;
 }
 
@@ -19,7 +20,7 @@
         <div class="card bg-white border-0 rounded-3 mb-4">
             <div class="card-body p-4" style="padding-bottom: 0 !important;">
                 <div class="mb-3 mb-lg-4">
-                    <h3 class="mb-0">Resume</h3>
+                    <h3 class="mb-0">@L["CommissionsDashboard.Resume"]</h3>
                 </div>
                 <div class="row">
                     <div class="col-xxl-4 col-xl-4 col-sm-4">
@@ -30,7 +31,7 @@
                                         <i class="material-symbols-outlined fs-40 text-primary">hourglass_bottom</i>
                                     </div>
                                     <div class="flex-grow-1 ms-2">
-                                        <span>Pending</span>
+                                        <span>@L["Reports.Pending"]</span>
                                         @if (_summaryLoading) { <h3 class="fs-20 mt-1 mb-0"><span class="placeholder col-6"></span></h3> }
                                         else { <h3 class="fs-20 mt-1 mb-0">@_summary.PendingTotal.ToString("C")</h3> }
                                     </div>
@@ -46,7 +47,7 @@
                                         <i class="material-symbols-outlined fs-40 text-danger">paid</i>
                                     </div>
                                     <div class="flex-grow-1 ms-2">
-                                        <span>Paid</span>
+                                        <span>@L["Reports.Paid"]</span>
                                         @if (_summaryLoading) { <h3 class="fs-20 mt-1 mb-0"><span class="placeholder col-6"></span></h3> }
                                         else { <h3 class="fs-20 mt-1 mb-0">@_summary.PaidTotal.ToString("C")</h3> }
                                     </div>
@@ -62,7 +63,7 @@
                                         <i class="material-symbols-outlined fs-40 text-success">history</i>
                                     </div>
                                     <div class="flex-grow-1 ms-2">
-                                        <span>History (Current Year)</span>
+                                        <span>@L["CommissionsDashboard.HistoryCurrentYear"]</span>
                                         @if (_summaryLoading) { <h3 class="fs-20 mt-1 mb-0"><span class="placeholder col-6"></span></h3> }
                                         else { <h3 class="fs-20 mt-1 mb-0">@_summary.CurrentYearTotal.ToString("C")</h3> }
                                     </div>
@@ -81,10 +82,10 @@
     <div class="card-body p-0">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
             <div style="width: 100%;">
-                <h3 class="mb-4">Pending</h3>
+                <h3 class="mb-4">@L["Reports.Pending"]</h3>
             </div>
             <form class="position-relative table-src-form me-0">
-                <input type="text" class="form-control" placeholder="Search here"
+                <input type="text" class="form-control" placeholder="@L["Reports.SearchPlaceholder"]"
                        value="@_pendingSearch"
                        @oninput="OnPendingSearchInput" />
                 <i class="material-symbols-outlined position-absolute top-50 start-0 translate-middle-y">search</i>
@@ -109,10 +110,10 @@
                     <table class="table align-middle">
                         <thead>
                             <tr>
-                                <th scope="col">Earned Date</th>
-                                <th scope="col">Payment Date</th>
-                                <th scope="col">Amount</th>
-                                <th scope="col">Detail</th>
+                                <th scope="col">@L["Reports.EarnedDate"]</th>
+                                <th scope="col">@L["Reports.PaymentDate"]</th>
+                                <th scope="col">@L["Common.Amount"]</th>
+                                <th scope="col">@L["Reports.Detail"]</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -139,21 +140,21 @@
                             }
                             @if (!PendingGrouped.Any())
                             {
-                                <tr><td colspan="4" class="text-center text-muted py-4">No pending commissions.</td></tr>
+                                <tr><td colspan="4" class="text-center text-muted py-4">@L["CommissionsDashboard.NoPending"]</td></tr>
                             }
                         </tbody>
                     </table>
                 </div>
                 <div class="p-4 pt-lg-4">
                     <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
-                        <span class="fs-12 fw-medium">Showing @PendingGrouped.Count() of @_pendingTotal Results</span>
+                        <span class="fs-12 fw-medium">@L["Reports.Showing"] @PendingGrouped.Count() @L["Common.Of"] @_pendingTotal @L["Reports.Results"]</span>
                         @if (_pendingTotal > _pageSize)
                         {
                             var pendingTotalPages = (int)Math.Ceiling((double)_pendingTotal / _pageSize);
-                            <nav aria-label="Pending pagination">
+                            <nav aria-label="@L["Reports.Pending"]">
                                 <ul class="pagination mb-0 justify-content-center">
                                     <li class="page-item @(_pendingPage <= 1 ? "disabled" : "")">
-                                        <button type="button" class="page-link icon" @onclick="() => LoadPendingAsync(_pendingPage - 1)" aria-label="Previous">
+                                        <button type="button" class="page-link icon" @onclick="() => LoadPendingAsync(_pendingPage - 1)" aria-label="@L["Common.Previous"]">
                                             <i class="material-symbols-outlined">keyboard_arrow_left</i>
                                         </button>
                                     </li>
@@ -165,7 +166,7 @@
                                         </li>
                                     }
                                     <li class="page-item @(_pendingPage >= pendingTotalPages ? "disabled" : "")">
-                                        <button type="button" class="page-link icon" @onclick="() => LoadPendingAsync(_pendingPage + 1)" aria-label="Next">
+                                        <button type="button" class="page-link icon" @onclick="() => LoadPendingAsync(_pendingPage + 1)" aria-label="@L["Common.Next"]">
                                             <i class="material-symbols-outlined">keyboard_arrow_right</i>
                                         </button>
                                     </li>
@@ -184,10 +185,10 @@
     <div class="card-body p-0">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
             <div style="width: 100%;">
-                <h3 class="mb-4">Paid</h3>
+                <h3 class="mb-4">@L["Reports.Paid"]</h3>
             </div>
             <form class="position-relative table-src-form me-0">
-                <input type="text" class="form-control" placeholder="Search here"
+                <input type="text" class="form-control" placeholder="@L["Reports.SearchPlaceholder"]"
                        value="@_paidSearch"
                        @oninput="OnPaidSearchInput" />
                 <i class="material-symbols-outlined position-absolute top-50 start-0 translate-middle-y">search</i>
@@ -212,9 +213,9 @@
                     <table class="table align-middle">
                         <thead>
                             <tr>
-                                <th scope="col">Payment Date</th>
-                                <th scope="col">Amount</th>
-                                <th scope="col">Detail</th>
+                                <th scope="col">@L["Reports.PaymentDate"]</th>
+                                <th scope="col">@L["Common.Amount"]</th>
+                                <th scope="col">@L["Reports.Detail"]</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -240,21 +241,21 @@
                             }
                             @if (!PaidGrouped.Any())
                             {
-                                <tr><td colspan="3" class="text-center text-muted py-4">No paid commissions.</td></tr>
+                                <tr><td colspan="3" class="text-center text-muted py-4">@L["CommissionsDashboard.NoPaid"]</td></tr>
                             }
                         </tbody>
                     </table>
                 </div>
                 <div class="p-4 pt-lg-4">
                     <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
-                        <span class="fs-12 fw-medium">Showing @PaidGrouped.Count() of @_paidTotal Results</span>
+                        <span class="fs-12 fw-medium">@L["Reports.Showing"] @PaidGrouped.Count() @L["Common.Of"] @_paidTotal @L["Reports.Results"]</span>
                         @if (_paidTotal > _pageSize)
                         {
                             var paidTotalPages = (int)Math.Ceiling((double)_paidTotal / _pageSize);
-                            <nav aria-label="Paid pagination">
+                            <nav aria-label="@L["Reports.Paid"]">
                                 <ul class="pagination mb-0 justify-content-center">
                                     <li class="page-item @(_paidPage <= 1 ? "disabled" : "")">
-                                        <button type="button" class="page-link icon" @onclick="() => LoadPaidAsync(_paidPage - 1)" aria-label="Previous">
+                                        <button type="button" class="page-link icon" @onclick="() => LoadPaidAsync(_paidPage - 1)" aria-label="@L["Common.Previous"]">
                                             <i class="material-symbols-outlined">keyboard_arrow_left</i>
                                         </button>
                                     </li>
@@ -266,7 +267,7 @@
                                         </li>
                                     }
                                     <li class="page-item @(_paidPage >= paidTotalPages ? "disabled" : "")">
-                                        <button type="button" class="page-link icon" @onclick="() => LoadPaidAsync(_paidPage + 1)" aria-label="Next">
+                                        <button type="button" class="page-link icon" @onclick="() => LoadPaidAsync(_paidPage + 1)" aria-label="@L["Common.Next"]">
                                             <i class="material-symbols-outlined">keyboard_arrow_right</i>
                                         </button>
                                     </li>
@@ -284,11 +285,11 @@
 <div class="card bg-white border-0 rounded-3 mb-4">
     <div class="card-body p-0">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
-            <h3 class="mb-0">History</h3>
+            <h3 class="mb-0">@L["Reports.History"]</h3>
             <button class="btn btn-outline-primary d-flex align-items-center gap-1 hover-bg"
                     type="button">
                 <i class="ri-download-2-fill fw-medium fs-18 me-1"></i>
-                <span>Download Yearly Report (@(_historyYears.FirstOrDefault(y => y.Year == _selectedHistoryYear)?.TotalIncome.ToString("C") ?? "$0.00"))</span>
+                <span>@string.Format(L["CommissionsDashboard.DownloadYearly"].Value, _historyYears.FirstOrDefault(y => y.Year == _selectedHistoryYear)?.TotalIncome.ToString("C") ?? "$0.00")</span>
             </button>
         </div>
 
@@ -316,9 +317,9 @@
                         <table class="table align-middle border-0">
                             <thead>
                                 <tr>
-                                    <th>Month</th>
-                                    <th>Income</th>
-                                    <th>Detail</th>
+                                    <th>@L["Reports.Month"]</th>
+                                    <th>@L["Reports.Income"]</th>
+                                    <th>@L["Reports.Detail"]</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -351,7 +352,7 @@
         }
         else if (!_historyLoading)
         {
-            <p class="text-muted text-center py-3 px-4">No commission history available.</p>
+            <p class="text-muted text-center py-3 px-4">@L["CommissionsDashboard.NoHistory"]</p>
         }
     </div>
 </div>
@@ -363,7 +364,7 @@
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width:75%">
             <div class="modal-content p-4 p-md-5">
                 <div class="modal-header p-0 border-0">
-                    <h3 class="mb-0">Commissions (@_detailTitle)</h3>
+                    <h3 class="mb-0">@string.Format(L["CommissionsDashboard.ModalTitle"].Value, _detailTitle)</h3>
                     <button type="button" class="btn-close" @onclick="() => _detailModalOpen = false"></button>
                 </div>
                 <div class="modal-body p-0 pt-4">
@@ -377,15 +378,15 @@
                                         <table class="table align-middle">
                                             <thead>
                                                 <tr>
-                                                    <th scope="col">Commission Type</th>
-                                                    <th scope="col">Detail</th>
-                                                    <th scope="col">Amount</th>
+                                                    <th scope="col">@L["CommissionsDashboard.CommissionType"]</th>
+                                                    <th scope="col">@L["Reports.Detail"]</th>
+                                                    <th scope="col">@L["Common.Amount"]</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 @if (!_detailItems.Any())
                                                 {
-                                                    <tr><td colspan="3" class="text-center text-muted py-4">No breakdown data.</td></tr>
+                                                    <tr><td colspan="3" class="text-center text-muted py-4">@L["CommissionsDashboard.NoBreakdown"]</td></tr>
                                                 }
                                                 @foreach (var d in _detailItems)
                                                 {
@@ -408,7 +409,7 @@
                     </div>
                 </div>
                 <div class="modal-footer border-0 p-0">
-                    <button type="button" class="btn btn-success text-white px-3" @onclick="() => _detailModalOpen = false">OK</button>
+                    <button type="button" class="btn btn-success text-white px-3" @onclick="() => _detailModalOpen = false">@L["CommissionsDashboard.Ok"]</button>
                 </div>
             </div>
         </div>
@@ -422,7 +423,7 @@
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width:90%">
             <div class="modal-content p-4 p-md-5">
                 <div class="modal-header p-0 border-0">
-                    <h3 class="mb-0">History</h3>
+                    <h3 class="mb-0">@L["Reports.History"]</h3>
                     <button type="button" class="btn-close" @onclick="() => _historyModalOpen = false"></button>
                 </div>
                 <div class="modal-body p-0 pt-4">
@@ -464,11 +465,11 @@
                                         <table class="table align-middle border-0">
                                             <thead>
                                                 <tr>
-                                                    <th>Earned Date</th>
-                                                    <th>Payment Date</th>
-                                                    <th>Detail</th>
-                                                    <th>Amount</th>
-                                                    <th>Frequency</th>
+                                                    <th>@L["Reports.EarnedDate"]</th>
+                                                    <th>@L["Reports.PaymentDate"]</th>
+                                                    <th>@L["Reports.Detail"]</th>
+                                                    <th>@L["Common.Amount"]</th>
+                                                    <th>@L["Reports.Frequency"]</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -493,13 +494,13 @@
                             }
                             else if (!_historyDetailLoading)
                             {
-                                <p class="text-muted text-center py-3 px-4">No data for this period.</p>
+                                <p class="text-muted text-center py-3 px-4">@L["CommissionsDashboard.NoDataPeriod"]</p>
                             }
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer border-0 p-0">
-                    <button type="button" class="btn btn-success text-white px-3" @onclick="() => _historyModalOpen = false">OK</button>
+                    <button type="button" class="btn btn-success text-white px-3" @onclick="() => _historyModalOpen = false">@L["CommissionsDashboard.Ok"]</button>
                 </div>
             </div>
         </div>
@@ -586,8 +587,8 @@
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
-        new("Dashboard", "/dashboard"),
-        new("Commissions")
+        new(L["UserProfile.Breadcrumb.Dashboard"].Value, "/dashboard"),
+        new(L["Sidebar.Commissions"].Value)
     };
 
     protected override async Task OnParametersSetAsync()

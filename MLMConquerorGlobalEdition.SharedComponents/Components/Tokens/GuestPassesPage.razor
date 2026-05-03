@@ -1,10 +1,11 @@
 @inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
 
 <BreadcrumbNav Items="@_breadcrumb" />
 
 <div class="card">
     <div class="card-header py-3">
-        <h6 class="card-title mb-0 fw-semibold">Guest Passes</h6>
+        <h6 class="card-title mb-0 fw-semibold">@L["GuestPasses.Title"]</h6>
     </div>
     <div class="card-body p-0">
         <LoadingSpinner IsLoading="@_isLoading" />
@@ -14,18 +15,18 @@
                 <table class="table table-hover table-sm mb-0">
                     <thead>
                         <tr>
-                            <th>Code</th>
-                            <th>Distributed To</th>
-                            <th>Used By</th>
-                            <th>Used At</th>
-                            <th>Status</th>
-                            <th class="text-center">Actions</th>
+                            <th>@L["GuestPasses.Code"]</th>
+                            <th>@L["GuestPasses.DistributedTo"]</th>
+                            <th>@L["GuestPasses.UsedBy"]</th>
+                            <th>@L["GuestPasses.UsedAt"]</th>
+                            <th>@L["Common.Status"]</th>
+                            <th class="text-center">@L["Common.Actions"]</th>
                         </tr>
                     </thead>
                     <tbody>
                         @if (!_items.Any())
                         {
-                            <tr><td colspan="6" class="text-center text-muted py-4">No data available.</td></tr>
+                            <tr><td colspan="6" class="text-center text-muted py-4">@L["Common.NoDataAvailable"]</td></tr>
                         }
                         @foreach (var gp in _items)
                         {
@@ -34,11 +35,11 @@
                                 <td>@(gp.DistributedTo ?? "—")</td>
                                 <td>@(gp.UsedBy ?? "—")</td>
                                 <td>@(gp.UsedAt?.ToString("MMM dd, yyyy") ?? "—")</td>
-                                <td><StatusBadge Status="@(gp.UsedAt.HasValue ? "Used" : "Available")" /></td>
+                                <td><StatusBadge Status="@(gp.UsedAt.HasValue ? L["GuestPasses.Used"].Value : L["GuestPasses.Available"].Value)" /></td>
                                 <td class="text-center">
                                     @if (gp.PdfUrl is not null)
                                     {
-                                        <a href="@gp.PdfUrl" target="_blank" class="btn btn-xs btn-outline-primary">
+                                        <a href="@gp.PdfUrl" target="_blank" class="btn btn-xs btn-outline-primary" aria-label="@L["Common.Download"]">
                                             <i class="ri-download-line"></i>
                                         </a>
                                     }
@@ -52,10 +53,10 @@
             {
                 var totalPages = (int)Math.Ceiling((double)_total / _pageSize);
                 <div class="d-flex justify-content-center py-3">
-                    <nav>
+                    <nav aria-label="@L["GuestPasses.PaginationAria"]">
                         <ul class="pagination pagination-sm mb-0">
                             <li class="page-item @(_page <= 1 ? "disabled" : "")">
-                                <button class="page-link" @onclick="() => ChangePage(_page - 1)">&#x2039;</button>
+                                <button class="page-link" @onclick="() => ChangePage(_page - 1)" aria-label="@L["Common.Previous"]">&#x2039;</button>
                             </li>
                             @for (var pg = 1; pg <= totalPages; pg++)
                             {
@@ -65,7 +66,7 @@
                                 </li>
                             }
                             <li class="page-item @(_page >= totalPages ? "disabled" : "")">
-                                <button class="page-link" @onclick="() => ChangePage(_page + 1)">&#x203A;</button>
+                                <button class="page-link" @onclick="() => ChangePage(_page + 1)" aria-label="@L["Common.Next"]">&#x203A;</button>
                             </li>
                         </ul>
                     </nav>
@@ -84,9 +85,9 @@
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
-        new("Dashboard", "/dashboard"),
-        new("Tokens", "/tokens"),
-        new("Guest Passes")
+        new(L["Nav.Dashboard"].Value, "/dashboard"),
+        new(L["Nav.Tokens"].Value, "/tokens"),
+        new(L["GuestPasses.Title"].Value)
     };
 
     protected override async Task OnParametersSetAsync()

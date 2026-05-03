@@ -1,5 +1,8 @@
 @inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
 
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
 @using MLMConquerorGlobalEdition.SharedComponents.Components.Placement
 
 <div class="modal fade show d-block"
@@ -16,7 +19,7 @@
                 <div>
                     <h5 class="modal-title mb-0" id="wizard-title">
                         <i class="ri-user-add-line me-2 text-primary" aria-hidden="true"></i>
-                        @(Placement.IsAlreadyPlaced ? "Mover Placement" : "Colocar en Dual Team")
+                        @(Placement.IsAlreadyPlaced ? L["Placement.WizardTitleMove"] : L["Placement.WizardTitlePlace"])
                     </h5>
                     <div class="text-muted small mt-1">
                         @Placement.FullName — @Placement.MemberCode
@@ -24,14 +27,14 @@
                 </div>
                 <button type="button"
                         class="btn-close"
-                        aria-label="Cerrar asistente"
+                        aria-label="@L["Placement.WizardCloseAria"]"
                         @onclick="Cancel"
                         disabled="@_isBusy"></button>
             </div>
 
             <!-- Stepper -->
             <div class="modal-body border-bottom pb-3">
-                <nav class="placement-stepper" aria-label="Pasos del asistente">
+                <nav class="placement-stepper" aria-label="@L["Placement.WizardStepperAria"]">
                     @foreach (var (step, i) in _steps.Select((s, i) => (s, i)))
                     {
                         <div class="placement-step @StepClass(i)"
@@ -68,13 +71,13 @@
                 @if (_currentStep == 0)
                 {
                     <div>
-                        <h6 class="fw-semibold mb-3">Confirmar miembro a colocar</h6>
+                        <h6 class="fw-semibold mb-3">@L["Placement.Step0Heading"]</h6>
                         <div class="card border-0 bg-light p-3">
                             <div class="d-flex align-items-center gap-3">
                                 @if (!string.IsNullOrEmpty(Placement.PhotoUrl))
                                 {
                                     <img src="@Placement.PhotoUrl"
-                                         alt="Foto de @Placement.FullName"
+                                         alt="@string.Format(L["Placement.PhotoAlt"], Placement.FullName)"
                                          class="rounded-circle"
                                          style="width:56px;height:56px;object-fit:cover"
                                          loading="lazy" />
@@ -91,7 +94,7 @@
                                     <div class="fw-semibold fs-6">@Placement.FullName</div>
                                     <div class="text-muted small">@Placement.MemberCode</div>
                                     <div class="text-muted small">
-                                        Reclutado: @Placement.EnrolledAt.ToString("dd MMM yyyy")
+                                        @L["Placement.Recruited"] @Placement.EnrolledAt.ToString("dd MMM yyyy")
                                     </div>
                                 </div>
                             </div>
@@ -103,10 +106,7 @@
                                  role="note">
                                 <i class="ri-information-line flex-shrink-0" aria-hidden="true"></i>
                                 <div>
-                                    Tienes <strong>@Placement.DaysRemainingInWindow día(s)</strong>
-                                    para completar el placement.
-                                    Oportunidades restantes:
-                                    <strong>@(2 - Placement.PlacementOpportunitiesUsed)</strong>.
+                                    @string.Format(L["Placement.WindowInfo"], Placement.DaysRemainingInWindow, 2 - Placement.PlacementOpportunitiesUsed)
                                 </div>
                             </div>
                         }
@@ -117,30 +117,30 @@
                 @if (_currentStep == 1)
                 {
                     <div>
-                        <h6 class="fw-semibold mb-1">Selecciona el nodo destino</h6>
+                        <h6 class="fw-semibold mb-1">@L["Placement.Step1Heading"]</h6>
                         <p class="text-muted small mb-3">
-                            Elige el nodo del Dual Team de tu sponsor donde deseas colocar al miembro.
+                            @L["Placement.Step1Help"]
                         </p>
 
                         @if (_isLoadingNodes)
                         {
-                            <div class="text-center py-4" role="status" aria-label="Cargando árbol…">
+                            <div class="text-center py-4" role="status" aria-label="@L["Placement.LoadingTreeAria"]">
                                 <div class="spinner-border text-primary" aria-hidden="true"></div>
-                                <div class="text-muted small mt-2">Cargando estructura del árbol…</div>
+                                <div class="text-muted small mt-2">@L["Placement.LoadingTreeMsg"]</div>
                             </div>
                         }
                         else if (_availableNodes == null || !_availableNodes.Nodes.Any())
                         {
                             <EmptyState Icon="ri-node-tree"
-                                        Title="Sin nodos disponibles"
-                                        Message="No hay posiciones disponibles en el equipo del sponsor." />
+                                        Title="@L["Placement.NoNodesTitle"]"
+                                        Message="@L["Placement.NoNodesMessage"]" />
                         }
                         else
                         {
                             <div class="mb-3 d-flex align-items-center gap-2">
                                 <i class="ri-user-star-line text-primary" aria-hidden="true"></i>
                                 <span class="small">
-                                    Sponsor: <strong>@_availableNodes.SponsorFullName</strong>
+                                    @L["Placement.SponsorLabel2"] <strong>@_availableNodes.SponsorFullName</strong>
                                 </span>
                             </div>
 
@@ -156,25 +156,25 @@
                 @if (_currentStep == 2)
                 {
                     <div>
-                        <h6 class="fw-semibold mb-3">Confirmar placement</h6>
+                        <h6 class="fw-semibold mb-3">@L["Placement.Step2Heading"]</h6>
 
                         <dl class="row small">
-                            <dt class="col-5 text-muted fw-normal">Miembro:</dt>
+                            <dt class="col-5 text-muted fw-normal">@L["Placement.MemberLabel"]</dt>
                             <dd class="col-7 fw-semibold">@Placement.FullName</dd>
 
-                            <dt class="col-5 text-muted fw-normal">Nodo destino:</dt>
+                            <dt class="col-5 text-muted fw-normal">@L["Placement.TargetNodeLabel"]</dt>
                             <dd class="col-7 fw-semibold">@_selectedParentName</dd>
 
-                            <dt class="col-5 text-muted fw-normal">Pierna:</dt>
+                            <dt class="col-5 text-muted fw-normal">@L["Placement.LegLabel"]</dt>
                             <dd class="col-7">
                                 <span class="badge bg-@(_selectedSide == "Left" ? "primary" : "info")">
-                                    @(_selectedSide == "Left" ? "Izquierda" : "Derecha")
+                                    @(_selectedSide == "Left" ? L["Placement.LeftLeg"] : L["Placement.RightLeg"])
                                 </span>
                             </dd>
 
-                            <dt class="col-5 text-muted fw-normal">Oportunidades tras placement:</dt>
+                            <dt class="col-5 text-muted fw-normal">@L["Placement.OpportunitiesAfterLabel"]</dt>
                             <dd class="col-7">
-                                @(2 - Placement.PlacementOpportunitiesUsed - 1) restante(s)
+                                @(2 - Placement.PlacementOpportunitiesUsed - 1) @L["Placement.RemainingSuffix"]
                             </dd>
                         </dl>
 
@@ -184,9 +184,8 @@
                                  role="alert">
                                 <i class="ri-alert-line flex-shrink-0" aria-hidden="true"></i>
                                 <div>
-                                    <strong>Última oportunidad.</strong>
-                                    Este será el placement definitivo.
-                                    No podrás moverlo nuevamente.
+                                    <strong>@L["Placement.LastOpportunityTitle"]</strong>
+                                    @L["Placement.LastOpportunityBody"]
                                 </div>
                             </div>
                         }
@@ -200,9 +199,9 @@
                         @onclick="Cancel"
                         disabled="@_isBusy"
                         type="button"
-                        aria-label="Cancelar y cerrar asistente">
+                        aria-label="@L["Placement.WizardCancelAria"]">
                     <i class="ri-close-line me-1" aria-hidden="true"></i>
-                    Cancelar
+                    @L["Placement.WizardCancel"]
                 </button>
 
                 <div class="d-flex gap-2">
@@ -213,7 +212,7 @@
                                 disabled="@_isBusy"
                                 type="button">
                             <i class="ri-arrow-left-line me-1" aria-hidden="true"></i>
-                            Anterior
+                            @L["Placement.WizardPrev"]
                         </button>
                     }
 
@@ -223,7 +222,7 @@
                                 @onclick="NextStep"
                                 disabled="@(!CanProceed || _isBusy)"
                                 type="button">
-                            Siguiente
+                            @L["Placement.WizardNext"]
                             <i class="ri-arrow-right-line ms-1" aria-hidden="true"></i>
                         </button>
                     }
@@ -233,14 +232,14 @@
                                 @onclick="ConfirmPlacement"
                                 disabled="@_isBusy"
                                 type="button"
-                                aria-label="Confirmar placement definitivo">
+                                aria-label="@L["Placement.WizardConfirmAria"]">
                             @if (_isBusy)
                             {
                                 <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-                                <span class="visually-hidden">Procesando…</span>
+                                <span class="visually-hidden">@L["Placement.Processing"]</span>
                             }
                             <i class="ri-check-line me-1" aria-hidden="true"></i>
-                            Confirmar Placement
+                            @L["Placement.WizardConfirm"]
                         </button>
                     }
                 </div>
@@ -256,7 +255,12 @@
     [Parameter] public EventCallback OnSuccess { get; set; }
     [Parameter] public EventCallback OnCancel  { get; set; }
 
-    private readonly string[] _steps = { "Miembro", "Seleccionar nodo", "Confirmar" };
+    private string[] _steps => new[]
+    {
+        L["Placement.StepMember"].Value,
+        L["Placement.StepSelectNode"].Value,
+        L["Placement.StepConfirm"].Value
+    };
     private int    _currentStep      = 0;
     private bool   _isBusy;
     private bool   _isLoadingNodes;
@@ -301,7 +305,7 @@
 
         if (_currentStep == 1 && string.IsNullOrEmpty(_selectedParentId))
         {
-            _error = "Selecciona un nodo y una pierna antes de continuar.";
+            _error = L["Placement.SelectNodeBeforeContinue"];
             return;
         }
 
@@ -328,7 +332,7 @@
         }
         catch (Exception ex)
         {
-            _error = $"No se pudo cargar el árbol: {ex.Message}";
+            _error = $"{L["Placement.LoadTreeError"]} {ex.Message}";
         }
         finally
         {
@@ -366,13 +370,13 @@
             else
             {
                 var err = await resp.Content.ReadFromJsonAsync<ApiResponseWrapper<object>>();
-                _error = err?.Message ?? "Error al guardar el placement.";
+                _error = err?.Message ?? L["Placement.SaveError"];
                 _currentStep = 2; // Stay on confirm step
             }
         }
         catch (Exception ex)
         {
-            _error = $"Error inesperado: {ex.Message}";
+            _error = $"{L["Placement.UnexpectedErrorPrefix"]} {ex.Message}";
         }
         finally
         {

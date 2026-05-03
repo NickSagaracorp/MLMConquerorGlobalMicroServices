@@ -1,12 +1,13 @@
 @inject HttpClient Http
 @inject IViewContextService ViewContext
+@inject IStringLocalizer<SharedResources> L
 
 <div class="card h-100">
     <div class="card-header d-flex align-items-center justify-content-between py-3">
-        <h6 class="card-title mb-0 fw-semibold">Token Balance</h6>
+        <h6 class="card-title mb-0 fw-semibold">@L["TokenWidget.Title"]</h6>
         <AdminOnlyWrapper Permission="@Permissions.Tokens.AdminGrant">
             <button class="btn btn-sm btn-outline-primary" @onclick="() => _showGrantModal = true">
-                <i class="ri-add-line me-1"></i>Grant Tokens
+                <i class="ri-add-line me-1"></i>@L["TokenWidget.GrantTokens"]
             </button>
         </AdminOnlyWrapper>
     </div>
@@ -23,7 +24,7 @@
             }
             @if (!_balances.Any())
             {
-                <EmptyState Icon="ri-copper-coin-line" Title="No tokens" Message="Token balances will appear here." />
+                <EmptyState Icon="ri-copper-coin-line" Title="@L["TokenWidget.EmptyTitle"]" Message="@L["TokenWidget.EmptyMessage"]" />
             }
         }
     </div>
@@ -32,9 +33,9 @@
 @if (_showGrantModal)
 {
     <ConfirmModal IsVisible="true"
-                  Title="Grant Tokens"
-                  Message="Admin token grant modal — to be implemented."
-                  ConfirmLabel="Grant"
+                  Title="@L["TokenWidget.GrantModalTitle"]"
+                  Message="@L["TokenWidget.GrantModalMessage"]"
+                  ConfirmLabel="@L["TokenWidget.GrantConfirm"]"
                   ConfirmColor="primary"
                   OnConfirm="@(() => _showGrantModal = false)"
                   OnCancel="@(() => _showGrantModal = false)" />

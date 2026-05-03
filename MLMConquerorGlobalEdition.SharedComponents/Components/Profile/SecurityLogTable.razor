@@ -1,9 +1,10 @@
 @inject HttpClient Http
 @inject IViewContextService ViewContext
+@inject IStringLocalizer<SharedResources> L
 
 <div class="card">
     <div class="card-header py-3">
-        <h6 class="card-title mb-0 fw-semibold">Security Log</h6>
+        <h6 class="card-title mb-0 fw-semibold">@L["SecurityLog.Title"]</h6>
     </div>
     <div class="card-body p-0">
         <LoadingSpinner IsLoading="@_isLoading" />
@@ -13,16 +14,16 @@
                 <table class="table table-hover table-sm mb-0">
                     <thead>
                         <tr>
-                            <th>Event</th>
-                            <th>IP Address</th>
-                            <th>Date</th>
-                            <th>Status</th>
+                            <th>@L["SecurityLog.Event"]</th>
+                            <th>@L["Common.IpAddress"]</th>
+                            <th>@L["Common.Date"]</th>
+                            <th>@L["Common.Status"]</th>
                         </tr>
                     </thead>
                     <tbody>
                         @if (!_items.Any())
                         {
-                            <tr><td colspan="4" class="text-center text-muted py-4">No data available.</td></tr>
+                            <tr><td colspan="4" class="text-center text-muted py-4">@L["Common.NoDataAvailable"]</td></tr>
                         }
                         @foreach (var log in _items)
                         {

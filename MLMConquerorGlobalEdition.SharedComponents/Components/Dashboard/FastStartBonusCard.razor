@@ -1,5 +1,6 @@
 @using MLMConquerorGlobalEdition.SharedComponents.Components.Dashboard
 @implements IDisposable
+@inject IStringLocalizer<SharedResources> L
 
 @{
     var fsbCardClass = Window.IsCompleted ? "fsb-card fsb-complete"
@@ -23,7 +24,7 @@
 <div class="fsb-card-wrap">
     <div class="@fsbCardClass">
         <div class="fsb-topline">
-            <div class="fsb-title">FAST START BONUS @Window.WindowNumber</div>
+            <div class="fsb-title">@L["Fsb.Title"] @Window.WindowNumber</div>
         </div>
         <div class="fsb-bottom">
             <div class="fsb-icons-area d-flex align-items-center"
@@ -35,7 +36,7 @@
         </div>
         @if (!Window.IsCompleted && !Window.IsActive)
         {
-            <div class="fsb-black-layer"><i class="ri-lock-line" aria-hidden="true"></i>Locked &mdash; Coming Soon</div>
+            <div class="fsb-black-layer"><i class="ri-lock-line" aria-hidden="true"></i>@L["Fsb.Locked"]</div>
         }
     </div>
     <div class="@footerClass">
@@ -68,7 +69,7 @@
     {
         if (Window.IsCompleted)
         {
-            _timerDisplay = Window.Earned > 0 ? Window.Earned.ToString("C") : "COMPLETED!";
+            _timerDisplay = Window.Earned > 0 ? Window.Earned.ToString("C") : L["Fsb.Completed"].Value;
             return;
         }
         if (Window.IsActive && Window.EndDate.HasValue)
@@ -84,9 +85,9 @@
         _timerDisplay = "--D --H --M --S";
     }
 
-    private static string FmtDHMS(TimeSpan ts)
+    private string FmtDHMS(TimeSpan ts)
     {
-        if (ts.TotalSeconds <= 0) return "COMPLETED!";
+        if (ts.TotalSeconds <= 0) return L["Fsb.Completed"].Value;
         return $"{(int)ts.TotalDays}D {ts.Hours}H {ts.Minutes}M {ts.Seconds}S";
     }
 

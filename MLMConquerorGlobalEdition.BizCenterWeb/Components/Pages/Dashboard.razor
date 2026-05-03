@@ -1,10 +1,11 @@
 ﻿@page "/"
 @page "/dashboard"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @inject IViewContextService ViewContext
+@inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
 
-<PageTitle>Dashboard</PageTitle>
+<PageTitle>@L["Dashboard.PageTitle"]</PageTitle>
 
 <DashboardPage MemberProfileId="@ViewContext.ViewingMemberId" />
 

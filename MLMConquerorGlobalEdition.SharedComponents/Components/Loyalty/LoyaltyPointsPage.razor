@@ -1,5 +1,6 @@
 @inject IViewContextService ViewContext
 @inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
 
 @using MLMConquerorGlobalEdition.SharedComponents.Constants
 
@@ -7,19 +8,19 @@
 
 <div class="row g-3 mb-4">
     <div class="col-12 col-sm-4">
-        <StatCard Title="Total Points" Value="@_totalPoints.ToString("N0")" Icon="ri-heart-line" Color="danger" />
+        <StatCard Title="@L["Loyalty.TotalPoints"]" Value="@_totalPoints.ToString("N0")" Icon="ri-heart-line" Color="danger" />
     </div>
     <div class="col-12 col-sm-4">
-        <StatCard Title="Unlocked Points" Value="@_unlockedPoints.ToString("N0")" Icon="ri-lock-unlock-line" Color="success" />
+        <StatCard Title="@L["Loyalty.UnlockedPoints"]" Value="@_unlockedPoints.ToString("N0")" Icon="ri-lock-unlock-line" Color="success" />
     </div>
     <div class="col-12 col-sm-4">
-        <StatCard Title="Locked Points" Value="@_lockedPoints.ToString("N0")" Icon="ri-lock-line" Color="warning" />
+        <StatCard Title="@L["Loyalty.LockedPoints"]" Value="@_lockedPoints.ToString("N0")" Icon="ri-lock-line" Color="warning" />
     </div>
 </div>
 
 <div class="card">
     <div class="card-header py-3">
-        <h6 class="card-title mb-0 fw-semibold">Loyalty Points History</h6>
+        <h6 class="card-title mb-0 fw-semibold">@L["Loyalty.History"]</h6>
     </div>
     <div class="card-body p-0">
         <LoadingSpinner IsLoading="@_isLoading" />
@@ -29,30 +30,30 @@
                 <table class="table table-hover table-sm mb-0">
                     <thead>
                         <tr>
-                            <th>Month</th>
-                            <th>Points</th>
-                            <th>Locked</th>
-                            <th>Missed Payment</th>
-                            <th>Status</th>
+                            <th>@L["Loyalty.ColMonth"]</th>
+                            <th>@L["Loyalty.ColPoints"]</th>
+                            <th>@L["Loyalty.ColLocked"]</th>
+                            <th>@L["Loyalty.ColMissedPayment"]</th>
+                            <th>@L["Common.Status"]</th>
                             @if (ViewContext.HasPermission(Permissions.Loyalty.ManualUnlock))
                             {
-                                <th class="text-center">Admin</th>
+                                <th class="text-center">@L["Loyalty.Admin"]</th>
                             }
                         </tr>
                     </thead>
                     <tbody>
                         @if (!_items.Any())
                         {
-                            <tr><td colspan="6" class="text-center text-muted py-4">No data available.</td></tr>
+                            <tr><td colspan="6" class="text-center text-muted py-4">@L["Common.NoDataAvailable"]</td></tr>
                         }
                         @foreach (var lp in _items)
                         {
                             <tr>
                                 <td>@lp.MonthLabel</td>
                                 <td>@lp.Points</td>
-                                <td>@(lp.IsLocked ? "Yes" : "No")</td>
-                                <td>@(lp.MissedPayment ? "⚠ Yes" : "No")</td>
-                                <td><StatusBadge Status="@(lp.IsLocked ? "Locked" : "Unlocked")" /></td>
+                                <td>@(lp.IsLocked ? L["Common.Yes"].Value : L["Common.No"].Value)</td>
+                                <td>@(lp.MissedPayment ? L["Loyalty.MissedYes"].Value : L["Common.No"].Value)</td>
+                                <td><StatusBadge Status="@(lp.IsLocked ? L["Loyalty.StatusLocked"].Value : L["Loyalty.StatusUnlocked"].Value)" /></td>
                                 @if (ViewContext.HasPermission(Permissions.Loyalty.ManualUnlock))
                                 {
                                     <td class="text-center">
@@ -60,7 +61,7 @@
                                         {
                                             <button class="btn btn-xs btn-outline-success"
                                                     @onclick="() => ManualUnlock(lp.Id)"
-                                                    title="Manual Unlock">
+                                                    title="@L["Loyalty.ManualUnlock"]">
                                                 <i class="ri-lock-unlock-line"></i>
                                             </button>
                                         }
@@ -75,10 +76,10 @@
             {
                 var totalPages = (int)Math.Ceiling((double)_total / _pageSize);
                 <div class="d-flex justify-content-center py-3">
-                    <nav>
+                    <nav aria-label="@L["Loyalty.PaginationAria"]">
                         <ul class="pagination pagination-sm mb-0">
                             <li class="page-item @(_page <= 1 ? "disabled" : "")">
-                                <button class="page-link" @onclick="() => ChangePage(_page - 1)">&#x2039;</button>
+                                <button class="page-link" @onclick="() => ChangePage(_page - 1)" aria-label="@L["Common.Previous"]">&#x2039;</button>
                             </li>
                             @for (var pg = 1; pg <= totalPages; pg++)
                             {
@@ -88,7 +89,7 @@
                                 </li>
                             }
                             <li class="page-item @(_page >= totalPages ? "disabled" : "")">
-                                <button class="page-link" @onclick="() => ChangePage(_page + 1)">&#x203A;</button>
+                                <button class="page-link" @onclick="() => ChangePage(_page + 1)" aria-label="@L["Common.Next"]">&#x203A;</button>
                             </li>
                         </ul>
                     </nav>
@@ -108,8 +109,8 @@
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
-        new("Dashboard", "/dashboard"),
-        new("Loyalty Points")
+        new(L["Nav.Dashboard"].Value, "/dashboard"),
+        new(L["Nav.LoyaltyPoints"].Value)
     };
 
     protected override async Task OnParametersSetAsync()

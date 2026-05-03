@@ -1,11 +1,12 @@
 @inject IViewContextService ViewContext
 @inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
 
 @using MLMConquerorGlobalEdition.SharedComponents.Constants
 
 <div class="card">
     <div class="card-header py-3">
-        <h6 class="card-title mb-0 fw-semibold">Commission Earnings</h6>
+        <h6 class="card-title mb-0 fw-semibold">@L["CommissionEarnings.Title"]</h6>
     </div>
     <div class="card-body p-0">
         <LoadingSpinner IsLoading="@_isLoading" />
@@ -15,21 +16,21 @@
                 <table class="table table-hover table-sm mb-0">
                     <thead>
                         <tr>
-                            <th>Type</th>
-                            <th>Amount</th>
-                            <th>Period</th>
-                            <th>Payment Date</th>
-                            <th>Status</th>
+                            <th>@L["Reports.Type"]</th>
+                            <th>@L["Common.Amount"]</th>
+                            <th>@L["Reports.Period"]</th>
+                            <th>@L["Reports.PaymentDate"]</th>
+                            <th>@L["Common.Status"]</th>
                             @if (ViewContext.HasPermission(Permissions.Commission.Delete) || ViewContext.HasPermission(Permissions.Commission.ForcePay))
                             {
-                                <th class="text-end">Actions</th>
+                                <th class="text-end">@L["Common.Actions"]</th>
                             }
                         </tr>
                     </thead>
                     <tbody>
                         @if (!_items.Any())
                         {
-                            <tr><td colspan="6" class="text-center text-muted py-4">No data available.</td></tr>
+                            <tr><td colspan="6" class="text-center text-muted py-4">@L["Common.NoDataAvailable"]</td></tr>
                         }
                         @foreach (var e in _items)
                         {
@@ -47,14 +48,14 @@
                                             <AdminOnlyWrapper Permission="@Permissions.Commission.ForcePay">
                                                 <button class="btn btn-xs btn-outline-success me-1"
                                                         @onclick="() => ForcePay(e.Id)"
-                                                        title="Force Pay">
+                                                        title="@L["CommissionEarnings.ForcePay"]">
                                                     <i class="ri-money-dollar-circle-line"></i>
                                                 </button>
                                             </AdminOnlyWrapper>
                                             <AdminOnlyWrapper Permission="@Permissions.Commission.Delete">
                                                 <button class="btn btn-xs btn-outline-danger"
                                                         @onclick="() => ConfirmDelete(e.Id)"
-                                                        title="Delete">
+                                                        title="@L["Common.Delete"]">
                                                     <i class="ri-delete-bin-line"></i>
                                                 </button>
                                             </AdminOnlyWrapper>
@@ -96,9 +97,9 @@
 @if (_showDeleteConfirm)
 {
     <ConfirmModal IsVisible="true"
-                  Title="Delete Commission"
-                  Message="Are you sure you want to delete this unpaid commission? This action cannot be undone."
-                  ConfirmLabel="Delete"
+                  Title="@L["CommissionEarnings.DeleteTitle"].Value"
+                  Message="@L["CommissionEarnings.DeleteMessage"].Value"
+                  ConfirmLabel="@L["Common.Delete"].Value"
                   ConfirmColor="danger"
                   IsBusy="@_actionBusy"
                   OnConfirm="ExecuteDeleteAsync"

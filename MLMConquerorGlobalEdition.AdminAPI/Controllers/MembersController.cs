@@ -32,10 +32,11 @@ public class MembersController : ControllerBase
         [FromQuery] string? status = null,
         [FromQuery] string? sponsorId = null,
         [FromQuery] string? search = null,
+        [FromQuery] bool bypassCache = false,
         CancellationToken ct = default)
     {
         var result = await _mediator.Send(
-            new GetMembersQuery(new PagedRequest { Page = page, PageSize = pageSize }, status, sponsorId, search), ct);
+            new GetMembersQuery(new PagedRequest { Page = page, PageSize = pageSize }, status, sponsorId, search, bypassCache), ct);
 
         if (!result.IsSuccess)
             return BadRequest(ApiResponse<PagedResult<AdminMemberDto>>.Fail(result.ErrorCode!, result.Error!));

@@ -1,6 +1,18 @@
 @inject NavigationManager Nav
 @inject IStringLocalizer<SharedResources> L
 
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
+@using MLMConquerorGlobalEdition.SharedKernel
+
+@*
+    Header language picker. Uses plain anchor links (not @onclick) because the
+    layout is rendered SSR-only — pages may opt into InteractiveServer but the
+    surrounding layout (HeaderArea) is static. Anchors hit the host's /culture
+    endpoint via GET, which sets the RequestLocalization cookie and redirects
+    back. Works without a Blazor circuit.
+*@
+
 <div class="dropdown language-switcher">
     <button class="bg-transparent p-0 border-0 d-flex align-items-center"
             type="button" data-bs-toggle="dropdown" aria-expanded="false"
@@ -8,48 +20,50 @@
         <i class="ri-global-line fs-5"></i>
         <span class="ms-1 d-none d-lg-inline small fw-medium">@_currentLabel</span>
     </button>
-    <ul class="dropdown-menu dropdown-menu-end border-0 shadow" style="min-width:160px;">
+    <ul class="dropdown-menu dropdown-menu-end border-0 shadow" style="min-width:180px;">
         @foreach (var lang in _languages)
         {
+            var cultureName = LanguageCodeMapper.ToCultureName(lang.Code);
+            var href        = $"/culture?culture={Uri.EscapeDataString(cultureName)}&redirectUri={_redirectUri}";
             <li>
-                <button class="dropdown-item d-flex align-items-center gap-2 @(_currentCulture == lang.Code ? "active" : "")"
-                        type="button" @onclick="() => SetLanguage(lang.Code)">
+                <a class="dropdown-item d-flex align-items-center gap-2 @(_currentAppCode == lang.Code ? "active" : "")"
+                   href="@href">
                     <span>@lang.Flag</span>
-                    <span>@lang.NativeName</span>
-                </button>
+                    <span>@L[$"Lang.{lang.Code}"]</span>
+                </a>
             </li>
         }
     </ul>
 </div>
 
 @code {
-    private string _currentCulture = "en";
-    private string _currentLabel = "EN";
+    private string _currentAppCode = LanguageCodeMapper.DefaultAppCode;
+    private string _currentLabel   = LanguageCodeMapper.DefaultAppCode.ToUpperInvariant();
+    private string _redirectUri    = "%2F";
 
+    // The 9 supported app codes — matches LanguagePreferenceCard.
     private static readonly List<LangOption> _languages =
     [
-        new("en", "English",    "🇺🇸"),
-        new("es", "Español",    "🇪🇸"),
-        new("pt", "Português",  "🇧🇷"),
-        new("fr", "Français",   "🇫🇷"),
-        new("it", "Italiano",   "🇮🇹"),
-        new("ko", "한국어",      "🇰🇷"),
-        new("de", "Deutsch",    "🇩🇪"),
-        new("ru", "Русский",    "🇷🇺"),
+        new("en", "🇺🇸"),
+        new("es", "🇪🇸"),
+        new("pt", "🇵🇹"),
+        new("fr", "🇫🇷"),
+        new("de", "🇩🇪"),
+        new("zh", "🇨🇳"),
+        new("it", "🇮🇹"),
+        new("kr", "🇰🇷"),
+        new("ge", "🇬🇪"),
     ];
 
     protected override void OnInitialized()
     {
-        _currentCulture = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
-        _currentLabel = _currentCulture.ToUpperInvariant();
-    }
+        _currentAppCode = LanguageCodeMapper.ToAppCode(System.Globalization.CultureInfo.CurrentUICulture.Name);
+        _currentLabel   = _currentAppCode.ToUpperInvariant();
 
-    private void SetLanguage(string code)
-    {
-        // Nav.Uri is absolute (http://localhost:5250/admin); extract only path+query for LocalRedirect
+        // Build the redirect-back URL once at render time (SSR-friendly, no JS).
         var localPath = new Uri(Nav.Uri).PathAndQuery;
-        Nav.NavigateTo($"/culture?culture={code}&redirectUri={Uri.EscapeDataString(localPath)}", forceLoad: true);
+        _redirectUri  = Uri.EscapeDataString(localPath);
     }
 
-    private record LangOption(string Code, string NativeName, string Flag);
+    private record LangOption(string Code, string Flag);
 }

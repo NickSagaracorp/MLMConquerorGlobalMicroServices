@@ -1,10 +1,11 @@
 @inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
 
 <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.55)">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="ri-bank-card-line me-2"></i>Add credit card</h5>
+                <h5 class="modal-title"><i class="ri-bank-card-line me-2"></i>@L["AddCard.Title"]</h5>
                 <button type="button" class="btn-close" @onclick="OnClose"></button>
             </div>
             <div class="modal-body">
@@ -18,11 +19,11 @@
                             <div class="cc-number">@DisplayNumber()</div>
                             <div class="cc-row">
                                 <div>
-                                    <div class="cc-lbl">Card holder</div>
-                                    <div class="cc-val">@(string.IsNullOrWhiteSpace(_cardholder) ? "FULL NAME" : _cardholder.ToUpperInvariant())</div>
+                                    <div class="cc-lbl">@L["AddCard.CardHolder"]</div>
+                                    <div class="cc-val">@(string.IsNullOrWhiteSpace(_cardholder) ? L["AddCard.FullNamePlaceholder"].Value : _cardholder.ToUpperInvariant())</div>
                                 </div>
                                 <div>
-                                    <div class="cc-lbl">Expires</div>
+                                    <div class="cc-lbl">@L["AddCard.Expires"]</div>
                                     <div class="cc-val">@DisplayExpiry()</div>
                                 </div>
                             </div>
@@ -30,7 +31,7 @@
                         <div class="cc-face cc-back">
                             <div class="cc-stripe"></div>
                             <div class="cc-cvv-row">
-                                <div class="cc-cvv-label">CVC</div>
+                                <div class="cc-cvv-label">@L["AddCard.Cvc"]</div>
                                 <div class="cc-cvv-box">@DisplayCvv()</div>
                             </div>
                             <div class="cc-back-brand">@(_brand == "Unknown" ? "" : _brand)</div>
@@ -45,7 +46,7 @@
 
                 <div class="row g-2">
                     <div class="col-12">
-                        <label class="form-label small">Card number</label>
+                        <label class="form-label small">@L["AddCard.CardNumber"]</label>
                         <input type="text" inputmode="numeric" class="form-control"
                                placeholder="1234 5678 9012 3456"
                                value="@_displayedCardNumber"
@@ -54,14 +55,14 @@
                                maxlength="23" />
                     </div>
                     <div class="col-12">
-                        <label class="form-label small">Cardholder name</label>
+                        <label class="form-label small">@L["AddCard.CardholderName"]</label>
                         <input type="text" class="form-control"
-                               placeholder="As printed on the card"
+                               placeholder="@L["AddCard.CardholderPlaceholder"]"
                                @bind="_cardholder" @bind:event="oninput"
                                @onfocus='() => _flipped = false' />
                     </div>
                     <div class="col-6">
-                        <label class="form-label small">Expiration</label>
+                        <label class="form-label small">@L["AddCard.Expiration"]</label>
                         <input type="text" inputmode="numeric" class="form-control"
                                placeholder="MM/YY"
                                value="@_expiryDisplay"
@@ -70,7 +71,7 @@
                                maxlength="5" />
                     </div>
                     <div class="col-6">
-                        <label class="form-label small">CVC</label>
+                        <label class="form-label small">@L["AddCard.Cvc"]</label>
                         <input type="password" inputmode="numeric" class="form-control"
                                placeholder="•••"
                                value="@_cvv"
@@ -82,10 +83,10 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-outline-secondary" disabled="@_submitting" @onclick="OnClose">Cancel</button>
+                <button class="btn btn-outline-secondary" disabled="@_submitting" @onclick="OnClose">@L["Common.Cancel"]</button>
                 <button class="btn btn-primary" disabled="@(_submitting || !CanSubmit)" @onclick="SubmitAsync">
                     @if (_submitting) { <span class="spinner-border spinner-border-sm me-2"></span> }
-                    Save card
+                    @L["AddCard.SaveCard"]
                 </button>
             </div>
         </div>
@@ -218,7 +219,7 @@
     {
         _error = null;
         var exp = ParseExpiry(_expiryDisplay);
-        if (exp is null) { _error = "Invalid expiration date."; return; }
+        if (exp is null) { _error = L["AddCard.InvalidExpiration"]; return; }
 
         // Block already-expired cards client-side too, so the user gets the
         // message instantly without an API round-trip. Server enforces the same.
@@ -226,12 +227,12 @@
         if (exp.Value.Year < today.Year ||
             (exp.Value.Year == today.Year && exp.Value.Month < today.Month))
         {
-            _error = "This card is already expired. Please use a card with a future expiration date.";
+            _error = L["AddCard.AlreadyExpired"];
             return;
         }
 
-        if (_rawCardNumber.Length < 13) { _error = "Card number is too short."; return; }
-        if (_cvv.Length < 3) { _error = "CVC is too short."; return; }
+        if (_rawCardNumber.Length < 13) { _error = L["AddCard.NumberTooShort"]; return; }
+        if (_cvv.Length < 3) { _error = L["AddCard.CvcTooShort"]; return; }
 
         _submitting = true; StateHasChanged();
         try

@@ -20,4 +20,7 @@ public static class NotificationEvents
     public const string DownlineEnrolled     = "DOWNLINE_ENROLLED";
     /// <summary>Sent to every upline (enrollment + dual team, deduplicated) when a downline ambassador achieves a new rank.</summary>
     public const string UplineRankAchieved   = "UPLINE_RANK_ACHIEVED";
+
+    /// <summary>Sent during login when the user has two-factor authentication enabled. Variables: { Code, ExpiresInMinutes }.</summary>
+    public const string TwoFactorCode        = "TWO_FACTOR_CODE";
 }

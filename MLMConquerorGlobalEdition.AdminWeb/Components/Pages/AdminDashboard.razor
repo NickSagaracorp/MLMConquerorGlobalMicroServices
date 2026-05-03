@@ -21,7 +21,7 @@ else if (_error is not null)
     <div class="alert alert-danger d-flex align-items-center gap-2">
         <i class="ri-error-warning-line fs-5"></i>
         <span>@_error</span>
-        <button class="btn btn-sm btn-outline-danger ms-auto" @onclick="LoadAsync">
+        <button class="btn btn-sm btn-outline-danger ms-auto" @onclick="@(() => LoadAsync())">
             <i class="ri-refresh-line me-1"></i>Retry
         </button>
     </div>
@@ -36,7 +36,10 @@ else if (_data is not null)
                 <i class="ri-time-line me-1"></i>@DateTime.UtcNow.ToString("MMMM dd, yyyy · HH:mm") UTC
             </small>
         </div>
-        <button class="btn btn-sm" style="background:#fff;border:1px solid #e2e8f0;color:#374151;border-radius:8px;" @onclick="LoadAsync">
+        <button class="btn btn-sm" style="background:#fff;border:1px solid #e2e8f0;color:#374151;border-radius:8px;"
+                disabled="@_loading"
+                title="Refresh from server"
+                @onclick="RefreshAsync">
             <i class="ri-refresh-line me-1"></i>Refresh
         </button>
     </div>
@@ -998,12 +1001,20 @@ else if (_data is not null)
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
-    private async Task LoadAsync()
+    /// <summary>
+    /// User-triggered "Refresh" action. Re-fetches the dashboard bypassing the
+    /// AdminAPI's server-side cache so the admin sees the freshest aggregates.
+    /// </summary>
+    private Task RefreshAsync() => LoadAsync(bypassCache: true);
+
+    private async Task LoadAsync(bool bypassCache = false)
     {
         _loading = true; _error = null; StateHasChanged();
         try
         {
-            var resp = await Http.GetFromJsonAsync<ApiResp<CeoDashboardDto>>("api/v1/admin/dashboard/ceo");
+            var url = "api/v1/admin/dashboard/ceo";
+            if (bypassCache) url += "?bypassCache=true";
+            var resp = await Http.GetFromJsonAsync<ApiResp<CeoDashboardDto>>(url);
             if (resp?.Success == true && resp.Data is not null)
                 _data = resp.Data;
             else
