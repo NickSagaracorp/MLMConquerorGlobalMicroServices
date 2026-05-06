@@ -716,9 +716,43 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <div class="form-floating">
-                                <input type="text" class="form-control" placeholder="TOKEN-XXXX" @bind="_payToken" />
+                                <input type="text" class="form-control" placeholder="TOKEN-XXXX"
+                                       value="@_payToken" @oninput="OnTokenInput" />
                                 <label>Token Code</label>
                             </div>
+                            @if (_tokenStatus == "validating")
+                            {
+                                <div class="d-flex align-items-center gap-2 mt-2 small text-muted">
+                                    <span class="spinner-border spinner-border-sm"></span>
+                                    <span>Validating…</span>
+                                </div>
+                            }
+                            else if (_tokenStatus == "valid")
+                            {
+                                <div class="mt-2">
+                                    <div class="d-flex align-items-center gap-2 small slug-ok fw-semibold">
+                                        <i class="ri-checkbox-circle-fill"></i>
+                                        <span>@_tokenMessage</span>
+                                    </div>
+                                    @if (_tokenAllowedProductNames is { Count: > 0 })
+                                    {
+                                        <div class="d-flex flex-wrap gap-1 mt-1">
+                                            <small class="text-muted me-1">Token covers:</small>
+                                            @foreach (var name in _tokenAllowedProductNames)
+                                            {
+                                                <span class="badge rounded-pill bg-success-subtle text-success border border-success-subtle">@name</span>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else if (_tokenStatus == "invalid")
+                            {
+                                <div class="d-flex align-items-start gap-2 mt-2 small slug-err fw-semibold">
+                                    <i class="ri-error-warning-fill mt-1"></i>
+                                    <span>@_tokenMessage</span>
+                                </div>
+                            }
                         </div>
                     </div>
                 }
@@ -750,7 +784,7 @@
 
                 <div class="d-grid">
                     <button type="button" class="btn btn-enroll"
-                            disabled="@(!_agreedTerms || _busy)"
+                            disabled="@(!_agreedTerms || _busy || (_paymentTab == "token" && !_tokenValid))"
                             @onclick="HandleJoinNow">
                         @if (_busy)
                         {
@@ -759,6 +793,13 @@
                         Join Now — @AmountToday.ToString("C")
                     </button>
                 </div>
+
+                @if (_paymentTab == "token" && _tokenValid)
+                {
+                    <p class="text-center mt-2 mb-0 small slug-ok fw-semibold">
+                        <i class="ri-checkbox-circle-fill me-1"></i>Token will cover full payment — no charge
+                    </p>
+                }
 
                 <p class="text-center mt-3 mb-0">
                     <small class="text-muted"><i class="ri-lock-2-line me-1"></i>256-bit encrypted · Secure checkout</small>
@@ -1033,6 +1074,9 @@
     private string? _completedEmail;
     private string? _signupId;
 
+    // ── Device fingerprint (FingerprintJS OSS — best-effort, optional) ────────
+    private string? _visitorId;
+
     // ── API data ──────────────────────────────────────────────────────────────
     private SponsorModel?      _sponsor;
     private ProductModel?      _enrollmentProduct;
@@ -1095,6 +1139,14 @@
     private bool   _showCcv;
     private string _payToken  = string.Empty;
     private bool   _agreedTerms;
+
+    // ── Token validation (real-time) ──────────────────────────────────────────
+    private string  _tokenStatus  = "idle"; // idle | validating | valid | invalid
+    private string  _tokenMessage = string.Empty;
+    private bool    _tokenValid;
+    private List<string>? _tokenAllowedProductNames;
+    private System.Threading.Timer? _tokenTimer;
+    private System.Threading.CancellationTokenSource? _tokenCts;
 
     // ── Country data (loaded from API) ───────────────────────────────────────
     private List<CountryLookupDto> _countryData = new();
@@ -1212,6 +1264,21 @@
         // Products are NOT loaded here — they load after country selection via OnCountryModalSelect.
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            // Best-effort: initialize FingerprintJS OSS in the browser and capture the visitorId.
+            // If the CDN fails or the user blocks it, _visitorId stays null and the backend treats it as optional.
+            _visitorId = await JS.InvokeAsync<string?>("fingerprintHelper.initialize");
+        }
+        catch
+        {
+            _visitorId = null;
+        }
+    }
+
     private void OnCountryChange(ChangeEventArgs e)
     {
         var nameEn = e.Value?.ToString() ?? string.Empty;
@@ -1277,6 +1344,103 @@
     private void SelectMembership(string productId)
     {
         _selectedMembershipProductId = productId;
+        // If user is mid-token-flow, immediately revalidate against the new product selection.
+        if (_paymentTab == "token" && !string.IsNullOrWhiteSpace(_payToken))
+            _ = ValidateTokenAsync();
+    }
+
+    private void OnTokenInput(ChangeEventArgs e)
+    {
+        _payToken = e.Value?.ToString() ?? string.Empty;
+        _tokenTimer?.Dispose();
+
+        // Cancel any in-flight request — the user is still typing.
+        _tokenCts?.Cancel();
+
+        if (string.IsNullOrWhiteSpace(_payToken))
+        {
+            _tokenStatus  = "idle";
+            _tokenMessage = string.Empty;
+            _tokenValid   = false;
+            _tokenAllowedProductNames = null;
+            return;
+        }
+
+        _tokenStatus = "validating";
+        _tokenMessage = string.Empty;
+        _tokenValid   = false;
+
+        _tokenTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(ValidateTokenAsync);
+        }, null, 600, System.Threading.Timeout.Infinite);
+    }
+
+    private async Task ValidateTokenAsync()
+    {
+        var code = _payToken?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            _tokenStatus  = "idle";
+            _tokenMessage = string.Empty;
+            _tokenValid   = false;
+            _tokenAllowedProductNames = null;
+            StateHasChanged();
+            return;
+        }
+
+        _tokenCts?.Cancel();
+        _tokenCts = new System.Threading.CancellationTokenSource();
+        var ct = _tokenCts.Token;
+
+        _tokenStatus = "validating";
+        StateHasChanged();
+
+        try
+        {
+            var api = HttpFactory.CreateClient("SignupsInternal");
+            var sponsorRef = _sponsor?.ReplicateSiteSlug ?? SponsorSlug ?? string.Empty;
+            var selected = string.IsNullOrEmpty(_selectedMembershipProductId)
+                ? new List<string>()
+                : new List<string> { _selectedMembershipProductId! };
+
+            var resp = await api.PostAsJsonAsync("api/v1/signups/validate-token", new
+            {
+                Code = code,
+                SponsorReplicateSite = sponsorRef,
+                SelectedProductIds = selected,
+                VisitorId = _visitorId
+            }, ct);
+
+            if (ct.IsCancellationRequested) return;
+
+            var body = await resp.Content.ReadFromJsonAsync<ApiWrapper<ValidateTokenResponseModel>>(cancellationToken: ct);
+            if (body?.Success == true && body.Data is not null)
+            {
+                _tokenValid   = body.Data.Valid;
+                _tokenMessage = body.Data.Message;
+                _tokenAllowedProductNames = body.Data.AllowedProductNames;
+                _tokenStatus  = body.Data.Valid ? "valid" : "invalid";
+            }
+            else
+            {
+                _tokenValid   = false;
+                _tokenStatus  = "invalid";
+                _tokenMessage = body?.Message ?? "Could not verify the token.";
+                _tokenAllowedProductNames = null;
+            }
+        }
+        catch (TaskCanceledException) { /* superseded by next keystroke */ return; }
+        catch (OperationCanceledException) { return; }
+        catch
+        {
+            _tokenValid   = false;
+            _tokenStatus  = "invalid";
+            _tokenMessage = "Could not verify the token.";
+            _tokenAllowedProductNames = null;
+        }
+
+        StateHasChanged();
     }
 
     private void OnEmailInput(ChangeEventArgs e)
@@ -1469,12 +1633,18 @@
                 ReplicateSiteSlug    = _siteHandle,
                 MembershipLevelId    = _membershipProducts
                     .FirstOrDefault(p => p.Id == _selectedMembershipProductId)
-                    ?.MembershipLevelId ?? 0
+                    ?.MembershipLevelId ?? 0,
+                VisitorId            = _visitorId
             });
 
             var b1 = await r1.Content.ReadFromJsonAsync<ApiWrapper<SignupResponseModel>>();
             if (b1?.Success != true || b1.Data is null)
             {
+                if (string.Equals(b1?.ErrorCode, "SIGNUP_BLOCKED", StringComparison.Ordinal))
+                {
+                    _error = "We can't process your enrollment right now. Please contact support.";
+                    return;
+                }
                 _error = b1?.Message ?? b1?.Errors?.FirstOrDefault() ?? "Signup failed. Please check your details.";
                 return;
             }
@@ -1527,7 +1697,7 @@
     }
 
     // ── Local models ──────────────────────────────────────────────────────────
-    private record ApiWrapper<T>(bool Success, T? Data, string? Message, List<string>? Errors);
+    private record ApiWrapper<T>(bool Success, T? Data, string? Message, List<string>? Errors, string? ErrorCode);
     private record CountryLookupDto(string Iso2, string Iso3, string NameEn, string NameNative, string DefaultLanguageCode, string FlagEmoji, string? PhoneCode, bool IsActive, bool HasStates);
     private record SponsorModel(string MemberId, string DisplayName, string FullName,
         string? ReplicateSiteSlug, string? PhotoUrl);
@@ -1539,4 +1709,6 @@
     private record SignupResponseModel(string SignupId, string MemberId, string Email,
         string MemberType, DateTime EnrollDate, string? AccessToken,
         string? RefreshToken, DateTime? TokenExpiry);
+    private record ValidateTokenResponseModel(bool Valid, string Message,
+        List<string>? AllowedProductIds, List<string>? AllowedProductNames, int? TokenTypeId);
 }

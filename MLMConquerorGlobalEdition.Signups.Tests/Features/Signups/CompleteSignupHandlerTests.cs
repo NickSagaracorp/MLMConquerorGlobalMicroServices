@@ -78,6 +78,30 @@ public class CompleteSignupHandlerTests
         return m;
     }
 
+    /// <summary>
+    /// Default token redemption mock — fakes a successful consume so existing non-token tests don't change.
+    /// Tests for the Token payment path inject their own mock to assert specific behavior.
+    /// </summary>
+    private static Mock<ITokenRedemptionService> BuildTokenRedemptionMock(bool succeed = true, string? errorCode = null, string? error = null)
+    {
+        var m = new Mock<ITokenRedemptionService>();
+        if (succeed)
+        {
+            m.Setup(s => s.RedeemForSignupAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+             .ReturnsAsync(MLMConquerorGlobalEdition.SharedKernel.Result<bool>.Success(true));
+        }
+        else
+        {
+            m.Setup(s => s.RedeemForSignupAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+             .ReturnsAsync(MLMConquerorGlobalEdition.SharedKernel.Result<bool>.Failure(errorCode ?? "TOKEN_NOT_VALID", error ?? "This token is not valid for this signup."));
+        }
+        return m;
+    }
+
     private static MemberProfile BuildMember(string memberId, string email = "user@example.com") => new()
     {
         MemberId       = memberId,
@@ -161,7 +185,8 @@ public class CompleteSignupHandlerTests
 
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
-            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object);
+            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
+            BuildTokenRedemptionMock().Object);
 
         var result = await handler.Handle(
             new CompleteSignupCommand("NON-EXISTENT", BuildRequest()), CancellationToken.None);
@@ -185,7 +210,8 @@ public class CompleteSignupHandlerTests
         var userMgr = UserManagerHelper.Create();
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
-            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object);
+            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
+            BuildTokenRedemptionMock().Object);
 
         var result = await handler.Handle(
             new CompleteSignupCommand("ORD-001", BuildRequest()), CancellationToken.None);
@@ -222,7 +248,8 @@ public class CompleteSignupHandlerTests
         var userMgr = UserManagerHelper.Create();
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
-            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object);
+            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
+            BuildTokenRedemptionMock().Object);
 
         var result = await handler.Handle(
             new CompleteSignupCommand("ORD-002", BuildRequest()), CancellationToken.None);
@@ -244,7 +271,8 @@ public class CompleteSignupHandlerTests
         var userMgr = UserManagerHelper.Create();
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
-            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object);
+            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
+            BuildTokenRedemptionMock().Object);
 
         var result = await handler.Handle(
             new CompleteSignupCommand("ORD-003", BuildRequest()), CancellationToken.None);
@@ -275,7 +303,8 @@ public class CompleteSignupHandlerTests
 
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
-            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object);
+            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
+            BuildTokenRedemptionMock().Object);
 
         var result = await handler.Handle(
             new CompleteSignupCommand("ORD-004", BuildRequest()), CancellationToken.None);
@@ -310,7 +339,8 @@ public class CompleteSignupHandlerTests
 
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
-            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object);
+            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
+            BuildTokenRedemptionMock().Object);
 
         var result = await handler.Handle(
             new CompleteSignupCommand("ORD-010", BuildRequest()), CancellationToken.None);
@@ -346,7 +376,8 @@ public class CompleteSignupHandlerTests
 
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
-            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object);
+            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
+            BuildTokenRedemptionMock().Object);
 
         await handler.Handle(new CompleteSignupCommand("ORD-011", BuildRequest()), CancellationToken.None);
 
@@ -379,7 +410,8 @@ public class CompleteSignupHandlerTests
 
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
-            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object);
+            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
+            BuildTokenRedemptionMock().Object);
 
         await handler.Handle(new CompleteSignupCommand("ORD-012", BuildRequest()), CancellationToken.None);
 
@@ -412,7 +444,8 @@ public class CompleteSignupHandlerTests
 
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
-            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object);
+            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
+            BuildTokenRedemptionMock().Object);
 
         await handler.Handle(new CompleteSignupCommand("ORD-013", BuildRequest()), CancellationToken.None);
 
@@ -445,7 +478,8 @@ public class CompleteSignupHandlerTests
 
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
-            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object);
+            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
+            BuildTokenRedemptionMock().Object);
 
         var result = await handler.Handle(
             new CompleteSignupCommand("ORD-014", BuildRequest()), CancellationToken.None);
@@ -481,7 +515,8 @@ public class CompleteSignupHandlerTests
 
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
-            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object);
+            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
+            BuildTokenRedemptionMock().Object);
 
         var ccRequest = new CompleteSignupRequest
         {
@@ -533,7 +568,8 @@ public class CompleteSignupHandlerTests
 
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
-            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object);
+            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
+            BuildTokenRedemptionMock().Object);
 
         var result = await handler.Handle(
             new CompleteSignupCommand("ORD-016", BuildRequest()), CancellationToken.None);

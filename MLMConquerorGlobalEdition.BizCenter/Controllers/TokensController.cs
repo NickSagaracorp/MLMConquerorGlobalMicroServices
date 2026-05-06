@@ -6,6 +6,7 @@ using MLMConquerorGlobalEdition.BizCenter.Features.Tokens.DistributeToken;
 using MLMConquerorGlobalEdition.BizCenter.Features.Tokens.GetGuestPasses;
 using MLMConquerorGlobalEdition.BizCenter.Features.Tokens.GetTokenBalances;
 using MLMConquerorGlobalEdition.BizCenter.Features.Tokens.GetTokenTransactions;
+using MLMConquerorGlobalEdition.BizCenter.Features.Tokens.TransferTokenInstance;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Controllers;
@@ -59,4 +60,29 @@ public class TokensController : ControllerBase
             return BadRequest(ApiResponse<bool>.Fail(result.ErrorCode!, result.Error!));
         return Ok(ApiResponse<bool>.Ok(true, "Tokens distributed successfully."));
     }
+
+    /// <summary>
+    /// POST /api/v1/bizcenter/tokens/instances/transfer — transfer one specific token (by code)
+    /// to a recipient in the caller's enrollment subtree, preserving chain-of-custody.
+    /// </summary>
+    [HttpPost("instances/transfer")]
+    public async Task<IActionResult> TransferInstance(
+        [FromBody] TransferTokenInstanceRequest request, CancellationToken ct)
+    {
+        var result = await _mediator.Send(
+            new TransferTokenInstanceCommand(request.TokenCode, request.RecipientMemberId, request.Notes), ct);
+
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<TransferTokenInstanceResponse>.Fail(result.ErrorCode!, result.Error!));
+
+        return Ok(ApiResponse<TransferTokenInstanceResponse>.Ok(result.Value!, "Token transferred successfully."));
+    }
+}
+
+/// <summary>Request body for instance-level token transfer.</summary>
+public class TransferTokenInstanceRequest
+{
+    public string TokenCode { get; set; } = string.Empty;
+    public string RecipientMemberId { get; set; } = string.Empty;
+    public string? Notes { get; set; }
 }

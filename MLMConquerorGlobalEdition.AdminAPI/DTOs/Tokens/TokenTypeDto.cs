@@ -1,3 +1,5 @@
+using MLMConquerorGlobalEdition.Domain.Enums;
+
 namespace MLMConquerorGlobalEdition.AdminAPI.DTOs.Tokens;
 
 public class TokenTypeDto
@@ -8,4 +10,5 @@ public class TokenTypeDto
     public bool IsGuestPass { get; set; }
     public string? TemplateUrl { get; set; }
     public bool IsActive { get; set; }
+    public TokenCategory Category { get; set; }
 }

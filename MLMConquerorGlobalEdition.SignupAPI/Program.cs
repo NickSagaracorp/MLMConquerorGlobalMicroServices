@@ -77,6 +77,8 @@ builder.Services.AddSingleton<IAmazonS3>(_ =>
 builder.Services.AddScoped<IS3FileService, S3FileService>();
 builder.Services.AddScoped<ISponsorBonusService, SponsorBonusService>();
 builder.Services.AddScoped<IFastStartBonusService, FastStartBonusService>();
+builder.Services.AddScoped<ITokenRedemptionService, TokenRedemptionService>();
+builder.Services.AddScoped<IFraudFingerprintService, FraudFingerprintService>();
 builder.Services.AddScoped<IEncryptionService, EncryptionService>();
 
 // JWT Service

@@ -37,32 +37,38 @@
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
                 <GridColumns>
                     <GridColumn Field="@nameof(TokenTypeDto.Id)" HeaderText="ID" Width="70" TextAlign="TextAlign.Center" />
-                    <GridColumn Field="@nameof(TokenTypeDto.Name)" HeaderText="Name" Width="180" />
-                    <GridColumn HeaderText="Description" Width="220">
+                    <GridColumn Field="@nameof(TokenTypeDto.Name)" HeaderText="Name" Width="200" />
+                    <GridColumn HeaderText="Category" Width="110" TextAlign="TextAlign.Center">
+                        <Template>
+                            <span class="badge @CategoryBadge(((TokenTypeDto)context).Category)">@(((TokenTypeDto)context).Category)</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Description" Width="200">
                         <Template><span class="text-muted small">@(((TokenTypeDto)context).Description ?? "—")</span></Template>
                     </GridColumn>
-                    <GridColumn HeaderText="Guest Pass" Width="120" TextAlign="TextAlign.Center">
+                    <GridColumn HeaderText="Guest Pass" Width="110" TextAlign="TextAlign.Center">
                         <Template>
                             @if (((TokenTypeDto)context).IsGuestPass)
                             { <span class="badge bg-info text-dark"><i class="ri-pass-valid-line me-1"></i>Yes</span> }
                             else { <span class="text-muted">—</span> }
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="Template" Width="110" TextAlign="TextAlign.Center">
+                    <GridColumn HeaderText="Template" Width="100" TextAlign="TextAlign.Center">
                         <Template>
                             @if (!string.IsNullOrWhiteSpace(((TokenTypeDto)context).TemplateUrl))
                             { <a href="@(((TokenTypeDto)context).TemplateUrl)" target="_blank" class="text-primary small"><i class="ri-link me-1"></i>Link</a> }
                             else { <span class="text-muted">—</span> }
                         </Template>
                     </GridColumn>
-                    <GridColumn HeaderText="Status" Width="100">
+                    <GridColumn HeaderText="Status" Width="90">
                         <Template><span class="badge @ActiveBadge(((TokenTypeDto)context).IsActive)">@(((TokenTypeDto)context).IsActive ? "Active" : "Inactive")</span></Template>
                     </GridColumn>
-                    <GridColumn HeaderText="Actions" Width="140" TextAlign="TextAlign.Center">
+                    <GridColumn HeaderText="Actions" Width="170" TextAlign="TextAlign.Center">
                         <Template>
-                            <button class="btn btn-sm btn-outline-info py-0 me-1" @onclick='() => Nav.NavigateTo($"/admin/tokens/types/{((TokenTypeDto)context).Id}/commissions")'><i class="ri-settings-3-line"></i></button>
-                            <button class="btn btn-sm btn-outline-primary py-0 me-1" @onclick="() => OpenEdit((TokenTypeDto)context)"><i class="ri-edit-line"></i></button>
-                            <button class="btn btn-sm btn-outline-danger py-0" @onclick="() => ConfirmDelete((TokenTypeDto)context)"><i class="ri-delete-bin-line"></i></button>
+                            <button class="btn btn-sm btn-outline-success py-0 me-1" title="Products" @onclick="() => OpenProducts((TokenTypeDto)context)"><i class="ri-shopping-bag-line"></i></button>
+                            <button class="btn btn-sm btn-outline-info py-0 me-1" title="Commissions" @onclick='() => Nav.NavigateTo($"/admin/tokens/types/{((TokenTypeDto)context).Id}/commissions")'><i class="ri-settings-3-line"></i></button>
+                            <button class="btn btn-sm btn-outline-primary py-0 me-1" title="Edit" @onclick="() => OpenEdit((TokenTypeDto)context)"><i class="ri-edit-line"></i></button>
+                            <button class="btn btn-sm btn-outline-danger py-0" title="Deactivate" @onclick="() => ConfirmDelete((TokenTypeDto)context)"><i class="ri-delete-bin-line"></i></button>
                         </Template>
                     </GridColumn>
                 </GridColumns>
@@ -80,6 +86,18 @@
                 <div class="modal-body">
                     <div class="mb-3"><label class="form-label fw-semibold">Name <span class="text-danger">*</span></label><input class="form-control" @bind="_form.Name"/></div>
                     <div class="mb-3"><label class="form-label fw-semibold">Description</label><textarea class="form-control" rows="2" @bind="_form.Description"></textarea></div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Category <span class="text-danger">*</span></label>
+                        <select class="form-select" @bind="_form.Category">
+                            <option value="None">None</option>
+                            <option value="Enrollment">Enrollment</option>
+                            <option value="Upgrade">Upgrade</option>
+                            <option value="Monthly">Monthly</option>
+                            <option value="Annual">Annual</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <div class="form-text small">Drives product-relation rules. Upgrade tokens require a From + To product mapping.</div>
+                    </div>
                     <div class="mb-3"><label class="form-label fw-semibold">Template URL</label><input class="form-control" @bind="_form.TemplateUrl" placeholder="https://..."/></div>
                     <div class="form-check"><input class="form-check-input" type="checkbox" id="igp" @bind="_form.IsGuestPass"/><label class="form-check-label" for="igp">Is Guest Pass</label></div>
                 </div>
@@ -113,6 +131,104 @@
     </div>
 }
 
+@if (_showProductsModal && _productsToken is not null)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">
+                        <i class="ri-shopping-bag-line me-2 text-success"></i>
+                        Products — @_productsToken.Name
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseProductsModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info py-2 small mb-3">
+                        <strong>Category:</strong> @_productsToken.Category.
+                        @switch (_productsToken.Category)
+                        {
+                            case "Upgrade":
+                                <span> Define <strong>UpgradeFrom</strong> + <strong>UpgradeTo</strong>. Granted is ignored.</span>
+                                break;
+                            case "Enrollment":
+                            case "Monthly":
+                            case "Annual":
+                                <span> Pick the products this token grants on redemption.</span>
+                                break;
+                            case "None":
+                            case "Other":
+                                <span> No product association needed; leaving empty is OK.</span>
+                                break;
+                        }
+                    </div>
+
+                    @if (_productsLoading)
+                    {
+                        <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+                    }
+                    else
+                    {
+                        @if (_productsToken.Category == "Upgrade")
+                        {
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Upgrade From <span class="text-danger">*</span></label>
+                                    <select class="form-select" @bind="_productPayload.UpgradeFromProductId">
+                                        <option value="">— select —</option>
+                                        @foreach (var p in _allProducts)
+                                        {
+                                            <option value="@p.Id">@p.Name</option>
+                                        }
+                                    </select>
+                                    <div class="form-text small">Member's current product required to redeem.</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Upgrade To <span class="text-danger">*</span></label>
+                                    <select class="form-select" @bind="_productPayload.UpgradeToProductId">
+                                        <option value="">— select —</option>
+                                        @foreach (var p in _allProducts)
+                                        {
+                                            <option value="@p.Id">@p.Name</option>
+                                        }
+                                    </select>
+                                    <div class="form-text small">Product the member is upgraded into.</div>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <label class="form-label fw-semibold">Granted Products</label>
+                            <div class="border rounded p-3" style="max-height:320px; overflow-y:auto;">
+                                @foreach (var p in _allProducts)
+                                {
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="@($"prod_{p.Id}")"
+                                               checked="@_productPayload.GrantedProductIds.Contains(p.Id)"
+                                               @onchange="@(e => ToggleGranted(p.Id, (bool)(e.Value ?? false)))" />
+                                        <label class="form-check-label" for="@($"prod_{p.Id}")">
+                                            <span class="fw-medium">@p.Name</span>
+                                            <span class="text-muted small ms-2">(@p.Id.Substring(0, 8)…)</span>
+                                        </label>
+                                    </div>
+                                }
+                            </div>
+                            <div class="form-text small">Products delivered to the member when this token is redeemed.</div>
+                        }
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseProductsModal">Cancel</button>
+                    <button class="btn btn-success" @onclick="SaveProducts" disabled="@_productsSaving">
+                        @if (_productsSaving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Save Mapping
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<TokenTypeDto> _items = new();
     private bool _loading = true;
@@ -122,9 +238,17 @@
     private bool _showForm;
     private bool _showDeleteConfirm;
     private int? _editId;
-    private bool _editIsActive = true; // preserved from loaded entity so PUT doesn't silently deactivate
+    private bool _editIsActive = true;
     private TokenTypeFormModel _form = new();
     private TokenTypeDto? _deleteItem;
+
+    // Products modal state
+    private bool _showProductsModal;
+    private bool _productsLoading;
+    private bool _productsSaving;
+    private TokenTypeDto? _productsToken;
+    private List<ProductRow> _allProducts = new();
+    private TokenTypeProductsPayload _productPayload = new();
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -140,8 +264,24 @@
         finally { _loading = false; }
     }
 
-    private void OpenCreate() { _editId = null; _editIsActive = true; _form = new(); _showForm = true; }
-    private void OpenEdit(TokenTypeDto t) { _editId = t.Id; _editIsActive = t.IsActive; _form = new TokenTypeFormModel { Name = t.Name, Description = t.Description, TemplateUrl = t.TemplateUrl, IsGuestPass = t.IsGuestPass }; _showForm = true; }
+    private void OpenCreate()
+    {
+        _editId = null; _editIsActive = true;
+        _form = new TokenTypeFormModel { Category = "None" };
+        _showForm = true;
+    }
+
+    private void OpenEdit(TokenTypeDto t)
+    {
+        _editId = t.Id; _editIsActive = t.IsActive;
+        _form = new TokenTypeFormModel
+        {
+            Name = t.Name, Description = t.Description, TemplateUrl = t.TemplateUrl,
+            IsGuestPass = t.IsGuestPass, Category = t.Category
+        };
+        _showForm = true;
+    }
+
     private void CloseForm() { _showForm = false; _editId = null; }
 
     private async Task Save()
@@ -153,19 +293,14 @@
             HttpResponseMessage response;
             if (_editId is null)
             {
-                // POST: CreateTokenTypeDto — no IsActive field
                 response = await Http.PostAsJsonAsync("api/v1/admin/token-types", _form);
             }
             else
             {
-                // PUT: UpdateTokenTypeDto — must include IsActive to preserve active status
                 response = await Http.PutAsJsonAsync($"api/v1/admin/token-types/{_editId}", new
                 {
-                    _form.Name,
-                    _form.Description,
-                    _form.TemplateUrl,
-                    _form.IsGuestPass,
-                    IsActive = _editIsActive
+                    _form.Name, _form.Description, _form.TemplateUrl, _form.IsGuestPass,
+                    _form.Category, IsActive = _editIsActive
                 });
             }
             if (response.IsSuccessStatusCode) { _alertMsg = _editId is null ? "Token type created." : "Token type updated."; _alertIsError = false; CloseForm(); await LoadAsync(); }
@@ -190,16 +325,123 @@
         finally { _saving = false; }
     }
 
+    private async Task OpenProducts(TokenTypeDto t)
+    {
+        _productsToken     = t;
+        _productsLoading   = true;
+        _showProductsModal = true;
+        _productPayload    = new TokenTypeProductsPayload();
+        StateHasChanged();
+        try
+        {
+            // Fetch products list (page 1, large page size)
+            var prodResp = await Http.GetFromJsonAsync<ApiResp<PagedResult<ProductRow>>>("api/v1/admin/products?page=1&pageSize=500");
+            if (prodResp?.Success == true && prodResp.Data is not null)
+                _allProducts = prodResp.Data.Items.OrderBy(p => p.Name).ToList();
+
+            // Fetch existing mappings for this token type
+            var mapResp = await Http.GetFromJsonAsync<ApiResp<IEnumerable<TokenTypeProductRow>>>($"api/v1/admin/token-types/{t.Id}/products");
+            if (mapResp?.Success == true && mapResp.Data is not null)
+            {
+                foreach (var row in mapResp.Data)
+                {
+                    if (row.Role == "Granted") _productPayload.GrantedProductIds.Add(row.ProductId);
+                    else if (row.Role == "UpgradeFrom") _productPayload.UpgradeFromProductId = row.ProductId;
+                    else if (row.Role == "UpgradeTo") _productPayload.UpgradeToProductId = row.ProductId;
+                }
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error loading products: {ex.Message}"; _alertIsError = true; }
+        finally { _productsLoading = false; }
+    }
+
+    private void CloseProductsModal()
+    {
+        _showProductsModal = false;
+        _productsToken     = null;
+        _productPayload    = new TokenTypeProductsPayload();
+    }
+
+    private void ToggleGranted(string productId, bool include)
+    {
+        if (include)
+        {
+            if (!_productPayload.GrantedProductIds.Contains(productId))
+                _productPayload.GrantedProductIds.Add(productId);
+        }
+        else
+        {
+            _productPayload.GrantedProductIds.Remove(productId);
+        }
+    }
+
+    private async Task SaveProducts()
+    {
+        if (_productsToken is null) return;
+        _productsSaving = true;
+        try
+        {
+            // Normalize payload: clear irrelevant fields based on category
+            var payload = new TokenTypeProductsPayload();
+            if (_productsToken.Category == "Upgrade")
+            {
+                payload.UpgradeFromProductId = _productPayload.UpgradeFromProductId;
+                payload.UpgradeToProductId   = _productPayload.UpgradeToProductId;
+            }
+            else
+            {
+                payload.GrantedProductIds = _productPayload.GrantedProductIds.ToList();
+            }
+
+            var response = await Http.PutAsJsonAsync($"api/v1/admin/token-types/{_productsToken.Id}/products", payload);
+            if (response.IsSuccessStatusCode)
+            {
+                _alertMsg = "Product mapping updated.";
+                _alertIsError = false;
+                CloseProductsModal();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                _alertMsg = $"Save failed ({(int)response.StatusCode}): {body}";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _productsSaving = false; }
+    }
+
     private class TokenTypeFormModel
     {
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
         public string? TemplateUrl { get; set; }
         public bool IsGuestPass { get; set; }
+        public string Category { get; set; } = "None";
+    }
+
+    private class TokenTypeProductsPayload
+    {
+        public List<string> GrantedProductIds { get; set; } = new();
+        public string? UpgradeFromProductId { get; set; }
+        public string? UpgradeToProductId { get; set; }
     }
 
     private static string ActiveBadge(bool isActive) => isActive ? "bg-success" : "bg-secondary";
 
-    private record TokenTypeDto(int Id, string Name, string? Description, bool IsGuestPass, string? TemplateUrl, bool IsActive);
+    private static string CategoryBadge(string c) => c switch
+    {
+        "Enrollment" => "bg-primary",
+        "Upgrade"    => "bg-warning text-dark",
+        "Monthly"    => "bg-info text-dark",
+        "Annual"     => "bg-secondary",
+        "Other"      => "bg-light text-dark",
+        _            => "bg-light text-muted"
+    };
+
+    private record TokenTypeDto(int Id, string Name, string? Description, bool IsGuestPass, string? TemplateUrl, bool IsActive, string Category);
+    private record ProductRow(string Id, string Name);
+    private record TokenTypeProductRow(int Id, int TokenTypeId, string ProductId, string? ProductName, string Role, int QuantityGranted);
+    private record PagedResult<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize);
     private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
 }

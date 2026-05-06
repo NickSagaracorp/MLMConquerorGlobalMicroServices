@@ -211,7 +211,8 @@ public static class AdminMappingExtensions
         Description = entity.Description,
         IsGuestPass = entity.IsGuestPass,
         TemplateUrl = entity.TemplateUrl,
-        IsActive    = entity.IsActive
+        IsActive    = entity.IsActive,
+        Category    = entity.Category
     };
 
     public static TokenType ToNewEntity(this CreateTokenTypeDto dto) => new()
@@ -219,7 +220,8 @@ public static class AdminMappingExtensions
         Name        = dto.Name,
         Description = dto.Description,
         IsGuestPass = dto.IsGuestPass,
-        TemplateUrl = dto.TemplateUrl
+        TemplateUrl = dto.TemplateUrl,
+        Category    = dto.Category
     };
 
     public static void ApplyTo(this UpdateTokenTypeDto dto, TokenType entity)
@@ -229,6 +231,7 @@ public static class AdminMappingExtensions
         entity.IsGuestPass = dto.IsGuestPass;
         entity.TemplateUrl = dto.TemplateUrl;
         entity.IsActive    = dto.IsActive;
+        entity.Category    = dto.Category;
     }
 
     // ─── CommissionCategory ──────────────────────────────────────────────────

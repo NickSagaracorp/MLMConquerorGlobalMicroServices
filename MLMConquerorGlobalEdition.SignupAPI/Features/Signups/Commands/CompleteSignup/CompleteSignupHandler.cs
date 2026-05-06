@@ -28,6 +28,7 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IJwtService                  _jwtService;
     private readonly IEncryptionService           _encryption;
+    private readonly ITokenRedemptionService      _tokenRedemption;
 
     public CompleteSignupHandler(
         AppDbContext db,
@@ -37,16 +38,18 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
         IFastStartBonusService fastStartBonus,
         UserManager<ApplicationUser> userManager,
         IJwtService jwtService,
-        IEncryptionService encryption)
+        IEncryptionService encryption,
+        ITokenRedemptionService tokenRedemption)
     {
-        _db             = db;
-        _dateTime       = dateTime;
-        _s3             = s3;
-        _sponsorBonus   = sponsorBonus;
-        _fastStartBonus = fastStartBonus;
-        _userManager    = userManager;
-        _jwtService     = jwtService;
-        _encryption     = encryption;
+        _db              = db;
+        _dateTime        = dateTime;
+        _s3              = s3;
+        _sponsorBonus    = sponsorBonus;
+        _fastStartBonus  = fastStartBonus;
+        _userManager     = userManager;
+        _jwtService      = jwtService;
+        _encryption      = encryption;
+        _tokenRedemption = tokenRedemption;
     }
 
     public async Task<Result<SignupResponse>> Handle(CompleteSignupCommand command, CancellationToken ct)
@@ -87,6 +90,31 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
         if (appUser is null || appUser.IsActive)
             return Result<SignupResponse>.Failure(
                 "USER_NOT_FOUND", "Pending user account not found for this signup.");
+
+        // Token-based payment: validate, then consume the token instance.
+        // Token always covers the full order amount — no other payment processing happens.
+        if (req.PaymentMethod == PaymentMethodType.Token)
+        {
+            // Selected products on the pending order — the validator needs this to enforce
+            // that the user can only pick products covered by the TokenType.
+            var selectedProductIds = await _db.OrderDetails
+                .AsNoTracking()
+                .Where(od => od.OrderId == order.Id)
+                .Select(od => od.ProductId)
+                .ToListAsync(ct);
+
+            var redemption = await _tokenRedemption.RedeemForSignupAsync(
+                tokenCode:           req.TokenCode ?? string.Empty,
+                sponsorMemberId:     member.SponsorMemberId ?? string.Empty,
+                newMemberId:         member.MemberId,
+                orderId:             order.Id,
+                selectedProductIds:  selectedProductIds,
+                now:                 now,
+                ct:                  ct);
+
+            if (!redemption.IsSuccess)
+                return Result<SignupResponse>.Failure(redemption.ErrorCode!, redemption.Error!);
+        }
 
         if (!string.IsNullOrEmpty(req.CheckoutScreenshotBase64))
         {

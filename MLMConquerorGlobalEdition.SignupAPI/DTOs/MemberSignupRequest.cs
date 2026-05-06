@@ -17,4 +17,7 @@ public class MemberSignupRequest
     /// <summary>Required only when Country is United States (US).</summary>
     public string? Ssn { get; set; }
     public int MembershipLevelId { get; set; }
+
+    /// <summary>FingerprintJS visitorId captured by the join page. Optional — server records null/unknown if missing.</summary>
+    public string? VisitorId { get; set; }
 }

@@ -30,6 +30,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     public DbSet<Region> Regions => Set<Region>();
     public DbSet<RegionGateway> RegionGateways => Set<RegionGateway>();
     public DbSet<CompanyInfo> CompanyInfo => Set<CompanyInfo>();
+    public DbSet<SignupRiskFingerprint> SignupRiskFingerprints => Set<SignupRiskFingerprint>();
 
     public DbSet<MemberProfile> MemberProfiles => Set<MemberProfile>();
     public DbSet<MemberStatusHistory> MemberStatusHistories => Set<MemberStatusHistory>();

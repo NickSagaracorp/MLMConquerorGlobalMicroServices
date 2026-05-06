@@ -4895,6 +4895,75 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.ToTable("RegionGateways");
                 });
 
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.General.SignupRiskFingerprint", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("CountryIso2")
+                        .HasMaxLength(2)
+                        .HasColumnType("nvarchar(2)");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FlagReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("Flow")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("nvarchar(45)");
+
+                    b.Property<bool>("IsFlagged")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("MemberId")
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<string>("OrderId")
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<string>("RequestId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("SponsorReplicateSite")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("VisitorId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("IpAddress", "CreationDate");
+
+                    b.HasIndex("VisitorId", "CreationDate");
+
+                    b.ToTable("SignupRiskFingerprints", (string)null);
+                });
+
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Loyalty.LoyaltyPoints", b =>
                 {
                     b.Property<string>("Id")
@@ -8574,23 +8643,42 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("DistributedToMemberId")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("GeneratedPdfUrl")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("MemberId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
 
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OriginalOwnerMemberId")
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<string>("PreviousOwnerMemberId")
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
 
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
 
                     b.Property<string>("ReferenceId")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<int>("TokenTypeId")
                         .HasColumnType("int");
@@ -8602,11 +8690,22 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("UsedByMemberId")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<string>("UsedOnOrderId")
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ReferenceId")
+                        .IsUnique()
+                        .HasFilter("[ReferenceId] IS NOT NULL");
+
                     b.HasIndex("MemberId", "CreationDate");
+
+                    b.HasIndex("MemberId", "Status", "ReferenceId");
 
                     b.ToTable("TokenTransactions");
                 });
@@ -8618,6 +8717,11 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Category")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
@@ -8659,6 +8763,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 1,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8668,6 +8773,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 2,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8677,6 +8783,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 5,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8686,6 +8793,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 8,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8695,6 +8803,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 11,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8704,6 +8813,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 12,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8713,6 +8823,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 26,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8722,6 +8833,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 27,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8731,6 +8843,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 28,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8740,6 +8853,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 29,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8749,6 +8863,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 30,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8758,6 +8873,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 31,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8767,6 +8883,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 49,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8776,6 +8893,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 50,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8785,6 +8903,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 64,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8794,6 +8913,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 65,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8803,6 +8923,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 67,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8812,6 +8933,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 68,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8821,6 +8943,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 75,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8830,6 +8953,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 76,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8839,6 +8963,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 69,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8848,6 +8973,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 70,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8857,6 +8983,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 71,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8866,6 +8993,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 72,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8875,6 +9003,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 73,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8884,6 +9013,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 74,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8893,6 +9023,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 80,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8902,6 +9033,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 13,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8911,6 +9043,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 15,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8920,6 +9053,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 16,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8929,6 +9063,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 19,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8938,6 +9073,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 32,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8947,6 +9083,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 33,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8956,6 +9093,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 34,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8965,6 +9103,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 54,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8974,6 +9113,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 79,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8983,6 +9123,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 9,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -8992,6 +9133,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 81,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9001,6 +9143,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 82,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9010,6 +9153,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 83,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9019,6 +9163,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 84,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9028,6 +9173,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 85,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9037,6 +9183,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 86,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9046,6 +9193,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 87,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9055,6 +9203,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 88,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9064,6 +9213,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 89,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9073,6 +9223,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 90,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9082,6 +9233,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 91,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9091,6 +9243,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 92,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9100,6 +9253,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 93,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9109,6 +9263,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 94,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9118,6 +9273,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 95,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9127,6 +9283,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 96,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9136,6 +9293,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 97,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9145,6 +9303,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 98,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9154,6 +9313,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 99,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9163,6 +9323,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 3,
+                            Category = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9172,6 +9333,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 4,
+                            Category = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9181,6 +9343,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 22,
+                            Category = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9190,6 +9353,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 44,
+                            Category = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9199,6 +9363,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 45,
+                            Category = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9208,6 +9373,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 46,
+                            Category = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9217,6 +9383,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 47,
+                            Category = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9226,6 +9393,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 48,
+                            Category = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9235,6 +9403,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 51,
+                            Category = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9244,6 +9413,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 55,
+                            Category = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9253,6 +9423,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 25,
+                            Category = 3,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9262,6 +9433,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 21,
+                            Category = 4,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9271,6 +9443,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 23,
+                            Category = 4,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9280,6 +9453,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 78,
+                            Category = 4,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9289,6 +9463,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 56,
+                            Category = 2,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9298,6 +9473,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 57,
+                            Category = 2,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9307,6 +9483,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 58,
+                            Category = 2,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9316,6 +9493,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 59,
+                            Category = 2,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9325,6 +9503,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 60,
+                            Category = 2,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9334,6 +9513,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 77,
+                            Category = 2,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9343,6 +9523,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 17,
+                            Category = 2,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9352,6 +9533,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 35,
+                            Category = 2,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9361,6 +9543,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 36,
+                            Category = 2,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9370,6 +9553,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 37,
+                            Category = 2,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9379,6 +9563,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 38,
+                            Category = 2,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9388,6 +9573,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 39,
+                            Category = 2,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9397,6 +9583,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 40,
+                            Category = 2,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9406,6 +9593,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 41,
+                            Category = 2,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9415,6 +9603,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 42,
+                            Category = 2,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9424,6 +9613,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 43,
+                            Category = 2,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9433,6 +9623,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 52,
+                            Category = 2,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9442,6 +9633,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 53,
+                            Category = 2,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9451,6 +9643,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 61,
+                            Category = 2,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9460,6 +9653,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 62,
+                            Category = 2,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9469,6 +9663,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 63,
+                            Category = 2,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9478,6 +9673,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 66,
+                            Category = 2,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9487,6 +9683,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 6,
+                            Category = 1,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9496,6 +9693,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 7,
+                            Category = 5,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9505,6 +9703,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 10,
+                            Category = 4,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9514,6 +9713,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 14,
+                            Category = 5,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9523,6 +9723,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 24,
+                            Category = 5,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -9532,6 +9733,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         new
                         {
                             Id = 20,
+                            Category = 0,
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = false,
@@ -11499,17 +11701,736 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasColumnType("nvarchar(36)");
 
                     b.Property<int>("QuantityGranted")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
+                    b.Property<int>("Role")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<int>("TokenTypeId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TokenTypeId", "ProductId")
+                    b.HasIndex("TokenTypeId", "ProductId", "Role")
                         .IsUnique();
 
                     b.ToTable("TokenTypeProducts");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000001-prod-0000-0000-000000000001",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 2
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000005-prod-0000-0000-000000000005",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 8
+                        },
+                        new
+                        {
+                            Id = 3,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000005-prod-0000-0000-000000000005",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 88
+                        },
+                        new
+                        {
+                            Id = 4,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000005-prod-0000-0000-000000000005",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 64
+                        },
+                        new
+                        {
+                            Id = 5,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000002-prod-0000-0000-000000000002",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 64
+                        },
+                        new
+                        {
+                            Id = 6,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000005-prod-0000-0000-000000000005",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 65
+                        },
+                        new
+                        {
+                            Id = 7,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000002-prod-0000-0000-000000000002",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 65
+                        },
+                        new
+                        {
+                            Id = 8,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000005-prod-0000-0000-000000000005",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 86
+                        },
+                        new
+                        {
+                            Id = 9,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000002-prod-0000-0000-000000000002",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 86
+                        },
+                        new
+                        {
+                            Id = 10,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000005-prod-0000-0000-000000000005",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 5
+                        },
+                        new
+                        {
+                            Id = 11,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 5
+                        },
+                        new
+                        {
+                            Id = 12,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000005-prod-0000-0000-000000000005",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 11
+                        },
+                        new
+                        {
+                            Id = 13,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 11
+                        },
+                        new
+                        {
+                            Id = 14,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000005-prod-0000-0000-000000000005",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 71
+                        },
+                        new
+                        {
+                            Id = 15,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 71
+                        },
+                        new
+                        {
+                            Id = 16,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000005-prod-0000-0000-000000000005",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 72
+                        },
+                        new
+                        {
+                            Id = 17,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 72
+                        },
+                        new
+                        {
+                            Id = 18,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000005-prod-0000-0000-000000000005",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 81
+                        },
+                        new
+                        {
+                            Id = 19,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 81
+                        },
+                        new
+                        {
+                            Id = 20,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000005-prod-0000-0000-000000000005",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 82
+                        },
+                        new
+                        {
+                            Id = 21,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 82
+                        },
+                        new
+                        {
+                            Id = 22,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000005-prod-0000-0000-000000000005",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 98
+                        },
+                        new
+                        {
+                            Id = 23,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 98
+                        },
+                        new
+                        {
+                            Id = 24,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000005-prod-0000-0000-000000000005",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 69
+                        },
+                        new
+                        {
+                            Id = 25,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 69
+                        },
+                        new
+                        {
+                            Id = 26,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000004-prod-0000-0000-000000000004",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 69
+                        },
+                        new
+                        {
+                            Id = 27,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000005-prod-0000-0000-000000000005",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 70
+                        },
+                        new
+                        {
+                            Id = 28,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 70
+                        },
+                        new
+                        {
+                            Id = 29,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000004-prod-0000-0000-000000000004",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 70
+                        },
+                        new
+                        {
+                            Id = 30,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000005-prod-0000-0000-000000000005",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 73
+                        },
+                        new
+                        {
+                            Id = 31,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 73
+                        },
+                        new
+                        {
+                            Id = 32,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000004-prod-0000-0000-000000000004",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 73
+                        },
+                        new
+                        {
+                            Id = 33,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000005-prod-0000-0000-000000000005",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 74
+                        },
+                        new
+                        {
+                            Id = 34,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 74
+                        },
+                        new
+                        {
+                            Id = 35,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000004-prod-0000-0000-000000000004",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 74
+                        },
+                        new
+                        {
+                            Id = 36,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000005-prod-0000-0000-000000000005",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 83
+                        },
+                        new
+                        {
+                            Id = 37,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 83
+                        },
+                        new
+                        {
+                            Id = 38,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000004-prod-0000-0000-000000000004",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 83
+                        },
+                        new
+                        {
+                            Id = 39,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000005-prod-0000-0000-000000000005",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 84
+                        },
+                        new
+                        {
+                            Id = 40,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 84
+                        },
+                        new
+                        {
+                            Id = 41,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000004-prod-0000-0000-000000000004",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 84
+                        },
+                        new
+                        {
+                            Id = 42,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000005-prod-0000-0000-000000000005",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 99
+                        },
+                        new
+                        {
+                            Id = 43,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 99
+                        },
+                        new
+                        {
+                            Id = 44,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000004-prod-0000-0000-000000000004",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 99
+                        },
+                        new
+                        {
+                            Id = 45,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000002-prod-0000-0000-000000000002",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 13
+                        },
+                        new
+                        {
+                            Id = 46,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 16
+                        },
+                        new
+                        {
+                            Id = 47,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 19
+                        },
+                        new
+                        {
+                            Id = 48,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 80
+                        },
+                        new
+                        {
+                            Id = 49,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000004-prod-0000-0000-000000000004",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 80
+                        },
+                        new
+                        {
+                            Id = 50,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 89
+                        },
+                        new
+                        {
+                            Id = 51,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 90
+                        },
+                        new
+                        {
+                            Id = 52,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000004-prod-0000-0000-000000000004",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 90
+                        },
+                        new
+                        {
+                            Id = 53,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000002-prod-0000-0000-000000000002",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 92
+                        },
+                        new
+                        {
+                            Id = 54,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 6
+                        },
+                        new
+                        {
+                            Id = 55,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000005-prod-0000-0000-000000000005",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 94
+                        },
+                        new
+                        {
+                            Id = 56,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 94
+                        },
+                        new
+                        {
+                            Id = 57,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000005-prod-0000-0000-000000000005",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 96
+                        },
+                        new
+                        {
+                            Id = 58,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 96
+                        },
+                        new
+                        {
+                            Id = 59,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000004-prod-0000-0000-000000000004",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 96
+                        },
+                        new
+                        {
+                            Id = 60,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 3
+                        },
+                        new
+                        {
+                            Id = 61,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000002-prod-0000-0000-000000000002",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 4
+                        },
+                        new
+                        {
+                            Id = 62,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000005-prod-0000-0000-000000000005",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 23
+                        },
+                        new
+                        {
+                            Id = 63,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000005-prod-0000-0000-000000000005",
+                            QuantityGranted = 1,
+                            Role = 0,
+                            TokenTypeId = 10
+                        },
+                        new
+                        {
+                            Id = 64,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000001-prod-0000-0000-000000000001",
+                            QuantityGranted = 0,
+                            Role = 1,
+                            TokenTypeId = 56
+                        },
+                        new
+                        {
+                            Id = 65,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000002-prod-0000-0000-000000000002",
+                            QuantityGranted = 1,
+                            Role = 2,
+                            TokenTypeId = 56
+                        },
+                        new
+                        {
+                            Id = 66,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000001-prod-0000-0000-000000000001",
+                            QuantityGranted = 0,
+                            Role = 1,
+                            TokenTypeId = 59
+                        },
+                        new
+                        {
+                            Id = 67,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 1,
+                            Role = 2,
+                            TokenTypeId = 59
+                        },
+                        new
+                        {
+                            Id = 68,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000002-prod-0000-0000-000000000002",
+                            QuantityGranted = 0,
+                            Role = 1,
+                            TokenTypeId = 62
+                        },
+                        new
+                        {
+                            Id = 69,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 1,
+                            Role = 2,
+                            TokenTypeId = 62
+                        },
+                        new
+                        {
+                            Id = 70,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000003-prod-0000-0000-000000000003",
+                            QuantityGranted = 0,
+                            Role = 1,
+                            TokenTypeId = 66
+                        },
+                        new
+                        {
+                            Id = 71,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ProductId = "00000004-prod-0000-0000-000000000004",
+                            QuantityGranted = 1,
+                            Role = 2,
+                            TokenTypeId = 66
+                        });
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Tree.DualTeamEntity", b =>
@@ -12745,6 +13666,15 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasForeignKey("MemberProfileId");
                 });
 
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Tokens.TokenTypeProduct", b =>
+                {
+                    b.HasOne("MLMConquerorGlobalEdition.Domain.Entities.Tokens.TokenType", null)
+                        .WithMany("ProductLinks")
+                        .HasForeignKey("TokenTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -12874,6 +13804,11 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Support.TicketCategory", b =>
                 {
                     b.Navigation("SubCategories");
+                });
+
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Tokens.TokenType", b =>
+                {
+                    b.Navigation("ProductLinks");
                 });
 #pragma warning restore 612, 618
         }

@@ -32,4 +32,7 @@ public class AmbassadorSignupRequest
 
     public string? ReplicateSiteSlug { get; set; }
     public int MembershipLevelId { get; set; }
+
+    /// <summary>FingerprintJS visitorId captured by the join page. Optional — server records null/unknown if missing.</summary>
+    public string? VisitorId { get; set; }
 }
