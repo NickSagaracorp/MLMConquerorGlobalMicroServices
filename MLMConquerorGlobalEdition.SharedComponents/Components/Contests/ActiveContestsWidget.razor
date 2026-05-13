@@ -1,0 +1,228 @@
+@inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
+@using System.Net.Http.Json
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
+
+@* Active Contests widget — split layout per the MWR-Life "challenge" template.
+   Header bar | banner+points box+Details button | Leaderboard table.
+   Renders nothing when no contest is live so the dashboard rhythm collapses. *@
+
+@if (_loading)
+{
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body py-4 text-center">
+            <div class="spinner-border spinner-border-sm text-warning"></div>
+        </div>
+    </div>
+}
+else if (_contests.Count > 0)
+{
+    @foreach (var c in _contests)
+    {
+        var contest = c;
+        <div class="contest-challenge mb-4">
+
+            @* ── Header bar — full-width, brand blue gradient ──────────────── *@
+            <div class="contest-header px-4 py-3 rounded-3"
+                 style="background:linear-gradient(90deg,#3478F6 0%,#1E60D8 100%);">
+                <h5 class="text-white fw-bold mb-0">@contest.Name</h5>
+            </div>
+
+            <div class="row g-3 mt-1">
+
+                @* ── Left column — entire banner is the click target for the
+                       Details modal. The legacy widget had a separate Details
+                       button; here the banner artwork already includes that
+                       label baked into the image, so we route the whole tile
+                       to the same handler. cursor:pointer + role="button" +
+                       keyboard handler keep it accessible. *@
+                <div class="col-12 col-lg-6">
+                    <div class="position-relative"
+                         style="border-radius:8px;overflow:hidden;cursor:pointer;"
+                         role="button"
+                         tabindex="0"
+                         aria-label="@string.Format(L["Contest.OpenDetailsAria"], contest.Name)"
+                         @onclick="() => _detailsContest = contest"
+                         @onkeydown="@(async (KeyboardEventArgs e) => { if (e.Key == "Enter" || e.Key == " ") { _detailsContest = contest; await Task.CompletedTask; } })">
+                        @if (!string.IsNullOrWhiteSpace(contest.BannerUrl))
+                        {
+                            <img src="@contest.BannerUrl" alt="@contest.Name"
+                                 style="width:100%;height:auto;display:block;" />
+                        }
+                        else
+                        {
+                            <div class="d-flex align-items-center justify-content-center"
+                                 style="background:#1E2A6A;height:240px;color:#FFC107;font-weight:700;font-size:1.5rem;">
+                                @contest.Name
+                            </div>
+                        }
+
+                        @* Points overlay — anchored on (X%, Y%) configured
+                           by admin. Visual style mirrors the legacy MWR-Life
+                           CSS (.number-label): semi-transparent white card,
+                           rounded corners, large bold orange digit.
+                           pointer-events:none so the overlay doesn't intercept
+                           the parent's click handler. *@
+                        <div class="position-absolute"
+                             style="left:@(contest.PointsBoxXPercent)%;top:@(contest.PointsBoxYPercent)%;transform:translate(-50%,-50%);background:rgba(255,255,255,.85);border-radius:8px;padding:18px 36px;min-width:140px;text-align:center;pointer-events:none;">
+                            <div style="font-size:48px;font-weight:bold;color:#ED9A08;line-height:1;">@contest.MyPoints</div>
+                        </div>
+                    </div>
+                </div>
+
+                @* ── Right column — leaderboard scrollable table ────────────── *@
+                <div class="col-12 col-lg-6">
+                    <h4 class="text-warning fw-semibold mb-3">@L["Contest.Leaderboard"]</h4>
+                    @if (contest.Top.Count == 0)
+                    {
+                        <div class="alert alert-secondary mb-0 text-center small">
+                            @L["Contest.NoEarningsYet"]
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive" style="max-height:340px;overflow-y:auto;">
+                            <table class="table align-middle mb-0">
+                                <thead class="sticky-top bg-white">
+                                    <tr class="text-muted small">
+                                        <th>@L["Contest.Name"]</th>
+                                        <th>@L["Contest.Country"]</th>
+                                        <th class="text-end">@L["Contest.TotalPoints"]</th>
+                                        <th class="text-end">@L["Contest.Position"]</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var row in contest.Top)
+                                    {
+                                        <tr class="@(row.IsViewer ? "table-warning fw-semibold" : "")">
+                                            <td>@MaskName(row.FullName)</td>
+                                            <td>@(row.Country ?? "—")</td>
+                                            <td class="text-end fw-bold">@row.TotalPoints</td>
+                                            <td class="text-end">@row.Rank</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@* ── Details modal ─────────────────────────────────────────────────────── *@
+@if (_detailsContest is not null)
+{
+    var d = _detailsContest;
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.5);">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-3">
+                <div class="modal-header"
+                     style="background:linear-gradient(90deg,#3478F6 0%,#1E60D8 100%);">
+                    <h5 class="modal-title text-white fw-bold">@d.Name</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="() => _detailsContest = null"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrWhiteSpace(d.BannerUrl))
+                    {
+                        <img src="@d.BannerUrl" alt="@d.Name" class="w-100 mb-3 rounded" style="max-height:280px;object-fit:cover;" />
+                    }
+                    @if (!string.IsNullOrWhiteSpace(d.Description))
+                    {
+                        <p class="mb-3">@d.Description</p>
+                    }
+                    <ul class="list-unstyled mb-0 small text-muted">
+                        <li><i class="ri-calendar-line me-1"></i>
+                            @d.StartDate.ToLocalTime().ToString("MMM dd, yyyy HH:mm")
+                            → @d.EndDate.ToLocalTime().ToString("MMM dd, yyyy HH:mm")
+                        </li>
+                        <li><i class="ri-trophy-line me-1"></i>@string.Format(L["Contest.TopXLeaderboard"], d.TopX)</li>
+                        <li><i class="ri-group-line me-1"></i>@d.Participants @L["Contest.Participants"]</li>
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    @if (!string.IsNullOrWhiteSpace(d.RulesUrl))
+                    {
+                        <a href="@d.RulesUrl" target="_blank" rel="noopener" class="btn btn-warning">
+                            <i class="ri-file-text-line me-1"></i>@L["Contest.Rules"]
+                        </a>
+                    }
+                    <button class="btn btn-secondary" @onclick="() => _detailsContest = null">@L["Common.Close"]</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>Resolves to <c>api/v1/bizcenter</c> by default; admin pages
+    /// can pass an admin-prefix to render the same widget while impersonating.</summary>
+    [Parameter] public string ApiBaseUrl { get; set; } = "api/v1/bizcenter";
+
+    private bool                  _loading        = true;
+    private List<ContestWidgetDto> _contests      = new();
+    private ContestWidgetDto?     _detailsContest;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<ContestWidgetDto>>>(
+                $"{ApiBaseUrl}/contests/active");
+            _contests = resp?.Success == true && resp.Data is not null ? resp.Data : new();
+        }
+        catch
+        {
+            _contests = new();
+        }
+        finally { _loading = false; }
+    }
+
+    /// <summary>
+    /// Privacy-conscious display name: "Vu T.", "RUMIE S." style. The full
+    /// last name leaks identity in a small downline; the first-letter form
+    /// matches the reference template the comp plan team uses for public
+    /// leaderboards. Falls back to the raw name when input is malformed.
+    /// </summary>
+    private static string MaskName(string fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName)) return fullName;
+        var parts = fullName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0];
+        return $"{parts[0]} {parts[^1][0]}.";
+    }
+
+    private class ApiWrapper<T> { public bool Success { get; set; } public T? Data { get; set; } }
+
+    private class ContestWidgetDto
+    {
+        public string  Id          { get; set; } = string.Empty;
+        public string  Name        { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? BannerUrl   { get; set; }
+        public string? RulesUrl    { get; set; }
+        public DateTime StartDate  { get; set; }
+        public DateTime EndDate    { get; set; }
+        public int     TopX        { get; set; }
+        public int     Participants { get; set; }
+        public List<ContestRowDto> Top { get; set; } = new();
+        public int?    MyRank      { get; set; }
+        public int     MyPoints    { get; set; }
+        public int     MySignups   { get; set; }
+        public int     PointsBoxXPercent { get; set; } = 50;
+        public int     PointsBoxYPercent { get; set; } = 50;
+    }
+
+    private class ContestRowDto
+    {
+        public int    Rank        { get; set; }
+        public string MemberId    { get; set; } = string.Empty;
+        public string FullName    { get; set; } = string.Empty;
+        public string? Country    { get; set; }
+        public int    TotalPoints { get; set; }
+        public int    Signups     { get; set; }
+        public bool   IsViewer    { get; set; }
+    }
+}

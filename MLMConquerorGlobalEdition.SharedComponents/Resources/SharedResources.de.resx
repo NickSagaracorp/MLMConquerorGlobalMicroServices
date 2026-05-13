@@ -682,7 +682,16 @@
   <data name="Team.NextRank" xml:space="preserve"><value>Nächster Rang</value></data>
   <data name="Team.DualPtsRequired" xml:space="preserve"><value>Dual-Team-Pkt Erforderlich</value></data>
   <data name="Team.EnrollmentPtsRequired" xml:space="preserve"><value>Anmelde-Pkt Erforderlich</value></data>
+  <data name="Team.DualPts" xml:space="preserve"><value>Dual-Team-Pkt</value></data>
+  <data name="Team.EnrollmentPts" xml:space="preserve"><value>Anmelde-Pkt</value></data>
   <data name="Team.TotalDualTeamPoints" xml:space="preserve"><value>Gesamtpunkte Dual-Team</value></data>
+  <data name="Team.TotalEnrollmentTeamPoints" xml:space="preserve"><value>Gesamtpunkte Anmelde-Team</value></data>
+  <data name="Team.EligibleCurrentRank" xml:space="preserve"><value>Berechtigt (Aktueller Rang)</value></data>
+  <data name="Team.EligibleNextRank" xml:space="preserve"><value>Berechtigt (Nächster Rang)</value></data>
+  <data name="Team.TotalRaw" xml:space="preserve"><value>Gesamt Roh</value></data>
+  <data name="Team.PointsTowardNext" xml:space="preserve"><value>{0} / {1} Punkte für {2}</value></data>
+  <data name="Team.DtRequirementNotApplicable" xml:space="preserve"><value>DT-Anforderung: nicht zutreffend für {0}</value></data>
+  <data name="Team.EtRequirementNotApplicable" xml:space="preserve"><value>ET-Anforderung: nicht zutreffend für {0}</value></data>
   <data name="Team.DailyResidualsEarning" xml:space="preserve"><value>Tägliche Residual-Einnahmen</value></data>
   <data name="Team.LastSixMonths" xml:space="preserve"><value>Letzte 6 Monate</value></data>
   <data name="Team.ChartComingSoon" xml:space="preserve"><value>Diagramm folgt in Kürze</value></data>

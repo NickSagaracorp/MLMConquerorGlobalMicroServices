@@ -30,6 +30,15 @@ public interface ICommissionsService
 
     Task<PagedResult<CommissionEarningView>> GetDualResidualAsync(
         string memberId, int page, int pageSize,
+        int? year = null, int? month = null,
+        CancellationToken ct = default);
+
+    /// <summary>Monthly aggregate for the residuals histogram. Returns the
+    /// last <paramref name="months"/> months including the current one, in
+    /// chronological order. Empty months are filled with zero so the chart
+    /// has a consistent x-axis even when the member earned nothing.</summary>
+    Task<List<MonthlyAmountView>> GetDualResidualChartAsync(
+        string memberId, int months,
         CancellationToken ct = default);
 
     Task<PagedResult<CommissionEarningView>> GetFastStartBonusAsync(

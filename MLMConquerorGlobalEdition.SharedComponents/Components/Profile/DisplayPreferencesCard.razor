@@ -83,6 +83,9 @@
 
     [Parameter] public EventCallback OnPersisted { get; set; }
 
+    [CascadingParameter(Name = "ProfileApiBase")]
+    private string ProfileApiBase { get; set; } = "api/v1/bizcenter";
+
     private bool _showBusinessName;
     private bool _isEmailPublic;
     private bool _isPhonePublic;
@@ -110,7 +113,7 @@
 
         try
         {
-            var resp = await Http.PutAsJsonAsync("api/v1/bizcenter/profile", BuildPayload());
+            var resp = await Http.PutAsJsonAsync($"{ProfileApiBase}/profile", BuildPayload());
             if (resp.IsSuccessStatusCode)
             {
                 _alert   = L["DisplayPrefs.Saved"];

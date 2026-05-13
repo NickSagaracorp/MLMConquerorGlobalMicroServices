@@ -1,0 +1,240 @@
+@page "/admin/billing/recurring-states"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin,BillingManager")]
+@inject HttpClient Http
+
+<PageTitle>Recurring Billing States — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Billing"), new("Recurring States") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small mb-1">Status</label>
+                <select class="form-select form-select-sm" @bind="_statusFilter">
+                    <option value="">All</option>
+                    <option value="Active">Active</option>
+                    <option value="Retrying">Retrying</option>
+                    <option value="AwaitingAnniversaryRetry">Awaiting Anniversary Retry</option>
+                    <option value="Stopped">Stopped</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small mb-1">Plan</label>
+                <select class="form-select form-select-sm" @bind="_planFilter">
+                    <option value="0">All</option>
+                    @foreach (var p in _plans)
+                    {
+                        <option value="@p.Id">@p.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small mb-1">Member ID</label>
+                <input class="form-control form-control-sm" @bind="_memberFilter" placeholder="optional" />
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary btn-sm w-100" @onclick="Search"><i class="ri-search-line me-1"></i>Search</button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="StateDto" DataSource="@_items"
+                    AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn HeaderText="Member" Width="130">
+                        <Template><a href="/admin/members/@(((StateDto)context).MemberId)" class="text-primary"><code class="small">@(((StateDto)context).MemberId)</code></a></Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(StateDto.PlanName)" HeaderText="Plan" Width="180" />
+                    <GridColumn HeaderText="Status" Width="160" TextAlign="TextAlign.Center">
+                        <Template><span class="badge @StatusBadge(((StateDto)context).Status)">@StatusLabel(((StateDto)context).Status)</span></Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(StateDto.BillingAnchorDate)" HeaderText="Anchor" Width="110" Format="yyyy-MM-dd" Type="ColumnType.Date" />
+                    <GridColumn Field="@nameof(StateDto.LastSuccessfulBillingDate)" HeaderText="Last Success" Width="120" Format="yyyy-MM-dd" Type="ColumnType.Date" />
+                    <GridColumn Field="@nameof(StateDto.NextBillingDate)" HeaderText="Next Billing" Width="120" Format="yyyy-MM-dd" Type="ColumnType.Date" />
+                    <GridColumn Field="@nameof(StateDto.CurrentAttemptIndex)" HeaderText="Attempt #" Width="90" TextAlign="TextAlign.Center" />
+                    <GridColumn Field="@nameof(StateDto.NextAttemptDate)" HeaderText="Next Attempt" Width="120" Format="yyyy-MM-dd" Type="ColumnType.Date" />
+                    <GridColumn Field="@nameof(StateDto.LastAttemptAt)" HeaderText="Last Attempt (UTC)" Width="150" Format="yyyy-MM-dd HH:mm" Type="ColumnType.DateTime" />
+                    <GridColumn HeaderText="Last Outcome" Width="120" TextAlign="TextAlign.Center">
+                        <Template>
+                            @{ var o = ((StateDto)context).LastAttemptOutcome; }
+                            <span class="badge @OutcomeBadge(o)">@(o ?? "—")</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Last Failure" Width="220">
+                        <Template><span class="small text-danger">@(((StateDto)context).LastFailureReason ?? "—")</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="110" TextAlign="TextAlign.Center">
+                        <Template>
+                            <button class="btn btn-sm btn-outline-warning py-0" @onclick="() => ConfirmBillNow((StateDto)context)" title="Bill now"><i class="ri-flashlight-line"></i> Bill now</button>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+
+            @if (_totalPages > 1)
+            {
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
+                    <small class="text-muted">@_totalCount states — Page @_page of @_totalPages</small>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>
+                            @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
+                            { var pg = i; <li class="page-item @(_page == pg ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(pg)">@pg</button></li> }
+                            <li class="page-item @(_page == _totalPages ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page + 1)">›</button></li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+        }
+    </div>
+    <div class="card-footer bg-light small text-muted">
+        Read-only view of the recurring billing engine. <strong>Bill now</strong> forces an immediate billing attempt and can revive a Stopped state.
+    </div>
+</div>
+
+@if (_showBillNowConfirm && _billNowItem is not null)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header"><h5 class="modal-title fw-bold text-warning">Force Bill Now</h5><button type="button" class="btn-close" @onclick="() => { _showBillNowConfirm = false; _billNowItem = null; }"></button></div>
+                <div class="modal-body">
+                    Immediately process a billing attempt for member <code>@_billNowItem.MemberId</code> on plan <strong>@_billNowItem.PlanName</strong>?
+                    @if (_billNowItem.Status == "Stopped")
+                    {
+                        <div class="alert alert-warning mt-2 mb-0 py-2 small"><i class="ri-error-warning-line me-1"></i>This state is <strong>Stopped</strong> — a successful attempt will revive it to Active.</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => { _showBillNowConfirm = false; _billNowItem = null; }">Cancel</button>
+                    <button class="btn btn-warning" @onclick="BillNow" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Bill Now
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<StateDto> _items = new();
+    private List<PlanItem> _plans = new();
+    private bool _loading = true;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private string _statusFilter = string.Empty;
+    private int _planFilter;
+    private string _memberFilter = string.Empty;
+    private int _page = 1;
+    private const int PageSize = 25;
+    private int _totalCount;
+    private int _totalPages = 1;
+    private bool _showBillNowConfirm;
+    private StateDto? _billNowItem;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPlans();
+        await LoadAsync();
+    }
+
+    private async Task LoadPlans()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<IEnumerable<PlanItem>>>("api/v1/admin/billing/recurring-plans");
+            if (resp?.Success == true && resp.Data is not null) _plans = resp.Data.ToList();
+        }
+        catch { /* non-critical */ }
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var url = $"api/v1/admin/billing/recurring-states?page={_page}&pageSize={PageSize}";
+            if (!string.IsNullOrWhiteSpace(_statusFilter)) url += $"&status={Uri.EscapeDataString(_statusFilter)}";
+            if (_planFilter > 0) url += $"&planId={_planFilter}";
+            if (!string.IsNullOrWhiteSpace(_memberFilter)) url += $"&memberId={Uri.EscapeDataString(_memberFilter.Trim())}";
+            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<StateDto>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _items = resp.Data.Items.ToList();
+                _totalCount = resp.Data.TotalCount;
+                _totalPages = resp.Data.TotalPages;
+            }
+            else { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load billing states."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private async Task Search() { _page = 1; await LoadAsync(); }
+    private async Task ChangePage(int p) { if (p < 1 || p > _totalPages) return; _page = p; await LoadAsync(); }
+
+    private void ConfirmBillNow(StateDto s) { _billNowItem = s; _showBillNowConfirm = true; }
+
+    private async Task BillNow()
+    {
+        if (_billNowItem is null) return;
+        _saving = true;
+        try
+        {
+            var response = await Http.PostAsync($"api/v1/admin/billing/recurring-states/{Uri.EscapeDataString(_billNowItem.Id)}/bill-now", null);
+            if (response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadFromJsonAsync<ApiResp<BillNowResult>>();
+                _alertMsg = body?.Data is not null
+                    ? $"Bill-now result: {body.Data.Outcome}{(body.Data.FundingSource is string fs ? $" via {fs}" : "")}{(body.Data.FailureReason is string fr ? $" — {fr}" : "")}."
+                    : "Bill-now completed.";
+                _alertIsError = false;
+                _showBillNowConfirm = false; _billNowItem = null;
+                await LoadAsync();
+            }
+            else
+            {
+                var body = await response.Content.ReadFromJsonAsync<ApiResp<object>>();
+                _alertMsg = body?.Errors?.FirstOrDefault() ?? $"Bill-now failed ({response.StatusCode}).";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private static string StatusLabel(string s) => s switch
+    { "Active" => "Active", "Retrying" => "Retrying", "AwaitingAnniversaryRetry" => "Awaiting Anniversary", "Stopped" => "Stopped", _ => s };
+    private static string StatusBadge(string s) => s switch
+    { "Active" => "bg-success", "Retrying" => "bg-warning text-dark", "AwaitingAnniversaryRetry" => "bg-info text-dark", "Stopped" => "bg-danger", _ => "bg-secondary" };
+    private static string OutcomeBadge(string? o) => o switch
+    { "Success" => "bg-success", "Failed" => "bg-danger", "Scheduled" => "bg-warning text-dark", _ => "bg-secondary" };
+
+    // Enum-typed fields (Status, LastAttemptOutcome) arrive as enum NAMES from the API (JsonStringEnumConverter).
+    private record StateDto(string Id, string MemberId, string MembershipSubscriptionId, int RecurringBillingPlanId,
+        string PlanName, DateTime BillingAnchorDate, DateTime? LastSuccessfulBillingDate, DateTime NextBillingDate,
+        int CurrentAttemptIndex, DateTime NextAttemptDate, string Status, DateTime? LastAttemptAt,
+        string? LastAttemptOutcome, string? LastFailureReason);
+    private record PlanItem(int Id, string Name);
+    private record BillNowResult(string BillingStateId, string Outcome, string? FundingSource, string? PaymentHistoryId, string? FailureReason);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+}

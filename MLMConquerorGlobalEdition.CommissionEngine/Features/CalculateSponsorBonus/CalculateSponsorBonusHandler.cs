@@ -109,8 +109,26 @@ public class CalculateSponsorBonusHandler
             });
 
         // Use Amount when set (comp plan: VIP=$20, Elite=$40, Turbo=$80).
-        var amount = commType.ActiveAmount
+        var baseAmount = commType.ActiveAmount
             ?? Math.Round(order.TotalAmount * commType.Percentage / 100, 2);
+
+        // Active CorporatePromo lookup. The order's CreationDate anchors which
+        // promo applies — using `now` here would let admins game payouts by
+        // recalculating after a promo expires. When the matching promo has
+        // DoubleSponsorBonus set, we pay 2× the configured amount and stamp
+        // the earning's note so accounting can audit which promo drove it.
+        var activePromo = await _db.CorporatePromos.AsNoTracking()
+            .Where(p => p.IsActive
+                     && p.DoubleSponsorBonus
+                     && order.CreationDate >= p.StartDate
+                     && order.CreationDate <= p.EndDate)
+            .OrderByDescending(p => p.StartDate)
+            .FirstOrDefaultAsync(ct);
+
+        var amount = activePromo is not null ? baseAmount * 2m : baseAmount;
+        var note   = activePromo is not null
+            ? $"2× Sponsor Bonus — promo '{activePromo.Title}' ({activePromo.Id})"
+            : null;
 
         var earning = new CommissionEarning
         {
@@ -123,6 +141,7 @@ public class CalculateSponsorBonusHandler
             EarnedDate = now,
             PaymentDate = now.AddDays(commType.PaymentDelayDays),
             PeriodDate = now.Date,
+            Notes = note,
             CreatedBy = _currentUser.UserId,
             CreationDate = now,
             LastUpdateDate = now

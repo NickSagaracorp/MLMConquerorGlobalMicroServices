@@ -28,3 +28,30 @@
     border: 1px solid transparent;
     min-height: 56px;
 }
+
+/* Sub-tab pill nav — same shape as the top-level pills but smaller padding
+   and font so the visual hierarchy reads "section > sub-section". Used inside
+   tabs that have nested sections (Enrollment Team, Dual Team, Commissions). */
+.profile-sub-tabs .nav-link {
+    background: transparent;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    color: var(--bs-secondary, #6c757d);
+    border-radius: 999px;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.15s ease;
+}
+
+.profile-sub-tabs .nav-link:hover {
+    background: var(--bs-light, #f8f9fa);
+    color: var(--bs-primary, #605DFF);
+    border-color: var(--bs-primary, #605DFF);
+}
+
+.profile-sub-tabs .nav-link.active {
+    background: var(--bs-primary, #605DFF);
+    color: #fff;
+    border-color: var(--bs-primary, #605DFF);
+    box-shadow: 0 4px 10px -4px rgba(96, 93, 255, 0.45);
+}

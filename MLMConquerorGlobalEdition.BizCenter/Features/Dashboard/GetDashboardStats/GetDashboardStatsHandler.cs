@@ -129,38 +129,69 @@ public class GetDashboardStatsHandler : IRequestHandler<GetDashboardStatsQuery, 
         earnByOrder.TryGetValue(2, out var fsb2);
         earnByOrder.TryGetValue(3, out var fsb3);
 
-        var w1NormalEnd = countdown.FastStartBonus1End;
-        var fsb1Earned  = fsb1 != default && fsb1.EarnedDate <= w1NormalEnd;
+        // Comp-plan rule:
+        //   • Days 0–7  → FSB1 normal window. Earn FSB1 here to unlock W2 + W3.
+        //   • Days 7–14 → ONLY if FSB1 was NOT earned in the normal window,
+        //                 the EXTENDED FSB1 window kicks in. The card stays
+        //                 the same Window-1 card; its end-date stretches to
+        //                 day 14. FSB2 and FSB3 stay locked forever in this
+        //                 branch — the rule explicitly excludes them when
+        //                 the normal FSB1 was missed.
+        //   • If FSB1 IS earned in normal: W2 runs for 7 days from the FSB1
+        //     earn date; if FSB2 is then earned, W3 runs for 7 days from the
+        //     FSB2 earn date. Otherwise W3 stays locked.
+        var fsb1EarnedInNormal = fsb1 != default && fsb1.EarnedDate <= countdown.FastStartBonus1End;
+        var fsb1EarnedAnywhere = fsb1 != default;
+        var fsb2EarnedAnywhere = fsb2 != default;
 
-        var w2Start = fsb1Earned ? fsb1.EarnedDate : countdown.FastStartBonus2Start;
-        var w2End   = fsb1Earned ? fsb1.EarnedDate.AddDays(7) : countdown.FastStartBonus2End;
-        var w3Start = fsb2 != default ? fsb2.EarnedDate : countdown.FastStartBonus3Start;
-        var w3End   = fsb2 != default ? fsb2.EarnedDate.AddDays(7) : countdown.FastStartBonus3End;
+        // Window 1 — anchor on FSB1Start; end stretches to extended-end
+        // when normal-window already passed without an earning.
+        var w1Start = countdown.FastStartBonus1Start;
+        var w1End   = fsb1EarnedInNormal
+            ? countdown.FastStartBonus1End          // closed on time, end at day 7
+            : countdown.FastStartBonus1ExtendedEnd; // not earned in normal → extended to day 14
 
-        FsbWindowDto BuildWindow(int num, DateTime start, DateTime end, decimal amount)
+        // Window 2 — gated on FSB1 having been earned in the NORMAL window.
+        // Locked otherwise (regardless of how much time has passed).
+        var w2Available = fsb1EarnedInNormal;
+        var w2Start = w2Available ? fsb1.EarnedDate              : DateTime.MinValue;
+        var w2End   = w2Available ? fsb1.EarnedDate.AddDays(7)   : DateTime.MinValue;
+
+        // Window 3 — gated on Window 2 being available AND FSB2 having
+        // been earned (regardless of when within W2).
+        var w3Available = w2Available && fsb2EarnedAnywhere;
+        var w3Start = w3Available ? fsb2.EarnedDate              : DateTime.MinValue;
+        var w3End   = w3Available ? fsb2.EarnedDate.AddDays(7)   : DateTime.MinValue;
+
+        FsbWindowDto BuildWindow(int num, DateTime start, DateTime end, decimal amount, bool locked = false)
         {
             var isCompleted    = amount > 0;
-            var isExpired      = !isCompleted && now > end;
-            var isActive       = !isCompleted && !isExpired && now >= start;
-            var sponsoredCount = sponsoredEnrollments.Count(d => d >= start && d <= end);
+            var isExpired      = !isCompleted && !locked && now > end;
+            var isActive       = !isCompleted && !isExpired && !locked && now >= start;
+            // Skip sponsored-count math entirely on locked windows; the date
+            // range is a sentinel and the count is meaningless there.
+            var sponsoredCount = locked ? 0 : sponsoredEnrollments.Count(d => d >= start && d <= end);
             return new FsbWindowDto
             {
                 WindowNumber   = num,
-                StartDate      = start,
-                EndDate        = end,
+                StartDate      = locked ? null : start,
+                EndDate        = locked ? null : end,
                 Earned         = amount,
                 IsCompleted    = isCompleted,
                 IsActive       = isActive,
                 SponsoredCount = sponsoredCount,
-                Status         = isCompleted ? "Complete" : isActive ? "Active" : "Locked"
+                Status         = locked      ? "Locked"
+                               : isCompleted ? "Complete"
+                               : isActive    ? "Active"
+                                             : "Locked"
             };
         }
 
         return
         [
-            BuildWindow(1, countdown.FastStartBonus1Start, w1NormalEnd, fsb1Earned ? fsb1.Amount : 0m),
-            BuildWindow(2, w2Start, w2End, fsb2 != default ? fsb2.Amount : 0m),
-            BuildWindow(3, w3Start, w3End, fsb3 != default ? fsb3.Amount : 0m),
+            BuildWindow(1, w1Start, w1End, fsb1EarnedAnywhere ? fsb1.Amount : 0m),
+            BuildWindow(2, w2Start, w2End, fsb2EarnedAnywhere ? fsb2.Amount : 0m, locked: !w2Available),
+            BuildWindow(3, w3Start, w3End, fsb3 != default     ? fsb3.Amount : 0m, locked: !w3Available),
         ];
     }
 }

@@ -162,6 +162,35 @@ public class TeamController : ControllerBase
         return Ok(ApiResponse<DualTreeNodeDto>.Ok(result.Value!));
     }
 
+    /// <summary>GET /api/v1/bizcenter/team/dual-tree/legs — root + L/R gateway
+    /// children with cumulative leg points and donut eligibility for the
+    /// Residuals page Dual Team Members table. Distinct from /team/members
+    /// (which still serves the full sponsored downline for token pickers).</summary>
+    [HttpGet("dual-tree/legs")]
+    public async Task<IActionResult> GetDualTreeLegs(
+        [FromServices] MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTeamService dualTeamService,
+        [FromServices] MLMConquerorGlobalEdition.BizCenter.Services.ICurrentUserService currentUser,
+        CancellationToken ct)
+    {
+        var rows = await dualTeamService.GetResidualLegsAsync(currentUser.MemberId, ct);
+        return Ok(ApiResponse<List<MLMConquerorGlobalEdition.Repository.Services.Teams.DualLegRowView>>.Ok(rows));
+    }
+
+    /// <summary>GET /api/v1/bizcenter/team/dual-tree/history?months=6 — last N
+    /// monthly snapshots of L/R leg points for the Total Dual Team Points
+    /// trend chart on the Residuals page. The latest bucket reflects live
+    /// DualTeamTree values rather than yesterday's snapshot.</summary>
+    [HttpGet("dual-tree/history")]
+    public async Task<IActionResult> GetDualTreeHistory(
+        [FromServices] MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTeamService dualTeamService,
+        [FromServices] MLMConquerorGlobalEdition.BizCenter.Services.ICurrentUserService currentUser,
+        [FromQuery] int months = 6,
+        CancellationToken ct = default)
+    {
+        var rows = await dualTeamService.GetDualTeamHistoryAsync(currentUser.MemberId, months, ct);
+        return Ok(ApiResponse<List<MLMConquerorGlobalEdition.Repository.Services.Teams.DualLegMonthlyPointView>>.Ok(rows));
+    }
+
     /// <summary>GET /api/v1/bizcenter/team/dual-tree/stats/{nodeMemberId} — left/right leg points for a member's binary tree position</summary>
     [HttpGet("dual-tree/stats/{nodeMemberId}")]
     public async Task<IActionResult> GetDualTreeStats(string nodeMemberId, CancellationToken ct)

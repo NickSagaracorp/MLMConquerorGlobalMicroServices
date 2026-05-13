@@ -7,4 +7,8 @@ public class CreateCorporatePromoRequest
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public string? BannerUrl { get; set; }
+
+    public bool DoubleSponsorBonus { get; set; }
+    public bool DoubleBuilderBonus { get; set; }
+    public bool ResetFsbCountdown  { get; set; }
 }

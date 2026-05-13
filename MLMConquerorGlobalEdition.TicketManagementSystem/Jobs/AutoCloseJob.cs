@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -11,6 +12,7 @@ namespace MLMConquerorGlobalEdition.TicketManagementSystem.Jobs;
 /// Handles auto-close of resolved tickets and follow-up reminders for inactive tickets.
 /// Idempotent: safe to run multiple times.
 /// </summary>
+[Queue("tickets")]
 public class AutoCloseJob
 {
     private readonly IServiceScopeFactory _scopeFactory;

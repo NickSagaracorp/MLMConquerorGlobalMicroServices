@@ -606,7 +606,16 @@
   <data name="Team.NextRank" xml:space="preserve"><value>შემდეგი რანგი</value></data>
   <data name="Team.DualPtsRequired" xml:space="preserve"><value>საჭირო Dual Team ქულები</value></data>
   <data name="Team.EnrollmentPtsRequired" xml:space="preserve"><value>საჭირო რეგისტრაციის ქულები</value></data>
+  <data name="Team.DualPts" xml:space="preserve"><value>Dual Team ქულები</value></data>
+  <data name="Team.EnrollmentPts" xml:space="preserve"><value>რეგისტრაციის ქულები</value></data>
   <data name="Team.TotalDualTeamPoints" xml:space="preserve"><value>Dual Team-ის ჯამური ქულები</value></data>
+  <data name="Team.TotalEnrollmentTeamPoints" xml:space="preserve"><value>რეგისტრაციის გუნდის ჯამური ქულები</value></data>
+  <data name="Team.EligibleCurrentRank" xml:space="preserve"><value>კვალიფიცირებული (მიმდინარე რანგი)</value></data>
+  <data name="Team.EligibleNextRank" xml:space="preserve"><value>კვალიფიცირებული (შემდეგი რანგი)</value></data>
+  <data name="Team.TotalRaw" xml:space="preserve"><value>ჯამური უმუშავი</value></data>
+  <data name="Team.PointsTowardNext" xml:space="preserve"><value>{0} / {1} ქულა {2}-ისკენ</value></data>
+  <data name="Team.DtRequirementNotApplicable" xml:space="preserve"><value>DT მოთხოვნა: არ ეხება {0}-ს</value></data>
+  <data name="Team.EtRequirementNotApplicable" xml:space="preserve"><value>ET მოთხოვნა: არ ეხება {0}-ს</value></data>
   <data name="Team.DailyResidualsEarning" xml:space="preserve"><value>ყოველდღიური ნარჩენი შემოსავალი</value></data>
   <data name="Team.LastSixMonths" xml:space="preserve"><value>ბოლო 6 თვე</value></data>
   <data name="Team.ChartComingSoon" xml:space="preserve"><value>გრაფიკი მალე</value></data>

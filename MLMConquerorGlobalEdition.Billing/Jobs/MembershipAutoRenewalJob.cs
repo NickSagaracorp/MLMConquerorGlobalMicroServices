@@ -1,3 +1,4 @@
+using Hangfire;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Billing.DTOs;
@@ -16,6 +17,7 @@ namespace MLMConquerorGlobalEdition.Billing.Jobs;
 ///   - IsFree = false
 ///   - (StartDate + 30 days) &lt;= today (monthly renewal window elapsed)
 /// </summary>
+[Queue("billing")]
 public class MembershipAutoRenewalJob
 {
     private readonly IMediator _mediator;

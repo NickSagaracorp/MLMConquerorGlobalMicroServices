@@ -3,6 +3,7 @@
 @inject NavigationManager Nav
 @inject IStringLocalizer<SharedResources> L
 
+@using Microsoft.AspNetCore.Components.Forms
 @using MLMConquerorGlobalEdition.SharedComponents.Constants
 
 <BreadcrumbNav Items="@_breadcrumb" />
@@ -18,34 +19,97 @@
 
             <!-- Ticket header card -->
             <div class="card mb-3">
-                <div class="card-header d-flex align-items-center justify-content-between py-3">
+                <div class="card-header d-flex align-items-center justify-content-between py-3 flex-wrap gap-2">
                     <h6 class="card-title mb-0 fw-semibold">
-                        #@_ticket.TicketNumber — @_ticket.Subject
+                        @(string.IsNullOrWhiteSpace(_ticket.TicketNumber)
+                            ? $"#{(_ticket.Id.Length >= 8 ? _ticket.Id[..8] : _ticket.Id)}"
+                            : _ticket.TicketNumber)
+                        — @_ticket.Subject
                     </h6>
                     <div class="d-flex gap-2 align-items-center">
-                        @if (_ticket.EscalationLevel > 0)
+                        @if (_ticket.EscalationLevel > 1)
                         {
                             <StatusBadge Status="@EscalationLabel(_ticket.EscalationLevel)" />
                         }
+                        <StatusBadge Status="@_ticket.Priority" />
                         <StatusBadge Status="@_ticket.Status" />
                     </div>
                 </div>
                 <div class="card-body">
-                    <p class="mb-3">@_ticket.Description</p>
+                    <p class="mb-3 ticket-body">@((MarkupString)(_ticket.Body ?? string.Empty))</p>
                     <div class="row g-2 text-muted small">
-                        <div class="col-6">
-                            @L["TicketDetail.LabelCategory"]: <strong class="text-body">@_ticket.Category</strong>
+                        <div class="col-12 col-sm-6">
+                            @L["TicketDetail.LabelCategory"]: <strong class="text-body">@(string.IsNullOrWhiteSpace(_ticket.CategoryName) ? "—" : _ticket.CategoryName)</strong>
                         </div>
-                        <div class="col-6">
+                        <div class="col-12 col-sm-6">
                             @L["TicketDetail.LabelPriority"]: <strong class="text-body">@_ticket.Priority</strong>
                         </div>
-                        <div class="col-6">
-                            @L["TicketDetail.LabelAssignedTo"]: <strong class="text-body">@(_ticket.AssignedTo ?? L["TicketDetail.Unassigned"].Value)</strong>
+                        <div class="col-12 col-sm-6">
+                            @L["TicketDetail.LabelAssignedTo"]: <strong class="text-body">@(string.IsNullOrWhiteSpace(_ticket.AssignedToUserId) ? L["TicketDetail.Unassigned"].Value : _ticket.AssignedToUserId)</strong>
                         </div>
-                        <div class="col-6">
-                            @L["TicketDetail.LabelCreated"]: <strong class="text-body">@_ticket.CreatedAt.ToString("MMM dd, yyyy HH:mm")</strong>
+                        <div class="col-12 col-sm-6">
+                            @L["TicketDetail.LabelCreated"]: <strong class="text-body">
+                                @(_ticket.CreationDate == default ? "—" : _ticket.CreationDate.ToString("MMM dd, yyyy HH:mm"))
+                            </strong>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Attachments -->
+            <div class="card mb-3">
+                <div class="card-header py-3 d-flex align-items-center justify-content-between">
+                    <h6 class="card-title mb-0 fw-semibold">
+                        @L["TicketDetail.AttachmentsHeader"] (@_attachments.Count)
+                    </h6>
+                </div>
+                <div class="card-body">
+                    @if (_attachments.Count == 0)
+                    {
+                        <div class="text-center py-3 text-muted small">@L["TicketDetail.NoAttachments"]</div>
+                    }
+                    else
+                    {
+                        <ul class="list-group list-group-flush mb-3">
+                            @foreach (var att in _attachments)
+                            {
+                                <li @key="att.Id" class="list-group-item d-flex align-items-center justify-content-between px-0">
+                                    <div class="d-flex align-items-center gap-2 text-truncate">
+                                        <i class="@AttachmentIcon(att.ContentType, att.FileName) fs-5 text-secondary"></i>
+                                        <a href="@att.DownloadUrl" target="_blank" rel="noopener" class="text-truncate" title="@att.FileName">
+                                            @att.FileName
+                                        </a>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-3 small text-muted ms-2">
+                                        <span class="text-nowrap">@FormatSize(att.FileSizeBytes)</span>
+                                        <span class="d-none d-sm-inline text-nowrap">
+                                            @(att.CreationDate == default ? "—" : att.CreationDate.ToString("MMM dd, HH:mm"))
+                                        </span>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    }
+
+                    <!-- Upload control -->
+                    <div class="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-2">
+                        <InputFile OnChange="OnFileSelectedAsync" class="form-control form-control-sm"
+                                   accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.txt"
+                                   disabled="@_uploading" />
+                        @if (_uploading)
+                        {
+                            <span class="d-flex align-items-center gap-1 small text-muted">
+                                <span class="spinner-border spinner-border-sm"></span>
+                                @L["TicketDetail.AttachmentUpload"]…
+                            </span>
+                        }
+                    </div>
+                    <div class="form-text mt-1">@L["TicketDetail.AttachmentHelp"]</div>
+
+                    @if (!string.IsNullOrEmpty(_attachmentError))
+                    {
+                        <div class="alert alert-danger py-2 px-3 small mt-2 mb-0">@_attachmentError</div>
+                    }
                 </div>
             </div>
 
@@ -65,18 +129,20 @@
                     {
                         @foreach (var c in _comments)
                         {
-                            <div class="border-bottom p-3 @(c.IsStaff ? "bg-light" : "")">
+                            <div @key="c.Id" class="border-bottom p-3 @(c.IsStaff ? "bg-light" : "")">
                                 <div class="d-flex justify-content-between align-items-center small text-muted mb-1">
                                     <div>
-                                        <strong class="text-body">@c.Author</strong>
+                                        <strong class="text-body">@(string.IsNullOrWhiteSpace(c.Author) ? c.AuthorId : c.Author)</strong>
                                         @if (c.IsStaff)
                                         {
                                             <span class="badge bg-secondary ms-2">@L["TicketDetail.StaffBadge"]</span>
                                         }
                                     </div>
-                                    <span>@c.CreatedAt.ToString("MMM dd, yyyy HH:mm")</span>
+                                    <span>
+                                        @(c.CreationDate == default ? "—" : c.CreationDate.ToString("MMM dd, yyyy HH:mm"))
+                                    </span>
                                 </div>
-                                <p class="mb-0 small">@c.Content</p>
+                                <p class="mb-0 small">@c.Body</p>
                             </div>
                         }
                     }
@@ -106,6 +172,35 @@
                 <div class="card-body">
                     <h6 class="fw-semibold mb-3">@L["TicketDetail.ActionsHeader"]</h6>
                     <div class="d-grid gap-2">
+
+                        <!-- Status change (admin only) -->
+                        <AdminOnlyWrapper Permission="@Permissions.Ticket.Resolve">
+                            <div class="border rounded p-2">
+                                <label class="form-label small mb-1 fw-semibold">@L["TicketDetail.StatusLabel"]</label>
+                                <div class="d-flex gap-1">
+                                    <select class="form-select form-select-sm flex-grow-1"
+                                            @bind="_selectedStatus" disabled="@_busyStatus">
+                                        <option value="Open">@L["Tickets.StatusOpen"]</option>
+                                        <option value="InProgress">@L["Tickets.StatusInProgress"]</option>
+                                        <option value="WaitingForUser">@L["TicketDetail.StatusWaitingForUser"]</option>
+                                        <option value="Resolved">@L["Tickets.StatusResolved"]</option>
+                                        <option value="Closed">@L["Tickets.StatusClosed"]</option>
+                                    </select>
+                                    <button class="btn btn-sm btn-primary"
+                                            @onclick="ChangeStatusAsync"
+                                            disabled="@(_busyStatus || _selectedStatus == _ticket.Status)">
+                                        @if (_busyStatus)
+                                        {
+                                            <span class="spinner-border spinner-border-sm"></span>
+                                        }
+                                        else
+                                        {
+                                            <i class="ri-save-line"></i>
+                                        }
+                                    </button>
+                                </div>
+                            </div>
+                        </AdminOnlyWrapper>
 
                         <!-- Assign -->
                         <AdminOnlyWrapper Permission="@Permissions.Ticket.Assign">
@@ -229,36 +324,150 @@
     private bool   _busyResolve;
     private bool   _showAssignForm;
     private bool   _busyAssign;
-    private string _newComment    = string.Empty;
-    private string _assignTarget  = string.Empty;
+    private bool   _busyStatus;
+    private bool   _uploading;
+    private string _newComment       = string.Empty;
+    private string _assignTarget     = string.Empty;
+    private string _selectedStatus   = string.Empty;
+    private string _attachmentError  = string.Empty;
 
-    private TicketDetail? _ticket;
-    private List<TicketCommentItem> _comments = new();
+    /// <summary>Maximum upload size — 10 MB. Mirrors the limit enforced by the API endpoints.</summary>
+    private const long MaxAttachmentSizeBytes = 10_000_000;
+
+    private TicketDetailModel? _ticket;
+    private List<TicketCommentItem>    _comments    = new();
+    private List<TicketAttachmentItem> _attachments = new();
+
+    /// <summary>True when the current viewer has admin permissions for tickets.</summary>
+    // Routing context is derived from the URL path, not from permissions: the same
+    // shared component is rendered by both AdminWeb (HttpClient → AdminAPI 7002) and
+    // BizCenterWeb (HttpClient → BizCenter API 7003). The route segment decides which
+    // REST endpoint to hit; permission checks below still gate admin-only UI actions.
+    private bool IsAdminContext => Nav.Uri.Contains("/admin/", StringComparison.OrdinalIgnoreCase);
+    private bool CanManageTicket => ViewContext.HasPermission(Permissions.Ticket.ViewAll);
+
+    /// <summary>Base path for ticket endpoints — admin users use /admin/tickets, members use /bizcenter/tickets.</summary>
+    private string TicketsBasePath => IsAdminContext ? "api/v1/admin/tickets" : "api/v1/bizcenter/tickets";
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
-        new(L["TicketDetail.BreadcrumbHome"].Value,    "/dashboard"),
-        new(L["TicketDetail.BreadcrumbTickets"].Value, "/tickets"),
-        new($"#{_ticket?.TicketNumber ?? TicketId}")
+        new(L["TicketDetail.BreadcrumbHome"].Value,    IsAdminContext ? "/admin" : "/dashboard"),
+        new(L["TicketDetail.BreadcrumbTickets"].Value, IsAdminContext ? "/admin/tickets" : "/tickets"),
+        new($"#{_ticket?.TicketNumber ?? (TicketId.Length >= 8 ? TicketId[..8] : TicketId)}")
     };
 
     protected override async Task OnParametersSetAsync()
     {
         if (string.IsNullOrEmpty(TicketId)) return;
+        await LoadTicketAsync();
+    }
+
+    private async Task LoadTicketAsync()
+    {
         _isLoading = true;
         StateHasChanged();
         try
         {
-            var response = await Http.GetFromJsonAsync<ApiResponse<TicketDetailWithComments>>(
-                $"api/v1/bizcenter/tickets/{TicketId}");
+            var response = await Http.GetFromJsonAsync<ApiResponse<TicketDetailModel>>(
+                $"{TicketsBasePath}/{TicketId}");
+
             if (response?.Success == true && response.Data is not null)
             {
-                _ticket   = response.Data.Ticket;
-                _comments = response.Data.Comments;
+                _ticket          = response.Data;
+                _comments        = response.Data.Comments    ?? new();
+                _attachments     = response.Data.Attachments ?? new();
+                _selectedStatus  = _ticket.Status;
             }
         }
         catch { /* silently degrade */ }
         finally { _isLoading = false; }
+    }
+
+    private async Task OnFileSelectedAsync(InputFileChangeEventArgs e)
+    {
+        var browserFile = e.File;
+        if (browserFile is null) return;
+
+        _attachmentError = string.Empty;
+
+        if (browserFile.Size > MaxAttachmentSizeBytes)
+        {
+            _attachmentError = L["TicketDetail.AttachmentHelp"];
+            StateHasChanged();
+            return;
+        }
+
+        _uploading = true;
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            // OpenReadStream uses MaxAttachmentSizeBytes as the upper bound; values
+            // above that throw before any bytes hit the wire.
+            var stream = browserFile.OpenReadStream(MaxAttachmentSizeBytes);
+            var streamContent = new StreamContent(stream);
+            if (!string.IsNullOrEmpty(browserFile.ContentType))
+            {
+                streamContent.Headers.ContentType =
+                    new System.Net.Http.Headers.MediaTypeHeaderValue(browserFile.ContentType);
+            }
+
+            // Field name "file" must match the controllers' [FromForm] IFormFile parameter.
+            content.Add(streamContent, "file", browserFile.Name);
+
+            var response = await Http.PostAsync($"{TicketsBasePath}/{TicketId}/attachments", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadTicketAsync();
+            }
+            else
+            {
+                _attachmentError = L["TicketDetail.AttachmentHelp"];
+            }
+        }
+        catch (Exception ex)
+        {
+            _attachmentError = ex.Message;
+        }
+        finally
+        {
+            _uploading = false;
+        }
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        if (bytes <= 0) return "0 B";
+        string[] units = { "B", "KB", "MB", "GB" };
+        var unit = 0;
+        double size = bytes;
+        while (size >= 1024 && unit < units.Length - 1)
+        {
+            size /= 1024;
+            unit++;
+        }
+        return unit == 0
+            ? $"{(long)size} {units[unit]}"
+            : $"{size:0.#} {units[unit]}";
+    }
+
+    private static string AttachmentIcon(string contentType, string fileName)
+    {
+        var ct = (contentType ?? string.Empty).ToLowerInvariant();
+        if (ct.StartsWith("image/")) return "ri-image-line";
+        if (ct == "application/pdf") return "ri-file-pdf-line";
+        if (ct.Contains("word") || ct.Contains("msword") || ct.Contains("officedocument")) return "ri-file-word-line";
+        if (ct.StartsWith("text/")) return "ri-file-text-line";
+
+        var ext = System.IO.Path.GetExtension(fileName ?? string.Empty).ToLowerInvariant();
+        return ext switch
+        {
+            ".pdf"                                => "ri-file-pdf-line",
+            ".doc" or ".docx"                     => "ri-file-word-line",
+            ".txt"                                => "ri-file-text-line",
+            ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp" => "ri-image-line",
+            _                                     => "ri-attachment-line"
+        };
     }
 
     private async Task AddCommentAsync()
@@ -267,14 +476,41 @@
         _savingComment = true;
         try
         {
-            await Http.PostAsJsonAsync($"api/v1/bizcenter/tickets/{TicketId}/comments",
+            await Http.PostAsJsonAsync($"{TicketsBasePath}/{TicketId}/comments",
                 new { Content = _newComment });
             _newComment = string.Empty;
-            await OnParametersSetAsync();
+            await LoadTicketAsync();
         }
         catch { /* silently degrade */ }
         finally { _savingComment = false; }
     }
+
+    private async Task ChangeStatusAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_selectedStatus) || _ticket is null || _selectedStatus == _ticket.Status) return;
+        if (!CanManageTicket) return;
+
+        _busyStatus = true;
+        try
+        {
+            // PUT /api/v1/admin/tickets/{ticketId} accepts { Status, Priority }
+            await Http.PutAsJsonAsync($"api/v1/admin/tickets/{TicketId}",
+                new { Status = ParseStatus(_selectedStatus) });
+            await LoadTicketAsync();
+        }
+        catch { /* silently degrade */ }
+        finally { _busyStatus = false; }
+    }
+
+    private static int? ParseStatus(string status) => status switch
+    {
+        "Open"           => 1,
+        "InProgress"     => 2,
+        "WaitingForUser" => 3,
+        "Resolved"       => 4,
+        "Closed"         => 5,
+        _                => null
+    };
 
     private async Task EscalateAsync(int level)
     {
@@ -289,7 +525,7 @@
         {
             await Http.PostAsJsonAsync($"api/v1/admin/tickets/{TicketId}/resolve", new { });
             _showResolveModal = false;
-            await OnParametersSetAsync();
+            await LoadTicketAsync();
         }
         catch { /* silently degrade */ }
         finally { _busyResolve = false; }
@@ -301,10 +537,11 @@
         _busyAssign = true;
         try
         {
-            await Http.PostAsJsonAsync($"api/v1/admin/tickets/{TicketId}/assign", new { AssignedTo = _assignTarget });
+            await Http.PostAsJsonAsync($"api/v1/admin/tickets/{TicketId}/assign",
+                new { AssignedToUserId = _assignTarget });
             _assignTarget   = string.Empty;
             _showAssignForm = false;
-            await OnParametersSetAsync();
+            await LoadTicketAsync();
         }
         catch { /* silently degrade */ }
         finally { _busyAssign = false; }
@@ -319,30 +556,46 @@
         _ => string.Format(L["TicketDetail.EscalationOther"], level)
     };
 
-    // ── Local data models ─────────────────────────────────────────────────────
+    // ── Data models that match backend payloads ───────────────────────────────
+    // BizCenter:  TicketDetailDto (TicketDto + Comments)
+    // Admin:      AdminTicketDetailDto (AdminTicketDto + Comments)
+    // Both share these property names so the component can deserialize either.
     private class ApiResponse<T> { public bool Success { get; set; } public T? Data { get; set; } }
 
-    private class TicketDetailWithComments
+    private class TicketDetailModel
     {
-        public TicketDetail?              Ticket   { get; set; }
-        public List<TicketCommentItem>    Comments { get; set; } = new();
+        public string   Id               { get; set; } = string.Empty;
+        public string   TicketNumber     { get; set; } = string.Empty;
+        public string   Subject          { get; set; } = string.Empty;
+        public string?  Body             { get; set; }
+        public string   Status           { get; set; } = string.Empty;
+        public string   Priority         { get; set; } = string.Empty;
+        public string?  CategoryName     { get; set; }
+        public string?  AssignedToUserId { get; set; }
+        public int      EscalationLevel  { get; set; }
+        public DateTime CreationDate     { get; set; }
+        public List<TicketCommentItem>?    Comments    { get; set; }
+        public List<TicketAttachmentItem>? Attachments { get; set; }
     }
 
-    private record TicketDetail(
-        string   TicketId,
-        string   TicketNumber,
-        string   Subject,
-        string   Description,
-        string   Category,
-        string   Priority,
-        string   Status,
-        DateTime CreatedAt,
-        string?  AssignedTo,
-        int      EscalationLevel);
+    private class TicketCommentItem
+    {
+        public long     Id           { get; set; }
+        public string   AuthorId     { get; set; } = string.Empty;
+        public string   Author       { get; set; } = string.Empty;
+        public string   Body         { get; set; } = string.Empty;
+        public bool     IsStaff      { get; set; }
+        public DateTime CreationDate { get; set; }
+    }
 
-    private record TicketCommentItem(
-        string   Author,
-        string   Content,
-        DateTime CreatedAt,
-        bool     IsStaff);
+    private class TicketAttachmentItem
+    {
+        public long     Id            { get; set; }
+        public string   FileName      { get; set; } = string.Empty;
+        public long     FileSizeBytes { get; set; }
+        public string   ContentType   { get; set; } = string.Empty;
+        public string   DownloadUrl   { get; set; } = string.Empty;
+        public DateTime CreationDate  { get; set; }
+        public string   UploadedBy    { get; set; } = string.Empty;
+    }
 }

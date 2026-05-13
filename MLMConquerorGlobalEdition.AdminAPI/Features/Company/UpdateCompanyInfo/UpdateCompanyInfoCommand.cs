@@ -12,4 +12,6 @@ public record UpdateCompanyInfoCommand(
     string  SupportEmail,
     string? PresidentName,
     string? WebsiteUrl,
-    string? LogoUrl) : IRequest<Result<CompanyInfoDto>>;
+    string? LogoUrl,
+    /// <summary>"Daily" or "Weekly". Seeded onto every new ambassador at signup.</summary>
+    string  DefaultPayoutFrequency) : IRequest<Result<CompanyInfoDto>>;

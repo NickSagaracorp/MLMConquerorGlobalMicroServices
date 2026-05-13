@@ -56,6 +56,8 @@
     <script src="assets/js/simplebar.min.js"></script>
     <script src="assets/js/feather.min.js"></script>
     <script src="assets/js/sidebar-menu.js"></script>
+    <script src="assets/js/apexcharts.min.js"></script>
+    <script src="assets/js/custom/mlm-charts.js"></script>
     <script>
         // Init feather icons after Blazor renders
         if (typeof feather !== 'undefined') feather.replace();
@@ -83,9 +85,14 @@
                         el.menuInstance = null;
                     }
                     if (typeof Menu !== 'undefined') {
+                        // closeChildren:true → accordion behavior (only one
+                        // top-level group expanded at a time). The Razor
+                        // markup pre-opens just the section that contains
+                        // the current route, so navigation between groups
+                        // collapses the previous one cleanly.
                         el.menuInstance = new Menu(el, {
                             orientation: 'vertical',
-                            closeChildren: false
+                            closeChildren: true
                         });
                         if (window.Helpers && typeof window.Helpers.scrollToActive === 'function') {
                             window.Helpers.scrollToActive(false);

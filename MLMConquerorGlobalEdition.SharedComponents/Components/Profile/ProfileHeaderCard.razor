@@ -1,6 +1,7 @@
-@inject HttpClient Http
+﻿@inject HttpClient Http
 @inject IJSRuntime JS
 @inject IStringLocalizer<SharedResources> L
+@inject IViewContextService ViewContext
 
 @*
     Top-of-page banner: gradient cover + circular avatar + name + role badge.
@@ -16,7 +17,11 @@
                 <img src="@AvatarSrc" alt="@L["ProfileHeader.AvatarAlt"]"
                      class="profile-header-avatar rounded-circle border border-2 border-white shadow-sm"
                      onerror="this.onerror=null;this.src='@FallbackInline'" />
-                @if (CanEdit)
+                @* Admin viewers see the avatar but cannot replace it: the BizCenter
+                   photo PUT runs the S3 upload pipeline and the AdminAPI mirror
+                   accepts only a final URL. Keeping the camera button hidden in
+                   admin context avoids a 415/404 the first time a curious admin clicks. *@
+                @if (CanEdit && !ProfileIsAdmin)
                 {
                     <button type="button"
                             class="profile-header-avatar-edit btn btn-primary btn-sm rounded-circle shadow-sm"
@@ -37,7 +42,7 @@
                 }
             </div>
             <div class="flex-grow-1 text-center text-md-start">
-                <h4 class="fs-22 mb-1 fw-semibold">@(string.IsNullOrWhiteSpace(FullName) ? "—" : FullName)</h4>
+                <h4 class="fs-22 mb-1 fw-semibold">@(string.IsNullOrWhiteSpace(FullName) ? "â€”" : FullName)</h4>
                 <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-md-start gap-2">
                     @if (!string.IsNullOrWhiteSpace(MembershipLevel))
                     {
@@ -75,6 +80,9 @@
     [Parameter] public bool   CanEdit          { get; set; }
     [Parameter] public EventCallback<string> OnPhotoChanged { get; set; }
 
+    [CascadingParameter(Name = "ProfileIsAdmin")]
+    private bool ProfileIsAdmin { get; set; }
+
     private bool    _uploading;
     private string? _alert;
     private bool    _alertOk;
@@ -108,7 +116,7 @@
         try
         {
             using var ms = new MemoryStream();
-            // 5MB cap — keeps Server-mode SignalR happy.
+            // 5MB cap â€” keeps Server-mode SignalR happy.
             await using (var stream = e.File.OpenReadStream(5 * 1024 * 1024))
             {
                 await stream.CopyToAsync(ms);

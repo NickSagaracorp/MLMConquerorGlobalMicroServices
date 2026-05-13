@@ -34,17 +34,17 @@
                         <div class="row g-3 mb-3">
                             <!-- Category -->
                             <div class="col-12 col-sm-6">
-                                <label class="form-label">@L["TicketCreate.CategoryLabel"]</label>
-                                <InputSelect class="form-select" @bind-Value="_form.Category">
-                                    <option value="">@L["TicketCreate.CategorySelect"]</option>
-                                    <option value="Billing">@L["TicketCreate.CategoryBilling"]</option>
-                                    <option value="Technical">@L["TicketCreate.CategoryTechnical"]</option>
-                                    <option value="Commission">@L["TicketCreate.CategoryCommission"]</option>
-                                    <option value="Membership">@L["TicketCreate.CategoryMembership"]</option>
-                                    <option value="Account">@L["TicketCreate.CategoryAccount"]</option>
-                                    <option value="Other">@L["TicketCreate.CategoryOther"]</option>
+                                <label class="form-label">
+                                    @L["TicketCreate.CategoryLabel"] <span class="text-danger">*</span>
+                                </label>
+                                <InputSelect class="form-select" @bind-Value="_form.CategoryId">
+                                    <option value="0">@L["TicketCreate.CategorySelect"]</option>
+                                    @foreach (var cat in _categories)
+                                    {
+                                        <option value="@cat.Id">@cat.Name</option>
+                                    }
                                 </InputSelect>
-                                <ValidationMessage For="@(() => _form.Category)" />
+                                <ValidationMessage For="@(() => _form.CategoryId)" />
                             </div>
 
                             <!-- Priority -->
@@ -59,23 +59,22 @@
                             </div>
                         </div>
 
-                        <!-- Description -->
+                        <!-- Description (mapped to backend Body) -->
                         <div class="mb-3">
                             <label class="form-label">
                                 @L["TicketCreate.DescriptionLabel"] <span class="text-danger">*</span>
                             </label>
                             <InputTextArea class="form-control"
                                            rows="5"
-                                           @bind-Value="_form.Description"
+                                           @bind-Value="_form.Body"
                                            placeholder="@L["TicketCreate.DescriptionPlaceholder"]" />
-                            <ValidationMessage For="@(() => _form.Description)" />
+                            <ValidationMessage For="@(() => _form.Body)" />
                         </div>
 
-                        <!-- File attachment (UI only — upload logic wired in later iteration) -->
-                        <div class="mb-3">
-                            <label class="form-label">@L["TicketCreate.AttachmentLabel"] <span class="text-muted small">@L["TicketCreate.AttachmentOptional"]</span></label>
-                            <input type="file" class="form-control" accept="image/*,.pdf,.doc,.docx,.txt" />
-                            <div class="form-text">@L["TicketCreate.AttachmentHelp"]</div>
+                        <!-- Attachment hint: file upload happens after the ticket is created,
+                             from the Ticket Detail page Attachments section. -->
+                        <div class="mb-3 small text-muted">
+                            <i class="ri-attachment-2 me-1"></i>@L["TicketCreate.AttachmentHelp"]
                         </div>
 
                         @if (!string.IsNullOrEmpty(_errorMessage))
@@ -115,20 +114,51 @@
     private string _errorMessage = string.Empty;
 
     private TicketForm _form = new();
+    private List<CategoryItem> _categories = new();
 
     // ── Public API ────────────────────────────────────────────────────────────
-    public void Show()
+    public async Task ShowAsync()
     {
         _form         = new TicketForm();
         _errorMessage = string.Empty;
         _visible      = true;
+        await LoadCategoriesAsync();
         StateHasChanged();
     }
+
+    /// <summary>
+    /// Sync wrapper for callers (older code). Fires-and-forgets the async load —
+    /// the dropdown will hydrate as soon as the categories request returns.
+    /// </summary>
+    public void Show() => _ = ShowAsync();
 
     public void Hide()
     {
         _visible = false;
         StateHasChanged();
+    }
+
+    // ── Categories ────────────────────────────────────────────────────────────
+    private async Task LoadCategoriesAsync()
+    {
+        try
+        {
+            var response = await Http.GetFromJsonAsync<ApiEnvelope<List<CategoryItem>>>(
+                "api/v1/bizcenter/tickets/categories");
+
+            if (response?.Success == true && response.Data is not null)
+            {
+                _categories = response.Data;
+            }
+            else
+            {
+                _categories = new();
+            }
+        }
+        catch
+        {
+            _categories = new();
+        }
     }
 
     // ── Submit ────────────────────────────────────────────────────────────────
@@ -141,10 +171,10 @@
         {
             var response = await Http.PostAsJsonAsync("api/v1/bizcenter/tickets", new
             {
-                Subject     = _form.Subject,
-                Category    = _form.Category,
-                Priority    = _form.Priority,
-                Description = _form.Description
+                Subject    = _form.Subject,
+                CategoryId = _form.CategoryId,
+                Priority   = _form.Priority,
+                Body       = _form.Body
             });
 
             if (response.IsSuccessStatusCode)
@@ -172,13 +202,26 @@
     {
         [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Subject is required.")]
         [System.ComponentModel.DataAnnotations.MaxLength(200, ErrorMessage = "Subject cannot exceed 200 characters.")]
-        public string Subject     { get; set; } = string.Empty;
+        public string Subject { get; set; } = string.Empty;
 
-        public string Category    { get; set; } = string.Empty;
+        [System.ComponentModel.DataAnnotations.Range(1, int.MaxValue, ErrorMessage = "Please select a category.")]
+        public int CategoryId { get; set; }
 
-        public string Priority    { get; set; } = "Normal";
+        public string Priority { get; set; } = "Normal";
 
         [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Description is required.")]
-        public string Description { get; set; } = string.Empty;
+        public string Body { get; set; } = string.Empty;
+    }
+
+    private class CategoryItem
+    {
+        public int    Id   { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+
+    private class ApiEnvelope<T>
+    {
+        public bool Success { get; set; }
+        public T?   Data    { get; set; }
     }
 }

@@ -28,7 +28,7 @@ public class GetMembersHandlerTests
     public async Task Handle_WhenNoMembers_ReturnsEmptyPagedResult()
     {
         await using var db = InMemoryDbHelper.Create();
-        var handler = new GetMembersHandler(db);
+        var handler = new GetMembersHandler(db, new NoOpCacheService());
 
         var result = await handler.Handle(
             new GetMembersQuery(new PagedRequest { Page = 1, PageSize = 10 }, null),
@@ -48,7 +48,7 @@ public class GetMembersHandlerTests
             BuildMember("AMB-002", MemberAccountStatus.Inactive));
         await db.SaveChangesAsync();
 
-        var handler = new GetMembersHandler(db);
+        var handler = new GetMembersHandler(db, new NoOpCacheService());
         var result = await handler.Handle(
             new GetMembersQuery(new PagedRequest { Page = 1, PageSize = 10 }, null),
             CancellationToken.None);
@@ -67,7 +67,7 @@ public class GetMembersHandlerTests
             BuildMember("AMB-003", MemberAccountStatus.Active));
         await db.SaveChangesAsync();
 
-        var handler = new GetMembersHandler(db);
+        var handler = new GetMembersHandler(db, new NoOpCacheService());
         var result = await handler.Handle(
             new GetMembersQuery(new PagedRequest { Page = 1, PageSize = 10 }, "Active"),
             CancellationToken.None);
@@ -84,7 +84,7 @@ public class GetMembersHandlerTests
         await db.MemberProfiles.AddAsync(BuildMember("AMB-001", MemberAccountStatus.Suspended));
         await db.SaveChangesAsync();
 
-        var handler = new GetMembersHandler(db);
+        var handler = new GetMembersHandler(db, new NoOpCacheService());
         var result = await handler.Handle(
             new GetMembersQuery(new PagedRequest { Page = 1, PageSize = 10 }, "suspended"),
             CancellationToken.None);
@@ -100,7 +100,7 @@ public class GetMembersHandlerTests
         await db.MemberProfiles.AddAsync(BuildMember("AMB-001"));
         await db.SaveChangesAsync();
 
-        var handler = new GetMembersHandler(db);
+        var handler = new GetMembersHandler(db, new NoOpCacheService());
         var result = await handler.Handle(
             new GetMembersQuery(new PagedRequest { Page = 1, PageSize = 10 }, "NotARealStatus"),
             CancellationToken.None);
@@ -117,7 +117,7 @@ public class GetMembersHandlerTests
             await db.MemberProfiles.AddAsync(BuildMember($"AMB-00{i}"));
         await db.SaveChangesAsync();
 
-        var handler = new GetMembersHandler(db);
+        var handler = new GetMembersHandler(db, new NoOpCacheService());
         var result = await handler.Handle(
             new GetMembersQuery(new PagedRequest { Page = 2, PageSize = 2 }, null),
             CancellationToken.None);

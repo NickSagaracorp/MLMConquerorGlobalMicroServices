@@ -29,14 +29,20 @@ public class UpdateCorporatePromoHandler : IRequestHandler<UpdateCorporatePromoC
             return Result<bool>.Failure("PROMO_NOT_FOUND", "Corporate promo not found.");
 
         var req = request.Request;
-        entity.Title = req.Title;
-        entity.Description = req.Description;
-        entity.StartDate = req.StartDate;
-        entity.EndDate = req.EndDate;
-        entity.BannerUrl = req.BannerUrl;
-        entity.IsActive = req.IsActive;
-        entity.LastUpdateDate = _dateTime.Now;
-        entity.LastUpdateBy = _currentUser.UserId;
+        entity.Title              = req.Title;
+        entity.Description        = req.Description;
+        entity.StartDate          = req.StartDate;
+        entity.EndDate            = req.EndDate;
+        entity.BannerUrl          = req.BannerUrl;
+        entity.IsActive           = req.IsActive;
+        entity.DoubleSponsorBonus = req.DoubleSponsorBonus;
+        entity.DoubleBuilderBonus = req.DoubleBuilderBonus;
+        // ResetFsbCountdown is intentionally toggleable — admin can flip it
+        // back off after the reset has been executed, and ResetFsbCountdownExecutedAt
+        // remains set so the reset cannot accidentally re-fire.
+        entity.ResetFsbCountdown  = req.ResetFsbCountdown;
+        entity.LastUpdateDate     = _dateTime.Now;
+        entity.LastUpdateBy       = _currentUser.UserId;
 
         await _db.SaveChangesAsync(cancellationToken);
 

@@ -40,10 +40,14 @@ a, .btn-link {
     color: #fff;
 }
 
-/* ── Bootstrap utility overrides ── */
-.text-primary { color: #00BFA5 !important; }
-.bg-primary    { background-color: #00BFA5 !important; }
-.border-primary{ border-color: #00BFA5 !important; }
+/* ── Bootstrap utility overrides ──
+   Do NOT hardcode .text-primary / .bg-primary / .border-primary here. The
+   teal accent already cascades through --bs-primary-rgb above; Bootstrap's
+   own utilities resolve it via rgba(var(--bs-primary-rgb), ...). Forcing a
+   solid color with !important would override Bootstrap's
+   `--bs-bg-opacity` / `--bs-text-opacity` variables, breaking every chip
+   that combines `bg-primary bg-opacity-10 text-primary` (and friends) into
+   a solid swatch with same-color, invisible text. */
 .progress-bar  { background-color: #00BFA5; }
 
 /* ── Sidebar active state ── */

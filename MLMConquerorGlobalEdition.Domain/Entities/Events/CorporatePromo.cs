@@ -10,4 +10,36 @@ public class CorporatePromo : AuditChangesStringKey
     public DateTime EndDate { get; set; }
     public string? BannerUrl { get; set; }
     public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// When true, every Sponsor Bonus (Cat 1) earning created by orders that
+    /// fall inside [StartDate, EndDate] is paid at 2× the configured amount.
+    /// The multiplier is applied at calculation time so admins editing the
+    /// commission type's <c>Amount</c> mid-promo don't break payouts.
+    /// </summary>
+    public bool DoubleSponsorBonus { get; set; }
+
+    /// <summary>
+    /// Same multiplier rule, applied to Builder Bonus (Cat 6 + Cat 7) earnings.
+    /// Independent of DoubleSponsorBonus so a promo can double either or both.
+    /// </summary>
+    public bool DoubleBuilderBonus { get; set; }
+
+    /// <summary>
+    /// When true, the admin can trigger a one-shot job that resets the FSB
+    /// countdown for every eligible ambassador. The reset moves their current
+    /// MemberCommissionCountDown row into history and rewrites it anchored on
+    /// the activation moment, giving the cohort a fresh window to earn FSB1.
+    /// Eligible = not Terminated AND (countdown already expired
+    /// OR within the first 14 days post-signup with no FSB1 earning yet).
+    /// </summary>
+    public bool ResetFsbCountdown { get; set; }
+
+    /// <summary>
+    /// Timestamp of the most recent reset run for this promo. Set the first
+    /// time the reset endpoint completes successfully so the same promo can
+    /// not accidentally fire the reset twice and hand out double windows.
+    /// Null = the reset has never been executed for this promo.
+    /// </summary>
+    public DateTime? ResetFsbCountdownExecutedAt { get; set; }
 }

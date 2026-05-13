@@ -27,7 +27,9 @@ public class GetMemberHandlerTests
     public async Task Handle_WhenMemberNotFound_ReturnsMemberNotFoundFailure()
     {
         await using var db = InMemoryDbHelper.Create();
-        var handler = new GetMemberHandler(db);
+        var handler = new GetMemberHandler(
+            db,
+            new MLMConquerorGlobalEdition.Repository.Services.Ranks.RankComputationService(db));
 
         var result = await handler.Handle(new GetMemberQuery("AMB-999"), CancellationToken.None);
 
@@ -42,7 +44,9 @@ public class GetMemberHandlerTests
         await db.MemberProfiles.AddAsync(BuildMember("AMB-001"));
         await db.SaveChangesAsync();
 
-        var handler = new GetMemberHandler(db);
+        var handler = new GetMemberHandler(
+            db,
+            new MLMConquerorGlobalEdition.Repository.Services.Ranks.RankComputationService(db));
         var result = await handler.Handle(new GetMemberQuery("AMB-001"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -74,7 +78,9 @@ public class GetMemberHandlerTests
         });
         await db.SaveChangesAsync();
 
-        var handler = new GetMemberHandler(db);
+        var handler = new GetMemberHandler(
+            db,
+            new MLMConquerorGlobalEdition.Repository.Services.Ranks.RankComputationService(db));
         var result = await handler.Handle(new GetMemberQuery("AMB-001"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -93,7 +99,9 @@ public class GetMemberHandlerTests
         await db.MemberProfiles.AddAsync(BuildMember("AMB-001"));
         await db.SaveChangesAsync();
 
-        var handler = new GetMemberHandler(db);
+        var handler = new GetMemberHandler(
+            db,
+            new MLMConquerorGlobalEdition.Repository.Services.Ranks.RankComputationService(db));
         var result = await handler.Handle(new GetMemberQuery("AMB-001"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();

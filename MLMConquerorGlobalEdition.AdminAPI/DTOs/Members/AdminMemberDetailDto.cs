@@ -11,6 +11,9 @@ public class AdminMemberDetailDto
     public string MemberType { get; set; } = string.Empty;
     public DateTime EnrollDate { get; set; }
     public string? SponsorMemberId { get; set; }
+    public string? SponsorFullName { get; set; }
+    public string? DualTeamUplineMemberId { get; set; }
+    public string? DualTeamUplineFullName { get; set; }
     public DateTime CreationDate { get; set; }
     public int DualTeamPoints { get; set; }
     public int EnrollmentPoints { get; set; }

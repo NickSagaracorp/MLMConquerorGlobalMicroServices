@@ -62,6 +62,8 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Ranks.I
                             MLMConquerorGlobalEdition.Repository.Services.Ranks.RankComputationService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTreeNodeService,
                             MLMConquerorGlobalEdition.Repository.Services.Teams.DualTreeNodeService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTeamService,
+                            MLMConquerorGlobalEdition.Repository.Services.Teams.DualTeamService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IEnrollmentTeamService,
                             MLMConquerorGlobalEdition.Repository.Services.Teams.EnrollmentTeamService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Commissions.ICommissionsService,
@@ -243,6 +245,8 @@ using (var scope = app.Services.CreateScope())
     await db.Database.MigrateAsync();
     await CompanyInfoSeeder.SeedAsync(db, logger);
     await CountryProductDefaultSeeder.SeedAsync(db, logger);
+    await GatewayRoutingSeeder.SeedAsync(db, logger);
+    await RecurringBillingSeeder.SeedAsync(db, logger);
 }
 
 if (!app.Environment.IsDevelopment())

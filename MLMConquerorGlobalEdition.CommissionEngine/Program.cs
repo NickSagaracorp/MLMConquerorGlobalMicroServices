@@ -51,6 +51,7 @@ builder.Services.AddSingleton<IPushNotificationService, FirebasePushNotification
 
 // HangFire job classes (scoped so they can inject DbContext / IMediator)
 builder.Services.AddScoped<DailyResidualJob>();
+builder.Services.AddScoped<DailyResidualConsolidationJob>();
 builder.Services.AddScoped<BoostBonusJob>();
 builder.Services.AddScoped<BoostBonusSweepJob>();
 builder.Services.AddScoped<PresidentialBonusJob>();
@@ -71,8 +72,13 @@ builder.Services.AddHangfire(config => config
         UseRecommendedIsolationLevel = true,
         DisableGlobalLocks = true
     }));
+// Restrict this Hangfire server to its own queue so it does not pick up
+// jobs whose types live in assemblies this service does not reference.
 builder.Services.AddHangfireServer(options =>
-    options.WorkerCount = builder.Configuration.GetValue<int>("Hangfire:WorkerCount", 5));
+{
+    options.WorkerCount = builder.Configuration.GetValue<int>("Hangfire:WorkerCount", 5);
+    options.Queues = new[] { "commissions" };
+});
 
 // Controllers
 builder.Services.AddControllers();
@@ -183,6 +189,12 @@ RecurringJob.AddOrUpdate<CarBonusSweepJob>(
     "car-bonus-sweep",
     job => job.ExecuteAsync(CancellationToken.None),
     "0 6 * * *",          // 6:00 AM UTC daily — reconciliation backfill
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+RecurringJob.AddOrUpdate<DailyResidualConsolidationJob>(
+    "daily-residual-consolidation",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "0 4 * * 1",          // Weekly Mondays 4:00 AM UTC
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
 app.MapGet("/health", async (AppDbContext db, CancellationToken ct) =>

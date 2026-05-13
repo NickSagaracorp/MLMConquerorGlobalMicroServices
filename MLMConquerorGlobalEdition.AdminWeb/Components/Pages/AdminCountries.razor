@@ -95,7 +95,7 @@
                         </Template>
                     </GridColumn>
 
-                    <GridColumn HeaderText="Actions" Width="160" TextAlign="TextAlign.Center" AllowFiltering="false" AllowSorting="false">
+                    <GridColumn HeaderText="Actions" Width="200" TextAlign="TextAlign.Center" AllowFiltering="false" AllowSorting="false">
                         <Template>
                             @{
                                 var c = (CountryDto)context;
@@ -104,6 +104,11 @@
                                     title="Product Mappings"
                                     @onclick="() => OpenProducts(c)">
                                 <i class="ri-price-tag-3-line"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-success py-0 me-1"
+                                    title="Default Payout Gateway"
+                                    @onclick="() => OpenPayoutDefault(c)">
+                                <i class="ri-wallet-3-line"></i>
                             </button>
                             <button class="btn btn-sm btn-outline-primary py-0 me-1"
                                     title="Edit"
@@ -287,6 +292,84 @@
                     <button class="btn btn-primary" @onclick="SaveProductMappings" disabled="@_savingProducts">
                         @if (_savingProducts) { <span class="spinner-border spinner-border-sm me-1"></span> }
                         Save Mappings
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ══════════════════════════════════════════════ *@
+@* Default Payout Gateway Modal                  *@
+@* Lets the admin set / update / remove the default WalletType the signup
+   pipeline will seed onto every new ambassador from this country. The
+   underlying record is one row in CountryPayoutDefaults; the modal renders
+   "Set" when none exists yet, "Update" / "Remove" otherwise. *@
+@* ══════════════════════════════════════════════ *@
+
+@if (_showPayoutDefault)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-md">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">
+                        <i class="ri-wallet-3-line me-2 text-success"></i>
+                        Default Payout Gateway — @_payoutCountry?.NameEn (@_payoutCountry?.Iso2)
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="ClosePayoutDefault"></button>
+                </div>
+                <div class="modal-body">
+                    @if (_loadingPayoutDefault)
+                    {
+                        <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+                    }
+                    else
+                    {
+                        <p class="text-muted small mb-3">
+                            New ambassadors registering from this country get a wallet of this type
+                            seeded automatically (in <code>Pending</code> status). The ambassador can
+                            still change it from their BizCenter wallet tab.
+                        </p>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Gateway</label>
+                            <select class="form-select" @bind="_payoutForm.WalletType">
+                                @foreach (var w in _walletTypeOptions)
+                                {
+                                    <option value="@w">@w</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input class="form-check-input" type="checkbox" id="payoutActive"
+                                   @bind="_payoutForm.IsActive" />
+                            <label class="form-check-label fw-semibold" for="payoutActive">
+                                Active (signup pipeline will use this)
+                            </label>
+                            <div class="form-text">Inactive rows stay for audit but are skipped at signup.</div>
+                        </div>
+
+                        <div class="mb-0">
+                            <label class="form-label fw-semibold">Notes (optional)</label>
+                            <textarea class="form-control" rows="2" maxlength="500"
+                                      @bind="_payoutForm.Notes"
+                                      placeholder="e.g. Dwolla sandbox not yet onboarded for this country."></textarea>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    @if (_payoutExistingId.HasValue)
+                    {
+                        <button class="btn btn-outline-danger me-auto" @onclick="RemovePayoutDefault" disabled="@_savingPayoutDefault">
+                            <i class="ri-delete-bin-line me-1"></i>Remove
+                        </button>
+                    }
+                    <button class="btn btn-secondary" @onclick="ClosePayoutDefault">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SavePayoutDefault" disabled="@_savingPayoutDefault">
+                        @if (_savingPayoutDefault) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        @(_payoutExistingId.HasValue ? "Update" : "Set Default")
                     </button>
                 </div>
             </div>
@@ -597,4 +680,130 @@
     private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
 
     private record PagedResult<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize);
+
+    // ── Default Payout Gateway state ─────────────────────────────────────────
+    private bool                _showPayoutDefault;
+    private bool                _loadingPayoutDefault;
+    private bool                _savingPayoutDefault;
+    private CountryDto?         _payoutCountry;
+    private int?                _payoutExistingId;
+    private PayoutDefaultForm   _payoutForm = new();
+
+    private static readonly string[] _walletTypeOptions = new[]
+    {
+        "Dwolla", "Propay", "WireTransferCanada", "eWallet",
+        "Paypal",  "Volet",  "Yestransfer",        "Crypto"
+    };
+
+    private async Task OpenPayoutDefault(CountryDto c)
+    {
+        _payoutCountry        = c;
+        _showPayoutDefault    = true;
+        _loadingPayoutDefault = true;
+        _payoutExistingId     = null;
+        _payoutForm           = new PayoutDefaultForm();
+        try
+        {
+            // Pull the full list once (same endpoint the dedicated payout
+            // page uses) and pick the row matching this country. The list is
+            // small (<= 250 countries) so this is cheaper than adding a
+            // dedicated GET /{iso2} just for the modal.
+            var resp = await Http.GetFromJsonAsync<ApiResp<List<CountryPayoutDefaultDto>>>(
+                "api/v1/admin/payout-defaults");
+            var existing = resp?.Success == true && resp.Data is not null
+                ? resp.Data.FirstOrDefault(r => string.Equals(r.CountryIso2, c.Iso2, StringComparison.OrdinalIgnoreCase))
+                : null;
+            if (existing is not null)
+            {
+                _payoutExistingId = existing.Id;
+                _payoutForm = new PayoutDefaultForm
+                {
+                    WalletType = existing.WalletType,
+                    IsActive   = existing.IsActive,
+                    Notes      = existing.Notes
+                };
+            }
+        }
+        catch (Exception ex) { ShowAlert($"Error loading payout default: {ex.Message}", isError: true); }
+        finally { _loadingPayoutDefault = false; }
+    }
+
+    private void ClosePayoutDefault()
+    {
+        _showPayoutDefault = false;
+        _payoutCountry     = null;
+        _payoutExistingId  = null;
+        _payoutForm        = new();
+    }
+
+    private async Task SavePayoutDefault()
+    {
+        if (_payoutCountry is null) return;
+        _savingPayoutDefault = true;
+        try
+        {
+            var payload = new
+            {
+                CountryIso2 = _payoutCountry.Iso2,
+                WalletType  = _payoutForm.WalletType,
+                IsActive    = _payoutForm.IsActive,
+                Notes       = _payoutForm.Notes
+            };
+
+            HttpResponseMessage resp = _payoutExistingId.HasValue
+                ? await Http.PutAsJsonAsync($"api/v1/admin/payout-defaults/{_payoutExistingId.Value}", payload)
+                : await Http.PostAsJsonAsync("api/v1/admin/payout-defaults", payload);
+
+            if (resp.IsSuccessStatusCode)
+            {
+                ShowAlert($"Default gateway saved for {_payoutCountry.NameEn}.", isError: false);
+                ClosePayoutDefault();
+            }
+            else
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                ShowAlert($"Save failed ({(int)resp.StatusCode}): {body}", isError: true);
+            }
+        }
+        catch (Exception ex) { ShowAlert($"Error saving payout default: {ex.Message}", isError: true); }
+        finally { _savingPayoutDefault = false; }
+    }
+
+    private async Task RemovePayoutDefault()
+    {
+        if (_payoutExistingId is null) return;
+        _savingPayoutDefault = true;
+        try
+        {
+            var resp = await Http.DeleteAsync($"api/v1/admin/payout-defaults/{_payoutExistingId.Value}");
+            if (resp.IsSuccessStatusCode)
+            {
+                ShowAlert($"Default gateway cleared for {_payoutCountry?.NameEn ?? "country"}.", isError: false);
+                ClosePayoutDefault();
+            }
+            else
+            {
+                ShowAlert($"Remove failed ({(int)resp.StatusCode}).", isError: true);
+            }
+        }
+        catch (Exception ex) { ShowAlert($"Error removing payout default: {ex.Message}", isError: true); }
+        finally { _savingPayoutDefault = false; }
+    }
+
+    private class PayoutDefaultForm
+    {
+        public string  WalletType { get; set; } = "eWallet";
+        public bool    IsActive   { get; set; } = true;
+        public string? Notes      { get; set; }
+    }
+
+    private class CountryPayoutDefaultDto
+    {
+        public int     Id          { get; set; }
+        public string  CountryIso2 { get; set; } = string.Empty;
+        public string  CountryName { get; set; } = string.Empty;
+        public string  WalletType  { get; set; } = string.Empty;
+        public bool    IsActive    { get; set; }
+        public string? Notes       { get; set; }
+    }
 }

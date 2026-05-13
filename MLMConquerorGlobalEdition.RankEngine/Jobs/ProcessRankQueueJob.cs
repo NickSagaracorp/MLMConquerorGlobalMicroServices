@@ -1,3 +1,4 @@
+using Hangfire;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -15,6 +16,7 @@ namespace MLMConquerorGlobalEdition.RankEngine.Jobs;
 ///
 /// Entries that fail 3 times are left for the nightly <see cref="RankEvaluationSweepJob"/>.
 /// </summary>
+[Queue("rank")]
 public class ProcessRankQueueJob
 {
     private const int MaxRetries   = 3;

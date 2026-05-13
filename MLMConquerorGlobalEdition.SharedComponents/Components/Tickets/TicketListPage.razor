@@ -46,7 +46,7 @@
 <div class="card">
     <div class="card-header py-3">
         <h6 class="card-title mb-0 fw-semibold">
-            @(ViewContext.HasPermission(Permissions.Ticket.ViewAll) ? L["Tickets.HeaderAll"] : L["Tickets.HeaderMine"])
+            @(IsAdminRoute ? L["Tickets.HeaderAll"] : L["Tickets.HeaderMine"])
         </h6>
     </div>
     <div class="card-body p-0">
@@ -73,21 +73,32 @@
                         }
                         @foreach (var t in _items)
                         {
-                            <tr>
-                                <td><span class="fw-medium">@t.TicketNumber</span></td>
+                            <tr @key="t.Id">
+                                <td>
+                                    <span class="fw-medium">
+                                        @(string.IsNullOrWhiteSpace(t.TicketNumber)
+                                            ? $"#{t.Id[..Math.Min(8, t.Id.Length)]}"
+                                            : t.TicketNumber)
+                                    </span>
+                                </td>
                                 <td>@t.Subject</td>
-                                <td>@t.Category</td>
+                                <td>@(string.IsNullOrWhiteSpace(t.CategoryName) ? "—" : t.CategoryName)</td>
                                 <td><StatusBadge Status="@t.Priority" /></td>
                                 <td><StatusBadge Status="@t.Status" /></td>
-                                <td>@t.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                <td>
+                                    @(t.CreationDate == default
+                                        ? "—"
+                                        : t.CreationDate.ToString("MMM dd, yyyy"))
+                                </td>
                                 <td>
                                     <div class="d-flex gap-1 flex-wrap">
                                         <button class="btn btn-xs btn-outline-primary"
-                                                @onclick="@(() => Nav.NavigateTo($"/tickets/{t.TicketId}"))">
+                                                @onclick="@(() => NavigateToDetail(t.Id))">
                                             <i class="ri-eye-line me-1"></i>@L["Tickets.ActionView"]
                                         </button>
                                         <AdminOnlyWrapper Permission="@Permissions.Ticket.Assign">
-                                            <button class="btn btn-xs btn-outline-secondary">
+                                            <button class="btn btn-xs btn-outline-secondary"
+                                                    @onclick="@(() => NavigateToDetail(t.Id))">
                                                 <i class="ri-user-add-line me-1"></i>@L["Tickets.ActionAssign"]
                                             </button>
                                         </AdminOnlyWrapper>
@@ -170,6 +181,22 @@
 
     private async Task ChangePage(int page) => await LoadPageAsync(page);
 
+    private void NavigateToDetail(string ticketId)
+    {
+        if (string.IsNullOrEmpty(ticketId)) return;
+        // Stay within the host app (admin or member) — the URL the user is already on
+        // dictates the destination, not their role.
+        var route = IsAdminRoute ? $"/admin/tickets/{ticketId}" : $"/tickets/{ticketId}";
+        Nav.NavigateTo(route);
+    }
+
+    /// <summary>
+    /// Routing context derived from URL — the same shared component is rendered by
+    /// AdminWeb (HttpClient → AdminAPI 7002) and BizCenterWeb (HttpClient → BizCenter API 7003).
+    /// The route segment decides which REST endpoint to hit.
+    /// </summary>
+    private bool IsAdminRoute => Nav.Uri.Contains("/admin/", StringComparison.OrdinalIgnoreCase);
+
     private async Task LoadPageAsync(int page)
     {
         _page = page;
@@ -177,8 +204,7 @@
         StateHasChanged();
         try
         {
-            var isAdmin = ViewContext.HasPermission(Permissions.Ticket.ViewAll);
-            var baseUrl = isAdmin ? "api/v1/admin/tickets" : "api/v1/bizcenter/tickets";
+            var baseUrl = IsAdminRoute ? "api/v1/admin/tickets" : "api/v1/bizcenter/tickets";
             var query   = $"?page={page}&pageSize={_pageSize}";
             if (!string.IsNullOrEmpty(_statusFilter))   query += $"&status={_statusFilter}";
             if (!string.IsNullOrEmpty(_priorityFilter)) query += $"&priority={_priorityFilter}";
@@ -203,12 +229,20 @@
     private class ApiResponse<T> { public bool Success { get; set; } public T? Data { get; set; } }
     private class PagedData<T>   { public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
 
-    private record TicketListItem(
-        string   TicketId,
-        string   TicketNumber,
-        string   Subject,
-        string   Category,
-        string   Priority,
-        string   Status,
-        DateTime CreatedAt);
+    /// <summary>
+    /// Property names match the backend payload from
+    /// <c>GET /api/v1/bizcenter/tickets</c> (TicketDto) and
+    /// <c>GET /api/v1/admin/tickets</c> (AdminTicketDto). Both share Id, TicketNumber,
+    /// Subject, Status, Priority, CategoryName, CreationDate.
+    /// </summary>
+    private class TicketListItem
+    {
+        public string   Id            { get; set; } = string.Empty;
+        public string   TicketNumber  { get; set; } = string.Empty;
+        public string   Subject       { get; set; } = string.Empty;
+        public string?  CategoryName  { get; set; }
+        public string   Priority      { get; set; } = string.Empty;
+        public string   Status        { get; set; } = string.Empty;
+        public DateTime CreationDate  { get; set; }
+    }
 }

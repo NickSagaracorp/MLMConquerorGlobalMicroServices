@@ -32,15 +32,19 @@ public class GetCorporatePromoByIdHandler
 
         return Result<CorporatePromoDto>.Success(new CorporatePromoDto
         {
-            Id = promo.Id,
-            Title = promo.Title,
-            Description = promo.Description,
-            StartDate = promo.StartDate,
-            EndDate = promo.EndDate,
-            BannerUrl = promo.BannerUrl,
-            IsActive = promo.IsActive,
-            MemberCount = memberCount,
-            CreationDate = promo.CreationDate
+            Id                          = promo.Id,
+            Title                       = promo.Title,
+            Description                 = promo.Description,
+            StartDate                   = promo.StartDate,
+            EndDate                     = promo.EndDate,
+            BannerUrl                   = promo.BannerUrl,
+            IsActive                    = promo.IsActive,
+            MemberCount                 = memberCount,
+            CreationDate                = promo.CreationDate,
+            DoubleSponsorBonus          = promo.DoubleSponsorBonus,
+            DoubleBuilderBonus          = promo.DoubleBuilderBonus,
+            ResetFsbCountdown           = promo.ResetFsbCountdown,
+            ResetFsbCountdownExecutedAt = promo.ResetFsbCountdownExecutedAt
         });
     }
 }

@@ -1,0 +1,51 @@
+/* Pill-style tab nav — mirrors UserProfilePage.razor.css so the admin tab bar
+   shares the same look-and-feel as the BizCenter profile tab bar. */
+.profile-top-tabs .nav-link {
+    background: transparent;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    color: var(--bs-secondary, #6c757d);
+    border-radius: 999px;
+    padding: 0.5rem 1.1rem;
+    font-weight: 500;
+    transition: all 0.15s ease;
+}
+
+.profile-top-tabs .nav-link:hover {
+    background: var(--bs-light, #f8f9fa);
+    color: var(--bs-primary, #605DFF);
+    border-color: var(--bs-primary, #605DFF);
+}
+
+.profile-top-tabs .nav-link.active {
+    background: var(--bs-primary, #605DFF);
+    color: #fff;
+    border-color: var(--bs-primary, #605DFF);
+    box-shadow: 0 6px 14px -6px rgba(96, 93, 255, 0.45);
+}
+
+/* Sub-tab pill nav — same shape as top-level but smaller padding and font so
+   the visual hierarchy reads "section > sub-section". Used inside the Enrollment
+   Team, Dual Team, and Commissions tabs. */
+.profile-sub-tabs .nav-link {
+    background: transparent;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    color: var(--bs-secondary, #6c757d);
+    border-radius: 999px;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.15s ease;
+}
+
+.profile-sub-tabs .nav-link:hover {
+    background: var(--bs-light, #f8f9fa);
+    color: var(--bs-primary, #605DFF);
+    border-color: var(--bs-primary, #605DFF);
+}
+
+.profile-sub-tabs .nav-link.active {
+    background: var(--bs-primary, #605DFF);
+    color: #fff;
+    border-color: var(--bs-primary, #605DFF);
+    box-shadow: 0 4px 10px -4px rgba(96, 93, 255, 0.45);
+}

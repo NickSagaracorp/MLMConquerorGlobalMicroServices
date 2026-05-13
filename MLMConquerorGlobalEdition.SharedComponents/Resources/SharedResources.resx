@@ -612,6 +612,42 @@
   <data name="Common.Members" xml:space="preserve"><value>members</value></data>
   <data name="Common.Customers" xml:space="preserve"><value>customers</value></data>
   <data name="Common.Ok" xml:space="preserve"><value>OK</value></data>
+  <data name="Common.Year" xml:space="preserve"><value>Year</value></data>
+  <data name="Common.Month" xml:space="preserve"><value>Month</value></data>
+  <data name="Common.AllMonths" xml:space="preserve"><value>All months</value></data>
+  <data name="Team.NoHistoryYet" xml:space="preserve"><value>History will populate as monthly snapshots accumulate.</value></data>
+  <data name="Common.Month.January" xml:space="preserve"><value>January</value></data>
+  <data name="Common.Month.February" xml:space="preserve"><value>February</value></data>
+  <data name="Common.Month.March" xml:space="preserve"><value>March</value></data>
+  <data name="Common.Month.April" xml:space="preserve"><value>April</value></data>
+  <data name="Common.Month.May" xml:space="preserve"><value>May</value></data>
+  <data name="Common.Month.June" xml:space="preserve"><value>June</value></data>
+  <data name="Common.Month.July" xml:space="preserve"><value>July</value></data>
+  <data name="Common.Month.August" xml:space="preserve"><value>August</value></data>
+  <data name="Common.Month.September" xml:space="preserve"><value>September</value></data>
+  <data name="Common.Month.October" xml:space="preserve"><value>October</value></data>
+  <data name="Common.Month.November" xml:space="preserve"><value>November</value></data>
+  <data name="Common.Month.December" xml:space="preserve"><value>December</value></data>
+
+  <!-- Contests widget -->
+  <data name="Contest.Rules" xml:space="preserve"><value>Rules</value></data>
+  <data name="Contest.YourRank" xml:space="preserve"><value>Your rank</value></data>
+  <data name="Contest.YourPoints" xml:space="preserve"><value>Your points</value></data>
+  <data name="Contest.YourSignups" xml:space="preserve"><value>Your signups</value></data>
+  <data name="Contest.TopXLeaderboard" xml:space="preserve"><value>Top {0} Leaderboard</value></data>
+  <data name="Contest.Ambassador" xml:space="preserve"><value>Ambassador</value></data>
+  <data name="Contest.Signups" xml:space="preserve"><value>Signups</value></data>
+  <data name="Contest.Points" xml:space="preserve"><value>Points</value></data>
+  <data name="Contest.You" xml:space="preserve"><value>You</value></data>
+  <data name="Contest.NoEarningsYet" xml:space="preserve"><value>No earnings recorded yet — be the first to sign up someone new!</value></data>
+  <data name="Contest.Details" xml:space="preserve"><value>Details</value></data>
+  <data name="Contest.OpenDetailsAria" xml:space="preserve"><value>Open details for contest {0}</value></data>
+  <data name="Contest.Leaderboard" xml:space="preserve"><value>Leaderboard</value></data>
+  <data name="Contest.Name" xml:space="preserve"><value>Name</value></data>
+  <data name="Contest.Country" xml:space="preserve"><value>Country</value></data>
+  <data name="Contest.TotalPoints" xml:space="preserve"><value>Total Points</value></data>
+  <data name="Contest.Position" xml:space="preserve"><value>Position</value></data>
+  <data name="Contest.Participants" xml:space="preserve"><value>participants</value></data>
   <data name="Common.Back" xml:space="preserve"><value>Back</value></data>
   <data name="Common.Previous2" xml:space="preserve"><value>Previous</value></data>
   <data name="Common.Pts" xml:space="preserve"><value>pts</value></data>
@@ -654,6 +690,8 @@
   <data name="Reports.RightLeg" xml:space="preserve"><value>Right Leg</value></data>
   <data name="Reports.LeftSide" xml:space="preserve"><value>Left Side</value></data>
   <data name="Reports.RightSide" xml:space="preserve"><value>Right Side</value></data>
+  <data name="Reports.Left" xml:space="preserve"><value>Left</value></data>
+  <data name="Reports.Right" xml:space="preserve"><value>Right</value></data>
   <data name="Reports.QualifyHeaderTooltip" xml:space="preserve"><value>Personal qualification points — sum of QualificationPoints from this member's own product purchases.</value></data>
   <data name="Reports.EnrollPointsTooltip" xml:space="preserve"><value>Enrollment-team points — points accumulated from this member's own downline (their sponsored members and below). 0 means they haven't enrolled anyone yet.</value></data>
   <data name="Reports.LeftPointsTooltip" xml:space="preserve"><value>Dual-tree left-leg points — accumulated points on this member's binary-tree LEFT leg. 0 means no descendants on that leg.</value></data>
@@ -715,7 +753,16 @@
   <data name="Team.NextRank" xml:space="preserve"><value>Next Rank</value></data>
   <data name="Team.DualPtsRequired" xml:space="preserve"><value>Dual Team Pts Required</value></data>
   <data name="Team.EnrollmentPtsRequired" xml:space="preserve"><value>Enrollment Pts Required</value></data>
+  <data name="Team.DualPts" xml:space="preserve"><value>Dual Team Pts</value></data>
+  <data name="Team.EnrollmentPts" xml:space="preserve"><value>Enrollment Pts</value></data>
   <data name="Team.TotalDualTeamPoints" xml:space="preserve"><value>Total Dual Team Points</value></data>
+  <data name="Team.TotalEnrollmentTeamPoints" xml:space="preserve"><value>Total Enrollment Team Points</value></data>
+  <data name="Team.EligibleCurrentRank" xml:space="preserve"><value>Eligible (Current Rank)</value></data>
+  <data name="Team.EligibleNextRank" xml:space="preserve"><value>Eligible (Next Rank)</value></data>
+  <data name="Team.TotalRaw" xml:space="preserve"><value>Total Raw</value></data>
+  <data name="Team.PointsTowardNext" xml:space="preserve"><value>{0} / {1} points toward {2}</value></data>
+  <data name="Team.DtRequirementNotApplicable" xml:space="preserve"><value>DT requirement: N/A for {0}</value></data>
+  <data name="Team.EtRequirementNotApplicable" xml:space="preserve"><value>ET requirement: N/A for {0}</value></data>
   <data name="Team.DailyResidualsEarning" xml:space="preserve"><value>Daily Residuals Earning</value></data>
   <data name="Team.LastSixMonths" xml:space="preserve"><value>Last 6 months</value></data>
   <data name="Team.ChartComingSoon" xml:space="preserve"><value>Chart coming soon</value></data>
@@ -1121,6 +1168,12 @@
   <data name="TicketDetail.EscalationOther" xml:space="preserve"><value>Level {0}</value></data>
   <data name="TicketDetail.BreadcrumbHome" xml:space="preserve"><value>Home</value></data>
   <data name="TicketDetail.BreadcrumbTickets" xml:space="preserve"><value>Tickets</value></data>
+  <data name="TicketDetail.StatusLabel" xml:space="preserve"><value>Change Status</value></data>
+  <data name="TicketDetail.StatusWaitingForUser" xml:space="preserve"><value>Waiting for User</value></data>
+  <data name="TicketDetail.AttachmentsHeader" xml:space="preserve"><value>Attachments</value></data>
+  <data name="TicketDetail.AttachmentUpload" xml:space="preserve"><value>Upload File</value></data>
+  <data name="TicketDetail.AttachmentHelp" xml:space="preserve"><value>Maximum 10 MB. Allowed: images, PDF, DOC, TXT.</value></data>
+  <data name="TicketDetail.NoAttachments" xml:space="preserve"><value>No attachments yet.</value></data>
 
   <!-- Ticket Create — F5 -->
   <data name="TicketCreate.Title" xml:space="preserve"><value>Create New Ticket</value></data>

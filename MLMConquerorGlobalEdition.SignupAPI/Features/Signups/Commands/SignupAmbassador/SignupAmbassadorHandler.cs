@@ -7,6 +7,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
+using MLMConquerorGlobalEdition.Domain.Entities.Wallet;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Domain.Exceptions;
 using MLMConquerorGlobalEdition.Repository.Context;
@@ -92,6 +93,26 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
 
         var memberId = GenerateMemberId();
 
+        // ── Payout defaults ──────────────────────────────────────────────────
+        // Company-level frequency seeds every new ambassador; country-level
+        // gateway seeds the first MemberProfilesWallet row in Pending status.
+        // Both are best-effort: if either lookup misses (no row, or country
+        // string doesn't match Countries.NameEn / Iso2) we fall back to the
+        // entity defaults — the ambassador can configure both from their
+        // BizCenter profile + wallet tab afterwards.
+        var companyInfo = await _db.CompanyInfo.AsNoTracking().FirstOrDefaultAsync(ct);
+        var defaultFrequency = companyInfo?.DefaultPayoutFrequency ?? PayoutFrequency.Weekly;
+
+        WalletType? defaultWalletType = null;
+        var country = await _db.Countries.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.NameEn == req.Country || c.Iso2 == req.Country, ct);
+        if (country is not null)
+        {
+            var payoutDefault = await _db.CountryPayoutDefaults.AsNoTracking()
+                .FirstOrDefaultAsync(p => p.CountryIso2 == country.Iso2 && p.IsActive, ct);
+            defaultWalletType = payoutDefault?.WalletType;
+        }
+
         var member = new MemberProfile
         {
             UserId            = Guid.NewGuid(),
@@ -116,6 +137,7 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
             EnrollDate        = now,
             SponsorMemberId   = sponsorMemberId,
             ReplicateSiteSlug = req.ReplicateSiteSlug,
+            PayoutFrequency   = defaultFrequency,
             CreatedBy         = req.Email,
             CreationDate      = now,
             LastUpdateDate    = now
@@ -204,6 +226,28 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
         await _db.MembershipSubscriptions.AddAsync(subscription, ct);
         await _db.GenealogyTree.AddAsync(genealogyNode, ct);
         await _db.CommissionCountDowns.AddAsync(fsbCountdown, ct);
+
+        // Seed the preferred wallet from the country's default gateway. Status
+        // is Pending so the ambassador must complete the gateway-specific
+        // fields (Dwolla account, eWallet credentials, etc.) before the
+        // commission payout job actually targets it. We do not store any
+        // credentials at signup — only the wallet TYPE.
+        if (defaultWalletType.HasValue)
+        {
+            var wallet = new MemberProfilesWallet
+            {
+                Id             = Guid.NewGuid().ToString(),
+                MemberId       = memberId,
+                WalletType     = defaultWalletType.Value,
+                Status         = WalletStatus.Pending,
+                IsPreferred    = true,
+                Notes          = $"Auto-assigned from country default ({country!.Iso2}) at signup.",
+                CreatedBy      = req.Email,
+                CreationDate   = now,
+                LastUpdateDate = now
+            };
+            await _db.Wallets.AddAsync(wallet, ct);
+        }
 
         // Queue rank re-evaluation for every genealogy upline of the sponsor
         if (sponsorNode is not null)

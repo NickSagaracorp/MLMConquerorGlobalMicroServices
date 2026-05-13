@@ -1,0 +1,614 @@
+@page "/admin/events/contests"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+@inject NavigationManager Nav
+@using Syncfusion.Blazor.Grids
+
+<PageTitle>Contests — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Contests") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-trophy-line me-2 text-warning"></i>Contests
+        </h6>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+        <button class="btn btn-primary btn-sm" @onclick="OpenCreate">
+            <i class="ri-add-line me-1"></i>New Contest
+        </button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="ContestDto" DataSource="@_items"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn HeaderText="Banner" Width="80" AllowFiltering="false" AllowSorting="false">
+                        <Template>
+                            @{ var c = (ContestDto)context; }
+                            @if (!string.IsNullOrWhiteSpace(c.BannerUrl))
+                            {
+                                <img src="@c.BannerUrl" alt="banner" style="height:36px;border-radius:4px;" />
+                            }
+                            else
+                            {
+                                <i class="ri-image-line text-muted"></i>
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(ContestDto.Name)" HeaderText="Name" Width="220" />
+                    <GridColumn HeaderText="Window" Width="220">
+                        <Template>
+                            @{ var c2 = (ContestDto)context; }
+                            <span class="small">@c2.StartDate.ToString("yyyy-MM-dd HH:mm") → @c2.EndDate.ToString("yyyy-MM-dd HH:mm")</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(ContestDto.TopX)" HeaderText="Top X" Width="80" TextAlign="TextAlign.Center" />
+                    <GridColumn HeaderText="Status" Width="120">
+                        <Template>
+                            @{ var s = (ContestDto)context; }
+                            @if (s.IsActive && DateTime.UtcNow >= s.StartDate && DateTime.UtcNow <= s.EndDate)
+                            {
+                                <span class="badge bg-success">Live</span>
+                            }
+                            else if (s.IsActive && DateTime.UtcNow < s.StartDate)
+                            {
+                                <span class="badge bg-info text-dark">Scheduled</span>
+                            }
+                            else if (DateTime.UtcNow > s.EndDate)
+                            {
+                                <span class="badge bg-secondary">Ended</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning text-dark">Inactive</span>
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="180" TextAlign="TextAlign.Center">
+                        <Template>
+                            @{ var a = (ContestDto)context; }
+                            <button class="btn btn-sm btn-outline-success py-0 me-1" title="Leaderboard"
+                                    @onclick="() => OpenLeaderboard(a)">
+                                <i class="ri-bar-chart-2-line"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-info py-0 me-1" title="Translations"
+                                    @onclick="() => OpenTranslations(a)">
+                                <i class="ri-translate-2"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary py-0 me-1" title="Edit"
+                                    @onclick="() => OpenEdit(a)">
+                                <i class="ri-edit-line"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger py-0" title="Archive"
+                                    @onclick="() => Delete(a)">
+                                <i class="ri-archive-line"></i>
+                            </button>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+@* ─── Create / Edit Modal ────────────────────────────────────────────────── *@
+@if (_showForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">@(_editId is null ? "New Contest" : "Edit Contest")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseForm"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Name (English / default) <span class="text-danger">*</span></label>
+                            <input class="form-control" @bind="_form.Name" placeholder="e.g. May Sprint 2026" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Description (English / default)</label>
+                            <textarea class="form-control" rows="3" @bind="_form.Description"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Start Date <span class="text-danger">*</span></label>
+                            <input type="datetime-local" class="form-control" @bind="_form.StartDate" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">End Date <span class="text-danger">*</span></label>
+                            <input type="datetime-local" class="form-control" @bind="_form.EndDate" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Banner URL (English / default)</label>
+                            <input class="form-control" @bind="_form.BannerUrl" placeholder="https://..." />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Rules URL</label>
+                            <input class="form-control" @bind="_form.RulesUrl" placeholder="https://..." />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Top X</label>
+                            <input type="number" min="1" class="form-control" @bind="_form.TopX" />
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="contestActive" @bind="_form.IsActive" />
+                                <label class="form-check-label fw-semibold" for="contestActive">Active</label>
+                            </div>
+                        </div>
+
+                        @* Banner overlay anchor — most banner artwork bakes a
+                           white placeholder box into the image and the points
+                           overlay must drop on that box. Defaults 50/50 work
+                           for plain banners. *@
+                        <div class="col-12">
+                            <hr class="my-2" />
+                            <h6 class="fw-semibold mb-2">
+                                <i class="ri-drag-move-line me-1 text-info"></i>Points Overlay Position on Banner
+                            </h6>
+                            <p class="text-muted small mb-2">
+                                Center coordinates (0–100%) of the white "points" card on top of the banner.
+                                Set 50/50 for a centered card, or match the position of the white placeholder
+                                baked into your banner artwork.
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">X (horizontal %)</label>
+                            <input type="number" min="0" max="100" class="form-control" @bind="_form.PointsBoxXPercent" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Y (vertical %)</label>
+                            <input type="number" min="0" max="100" class="form-control" @bind="_form.PointsBoxYPercent" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                    <button class="btn btn-primary" @onclick="Save" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        @(_editId is null ? "Create" : "Save Changes")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ─── Translations Modal ─────────────────────────────────────────────────── *@
+@if (_showTranslations && _translationsContest is not null)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">
+                        <i class="ri-translate-2 me-2 text-info"></i>Translations — @_translationsContest.Name
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="() => { _showTranslations = false; _translationsContest = null; }"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">
+                        Translations override the contest's default Name / Description / Banner for the
+                        matching UI culture. Leave any field empty to fall back to the default. Languages
+                        not listed here render the default for everyone.
+                    </p>
+
+                    <div class="d-flex gap-2 mb-3">
+                        <select class="form-select form-select-sm" style="max-width:160px;" @bind="_newTranslationLang">
+                            <option value="">— Add language —</option>
+                            @foreach (var l in _supportedLanguages)
+                            {
+                                if (!_translations.Any(t => t.LanguageCode.Equals(l.Code, StringComparison.OrdinalIgnoreCase)))
+                                {
+                                    <option value="@l.Code">@l.Name (@l.Code)</option>
+                                }
+                            }
+                        </select>
+                        <button class="btn btn-sm btn-outline-primary" disabled="@(string.IsNullOrEmpty(_newTranslationLang))"
+                                @onclick="AddTranslation">
+                            <i class="ri-add-line me-1"></i>Add
+                        </button>
+                    </div>
+
+                    @if (_translations.Count == 0)
+                    {
+                        <div class="text-muted text-center py-3">No translations yet — only the default will be used.</div>
+                    }
+                    else
+                    {
+                        @foreach (var t in _translations)
+                        {
+                            var tt = t;
+                            <div class="border rounded p-3 mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="fw-semibold"><code>@tt.LanguageCode</code></span>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveTranslation(tt.LanguageCode)">
+                                        <i class="ri-delete-bin-line"></i>
+                                    </button>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold">Name</label>
+                                        <input class="form-control form-control-sm" @bind="tt.Name" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold">Banner URL</label>
+                                        <input class="form-control form-control-sm" @bind="tt.BannerUrl" />
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label small fw-semibold">Description</label>
+                                        <textarea class="form-control form-control-sm" rows="2" @bind="tt.Description"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => { _showTranslations = false; _translationsContest = null; }">Close</button>
+                    <button class="btn btn-primary" @onclick="SaveTranslations" disabled="@_savingTranslations">
+                        @if (_savingTranslations) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Save All
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ─── Leaderboard Modal ──────────────────────────────────────────────────── *@
+@if (_showLeaderboard && _leaderboard is not null)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">
+                        <i class="ri-bar-chart-2-line me-2 text-success"></i>
+                        Leaderboard — @_leaderboard.ContestName
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="() => _showLeaderboard = false"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">
+                        Window: @_leaderboard.StartDate.ToString("yyyy-MM-dd HH:mm")
+                        → @_leaderboard.EndDate.ToString("yyyy-MM-dd HH:mm").
+                        Top @_leaderboard.TopX shown in the BizCenter widget.
+                    </p>
+
+                    @if (_leaderboard.Rows.Count == 0)
+                    {
+                        <div class="alert alert-secondary mb-0">No earnings recorded yet for this contest.</div>
+                    }
+                    else
+                    {
+                        <table class="table table-striped align-middle">
+                            <thead>
+                                <tr>
+                                    <th style="width:60px;">#</th>
+                                    <th>Ambassador</th>
+                                    <th>Country</th>
+                                    <th class="text-end">Signups</th>
+                                    <th class="text-end">Points</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var r in _leaderboard.Rows)
+                                {
+                                    <tr>
+                                        <td class="fw-bold">@r.Rank</td>
+                                        <td>
+                                            <span class="fw-semibold">@r.FullName</span>
+                                            <code class="ms-2 small text-muted">@r.MemberId</code>
+                                        </td>
+                                        <td><span class="text-muted small">@(r.Country ?? "—")</span></td>
+                                        <td class="text-end">@r.Signups</td>
+                                        <td class="text-end fw-bold text-success">@r.TotalPoints</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => _showLeaderboard = false">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private readonly LanguageOption[] _supportedLanguages =
+    {
+        new("en","English"), new("es","Spanish"), new("pt","Portuguese"), new("fr","French"),
+        new("de","German"),  new("it","Italian"), new("ko","Korean"),     new("zh","Chinese"),
+        new("ka","Georgian")
+    };
+
+    private List<ContestDto> _items = new();
+    private bool _loading = true;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+
+    // Create/Edit form
+    private bool _showForm;
+    private string? _editId;
+    private FormModel _form = new();
+
+    // Translations
+    private bool _showTranslations;
+    private bool _savingTranslations;
+    private ContestDto? _translationsContest;
+    private List<TranslationModel> _translations = new();
+    private string _newTranslationLang = string.Empty;
+
+    // Leaderboard
+    private bool _showLeaderboard;
+    private LeaderboardDto? _leaderboard;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<List<ContestDto>>>("api/v1/admin/contests");
+            _items = resp?.Success == true && resp.Data is not null ? resp.Data : new();
+        }
+        catch (Exception ex) { _alertMsg = ex.Message; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private void OpenCreate()
+    {
+        _editId = null;
+        _form = new FormModel
+        {
+            StartDate = DateTime.UtcNow,
+            EndDate   = DateTime.UtcNow.AddDays(30),
+            TopX      = 10,
+            IsActive  = true
+        };
+        _showForm = true;
+    }
+
+    private void OpenEdit(ContestDto c)
+    {
+        _editId = c.Id;
+        _form = new FormModel
+        {
+            Name              = c.Name,
+            Description       = c.Description,
+            StartDate         = c.StartDate,
+            EndDate           = c.EndDate,
+            BannerUrl         = c.BannerUrl,
+            RulesUrl          = c.RulesUrl,
+            TopX              = c.TopX,
+            IsActive          = c.IsActive,
+            PointsBoxXPercent = c.PointsBoxXPercent,
+            PointsBoxYPercent = c.PointsBoxYPercent
+        };
+        _showForm = true;
+    }
+
+    private void CloseForm() { _showForm = false; _editId = null; }
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(_form.Name)) { _alertMsg = "Name is required."; _alertIsError = true; return; }
+        if (_form.StartDate >= _form.EndDate) { _alertMsg = "Start must be before end."; _alertIsError = true; return; }
+        _saving = true;
+        try
+        {
+            var payload = new
+            {
+                _form.Name, _form.Description, _form.StartDate, _form.EndDate,
+                _form.BannerUrl, _form.RulesUrl, _form.TopX, _form.IsActive,
+                _form.PointsBoxXPercent, _form.PointsBoxYPercent
+            };
+            HttpResponseMessage resp = _editId is null
+                ? await Http.PostAsJsonAsync("api/v1/admin/contests", payload)
+                : await Http.PutAsJsonAsync($"api/v1/admin/contests/{_editId}", payload);
+            if (resp.IsSuccessStatusCode)
+            {
+                _alertMsg = _editId is null ? "Contest created." : "Contest updated."; _alertIsError = false;
+                CloseForm();
+                await LoadAsync();
+            }
+            else
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                _alertMsg = $"Save failed ({(int)resp.StatusCode}): {body}"; _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = ex.Message; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private async Task Delete(ContestDto c)
+    {
+        if (!await JsConfirm($"Archive contest '{c.Name}'?")) return;
+        try
+        {
+            var resp = await Http.DeleteAsync($"api/v1/admin/contests/{c.Id}");
+            if (resp.IsSuccessStatusCode) { _alertMsg = "Archived."; _alertIsError = false; await LoadAsync(); }
+            else { _alertMsg = $"Delete failed ({(int)resp.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = ex.Message; _alertIsError = true; }
+    }
+
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+    private async Task<bool> JsConfirm(string message)
+    {
+        try { return await JS.InvokeAsync<bool>("confirm", message); } catch { return true; }
+    }
+
+    // ── Translations ──────────────────────────────────────────────────────────
+    private async Task OpenTranslations(ContestDto c)
+    {
+        _translationsContest = c;
+        _showTranslations    = true;
+        _translations        = new();
+        _newTranslationLang  = string.Empty;
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<ContestDetailDto>>($"api/v1/admin/contests/{c.Id}");
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _translations = resp.Data.Translations
+                    .Select(t => new TranslationModel
+                    {
+                        LanguageCode = t.LanguageCode,
+                        Name         = t.Name,
+                        Description  = t.Description,
+                        BannerUrl    = t.BannerUrl
+                    })
+                    .ToList();
+            }
+        }
+        catch (Exception ex) { _alertMsg = ex.Message; _alertIsError = true; }
+    }
+
+    private void AddTranslation()
+    {
+        if (string.IsNullOrWhiteSpace(_newTranslationLang)) return;
+        _translations.Add(new TranslationModel { LanguageCode = _newTranslationLang });
+        _newTranslationLang = string.Empty;
+    }
+
+    private async Task RemoveTranslation(string langCode)
+    {
+        if (_translationsContest is null) return;
+        try
+        {
+            await Http.DeleteAsync($"api/v1/admin/contests/{_translationsContest.Id}/translations/{langCode}");
+            _translations.RemoveAll(t => t.LanguageCode.Equals(langCode, StringComparison.OrdinalIgnoreCase));
+        }
+        catch (Exception ex) { _alertMsg = ex.Message; _alertIsError = true; }
+    }
+
+    private async Task SaveTranslations()
+    {
+        if (_translationsContest is null) return;
+        _savingTranslations = true;
+        try
+        {
+            foreach (var t in _translations)
+            {
+                var payload = new { t.Name, t.Description, t.BannerUrl };
+                await Http.PutAsJsonAsync($"api/v1/admin/contests/{_translationsContest.Id}/translations/{t.LanguageCode.ToLowerInvariant()}", payload);
+            }
+            _alertMsg = "Translations saved."; _alertIsError = false;
+        }
+        catch (Exception ex) { _alertMsg = ex.Message; _alertIsError = true; }
+        finally { _savingTranslations = false; }
+    }
+
+    // ── Leaderboard ──────────────────────────────────────────────────────────
+    private async Task OpenLeaderboard(ContestDto c)
+    {
+        _showLeaderboard = true;
+        _leaderboard     = null;
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<LeaderboardDto>>($"api/v1/admin/contests/{c.Id}/leaderboard");
+            _leaderboard = resp?.Success == true ? resp.Data : null;
+        }
+        catch (Exception ex) { _alertMsg = ex.Message; _alertIsError = true; }
+    }
+
+    // ── DTOs ─────────────────────────────────────────────────────────────────
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record LanguageOption(string Code, string Name);
+
+    public class ContestDto
+    {
+        public string  Id          { get; set; } = string.Empty;
+        public string  Name        { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public DateTime StartDate  { get; set; }
+        public DateTime EndDate    { get; set; }
+        public string? BannerUrl   { get; set; }
+        public string? RulesUrl    { get; set; }
+        public int     TopX        { get; set; }
+        public bool    IsActive    { get; set; }
+        public int     PointsBoxXPercent { get; set; } = 50;
+        public int     PointsBoxYPercent { get; set; } = 50;
+    }
+
+    public class ContestDetailDto : ContestDto
+    {
+        public List<TranslationDto> Translations { get; set; } = new();
+    }
+
+    public class TranslationDto
+    {
+        public int     Id           { get; set; }
+        public string  LanguageCode { get; set; } = string.Empty;
+        public string? Name         { get; set; }
+        public string? Description  { get; set; }
+        public string? BannerUrl    { get; set; }
+    }
+
+    public class TranslationModel
+    {
+        public string  LanguageCode { get; set; } = string.Empty;
+        public string? Name         { get; set; }
+        public string? Description  { get; set; }
+        public string? BannerUrl    { get; set; }
+    }
+
+    public class FormModel
+    {
+        public string  Name        { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public DateTime StartDate  { get; set; } = DateTime.UtcNow;
+        public DateTime EndDate    { get; set; } = DateTime.UtcNow.AddDays(30);
+        public string? BannerUrl   { get; set; }
+        public string? RulesUrl    { get; set; }
+        public int     TopX        { get; set; } = 10;
+        public bool    IsActive    { get; set; } = true;
+        public int     PointsBoxXPercent { get; set; } = 50;
+        public int     PointsBoxYPercent { get; set; } = 50;
+    }
+
+    public class LeaderboardDto
+    {
+        public string  ContestId   { get; set; } = string.Empty;
+        public string  ContestName { get; set; } = string.Empty;
+        public DateTime StartDate  { get; set; }
+        public DateTime EndDate    { get; set; }
+        public int     TopX        { get; set; }
+        public List<RowDto> Rows   { get; set; } = new();
+    }
+
+    public class RowDto
+    {
+        public int    Rank        { get; set; }
+        public string MemberId    { get; set; } = string.Empty;
+        public string FullName    { get; set; } = string.Empty;
+        public string? Country    { get; set; }
+        public int    TotalPoints { get; set; }
+        public int    Signups     { get; set; }
+    }
+}

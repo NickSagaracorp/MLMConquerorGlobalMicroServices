@@ -1,0 +1,181 @@
+@page "/admin/billing/gateways"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin,BillingManager")]
+@inject HttpClient Http
+
+<PageTitle>Payment Gateways — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Billing"), new("Gateways") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-bank-card-2-line me-2 text-primary"></i>Payment Gateway Catalog
+        </h6>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="GatewayDto" DataSource="@_items"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="25" PageSizes="@(new int[]{25,50,100})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn Field="@nameof(GatewayDto.Id)" HeaderText="ID" Width="70" TextAlign="TextAlign.Center" />
+                    <GridColumn Field="@nameof(GatewayDto.ProcessorName)" HeaderText="Processor" Width="160">
+                        <Template><code class="text-primary">@(((GatewayDto)context).ProcessorName)</code></Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(GatewayDto.DisplayName)" HeaderText="Display Name" Width="220">
+                        <Template><span class="fw-semibold">@(((GatewayDto)context).DisplayName)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Refund" Width="100" TextAlign="TextAlign.Center">
+                        <Template><span class="badge @BoolBadge(((GatewayDto)context).SupportsRefund)">@(((GatewayDto)context).SupportsRefund ? "Yes" : "No")</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Recurring" Width="100" TextAlign="TextAlign.Center">
+                        <Template><span class="badge @BoolBadge(((GatewayDto)context).SupportsRecurring)">@(((GatewayDto)context).SupportsRecurring ? "Yes" : "No")</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Status" Width="110" TextAlign="TextAlign.Center">
+                        <Template><span class="badge @BoolBadge(((GatewayDto)context).IsActive)">@(((GatewayDto)context).IsActive ? "Active" : "Inactive")</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="100" TextAlign="TextAlign.Center">
+                        <Template>
+                            <button class="btn btn-sm btn-outline-primary py-0" @onclick="() => OpenEdit((GatewayDto)context)"><i class="ri-edit-line"></i></button>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+@if (_showForm && _editItem is not null)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold">Edit Gateway — @_editItem.ProcessorName</h5>
+                    <button type="button" class="btn-close" @onclick="CloseForm"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Display Name</label>
+                            <input class="form-control" @bind="_form.DisplayName" />
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="gwActive" @bind="_form.IsActive" />
+                                <label class="form-check-label" for="gwActive">Active (available for routing)</label>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="gwRefund" @bind="_form.SupportsRefund" />
+                                <label class="form-check-label" for="gwRefund">Supports refunds</label>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="gwRecurring" @bind="_form.SupportsRecurring" />
+                                <label class="form-check-label" for="gwRecurring">Supports recurring</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                    <button class="btn btn-primary" @onclick="Save" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<GatewayDto> _items = new();
+    private bool _loading = true;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private bool _showForm;
+    private GatewayDto? _editItem;
+    private GatewayFormModel _form = new();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<IEnumerable<GatewayDto>>>("api/v1/admin/billing/gateways");
+            if (resp?.Success == true && resp.Data is not null)
+                _items = resp.Data.ToList();
+            else { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load gateways."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private void OpenEdit(GatewayDto g)
+    {
+        _editItem = g;
+        _form = new GatewayFormModel
+        {
+            IsActive = g.IsActive,
+            DisplayName = g.DisplayName,
+            SupportsRefund = g.SupportsRefund,
+            SupportsRecurring = g.SupportsRecurring
+        };
+        _showForm = true;
+    }
+
+    private void CloseForm() { _showForm = false; _editItem = null; }
+
+    private async Task Save()
+    {
+        if (_editItem is null) return;
+        _saving = true;
+        try
+        {
+            var response = await Http.PutAsJsonAsync($"api/v1/admin/billing/gateways/{_editItem.Id}", new
+            {
+                _form.IsActive, _form.DisplayName, _form.SupportsRefund, _form.SupportsRecurring
+            });
+            if (response.IsSuccessStatusCode) { _alertMsg = "Gateway updated."; _alertIsError = false; CloseForm(); await LoadAsync(); }
+            else { _alertMsg = $"Save failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private static string BoolBadge(bool val) => val ? "bg-success" : "bg-secondary";
+
+    private class GatewayFormModel
+    {
+        public bool IsActive { get; set; }
+        public string DisplayName { get; set; } = string.Empty;
+        public bool SupportsRefund { get; set; }
+        public bool SupportsRecurring { get; set; }
+    }
+
+    // Processor comes back from the API as the enum name (JsonStringEnumConverter), e.g. "NmiSpreedly".
+    private record GatewayDto(int Id, string Processor, string ProcessorName, string DisplayName, bool IsActive, bool SupportsRefund, bool SupportsRecurring);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+}

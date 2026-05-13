@@ -105,7 +105,9 @@ public class TeamHandlersTests : IDisposable
         );
         await _db.SaveChangesAsync();
 
-        var handler = new GetTeamMembersHandler(_db, _currentUser.Object);
+        var handler = new GetTeamMembersHandler(
+            _db, _currentUser.Object,
+            new MLMConquerorGlobalEdition.Repository.Services.Ranks.RankComputationService(_db));
         var result  = await handler.Handle(new GetTeamMembersQuery(1, 20), default);
 
         result.IsSuccess.Should().BeTrue();
@@ -117,7 +119,9 @@ public class TeamHandlersTests : IDisposable
     [Fact]
     public async Task GetTeamMembers_WhenNoSponsoredMembers_ReturnsEmptyPage()
     {
-        var handler = new GetTeamMembersHandler(_db, _currentUser.Object);
+        var handler = new GetTeamMembersHandler(
+            _db, _currentUser.Object,
+            new MLMConquerorGlobalEdition.Repository.Services.Ranks.RankComputationService(_db));
         var result  = await handler.Handle(new GetTeamMembersQuery(1, 20), default);
 
         result.IsSuccess.Should().BeTrue();
@@ -132,7 +136,9 @@ public class TeamHandlersTests : IDisposable
             _db.MemberProfiles.Add(BuildProfile($"sponsored-{i}", MemberId));
         await _db.SaveChangesAsync();
 
-        var handler = new GetTeamMembersHandler(_db, _currentUser.Object);
+        var handler = new GetTeamMembersHandler(
+            _db, _currentUser.Object,
+            new MLMConquerorGlobalEdition.Repository.Services.Ranks.RankComputationService(_db));
         var result  = await handler.Handle(new GetTeamMembersQuery(1, 3), default);
 
         result.Value!.TotalCount.Should().Be(5);

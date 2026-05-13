@@ -20,7 +20,12 @@ using IErrorTrackingService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sql => sql.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(10),
+            errorNumbersToAdd: null)));
 
 builder.Services.AddMediatR(cfg =>
 {
@@ -110,10 +115,20 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 // Apply pending EF migrations automatically on startup (idempotent).
+// Wrapped: a failure here must not terminate the host — the service still
+// answers /health and incoming requests once the DB recovers.
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.MigrateAsync();
+    var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        await db.Database.MigrateAsync();
+    }
+    catch (Exception ex)
+    {
+        startupLogger.LogError(ex, "EF migration failed at startup. Service will continue without applying pending migrations.");
+    }
 }
 
 app.UseMiddleware<DomainExceptionMiddleware>();

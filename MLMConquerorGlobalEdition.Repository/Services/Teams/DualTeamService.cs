@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
+using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
@@ -9,9 +11,14 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 /// <inheritdoc />
 public class DualTeamService : IDualTeamService
 {
-    private readonly AppDbContext _db;
+    private readonly AppDbContext            _db;
+    private readonly IRankComputationService _ranks;
 
-    public DualTeamService(AppDbContext db) => _db = db;
+    public DualTeamService(AppDbContext db, IRankComputationService ranks)
+    {
+        _db    = db;
+        _ranks = ranks;
+    }
 
     public async Task<PagedResult<DualTeamMyTeamMemberView>> GetMyTeamAsync(
         string memberId, int page, int pageSize, string? search,
@@ -185,4 +192,200 @@ public class DualTeamService : IDualTeamService
 
     private static int SegmentCount(string path) =>
         path.Split('/', StringSplitOptions.RemoveEmptyEntries).Length;
+
+    public async Task<List<DualLegRowView>> GetResidualLegsAsync(
+        string memberId, CancellationToken ct = default)
+    {
+        var rows = new List<DualLegRowView>();
+
+        var viewerNode = await _db.DualTeamTree.AsNoTracking()
+            .FirstOrDefaultAsync(d => d.MemberId == memberId, ct);
+        if (viewerNode is null) return rows;
+
+        var viewerProfile = await _db.MemberProfiles.AsNoTracking()
+            .Where(m => m.MemberId == memberId)
+            .Select(m => new { m.FirstName, m.LastName })
+            .FirstOrDefaultAsync(ct);
+
+        // Two direct binary children: gateway-left and gateway-right. Either
+        // (or both) may be missing on a fresh member; we just emit whichever
+        // exist so the table degrades gracefully.
+        var directChildren = await _db.DualTeamTree.AsNoTracking()
+            .Where(d => d.ParentMemberId == memberId)
+            .Select(d => new { d.MemberId, d.Side, d.LeftLegPoints, d.RightLegPoints })
+            .ToListAsync(ct);
+        var leftGateway  = directChildren.FirstOrDefault(d => d.Side == TreeSide.Left);
+        var rightGateway = directChildren.FirstOrDefault(d => d.Side == TreeSide.Right);
+
+        var gatewayIds = directChildren.Select(d => d.MemberId).ToList();
+        var gatewayNames = gatewayIds.Count > 0
+            ? await _db.MemberProfiles.AsNoTracking()
+                .Where(m => gatewayIds.Contains(m.MemberId))
+                .Select(m => new { m.MemberId, FullName = (m.FirstName + " " + m.LastName).Trim() })
+                .ToDictionaryAsync(m => m.MemberId, m => m.FullName, ct)
+            : new Dictionary<string, string>();
+
+        // Per-leg DT cap mirrors the rank engine — MaxTeamPointsPerBranch ×
+        // rank.TeamPoints. Threshold = 0 means the dimension does not apply
+        // at this rank (Silver/Gold/Platinum) so the per-row donut percent
+        // and eligible value collapse to 0; the UI hides the donut in that
+        // case to avoid misleading "0/0 progress" math.
+        var summary = await _ranks.GetSummaryAsync(memberId, ct);
+        var rankReqs = await _db.RankDefinitions.AsNoTracking()
+            .Include(r => r.Requirements)
+            .Where(r => r.SortOrder == summary.CurrentRankSortOrder
+                     || r.SortOrder == summary.NextRankSortOrder)
+            .ToListAsync(ct);
+        var currentReq = rankReqs.FirstOrDefault(r => r.SortOrder == summary.CurrentRankSortOrder)
+            ?.Requirements.OrderBy(r => r.LevelNo).FirstOrDefault();
+        var nextReq    = rankReqs.FirstOrDefault(r => r.SortOrder == summary.NextRankSortOrder)
+            ?.Requirements.OrderBy(r => r.LevelNo).FirstOrDefault();
+
+        static int LegCap(RankRequirement? req) =>
+            req is { TeamPoints: > 0, MaxTeamPointsPerBranch: > 0 }
+                ? (int)Math.Round(req.MaxTeamPointsPerBranch * req.TeamPoints)
+                : 0;
+
+        var currentLegCap   = LegCap(currentReq);
+        var nextLegCap      = LegCap(nextReq);
+        var currentThreshold = currentReq?.TeamPoints ?? 0;
+        var nextThreshold    = nextReq?.TeamPoints    ?? 0;
+
+        var leftLeg  = (int)viewerNode.LeftLegPoints;
+        var rightLeg = (int)viewerNode.RightLegPoints;
+
+        // ── Root row ────────────────────────────────────────────────────────
+        // QP = sum of both legs. Eligible = capped sum, then capped at the
+        // rank's total threshold (so root donut tops out at 100% when both
+        // legs are full).
+        var rootEligibleCurrent = SumCapped(leftLeg, rightLeg, currentLegCap, currentThreshold);
+        var rootEligibleNext    = SumCapped(leftLeg, rightLeg, nextLegCap,    nextThreshold);
+
+        rows.Add(new DualLegRowView
+        {
+            MemberId                  = memberId,
+            FullName                  = viewerProfile is null
+                ? memberId
+                : $"{viewerProfile.FirstName} {viewerProfile.LastName}".Trim(),
+            Leg                       = "Root",
+            RankName                  = summary.CurrentRankName,
+            QualificationPoints       = leftLeg + rightLeg,
+            CurrentRankEligiblePoints = rootEligibleCurrent,
+            CurrentRankEligiblePct    = currentThreshold > 0
+                ? Math.Min(100, rootEligibleCurrent * 100 / currentThreshold) : 0,
+            NextRankEligiblePoints    = rootEligibleNext,
+            NextRankEligiblePct       = nextThreshold > 0
+                ? Math.Min(100, rootEligibleNext * 100 / nextThreshold) : 0
+        });
+
+        // ── Left gateway row ────────────────────────────────────────────────
+        if (leftGateway is not null)
+        {
+            var legPts            = leftLeg;
+            var eligibleCurrent   = currentLegCap > 0 ? Math.Min(legPts, currentLegCap) : 0;
+            var eligibleNext      = nextLegCap    > 0 ? Math.Min(legPts, nextLegCap)    : 0;
+            rows.Add(new DualLegRowView
+            {
+                MemberId                  = leftGateway.MemberId,
+                FullName                  = gatewayNames.GetValueOrDefault(leftGateway.MemberId, leftGateway.MemberId),
+                Leg                       = "Left",
+                QualificationPoints       = legPts,
+                CurrentRankEligiblePoints = eligibleCurrent,
+                CurrentRankEligiblePct    = currentLegCap > 0
+                    ? Math.Min(100, eligibleCurrent * 100 / currentLegCap) : 0,
+                NextRankEligiblePoints    = eligibleNext,
+                NextRankEligiblePct       = nextLegCap > 0
+                    ? Math.Min(100, eligibleNext * 100 / nextLegCap) : 0
+            });
+        }
+
+        // ── Right gateway row ───────────────────────────────────────────────
+        if (rightGateway is not null)
+        {
+            var legPts            = rightLeg;
+            var eligibleCurrent   = currentLegCap > 0 ? Math.Min(legPts, currentLegCap) : 0;
+            var eligibleNext      = nextLegCap    > 0 ? Math.Min(legPts, nextLegCap)    : 0;
+            rows.Add(new DualLegRowView
+            {
+                MemberId                  = rightGateway.MemberId,
+                FullName                  = gatewayNames.GetValueOrDefault(rightGateway.MemberId, rightGateway.MemberId),
+                Leg                       = "Right",
+                QualificationPoints       = legPts,
+                CurrentRankEligiblePoints = eligibleCurrent,
+                CurrentRankEligiblePct    = currentLegCap > 0
+                    ? Math.Min(100, eligibleCurrent * 100 / currentLegCap) : 0,
+                NextRankEligiblePoints    = eligibleNext,
+                NextRankEligiblePct       = nextLegCap > 0
+                    ? Math.Min(100, eligibleNext * 100 / nextLegCap) : 0
+            });
+        }
+
+        return rows;
+    }
+
+    private static int SumCapped(int leftLeg, int rightLeg, int legCap, int threshold)
+    {
+        if (legCap <= 0 || threshold <= 0) return 0;
+        var summed = Math.Min(leftLeg, legCap) + Math.Min(rightLeg, legCap);
+        return Math.Min(summed, threshold);
+    }
+
+    public async Task<List<DualLegMonthlyPointView>> GetDualTeamHistoryAsync(
+        string memberId, int months, CancellationToken ct = default)
+    {
+        if (months <= 0) months = 6;
+
+        // Anchor on the first day of the current UTC month and walk backwards
+        // so the rightmost (latest) bucket on the chart is always "this month".
+        var nowUtc    = DateTime.UtcNow;
+        var anchor    = new DateTime(nowUtc.Year, nowUtc.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var earliest  = anchor.AddMonths(-(months - 1));
+
+        var snapshots = await _db.MemberStatisticHistories.AsNoTracking()
+            .Where(h => h.MemberId == memberId
+                     && (h.SnapshotYear  > earliest.Year
+                         || (h.SnapshotYear  == earliest.Year
+                             && h.SnapshotMonth >= earliest.Month)))
+            .Select(h => new { h.SnapshotYear, h.SnapshotMonth, h.LeftLegPoints, h.RightLegPoints })
+            .ToListAsync(ct);
+
+        var bucketed = snapshots.ToDictionary(
+            s => (s.SnapshotYear, s.SnapshotMonth),
+            s => (s.LeftLegPoints, s.RightLegPoints));
+
+        // Live values for the current month — the snapshot is end-of-day so
+        // it would render yesterday's totals, not today's. Falling back to
+        // DualTeamTree keeps the latest bar honest.
+        var liveNode = await _db.DualTeamTree.AsNoTracking()
+            .Where(d => d.MemberId == memberId)
+            .Select(d => new { d.LeftLegPoints, d.RightLegPoints })
+            .FirstOrDefaultAsync(ct);
+
+        var series = new List<DualLegMonthlyPointView>(months);
+        for (var i = 0; i < months; i++)
+        {
+            var d         = earliest.AddMonths(i);
+            var isCurrent = d.Year == nowUtc.Year && d.Month == nowUtc.Month;
+            decimal left = 0m, right = 0m;
+            if (isCurrent && liveNode is not null)
+            {
+                left  = liveNode.LeftLegPoints;
+                right = liveNode.RightLegPoints;
+            }
+            else if (bucketed.TryGetValue((d.Year, d.Month), out var snap))
+            {
+                left  = snap.LeftLegPoints;
+                right = snap.RightLegPoints;
+            }
+
+            series.Add(new DualLegMonthlyPointView
+            {
+                Year           = d.Year,
+                Month          = d.Month,
+                LeftLegPoints  = left,
+                RightLegPoints = right
+            });
+        }
+        return series;
+    }
 }

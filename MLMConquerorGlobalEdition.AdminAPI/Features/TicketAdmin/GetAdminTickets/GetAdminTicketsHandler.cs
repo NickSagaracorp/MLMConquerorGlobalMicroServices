@@ -29,12 +29,15 @@ public class GetAdminTicketsHandler : IRequestHandler<GetAdminTicketsQuery, Resu
             .Select(t => new AdminTicketDto
             {
                 Id = t.Id,
+                TicketNumber = t.TicketNumber,
                 Subject = t.Subject,
+                Body = t.Body,
                 MemberId = t.MemberId,
                 Status = t.Status.ToString(),
                 Priority = t.Priority.ToString(),
                 CategoryName = t.Category != null ? t.Category.Name : null,
                 AssignedToUserId = t.AssignedToUserId,
+                EscalationLevel = (int)t.EscalationLevel,
                 CreationDate = t.CreationDate,
                 CommentCount = t.Comments.Count
             })

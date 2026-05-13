@@ -61,7 +61,7 @@ public class GetFinancialDashboardHandlerTests
     public async Task Handle_WhenNoData_ReturnsZeroValues()
     {
         await using var db = InMemoryDbHelper.Create();
-        var handler = new GetFinancialDashboardHandler(db, DateTimeProvider().Object);
+        var handler = new GetFinancialDashboardHandler(db, DateTimeProvider().Object, new NoOpCacheService());
 
         var result = await handler.Handle(new GetFinancialDashboardQuery(), CancellationToken.None);
 
@@ -82,7 +82,7 @@ public class GetFinancialDashboardHandlerTests
             BuildMember("AMB-003", MemberAccountStatus.Inactive));
         await db.SaveChangesAsync();
 
-        var handler = new GetFinancialDashboardHandler(db, DateTimeProvider().Object);
+        var handler = new GetFinancialDashboardHandler(db, DateTimeProvider().Object, new NoOpCacheService());
         var result = await handler.Handle(new GetFinancialDashboardQuery(), CancellationToken.None);
 
         result.Value!.TotalMembersActive.Should().Be(2);
@@ -98,7 +98,7 @@ public class GetFinancialDashboardHandlerTests
             BuildCommission(CommissionEarningStatus.Pending, 50m));
         await db.SaveChangesAsync();
 
-        var handler = new GetFinancialDashboardHandler(db, DateTimeProvider().Object);
+        var handler = new GetFinancialDashboardHandler(db, DateTimeProvider().Object, new NoOpCacheService());
         var result = await handler.Handle(new GetFinancialDashboardQuery(), CancellationToken.None);
 
         result.Value!.TotalCommissionsPaid.Should().Be(300m);
@@ -116,7 +116,7 @@ public class GetFinancialDashboardHandlerTests
             BuildOrder(1000m, new DateTime(2026, 2, 28, 0, 0, 0, DateTimeKind.Utc))); // last month
         await db.SaveChangesAsync();
 
-        var handler = new GetFinancialDashboardHandler(db, DateTimeProvider().Object);
+        var handler = new GetFinancialDashboardHandler(db, DateTimeProvider().Object, new NoOpCacheService());
         var result = await handler.Handle(new GetFinancialDashboardQuery(), CancellationToken.None);
 
         result.Value!.TotalRevenueThisMonth.Should().Be(800m);

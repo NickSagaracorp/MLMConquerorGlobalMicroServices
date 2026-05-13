@@ -170,9 +170,12 @@ builder.Services.AddHangfire(cfg =>
             builder.Configuration.GetConnectionString("HangFire")
             ?? builder.Configuration.GetConnectionString("DefaultConnection"));
 });
+// Restrict this Hangfire server to its own queue so it does not pick up
+// jobs whose types live in assemblies this service does not reference.
 builder.Services.AddHangfireServer(options =>
 {
     options.WorkerCount = builder.Configuration.GetValue("Hangfire:WorkerCount", 5);
+    options.Queues = new[] { "bizcenter" };
 });
 
 builder.Services.AddControllers();
@@ -279,6 +282,11 @@ app.UseHttpsRedirection();
 app.UseMiddleware<SecurityHeadersMiddleware>();
 
 app.UseMiddleware<DomainExceptionMiddleware>();
+
+// Serve uploaded ticket attachments from wwwroot/uploads. The download URL is built
+// in GetTicketHandler (origin + FileUrl) and rendered by the SharedComponents
+// TicketDetailPage as a regular <a href>.
+app.UseStaticFiles();
 
 app.UseCors("BizCenterPolicy");
 

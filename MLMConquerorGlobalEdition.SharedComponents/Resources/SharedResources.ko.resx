@@ -682,7 +682,16 @@
   <data name="Team.NextRank" xml:space="preserve"><value>다음 랭크</value></data>
   <data name="Team.DualPtsRequired" xml:space="preserve"><value>필요 듀얼 팀 점수</value></data>
   <data name="Team.EnrollmentPtsRequired" xml:space="preserve"><value>필요 등록 점수</value></data>
+  <data name="Team.DualPts" xml:space="preserve"><value>듀얼 팀 점수</value></data>
+  <data name="Team.EnrollmentPts" xml:space="preserve"><value>등록 점수</value></data>
   <data name="Team.TotalDualTeamPoints" xml:space="preserve"><value>총 듀얼 팀 점수</value></data>
+  <data name="Team.TotalEnrollmentTeamPoints" xml:space="preserve"><value>총 등록 팀 점수</value></data>
+  <data name="Team.EligibleCurrentRank" xml:space="preserve"><value>적격 (현재 등급)</value></data>
+  <data name="Team.EligibleNextRank" xml:space="preserve"><value>적격 (다음 등급)</value></data>
+  <data name="Team.TotalRaw" xml:space="preserve"><value>총 원시 점수</value></data>
+  <data name="Team.PointsTowardNext" xml:space="preserve"><value>{2}을(를) 향해 {0} / {1} 점수</value></data>
+  <data name="Team.DtRequirementNotApplicable" xml:space="preserve"><value>DT 요구사항: {0}에 해당 없음</value></data>
+  <data name="Team.EtRequirementNotApplicable" xml:space="preserve"><value>ET 요구사항: {0}에 해당 없음</value></data>
   <data name="Team.DailyResidualsEarning" xml:space="preserve"><value>일일 잔여 수익</value></data>
   <data name="Team.LastSixMonths" xml:space="preserve"><value>지난 6개월</value></data>
   <data name="Team.ChartComingSoon" xml:space="preserve"><value>차트 준비 중</value></data>

@@ -1,0 +1,106 @@
+@page "/admin/billing/recurring-settings"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin,BillingManager")]
+@inject HttpClient Http
+
+<PageTitle>Recurring Billing Settings — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Billing"), new("Recurring Settings") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm" style="max-width:640px;">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-settings-3-line me-2 text-primary"></i>Recurring Billing Settings
+        </h6>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+    </div>
+    <div class="card-body">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Daily Residual Consolidation Minimum (USD)</label>
+                <div class="input-group" style="max-width:280px;">
+                    <span class="input-group-text">$</span>
+                    <input type="number" step="0.01" min="0" class="form-control" @bind="_value" />
+                </div>
+                <div class="form-text">@(_description ?? "Minimum pending daily-residual balance before consolidation into a CommissionEarning credit.")</div>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-primary" @onclick="Save" disabled="@(_saving || _value < 0)">
+                    @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                    Save
+                </button>
+            </div>
+        }
+    </div>
+    <div class="card-footer bg-light small text-muted">
+        Backed by the <code>DailyResidualConsolidationMinimum</code> global parameter.
+    </div>
+</div>
+
+@code {
+    private decimal _value = 100m;
+    private string? _description;
+    private bool _loading = true;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<SettingsDto>>("api/v1/admin/billing/recurring-settings");
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _value = resp.Data.Value;
+                _description = resp.Data.Description;
+            }
+            else { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load settings."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private async Task Save()
+    {
+        if (_value < 0) { _alertMsg = "Value must be >= 0."; _alertIsError = true; return; }
+        _saving = true;
+        try
+        {
+            var response = await Http.PutAsJsonAsync("api/v1/admin/billing/recurring-settings",
+                new { DailyResidualConsolidationMinimum = _value });
+            if (response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadFromJsonAsync<ApiResp<SettingsDto>>();
+                if (body?.Data is not null) { _value = body.Data.Value; _description = body.Data.Description; }
+                _alertMsg = "Settings saved."; _alertIsError = false;
+            }
+            else
+            {
+                var body = await response.Content.ReadFromJsonAsync<ApiResp<object>>();
+                _alertMsg = body?.Errors?.FirstOrDefault() ?? $"Save failed ({response.StatusCode}).";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private record SettingsDto(string Key, decimal Value, string Description);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+}

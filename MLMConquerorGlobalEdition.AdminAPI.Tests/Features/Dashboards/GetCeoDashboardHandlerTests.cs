@@ -71,7 +71,7 @@ public class GetCeoDashboardHandlerTests
     public async Task Handle_WhenNoData_ReturnsZeroValues()
     {
         await using var db = InMemoryDbHelper.Create();
-        var handler = new GetCeoDashboardHandler(db, Clock().Object);
+        var handler = new GetCeoDashboardHandler(db, Clock().Object, new NoOpCacheService());
 
         var result = await handler.Handle(new GetCeoDashboardQuery(), CancellationToken.None);
 
@@ -98,7 +98,7 @@ public class GetCeoDashboardHandlerTests
         );
         await db.SaveChangesAsync();
 
-        var handler = new GetCeoDashboardHandler(db, Clock().Object);
+        var handler = new GetCeoDashboardHandler(db, Clock().Object, new NoOpCacheService());
         var result = await handler.Handle(new GetCeoDashboardQuery(), CancellationToken.None);
 
         result.Value!.TotalMembers.Should().Be(5);
@@ -119,7 +119,7 @@ public class GetCeoDashboardHandlerTests
         );
         await db.SaveChangesAsync();
 
-        var handler = new GetCeoDashboardHandler(db, Clock().Object);
+        var handler = new GetCeoDashboardHandler(db, Clock().Object, new NoOpCacheService());
         var result = await handler.Handle(new GetCeoDashboardQuery(), CancellationToken.None);
 
         result.Value!.TotalAmbassadors.Should().Be(2);
@@ -138,7 +138,7 @@ public class GetCeoDashboardHandlerTests
         );
         await db.SaveChangesAsync();
 
-        var handler = new GetCeoDashboardHandler(db, Clock().Object);
+        var handler = new GetCeoDashboardHandler(db, Clock().Object, new NoOpCacheService());
         var result = await handler.Handle(new GetCeoDashboardQuery(), CancellationToken.None);
 
         result.Value!.TotalMembers.Should().Be(1);
@@ -157,7 +157,7 @@ public class GetCeoDashboardHandlerTests
         );
         await db.SaveChangesAsync();
 
-        var handler = new GetCeoDashboardHandler(db, Clock().Object);
+        var handler = new GetCeoDashboardHandler(db, Clock().Object, new NoOpCacheService());
         var result = await handler.Handle(new GetCeoDashboardQuery(), CancellationToken.None);
 
         result.Value!.RevenueThisMonth.Should().Be(800m);
@@ -176,7 +176,7 @@ public class GetCeoDashboardHandlerTests
         );
         await db.SaveChangesAsync();
 
-        var handler = new GetCeoDashboardHandler(db, Clock().Object);
+        var handler = new GetCeoDashboardHandler(db, Clock().Object, new NoOpCacheService());
         var result = await handler.Handle(new GetCeoDashboardQuery(), CancellationToken.None);
 
         result.Value!.CommissionsPaidAllTime.Should().Be(300m);
@@ -195,7 +195,7 @@ public class GetCeoDashboardHandlerTests
         );
         await db.SaveChangesAsync();
 
-        var handler = new GetCeoDashboardHandler(db, Clock().Object);
+        var handler = new GetCeoDashboardHandler(db, Clock().Object, new NoOpCacheService());
         var result = await handler.Handle(new GetCeoDashboardQuery(), CancellationToken.None);
 
         result.Value!.ActiveSubscriptions.Should().Be(2);
@@ -216,7 +216,7 @@ public class GetCeoDashboardHandlerTests
         );
         await db.SaveChangesAsync();
 
-        var handler = new GetCeoDashboardHandler(db, Clock().Object);
+        var handler = new GetCeoDashboardHandler(db, Clock().Object, new NoOpCacheService());
         var result = await handler.Handle(new GetCeoDashboardQuery(), CancellationToken.None);
 
         result.Value!.TicketsOpen.Should().Be(2);
@@ -235,7 +235,7 @@ public class GetCeoDashboardHandlerTests
         }
         await db.SaveChangesAsync();
 
-        var handler = new GetCeoDashboardHandler(db, Clock().Object);
+        var handler = new GetCeoDashboardHandler(db, Clock().Object, new NoOpCacheService());
         var result = await handler.Handle(new GetCeoDashboardQuery(), CancellationToken.None);
 
         result.Value!.RecentMembers.Should().HaveCount(10);
@@ -252,7 +252,7 @@ public class GetCeoDashboardHandlerTests
         );
         await db.SaveChangesAsync();
 
-        var handler = new GetCeoDashboardHandler(db, Clock().Object);
+        var handler = new GetCeoDashboardHandler(db, Clock().Object, new NoOpCacheService());
         var result = await handler.Handle(new GetCeoDashboardQuery(), CancellationToken.None);
 
         result.Value!.PaymentsPending.Should().Be(1);

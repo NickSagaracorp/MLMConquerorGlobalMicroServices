@@ -682,7 +682,16 @@
   <data name="Team.NextRank" xml:space="preserve"><value>Prochain Rang</value></data>
   <data name="Team.DualPtsRequired" xml:space="preserve"><value>Pts Équipe Dual Requis</value></data>
   <data name="Team.EnrollmentPtsRequired" xml:space="preserve"><value>Pts d'Inscription Requis</value></data>
+  <data name="Team.DualPts" xml:space="preserve"><value>Pts Équipe Dual</value></data>
+  <data name="Team.EnrollmentPts" xml:space="preserve"><value>Pts d'Inscription</value></data>
   <data name="Team.TotalDualTeamPoints" xml:space="preserve"><value>Total de Points Équipe Dual</value></data>
+  <data name="Team.TotalEnrollmentTeamPoints" xml:space="preserve"><value>Total de Points Équipe d'Inscription</value></data>
+  <data name="Team.EligibleCurrentRank" xml:space="preserve"><value>Éligibles (Rang Actuel)</value></data>
+  <data name="Team.EligibleNextRank" xml:space="preserve"><value>Éligibles (Rang Suivant)</value></data>
+  <data name="Team.TotalRaw" xml:space="preserve"><value>Total Brut</value></data>
+  <data name="Team.PointsTowardNext" xml:space="preserve"><value>{0} / {1} points vers {2}</value></data>
+  <data name="Team.DtRequirementNotApplicable" xml:space="preserve"><value>Exigence DT : N/A pour {0}</value></data>
+  <data name="Team.EtRequirementNotApplicable" xml:space="preserve"><value>Exigence ET : N/A pour {0}</value></data>
   <data name="Team.DailyResidualsEarning" xml:space="preserve"><value>Gains Résiduels Quotidiens</value></data>
   <data name="Team.LastSixMonths" xml:space="preserve"><value>6 derniers mois</value></data>
   <data name="Team.ChartComingSoon" xml:space="preserve"><value>Graphique bientôt disponible</value></data>

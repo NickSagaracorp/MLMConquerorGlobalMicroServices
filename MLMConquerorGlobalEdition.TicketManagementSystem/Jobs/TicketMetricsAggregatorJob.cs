@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -10,6 +11,7 @@ namespace MLMConquerorGlobalEdition.TicketManagementSystem.Jobs;
 /// HangFire recurring job — runs nightly at 1:00 AM UTC.
 /// Aggregates daily metrics into TicketMetricsDaily (UPSERT by date — idempotent).
 /// </summary>
+[Queue("tickets")]
 public class TicketMetricsAggregatorJob
 {
     private readonly IServiceScopeFactory _scopeFactory;

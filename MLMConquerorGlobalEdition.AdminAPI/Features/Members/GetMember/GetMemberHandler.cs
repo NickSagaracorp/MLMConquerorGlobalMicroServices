@@ -2,15 +2,21 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.AdminAPI.DTOs.Members;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Features.Members.GetMember;
 
 public class GetMemberHandler : IRequestHandler<GetMemberQuery, Result<AdminMemberDetailDto>>
 {
-    private readonly AppDbContext _db;
+    private readonly AppDbContext            _db;
+    private readonly IRankComputationService _ranks;
 
-    public GetMemberHandler(AppDbContext db) => _db = db;
+    public GetMemberHandler(AppDbContext db, IRankComputationService ranks)
+    {
+        _db    = db;
+        _ranks = ranks;
+    }
 
     public async Task<Result<AdminMemberDetailDto>> Handle(
         GetMemberQuery request, CancellationToken cancellationToken)
@@ -26,37 +32,38 @@ public class GetMemberHandler : IRequestHandler<GetMemberQuery, Result<AdminMemb
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.MemberId == request.MemberId, cancellationToken);
 
-        var allRankHistory = await _db.MemberRankHistories
-            .AsNoTracking()
-            .Where(r => r.MemberId == request.MemberId)
-            .Join(_db.RankDefinitions,
-                  h => h.RankDefinitionId,
-                  d => d.Id,
-                  (h, d) => new { h.RankDefinitionId, d.Name, d.SortOrder, h.AchievedAt })
-            .ToListAsync(cancellationToken);
-
-        var currentRank  = allRankHistory.OrderByDescending(r => r.AchievedAt).FirstOrDefault();
-        var lifetimeRank = allRankHistory.OrderByDescending(r => r.SortOrder).FirstOrDefault();
-
-        // Default to first rank (lowest SortOrder) when member has no rank history
-        string? currentRankName  = currentRank?.Name;
-        int?    currentRankId    = currentRank?.RankDefinitionId;
-        string? lifetimeRankName = lifetimeRank?.Name;
-        int?    lifetimeRankId   = lifetimeRank?.RankDefinitionId;
-
-        if (currentRank is null)
+        // Resolve sponsor full name (one extra lookup; SponsorMemberId may be null for the root).
+        string? sponsorFullName = null;
+        if (!string.IsNullOrEmpty(member.SponsorMemberId))
         {
-            var defaultRank = await _db.RankDefinitions
+            sponsorFullName = await _db.MemberProfiles
                 .AsNoTracking()
-                .OrderBy(r => r.SortOrder)
-                .Select(r => new { r.Id, r.Name })
+                .Where(m => m.MemberId == member.SponsorMemberId)
+                .Select(m => (m.FirstName + " " + m.LastName).Trim())
                 .FirstOrDefaultAsync(cancellationToken);
-
-            currentRankName  = defaultRank?.Name;
-            currentRankId    = defaultRank?.Id;
-            lifetimeRankName = defaultRank?.Name;
-            lifetimeRankId   = defaultRank?.Id;
         }
+
+        // Resolve dual-team upline (the binary-tree parent — different from the enrollment sponsor).
+        string? dualUplineMemberId = await _db.DualTeamTree
+            .AsNoTracking()
+            .Where(d => d.MemberId == request.MemberId)
+            .Select(d => d.ParentMemberId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        string? dualUplineFullName = null;
+        if (!string.IsNullOrEmpty(dualUplineMemberId))
+        {
+            dualUplineFullName = await _db.MemberProfiles
+                .AsNoTracking()
+                .Where(m => m.MemberId == dualUplineMemberId)
+                .Select(m => (m.FirstName + " " + m.LastName).Trim())
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
+        // Current rank = LIVE qualification (capped per-leg / per-branch). Lifetime
+        // rank = highest SortOrder ever achieved. Both come from the shared service
+        // so this view never drifts from Residuals/Branches/RankEngine.
+        var summary = await _ranks.GetSummaryAsync(request.MemberId, cancellationToken);
 
         var dto = new AdminMemberDetailDto
         {
@@ -69,6 +76,9 @@ public class GetMemberHandler : IRequestHandler<GetMemberQuery, Result<AdminMemb
             MemberType = member.MemberType.ToString(),
             EnrollDate = member.EnrollDate,
             SponsorMemberId = member.SponsorMemberId,
+            SponsorFullName = sponsorFullName,
+            DualTeamUplineMemberId = dualUplineMemberId,
+            DualTeamUplineFullName = dualUplineFullName,
             CreationDate = member.CreationDate,
             DualTeamPoints = stats?.DualTeamPoints ?? 0,
             EnrollmentPoints = stats?.EnrollmentPoints ?? 0,
@@ -76,10 +86,10 @@ public class GetMemberHandler : IRequestHandler<GetMemberQuery, Result<AdminMemb
             EnrollmentTeamSize = stats?.EnrollmentTeamSize ?? 0,
             CurrentMonthIncome = stats?.CurrentMonthIncomeGrowth ?? 0,
             CurrentYearIncome = stats?.CurrentYearIncomeGrowth ?? 0,
-            CurrentRank    = currentRankName,
-            CurrentRankId  = currentRankId,
-            LifetimeRank   = lifetimeRankName,
-            LifetimeRankId = lifetimeRankId
+            CurrentRank    = summary.CurrentRankName,
+            CurrentRankId  = summary.CurrentRankId,
+            LifetimeRank   = summary.LifetimeRankName,
+            LifetimeRankId = summary.LifetimeRankId
         };
 
         return Result<AdminMemberDetailDto>.Success(dto);

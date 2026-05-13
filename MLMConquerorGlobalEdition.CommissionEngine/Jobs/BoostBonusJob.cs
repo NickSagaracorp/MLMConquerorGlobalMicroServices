@@ -1,3 +1,4 @@
+using Hangfire;
 using MediatR;
 using MLMConquerorGlobalEdition.CommissionEngine.Features.CalculateBoostBonus;
 
@@ -6,6 +7,7 @@ namespace MLMConquerorGlobalEdition.CommissionEngine.Jobs;
 /// <summary>
 /// HangFire recurring job — runs weekly on Sunday at 3:00 AM UTC.
 /// </summary>
+[Queue("commissions")]
 public class BoostBonusJob
 {
     private readonly IMediator _mediator;

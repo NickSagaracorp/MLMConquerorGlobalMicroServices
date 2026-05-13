@@ -14,6 +14,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Support;
 using MLMConquerorGlobalEdition.Domain.Entities.Tokens;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Entities.Wallet;
+using MLMConquerorGlobalEdition.Domain.Entities.Billing;
 using MLMConquerorGlobalEdition.Domain.Entities.Marketing;
 using MLMConquerorGlobalEdition.Repository.Identity;
 using MLMConquerorGlobalEdition.Repository.Interceptors;
@@ -30,6 +31,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     public DbSet<Region> Regions => Set<Region>();
     public DbSet<RegionGateway> RegionGateways => Set<RegionGateway>();
     public DbSet<CompanyInfo> CompanyInfo => Set<CompanyInfo>();
+    public DbSet<CountryPayoutDefault> CountryPayoutDefaults => Set<CountryPayoutDefault>();
     public DbSet<SignupRiskFingerprint> SignupRiskFingerprints => Set<SignupRiskFingerprint>();
 
     public DbSet<MemberProfile> MemberProfiles => Set<MemberProfile>();
@@ -38,6 +40,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     public DbSet<MemberCredentialChangeLog> MemberCredentialChangeLogs => Set<MemberCredentialChangeLog>();
     public DbSet<MemberIdentificationType> MemberIdentificationTypes => Set<MemberIdentificationType>();
     public DbSet<MemberStatisticEntity> MemberStatistics => Set<MemberStatisticEntity>();
+    public DbSet<MemberStatisticHistoryEntity> MemberStatisticHistories => Set<MemberStatisticHistoryEntity>();
     public DbSet<MemberProfileNotificationTracking> MemberNotifications => Set<MemberProfileNotificationTracking>();
     public DbSet<MemberFcmToken> MemberFcmTokens => Set<MemberFcmToken>();
 
@@ -66,6 +69,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     public DbSet<CommissionEarning> CommissionEarnings => Set<CommissionEarning>();
     public DbSet<MemberCommissionCountDown> CommissionCountDowns => Set<MemberCommissionCountDown>();
     public DbSet<MemberCommissionCountDownHistory> CommissionCountDownHistories => Set<MemberCommissionCountDownHistory>();
+    public DbSet<DailyResidualEarning> DailyResidualEarnings => Set<DailyResidualEarning>();
 
     public DbSet<Product> Products => Set<Product>();
     public DbSet<ProductCommission> ProductCommissions => Set<ProductCommission>();
@@ -85,6 +89,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
 
     public DbSet<CorporateEvent> CorporateEvents => Set<CorporateEvent>();
     public DbSet<CorporatePromo> CorporatePromos => Set<CorporatePromo>();
+    public DbSet<CorporateContest> CorporateContests => Set<CorporateContest>();
+    public DbSet<CorporateContestTranslation> CorporateContestTranslations => Set<CorporateContestTranslation>();
+    public DbSet<CorporateContestEarning> CorporateContestEarnings => Set<CorporateContestEarning>();
 
     public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
     public DbSet<EmailTemplateLocalization> EmailTemplateLocalizations => Set<EmailTemplateLocalization>();
@@ -108,6 +115,28 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     public DbSet<DocumentType>      DocumentTypes      => Set<DocumentType>();
     public DbSet<MarketingDocument> MarketingDocuments => Set<MarketingDocument>();
     public DbSet<S3StorageConfig>   S3StorageConfigs   => Set<S3StorageConfig>();
+
+    // ── Recurring Billing Engine ──────────────────────────────────────────
+    public DbSet<RecurringBillingPlan>        RecurringBillingPlans        => Set<RecurringBillingPlan>();
+    public DbSet<RecurringBillingPlanProduct> RecurringBillingPlanProducts => Set<RecurringBillingPlanProduct>();
+    public DbSet<SubscriptionBillingState>    SubscriptionBillingStates    => Set<SubscriptionBillingState>();
+    public DbSet<RecurringBillingAttempt>     RecurringBillingAttempts     => Set<RecurringBillingAttempt>();
+
+    // ── Global Parameters ─────────────────────────────────────────────────
+    public DbSet<GlobalParameter> GlobalParameters => Set<GlobalParameter>();
+
+    // ── Billing Gateway Routing Engine ────────────────────────────────────
+    public DbSet<PaymentGatewayCatalog>  GatewayCatalog        => Set<PaymentGatewayCatalog>();
+    public DbSet<CountryGroup>           CountryGroups         => Set<CountryGroup>();
+    public DbSet<CountryGroupCountry>    CountryGroupCountries => Set<CountryGroupCountry>();
+    public DbSet<GatewayRoutingRule>     GatewayRoutingRules   => Set<GatewayRoutingRule>();
+    public DbSet<GatewayRoutingRuleSplit> GatewayRoutingRuleSplits => Set<GatewayRoutingRuleSplit>();
+    public DbSet<CurrencyPolicy>         CurrencyPolicies      => Set<CurrencyPolicy>();
+    public DbSet<GatewayFallbackRule>    GatewayFallbackRules  => Set<GatewayFallbackRule>();
+    public DbSet<ApiCredential>          ApiCredentials        => Set<ApiCredential>();
+    public DbSet<ExchangeRateSnapshot>   ExchangeRateSnapshots => Set<ExchangeRateSnapshot>();
+    public DbSet<GatewayRoutingCounter>  GatewayRoutingCounters => Set<GatewayRoutingCounter>();
+    public DbSet<GatewayChargeAttempt>   GatewayChargeAttempts => Set<GatewayChargeAttempt>();
 
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 

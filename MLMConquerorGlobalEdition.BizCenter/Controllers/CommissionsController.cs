@@ -91,14 +91,34 @@ public class CommissionsController : ControllerBase
         return Ok(ApiResponse<List<CommissionMonthBreakdownDto>>.Ok(result.Value!));
     }
 
-    /// <summary>GET /api/v1/bizcenter/commissions/dual-residual</summary>
+    /// <summary>GET /api/v1/bizcenter/commissions/dual-residual — paged earnings,
+    /// optionally filtered by EarnedDate year and/or month.</summary>
     [HttpGet("dual-residual")]
-    public async Task<IActionResult> GetDualResidual([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
+    public async Task<IActionResult> GetDualResidual(
+        [FromQuery] int  page     = 1,
+        [FromQuery] int  pageSize = 20,
+        [FromQuery] int? year     = null,
+        [FromQuery] int? month    = null,
+        CancellationToken ct = default)
     {
-        var result = await _mediator.Send(new GetDualResidualCommissionsQuery(page, pageSize), ct);
+        var result = await _mediator.Send(
+            new GetDualResidualCommissionsQuery(page, pageSize, year, month), ct);
         if (!result.IsSuccess)
             return BadRequest(ApiResponse<PagedResult<CommissionEarningDto>>.Fail(result.ErrorCode!, result.Error!));
         return Ok(ApiResponse<PagedResult<CommissionEarningDto>>.Ok(result.Value!));
+    }
+
+    /// <summary>GET /api/v1/bizcenter/commissions/dual-residual/chart — last
+    /// N (default 6) monthly aggregates for the residuals histogram.</summary>
+    [HttpGet("dual-residual/chart")]
+    public async Task<IActionResult> GetDualResidualChart(
+        [FromServices] MLMConquerorGlobalEdition.Repository.Services.Commissions.ICommissionsService service,
+        [FromServices] MLMConquerorGlobalEdition.BizCenter.Services.ICurrentUserService currentUser,
+        [FromQuery] int months = 6,
+        CancellationToken ct = default)
+    {
+        var data = await service.GetDualResidualChartAsync(currentUser.MemberId, months, ct);
+        return Ok(ApiResponse<List<MLMConquerorGlobalEdition.Repository.Services.Commissions.MonthlyAmountView>>.Ok(data));
     }
 
     /// <summary>GET /api/v1/bizcenter/commissions/fast-start-bonus — paged earnings</summary>

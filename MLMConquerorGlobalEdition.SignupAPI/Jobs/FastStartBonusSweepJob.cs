@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Hangfire;
+using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
@@ -15,6 +16,7 @@ namespace MLMConquerorGlobalEdition.SignupAPI.Jobs;
 /// Also repairs FSB3 window dates when they were never written (e.g. FSB2 was
 /// backfilled against an old binary that lacked the date-advance code).
 /// </summary>
+[Queue("signups")]
 public class FastStartBonusSweepJob
 {
     private static readonly int[] EligibleLevelIds = [3, 4];

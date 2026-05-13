@@ -60,12 +60,15 @@ public class AdminResolveTicketHandler : IRequestHandler<AdminResolveTicketComma
         var dto = new AdminTicketDto
         {
             Id = ticket.Id,
+            TicketNumber = ticket.TicketNumber,
             Subject = ticket.Subject,
+            Body = ticket.Body,
             MemberId = ticket.MemberId,
             Status = ticket.Status.ToString(),
             Priority = ticket.Priority.ToString(),
             CategoryName = ticket.Category?.Name,
             AssignedToUserId = ticket.AssignedToUserId,
+            EscalationLevel = (int)ticket.EscalationLevel,
             CreationDate = ticket.CreationDate,
             CommentCount = ticket.Comments.Count
         };

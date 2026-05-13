@@ -81,6 +81,15 @@ builder.Services.AddScoped<ITokenRedemptionService, TokenRedemptionService>();
 builder.Services.AddScoped<IFraudFingerprintService, FraudFingerprintService>();
 builder.Services.AddScoped<IEncryptionService, EncryptionService>();
 
+// Recurring billing — enrolment service creates the SubscriptionBillingState
+// record as part of the CompleteSignup flow so the dunning sweep can pick it up.
+// The Billing assembly defines its own IDateTimeProvider (distinct from SharedKernel's)
+// so register it here alongside the service.
+builder.Services.AddSingleton<MLMConquerorGlobalEdition.Billing.Services.IDateTimeProvider,
+                               MLMConquerorGlobalEdition.Billing.Services.DateTimeProvider>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Billing.Services.Recurring.IRecurringBillingEnrollmentService,
+                            MLMConquerorGlobalEdition.Billing.Services.Recurring.RecurringBillingEnrollmentService>();
+
 // JWT Service
 builder.Services.AddScoped<IJwtService, JwtService>();
 
@@ -158,6 +167,7 @@ builder.Services.AddSingleton<IPushNotificationService, FirebasePushNotification
 builder.Services.AddScoped<ProcessScheduledCancellationsJob>();
 builder.Services.AddScoped<BuilderBonusSweepJob>();
 builder.Services.AddScoped<FastStartBonusSweepJob>();
+builder.Services.AddScoped<ContestPointsSweepJob>();
 builder.Services.AddHangfire(cfg => cfg
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
     .UseSimpleAssemblyNameTypeSerializer()
@@ -165,9 +175,12 @@ builder.Services.AddHangfire(cfg => cfg
     .UseSqlServerStorage(
         builder.Configuration.GetConnectionString("HangFire")
         ?? builder.Configuration.GetConnectionString("DefaultConnection")));
+// Restrict this Hangfire server to its own queue so it does not pick up
+// jobs whose types live in assemblies this service does not reference.
 builder.Services.AddHangfireServer(options =>
 {
     options.WorkerCount = builder.Configuration.GetValue("Hangfire:WorkerCount", 5);
+    options.Queues = new[] { "signups" };
 });
 
 // Controllers only — no Blazor
@@ -305,19 +318,31 @@ RecurringJob.AddOrUpdate<ProcessScheduledCancellationsJob>(
     "process-scheduled-cancellations",
     job => job.ExecuteAsync(CancellationToken.None),
     "0 1 * * *",
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc, QueueName = "signups" });
 
 RecurringJob.AddOrUpdate<FastStartBonusSweepJob>(
     "fsb-sweep",
     job => job.ExecuteAsync(CancellationToken.None),
     "*/5 * * * *",
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc, QueueName = "signups" });
 
+// QueueName must be set explicitly. Without it Hangfire stamps the
+// recurring-job entry with Queue=default — and SignupAPI's Hangfire server
+// only listens on "signups" — so the cron tick fires but the enqueued job
+// sits forever in a queue no worker picks up. Setting QueueName here
+// pins both the recurring entry AND the enqueued job to "signups", which
+// SignupAPI's worker is configured to drain.
 RecurringJob.AddOrUpdate<BuilderBonusSweepJob>(
     "builder-bonus-sweep",
     job => job.ExecuteAsync(CancellationToken.None),
     "*/10 * * * *",
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc, QueueName = "signups" });
+
+RecurringJob.AddOrUpdate<ContestPointsSweepJob>(
+    "contest-points-sweep",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "*/10 * * * *",                    // every 10 minutes
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc, QueueName = "signups" });
 
 app.MapGet("/health", async (AppDbContext db, CancellationToken ct) =>
 {

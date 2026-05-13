@@ -1,0 +1,169 @@
+@page "/admin/billing/charge-attempts"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin,BillingManager")]
+@inject HttpClient Http
+
+<PageTitle>Charge Attempts — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Billing"), new("Charge Attempts") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert alert-danger alert-dismissible mb-3">@_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button></div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small mb-1">Outcome</label>
+                <select class="form-select form-select-sm" @bind="_outcomeFilter">
+                    <option value="">All</option>
+                    <option value="Success">Success</option>
+                    <option value="Failed">Failed</option>
+                    <option value="Scheduled">Scheduled</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small mb-1">Processor</label>
+                <select class="form-select form-select-sm" @bind="_processorFilter">
+                    <option value="">All</option>
+                    @foreach (var kv in ProcessorOptions)
+                    {
+                        <option value="@kv.Key">@kv.Value</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small mb-1">Member ID</label>
+                <input class="form-control form-control-sm" @bind="_memberFilter" placeholder="optional" />
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary btn-sm w-100" @onclick="Search"><i class="ri-search-line me-1"></i>Search</button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="ChargeAttemptDto" DataSource="@_filtered"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn Field="@nameof(ChargeAttemptDto.AttemptedAtUtc)" HeaderText="Attempted (UTC)" Width="150" Format="yyyy-MM-dd HH:mm" Type="ColumnType.DateTime" />
+                    <GridColumn HeaderText="Member" Width="130">
+                        <Template><a href="/admin/members/@(((ChargeAttemptDto)context).MemberId)" class="text-primary"><code class="small">@(((ChargeAttemptDto)context).MemberId)</code></a></Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(ChargeAttemptDto.ProcessorName)" HeaderText="Processor" Width="160" />
+                    <GridColumn Field="@nameof(ChargeAttemptDto.FallbackStepIndex)" HeaderText="Step" Width="70" TextAlign="TextAlign.Center" />
+                    <GridColumn Field="@nameof(ChargeAttemptDto.PresentmentCurrency)" HeaderText="Currency" Width="90" TextAlign="TextAlign.Center" />
+                    <GridColumn HeaderText="USD Amount" Width="110" TextAlign="TextAlign.Right">
+                        <Template>$@(((ChargeAttemptDto)context).OriginalAmountUsd.ToString("F2"))</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Converted" Width="110" TextAlign="TextAlign.Right">
+                        <Template>@(((ChargeAttemptDto)context).ConvertedAmount.ToString("F2"))</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Outcome" Width="110" TextAlign="TextAlign.Center">
+                        <Template><span class="badge @OutcomeBadge(((ChargeAttemptDto)context).Outcome)">@(((ChargeAttemptDto)context).Outcome)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Gateway Txn" Width="160">
+                        <Template><code class="small text-muted">@(((ChargeAttemptDto)context).GatewayTransactionId ?? "—")</code></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Payment History" Width="160">
+                        <Template><code class="small text-muted">@(((ChargeAttemptDto)context).PaymentHistoryId ?? "—")</code></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Failure Reason" Width="220">
+                        <Template><span class="small text-danger">@(((ChargeAttemptDto)context).FailureReason ?? "—")</span></Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+
+            @if (_totalPages > 1)
+            {
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
+                    <small class="text-muted">@_totalCount attempts — Page @_page of @_totalPages</small>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>
+                            @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
+                            { var pg = i; <li class="page-item @(_page == pg ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(pg)">@pg</button></li> }
+                            <li class="page-item @(_page == _totalPages ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page + 1)">›</button></li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+        }
+    </div>
+    <div class="card-footer bg-light small text-muted">
+        Read-only chain-of-custody audit. Outcome and Member ID are filtered server-side; processor is filtered on the loaded page.
+    </div>
+</div>
+
+@code {
+    // Keyed by the CardProcessor enum NAME (the API serializes the enum as its name via JsonStringEnumConverter).
+    private static readonly Dictionary<string, string> ProcessorOptions = new()
+    {
+        ["NmiSpreedly"] = "NMI (Spreedly)", ["NmiDirect"] = "NMI Direct", ["CheckoutEUR"] = "Checkout.com EUR",
+        ["CheckoutUS"] = "Checkout.com US", ["CheckoutUsLlc"] = "Checkout US LLC", ["Shift4"] = "Shift4", ["StripeEms"] = "Stripe EMS"
+    };
+
+    private List<ChargeAttemptDto> _items = new();
+    private List<ChargeAttemptDto> _filtered = new();
+    private bool _loading = true;
+    private string? _alertMsg;
+    private string _outcomeFilter = string.Empty;
+    private string _processorFilter = string.Empty;
+    private string _memberFilter = string.Empty;
+    private int _page = 1;
+    private const int PageSize = 50;
+    private int _totalCount;
+    private int _totalPages = 1;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; _alertMsg = null; StateHasChanged();
+        try
+        {
+            var url = $"api/v1/admin/billing/charge-attempts?page={_page}&pageSize={PageSize}";
+            if (!string.IsNullOrWhiteSpace(_outcomeFilter)) url += $"&outcome={Uri.EscapeDataString(_outcomeFilter)}";
+            if (!string.IsNullOrWhiteSpace(_memberFilter)) url += $"&memberId={Uri.EscapeDataString(_memberFilter.Trim())}";
+            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<ChargeAttemptDto>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _items = resp.Data.Items.ToList();
+                _totalCount = resp.Data.TotalCount;
+                _totalPages = resp.Data.TotalPages;
+                ApplyClientFilter();
+            }
+            else { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load charge attempts."; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; }
+        finally { _loading = false; }
+    }
+
+    private void ApplyClientFilter()
+        => _filtered = !string.IsNullOrEmpty(_processorFilter)
+            ? _items.Where(i => i.CardProcessor == _processorFilter).ToList()
+            : _items.ToList();
+
+    private async Task Search() { _page = 1; await LoadAsync(); }
+
+    private async Task ChangePage(int p) { if (p < 1 || p > _totalPages) return; _page = p; await LoadAsync(); }
+
+    private static string OutcomeBadge(string o) => o switch
+    { "Success" => "bg-success", "Failed" => "bg-danger", "Scheduled" => "bg-warning text-dark", _ => "bg-secondary" };
+
+    // CardProcessor comes back from the API as the enum name (JsonStringEnumConverter), e.g. "CheckoutUS".
+    private record ChargeAttemptDto(long Id, string MemberId, string CardProcessor, string ProcessorName,
+        int FallbackStepIndex, string PresentmentCurrency, decimal OriginalAmountUsd, decimal ConvertedAmount,
+        string Outcome, string? GatewayTransactionId, string? PaymentHistoryId, string? FailureReason, DateTime AttemptedAtUtc);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+}

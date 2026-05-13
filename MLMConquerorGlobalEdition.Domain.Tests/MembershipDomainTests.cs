@@ -59,4 +59,30 @@ public class MembershipDomainTests
         action.Should().Throw<MembershipChangeNotAllowedException>()
             .Which.Code.Should().Be("MEMBERSHIP_CHANGE_NOT_ALLOWED");
     }
+
+    // ── HoldByBilling ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public void MembershipStatus_HoldByBilling_HasDistinctValueFromOnHold()
+    {
+        ((int)MembershipStatus.HoldByBilling).Should().NotBe((int)MembershipStatus.OnHold);
+        ((int)MembershipStatus.HoldByBilling).Should().Be(6);
+        ((int)MembershipStatus.OnHold).Should().Be(3);
+    }
+
+    [Fact]
+    public void MembershipStatus_HoldByBilling_IsDefinedInEnum()
+    {
+        var defined = Enum.IsDefined(typeof(MembershipStatus), MembershipStatus.HoldByBilling);
+
+        defined.Should().BeTrue();
+    }
+
+    [Fact]
+    public void MembershipStatus_HoldByBilling_IsNotOnHold_NorCancelled_NorExpired()
+    {
+        MembershipStatus.HoldByBilling.Should().NotBe(MembershipStatus.OnHold);
+        MembershipStatus.HoldByBilling.Should().NotBe(MembershipStatus.Cancelled);
+        MembershipStatus.HoldByBilling.Should().NotBe(MembershipStatus.Expired);
+    }
 }

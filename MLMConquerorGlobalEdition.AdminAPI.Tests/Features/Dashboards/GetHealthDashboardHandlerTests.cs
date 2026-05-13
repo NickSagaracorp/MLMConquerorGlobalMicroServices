@@ -54,7 +54,7 @@ public class GetHealthDashboardHandlerTests
     public async Task Handle_WhenNoData_ReturnsZeroCountsAndHealthyStatus()
     {
         await using var db = InMemoryDbHelper.Create();
-        var handler = new GetHealthDashboardHandler(db);
+        var handler = new GetHealthDashboardHandler(db, new NoOpCacheService());
 
         var result = await handler.Handle(new GetHealthDashboardQuery(), CancellationToken.None);
 
@@ -75,7 +75,7 @@ public class GetHealthDashboardHandlerTests
             BuildMember("AMB-003", MemberAccountStatus.Suspended));
         await db.SaveChangesAsync();
 
-        var handler = new GetHealthDashboardHandler(db);
+        var handler = new GetHealthDashboardHandler(db, new NoOpCacheService());
         var result = await handler.Handle(new GetHealthDashboardQuery(), CancellationToken.None);
 
         result.Value!.ActiveMembers.Should().Be(2);
@@ -92,7 +92,7 @@ public class GetHealthDashboardHandlerTests
             BuildPayment(PaymentHistoryTransactionStatus.Failed));
         await db.SaveChangesAsync();
 
-        var handler = new GetHealthDashboardHandler(db);
+        var handler = new GetHealthDashboardHandler(db, new NoOpCacheService());
         var result = await handler.Handle(new GetHealthDashboardQuery(), CancellationToken.None);
 
         result.Value!.PendingPayments.Should().Be(2);
@@ -109,7 +109,7 @@ public class GetHealthDashboardHandlerTests
             BuildTicket(TicketStatus.InProgress));
         await db.SaveChangesAsync();
 
-        var handler = new GetHealthDashboardHandler(db);
+        var handler = new GetHealthDashboardHandler(db, new NoOpCacheService());
         var result = await handler.Handle(new GetHealthDashboardQuery(), CancellationToken.None);
 
         result.Value!.OpenTickets.Should().Be(2);
@@ -119,7 +119,7 @@ public class GetHealthDashboardHandlerTests
     public async Task Handle_AlwaysReturnsHealthyStatus()
     {
         await using var db = InMemoryDbHelper.Create();
-        var handler = new GetHealthDashboardHandler(db);
+        var handler = new GetHealthDashboardHandler(db, new NoOpCacheService());
 
         var result = await handler.Handle(new GetHealthDashboardQuery(), CancellationToken.None);
 

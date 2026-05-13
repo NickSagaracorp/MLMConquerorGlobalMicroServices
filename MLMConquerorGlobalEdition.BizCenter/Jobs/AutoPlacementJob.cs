@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -21,6 +22,7 @@ namespace MLMConquerorGlobalEdition.BizCenter.Jobs;
 ///
 /// Ghost points are NOT transferred on placement.
 /// </summary>
+[Queue("bizcenter")]
 public class AutoPlacementJob
 {
     private const int PlacementWindowDays = 30;

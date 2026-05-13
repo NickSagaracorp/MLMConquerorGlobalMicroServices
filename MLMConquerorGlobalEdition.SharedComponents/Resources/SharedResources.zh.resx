@@ -606,7 +606,16 @@
   <data name="Team.NextRank" xml:space="preserve"><value>下一等级</value></data>
   <data name="Team.DualPtsRequired" xml:space="preserve"><value>所需双团队积分</value></data>
   <data name="Team.EnrollmentPtsRequired" xml:space="preserve"><value>所需注册积分</value></data>
+  <data name="Team.DualPts" xml:space="preserve"><value>双团队积分</value></data>
+  <data name="Team.EnrollmentPts" xml:space="preserve"><value>注册积分</value></data>
   <data name="Team.TotalDualTeamPoints" xml:space="preserve"><value>双团队总积分</value></data>
+  <data name="Team.TotalEnrollmentTeamPoints" xml:space="preserve"><value>注册团队总积分</value></data>
+  <data name="Team.EligibleCurrentRank" xml:space="preserve"><value>合格（当前等级）</value></data>
+  <data name="Team.EligibleNextRank" xml:space="preserve"><value>合格（下一等级）</value></data>
+  <data name="Team.TotalRaw" xml:space="preserve"><value>原始总数</value></data>
+  <data name="Team.PointsTowardNext" xml:space="preserve"><value>{0} / {1} 积分朝向 {2}</value></data>
+  <data name="Team.DtRequirementNotApplicable" xml:space="preserve"><value>DT 要求：不适用于 {0}</value></data>
+  <data name="Team.EtRequirementNotApplicable" xml:space="preserve"><value>ET 要求：不适用于 {0}</value></data>
   <data name="Team.DailyResidualsEarning" xml:space="preserve"><value>每日残差收益</value></data>
   <data name="Team.LastSixMonths" xml:space="preserve"><value>最近 6 个月</value></data>
   <data name="Team.ChartComingSoon" xml:space="preserve"><value>图表即将推出</value></data>

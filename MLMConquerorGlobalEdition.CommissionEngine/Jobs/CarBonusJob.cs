@@ -1,3 +1,4 @@
+using Hangfire;
 using MediatR;
 using MLMConquerorGlobalEdition.CommissionEngine.Features.CalculateCarBonus;
 
@@ -7,6 +8,7 @@ namespace MLMConquerorGlobalEdition.CommissionEngine.Jobs;
 /// HangFire recurring job — runs monthly on the 1st at 5:00 AM UTC.
 /// Calculates Car Bonus for all qualifying ambassadors in the prior calendar month.
 /// </summary>
+[Queue("commissions")]
 public class CarBonusJob
 {
     private readonly IMediator           _mediator;

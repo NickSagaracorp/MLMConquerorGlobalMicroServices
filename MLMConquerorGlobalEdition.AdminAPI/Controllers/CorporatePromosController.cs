@@ -11,6 +11,7 @@ using MLMConquerorGlobalEdition.AdminAPI.Features.CorporatePromos.GetCorporatePr
 using MLMConquerorGlobalEdition.AdminAPI.Features.CorporatePromos.GetCorporatePromos;
 using MLMConquerorGlobalEdition.AdminAPI.Features.CorporatePromos.GetPromoMembers;
 using MLMConquerorGlobalEdition.AdminAPI.Features.CorporatePromos.GetPromoStats;
+using MLMConquerorGlobalEdition.AdminAPI.Features.CorporatePromos.ResetFsbCountdowns;
 using MLMConquerorGlobalEdition.AdminAPI.Features.CorporatePromos.UpdateCorporatePromo;
 using MLMConquerorGlobalEdition.SharedKernel;
 
@@ -119,6 +120,36 @@ public class CorporatePromosController : ControllerBase
             return NotFound(ApiResponse<PromoStatsDto>.Fail(result.ErrorCode!, result.Error!));
 
         return Ok(ApiResponse<PromoStatsDto>.Ok(result.Value!));
+    }
+
+    /// <summary>
+    /// One-shot reset of every eligible ambassador's FSB countdown for this
+    /// promo. Idempotent — re-triggering after a successful run returns
+    /// ALREADY_EXECUTED. Promo must have <c>IsActive=true</c>,
+    /// <c>ResetFsbCountdown=true</c>, and never have run before.
+    /// </summary>
+    [HttpPost("{id}/reset-fsb-countdowns")]
+    public async Task<IActionResult> ResetFsbCountdowns(string id, CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new ResetFsbCountdownsCommand(id), ct);
+
+        if (!result.IsSuccess)
+        {
+            var statusCode = result.ErrorCode switch
+            {
+                "PROMO_NOT_FOUND"   => 404,
+                "ALREADY_EXECUTED"  => 409,
+                "PROMO_NOT_ACTIVE"  => 400,
+                "RESET_NOT_ENABLED" => 400,
+                _                   => 400
+            };
+            return StatusCode(statusCode,
+                ApiResponse<ResetFsbCountdownsResponse>.Fail(result.ErrorCode!, result.Error!));
+        }
+
+        return Ok(ApiResponse<ResetFsbCountdownsResponse>.Ok(
+            result.Value!,
+            $"FSB countdown reset for {result.Value!.AmbassadorsReset} ambassadors."));
     }
 
 

@@ -52,6 +52,8 @@
     <script src="assets/js/simplebar.min.js"></script>
     <script src="assets/js/feather.min.js"></script>
     <script src="assets/js/sidebar-menu.js"></script>
+    <script src="assets/js/apexcharts.min.js"></script>
+    <script src="assets/js/custom/mlm-charts.js"></script>
     <script>
         if (typeof feather !== 'undefined') feather.replace();
     </script>
@@ -67,9 +69,10 @@
                         el.menuInstance = null;
                     }
                     if (typeof Menu !== 'undefined') {
+                        // Accordion: only one top-level group expanded at a time.
                         el.menuInstance = new Menu(el, {
                             orientation: 'vertical',
-                            closeChildren: false
+                            closeChildren: true
                         });
                         if (window.Helpers && typeof window.Helpers.scrollToActive === 'function') {
                             window.Helpers.scrollToActive(false);

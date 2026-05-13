@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.Billing.Services.Recurring;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
@@ -20,15 +21,16 @@ namespace MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Commands.Complete
 /// </summary>
 public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Result<SignupResponse>>
 {
-    private readonly AppDbContext                 _db;
-    private readonly IDateTimeProvider            _dateTime;
-    private readonly IS3FileService               _s3;
-    private readonly ISponsorBonusService         _sponsorBonus;
-    private readonly IFastStartBonusService       _fastStartBonus;
-    private readonly UserManager<ApplicationUser> _userManager;
-    private readonly IJwtService                  _jwtService;
-    private readonly IEncryptionService           _encryption;
-    private readonly ITokenRedemptionService      _tokenRedemption;
+    private readonly AppDbContext                       _db;
+    private readonly IDateTimeProvider                  _dateTime;
+    private readonly IS3FileService                     _s3;
+    private readonly ISponsorBonusService               _sponsorBonus;
+    private readonly IFastStartBonusService             _fastStartBonus;
+    private readonly UserManager<ApplicationUser>       _userManager;
+    private readonly IJwtService                        _jwtService;
+    private readonly IEncryptionService                 _encryption;
+    private readonly ITokenRedemptionService            _tokenRedemption;
+    private readonly IRecurringBillingEnrollmentService _recurringBillingEnrollment;
 
     public CompleteSignupHandler(
         AppDbContext db,
@@ -39,17 +41,19 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
         UserManager<ApplicationUser> userManager,
         IJwtService jwtService,
         IEncryptionService encryption,
-        ITokenRedemptionService tokenRedemption)
+        ITokenRedemptionService tokenRedemption,
+        IRecurringBillingEnrollmentService recurringBillingEnrollment)
     {
-        _db              = db;
-        _dateTime        = dateTime;
-        _s3              = s3;
-        _sponsorBonus    = sponsorBonus;
-        _fastStartBonus  = fastStartBonus;
-        _userManager     = userManager;
-        _jwtService      = jwtService;
-        _encryption      = encryption;
-        _tokenRedemption = tokenRedemption;
+        _db                          = db;
+        _dateTime                    = dateTime;
+        _s3                          = s3;
+        _sponsorBonus                = sponsorBonus;
+        _fastStartBonus              = fastStartBonus;
+        _userManager                 = userManager;
+        _jwtService                  = jwtService;
+        _encryption                  = encryption;
+        _tokenRedemption             = tokenRedemption;
+        _recurringBillingEnrollment  = recurringBillingEnrollment;
     }
 
     public async Task<Result<SignupResponse>> Handle(CompleteSignupCommand command, CancellationToken ct)
@@ -238,6 +242,10 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
         await _fastStartBonus.ComputeAsync(
             member.SponsorMemberId, member.MemberId, order.Id,
             now, member.Email, ct);
+
+        // Create or update the SubscriptionBillingState so the dunning sweep
+        // knows this subscription is enrolled in recurring billing from today.
+        await _recurringBillingEnrollment.EnsureStateForSubscriptionAsync(subscription, member.Email, ct);
 
         await _db.SaveChangesAsync(ct);
 

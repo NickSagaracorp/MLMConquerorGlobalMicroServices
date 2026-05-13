@@ -43,7 +43,7 @@ public class UpdateMemberStatusHandlerTests
     public async Task Handle_WhenMemberNotFound_ReturnsMemberNotFoundFailure()
     {
         await using var db = InMemoryDbHelper.Create();
-        var handler = new UpdateMemberStatusHandler(db, CurrentUser().Object, DateTimeProvider().Object);
+        var handler = new UpdateMemberStatusHandler(db, CurrentUser().Object, DateTimeProvider().Object, new NoOpCacheService());
 
         var result = await handler.Handle(
             new UpdateMemberStatusCommand("AMB-999", new UpdateMemberStatusRequest
@@ -63,7 +63,7 @@ public class UpdateMemberStatusHandlerTests
         await db.MemberProfiles.AddAsync(BuildMember("AMB-001"));
         await db.SaveChangesAsync();
 
-        var handler = new UpdateMemberStatusHandler(db, CurrentUser().Object, DateTimeProvider().Object);
+        var handler = new UpdateMemberStatusHandler(db, CurrentUser().Object, DateTimeProvider().Object, new NoOpCacheService());
         var result = await handler.Handle(
             new UpdateMemberStatusCommand("AMB-001", new UpdateMemberStatusRequest
             {
@@ -93,7 +93,7 @@ public class UpdateMemberStatusHandlerTests
         await db.MemberProfiles.AddAsync(BuildMember("AMB-001"));
         await db.SaveChangesAsync();
 
-        var handler = new UpdateMemberStatusHandler(db, CurrentUser().Object, DateTimeProvider().Object);
+        var handler = new UpdateMemberStatusHandler(db, CurrentUser().Object, DateTimeProvider().Object, new NoOpCacheService());
         var result = await handler.Handle(
             new UpdateMemberStatusCommand("AMB-001", new UpdateMemberStatusRequest
             {
@@ -114,7 +114,7 @@ public class UpdateMemberStatusHandlerTests
         await db.MemberProfiles.AddAsync(BuildMember("AMB-001"));
         await db.SaveChangesAsync();
 
-        var handler = new UpdateMemberStatusHandler(db, CurrentUser().Object, DateTimeProvider().Object);
+        var handler = new UpdateMemberStatusHandler(db, CurrentUser().Object, DateTimeProvider().Object, new NoOpCacheService());
         await handler.Handle(
             new UpdateMemberStatusCommand("AMB-001", new UpdateMemberStatusRequest
             {

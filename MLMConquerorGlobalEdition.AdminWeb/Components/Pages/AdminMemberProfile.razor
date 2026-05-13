@@ -21,91 +21,64 @@ else if (_member is null)
 }
 else
 {
-    <!-- Profile banner -->
-    <div class="position-relative mb-0">
-        <div class="rounded-top-3 bg-primary" style="height:140px; background: linear-gradient(135deg,#605DFF,#4A47CC) !important;"></div>
-    </div>
-
-    <div class="card bg-white border-0 rounded-3 mb-4 rounded-top-0">
-        <div class="card-body p-4">
-            <div class="d-flex justify-content-between flex-wrap gap-3">
-                <div class="d-flex align-items-end">
-                    <div class="flex-shrink-0 position-relative" style="margin-top:-80px;">
-                        <div class="rounded-circle border border-3 border-white d-flex align-items-center justify-content-center bg-primary text-white fw-bold"
-                             style="width:120px;height:120px;font-size:2rem;">
-                            @(_member.FirstName.Length > 0 ? _member.FirstName[0] : '?')
-                        </div>
-                    </div>
-                    <div class="flex-grow-1 ms-3">
-                        <h4 class="fs-22 mb-1 fw-bold">@_member.FirstName @_member.LastName</h4>
-                        <span class="badge bg-secondary">@_member.MemberType</span>
-                        <span class="badge @StatusBadge(_member.Status) ms-1">@_member.Status</span>
-                    </div>
-                </div>
-                <div class="d-flex align-items-start gap-2 flex-wrap">
-                    <a href="/admin/network/binary-tree?memberId=@MemberId" class="btn btn-outline-primary btn-sm">
-                        <i class="ri-share-circle-line me-1"></i>Binary Tree
-                    </a>
-                    <a href="/admin/network/genealogy?memberId=@MemberId" class="btn btn-outline-primary btn-sm">
-                        <i class="ri-node-tree me-1"></i>Genealogy
-                    </a>
-                    <button class="btn btn-outline-danger btn-sm" @onclick="ToggleImpersonate">
-                        <i class="ri-spy-line me-1"></i>Impersonate
-                    </button>
-                </div>
+    @* Admin-only action strip — Tree/Genealogy/Impersonate links live here so they
+       are reachable from any tab. The header banner with name + avatar + status now
+       comes from <UserProfilePage>'s ProfileHeaderCard inside the Profile tab; on
+       other tabs the breadcrumb plus this strip carry the context. *@
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <span class="fw-semibold">@_member.FirstName @_member.LastName</span>
+                <code class="ms-2">@_member.MemberId</code>
+                <span class="badge bg-secondary ms-2">@_member.MemberType</span>
+                <span class="badge @StatusBadge(_member.Status) ms-1">@_member.Status</span>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <a href="/admin/network/binary-tree?memberId=@MemberId" class="btn btn-outline-primary btn-sm">
+                    <i class="ri-share-circle-line me-1"></i>Binary Tree
+                </a>
+                <a href="/admin/network/genealogy?memberId=@MemberId" class="btn btn-outline-primary btn-sm">
+                    <i class="ri-node-tree me-1"></i>Genealogy
+                </a>
+                <button class="btn btn-outline-danger btn-sm" @onclick="ToggleImpersonate">
+                    <i class="ri-spy-line me-1"></i>Impersonate
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- Horizontal tab nav -->
-    <div class="d-flex flex-wrap gap-2 mb-4">
+    <!-- Horizontal tab nav — pill style matching BizCenter UserProfilePage -->
+    <ul class="nav nav-pills profile-top-tabs mb-4 d-flex flex-wrap gap-2" role="tablist">
         @foreach (var tab in _tabs)
         {
             var tk = tab.Key;
-            <button class="btn @(_activeTab == tk ? "btn-primary" : "btn-outline-primary") py-2 px-3 fw-medium"
-                    @onclick="() => OnTabClick(tk)">
-                <i class="@tab.Icon me-1"></i>@tab.Label
-            </button>
+            <li class="nav-item">
+                <button class="nav-link @(_activeTab == tk ? "active" : "")"
+                        @onclick="() => OnTabClick(tk)" type="button">
+                    <i class="@tab.Icon me-1"></i>@tab.Label
+                </button>
+            </li>
         }
-    </div>
+    </ul>
 
     <!-- Tab content -->
     @if (_activeTab == "profile")
     {
-        <div class="row g-4">
-            <div class="col-lg-8">
+        @*
+            Same component the ambassador sees at /profile. Drives URL flips to
+            api/v1/admin/members/{MemberId}/... via ProfileApiBase cascade so the
+            admin reads/writes the selected member without an impersonation step.
+            Sensitive entry points (password, email, 2FA, replicate-site, photo
+            upload) are auto-hidden when ViewContext.IsAdminContext is true.
+        *@
+        <UserProfilePage MemberProfileId="@MemberId" />
+
+        @* Network/Income stat strip — admin-only context that the shared profile
+           component does not surface. Keep visible alongside the unified UI so
+           support staff still see at-a-glance team metrics on this page. *@
+        <div class="row g-4 mt-1">
+            <div class="col-lg-6">
                 <div class="card border-0 shadow-sm">
-                    <div class="card-body p-4">
-                        <h5 class="fw-semibold border-bottom pb-3 mb-3">Member Info</h5>
-                        <dl class="row mb-0">
-                            <dt class="col-sm-4 text-muted">Member ID</dt>
-                            <dd class="col-sm-8"><code>@_member.MemberId</code></dd>
-                            <dt class="col-sm-4 text-muted">Full Name</dt>
-                            <dd class="col-sm-8">@_member.FirstName @_member.LastName</dd>
-                            <dt class="col-sm-4 text-muted">Phone</dt>
-                            <dd class="col-sm-8">@(_member.Phone ?? "—")</dd>
-                            <dt class="col-sm-4 text-muted">Country</dt>
-                            <dd class="col-sm-8">@_member.Country</dd>
-                            <dt class="col-sm-4 text-muted">Member Type</dt>
-                            <dd class="col-sm-8"><span class="badge bg-secondary">@_member.MemberType</span></dd>
-                            <dt class="col-sm-4 text-muted">Status</dt>
-                            <dd class="col-sm-8"><span class="badge @StatusBadge(_member.Status)">@_member.Status</span></dd>
-                            <dt class="col-sm-4 text-muted">Enroll Date</dt>
-                            <dd class="col-sm-8">@_member.EnrollDate.ToString("yyyy-MM-dd")</dd>
-                            <dt class="col-sm-4 text-muted">Sponsor ID</dt>
-                            <dd class="col-sm-8">
-                                @if (!string.IsNullOrWhiteSpace(_member.SponsorMemberId))
-                                {
-                                    <a href="/admin/members/@_member.SponsorMemberId" class="text-primary">@_member.SponsorMemberId</a>
-                                }
-                                else { <span class="text-muted">—</span> }
-                            </dd>
-                        </dl>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-4">
-                <div class="card border-0 shadow-sm mb-3">
                     <div class="card-body p-4">
                         <h5 class="fw-semibold border-bottom pb-3 mb-3">Network Stats</h5>
                         <dl class="row mb-0">
@@ -139,6 +112,8 @@ else
                         </dl>
                     </div>
                 </div>
+            </div>
+            <div class="col-lg-6">
                 <div class="card border-0 shadow-sm">
                     <div class="card-body p-4">
                         <h5 class="fw-semibold border-bottom pb-3 mb-3">Income</h5>
@@ -147,6 +122,32 @@ else
                             <dd class="col-5 fw-semibold text-success">$@_member.CurrentMonthIncome.ToString("F2")</dd>
                             <dt class="col-7 text-muted">Current Year</dt>
                             <dd class="col-5 fw-semibold text-success">$@_member.CurrentYearIncome.ToString("F2")</dd>
+                            <dt class="col-7 text-muted">Sponsor</dt>
+                            <dd class="col-5 fw-semibold">
+                                @if (!string.IsNullOrWhiteSpace(_member.SponsorMemberId))
+                                {
+                                    <a href="/admin/members/@_member.SponsorMemberId" target="_blank" rel="noopener" class="text-primary text-decoration-none">
+                                        @(string.IsNullOrWhiteSpace(_member.SponsorFullName) ? _member.SponsorMemberId : _member.SponsorFullName)
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">N/A</span>
+                                }
+                            </dd>
+                            <dt class="col-7 text-muted">Dual Team Upline</dt>
+                            <dd class="col-5 fw-semibold">
+                                @if (!string.IsNullOrWhiteSpace(_member.DualTeamUplineMemberId))
+                                {
+                                    <a href="/admin/members/@_member.DualTeamUplineMemberId" target="_blank" rel="noopener" class="text-primary text-decoration-none">
+                                        @(string.IsNullOrWhiteSpace(_member.DualTeamUplineFullName) ? _member.DualTeamUplineMemberId : _member.DualTeamUplineFullName)
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">N/A</span>
+                                }
+                            </dd>
                         </dl>
                     </div>
                 </div>
@@ -188,24 +189,32 @@ else
     else if (_activeTab == "enrollment")
     {
         <!-- Enrollment Team sub-tabs -->
-        <div class="d-flex gap-2 mb-3 border-bottom pb-2">
-            <button class="btn @(_enrollSub == "myteam"    ? "btn-primary" : "btn-outline-secondary") btn-sm"
-                    @onclick='() => _enrollSub = "myteam"'>
-                <i class="ri-group-line me-1"></i>My Team
-            </button>
-            <button class="btn @(_enrollSub == "branches"  ? "btn-primary" : "btn-outline-secondary") btn-sm"
-                    @onclick='() => _enrollSub = "branches"'>
-                <i class="ri-git-branch-line me-1"></i>Branches
-            </button>
-            <button class="btn @(_enrollSub == "customers" ? "btn-primary" : "btn-outline-secondary") btn-sm"
-                    @onclick='() => _enrollSub = "customers"'>
-                <i class="ri-user-heart-line me-1"></i>Customers
-            </button>
-            <button class="btn @(_enrollSub == "visualizer" ? "btn-primary" : "btn-outline-secondary") btn-sm"
-                    @onclick='() => _enrollSub = "visualizer"'>
-                <i class="ri-organization-chart me-1"></i>Visualizer
-            </button>
-        </div>
+        <ul class="nav nav-pills profile-sub-tabs mb-4 d-flex flex-wrap gap-2" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link @(_enrollSub == "myteam" ? "active" : "")"
+                        @onclick='() => _enrollSub = "myteam"' type="button">
+                    <i class="ri-group-line me-1"></i>My Team
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link @(_enrollSub == "branches" ? "active" : "")"
+                        @onclick='() => _enrollSub = "branches"' type="button">
+                    <i class="ri-git-branch-line me-1"></i>Branches
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link @(_enrollSub == "customers" ? "active" : "")"
+                        @onclick='() => _enrollSub = "customers"' type="button">
+                    <i class="ri-user-heart-line me-1"></i>Customers
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link @(_enrollSub == "visualizer" ? "active" : "")"
+                        @onclick='() => _enrollSub = "visualizer"' type="button">
+                    <i class="ri-organization-chart me-1"></i>Visualizer
+                </button>
+            </li>
+        </ul>
 
         @if (_enrollSub == "myteam")
         {
@@ -236,28 +245,38 @@ else
     else if (_activeTab == "commissions")
     {
         <!-- Commission sub-tabs -->
-        <div class="d-flex gap-2 mb-3 border-bottom pb-2">
-            <button class="btn @(_commSub == "overview"     ? "btn-primary" : "btn-outline-secondary") btn-sm"
-                    @onclick='() => _commSub = "overview"'>
-                <i class="ri-money-dollar-circle-line me-1"></i>Overview
-            </button>
-            <button class="btn @(_commSub == "faststart"    ? "btn-primary" : "btn-outline-secondary") btn-sm"
-                    @onclick='() => _commSub = "faststart"'>
-                <i class="ri-trophy-line me-1"></i>Fast Start
-            </button>
-            <button class="btn @(_commSub == "presidential" ? "btn-primary" : "btn-outline-secondary") btn-sm"
-                    @onclick='() => _commSub = "presidential"'>
-                <i class="ri-award-line me-1"></i>Presidential
-            </button>
-            <button class="btn @(_commSub == "boost"        ? "btn-primary" : "btn-outline-secondary") btn-sm"
-                    @onclick='() => _commSub = "boost"'>
-                <i class="ri-medal-line me-1"></i>Boost
-            </button>
-            <button class="btn @(_commSub == "carbonus"     ? "btn-primary" : "btn-outline-secondary") btn-sm"
-                    @onclick='() => _commSub = "carbonus"'>
-                <i class="ri-car-line me-1"></i>Car Bonus
-            </button>
-        </div>
+        <ul class="nav nav-pills profile-sub-tabs mb-4 d-flex flex-wrap gap-2" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link @(_commSub == "overview" ? "active" : "")"
+                        @onclick='() => _commSub = "overview"' type="button">
+                    <i class="ri-money-dollar-circle-line me-1"></i>Overview
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link @(_commSub == "faststart" ? "active" : "")"
+                        @onclick='() => _commSub = "faststart"' type="button">
+                    <i class="ri-trophy-line me-1"></i>Fast Start
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link @(_commSub == "presidential" ? "active" : "")"
+                        @onclick='() => _commSub = "presidential"' type="button">
+                    <i class="ri-award-line me-1"></i>Presidential
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link @(_commSub == "boost" ? "active" : "")"
+                        @onclick='() => _commSub = "boost"' type="button">
+                    <i class="ri-medal-line me-1"></i>Boost
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link @(_commSub == "carbonus" ? "active" : "")"
+                        @onclick='() => _commSub = "carbonus"' type="button">
+                    <i class="ri-car-line me-1"></i>Car Bonus
+                </button>
+            </li>
+        </ul>
 
         @if (_commSub == "overview")
         {
@@ -499,43 +518,29 @@ else
             </div>
         }
     }
-    else if (_activeTab == "network")
-    {
-        <div class="card border-0 shadow-sm">
-            <div class="card-body p-4">
-                <h5 class="fw-semibold border-bottom pb-3 mb-4">Network Links</h5>
-                <div class="d-flex flex-wrap gap-3">
-                    <a href="/admin/network/binary-tree?memberId=@MemberId" class="card border-0 shadow-sm p-3 text-center text-decoration-none" style="min-width:160px;">
-                        <i class="ri-share-circle-line fs-3 text-primary mb-2 d-block"></i>
-                        <span class="fw-medium">Binary Tree</span>
-                        <small class="text-muted d-block">View dual team</small>
-                    </a>
-                    <a href="/admin/network/genealogy?memberId=@MemberId" class="card border-0 shadow-sm p-3 text-center text-decoration-none" style="min-width:160px;">
-                        <i class="ri-node-tree fs-3 text-primary mb-2 d-block"></i>
-                        <span class="fw-medium">Genealogy Tree</span>
-                        <small class="text-muted d-block">View enrollment tree</small>
-                    </a>
-                </div>
-            </div>
-        </div>
-    }
     else if (_activeTab == "dualteam")
     {
         <!-- Dual Team sub-tabs -->
-        <div class="d-flex gap-2 mb-3 border-bottom pb-2">
-            <button class="btn @(_dualSub == "myteam" ? "btn-primary" : "btn-outline-secondary") btn-sm"
-                    @onclick='() => _dualSub = "myteam"'>
-                <i class="ri-group-line me-1"></i>My Team
-            </button>
-            <button class="btn @(_dualSub == "visualizer" ? "btn-primary" : "btn-outline-secondary") btn-sm"
-                    @onclick='() => _dualSub = "visualizer"'>
-                <i class="ri-share-circle-line me-1"></i>Visualizer
-            </button>
-            <button class="btn @(_dualSub == "residuals" ? "btn-primary" : "btn-outline-secondary") btn-sm"
-                    @onclick='() => _dualSub = "residuals"'>
-                <i class="ri-money-dollar-circle-line me-1"></i>Residuals
-            </button>
-        </div>
+        <ul class="nav nav-pills profile-sub-tabs mb-4 d-flex flex-wrap gap-2" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link @(_dualSub == "myteam" ? "active" : "")"
+                        @onclick='() => _dualSub = "myteam"' type="button">
+                    <i class="ri-group-line me-1"></i>My Team
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link @(_dualSub == "visualizer" ? "active" : "")"
+                        @onclick='() => _dualSub = "visualizer"' type="button">
+                    <i class="ri-share-circle-line me-1"></i>Visualizer
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link @(_dualSub == "residuals" ? "active" : "")"
+                        @onclick='() => _dualSub = "residuals"' type="button">
+                    <i class="ri-money-dollar-circle-line me-1"></i>Residuals
+                </button>
+            </li>
+        </ul>
 
         @if (_dualSub == "myteam")
         {
@@ -555,20 +560,9 @@ else
         {
             <DualTeamResiduals MemberProfileId="@MemberId"
                                ApiBaseUrl="@($"api/v1/admin/members/{MemberId}")"
+                               EnrollDate="@_member.EnrollDate"
                                ShowBreadcrumb="false" />
         }
-    }
-    else if (_activeTab == "placement")
-    {
-        <div class="card border-0 shadow-sm">
-            <div class="card-body p-4 text-center py-5">
-                <i class="ri-user-add-line fs-2 text-primary d-block mb-3"></i>
-                <p class="text-muted mb-3">Gestiona el placement de los miembros reclutados por este ambassador.</p>
-                <a href="/admin/placement?sponsorId=@MemberId" class="btn btn-primary btn-sm">
-                    <i class="ri-external-link-line me-1"></i>Ver Placements
-                </a>
-            </div>
-        </div>
     }
     else if (_activeTab == "orders")
     {
@@ -627,9 +621,7 @@ else
         new("profile",    "Profile",         "ri-user-line"),
         new("status",     "Status",          "ri-toggle-line"),
         new("enrollment", "Enrollment Team", "ri-organization-chart"),
-        new("network",    "Network",         "ri-node-tree"),
         new("dualteam",   "Dual Team",       "ri-share-circle-line"),
-        new("placement",  "Placement",       "ri-user-add-line"),
         new("commissions","Commissions",     "ri-money-dollar-circle-line"),
         new("ranks",      "Ranks",           "ri-award-line"),
         new("membership", "Membership",      "ri-vip-crown-line"),
@@ -818,7 +810,10 @@ else
     private record MemberDetailDto(
         string MemberId, string FirstName, string LastName,
         string? Phone, string Country, string Status, string MemberType,
-        DateTime EnrollDate, string? SponsorMemberId, DateTime CreationDate,
+        DateTime EnrollDate,
+        string? SponsorMemberId, string? SponsorFullName,
+        string? DualTeamUplineMemberId, string? DualTeamUplineFullName,
+        DateTime CreationDate,
         int DualTeamPoints, int EnrollmentPoints, int DualTeamSize, int EnrollmentTeamSize,
         decimal CurrentMonthIncome, decimal CurrentYearIncome,
         string? CurrentRank, int? CurrentRankId,

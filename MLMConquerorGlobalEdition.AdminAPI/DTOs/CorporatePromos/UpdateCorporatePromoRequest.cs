@@ -8,4 +8,8 @@ public class UpdateCorporatePromoRequest
     public DateTime EndDate { get; set; }
     public string? BannerUrl { get; set; }
     public bool IsActive { get; set; }
+
+    public bool DoubleSponsorBonus { get; set; }
+    public bool DoubleBuilderBonus { get; set; }
+    public bool ResetFsbCountdown  { get; set; }
 }

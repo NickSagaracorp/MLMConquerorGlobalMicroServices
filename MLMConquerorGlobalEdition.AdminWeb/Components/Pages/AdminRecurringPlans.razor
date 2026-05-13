@@ -1,0 +1,415 @@
+@page "/admin/billing/recurring-plans"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin,BillingManager")]
+@inject HttpClient Http
+
+<PageTitle>Recurring Plans — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Billing"), new("Recurring Plans") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-loop-right-line me-2 text-primary"></i>Recurring Billing Plans
+        </h6>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+        <button class="btn btn-primary btn-sm" @onclick="OpenCreate"><i class="ri-add-line me-1"></i>New Plan</button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="PlanDto" DataSource="@_items"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="25" PageSizes="@(new int[]{25,50,100})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn Field="@nameof(PlanDto.Id)" HeaderText="ID" Width="70" TextAlign="TextAlign.Center" />
+                    <GridColumn Field="@nameof(PlanDto.Name)" HeaderText="Name" Width="220">
+                        <Template><span class="fw-semibold">@(((PlanDto)context).Name)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Cycle" Width="160">
+                        <Template>@CycleLabel(((PlanDto)context).CycleType)</Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(PlanDto.RetryCadenceDays)" HeaderText="Retry Cadence (days)" Width="160">
+                        <Template><code class="small">@(((PlanDto)context).RetryCadenceDays)</code></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="On All Retries Fail" Width="200">
+                        <Template>@FailurePolicyLabel(((PlanDto)context).OnAllRetriesFail)</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Stop After (days)" Width="130" TextAlign="TextAlign.Center">
+                        <Template>@(((PlanDto)context).StopAfterUnbilledDays?.ToString() ?? "—")</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Commission First" Width="130" TextAlign="TextAlign.Center">
+                        <Template><span class="badge @(((PlanDto)context).PayFromCommissionBalanceFirst ? "bg-info text-dark" : "bg-secondary")">@(((PlanDto)context).PayFromCommissionBalanceFirst ? "Yes" : "No")</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Fixed Amount" Width="120" TextAlign="TextAlign.Right">
+                        <Template>@(((PlanDto)context).FixedAmountOverride is decimal a ? "$" + a.ToString("F2") : "—")</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Products" Width="100" TextAlign="TextAlign.Center">
+                        <Template><span class="badge bg-light text-dark border">@(((PlanDto)context).PlanProducts.Count)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Status" Width="100" TextAlign="TextAlign.Center">
+                        <Template><span class="badge @(((PlanDto)context).IsActive ? "bg-success" : "bg-secondary")">@(((PlanDto)context).IsActive ? "Active" : "Inactive")</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="110" TextAlign="TextAlign.Center">
+                        <Template>
+                            <button class="btn btn-sm btn-outline-primary py-0 me-1" @onclick="() => OpenEdit((PlanDto)context)"><i class="ri-edit-line"></i></button>
+                            <button class="btn btn-sm btn-outline-danger py-0" @onclick="() => ConfirmDelete((PlanDto)context)" disabled="@(!((PlanDto)context).IsActive)"><i class="ri-delete-bin-line"></i></button>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+    <div class="card-footer bg-light small text-muted">
+        Plans drive the recurring billing engine. Retry cadence is a comma-separated list of day offsets (e.g. <code>1,3,7</code>).
+    </div>
+</div>
+
+@if (_showForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold">@(_editId is null ? "New Recurring Plan" : "Edit Recurring Plan")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseForm"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+                            <input class="form-control" @bind="_form.Name" placeholder="e.g. Travel Advantage Monthly" />
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="planActive" @bind="_form.IsActive" />
+                                <label class="form-check-label" for="planActive">Active</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Cycle Type <span class="text-danger">*</span></label>
+                            <select class="form-select" @bind="_form.CycleType">
+                                <option value="Every30Days">Every 30 days</option>
+                                <option value="AnnualFromLastBilling">Annual (from last billing)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Retry Cadence Days <span class="text-danger">*</span></label>
+                            <input class="form-control @(CadenceValid ? "" : "is-invalid")" @bind="_form.RetryCadenceDays" placeholder="e.g. 1,3,7" />
+                            <div class="invalid-feedback">Comma-separated positive integers only.</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">On All Retries Fail <span class="text-danger">*</span></label>
+                            <select class="form-select" @bind="_form.OnAllRetriesFail">
+                                <option value="RetryOnMonthlyAnniversary">Retry on monthly anniversary</option>
+                                <option value="MarkExpired">Mark membership expired</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Stop After Unbilled Days</label>
+                            <input type="number" min="1" class="form-control" placeholder="e.g. 90 (blank = never)"
+                                   value="@(_form.StopAfterUnbilledDays?.ToString() ?? "")"
+                                   @onchange="e => _form.StopAfterUnbilledDays = int.TryParse(e.Value?.ToString(), out var v) && v > 0 ? v : null" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Token Type (override)</label>
+                            <select class="form-select" value="@(_form.TokenTypeId?.ToString() ?? "")"
+                                    @onchange="e => _form.TokenTypeId = int.TryParse(e.Value?.ToString(), out var v) ? v : null">
+                                <option value="">— none —</option>
+                                @foreach (var tt in _tokenTypes)
+                                {
+                                    <option value="@tt.Id">@tt.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Fixed Amount Override (USD)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" placeholder="optional"
+                                   value="@(_form.FixedAmountOverride?.ToString() ?? "")"
+                                   @onchange="e => _form.FixedAmountOverride = decimal.TryParse(e.Value?.ToString(), out var v) && v >= 0 ? v : null" />
+                        </div>
+
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="planCommFirst" @bind="_form.PayFromCommissionBalanceFirst" />
+                                <label class="form-check-label" for="planCommFirst">Pay from commission balance first (before charging credit card)</label>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="d-flex align-items-center mb-2">
+                                <label class="form-label fw-semibold mb-0 flex-grow-1">Plan Products</label>
+                                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddProduct"><i class="ri-add-line"></i> Add product</button>
+                            </div>
+                            <table class="table table-sm align-middle">
+                                <thead class="table-light">
+                                    <tr><th style="width:55%">Product</th><th style="width:35%">Token Type (override)</th><th style="width:10%"></th></tr>
+                                </thead>
+                                <tbody>
+                                    @for (int i = 0; i < _form.PlanProducts.Count; i++)
+                                    {
+                                        var idx = i;
+                                        var pp = _form.PlanProducts[idx];
+                                        <tr>
+                                            <td>
+                                                <select class="form-select form-select-sm" @bind="pp.ProductId">
+                                                    <option value="">— select product —</option>
+                                                    @foreach (var pr in _products)
+                                                    {
+                                                        <option value="@pr.Id">@pr.Name</option>
+                                                    }
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <select class="form-select form-select-sm" value="@(pp.TokenTypeIdOverride?.ToString() ?? "")"
+                                                        @onchange="e => pp.TokenTypeIdOverride = int.TryParse(e.Value?.ToString(), out var v) ? v : null">
+                                                    <option value="">— none —</option>
+                                                    @foreach (var tt in _tokenTypes)
+                                                    {
+                                                        <option value="@tt.Id">@tt.Name</option>
+                                                    }
+                                                </select>
+                                            </td>
+                                            <td><button type="button" class="btn btn-sm btn-outline-danger py-0" @onclick="() => RemoveProduct(idx)"><i class="ri-delete-bin-line"></i></button></td>
+                                        </tr>
+                                    }
+                                    @if (_form.PlanProducts.Count == 0)
+                                    {
+                                        <tr><td colspan="3" class="text-center text-muted small">No products linked to this plan.</td></tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                    <button class="btn btn-primary" @onclick="Save" disabled="@(_saving || !CanSave)">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        @(_editId is null ? "Create" : "Save Changes")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showDeleteConfirm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header"><h5 class="modal-title fw-bold text-danger">Deactivate Plan</h5><button type="button" class="btn-close" @onclick="() => { _showDeleteConfirm = false; _deleteItem = null; }"></button></div>
+                <div class="modal-body">Deactivate plan <strong>@_deleteItem?.Name</strong> (#@_deleteItem?.Id)? Existing billing states are unaffected, but the plan will no longer be assignable.</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => { _showDeleteConfirm = false; _deleteItem = null; }">Cancel</button>
+                    <button class="btn btn-danger" @onclick="DeleteItem" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Deactivate
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<PlanDto> _items = new();
+    private bool _loading = true;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private bool _showForm;
+    private bool _showDeleteConfirm;
+    private int? _editId;
+    private PlanFormModel _form = new();
+    private PlanDto? _deleteItem;
+    private List<ProductOpt> _products = new();
+    private List<TokenTypeOpt> _tokenTypes = new();
+
+    private bool CadenceValid => ParseCadence(_form.RetryCadenceDays) is not null;
+    private bool CanSave => !string.IsNullOrWhiteSpace(_form.Name) && CadenceValid;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLookupsAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadLookupsAsync()
+    {
+        try
+        {
+            var prods = await Http.GetFromJsonAsync<ApiResp<Paged<ProductOpt>>>("api/v1/admin/products?page=1&pageSize=500");
+            if (prods?.Success == true && prods.Data?.Items is not null)
+                _products = prods.Data.Items.OrderBy(p => p.Name).ToList();
+        }
+        catch (Exception ex) { _alertMsg = $"Could not load products: {ex.Message}"; _alertIsError = true; }
+        try
+        {
+            var tts = await Http.GetFromJsonAsync<ApiResp<IEnumerable<TokenTypeOpt>>>("api/v1/admin/token-types");
+            if (tts?.Success == true && tts.Data is not null)
+                _tokenTypes = tts.Data.OrderBy(t => t.Name).ToList();
+        }
+        catch (Exception ex) { _alertMsg = $"Could not load token types: {ex.Message}"; _alertIsError = true; }
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<IEnumerable<PlanDto>>>("api/v1/admin/billing/recurring-plans");
+            if (resp?.Success == true && resp.Data is not null)
+                _items = resp.Data.ToList();
+            else { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load recurring plans."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private void OpenCreate()
+    {
+        _editId = null;
+        _form = new PlanFormModel
+        {
+            Name = string.Empty,
+            CycleType = "Every30Days",
+            RetryCadenceDays = "1,3,7",
+            OnAllRetriesFail = "RetryOnMonthlyAnniversary",
+            IsActive = true
+        };
+        _showForm = true;
+    }
+
+    private void OpenEdit(PlanDto p)
+    {
+        _editId = p.Id;
+        _form = new PlanFormModel
+        {
+            Name = p.Name,
+            CycleType = p.CycleType,
+            RetryCadenceDays = p.RetryCadenceDays,
+            OnAllRetriesFail = p.OnAllRetriesFail,
+            StopAfterUnbilledDays = p.StopAfterUnbilledDays,
+            PayFromCommissionBalanceFirst = p.PayFromCommissionBalanceFirst,
+            TokenTypeId = p.TokenTypeId,
+            FixedAmountOverride = p.FixedAmountOverride,
+            IsActive = p.IsActive,
+            PlanProducts = p.PlanProducts.Select(x => new PlanProductRow { ProductId = x.ProductId, TokenTypeIdOverride = x.TokenTypeIdOverride }).ToList()
+        };
+        _showForm = true;
+    }
+
+    private void CloseForm() { _showForm = false; _editId = null; }
+
+    private void AddProduct() => _form.PlanProducts.Add(new PlanProductRow());
+    private void RemoveProduct(int idx) { if (idx >= 0 && idx < _form.PlanProducts.Count) _form.PlanProducts.RemoveAt(idx); }
+
+    private async Task Save()
+    {
+        if (!CanSave) { _alertMsg = "Name is required and retry cadence must be comma-separated positive integers."; _alertIsError = true; return; }
+        _saving = true;
+        try
+        {
+            var payload = new
+            {
+                Name = _form.Name.Trim(),
+                CycleType = _form.CycleType,
+                RetryCadenceDays = _form.RetryCadenceDays.Trim(),
+                OnAllRetriesFail = _form.OnAllRetriesFail,
+                StopAfterUnbilledDays = _form.StopAfterUnbilledDays,
+                PayFromCommissionBalanceFirst = _form.PayFromCommissionBalanceFirst,
+                TokenTypeId = _form.TokenTypeId,
+                FixedAmountOverride = _form.FixedAmountOverride,
+                IsActive = _form.IsActive,
+                PlanProducts = _form.PlanProducts
+                    .Where(p => !string.IsNullOrWhiteSpace(p.ProductId))
+                    .Select(p => new { ProductId = p.ProductId.Trim(), p.TokenTypeIdOverride }).ToList()
+            };
+            var response = _editId is null
+                ? await Http.PostAsJsonAsync("api/v1/admin/billing/recurring-plans", payload)
+                : await Http.PutAsJsonAsync($"api/v1/admin/billing/recurring-plans/{_editId}", payload);
+            if (response.IsSuccessStatusCode) { _alertMsg = _editId is null ? "Plan created." : "Plan updated."; _alertIsError = false; CloseForm(); await LoadAsync(); }
+            else
+            {
+                var body = await response.Content.ReadFromJsonAsync<ApiResp<object>>();
+                _alertMsg = body?.Errors?.FirstOrDefault() ?? $"Save failed ({response.StatusCode}).";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private void ConfirmDelete(PlanDto p) { _deleteItem = p; _showDeleteConfirm = true; }
+
+    private async Task DeleteItem()
+    {
+        if (_deleteItem is null) return;
+        _saving = true;
+        try
+        {
+            var response = await Http.DeleteAsync($"api/v1/admin/billing/recurring-plans/{_deleteItem.Id}");
+            if (response.IsSuccessStatusCode) { _alertMsg = "Plan deactivated."; _alertIsError = false; _showDeleteConfirm = false; _deleteItem = null; await LoadAsync(); }
+            else { _alertMsg = $"Failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private static int[]? ParseCadence(string? s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return null;
+        var parts = s.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length == 0) return null;
+        var result = new List<int>();
+        foreach (var p in parts) { if (!int.TryParse(p, out var d) || d <= 0) return null; result.Add(d); }
+        return result.ToArray();
+    }
+
+    private static string CycleLabel(string c) => c switch
+    { "Every30Days" => "Every 30 days", "AnnualFromLastBilling" => "Annual (from last billing)", _ => c };
+    private static string FailurePolicyLabel(string p) => p switch
+    { "RetryOnMonthlyAnniversary" => "Retry on monthly anniversary", "MarkExpired" => "Mark membership expired", _ => p };
+
+    private class PlanFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string CycleType { get; set; } = "Every30Days";
+        public string RetryCadenceDays { get; set; } = "1,3,7";
+        public string OnAllRetriesFail { get; set; } = "RetryOnMonthlyAnniversary";
+        public int? StopAfterUnbilledDays { get; set; }
+        public bool PayFromCommissionBalanceFirst { get; set; }
+        public int? TokenTypeId { get; set; }
+        public decimal? FixedAmountOverride { get; set; }
+        public bool IsActive { get; set; } = true;
+        public List<PlanProductRow> PlanProducts { get; set; } = new();
+    }
+    private class PlanProductRow { public string ProductId { get; set; } = string.Empty; public int? TokenTypeIdOverride { get; set; } }
+
+    // Enum-typed fields (CycleType, OnAllRetriesFail) arrive as enum NAMES from the API (JsonStringEnumConverter) and are sent back the same way.
+    private record PlanDto(int Id, string Name, string CycleType, string RetryCadenceDays, string OnAllRetriesFail,
+        int? StopAfterUnbilledDays, bool PayFromCommissionBalanceFirst, int? TokenTypeId, decimal? FixedAmountOverride,
+        bool IsActive, List<PlanProductDto> PlanProducts);
+    private record PlanProductDto(int Id, string ProductId, int? TokenTypeIdOverride);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize);
+    private record ProductOpt(string Id, string Name);
+    private record TokenTypeOpt(int Id, string Name);
+}

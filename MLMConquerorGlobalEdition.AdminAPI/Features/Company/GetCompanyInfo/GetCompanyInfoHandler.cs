@@ -33,6 +33,7 @@ public class GetCompanyInfoHandler : IRequestHandler<GetCompanyInfoQuery, Result
             company.PresidentName,
             company.WebsiteUrl,
             company.LogoUrl,
+            company.DefaultPayoutFrequency.ToString(),
             company.CreationDate,
             company.LastUpdateDate));
     }

@@ -1,3 +1,4 @@
+using Hangfire;
 using MediatR;
 using MLMConquerorGlobalEdition.CommissionEngine.Features.CalculateCarBonus;
 using MLMConquerorGlobalEdition.CommissionEngine.Services;
@@ -13,6 +14,7 @@ namespace MLMConquerorGlobalEdition.CommissionEngine.Jobs;
 /// Idempotent: <see cref="CalculateCarBonusHandler"/> returns ALREADY_CALCULATED
 /// when a month was already processed, so re-triggering is always safe.
 /// </summary>
+[Queue("commissions")]
 public class CarBonusSweepJob
 {
     private const int LookbackMonths = 3;

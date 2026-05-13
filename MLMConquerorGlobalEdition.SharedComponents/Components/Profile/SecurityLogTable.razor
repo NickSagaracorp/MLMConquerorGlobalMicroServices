@@ -67,6 +67,9 @@
 @code {
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
 
+    [CascadingParameter(Name = "ProfileApiBase")]
+    private string ProfileApiBase { get; set; } = "api/v1/bizcenter";
+
     private bool _isLoading = true;
     private int  _page     = 1;
     private int  _pageSize = 20;
@@ -90,7 +93,7 @@
         try
         {
             var response = await Http.GetFromJsonAsync<ApiResponse<PagedData<SecurityLogItem>>>(
-                $"api/v1/bizcenter/profile/security-log?page={page}&pageSize={_pageSize}");
+                $"{ProfileApiBase}/profile/security-log?page={page}&pageSize={_pageSize}");
 
             if (response?.Success == true && response.Data is not null)
             {

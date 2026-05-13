@@ -1,5 +1,6 @@
 @inject HttpClient Http
 @inject IStringLocalizer<SharedResources> L
+@inject IViewContextService ViewContext
 
 @*
     Commissions card for the Billing tab. Displays the member's payout
@@ -156,6 +157,18 @@
 
     [Parameter] public EventCallback OnSaved { get; set; }
 
+    [CascadingParameter(Name = "ProfileApiBase")]
+    private string ProfileApiBase { get; set; } = "api/v1/bizcenter";
+
+    [CascadingParameter(Name = "ProfileIsAdmin")]
+    private bool ProfileIsAdmin { get; set; }
+
+    // Wallet endpoints split by host: BizCenter uses /wallets (JWT-scoped), AdminAPI uses
+    // /admin/members/{memberId}/wallets. ProfileApiBase already encodes the same split.
+    private string WalletsBase => ProfileIsAdmin && !string.IsNullOrEmpty(MemberProfileId)
+        ? $"api/v1/admin/members/{MemberProfileId}/wallets"
+        : "api/v1/bizcenter/wallets";
+
     private List<WalletDto> _wallets = new();
     private WalletDto? _preferredWallet;
 
@@ -180,8 +193,7 @@
     {
         try
         {
-            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<WalletDto>>>(
-                "api/v1/bizcenter/wallets");
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<WalletDto>>>(WalletsBase);
             if (resp?.Success == true)
             {
                 _wallets = resp.Data ?? new();
@@ -218,7 +230,7 @@
             // 1) Persist payout frequency via PUT /profile (full payload required).
             if (_editFrequency != _initialFrequency)
             {
-                var profileResp = await Http.PutAsJsonAsync("api/v1/bizcenter/profile", new
+                var profileResp = await Http.PutAsJsonAsync($"{ProfileApiBase}/profile", new
                 {
                     Phone, WhatsApp, Country, State, City, Address, ZipCode,
                     AddressChangeReason = (string?)null,
@@ -238,7 +250,7 @@
             if (_editWalletType != 0 && _editWalletType != _initialWalletType)
             {
                 var walletResp = await Http.PutAsync(
-                    $"api/v1/bizcenter/wallets/{_editWalletType}/default", null);
+                    $"{WalletsBase}/{_editWalletType}/default", null);
                 if (!walletResp.IsSuccessStatusCode)
                 {
                     var body = await walletResp.Content.ReadAsStringAsync();

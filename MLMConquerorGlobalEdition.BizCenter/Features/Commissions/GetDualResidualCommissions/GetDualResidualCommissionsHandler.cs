@@ -20,7 +20,8 @@ public class GetDualResidualCommissionsHandler : IRequestHandler<GetDualResidual
     public async Task<Result<PagedResult<CommissionEarningDto>>> Handle(GetDualResidualCommissionsQuery request, CancellationToken ct)
     {
         var v = await _service.GetDualResidualAsync(
-            _currentUser.MemberId, request.Page, request.PageSize, ct);
+            _currentUser.MemberId, request.Page, request.PageSize,
+            request.Year, request.Month, ct);
 
         var result = new PagedResult<CommissionEarningDto>
         {

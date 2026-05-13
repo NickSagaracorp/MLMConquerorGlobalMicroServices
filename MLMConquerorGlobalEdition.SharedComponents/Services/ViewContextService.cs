@@ -34,6 +34,17 @@ public class ViewContextService : IViewContextService
         if (_initialized) return;
         _initialized = true;
 
+        // Derive admin/member routing context from the request path of the host that
+        // resolved this scoped service. AdminWeb pages live under /admin/...; everything
+        // else (BizCenterWeb, the join page) is treated as member context. This avoids
+        // relying on an explicit initializer call that historically wasn't wired up.
+        var path = _httpContextAccessor.HttpContext?.Request.Path.Value;
+        if (!string.IsNullOrEmpty(path) &&
+            path.StartsWith("/admin/", StringComparison.OrdinalIgnoreCase))
+        {
+            _isAdminContext = true;
+        }
+
         var user = _httpContextAccessor.HttpContext?.User;
         if (user?.Identity?.IsAuthenticated != true) return;
 
@@ -101,15 +112,45 @@ public class ViewContextService : IViewContextService
         _initialized     = true;
     }
 
+    /// <summary>
+    /// Support tier seniority (Nick's spec): L1 ⊇ L2 ⊇ L3 — higher tiers see/do everything
+    /// lower tiers do. Used so a permission scoped to a junior tier is also granted to all
+    /// senior tiers within the support chain.
+    /// </summary>
+    private static readonly Dictionary<string, int> SupportTierRank = new()
+    {
+        [AppRoles.SupportLevel3] = 1,
+        [AppRoles.SupportLevel2] = 2,
+        [AppRoles.SupportLevel1] = 3,
+    };
+
+    private bool HasSupportTierAtLeast(string minTierRole)
+    {
+        if (!SupportTierRank.TryGetValue(minTierRole, out var minRank)) return false;
+        return _viewerRoles.Any(r =>
+            SupportTierRank.TryGetValue(r, out var rank) && rank >= minRank);
+    }
+
     public bool HasPermission(string permission)
     {
         EnsureInitialized();
-        // SuperAdmin-only permissions are evaluated before the broad Admin shortcut
+
+        // SuperAdmin-only permissions are evaluated before any broad shortcut.
         if (permission == Permissions.SystemUsers.Manage)
             return _viewerRoles.Contains(AppRoles.SuperAdmin);
 
-        if (_viewerRoles.Contains(AppRoles.SuperAdmin) || _viewerRoles.Contains(AppRoles.Admin))
+        // Top-tier shortcut: SuperAdmin, Admin, and IT see everything (Nick: SuperAdmin = IT,
+        // Admin inherits all manager and support tiers).
+        if (_viewerRoles.Contains(AppRoles.SuperAdmin)
+            || _viewerRoles.Contains(AppRoles.Admin)
+            || _viewerRoles.Contains(AppRoles.IT))
             return true;
+
+        // CommissionManager and SupportManager inherit all support-tier capabilities
+        // (Nick: CM ve todo lo de support level 1,2,3).
+        var hasManagerInheritance =
+            _viewerRoles.Contains(AppRoles.CommissionManager)
+         || _viewerRoles.Contains(AppRoles.SupportManager);
 
         return permission switch
         {
@@ -124,13 +165,17 @@ public class ViewContextService : IViewContextService
             Permissions.Rank.Override           => false,
             Permissions.Loyalty.ManualUnlock    => false,
             Permissions.Wallet.ViewFullHistory  => _viewerRoles.Contains(AppRoles.BillingManager),
-            Permissions.Ticket.EscalateToL2     => _viewerRoles.Contains(AppRoles.SupportLevel1) || _viewerRoles.Contains(AppRoles.SupportManager),
-            Permissions.Ticket.EscalateToL3     => _viewerRoles.Contains(AppRoles.SupportLevel2) || _viewerRoles.Contains(AppRoles.SupportManager),
-            Permissions.Ticket.EscalateToIT     => _viewerRoles.Contains(AppRoles.SupportLevel3) || _viewerRoles.Contains(AppRoles.SupportManager),
+
+            // Support escalation chain — each permission requires the originating tier OR any
+            // more-senior support tier (per Nick: L1 ⊇ L2 ⊇ L3) plus manager inheritance.
+            Permissions.Ticket.EscalateToL2     => HasSupportTierAtLeast(AppRoles.SupportLevel1) || hasManagerInheritance,
+            Permissions.Ticket.EscalateToL3     => HasSupportTierAtLeast(AppRoles.SupportLevel2) || hasManagerInheritance,
+            Permissions.Ticket.EscalateToIT     => HasSupportTierAtLeast(AppRoles.SupportLevel3) || hasManagerInheritance,
             Permissions.Ticket.Assign           => _viewerRoles.Contains(AppRoles.SupportManager),
-            Permissions.Ticket.Resolve          => _viewerRoles.Any(r => new[] { AppRoles.SupportLevel3, AppRoles.IT, AppRoles.SupportManager }.Contains(r)),
+            Permissions.Ticket.Resolve          => HasSupportTierAtLeast(AppRoles.SupportLevel3) || hasManagerInheritance,
             Permissions.Ticket.Merge            => _viewerRoles.Contains(AppRoles.SupportManager),
-            Permissions.Ticket.ViewAll          => _viewerRoles.Any(r => AppRoles.SupportRoles.Contains(r)),
+            Permissions.Ticket.ViewAll          => HasSupportTierAtLeast(AppRoles.SupportLevel3) || hasManagerInheritance,
+
             Permissions.SystemUsers.Manage      => _viewerRoles.Contains(AppRoles.SuperAdmin),
             _ => false
         };

@@ -45,19 +45,23 @@ public class GetRankDashboardHandler : IRequestHandler<GetRankDashboardQuery, Re
 
     private static RankDashboardDto MapToBizCenterDto(RankSummaryDto s) => new()
     {
-        MemberId                    = s.MemberId,
-        CurrentRankName             = s.CurrentRankName,
-        CurrentRankSortOrder        = s.CurrentRankSortOrder,
-        CurrentRankDualTeamPoints   = s.CurrentRankDualTeamPoints,
-        CurrentRankEnrollmentPoints = s.CurrentRankEnrollmentPoints,
-        NextRankName                = s.NextRankName,
-        NextRankSortOrder           = s.NextRankSortOrder,
-        NextRankDualTeamPoints      = s.NextRankDualTeamPoints,
-        NextRankEnrollmentPoints    = s.NextRankEnrollmentPoints,
-        LifetimeRankName            = s.LifetimeRankName,
-        DualTeamPoints              = s.DualTeamPoints,
-        EnrollmentPoints            = s.EnrollmentPoints,
-        QualifiedSponsoredMembers   = s.QualifiedSponsoredMembers,
-        EnrollmentTeamSize          = s.EnrollmentTeamSize
+        MemberId                            = s.MemberId,
+        CurrentRankName                     = s.CurrentRankName,
+        CurrentRankSortOrder                = s.CurrentRankSortOrder,
+        CurrentRankDualTeamPoints           = s.CurrentRankDualTeamPoints,
+        CurrentRankEnrollmentPoints         = s.CurrentRankEnrollmentPoints,
+        CurrentRankEligibleDualTeamPoints   = s.CurrentRankEligibleDualTeamPoints,
+        CurrentRankEligibleEnrollmentPoints = s.CurrentRankEligibleEnrollmentPoints,
+        NextRankName                        = s.NextRankName,
+        NextRankSortOrder                   = s.NextRankSortOrder,
+        NextRankDualTeamPoints              = s.NextRankDualTeamPoints,
+        NextRankEnrollmentPoints            = s.NextRankEnrollmentPoints,
+        NextRankEligibleDualTeamPoints      = s.NextRankEligibleDualTeamPoints,
+        NextRankEligibleEnrollmentPoints    = s.NextRankEligibleEnrollmentPoints,
+        LifetimeRankName                    = s.LifetimeRankName,
+        DualTeamPoints                      = s.DualTeamPoints,
+        EnrollmentPoints                    = s.EnrollmentPoints,
+        QualifiedSponsoredMembers           = s.QualifiedSponsoredMembers,
+        EnrollmentTeamSize                  = s.EnrollmentTeamSize
     };
 }

@@ -4,6 +4,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
@@ -11,9 +12,14 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 /// <inheritdoc />
 public class EnrollmentTeamService : IEnrollmentTeamService
 {
-    private readonly AppDbContext _db;
+    private readonly AppDbContext            _db;
+    private readonly IRankComputationService _ranks;
 
-    public EnrollmentTeamService(AppDbContext db) => _db = db;
+    public EnrollmentTeamService(AppDbContext db, IRankComputationService ranks)
+    {
+        _db    = db;
+        _ranks = ranks;
+    }
 
     // ─── My Team ───────────────────────────────────────────────────────────
     public async Task<PagedResult<EnrollmentMyTeamMemberView>> GetMyTeamAsync(
@@ -215,26 +221,29 @@ public class EnrollmentTeamService : IEnrollmentTeamService
             .ToListAsync(ct);
         var allStatsMap = allStats.ToDictionary(s => s.MemberId, s => s.EnrollmentPoints);
 
-        var currentMemberRank = await _db.MemberRankHistories.AsNoTracking()
-            .Include(r => r.RankDefinition)
-            .Where(r => r.MemberId == memberId)
-            .OrderByDescending(r => r.AchievedAt)
-            .FirstOrDefaultAsync(ct);
-        var currentRankSortOrder = currentMemberRank?.RankDefinition?.SortOrder ?? 0;
+        // Live current rank — same source the Profile and Residuals widgets
+        // consume. Pulling from MemberRankHistories.AchievedAt would freeze the
+        // cap at whatever rank was last manually awarded and silently break
+        // the donut math for every branch row.
+        var summary = await _ranks.GetSummaryAsync(memberId, ct);
 
         var allRanks = await _db.RankDefinitions.AsNoTracking()
             .Include(r => r.Requirements).OrderBy(r => r.SortOrder).ToListAsync(ct);
 
-        var currentRankDef = allRanks.FirstOrDefault(r => r.SortOrder == currentRankSortOrder);
-        var nextRankDef    = allRanks.FirstOrDefault(r => r.SortOrder > currentRankSortOrder);
+        var currentRankDef = allRanks.FirstOrDefault(r => r.SortOrder == summary.CurrentRankSortOrder);
+        var nextRankDef    = allRanks.FirstOrDefault(r => r.SortOrder > summary.CurrentRankSortOrder);
 
+        // Per-branch ET cap = MaxEnrollmentTeamPointsPerBranch × EnrollmentTeam.
+        // The previous formula multiplied by TeamPoints (the DT threshold),
+        // which yields 0 for Silver/Gold/Platinum (DT requirement = 0) and
+        // therefore disables the cap entirely for the lower tiers.
         int CalcCap(Domain.Entities.Rank.RankDefinition? rankDef)
         {
             if (rankDef is null) return 0;
-            // Use the lowest-LevelNo requirement (works for both LevelNo=0 and =SortOrder).
             var req = rankDef.Requirements.OrderBy(r => r.LevelNo).FirstOrDefault();
-            if (req is null || req.TeamPoints <= 0) return 0;
-            return (int)Math.Round(req.MaxEnrollmentTeamPointsPerBranch * req.TeamPoints);
+            if (req is null || req.EnrollmentTeam <= 0 || req.MaxEnrollmentTeamPointsPerBranch <= 0)
+                return 0;
+            return (int)Math.Round(req.MaxEnrollmentTeamPointsPerBranch * req.EnrollmentTeam);
         }
 
         var currentCap = CalcCap(currentRankDef);
@@ -258,6 +267,18 @@ public class EnrollmentTeamService : IEnrollmentTeamService
             var pts = allStatsMap.TryGetValue(id, out var p) ? p : 0;
             return nextCap > 0 ? Math.Min(pts, nextCap) : pts;
         });
+
+        // The grand-total eligible count must never exceed the rank's own ET
+        // threshold — otherwise the UI shows totals like "45 eligible toward
+        // Silver" even though Silver only requires (and rewards) 18. Capping
+        // here keeps the per-branch donuts (which still use the per-branch
+        // cap) and the page-header total math consistent.
+        var currentRankReq = currentRankDef?.Requirements.OrderBy(r => r.LevelNo).FirstOrDefault();
+        var nextRankReq    = nextRankDef?.Requirements.OrderBy(r => r.LevelNo).FirstOrDefault();
+        if (currentRankReq is { EnrollmentTeam: > 0 })
+            totalEligibleCurrent = Math.Min(totalEligibleCurrent, currentRankReq.EnrollmentTeam);
+        if (nextRankReq is { EnrollmentTeam: > 0 })
+            totalEligibleNext    = Math.Min(totalEligibleNext,    nextRankReq.EnrollmentTeam);
 
         var items = profiles.Select(p =>
         {

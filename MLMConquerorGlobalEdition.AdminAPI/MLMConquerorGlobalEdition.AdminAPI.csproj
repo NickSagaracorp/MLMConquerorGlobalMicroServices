@@ -4,6 +4,7 @@
     <ProjectReference Include="..\MLMConquerorGlobalEdition.Domain\MLMConquerorGlobalEdition.Domain.csproj" />
     <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel\MLMConquerorGlobalEdition.SharedKernel.csproj" />
     <ProjectReference Include="..\MLMConquerorGlobalEdition.Repository\MLMConquerorGlobalEdition.Repository.csproj" />
+    <ProjectReference Include="..\MLMConquerorGlobalEdition.Billing\MLMConquerorGlobalEdition.Billing.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -20,13 +21,15 @@
     </PackageReference>
     <PackageReference Include="HtmlSanitizer" Version="8.1.870" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.1" />
   </ItemGroup>
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- CS0436: top-level Program type collision when referencing another Web project assembly; benign -->
+    <NoWarn>$(NoWarn);CS0436</NoWarn>
   </PropertyGroup>
 
 </Project>

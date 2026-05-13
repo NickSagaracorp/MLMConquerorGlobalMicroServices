@@ -2,6 +2,12 @@
 @inject IStringLocalizer<SharedResources> L
 
 @*
+    ProfileApiBase cascades from UserProfilePage and resolves to either
+    "api/v1/bizcenter" (member view) or "api/v1/admin/members/{memberId}"
+    (admin view) so this card writes through whichever route the host app uses.
+*@
+
+@*
     Address editor. PUT /profile is the only place the server logs changes to
     the address-history table, so we send the whole editable payload here too.
     The reason field is forwarded but optional; the API tolerates null.
@@ -94,6 +100,9 @@
     [Parameter] public EventCallback OnSaved             { get; set; }
     [Parameter] public EventCallback OnHistoryRequested  { get; set; }
 
+    [CascadingParameter(Name = "ProfileApiBase")]
+    private string ProfileApiBase { get; set; } = "api/v1/bizcenter";
+
     private AddressForm _form    = new();
     private AddressForm _initial = new();
     private bool        _busy;
@@ -151,7 +160,7 @@
         _busy = true; _success = null; _error = null; StateHasChanged();
         try
         {
-            var resp = await Http.PutAsJsonAsync("api/v1/bizcenter/profile", new
+            var resp = await Http.PutAsJsonAsync($"{ProfileApiBase}/profile", new
             {
                 _form.Phone,
                 _form.WhatsApp,

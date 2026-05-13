@@ -1,3 +1,4 @@
+using Hangfire;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Billing.DTOs;
@@ -13,6 +14,7 @@ namespace MLMConquerorGlobalEdition.Billing.Jobs;
 /// For each member with Pending commission earnings where PaymentDate &lt;= today,
 /// dispatches a PayoutCommand to mark them paid and credit the eWallet.
 /// </summary>
+[Queue("billing")]
 public class CommissionPayoutJob
 {
     private readonly IMediator _mediator;

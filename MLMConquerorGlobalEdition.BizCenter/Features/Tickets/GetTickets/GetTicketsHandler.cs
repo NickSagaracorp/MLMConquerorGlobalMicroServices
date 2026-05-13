@@ -36,11 +36,13 @@ public class GetTicketsHandler : IRequestHandler<GetTicketsQuery, Result<PagedRe
             .Select(t => new TicketDto
             {
                 Id = t.Id,
+                TicketNumber = t.TicketNumber,
                 Subject = t.Subject,
                 Body = t.Body,
                 Status = t.Status.ToString(),
                 Priority = t.Priority.ToString(),
                 CategoryName = t.Category != null ? t.Category.Name : string.Empty,
+                EscalationLevel = (int)t.EscalationLevel,
                 CreationDate = t.CreationDate,
                 AssignedToUserId = t.AssignedToUserId
             })

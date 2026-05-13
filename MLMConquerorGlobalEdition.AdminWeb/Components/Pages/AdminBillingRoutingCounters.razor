@@ -1,0 +1,128 @@
+@page "/admin/billing/routing-counters"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin,BillingManager")]
+@inject HttpClient Http
+
+<PageTitle>Routing Counters — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Billing"), new("Routing Counters") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert alert-danger alert-dismissible mb-3">@_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button></div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small mb-1">Route Bucket Key</label>
+                <input class="form-control form-control-sm" @bind="_bucketFilter" placeholder="Filter by bucket key (optional)" />
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary btn-sm w-100" @onclick="Search"><i class="ri-search-line me-1"></i>Search</button>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-outline-secondary btn-sm w-100" @onclick="LoadAsync"><i class="ri-refresh-line me-1"></i>Refresh</button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="CounterRow" DataSource="@_rows"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn Field="@nameof(CounterRow.RouteBucketKey)" HeaderText="Route Bucket Key" Width="320">
+                        <Template><code class="small text-primary">@(((CounterRow)context).RouteBucketKey)</code></Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(CounterRow.ProcessorName)" HeaderText="Processor" Width="160" />
+                    <GridColumn Field="@nameof(CounterRow.AttemptCount)" HeaderText="Attempts" Width="110" TextAlign="TextAlign.Right" />
+                    <GridColumn HeaderText="Actual %" Width="120" TextAlign="TextAlign.Right">
+                        <Template>@(((CounterRow)context).ActualPercent.ToString("0.##"))%</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Distribution" Width="220">
+                        <Template>
+                            @{ var row = (CounterRow)context; }
+                            <div class="progress" style="height:14px;">
+                                <div class="progress-bar bg-primary" style="width:@row.ActualPercent.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)%"></div>
+                            </div>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+
+            @if (_totalPages > 1)
+            {
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
+                    <small class="text-muted">@_totalCount counter rows — Page @_page of @_totalPages</small>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>
+                            @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
+                            { var pg = i; <li class="page-item @(_page == pg ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(pg)">@pg</button></li> }
+                            <li class="page-item @(_page == _totalPages ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page + 1)">›</button></li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+        }
+    </div>
+    <div class="card-footer bg-light small text-muted">
+        Read-only. <em>Actual %</em> is each processor's share of attempts within its bucket — compare against the configured split weights on the Routing Rules page.
+    </div>
+</div>
+
+@code {
+    private List<CounterRow> _rows = new();
+    private bool _loading = true;
+    private string? _alertMsg;
+    private string _bucketFilter = string.Empty;
+    private int _page = 1;
+    private const int PageSize = 50;
+    private int _totalCount;
+    private int _totalPages = 1;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; _alertMsg = null; StateHasChanged();
+        try
+        {
+            var url = $"api/v1/admin/billing/routing-counters?page={_page}&pageSize={PageSize}";
+            if (!string.IsNullOrWhiteSpace(_bucketFilter)) url += $"&bucketKey={Uri.EscapeDataString(_bucketFilter.Trim())}";
+            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<CounterDto>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _totalCount = resp.Data.TotalCount;
+                _totalPages = resp.Data.TotalPages;
+                var items = resp.Data.Items.ToList();
+                // Compute actual % per bucket (within the loaded page; full accuracy requires a single bucket filter).
+                var bucketTotals = items.GroupBy(i => i.RouteBucketKey).ToDictionary(g => g.Key, g => (double)g.Sum(x => x.AttemptCount));
+                _rows = items.Select(i => new CounterRow(
+                    i.RouteBucketKey, i.ProcessorName, i.AttemptCount,
+                    bucketTotals.TryGetValue(i.RouteBucketKey, out var t) && t > 0 ? Math.Round(i.AttemptCount * 100.0 / t, 2) : 0)).ToList();
+            }
+            else { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load routing counters."; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; }
+        finally { _loading = false; }
+    }
+
+    private async Task Search() { _page = 1; await LoadAsync(); }
+
+    private async Task ChangePage(int p) { if (p < 1 || p > _totalPages) return; _page = p; await LoadAsync(); }
+
+    private record CounterRow(string RouteBucketKey, string ProcessorName, long AttemptCount, double ActualPercent);
+    // CardProcessor comes back from the API as the enum name (JsonStringEnumConverter); we display ProcessorName instead.
+    private record CounterDto(string RouteBucketKey, string CardProcessor, string ProcessorName, long AttemptCount);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+}

@@ -1,0 +1,229 @@
+@page "/admin/billing/country-groups"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin,BillingManager")]
+@inject HttpClient Http
+
+<PageTitle>Country Groups — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Billing"), new("Country Groups") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-earth-line me-2 text-primary"></i>Country Groups
+        </h6>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+        <button class="btn btn-primary btn-sm" @onclick="OpenCreate"><i class="ri-add-line me-1"></i>New Group</button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="CountryGroupDto" DataSource="@_items"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="25" PageSizes="@(new int[]{25,50,100})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn Field="@nameof(CountryGroupDto.Code)" HeaderText="Code" Width="140">
+                        <Template><code class="text-primary fw-semibold">@(((CountryGroupDto)context).Code)</code></Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(CountryGroupDto.Name)" HeaderText="Name" Width="200">
+                        <Template><span class="fw-semibold">@(((CountryGroupDto)context).Name)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Countries" Width="120" TextAlign="TextAlign.Center">
+                        <Template><span class="badge bg-info text-dark">@(((CountryGroupDto)context).IsoCodes.Count)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="ISO Codes" Width="300">
+                        <Template><span class="small text-muted">@string.Join(", ", ((CountryGroupDto)context).IsoCodes)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="100" TextAlign="TextAlign.Center">
+                        <Template>
+                            <button class="btn btn-sm btn-outline-primary py-0 me-1" @onclick="() => OpenEdit((CountryGroupDto)context)"><i class="ri-edit-line"></i></button>
+                            <button class="btn btn-sm btn-outline-danger py-0" @onclick="() => ConfirmDelete((CountryGroupDto)context)"><i class="ri-delete-bin-line"></i></button>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+@if (_showForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold">@(_editId is null ? "New Country Group" : "Edit Country Group")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseForm"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Code <span class="text-danger">*</span></label>
+                            <input class="form-control text-uppercase" @bind="_form.Code" placeholder="e.g. EUROPE" />
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+                            <input class="form-control" @bind="_form.Name" placeholder="e.g. Europe" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">ISO Country Codes</label>
+                            <div class="input-group mb-2">
+                                <input class="form-control text-uppercase" maxlength="2" @bind="_newIso" placeholder="2-letter ISO, e.g. DE"
+                                       @onkeydown="@(e => { if (e.Key == "Enter") AddIso(); })" />
+                                <button class="btn btn-outline-primary" type="button" @onclick="AddIso"><i class="ri-add-line"></i> Add</button>
+                            </div>
+                            <div class="d-flex flex-wrap gap-1">
+                                @foreach (var iso in _form.IsoCodes)
+                                {
+                                    var isoCode = iso;
+                                    <span class="badge bg-light text-dark border d-inline-flex align-items-center gap-1">
+                                        @isoCode
+                                        <button type="button" class="btn-close btn-close-sm" style="font-size:.6rem" @onclick="() => RemoveIso(isoCode)"></button>
+                                    </span>
+                                }
+                                @if (_form.IsoCodes.Count == 0)
+                                {
+                                    <span class="text-muted small">No countries added yet.</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                    <button class="btn btn-primary" @onclick="Save" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        @(_editId is null ? "Create" : "Save Changes")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showDeleteConfirm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header"><h5 class="modal-title fw-bold text-danger">Delete Country Group</h5><button type="button" class="btn-close" @onclick="() => { _showDeleteConfirm = false; _deleteItem = null; }"></button></div>
+                <div class="modal-body">Delete country group <strong>@_deleteItem?.Name</strong>? Routing rules referencing this group may stop matching.</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => { _showDeleteConfirm = false; _deleteItem = null; }">Cancel</button>
+                    <button class="btn btn-danger" @onclick="DeleteItem" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<CountryGroupDto> _items = new();
+    private bool _loading = true;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private bool _showForm;
+    private bool _showDeleteConfirm;
+    private int? _editId;
+    private GroupFormModel _form = new();
+    private CountryGroupDto? _deleteItem;
+    private string _newIso = string.Empty;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<IEnumerable<CountryGroupDto>>>("api/v1/admin/billing/country-groups");
+            if (resp?.Success == true && resp.Data is not null)
+                _items = resp.Data.ToList();
+            else { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load country groups."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private void OpenCreate() { _editId = null; _form = new(); _newIso = string.Empty; _showForm = true; }
+
+    private void OpenEdit(CountryGroupDto g)
+    {
+        _editId = g.Id;
+        _form = new GroupFormModel { Code = g.Code, Name = g.Name, IsoCodes = g.IsoCodes.ToList() };
+        _newIso = string.Empty;
+        _showForm = true;
+    }
+
+    private void CloseForm() { _showForm = false; _editId = null; }
+
+    private void AddIso()
+    {
+        var iso = (_newIso ?? string.Empty).Trim().ToUpperInvariant();
+        if (iso.Length == 2 && !_form.IsoCodes.Contains(iso))
+            _form.IsoCodes.Add(iso);
+        _newIso = string.Empty;
+    }
+
+    private void RemoveIso(string iso) => _form.IsoCodes.Remove(iso);
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(_form.Code)) { _alertMsg = "Code is required."; _alertIsError = true; return; }
+        if (string.IsNullOrWhiteSpace(_form.Name)) { _alertMsg = "Name is required."; _alertIsError = true; return; }
+        _saving = true;
+        try
+        {
+            var payload = new { Code = _form.Code.Trim(), Name = _form.Name.Trim(), IsoCodes = _form.IsoCodes };
+            var response = _editId is null
+                ? await Http.PostAsJsonAsync("api/v1/admin/billing/country-groups", payload)
+                : await Http.PutAsJsonAsync($"api/v1/admin/billing/country-groups/{_editId}", payload);
+            if (response.IsSuccessStatusCode) { _alertMsg = _editId is null ? "Created." : "Updated."; _alertIsError = false; CloseForm(); await LoadAsync(); }
+            else { _alertMsg = $"Save failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private void ConfirmDelete(CountryGroupDto g) { _deleteItem = g; _showDeleteConfirm = true; }
+
+    private async Task DeleteItem()
+    {
+        if (_deleteItem is null) return;
+        _saving = true;
+        try
+        {
+            var response = await Http.DeleteAsync($"api/v1/admin/billing/country-groups/{_deleteItem.Id}");
+            if (response.IsSuccessStatusCode) { _alertMsg = "Deleted."; _alertIsError = false; _showDeleteConfirm = false; _deleteItem = null; await LoadAsync(); }
+            else { _alertMsg = $"Failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private class GroupFormModel
+    {
+        public string Code { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public List<string> IsoCodes { get; set; } = new();
+    }
+
+    private record CountryGroupDto(int Id, string Code, string Name, List<string> IsoCodes);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+}

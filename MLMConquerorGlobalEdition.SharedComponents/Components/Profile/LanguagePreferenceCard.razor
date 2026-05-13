@@ -63,6 +63,9 @@
 
     [Parameter] public EventCallback<string> OnLanguageChanged { get; set; }
 
+    [CascadingParameter(Name = "ProfileApiBase")]
+    private string ProfileApiBase { get; set; } = "api/v1/bizcenter";
+
     private record Language(string Code, string Flag);
     private readonly List<Language> _languages = new()
     {
@@ -97,7 +100,7 @@
         // moments later. Worst case (network drop): the cookie still applied
         // for this session, but the preference reverts to the old value next
         // login — acceptable degradation for a 5x perceived speed win.
-        _ = Http.PutAsJsonAsync("api/v1/bizcenter/profile", new
+        _ = Http.PutAsJsonAsync($"{ProfileApiBase}/profile", new
         {
             Phone, WhatsApp, Country, State, City, Address, ZipCode,
             AddressChangeReason = (string?)null,

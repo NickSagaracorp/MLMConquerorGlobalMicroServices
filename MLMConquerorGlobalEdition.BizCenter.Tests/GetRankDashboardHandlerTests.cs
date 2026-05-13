@@ -4,6 +4,7 @@ using MLMConquerorGlobalEdition.BizCenter.Features.Ranks.GetRankDashboard;
 using MLMConquerorGlobalEdition.BizCenter.Services;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
+using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.SharedKernel;
@@ -170,6 +171,12 @@ public class GetRankDashboardHandlerTests : IDisposable
         _db.MemberStatistics.Add(new MemberStatisticEntity
         {
             MemberId = MemberId, DualTeamPoints = 2000, EnrollmentPoints = 0
+        });
+        // Live rank qualification is evaluated on the L/R dual-team legs, not the
+        // rolled-up stat — 1000 + 1000 = 2000 meets Gold (1000) but not Platinum (5000).
+        _db.DualTeamTree.Add(new DualTeamEntity
+        {
+            MemberId = MemberId, LeftLegPoints = 1000m, RightLegPoints = 1000m
         });
 
         _db.MemberRankHistories.AddRange(

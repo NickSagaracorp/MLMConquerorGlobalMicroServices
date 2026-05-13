@@ -35,12 +35,16 @@ public class AdminMemberRanksController : ControllerBase
         var s   = await _ranks.GetSummaryAsync(memberId, ct);
         var dto = new RankDashboardDto
         {
-            CurrentRankName             = s.CurrentRankName ?? "—",
-            NextRankName                = s.NextRankName    ?? "—",
-            CurrentRankDualTeamPoints   = s.CurrentRankDualTeamPoints,
-            CurrentRankEnrollmentPoints = s.CurrentRankEnrollmentPoints,
-            NextRankDualTeamPoints      = s.NextRankDualTeamPoints,
-            NextRankEnrollmentPoints    = s.NextRankEnrollmentPoints
+            CurrentRankName                     = s.CurrentRankName ?? "—",
+            NextRankName                        = s.NextRankName    ?? "—",
+            CurrentRankDualTeamPoints           = s.CurrentRankDualTeamPoints,
+            CurrentRankEnrollmentPoints         = s.CurrentRankEnrollmentPoints,
+            CurrentRankEligibleDualTeamPoints   = s.CurrentRankEligibleDualTeamPoints,
+            CurrentRankEligibleEnrollmentPoints = s.CurrentRankEligibleEnrollmentPoints,
+            NextRankDualTeamPoints              = s.NextRankDualTeamPoints,
+            NextRankEnrollmentPoints            = s.NextRankEnrollmentPoints,
+            NextRankEligibleDualTeamPoints      = s.NextRankEligibleDualTeamPoints,
+            NextRankEligibleEnrollmentPoints    = s.NextRankEligibleEnrollmentPoints
         };
         return Ok(ApiResponse<RankDashboardDto>.Ok(dto));
     }
@@ -92,12 +96,18 @@ public class AdminMemberRanksController : ControllerBase
 
     public class RankDashboardDto
     {
-        public string CurrentRankName             { get; set; } = string.Empty;
-        public string NextRankName                { get; set; } = string.Empty;
-        public int    CurrentRankDualTeamPoints   { get; set; }
-        public int    CurrentRankEnrollmentPoints { get; set; }
-        public int    NextRankDualTeamPoints      { get; set; }
-        public int    NextRankEnrollmentPoints    { get; set; }
+        public string CurrentRankName                     { get; set; } = string.Empty;
+        public string NextRankName                        { get; set; } = string.Empty;
+        public int    CurrentRankDualTeamPoints           { get; set; }
+        public int    CurrentRankEnrollmentPoints         { get; set; }
+        /// <summary>Eligible (capped) dual-team points toward current rank.
+        /// 0 when the dimension does not apply at this rank.</summary>
+        public int    CurrentRankEligibleDualTeamPoints   { get; set; }
+        public int    CurrentRankEligibleEnrollmentPoints { get; set; }
+        public int    NextRankDualTeamPoints              { get; set; }
+        public int    NextRankEnrollmentPoints            { get; set; }
+        public int    NextRankEligibleDualTeamPoints      { get; set; }
+        public int    NextRankEligibleEnrollmentPoints    { get; set; }
     }
 
     public class RankDefinitionDto

@@ -690,7 +690,16 @@
   <data name="Team.NextRank" xml:space="preserve"><value>Próximo Rango</value></data>
   <data name="Team.DualPtsRequired" xml:space="preserve"><value>Pts. Equipo Dual Requeridos</value></data>
   <data name="Team.EnrollmentPtsRequired" xml:space="preserve"><value>Pts. Inscripción Requeridos</value></data>
+  <data name="Team.DualPts" xml:space="preserve"><value>Pts. Equipo Dual</value></data>
+  <data name="Team.EnrollmentPts" xml:space="preserve"><value>Pts. Inscripción</value></data>
   <data name="Team.TotalDualTeamPoints" xml:space="preserve"><value>Total de Puntos Equipo Dual</value></data>
+  <data name="Team.TotalEnrollmentTeamPoints" xml:space="preserve"><value>Total de Puntos Equipo de Inscripción</value></data>
+  <data name="Team.EligibleCurrentRank" xml:space="preserve"><value>Elegibles (Rango Actual)</value></data>
+  <data name="Team.EligibleNextRank" xml:space="preserve"><value>Elegibles (Próximo Rango)</value></data>
+  <data name="Team.TotalRaw" xml:space="preserve"><value>Total Bruto</value></data>
+  <data name="Team.PointsTowardNext" xml:space="preserve"><value>{0} / {1} puntos hacia {2}</value></data>
+  <data name="Team.DtRequirementNotApplicable" xml:space="preserve"><value>Requisito DT: N/A para {0}</value></data>
+  <data name="Team.EtRequirementNotApplicable" xml:space="preserve"><value>Requisito ET: N/A para {0}</value></data>
   <data name="Team.DailyResidualsEarning" xml:space="preserve"><value>Ganancias Residuales Diarias</value></data>
   <data name="Team.LastSixMonths" xml:space="preserve"><value>Últimos 6 meses</value></data>
   <data name="Team.ChartComingSoon" xml:space="preserve"><value>Gráfico próximamente</value></data>
@@ -1096,6 +1105,10 @@
   <data name="TicketDetail.EscalationOther" xml:space="preserve"><value>Nivel {0}</value></data>
   <data name="TicketDetail.BreadcrumbHome" xml:space="preserve"><value>Inicio</value></data>
   <data name="TicketDetail.BreadcrumbTickets" xml:space="preserve"><value>Tickets</value></data>
+  <data name="TicketDetail.AttachmentsHeader" xml:space="preserve"><value>Adjuntos</value></data>
+  <data name="TicketDetail.AttachmentUpload" xml:space="preserve"><value>Subiendo archivo</value></data>
+  <data name="TicketDetail.AttachmentHelp" xml:space="preserve"><value>Máximo 10 MB. Permitido: imágenes, PDF, DOC, TXT.</value></data>
+  <data name="TicketDetail.NoAttachments" xml:space="preserve"><value>Aún no hay adjuntos.</value></data>
 
   <!-- Ticket Create — F5 -->
   <data name="TicketCreate.Title" xml:space="preserve"><value>Crear nuevo ticket</value></data>

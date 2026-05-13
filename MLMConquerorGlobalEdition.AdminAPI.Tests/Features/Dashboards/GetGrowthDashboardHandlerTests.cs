@@ -35,7 +35,7 @@ public class GetGrowthDashboardHandlerTests
     public async Task Handle_WhenNoMembers_ReturnsZeroCounts()
     {
         await using var db = InMemoryDbHelper.Create();
-        var handler = new GetGrowthDashboardHandler(db, DateTimeProvider().Object);
+        var handler = new GetGrowthDashboardHandler(db, DateTimeProvider().Object, new NoOpCacheService());
 
         var result = await handler.Handle(new GetGrowthDashboardQuery(), CancellationToken.None);
 
@@ -55,7 +55,7 @@ public class GetGrowthDashboardHandlerTests
             BuildMember("AMB-003", FixedNow.AddDays(-1)));
         await db.SaveChangesAsync();
 
-        var handler = new GetGrowthDashboardHandler(db, DateTimeProvider().Object);
+        var handler = new GetGrowthDashboardHandler(db, DateTimeProvider().Object, new NoOpCacheService());
         var result = await handler.Handle(new GetGrowthDashboardQuery(), CancellationToken.None);
 
         result.Value!.TotalMembers.Should().Be(3);
@@ -72,7 +72,7 @@ public class GetGrowthDashboardHandlerTests
             BuildMember("AMB-003", new DateTime(2026, 2, 28, 0, 0, 0, DateTimeKind.Utc))); // last month — excluded
         await db.SaveChangesAsync();
 
-        var handler = new GetGrowthDashboardHandler(db, DateTimeProvider().Object);
+        var handler = new GetGrowthDashboardHandler(db, DateTimeProvider().Object, new NoOpCacheService());
         var result = await handler.Handle(new GetGrowthDashboardQuery(), CancellationToken.None);
 
         result.Value!.NewMembersThisMonth.Should().Be(2);
@@ -89,7 +89,7 @@ public class GetGrowthDashboardHandlerTests
             BuildMember("AMB-004", FixedNow.AddDays(-60))); // old member — excluded
         await db.SaveChangesAsync();
 
-        var handler = new GetGrowthDashboardHandler(db, DateTimeProvider().Object);
+        var handler = new GetGrowthDashboardHandler(db, DateTimeProvider().Object, new NoOpCacheService());
         var result = await handler.Handle(new GetGrowthDashboardQuery(), CancellationToken.None);
 
         result.Value!.NewMembersThisWeek.Should().Be(2);

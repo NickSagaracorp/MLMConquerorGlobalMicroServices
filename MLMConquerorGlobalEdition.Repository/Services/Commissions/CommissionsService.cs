@@ -256,17 +256,56 @@ public class CommissionsService : ICommissionsService
 
     // ─── Dual residual ─────────────────────────────────────────────────────
     public Task<PagedResult<CommissionEarningView>> GetDualResidualAsync(
-        string memberId, int page, int pageSize, CancellationToken ct = default)
+        string memberId, int page, int pageSize,
+        int? year = null, int? month = null, CancellationToken ct = default)
         => GetCategoryPagedAsync(memberId, page, pageSize,
             categoryId: DualTeamResidualCategoryId, nameContains: null,
-            includeDescription: false, ct);
+            includeDescription: false, year: year, month: month, ct: ct);
+
+    public async Task<List<MonthlyAmountView>> GetDualResidualChartAsync(
+        string memberId, int months, CancellationToken ct = default)
+    {
+        if (months <= 0) months = 6;
+
+        // Anchor on the first day of the current month (UTC). Build the
+        // window backwards so the user always sees the current month as the
+        // last bar even when there has been no recent activity.
+        var anchor    = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var rangeFrom = anchor.AddMonths(-(months - 1));
+        var rangeTo   = anchor.AddMonths(1);    // exclusive upper bound
+
+        var raw = await _db.CommissionEarnings.AsNoTracking()
+            .Where(c => c.BeneficiaryMemberId == memberId
+                     && c.Status              != CommissionEarningStatus.Cancelled
+                     && c.EarnedDate          >= rangeFrom
+                     && c.EarnedDate          <  rangeTo)
+            .Join(
+                _db.CommissionTypes.Where(t => t.CommissionCategoryId == DualTeamResidualCategoryId),
+                c   => c.CommissionTypeId,
+                ct2 => ct2.Id,
+                (c, _) => new { c.EarnedDate, c.Amount })
+            .ToListAsync(ct);
+
+        var bucketed = raw
+            .GroupBy(r => new { r.EarnedDate.Year, r.EarnedDate.Month })
+            .ToDictionary(g => (g.Key.Year, g.Key.Month), g => g.Sum(x => x.Amount));
+
+        var series = new List<MonthlyAmountView>(months);
+        for (var i = 0; i < months; i++)
+        {
+            var d = rangeFrom.AddMonths(i);
+            bucketed.TryGetValue((d.Year, d.Month), out var amt);
+            series.Add(new MonthlyAmountView { Year = d.Year, Month = d.Month, Amount = amt });
+        }
+        return series;
+    }
 
     // ─── Fast Start Bonus list ─────────────────────────────────────────────
     public Task<PagedResult<CommissionEarningView>> GetFastStartBonusAsync(
         string memberId, int page, int pageSize, CancellationToken ct = default)
         => GetCategoryPagedAsync(memberId, page, pageSize,
             categoryId: FastStartBonusCategoryId, nameContains: null,
-            includeDescription: true, ct);
+            includeDescription: true, ct: ct);
 
     // ─── Fast Start Bonus summary (windows) ────────────────────────────────
     public async Task<CommissionBonusSummaryView> GetFastStartBonusSummaryAsync(
@@ -425,7 +464,7 @@ public class CommissionsService : ICommissionsService
         string memberId, int page, int pageSize, CancellationToken ct = default)
         => GetCategoryPagedAsync(memberId, page, pageSize,
             categoryId: PresidentialBonusCategoryId, nameContains: "Presidential",
-            includeDescription: false, ct);
+            includeDescription: false, ct: ct);
 
     // ─── Presidential bonus summary ────────────────────────────────────────
     public async Task<CommissionBonusSummaryView> GetPresidentialBonusSummaryAsync(
@@ -456,7 +495,7 @@ public class CommissionsService : ICommissionsService
         string memberId, int page, int pageSize, CancellationToken ct = default)
         => GetCategoryPagedAsync(memberId, page, pageSize,
             categoryId: BoostBonusCategoryId, nameContains: "Boost",
-            includeDescription: false, ct);
+            includeDescription: false, ct: ct);
 
     // ─── Boost bonus member summary ────────────────────────────────────────
     public async Task<BoostBonusMemberSummaryView> GetBoostBonusMemberSummaryAsync(
@@ -864,15 +903,23 @@ public class CommissionsService : ICommissionsService
     private async Task<PagedResult<CommissionEarningView>> GetCategoryPagedAsync(
         string memberId, int page, int pageSize,
         int categoryId, string? nameContains, bool includeDescription,
-        CancellationToken ct)
+        int? year = null, int? month = null,
+        CancellationToken ct = default)
     {
         var typeFilter = nameContains is null
             ? _db.CommissionTypes.Where(t => t.CommissionCategoryId == categoryId)
             : _db.CommissionTypes.Where(t => t.CommissionCategoryId == categoryId && t.Name.Contains(nameContains));
 
-        var earnings = _db.CommissionEarnings
-            .AsNoTracking()
-            .Where(c => c.BeneficiaryMemberId == memberId)
+        // Year / month filter on EarnedDate. Both are optional; supplying
+        // year alone returns the whole year, year+month a single month, and
+        // omitting both falls through unfiltered.
+        var earningsQ = _db.CommissionEarnings.AsNoTracking()
+            .Where(c => c.BeneficiaryMemberId == memberId);
+        if (year.HasValue)  earningsQ = earningsQ.Where(c => c.EarnedDate.Year  == year.Value);
+        if (month.HasValue && month.Value >= 1 && month.Value <= 12)
+            earningsQ = earningsQ.Where(c => c.EarnedDate.Month == month.Value);
+
+        var earnings = earningsQ
             .Join(
                 typeFilter,
                 c   => c.CommissionTypeId,

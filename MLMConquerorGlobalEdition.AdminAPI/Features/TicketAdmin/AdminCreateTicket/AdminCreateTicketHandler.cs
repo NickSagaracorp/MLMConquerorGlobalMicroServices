@@ -72,11 +72,14 @@ public class AdminCreateTicketHandler : IRequestHandler<AdminCreateTicketCommand
         return Result<AdminTicketDto>.Success(new AdminTicketDto
         {
             Id           = ticket.Id,
+            TicketNumber = ticket.TicketNumber,
             Subject      = ticket.Subject,
+            Body         = ticket.Body,
             MemberId     = ticket.MemberId,
             Status       = ticket.Status.ToString(),
             Priority     = ticket.Priority.ToString(),
             CategoryName = categoryName,
+            EscalationLevel = (int)ticket.EscalationLevel,
             CreationDate = ticket.CreationDate,
             CommentCount = 0
         });

@@ -67,9 +67,12 @@ builder.Services.AddHangfire(cfg => cfg
     .UseSqlServerStorage(
         builder.Configuration.GetConnectionString("HangFire")
         ?? builder.Configuration.GetConnectionString("DefaultConnection")));
+// Restrict this Hangfire server to its own queue so it does not pick up
+// jobs whose types live in assemblies this service does not reference.
 builder.Services.AddHangfireServer(options =>
 {
     options.WorkerCount = builder.Configuration.GetValue("Hangfire:WorkerCount", 5);
+    options.Queues = new[] { "rank" };
 });
 
 // AWS S3

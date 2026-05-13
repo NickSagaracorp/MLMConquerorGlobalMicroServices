@@ -1,13 +1,20 @@
 @inject HttpClient Http
+@inject IJSRuntime JS
 @inject IStringLocalizer<SharedResources> L
+@using System.Globalization
 @using System.Net.Http.Json
 @using Microsoft.Extensions.Localization
+@using Microsoft.JSInterop
 @using MLMConquerorGlobalEdition.SharedComponents.Resources
+@implements IAsyncDisposable
 
 @if (ShowBreadcrumb) { <BreadcrumbNav Items="@_breadcrumb" /> }
 
 @* ═══════════════════════════════════════════════════════════════════════════
    SECTION 1 — Rank cards
+   "X / Y" format. Eligible (capped) numerator over threshold denominator. When
+   the threshold for a dimension is 0 it does not apply at that rank — show "—"
+   so the user is not misled into chasing zero.
    ══════════════════════════════════════════════════════════════════════════ *@
 <div class="row g-4 mb-4">
     @* Actual Rank *@
@@ -29,12 +36,18 @@
                             <h4 class="fw-bold mb-2 mt-1">@(_rankData?.CurrentRankName ?? "—")</h4>
                             <div class="d-flex gap-3 flex-wrap mt-auto">
                                 <div>
-                                    <span class="fs-12 text-muted d-block">@L["Team.DualPtsRequired"]</span>
-                                    <span class="fw-semibold text-danger">@(_rankData?.CurrentRankDualTeamPoints.ToString("N0") ?? "—")</span>
+                                    <span class="fs-12 text-muted d-block">@L["Team.DualPts"]</span>
+                                    <span class="fw-semibold text-danger">
+                                        @FormatPair(_rankData?.CurrentRankEligibleDualTeamPoints,
+                                                    _rankData?.CurrentRankDualTeamPoints)
+                                    </span>
                                 </div>
                                 <div>
-                                    <span class="fs-12 text-muted d-block">@L["Team.EnrollmentPtsRequired"]</span>
-                                    <span class="fw-semibold text-danger">@(_rankData?.CurrentRankEnrollmentPoints.ToString("N0") ?? "—")</span>
+                                    <span class="fs-12 text-muted d-block">@L["Team.EnrollmentPts"]</span>
+                                    <span class="fw-semibold text-danger">
+                                        @FormatPair(_rankData?.CurrentRankEligibleEnrollmentPoints,
+                                                    _rankData?.CurrentRankEnrollmentPoints)
+                                    </span>
                                 </div>
                             </div>
                         }
@@ -63,12 +76,18 @@
                             <h4 class="fw-bold mb-2 mt-1">@(_rankData?.NextRankName ?? "—")</h4>
                             <div class="d-flex gap-3 flex-wrap mt-auto">
                                 <div>
-                                    <span class="fs-12 text-muted d-block">@L["Team.DualPtsRequired"]</span>
-                                    <span class="fw-semibold text-success">@(_rankData?.NextRankDualTeamPoints.ToString("N0") ?? "—")</span>
+                                    <span class="fs-12 text-muted d-block">@L["Team.DualPts"]</span>
+                                    <span class="fw-semibold text-success">
+                                        @FormatPair(_rankData?.NextRankEligibleDualTeamPoints,
+                                                    _rankData?.NextRankDualTeamPoints)
+                                    </span>
                                 </div>
                                 <div>
-                                    <span class="fs-12 text-muted d-block">@L["Team.EnrollmentPtsRequired"]</span>
-                                    <span class="fw-semibold text-success">@(_rankData?.NextRankEnrollmentPoints.ToString("N0") ?? "—")</span>
+                                    <span class="fs-12 text-muted d-block">@L["Team.EnrollmentPts"]</span>
+                                    <span class="fw-semibold text-success">
+                                        @FormatPair(_rankData?.NextRankEligibleEnrollmentPoints,
+                                                    _rankData?.NextRankEnrollmentPoints)
+                                    </span>
                                 </div>
                             </div>
                         }
@@ -80,59 +99,198 @@
 </div>
 
 @* ═══════════════════════════════════════════════════════════════════════════
-   SECTION 2 — Dual Team Points + Residuals Earning cards
+   SECTION 2A — Total Dual Team Points + Total Enrollment Team Points
+   Each card carries Left/Right (DT only), eligibility lines, and a progress
+   bar driven by the Eligible-Next / Threshold-Next ratio. Caption underneath
+   re-states the value so the bar is reachable without colour vision.
    ══════════════════════════════════════════════════════════════════════════ *@
 <div class="row g-4 mb-4">
     @* Total Dual Team Points *@
     <div class="col-12 col-md-6">
         <div class="card bg-white border-0 rounded-3 h-100">
             <div class="card-body p-4">
-                <h5 class="fw-semibold border-bottom pb-3 mb-3">@L["Team.TotalDualTeamPoints"]</h5>
-                @if (_residualLoading)
+                <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3 flex-wrap gap-2">
+                    <div>
+                        <h5 class="fw-semibold mb-1">@L["Team.TotalDualTeamPoints"]</h5>
+                        <span class="text-muted fs-13">@L["Team.LastSixMonths"]</span>
+                    </div>
+                    @if (!_dtTrendLoading && _dtTrendDelta != 0)
+                    {
+                        var deltaClass = _dtTrendDelta > 0
+                            ? "bg-success bg-opacity-10 text-success"
+                            : "bg-danger bg-opacity-10 text-danger";
+                        var deltaSign = _dtTrendDelta > 0 ? "+" : "";
+                        <span class="badge @deltaClass px-3 py-2 rounded-pill fs-12 fw-semibold">@deltaSign@_dtTrendDelta.ToString("N0")</span>
+                    }
+                </div>
+
+                @if (_dtTrendLoading)
                 {
-                    <LoadingSpinner IsLoading="true" />
+                    <div class="d-flex justify-content-center py-4"><div class="spinner-border text-primary"></div></div>
                 }
                 else
                 {
-                    <ul class="list-unstyled mb-0">
+                    <div id="@_dtTrendChartId" style="min-height:280px;@(_dtTrendData.Count == 0 ? " display:none;" : "")"></div>
+                    @if (_dtTrendData.Count == 0)
+                    {
+                        <div class="d-flex flex-column align-items-center justify-content-center py-4 text-muted"
+                             style="min-height:120px;background:#f8f9fb;border-radius:10px;border:2px dashed #dde1e7">
+                            <i class="ri-bar-chart-2-line fs-2 mb-2 text-muted opacity-50"></i>
+                            <span class="fs-13">@L["Team.NoHistoryYet"]</span>
+                        </div>
+                    }
+                }
+
+                @if (!_residualLoading)
+                {
+                    <ul class="list-unstyled mb-3 mt-3 pt-3 border-top">
                         <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
                             <span class="d-flex align-items-center gap-2">
-                                <span class="badge" style="background:#605DFF;width:10px;height:10px;border-radius:50%;padding:0;display:inline-block"></span>
+                                <span class="badge" style="background:#F08080;width:10px;height:10px;border-radius:50%;padding:0;display:inline-block"></span>
                                 @L["Reports.LeftLeg"]
                             </span>
                             <span class="fw-semibold">@(_residualSummary?.LeftLegPoints.ToString("N0") ?? "—")</span>
                         </li>
                         <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
                             <span class="d-flex align-items-center gap-2">
-                                <span class="badge" style="background:#4299e1;width:10px;height:10px;border-radius:50%;padding:0;display:inline-block"></span>
+                                <span class="badge" style="background:#A8B0BD;width:10px;height:10px;border-radius:50%;padding:0;display:inline-block"></span>
                                 @L["Reports.RightLeg"]
                             </span>
                             <span class="fw-semibold">@(_residualSummary?.RightLegPoints.ToString("N0") ?? "—")</span>
                         </li>
                         <li class="d-flex justify-content-between align-items-center py-2">
-                            <span class="fw-semibold">@L["Common.Total"]</span>
+                            <span class="fw-semibold d-flex align-items-center gap-2">
+                                <span class="badge" style="background:#3478F6;width:10px;height:10px;border-radius:50%;padding:0;display:inline-block"></span>
+                                @L["Common.Total"]
+                            </span>
                             <span class="fw-bold text-primary fs-16">
                                 @((_residualSummary is not null ? _residualSummary.LeftLegPoints + _residualSummary.RightLegPoints : 0).ToString("N0"))
                             </span>
                         </li>
                     </ul>
+
+                    @* Progress toward next rank — DT dimension. When NextRankDualTeamPoints == 0
+                       the dimension does not apply; show an N/A message instead of an empty bar. *@
+                    @if ((_rankData?.NextRankDualTeamPoints ?? 0) > 0)
+                    {
+                        var nextThresholdDt  = _rankData!.NextRankDualTeamPoints;
+                        var nextEligibleDt   = _rankData.NextRankEligibleDualTeamPoints;
+                        var pctDt            = ProgressPct(nextEligibleDt, nextThresholdDt);
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="height:8px;border-radius:999px;">
+                                <div class="progress-bar bg-primary"
+                                     role="progressbar"
+                                     style="width:@(pctDt)%;border-radius:999px;"
+                                     aria-valuenow="@pctDt"
+                                     aria-valuemin="0"
+                                     aria-valuemax="100"></div>
+                            </div>
+                            <span class="fs-12 fw-semibold text-primary" style="min-width:38px;text-align:right;">@(pctDt)%</span>
+                        </div>
+                        <div class="fs-12 text-muted mt-2">
+                            @string.Format(L["Team.PointsTowardNext"],
+                                           nextEligibleDt.ToString("N0"),
+                                           nextThresholdDt.ToString("N0"),
+                                           _rankData.NextRankName ?? "—")
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="fs-12 text-muted">
+                            @string.Format(L["Team.DtRequirementNotApplicable"], _rankData?.NextRankName ?? "—")
+                        </div>
+                    }
                 }
             </div>
         </div>
     </div>
 
-    @* Daily Residuals Earning — chart placeholder *@
+    @* Total Enrollment Team Points *@
     <div class="col-12 col-md-6">
         <div class="card bg-white border-0 rounded-3 h-100">
             <div class="card-body p-4">
+                <h5 class="fw-semibold border-bottom pb-3 mb-3">@L["Team.TotalEnrollmentTeamPoints"]</h5>
+                @if (_rankLoading)
+                {
+                    <LoadingSpinner IsLoading="true" />
+                }
+                else
+                {
+                    <ul class="list-unstyled mb-3">
+                        <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <span>@L["Team.EligibleCurrentRank"]</span>
+                            <span class="fw-semibold">@(_rankData?.CurrentRankEligibleEnrollmentPoints.ToString("N0") ?? "—")</span>
+                        </li>
+                        <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <span class="fw-semibold">@L["Team.EligibleNextRank"]</span>
+                            <span class="fw-bold text-success fs-16">@(_rankData?.NextRankEligibleEnrollmentPoints.ToString("N0") ?? "—")</span>
+                        </li>
+                        <li class="d-flex justify-content-between align-items-center py-2">
+                            <span>@L["Team.TotalRaw"]</span>
+                            <span class="fw-semibold">@(_rankData?.EnrollmentPoints.ToString("N0") ?? "—")</span>
+                        </li>
+                    </ul>
+
+                    @* Progress toward next rank — ET dimension. *@
+                    @if ((_rankData?.NextRankEnrollmentPoints ?? 0) > 0)
+                    {
+                        var nextThresholdEt = _rankData!.NextRankEnrollmentPoints;
+                        var nextEligibleEt  = _rankData.NextRankEligibleEnrollmentPoints;
+                        var pctEt           = ProgressPct(nextEligibleEt, nextThresholdEt);
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="height:8px;border-radius:999px;">
+                                <div class="progress-bar bg-primary"
+                                     role="progressbar"
+                                     style="width:@(pctEt)%;border-radius:999px;"
+                                     aria-valuenow="@pctEt"
+                                     aria-valuemin="0"
+                                     aria-valuemax="100"></div>
+                            </div>
+                            <span class="fs-12 fw-semibold text-primary" style="min-width:38px;text-align:right;">@(pctEt)%</span>
+                        </div>
+                        <div class="fs-12 text-muted mt-2">
+                            @string.Format(L["Team.PointsTowardNext"],
+                                           nextEligibleEt.ToString("N0"),
+                                           nextThresholdEt.ToString("N0"),
+                                           _rankData.NextRankName ?? "—")
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="fs-12 text-muted">
+                            @string.Format(L["Team.EtRequirementNotApplicable"], _rankData?.NextRankName ?? "—")
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   SECTION 2B — Daily Residuals Earning (full width)
+   Histogram of the last 6 months of residual earnings. Chart is rendered via
+   ApexCharts through a JSInterop call after the data loads.
+   ══════════════════════════════════════════════════════════════════════════ *@
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card bg-white border-0 rounded-3">
+            <div class="card-body p-4">
                 <h5 class="fw-semibold border-bottom pb-3 mb-3">@L["Team.DailyResidualsEarning"]</h5>
                 <span class="text-muted fs-13 d-block mb-3">@L["Team.LastSixMonths"]</span>
-                <div class="d-flex flex-column align-items-center justify-content-center py-4 text-muted"
-                     style="min-height:120px;background:#f8f9fb;border-radius:10px;border:2px dashed #dde1e7">
-                    <i class="ri-bar-chart-2-line fs-2 mb-2 text-primary opacity-50"></i>
-                    <span class="fs-13">@L["Team.ChartComingSoon"]</span>
-                    <span class="fs-12 text-muted mt-1">@L["Team.HistoricalResidualsHint"]</span>
-                </div>
+                @if (_chartLoading)
+                {
+                    <div class="d-flex justify-content-center py-4"><div class="spinner-border text-primary"></div></div>
+                }
+                else if (_chartData.Count == 0)
+                {
+                    <div class="d-flex flex-column align-items-center justify-content-center py-4 text-muted"
+                         style="min-height:120px;background:#f8f9fb;border-radius:10px;border:2px dashed #dde1e7">
+                        <i class="ri-bar-chart-2-line fs-2 mb-2 text-muted opacity-50"></i>
+                        <span class="fs-13">@L["Team.NoResidualEarnings"]</span>
+                    </div>
+                }
+                <div id="@_chartElementId" style="min-height:300px; @(_chartData.Count == 0 ? "display:none;" : "")"></div>
             </div>
         </div>
     </div>
@@ -186,21 +344,48 @@
                                             </div>
                                             <div>
                                                 <span class="fw-medium d-block">@m.FullName</span>
-                                                <span class="badge @(m.Leg == "Left" ? "bg-primary bg-opacity-10 text-primary" : "bg-info bg-opacity-10 text-info") p-1 fs-11 fw-normal">
-                                                    @(m.Leg == "Left" ? L["Reports.LeftSide"] : L["Reports.RightSide"])
-                                                </span>
+                                                @if (string.Equals(m.Leg, "Root", StringComparison.OrdinalIgnoreCase))
+                                                {
+                                                    <span class="badge bg-primary bg-opacity-10 text-primary px-2 py-1 fs-11 fw-normal">@(m.RankName ?? "—")</span>
+                                                }
+                                                else if (string.Equals(m.Leg, "Left", StringComparison.OrdinalIgnoreCase))
+                                                {
+                                                    <span class="badge bg-primary text-white px-2 py-1 fs-11 fw-normal">@L["Reports.Left"]</span>
+                                                }
+                                                else if (string.Equals(m.Leg, "Right", StringComparison.OrdinalIgnoreCase))
+                                                {
+                                                    <span class="badge bg-info text-white px-2 py-1 fs-11 fw-normal">@L["Reports.Right"]</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-light text-muted px-2 py-1 fs-11 fw-normal">—</span>
+                                                }
                                             </div>
                                         </div>
                                     </td>
                                     <td class="text-body fw-semibold">@m.QualificationPoints.ToString("N0")</td>
                                     <td>
                                         <div class="d-flex align-items-center gap-2">
-                                            @RenderDonut(m.CurrentRankEligiblePct, m.CurrentRankEligiblePoints)
+                                            @if ((_rankData?.CurrentRankDualTeamPoints ?? 0) > 0)
+                                            {
+                                                @RenderDonut(m.CurrentRankEligiblePct, m.CurrentRankEligiblePoints)
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted fs-13" title="@string.Format(L["Team.DtRequirementNotApplicable"], _rankData?.CurrentRankName ?? "—")">—</span>
+                                            }
                                         </div>
                                     </td>
                                     <td>
                                         <div class="d-flex align-items-center gap-2">
-                                            @RenderDonut(m.NextRankEligiblePct, m.NextRankEligiblePoints)
+                                            @if ((_rankData?.NextRankDualTeamPoints ?? 0) > 0)
+                                            {
+                                                @RenderDonut(m.NextRankEligiblePct, m.NextRankEligiblePoints)
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted fs-13" title="@string.Format(L["Team.DtRequirementNotApplicable"], _rankData?.NextRankName ?? "—")">—</span>
+                                            }
                                         </div>
                                     </td>
                                 </tr>
@@ -231,16 +416,28 @@
             </div>
             <div class="d-flex gap-2 flex-wrap">
                 <div>
-                    <label class="form-label fs-12 mb-1 fw-medium">@L["Common.From"]</label>
-                    <input type="date" class="form-control form-control-sm"
-                           value="@_fromDate"
-                           @onchange="OnFromDateChange" />
+                    <label class="form-label fs-12 mb-1 fw-medium">@L["Common.Year"]</label>
+                    <select class="form-select form-select-sm"
+                            value="@_selectedYear"
+                            @onchange="OnYearChange">
+                        @foreach (var y in _yearOptions)
+                        {
+                            <option value="@y">@y</option>
+                        }
+                    </select>
                 </div>
                 <div>
-                    <label class="form-label fs-12 mb-1 fw-medium">@L["Common.To"]</label>
-                    <input type="date" class="form-control form-control-sm"
-                           value="@_toDate"
-                           @onchange="OnToDateChange" />
+                    <label class="form-label fs-12 mb-1 fw-medium">@L["Common.Month"]</label>
+                    <select class="form-select form-select-sm"
+                            value="@_selectedMonth"
+                            @onchange="OnMonthChange">
+                        <option value="0">@L["Common.AllMonths"]</option>
+                        @for (var m = 1; m <= 12; m++)
+                        {
+                            var mo = m;
+                            <option value="@mo">@(CapitalizeFirst(CultureInfo.CurrentUICulture.DateTimeFormat.GetMonthName(mo)))</option>
+                        }
+                    </select>
                 </div>
             </div>
         </div>
@@ -324,8 +521,13 @@
 @code {
     // ── Parameters ───────────────────────────────────────────────────────────
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
-    [Parameter] public string ApiBaseUrl      { get; set; } = "api/v1/bizcenter";
-    [Parameter] public bool   ShowBreadcrumb  { get; set; } = true;
+    [Parameter] public string    ApiBaseUrl     { get; set; } = "api/v1/bizcenter";
+    [Parameter] public bool      ShowBreadcrumb { get; set; } = true;
+
+    /// <summary>Member's enrollment date — drives the lower bound of the year
+    /// dropdown so the user can only pick years where they could have earned.
+    /// Falls back to (CurrentYear - 5) when the parent did not pass it.</summary>
+    [Parameter] public DateTime? EnrollDate     { get; set; }
 
     // ── Section 1 state — ranks ───────────────────────────────────────────────
     private bool              _rankLoading  = true;
@@ -345,12 +547,26 @@
     private string?           _residualsError;
     private List<DualResidualDto> _residuals      = new();
     private string?           _residualSearch;
-    private string?           _fromDate;
-    private string?           _toDate;
+    private int               _selectedYear;
+    private int               _selectedMonth;     // 0 = all months
+    private List<int>         _yearOptions        = new();
     private int               _residualPage       = 1;
     private int               _residualTotal;
     private int               _residualTotalPages;
     private const int         ResidualPageSize    = 10;
+
+    // ── Section 2B state — residuals chart ────────────────────────────────────
+    private bool                     _chartLoading  = true;
+    private List<MonthlyAmountDto>   _chartData     = new();
+    private string                   _chartElementId = "mlm-residuals-chart";
+    private bool                     _chartRendered;
+
+    // ── Section 2A state — Total Dual Team Points trend ──────────────────────
+    private bool                          _dtTrendLoading = true;
+    private List<DualLegMonthlyPointDto>  _dtTrendData    = new();
+    private string                        _dtTrendChartId = "mlm-dt-trend-chart";
+    private bool                          _dtTrendRendered;
+    private decimal                       _dtTrendDelta;       // latest total − earliest total
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
@@ -362,13 +578,49 @@
     // ── Lifecycle ────────────────────────────────────────────────────────────
     protected override async Task OnParametersSetAsync()
     {
-        if (!string.IsNullOrEmpty(MemberProfileId))
+        if (string.IsNullOrEmpty(MemberProfileId)) return;
+
+        // Build year dropdown range once: from the member's enrollment year
+        // (or CurrentYear - 5 fallback) up to the current year. Default the
+        // selection to the current year + "all months" so the table reflects
+        // the most recent activity on first paint.
+        var nowYear   = DateTime.UtcNow.Year;
+        var startYear = EnrollDate?.Year is int ey && ey <= nowYear ? ey : nowYear - 5;
+        if (startYear > nowYear) startYear = nowYear;
+
+        var newOptions = Enumerable.Range(startYear, nowYear - startYear + 1).Reverse().ToList();
+        if (!_yearOptions.SequenceEqual(newOptions)) _yearOptions = newOptions;
+        if (_selectedYear == 0)  _selectedYear  = nowYear;
+        if (_selectedMonth < 0)  _selectedMonth = 0;
+
+        // Each member gets a unique chart container id so two instances on
+        // the same page (admin impersonation) don't fight for the same DOM
+        // node.
+        _chartElementId = $"mlm-residuals-chart-{MemberProfileId}";
+        _dtTrendChartId = $"mlm-dt-trend-chart-{MemberProfileId}";
+
+        await Task.WhenAll(
+            LoadRankDataAsync(),
+            LoadResidualSummaryAsync(),
+            LoadMembersAsync(),
+            LoadResidualsAsync(1),
+            LoadChartDataAsync(),
+            LoadDtTrendAsync());
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Render charts after every successful data refresh; the JS helpers
+        // tear down any prior instance so calling repeatedly is safe.
+        if (!_chartLoading && _chartData.Count > 0)
         {
-            await Task.WhenAll(
-                LoadRankDataAsync(),
-                LoadResidualSummaryAsync(),
-                LoadMembersAsync(),
-                LoadResidualsAsync(1));
+            await RenderChartAsync();
+            _chartRendered = true;
+        }
+        if (!_dtTrendLoading && _dtTrendData.Count > 0)
+        {
+            await RenderDtTrendAsync();
+            _dtTrendRendered = true;
         }
     }
 
@@ -409,10 +661,14 @@
         StateHasChanged();
         try
         {
-            var resp = await Http.GetFromJsonAsync<ApiWrapper<PagedData<TeamMemberRowDto>>>(
-                $"{ApiBaseUrl}/team/members?page=1&pageSize=10");
+            // /team/dual-tree/legs returns up to 3 rows: viewer (root) plus
+            // their direct binary L/R children. /team/members is used by other
+            // surfaces (token pickers, etc.) and intentionally still returns
+            // the broader downline.
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<TeamMemberRowDto>>>(
+                $"{ApiBaseUrl}/team/dual-tree/legs");
             if (resp?.Success == true && resp.Data is not null)
-                _members = resp.Data.Items;
+                _members = resp.Data;
             else
                 _membersError = L["Team.LoadFailedTeamMembers"];
         }
@@ -434,10 +690,10 @@
             var url = $"{ApiBaseUrl}/commissions/dual-residual?page={page}&pageSize={ResidualPageSize}";
             if (!string.IsNullOrWhiteSpace(_residualSearch))
                 url += $"&search={Uri.EscapeDataString(_residualSearch)}";
-            if (!string.IsNullOrWhiteSpace(_fromDate))
-                url += $"&from={Uri.EscapeDataString(_fromDate)}";
-            if (!string.IsNullOrWhiteSpace(_toDate))
-                url += $"&to={Uri.EscapeDataString(_toDate)}";
+            if (_selectedYear > 0)
+                url += $"&year={_selectedYear}";
+            if (_selectedMonth >= 1 && _selectedMonth <= 12)
+                url += $"&month={_selectedMonth}";
 
             var resp = await Http.GetFromJsonAsync<ApiWrapper<PagedData<DualResidualDto>>>(url);
             if (resp?.Success == true && resp.Data is not null)
@@ -476,17 +732,124 @@
         catch (TaskCanceledException) { /* debounced */ }
     }
 
-    private async Task OnFromDateChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    private async Task OnYearChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
-        _fromDate = e.Value?.ToString();
+        if (int.TryParse(e.Value?.ToString(), out var y)) _selectedYear = y;
         await LoadResidualsAsync(1);
     }
 
-    private async Task OnToDateChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    private async Task OnMonthChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
-        _toDate = e.Value?.ToString();
+        if (int.TryParse(e.Value?.ToString(), out var m)) _selectedMonth = m;
         await LoadResidualsAsync(1);
     }
+
+    // ── Chart loader + JSInterop ─────────────────────────────────────────────
+    private async Task LoadChartDataAsync()
+    {
+        _chartLoading = true;
+        StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<MonthlyAmountDto>>>(
+                $"{ApiBaseUrl}/commissions/dual-residual/chart?months=6");
+            _chartData = resp?.Success == true && resp.Data is not null ? resp.Data : new();
+        }
+        catch
+        {
+            _chartData = new();   // degrade silently — empty chart, not a hard error
+        }
+        finally { _chartLoading = false; }
+    }
+
+    private async Task LoadDtTrendAsync()
+    {
+        _dtTrendLoading = true;
+        StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<DualLegMonthlyPointDto>>>(
+                $"{ApiBaseUrl}/team/dual-tree/history?months=6");
+            _dtTrendData = resp?.Success == true && resp.Data is not null ? resp.Data : new();
+
+            // Delta badge mirrors the template's "+45" pill: difference
+            // between the latest and earliest non-zero total in the window.
+            // Showing zero when the series is empty avoids a misleading "0"
+            // pill on brand-new members.
+            if (_dtTrendData.Count >= 2)
+            {
+                var latest   = _dtTrendData[^1];
+                var earliest = _dtTrendData[0];
+                _dtTrendDelta = (latest.LeftLegPoints + latest.RightLegPoints)
+                              - (earliest.LeftLegPoints + earliest.RightLegPoints);
+            }
+            else
+            {
+                _dtTrendDelta = 0;
+            }
+        }
+        catch
+        {
+            _dtTrendData  = new();
+            _dtTrendDelta = 0;
+        }
+        finally { _dtTrendLoading = false; }
+    }
+
+    private async Task RenderDtTrendAsync()
+    {
+        var ci = CultureInfo.CurrentUICulture;
+        var categories = _dtTrendData
+            .Select(p => ci.DateTimeFormat.GetAbbreviatedMonthName(p.Month))
+            .ToArray();
+        var leftSeries  = _dtTrendData.Select(p => (double)p.LeftLegPoints ).ToArray();
+        var rightSeries = _dtTrendData.Select(p => (double)p.RightLegPoints).ToArray();
+        var totalSeries = _dtTrendData.Select(p => (double)(p.LeftLegPoints + p.RightLegPoints)).ToArray();
+        try
+        {
+            await JS.InvokeVoidAsync("mlmRenderDualTeamTrendChart",
+                _dtTrendChartId, categories, leftSeries, rightSeries, totalSeries);
+        }
+        catch (JSDisconnectedException) { }
+        catch (Exception)               { }
+    }
+
+    private async Task RenderChartAsync()
+    {
+        // Build localized "Mon YYYY" categories from the server payload so the
+        // x-axis labels respect the active culture (Sept/Sep/sep/septembre/...).
+        var ci         = CultureInfo.CurrentUICulture;
+        var categories = _chartData
+            .Select(p => $"{ci.DateTimeFormat.GetAbbreviatedMonthName(p.Month)} {p.Year}")
+            .ToArray();
+        var values     = _chartData.Select(p => (double)p.Amount).ToArray();
+
+        try
+        {
+            await JS.InvokeVoidAsync("mlmRenderResidualsChart",
+                _chartElementId, categories, values, "$");
+        }
+        catch (JSDisconnectedException) { /* circuit dropped — nothing to render */ }
+        catch (Exception)               { /* don't crash the page on chart errors */ }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_chartRendered)
+                await JS.InvokeVoidAsync("mlmDestroyChart", _chartElementId);
+            if (_dtTrendRendered)
+                await JS.InvokeVoidAsync("mlmDestroyChart", _dtTrendChartId);
+        }
+        catch { /* circuit may already be down */ }
+    }
+
+    /// <summary>Some cultures (es, fr, it...) report month names lowercase.
+    /// Capitalize the first letter so the dropdown reads consistently across
+    /// languages.</summary>
+    private static string CapitalizeFirst(string s) =>
+        string.IsNullOrEmpty(s) ? s : char.ToUpper(s[0]) + s.Substring(1);
 
     // ── Render helpers ───────────────────────────────────────────────────────
     private RenderFragment RenderDonut(int pct, int value) => __builder =>
@@ -510,9 +873,45 @@
         <span class="badge bg-@cls bg-opacity-10 text-@cls p-2 fs-12 fw-normal">@(status ?? "—")</span>
     };
 
+    // "X / Y" pair formatter. Threshold == 0 means the dimension does not apply
+    // at this rank — show "—" instead of "0 / 0" so the user is not misled into
+    // chasing a non-existent target. Null threshold (rank data still loading)
+    // also collapses to "—".
+    private static string FormatPair(int? eligible, int? threshold)
+    {
+        if (threshold is null || threshold.Value == 0) return "—";
+        return $"{eligible ?? 0:N0} / {threshold.Value:N0}";
+    }
+
+    // Progress bar percentage, clamped to 0..100 and rounded to whole numbers
+    // (CSS width animations look smoother on integer values).
+    private static int ProgressPct(int eligible, int threshold)
+    {
+        if (threshold <= 0) return 0;
+        var pct = (int)Math.Round(eligible * 100.0 / threshold);
+        if (pct < 0)   pct = 0;
+        if (pct > 100) pct = 100;
+        return pct;
+    }
+
     // ── DTOs ─────────────────────────────────────────────────────────────────
     private class ApiWrapper<T> { public bool Success { get; set; } public T? Data { get; set; } }
     private class PagedData<T>  { public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
+
+    private class MonthlyAmountDto
+    {
+        public int     Year   { get; set; }
+        public int     Month  { get; set; }
+        public decimal Amount { get; set; }
+    }
+
+    private class DualLegMonthlyPointDto
+    {
+        public int     Year           { get; set; }
+        public int     Month          { get; set; }
+        public decimal LeftLegPoints  { get; set; }
+        public decimal RightLegPoints { get; set; }
+    }
 
     private class RankDashboardDto
     {
@@ -522,6 +921,16 @@
         public int    CurrentRankEnrollmentPoints  { get; set; }
         public int    NextRankDualTeamPoints       { get; set; }
         public int    NextRankEnrollmentPoints     { get; set; }
+        // Eligible (capped at the rank's threshold). Backend caps server-side so
+        // the UI can render "X / Y" pairs without re-clamping.
+        public int    CurrentRankEligibleDualTeamPoints   { get; set; }
+        public int    CurrentRankEligibleEnrollmentPoints { get; set; }
+        public int    NextRankEligibleDualTeamPoints      { get; set; }
+        public int    NextRankEligibleEnrollmentPoints    { get; set; }
+        // Raw running total — useful as a "Total Raw" line on the ET card so a
+        // user can see how far over the cap they are when over-qualified.
+        public int    EnrollmentPoints                    { get; set; }
+        public int    DualTeamPoints                      { get; set; }
     }
 
     private class ResidualSummaryDto
@@ -530,16 +939,20 @@
         public int RightLegPoints { get; set; }
     }
 
+    // Mirrors Repository.Services.Teams.DualLegRowView. Leg is one of
+    // "Root" | "Left" | "Right"; RankName is only set for the Root row so the
+    // table can swap the leg badge for a rank badge on the viewer's line.
     private class TeamMemberRowDto
     {
-        public string MemberId                { get; set; } = string.Empty;
-        public string FullName                { get; set; } = string.Empty;
-        public string Leg                     { get; set; } = string.Empty;
-        public int    QualificationPoints     { get; set; }
-        public int    CurrentRankEligiblePoints { get; set; }
-        public int    CurrentRankEligiblePct  { get; set; }
-        public int    NextRankEligiblePoints  { get; set; }
-        public int    NextRankEligiblePct     { get; set; }
+        public string  MemberId                  { get; set; } = string.Empty;
+        public string  FullName                  { get; set; } = string.Empty;
+        public string  Leg                       { get; set; } = string.Empty;
+        public string? RankName                  { get; set; }
+        public int     QualificationPoints       { get; set; }
+        public int     CurrentRankEligiblePoints { get; set; }
+        public int     CurrentRankEligiblePct    { get; set; }
+        public int     NextRankEligiblePoints    { get; set; }
+        public int     NextRankEligiblePct       { get; set; }
     }
 
     private record DualResidualDto(

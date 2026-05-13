@@ -113,6 +113,63 @@
                                 <label class="form-check-label" for="promoIsActive">Active</label>
                             </div>
                         </div>
+
+                        <div class="col-12">
+                            <hr class="my-2" />
+                            <h6 class="fw-semibold mb-2"><i class="ri-flashlight-line me-1 text-warning"></i>Promo Mechanics</h6>
+                            <p class="text-muted small mb-2">
+                                Mechanics apply to orders whose creation date falls inside this promo's window.
+                                Toggle independently — a promo can double Sponsor only, Builder only, both, or neither.
+                            </p>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="promoDblSponsor" @bind="_form.DoubleSponsorBonus" />
+                                <label class="form-check-label" for="promoDblSponsor">
+                                    <span class="fw-semibold">2× Sponsor Bonus</span>
+                                    <span class="d-block text-muted small">Cat 1 (Member Bonus) paid at double the configured tier amount.</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="promoDblBuilder" @bind="_form.DoubleBuilderBonus" />
+                                <label class="form-check-label" for="promoDblBuilder">
+                                    <span class="fw-semibold">2× Builder Bonus</span>
+                                    <span class="d-block text-muted small">Cat 6 + Cat 7 differential payouts up the chain at 2×.</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="promoResetFsb" @bind="_form.ResetFsbCountdown" />
+                                <label class="form-check-label" for="promoResetFsb">
+                                    <span class="fw-semibold">Allow FSB Countdown Reset</span>
+                                    <span class="d-block text-muted small">
+                                        Lets admin trigger a one-shot reset for ambassadors with an expired countdown
+                                        OR who are inside their first 14 days without an FSB1 earning yet.
+                                        Cancelled (Terminated) members are skipped.
+                                    </span>
+                                </label>
+                            </div>
+                            @if (_editId is not null && _form.ResetFsbCountdown && _form.ResetFsbCountdownExecutedAt is null)
+                            {
+                                <button class="btn btn-warning btn-sm mt-2" @onclick="RunResetFsbCountdowns" disabled="@_running">
+                                    @if (_running) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                                    <i class="ri-restart-line me-1"></i>Run FSB Reset Now
+                                </button>
+                            }
+                            else if (_form.ResetFsbCountdownExecutedAt is not null)
+                            {
+                                <div class="alert alert-info mt-2 mb-0 py-2 px-3 fs-12">
+                                    <i class="ri-check-double-line me-1"></i>
+                                    Reset already executed on @_form.ResetFsbCountdownExecutedAt.Value.ToString("yyyy-MM-dd HH:mm").
+                                </div>
+                            }
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -172,6 +229,7 @@
     private List<CorporatePromoDto> _items = new();
     private bool _loading = true;
     private bool _saving;
+    private bool _running;
     private string? _alertMsg;
     private bool _alertIsError;
     private bool _showForm;
@@ -202,12 +260,16 @@
         _editId = p.Id;
         _form = new CorporatePromoFormModel
         {
-            Title = p.Title,
-            Description = p.Description,
-            StartDate = p.StartDate,
-            EndDate = p.EndDate,
-            BannerUrl = p.BannerUrl,
-            IsActive = p.IsActive
+            Title                       = p.Title,
+            Description                 = p.Description,
+            StartDate                   = p.StartDate,
+            EndDate                     = p.EndDate,
+            BannerUrl                   = p.BannerUrl,
+            IsActive                    = p.IsActive,
+            DoubleSponsorBonus          = p.DoubleSponsorBonus,
+            DoubleBuilderBonus          = p.DoubleBuilderBonus,
+            ResetFsbCountdown           = p.ResetFsbCountdown,
+            ResetFsbCountdownExecutedAt = p.ResetFsbCountdownExecutedAt
         };
         _showForm = true;
     }
@@ -230,7 +292,10 @@
                     _form.Description,
                     _form.StartDate,
                     _form.EndDate,
-                    _form.BannerUrl
+                    _form.BannerUrl,
+                    _form.DoubleSponsorBonus,
+                    _form.DoubleBuilderBonus,
+                    _form.ResetFsbCountdown
                 });
             }
             else
@@ -243,7 +308,10 @@
                     _form.StartDate,
                     _form.EndDate,
                     _form.BannerUrl,
-                    _form.IsActive
+                    _form.IsActive,
+                    _form.DoubleSponsorBonus,
+                    _form.DoubleBuilderBonus,
+                    _form.ResetFsbCountdown
                 });
             }
             if (response.IsSuccessStatusCode) { _alertMsg = _editId is null ? "Promo created." : "Promo updated."; _alertIsError = false; CloseForm(); await LoadAsync(); }
@@ -271,16 +339,58 @@
 
     private static string BoolBadge(bool val) => val ? "bg-success" : "bg-secondary";
 
-    private record CorporatePromoDto(string Id, string Title, string? Description, DateTime StartDate, DateTime EndDate, string? BannerUrl, bool IsActive, int MemberCount);
+    private async Task RunResetFsbCountdowns()
+    {
+        if (_editId is null) return;
+        _running = true;
+        try
+        {
+            var response = await Http.PostAsJsonAsync(
+                $"api/v1/admin/corporate-promos/{_editId}/reset-fsb-countdowns", new { });
+            if (response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadFromJsonAsync<ApiResp<ResetResponseDto>>();
+                if (body?.Success == true && body.Data is not null)
+                {
+                    _form.ResetFsbCountdownExecutedAt = body.Data.ExecutedAt;
+                    _alertMsg = $"FSB reset complete — {body.Data.AmbassadorsReset} ambassadors updated, " +
+                                $"{body.Data.ArchivedRows} prior countdowns archived.";
+                    _alertIsError = false;
+                    await LoadAsync(); // refresh grid so the row reflects ExecutedAt
+                }
+            }
+            else
+            {
+                var raw = await response.Content.ReadAsStringAsync();
+                _alertMsg = $"Reset failed ({(int)response.StatusCode}): {raw}";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _running = false; }
+    }
+
+    private record ResetResponseDto(string PromoId, int AmbassadorsReset, int ArchivedRows, DateTime ExecutedAt);
+
+    private record CorporatePromoDto(
+        string Id, string Title, string? Description,
+        DateTime StartDate, DateTime EndDate,
+        string? BannerUrl, bool IsActive, int MemberCount,
+        bool DoubleSponsorBonus, bool DoubleBuilderBonus,
+        bool ResetFsbCountdown, DateTime? ResetFsbCountdownExecutedAt);
 
     private class CorporatePromoFormModel
     {
-        public string Title { get; set; } = string.Empty;
-        public string? Description { get; set; }
-        public DateTime StartDate { get; set; } = DateTime.Now;
-        public DateTime EndDate { get; set; } = DateTime.Now.AddDays(30);
-        public string? BannerUrl { get; set; }
-        public bool IsActive { get; set; } = true;
+        public string    Title                       { get; set; } = string.Empty;
+        public string?   Description                 { get; set; }
+        public DateTime  StartDate                   { get; set; } = DateTime.Now;
+        public DateTime  EndDate                     { get; set; } = DateTime.Now.AddDays(30);
+        public string?   BannerUrl                   { get; set; }
+        public bool      IsActive                    { get; set; } = true;
+        public bool      DoubleSponsorBonus          { get; set; }
+        public bool      DoubleBuilderBonus          { get; set; }
+        public bool      ResetFsbCountdown           { get; set; }
+        public DateTime? ResetFsbCountdownExecutedAt { get; set; }
     }
 
     private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);

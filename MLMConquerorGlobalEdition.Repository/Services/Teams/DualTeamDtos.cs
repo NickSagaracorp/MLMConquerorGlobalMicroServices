@@ -7,6 +7,37 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 /// downline sits on. Used by both BizCenter (member's own view) and Admin
 /// (member profile drill-down). Do NOT duplicate this shape elsewhere.
 /// </summary>
+/// <summary>One month bucket on the Total Dual Team Points trend chart.
+/// Keeps both legs separate so the UI can render grouped Left/Right bars and
+/// derive Total client-side without a second round-trip.</summary>
+public class DualLegMonthlyPointView
+{
+    public int     Year           { get; set; }
+    public int     Month          { get; set; }   // 1..12
+    public decimal LeftLegPoints  { get; set; }
+    public decimal RightLegPoints { get; set; }
+}
+
+/// <summary>
+/// Single row of the three-row "Dual Team Members" feed shown on Residuals:
+/// the viewer (Leg = "Root") followed by their left and right gateway
+/// children. The donut percent denominator differs per leg: root divides by
+/// the rank's TeamPoints threshold; children divide by the per-leg cap so
+/// each child donut tops out at the leg's individual contribution limit.
+/// </summary>
+public class DualLegRowView
+{
+    public string  MemberId                  { get; set; } = string.Empty;
+    public string  FullName                  { get; set; } = string.Empty;
+    public string  Leg                       { get; set; } = string.Empty; // "Root" | "Left" | "Right"
+    public string? RankName                  { get; set; }                 // only set for Root
+    public int     QualificationPoints       { get; set; }
+    public int     CurrentRankEligiblePoints { get; set; }
+    public int     CurrentRankEligiblePct    { get; set; }
+    public int     NextRankEligiblePoints    { get; set; }
+    public int     NextRankEligiblePct       { get; set; }
+}
+
 public class DualTeamMyTeamMemberView
 {
     public string    MemberId            { get; set; } = string.Empty;

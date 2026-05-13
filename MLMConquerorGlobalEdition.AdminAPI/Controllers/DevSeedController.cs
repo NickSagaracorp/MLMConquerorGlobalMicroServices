@@ -62,7 +62,27 @@ public class DevSeedController : ControllerBase
 
         var existing = await _userManager.FindByEmailAsync(request.Email);
         if (existing is not null)
-            return Ok(ApiResponse<SeedResultDto>.Ok(new SeedResultDto("User already exists — skipped.")));
+        {
+            // Dev convenience: re-assign the SuperAdmin role and reset the password so the
+            // account is always usable for verification runs, even if the original password is unknown.
+            if (!await _userManager.IsInRoleAsync(existing, "SuperAdmin"))
+                await _userManager.AddToRoleAsync(existing, "SuperAdmin");
+
+            existing.IsActive       = true;
+            existing.EmailConfirmed = true;
+            await _userManager.UpdateAsync(existing);
+
+            var token       = await _userManager.GeneratePasswordResetTokenAsync(existing);
+            var resetResult = await _userManager.ResetPasswordAsync(existing, token, request.Password);
+            if (!resetResult.Succeeded)
+            {
+                var resetErrors = string.Join(", ", resetResult.Errors.Select(e => e.Description));
+                return BadRequest(ApiResponse<SeedResultDto>.Fail("SEED_FAILED", resetErrors));
+            }
+
+            return Ok(ApiResponse<SeedResultDto>.Ok(
+                new SeedResultDto($"User '{request.Email}' already existed — password reset and SuperAdmin role ensured.")));
+        }
 
         var user = new ApplicationUser
         {

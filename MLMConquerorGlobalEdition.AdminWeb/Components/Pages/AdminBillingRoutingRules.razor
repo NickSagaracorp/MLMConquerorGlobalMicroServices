@@ -1,0 +1,442 @@
+@page "/admin/billing/routing-rules"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin,BillingManager")]
+@inject HttpClient Http
+
+<PageTitle>Routing Rules — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Billing"), new("Routing Rules") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-route-line me-2 text-primary"></i>Gateway Routing Rules
+        </h6>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+        <button class="btn btn-primary btn-sm" @onclick="OpenCreate"><i class="ri-add-line me-1"></i>New Rule</button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="RoutingRuleDto" DataSource="@_items"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="25" PageSizes="@(new int[]{25,50,100})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn Field="@nameof(RoutingRuleDto.Id)" HeaderText="ID" Width="70" TextAlign="TextAlign.Center" />
+                    <GridColumn HeaderText="Operation" Width="140">
+                        <Template>@OperationName(((RoutingRuleDto)context).OperationType)</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Card Brand" Width="120">
+                        <Template>@(((RoutingRuleDto)context).CardBrand is string b ? BrandName(b) : "Any")</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Match Scope" Width="200">
+                        <Template>@MatchScopeText((RoutingRuleDto)context)</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Currency Policy" Width="140">
+                        <Template>@(((RoutingRuleDto)context).PresentmentCurrency ?? "—")</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Splits" Width="260">
+                        <Template>
+                            @foreach (var s in ((RoutingRuleDto)context).Splits)
+                            {
+                                <span class="badge bg-light text-dark border me-1">@ProcessorLabel(s.CardProcessor) @s.WeightPercent.ToString("0.#")%</span>
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Status" Width="100" TextAlign="TextAlign.Center">
+                        <Template><span class="badge @(((RoutingRuleDto)context).IsActive ? "bg-success" : "bg-secondary")">@(((RoutingRuleDto)context).IsActive ? "Active" : "Inactive")</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="100" TextAlign="TextAlign.Center">
+                        <Template>
+                            <button class="btn btn-sm btn-outline-primary py-0 me-1" @onclick="() => OpenEdit((RoutingRuleDto)context)"><i class="ri-edit-line"></i></button>
+                            <button class="btn btn-sm btn-outline-danger py-0" @onclick="() => ConfirmDelete((RoutingRuleDto)context)"><i class="ri-delete-bin-line"></i></button>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+
+            @if (_totalPages > 1)
+            {
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
+                    <small class="text-muted">@_totalCount rules — Page @_page of @_totalPages</small>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>
+                            @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
+                            { var pg = i; <li class="page-item @(_page == pg ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(pg)">@pg</button></li> }
+                            <li class="page-item @(_page == _totalPages ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page + 1)">›</button></li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@if (_showForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold">@(_editId is null ? "New Routing Rule" : "Edit Routing Rule")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseForm"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Operation Type <span class="text-danger">*</span></label>
+                            <select class="form-select" @bind="_form.OperationType">
+                                <option value="CardAuthorization">Card Authorization</option>
+                                <option value="Payment">Payment</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Card Brand</label>
+                            <select class="form-select" value="@(_form.CardBrand ?? "")"
+                                    @onchange="e => _form.CardBrand = string.IsNullOrEmpty(e.Value?.ToString()) ? null : e.Value!.ToString()">
+                                <option value="">Any brand (catch-all)</option>
+                                @foreach (var kv in BrandOptions)
+                                {
+                                    <option value="@kv.Key">@kv.Value</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Match Scope <span class="text-danger">*</span></label>
+                            <div class="d-flex flex-column gap-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="scope" id="scopeCatchAll" checked="@(_form.Scope == ScopeKind.CatchAll)" @onchange="() => _form.Scope = ScopeKind.CatchAll" />
+                                    <label class="form-check-label" for="scopeCatchAll">Catch-all (matches every country)</label>
+                                </div>
+                                <div class="form-check d-flex align-items-center gap-2">
+                                    <input class="form-check-input" type="radio" name="scope" id="scopeGroup" checked="@(_form.Scope == ScopeKind.CountryGroup)" @onchange="() => _form.Scope = ScopeKind.CountryGroup" />
+                                    <label class="form-check-label" for="scopeGroup">Country group:</label>
+                                    <select class="form-select form-select-sm w-auto" @bind="_form.CountryGroupId" disabled="@(_form.Scope != ScopeKind.CountryGroup)">
+                                        <option value="0">— Select group —</option>
+                                        @foreach (var g in _groups)
+                                        {
+                                            <option value="@g.Id">@g.Name (@g.Code)</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="form-check d-flex align-items-center gap-2">
+                                    <input class="form-check-input" type="radio" name="scope" id="scopeIso" checked="@(_form.Scope == ScopeKind.IsoCountry)" @onchange="() => _form.Scope = ScopeKind.IsoCountry" />
+                                    <label class="form-check-label" for="scopeIso">Specific ISO country:</label>
+                                    <input class="form-control form-control-sm w-auto text-uppercase" maxlength="2" placeholder="e.g. US" @bind="_form.IsoCountryCode" disabled="@(_form.Scope != ScopeKind.IsoCountry)" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Currency Policy</label>
+                            <select class="form-select" @bind="_form.CurrencyPolicyId">
+                                <option value="0">— None (USD, no markup) —</option>
+                                @foreach (var p in _policies)
+                                {
+                                    <option value="@p.Id">@p.PresentmentCurrency (+@p.MarkupPercent.ToString("0.#")%)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="ruleActive" @bind="_form.IsActive" />
+                                <label class="form-check-label" for="ruleActive">Active</label>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="d-flex align-items-center mb-2">
+                                <label class="form-label fw-semibold mb-0 flex-grow-1">Volume Splits <span class="text-danger">*</span> <small class="text-muted fw-normal">(weights must sum to exactly 100)</small></label>
+                                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddSplit"><i class="ri-add-line"></i> Add split</button>
+                            </div>
+                            <table class="table table-sm align-middle">
+                                <thead class="table-light">
+                                    <tr><th style="width:50%">Processor</th><th style="width:30%">Weight %</th><th style="width:20%"></th></tr>
+                                </thead>
+                                <tbody>
+                                    @for (int i = 0; i < _form.Splits.Count; i++)
+                                    {
+                                        var idx = i;
+                                        var split = _form.Splits[idx];
+                                        <tr>
+                                            <td>
+                                                <select class="form-select form-select-sm" @bind="split.CardProcessor">
+                                                    @foreach (var kv in ProcessorOptions)
+                                                    {
+                                                        <option value="@kv.Key">@kv.Value</option>
+                                                    }
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <input type="number" step="0.01" min="0" max="100" class="form-control form-control-sm" @bind="split.WeightPercent" />
+                                            </td>
+                                            <td>
+                                                <button type="button" class="btn btn-sm btn-outline-danger py-0" @onclick="() => RemoveSplit(idx)"><i class="ri-delete-bin-line"></i></button>
+                                            </td>
+                                        </tr>
+                                    }
+                                    @if (_form.Splits.Count == 0)
+                                    {
+                                        <tr><td colspan="3" class="text-center text-muted small">No splits yet — add at least one.</td></tr>
+                                    }
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td class="text-end fw-semibold">Total</td>
+                                        <td class="fw-semibold @(SplitsSum == 100m ? "text-success" : "text-danger")">@SplitsSum.ToString("0.##")%</td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                            @if (SplitsSum != 100m)
+                            {
+                                <div class="text-danger small"><i class="ri-error-warning-line me-1"></i>Split weights must sum to exactly 100 (currently @SplitsSum.ToString("0.##")).</div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                    <button class="btn btn-primary" @onclick="Save" disabled="@(_saving || !CanSave)">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        @(_editId is null ? "Create" : "Save Changes")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showDeleteConfirm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header"><h5 class="modal-title fw-bold text-danger">Deactivate Routing Rule</h5><button type="button" class="btn-close" @onclick="() => { _showDeleteConfirm = false; _deleteItem = null; }"></button></div>
+                <div class="modal-body">Deactivate routing rule <strong>#@_deleteItem?.Id</strong>? It will no longer be used by the router.</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => { _showDeleteConfirm = false; _deleteItem = null; }">Cancel</button>
+                    <button class="btn btn-danger" @onclick="DeleteItem" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Deactivate
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private enum ScopeKind { CatchAll, CountryGroup, IsoCountry }
+
+    // Keyed by the enum NAME — the API serializes CardProcessor / CardBrand / BillingOperationType as their
+    // enum names (JsonStringEnumConverter), and accepts the same names on POST/PUT.
+    private static readonly Dictionary<string, string> ProcessorOptions = new()
+    {
+        ["NmiSpreedly"] = "NMI (Spreedly)", ["NmiDirect"] = "NMI Direct", ["CheckoutEUR"] = "Checkout.com EUR",
+        ["CheckoutUS"] = "Checkout.com US", ["CheckoutUsLlc"] = "Checkout US LLC", ["Shift4"] = "Shift4", ["StripeEms"] = "Stripe EMS"
+    };
+    private static readonly Dictionary<string, string> BrandOptions = new()
+    {
+        ["Visa"] = "Visa", ["MasterCard"] = "MasterCard", ["Amex"] = "Amex", ["Maestro"] = "Maestro",
+        ["Bancontact"] = "Bancontact", ["Jcb"] = "JCB", ["Other"] = "Other"
+    };
+    private const string DefaultProcessor = "CheckoutUS";
+
+    private List<RoutingRuleDto> _items = new();
+    private List<CountryGroupItem> _groups = new();
+    private List<CurrencyPolicyItem> _policies = new();
+    private bool _loading = true;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private bool _showForm;
+    private bool _showDeleteConfirm;
+    private int? _editId;
+    private RuleFormModel _form = new();
+    private RoutingRuleDto? _deleteItem;
+    private int _page = 1;
+    private const int PageSize = 25;
+    private int _totalCount;
+    private int _totalPages = 1;
+
+    private decimal SplitsSum => _form.Splits.Sum(s => s.WeightPercent);
+    private bool CanSave => _form.Splits.Count > 0 && SplitsSum == 100m
+        && (_form.Scope != ScopeKind.CountryGroup || _form.CountryGroupId > 0)
+        && (_form.Scope != ScopeKind.IsoCountry || !string.IsNullOrWhiteSpace(_form.IsoCountryCode));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLookups();
+        await LoadAsync();
+    }
+
+    private async Task LoadLookups()
+    {
+        try
+        {
+            var g = await Http.GetFromJsonAsync<ApiResp<IEnumerable<CountryGroupItem>>>("api/v1/admin/billing/country-groups");
+            if (g?.Success == true && g.Data is not null) _groups = g.Data.ToList();
+        }
+        catch { /* non-critical */ }
+        try
+        {
+            var p = await Http.GetFromJsonAsync<ApiResp<IEnumerable<CurrencyPolicyItem>>>("api/v1/admin/billing/currency-policies");
+            if (p?.Success == true && p.Data is not null) _policies = p.Data.ToList();
+        }
+        catch { /* non-critical */ }
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<RoutingRuleDto>>>($"api/v1/admin/billing/routing-rules?page={_page}&pageSize={PageSize}");
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _items = resp.Data.Items.ToList();
+                _totalCount = resp.Data.TotalCount;
+                _totalPages = resp.Data.TotalPages;
+            }
+            else { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load routing rules."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private async Task ChangePage(int p) { if (p < 1 || p > _totalPages) return; _page = p; await LoadAsync(); }
+
+    private void OpenCreate()
+    {
+        _editId = null;
+        _form = new RuleFormModel { OperationType = "Payment", Scope = ScopeKind.CatchAll, IsActive = true };
+        _form.Splits.Add(new SplitRow { CardProcessor = DefaultProcessor, WeightPercent = 100m });
+        _showForm = true;
+    }
+
+    private void OpenEdit(RoutingRuleDto r)
+    {
+        _editId = r.Id;
+        var scope = r.IsCatchAll ? ScopeKind.CatchAll
+            : r.CountryGroupId is int ? ScopeKind.CountryGroup
+            : ScopeKind.IsoCountry;
+        _form = new RuleFormModel
+        {
+            OperationType = r.OperationType,
+            CardBrand = r.CardBrand,
+            Scope = scope,
+            CountryGroupId = r.CountryGroupId ?? 0,
+            IsoCountryCode = r.IsoCountryCode ?? string.Empty,
+            CurrencyPolicyId = r.CurrencyPolicyId ?? 0,
+            IsActive = r.IsActive,
+            Splits = r.Splits.Select(s => new SplitRow { CardProcessor = s.CardProcessor, WeightPercent = s.WeightPercent }).ToList()
+        };
+        if (_form.Splits.Count == 0) _form.Splits.Add(new SplitRow { CardProcessor = DefaultProcessor, WeightPercent = 100m });
+        _showForm = true;
+    }
+
+    private void CloseForm() { _showForm = false; _editId = null; }
+
+    private void AddSplit() => _form.Splits.Add(new SplitRow { CardProcessor = "NmiSpreedly", WeightPercent = 0m });
+    private void RemoveSplit(int idx) { if (idx >= 0 && idx < _form.Splits.Count) _form.Splits.RemoveAt(idx); }
+
+    private async Task Save()
+    {
+        if (!CanSave)
+        {
+            _alertMsg = "Check the form: split weights must sum to 100 and the match scope must be complete.";
+            _alertIsError = true;
+            return;
+        }
+        _saving = true;
+        try
+        {
+            var payload = new
+            {
+                OperationType = _form.OperationType,
+                CardBrand = _form.CardBrand,
+                IsoCountryCode = _form.Scope == ScopeKind.IsoCountry ? _form.IsoCountryCode?.Trim().ToUpperInvariant() : null,
+                CountryGroupId = _form.Scope == ScopeKind.CountryGroup ? (int?)_form.CountryGroupId : null,
+                IsCatchAll = _form.Scope == ScopeKind.CatchAll,
+                CurrencyPolicyId = _form.CurrencyPolicyId > 0 ? (int?)_form.CurrencyPolicyId : null,
+                IsActive = _form.IsActive,
+                Splits = _form.Splits.Select((s, i) => new { s.CardProcessor, s.WeightPercent, SortOrder = i }).ToList()
+            };
+            var response = _editId is null
+                ? await Http.PostAsJsonAsync("api/v1/admin/billing/routing-rules", payload)
+                : await Http.PutAsJsonAsync($"api/v1/admin/billing/routing-rules/{_editId}", payload);
+            if (response.IsSuccessStatusCode) { _alertMsg = _editId is null ? "Created." : "Updated."; _alertIsError = false; CloseForm(); await LoadAsync(); }
+            else
+            {
+                var body = await response.Content.ReadFromJsonAsync<ApiResp<object>>();
+                _alertMsg = body?.Errors?.FirstOrDefault() ?? $"Save failed ({response.StatusCode}).";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private void ConfirmDelete(RoutingRuleDto r) { _deleteItem = r; _showDeleteConfirm = true; }
+
+    private async Task DeleteItem()
+    {
+        if (_deleteItem is null) return;
+        _saving = true;
+        try
+        {
+            var response = await Http.DeleteAsync($"api/v1/admin/billing/routing-rules/{_deleteItem.Id}");
+            if (response.IsSuccessStatusCode) { _alertMsg = "Deactivated."; _alertIsError = false; _showDeleteConfirm = false; _deleteItem = null; await LoadAsync(); }
+            else { _alertMsg = $"Failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private static string OperationName(string op) => op switch
+    { "CardAuthorization" => "Card Authorization", "Payment" => "Payment", _ => op };
+    private static string BrandName(string b) => BrandOptions.TryGetValue(b, out var v) ? v : b;
+    private static string ProcessorLabel(string p) => ProcessorOptions.TryGetValue(p, out var v) ? v : p;
+    private string MatchScopeText(RoutingRuleDto r) => r.IsCatchAll ? "Catch-all"
+        : r.CountryGroupId is int gid ? $"Group: {_groups.FirstOrDefault(g => g.Id == gid)?.Name ?? "#" + gid}"
+        : !string.IsNullOrWhiteSpace(r.IsoCountryCode) ? $"Country: {r.IsoCountryCode}"
+        : "—";
+
+    private class RuleFormModel
+    {
+        public string OperationType { get; set; } = "Payment";
+        public string? CardBrand { get; set; }
+        public ScopeKind Scope { get; set; } = ScopeKind.CatchAll;
+        public int CountryGroupId { get; set; }
+        public string IsoCountryCode { get; set; } = string.Empty;
+        public int CurrencyPolicyId { get; set; }
+        public bool IsActive { get; set; } = true;
+        public List<SplitRow> Splits { get; set; } = new();
+    }
+    private class SplitRow { public string CardProcessor { get; set; } = "NmiSpreedly"; public decimal WeightPercent { get; set; } }
+
+    // Enum-typed fields (OperationType, CardBrand, Splits[].CardProcessor) arrive as enum NAMES from the API
+    // because AdminAPI uses JsonStringEnumConverter; they are sent back the same way.
+    private record RoutingRuleDto(int Id, string OperationType, string? CardBrand, string? IsoCountryCode, int? CountryGroupId,
+        bool IsCatchAll, int? CurrencyPolicyId, string? PresentmentCurrency, bool IsActive, List<SplitDto> Splits);
+    private record SplitDto(string CardProcessor, decimal WeightPercent, int SortOrder);
+    private record CountryGroupItem(int Id, string Code, string Name, List<string> IsoCodes);
+    private record CurrencyPolicyItem(int Id, string PresentmentCurrency, decimal MarkupPercent, bool IsActive, string? Description);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+}

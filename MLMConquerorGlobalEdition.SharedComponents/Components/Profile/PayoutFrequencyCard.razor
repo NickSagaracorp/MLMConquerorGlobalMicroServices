@@ -52,6 +52,9 @@
 
     [Parameter] public EventCallback<string> OnChanged { get; set; }
 
+    [CascadingParameter(Name = "ProfileApiBase")]
+    private string ProfileApiBase { get; set; } = "api/v1/bizcenter";
+
     private string _selected = "Weekly";
     private bool   _busy;
     private string? _alert;
@@ -70,7 +73,7 @@
         _busy = true; _alert = null; StateHasChanged();
         try
         {
-            var resp = await Http.PutAsJsonAsync("api/v1/bizcenter/profile", new
+            var resp = await Http.PutAsJsonAsync($"{ProfileApiBase}/profile", new
             {
                 Phone, WhatsApp, Country, State, City, Address, ZipCode,
                 AddressChangeReason = (string?)null,

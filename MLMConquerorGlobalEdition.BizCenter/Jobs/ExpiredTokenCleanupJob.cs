@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -15,6 +16,7 @@ namespace MLMConquerorGlobalEdition.BizCenter.Jobs;
 /// Config key: Tokens:ValidityDays (default: 365).
 /// Idempotent: tokens already in Expired/Used/Distributed state are skipped.
 /// </summary>
+[Queue("bizcenter")]
 public class ExpiredTokenCleanupJob
 {
     private readonly AppDbContext _db;

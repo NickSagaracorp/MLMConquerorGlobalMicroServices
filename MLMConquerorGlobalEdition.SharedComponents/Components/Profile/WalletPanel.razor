@@ -1,4 +1,4 @@
-@inject HttpClient Http
+﻿@inject HttpClient Http
 @inject IViewContextService ViewContext
 @inject IStringLocalizer<SharedResources> L
 
@@ -13,7 +13,7 @@
         </div>
     }
 
-    @* ─── Tabs: Payment Method (cards + transactions) | Payout Options (gateways + history) ─── *@
+    @* â”€â”€â”€ Tabs: Payment Method (cards + transactions) | Payout Options (gateways + history) â”€â”€â”€ *@
     <ul class="nav nav-tabs mb-3" role="tablist">
         <li class="nav-item">
             <button class="nav-link @(_activeTab == "payment" ? "active" : "")"
@@ -39,7 +39,7 @@
     else
     {
     <div class="row g-3">
-        @* ─── Active wallets per gateway ─────────────────────────────────────── *@
+        @* â”€â”€â”€ Active wallets per gateway â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ *@
         <div class="col-12">
             <div class="card">
                 <div class="card-header py-3 d-flex align-items-center">
@@ -92,7 +92,7 @@
                                         {
                                             <div class="small mb-1">
                                                 <span class="text-muted">@L["PaymentMethod.Account"]</span>
-                                                <code class="ms-1 text-break">@(existing.AccountIdentifier ?? "—")</code>
+                                                <code class="ms-1 text-break">@(existing.AccountIdentifier ?? "â€”")</code>
                                             </div>
                                             <div class="small mb-1">
                                                 <span class="text-muted">@L["PaymentMethod.Status"]</span>
@@ -143,7 +143,7 @@
             </div>
         </div>
 
-        @* ─── Wallet history (visible to member + admin; admin gets API logs too) ─── *@
+        @* â”€â”€â”€ Wallet history (visible to member + admin; admin gets API logs too) â”€â”€â”€ *@
         <div class="col-12">
             <div class="card">
                 <div class="card-header py-3 d-flex align-items-center">
@@ -225,8 +225,8 @@
             </div>
         </div>
 
-        @* ─── API call/response logs — admin only ─────────────────────────── *@
-        @if (ViewContext.IsAdminContext)
+        @* â”€â”€â”€ API call/response logs â€” admin only â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ *@
+        @if (ProfileIsAdmin)
         {
             <div class="col-12">
                 <div class="card border-info">
@@ -281,11 +281,11 @@
                                                     <div class="row g-2">
                                                         <div class="col-md-6">
                                                             <div class="small fw-semibold text-muted mb-1">@L["PaymentMethod.Log.Request"]</div>
-                                                            <pre class="small mb-0" style="max-height:160px;overflow:auto">@(log.RequestBody ?? "—")</pre>
+                                                            <pre class="small mb-0" style="max-height:160px;overflow:auto">@(log.RequestBody ?? "â€”")</pre>
                                                         </div>
                                                         <div class="col-md-6">
                                                             <div class="small fw-semibold text-muted mb-1">@L["PaymentMethod.Log.Response"] @(log.Success ? "" : L["PaymentMethod.Log.ResponseError"].Value)</div>
-                                                            <pre class="small mb-0" style="max-height:160px;overflow:auto">@(log.ResponseBody ?? log.ErrorMessage ?? "—")</pre>
+                                                            <pre class="small mb-0" style="max-height:160px;overflow:auto">@(log.ResponseBody ?? log.ErrorMessage ?? "â€”")</pre>
                                                         </div>
                                                     </div>
                                                 </td></tr>
@@ -302,7 +302,7 @@
     </div>
     } @* end of else (Payout Options tab) *@
 
-    @* ─── Edit modal ─────────────────────────────────────────────────────── *@
+    @* â”€â”€â”€ Edit modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ *@
     @if (_editing is not null)
     {
         <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.4)">
@@ -348,6 +348,9 @@
 @code {
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
 
+    [CascadingParameter(Name = "ProfileIsAdmin")]
+    private bool ProfileIsAdmin { get; set; }
+
     private bool   _isLoading      = true;
     private bool   _historyLoading;
     private bool   _apiLogsLoading;
@@ -384,7 +387,7 @@
 
     private string BizCenterBaseUrl => "api/v1/bizcenter/wallets";
     private string AdminBaseUrl     => $"api/v1/admin/members/{MemberProfileId}/wallets";
-    private string ListUrl          => ViewContext.IsAdminContext ? AdminBaseUrl : BizCenterBaseUrl;
+    private string ListUrl          => ProfileIsAdmin ? AdminBaseUrl : BizCenterBaseUrl;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -409,7 +412,7 @@
                 "api/v1/bizcenter/payment-gateways");
             if (resp?.Success == true) _gatewayInfos = resp.Data ?? new();
         }
-        catch { /* silently degrade — cards still render with built-in metadata */ }
+        catch { /* silently degrade â€” cards still render with built-in metadata */ }
     }
 
     private async Task LoadWalletsAsync()
@@ -438,7 +441,7 @@
 
     private async Task LoadApiLogsAsync()
     {
-        if (!ViewContext.IsAdminContext) return;
+        if (!ProfileIsAdmin) return;
         _apiLogsLoading = true; StateHasChanged();
         try
         {
@@ -587,22 +590,22 @@
     {
         if (h.Action == "AccountChanged" && (!string.IsNullOrEmpty(h.OldAccountIdentifier) || !string.IsNullOrEmpty(h.NewAccountIdentifier)))
         {
-            <code class="small" style="@TruncateStyle" title="@(h.OldAccountIdentifier ?? "")">@(h.OldAccountIdentifier ?? "—")</code>
+            <code class="small" style="@TruncateStyle" title="@(h.OldAccountIdentifier ?? "")">@(h.OldAccountIdentifier ?? "â€”")</code>
             <i class="ri-arrow-right-line mx-1 text-warning"></i>
-            <code class="small fw-semibold text-warning" style="@TruncateStyle" title="@(h.NewAccountIdentifier ?? "")">@(h.NewAccountIdentifier ?? "—")</code>
+            <code class="small fw-semibold text-warning" style="@TruncateStyle" title="@(h.NewAccountIdentifier ?? "")">@(h.NewAccountIdentifier ?? "â€”")</code>
         }
         else if (h.Action == "Created")
         {
-            <span class="text-muted">— → </span>
-            <code class="small" style="@TruncateStyle" title="@(h.NewAccountIdentifier ?? "")">@(h.NewAccountIdentifier ?? "—")</code>
+            <span class="text-muted">â€” â†’ </span>
+            <code class="small" style="@TruncateStyle" title="@(h.NewAccountIdentifier ?? "")">@(h.NewAccountIdentifier ?? "â€”")</code>
         }
         else if (h.Action == "SetAsDefault" || h.Action == "UnsetAsDefault")
         {
-            <code class="small" style="@TruncateStyle" title="@(h.NewAccountIdentifier ?? "")">@(h.NewAccountIdentifier ?? "—")</code>
+            <code class="small" style="@TruncateStyle" title="@(h.NewAccountIdentifier ?? "")">@(h.NewAccountIdentifier ?? "â€”")</code>
         }
         else
         {
-            <span class="text-muted small">—</span>
+            <span class="text-muted small">â€”</span>
         }
     };
 
@@ -619,7 +622,7 @@
         1 => L["WalletStatus.Pending"],
         2 => L["WalletStatus.Approved"],
         3 => L["WalletStatus.Rejected"],
-        _ => "—"
+        _ => "â€”"
     };
 
     private string ResolveGatewayName(int walletType)
@@ -644,8 +647,8 @@
 
     private static string TruncateId(string? id)
     {
-        if (string.IsNullOrWhiteSpace(id)) return "—";
-        return id.Length > 8 ? id.Substring(0, 8) + "…" : id;
+        if (string.IsNullOrWhiteSpace(id)) return "â€”";
+        return id.Length > 8 ? id.Substring(0, 8) + "â€¦" : id;
     }
 
     private record GatewayDescriptor(int Code, string Label, string Icon,

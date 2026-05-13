@@ -1,3 +1,4 @@
+using Hangfire;
 using MediatR;
 using MLMConquerorGlobalEdition.CommissionEngine.Features.CalculateDailyResidual;
 using MLMConquerorGlobalEdition.CommissionEngine.Features.CalculateMatchingBonus;
@@ -9,6 +10,7 @@ namespace MLMConquerorGlobalEdition.CommissionEngine.Jobs;
 /// Calculates binary residual for all active ambassadors,
 /// then immediately runs the matching bonus on the same period.
 /// </summary>
+[Queue("commissions")]
 public class DailyResidualJob
 {
     private readonly IMediator _mediator;

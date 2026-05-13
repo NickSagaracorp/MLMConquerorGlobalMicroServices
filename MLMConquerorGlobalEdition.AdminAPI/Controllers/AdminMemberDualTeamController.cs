@@ -21,7 +21,38 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 public class AdminMemberDualTeamController : ControllerBase
 {
     private readonly AppDbContext _db;
-    public AdminMemberDualTeamController(AppDbContext db) => _db = db;
+    private readonly MLMConquerorGlobalEdition.Repository.Services.Ranks.IRankComputationService _ranks;
+
+    public AdminMemberDualTeamController(
+        AppDbContext db,
+        MLMConquerorGlobalEdition.Repository.Services.Ranks.IRankComputationService ranks)
+    {
+        _db    = db;
+        _ranks = ranks;
+    }
+
+    // ─── Dual Team My Team (rich DTO shape used by Admin Dual Team grid) ────
+    /// <summary>
+    /// Route: GET api/v1/admin/members/{memberId}/team/my-team
+    /// Mirrors the BizCenter endpoint <c>/api/v1/bizcenter/team/dual-tree/my-team</c>
+    /// but targets the path <paramref name="memberId"/> instead of the current
+    /// user. Both share the <see cref="MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTeamService"/>
+    /// so admin and member views never drift.
+    /// </summary>
+    [HttpGet("my-team")]
+    public async Task<IActionResult> GetMyTeam(
+        string memberId,
+        [FromServices] MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTeamService dualTeamService,
+        [FromQuery] int       page     = 1,
+        [FromQuery] int       pageSize = 20,
+        [FromQuery] string?   search   = null,
+        [FromQuery] DateTime? from     = null,
+        [FromQuery] DateTime? to       = null,
+        CancellationToken ct = default)
+    {
+        var view = await dualTeamService.GetMyTeamAsync(memberId, page, pageSize, search, from, to, ct);
+        return Ok(ApiResponse<PagedResult<MLMConquerorGlobalEdition.Repository.Services.Teams.DualTeamMyTeamMemberView>>.Ok(view));
+    }
 
     // ─── My Dual Team Members ────────────────────────────────────────────────
     [HttpGet("members")]
@@ -124,6 +155,25 @@ public class AdminMemberDualTeamController : ControllerBase
             .OrderBy(r => r.SortOrder)
             .ToListAsync(ct);
 
+        // 8b. Per-leg DT cap for the viewer's current and next rank.
+        //     cap = MaxTeamPointsPerBranch × rank.TeamPoints — the same rule
+        //     the rank engine applies for qualification. cap = 0 means the DT
+        //     dimension does not apply at this rank (Silver/Gold/Platinum) so
+        //     the row donuts collapse to N/A on the client.
+        var viewerSummary = await _ranks.GetSummaryAsync(memberId, ct);
+        var currentRankDef = allRanks.FirstOrDefault(r => r.SortOrder == viewerSummary.CurrentRankSortOrder);
+        var nextRankDef    = allRanks.FirstOrDefault(r => r.SortOrder >  viewerSummary.CurrentRankSortOrder);
+
+        static int CalcLegCap(Domain.Entities.Rank.RankDefinition? rankDef)
+        {
+            var req = rankDef?.Requirements.OrderBy(r => r.LevelNo).FirstOrDefault();
+            if (req is null || req.TeamPoints <= 0 || req.MaxTeamPointsPerBranch <= 0) return 0;
+            return (int)Math.Round(req.MaxTeamPointsPerBranch * req.TeamPoints);
+        }
+
+        var legCapCurrent = CalcLegCap(currentRankDef);
+        var legCapNext    = CalcLegCap(nextRankDef);
+
         // 9. Sponsor names
         var sponsorIds = profiles.Where(p => p.SponsorMemberId != null)
             .Select(p => p.SponsorMemberId!).Distinct().ToList();
@@ -178,28 +228,43 @@ public class AdminMemberDualTeamController : ControllerBase
             uplineNames.TryGetValue(node?.ParentMemberId ?? "", out var uplineName);
             sponsorNames.TryGetValue(p.SponsorMemberId ?? "", out var sponsorName);
 
+            // Per-leg DT eligibility for this member toward the viewer's rank.
+            // The donut shows min(personal, leg_cap)/leg_cap; when leg_cap is 0
+            // the dimension does not apply and the client renders "—".
+            var personalPts          = stat?.PersonalPoints ?? 0;
+            var eligibleCurrentPts   = legCapCurrent > 0 ? Math.Min(personalPts, legCapCurrent) : 0;
+            var eligibleNextPts      = legCapNext    > 0 ? Math.Min(personalPts, legCapNext)    : 0;
+            var eligibleCurrentPct   = legCapCurrent > 0
+                ? Math.Min(100, eligibleCurrentPts * 100 / legCapCurrent) : 0;
+            var eligibleNextPct      = legCapNext > 0
+                ? Math.Min(100, eligibleNextPts * 100 / legCapNext) : 0;
+
             return new DualTeamMemberDto
             {
-                MemberId            = p.MemberId,
-                FullName            = $"{p.FirstName} {p.LastName}",
-                Level               = levelMap.TryGetValue(p.MemberId, out var lv) ? lv : 0,
-                Leg                 = leg,
-                Country             = p.Country,
-                SponsorName         = sponsorName ?? "—",
-                DualTeamUplineName  = uplineName ?? "—",
-                BizCenterStatus     = bizStatus,
-                MembershipStatus    = memStatus,
-                QualifiedStatus     = qualified,
-                MembershipName      = sub != null && levels.TryGetValue(sub.MembershipLevelId, out var lvName) ? lvName : "—",
-                RankName            = currentRank?.Name ?? "—",
-                RankDate            = rank?.AchievedAt,
-                LifetimeRankName    = currentRank?.Name ?? "—",
-                NextRankPercent     = nextPct,
-                QualificationPoints = stat?.PersonalPoints ?? 0,
-                EnrollmentTeamPoints= stat?.EnrollmentPoints ?? 0,
-                LeftTeamPoints      = (int)(node?.LeftLegPoints ?? 0),
-                RightTeamPoints     = (int)(node?.RightLegPoints ?? 0),
-                JoinDate            = p.CreationDate
+                MemberId                  = p.MemberId,
+                FullName                  = $"{p.FirstName} {p.LastName}",
+                Level                     = levelMap.TryGetValue(p.MemberId, out var lv) ? lv : 0,
+                Leg                       = leg,
+                Country                   = p.Country,
+                SponsorName               = sponsorName ?? "—",
+                DualTeamUplineName        = uplineName ?? "—",
+                BizCenterStatus           = bizStatus,
+                MembershipStatus          = memStatus,
+                QualifiedStatus           = qualified,
+                MembershipName            = sub != null && levels.TryGetValue(sub.MembershipLevelId, out var lvName) ? lvName : "—",
+                RankName                  = currentRank?.Name ?? "—",
+                RankDate                  = rank?.AchievedAt,
+                LifetimeRankName          = currentRank?.Name ?? "—",
+                NextRankPercent           = nextPct,
+                QualificationPoints       = personalPts,
+                CurrentRankEligiblePoints = eligibleCurrentPts,
+                CurrentRankEligiblePct    = eligibleCurrentPct,
+                NextRankEligiblePoints    = eligibleNextPts,
+                NextRankEligiblePct       = eligibleNextPct,
+                EnrollmentTeamPoints      = stat?.EnrollmentPoints ?? 0,
+                LeftTeamPoints            = (int)(node?.LeftLegPoints ?? 0),
+                RightTeamPoints           = (int)(node?.RightLegPoints ?? 0),
+                JoinDate                  = p.CreationDate
             };
         }).ToList();
 
@@ -247,6 +312,36 @@ public class AdminMemberDualTeamController : ControllerBase
         };
 
         return Ok(ApiResponse<DualTreeStatsDto>.Ok(dto));
+    }
+
+    // ─── Residuals page legs feed ────────────────────────────────────────────
+    /// <summary>GET .../team/dual-tree/legs — the three-row "Dual Team
+    /// Members" feed used by the Residuals page (root + L gateway + R gateway).
+    /// Distinct from /team/members which still serves the full subtree for
+    /// token distribution and other downline pickers.</summary>
+    [HttpGet("dual-tree/legs")]
+    public async Task<IActionResult> GetResidualLegs(
+        string memberId,
+        [FromServices] MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTeamService dualTeamService,
+        CancellationToken ct = default)
+    {
+        var rows = await dualTeamService.GetResidualLegsAsync(memberId, ct);
+        return Ok(ApiResponse<List<MLMConquerorGlobalEdition.Repository.Services.Teams.DualLegRowView>>.Ok(rows));
+    }
+
+    /// <summary>GET .../team/dual-tree/history?months=6 — last N monthly
+    /// snapshots of L/R leg points for the Total Dual Team Points trend chart.
+    /// Pulls from MemberStatisticHistory; the latest bucket is replaced with
+    /// the live DualTeamTree values so today's bar reflects today's totals.</summary>
+    [HttpGet("dual-tree/history")]
+    public async Task<IActionResult> GetDualTeamHistory(
+        string memberId,
+        [FromServices] MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTeamService dualTeamService,
+        [FromQuery] int months = 6,
+        CancellationToken ct = default)
+    {
+        var rows = await dualTeamService.GetDualTeamHistoryAsync(memberId, months, ct);
+        return Ok(ApiResponse<List<MLMConquerorGlobalEdition.Repository.Services.Teams.DualLegMonthlyPointView>>.Ok(rows));
     }
 
     // ─── Available For Placement ─────────────────────────────────────────────
@@ -321,26 +416,33 @@ public class AdminMemberDualTeamController : ControllerBase
     // ─── DTOs ────────────────────────────────────────────────────────────────
     public class DualTeamMemberDto
     {
-        public string   MemberId             { get; set; } = string.Empty;
-        public string   FullName             { get; set; } = string.Empty;
-        public int      Level                { get; set; }
-        public string   Leg                  { get; set; } = string.Empty;
-        public string   Country              { get; set; } = string.Empty;
-        public string   SponsorName          { get; set; } = string.Empty;
-        public string   DualTeamUplineName   { get; set; } = string.Empty;
-        public string   BizCenterStatus      { get; set; } = string.Empty;
-        public string   MembershipStatus     { get; set; } = string.Empty;
-        public string   QualifiedStatus      { get; set; } = string.Empty;
-        public string   MembershipName       { get; set; } = string.Empty;
-        public string   RankName             { get; set; } = string.Empty;
-        public DateTime? RankDate            { get; set; }
-        public string   LifetimeRankName     { get; set; } = string.Empty;
-        public int      NextRankPercent      { get; set; }
-        public int      QualificationPoints  { get; set; }
-        public int      EnrollmentTeamPoints { get; set; }
-        public int      LeftTeamPoints       { get; set; }
-        public int      RightTeamPoints      { get; set; }
-        public DateTime JoinDate             { get; set; }
+        public string   MemberId                  { get; set; } = string.Empty;
+        public string   FullName                  { get; set; } = string.Empty;
+        public int      Level                     { get; set; }
+        public string   Leg                       { get; set; } = string.Empty;
+        public string   Country                   { get; set; } = string.Empty;
+        public string   SponsorName               { get; set; } = string.Empty;
+        public string   DualTeamUplineName        { get; set; } = string.Empty;
+        public string   BizCenterStatus           { get; set; } = string.Empty;
+        public string   MembershipStatus          { get; set; } = string.Empty;
+        public string   QualifiedStatus           { get; set; } = string.Empty;
+        public string   MembershipName            { get; set; } = string.Empty;
+        public string   RankName                  { get; set; } = string.Empty;
+        public DateTime? RankDate                 { get; set; }
+        public string   LifetimeRankName          { get; set; } = string.Empty;
+        public int      NextRankPercent           { get; set; }
+        public int      QualificationPoints       { get; set; }
+        /// <summary>Member's points capped at the viewer's current-rank per-leg
+        /// DT cap, with 0 signaling "DT does not apply at this rank" (the
+        /// client uses this to collapse the donut to "—").</summary>
+        public int      CurrentRankEligiblePoints { get; set; }
+        public int      CurrentRankEligiblePct    { get; set; }
+        public int      NextRankEligiblePoints    { get; set; }
+        public int      NextRankEligiblePct       { get; set; }
+        public int      EnrollmentTeamPoints      { get; set; }
+        public int      LeftTeamPoints            { get; set; }
+        public int      RightTeamPoints           { get; set; }
+        public DateTime JoinDate                  { get; set; }
     }
 
     public class DualTreeNodeDto

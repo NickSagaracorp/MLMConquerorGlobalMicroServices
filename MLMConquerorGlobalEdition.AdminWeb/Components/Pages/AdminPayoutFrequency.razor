@@ -1,0 +1,158 @@
+@page "/admin/config/payout-frequency"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+<PageTitle>Payout Frequency — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Configuration", "/admin/config/products"), new("Payout Frequency") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+@* The per-country payout gateway lives on /admin/config/countries (the wallet
+   button on each row). This page is dedicated to the single company-wide
+   default payout frequency that every new ambassador inherits at signup. *@
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header py-3">
+        <h6 class="card-title mb-0 fw-semibold">
+            <i class="ri-time-line me-2 text-primary"></i>Default Payout Frequency (Company-Wide)
+        </h6>
+    </div>
+    <div class="card-body">
+        @if (_companyLoading)
+        {
+            <div class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else if (_company is null)
+        {
+            <div class="alert alert-warning mb-0">
+                Company info has not been configured yet. Set it up first under
+                <a href="/admin/config/company">Company Info</a>.
+            </div>
+        }
+        else
+        {
+            <p class="text-muted mb-3" style="max-width:640px;">
+                The frequency at which commissions are pushed to each ambassador's preferred wallet.
+                This value is used as the default for every new ambassador at signup. Existing
+                ambassadors keep whatever they had — change requires updating each profile.
+            </p>
+            <div class="d-flex gap-3 align-items-center">
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="freq" id="freqDaily"
+                           value="Daily"
+                           checked="@(_freq == "Daily")"
+                           @onchange='() => _freq = "Daily"' />
+                    <label class="form-check-label fw-semibold" for="freqDaily">Daily</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="freq" id="freqWeekly"
+                           value="Weekly"
+                           checked="@(_freq == "Weekly")"
+                           @onchange='() => _freq = "Weekly"' />
+                    <label class="form-check-label fw-semibold" for="freqWeekly">Weekly</label>
+                </div>
+                <button class="btn btn-primary btn-sm ms-3" @onclick="SaveFrequency" disabled="@_savingFreq">
+                    @if (_savingFreq) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                    Save Frequency
+                </button>
+            </div>
+
+            <div class="mt-3 small text-muted">
+                Need to set the default <strong>gateway</strong> per country?
+                Use the <i class="ri-wallet-3-line text-success"></i> button on each row of
+                <a href="/admin/config/countries">Configuration → Countries</a>.
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private string?         _alertMsg;
+    private bool            _alertIsError;
+    private CompanyInfoDto? _company;
+    private bool            _companyLoading = true;
+    private string          _freq           = "Weekly";
+    private bool            _savingFreq;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCompany();
+    }
+
+    private async Task LoadCompany()
+    {
+        _companyLoading = true;
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<CompanyInfoDto>>("api/v1/admin/company");
+            _company = resp?.Success == true ? resp.Data : null;
+            _freq    = _company?.DefaultPayoutFrequency ?? "Weekly";
+        }
+        catch { _company = null; }
+        finally { _companyLoading = false; }
+    }
+
+    private async Task SaveFrequency()
+    {
+        if (_company is null) return;
+        _savingFreq = true;
+        try
+        {
+            // PUT /api/v1/admin/company expects the full record. Re-send the
+            // existing fields together with the new frequency so we don't
+            // accidentally null out company branding.
+            var payload = new
+            {
+                _company.CompanyName,
+                _company.CompanyLegalId,
+                _company.Address,
+                _company.Phone,
+                _company.SupportEmail,
+                _company.PresidentName,
+                _company.WebsiteUrl,
+                _company.LogoUrl,
+                DefaultPayoutFrequency = _freq
+            };
+            var resp = await Http.PutAsJsonAsync("api/v1/admin/company", payload);
+            if (resp.IsSuccessStatusCode)
+            {
+                _alertMsg     = $"Default payout frequency set to '{_freq}'.";
+                _alertIsError = false;
+                await LoadCompany();
+            }
+            else
+            {
+                _alertMsg     = $"Failed ({(int)resp.StatusCode}).";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _alertMsg = ex.Message; _alertIsError = true;
+        }
+        finally { _savingFreq = false; }
+    }
+
+    private record ApiResp<T>(bool Success, T? Data);
+
+    public class CompanyInfoDto
+    {
+        public int     Id                     { get; set; }
+        public string  CompanyName            { get; set; } = string.Empty;
+        public string? CompanyLegalId         { get; set; }
+        public string? Address                { get; set; }
+        public string? Phone                  { get; set; }
+        public string  SupportEmail           { get; set; } = string.Empty;
+        public string? PresidentName          { get; set; }
+        public string? WebsiteUrl             { get; set; }
+        public string? LogoUrl                { get; set; }
+        public string  DefaultPayoutFrequency { get; set; } = "Weekly";
+    }
+}

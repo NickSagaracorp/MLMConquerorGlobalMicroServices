@@ -41,6 +41,11 @@ else
         </div>
     }
 
+    @* Active Contests widget — sits below the FSB countdown so members see
+       it after their immediate fast-start window status. Renders nothing
+       when no contest is live. *@
+    <ActiveContestsWidget ApiBaseUrl="api/v1/bizcenter" />
+
     <!-- Activity Feed -->
     <div class="row g-3">
         <div class="col-12 col-lg-8">

@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.Repository.Context;
@@ -13,6 +14,7 @@ namespace MLMConquerorGlobalEdition.BizCenter.Jobs;
 ///   - NumberOfSuccessPayments >= ProductLoyaltyPointsSetting.RequiredSuccessfulPayments
 /// Idempotent: already-unlocked records are skipped.
 /// </summary>
+[Queue("bizcenter")]
 public class LoyaltyPointsMonthlyRollupJob
 {
     private readonly AppDbContext _db;

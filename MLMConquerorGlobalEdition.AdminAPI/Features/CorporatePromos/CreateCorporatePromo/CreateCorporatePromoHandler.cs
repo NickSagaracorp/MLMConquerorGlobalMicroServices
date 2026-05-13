@@ -27,16 +27,19 @@ public class CreateCorporatePromoHandler : IRequestHandler<CreateCorporatePromoC
 
         var entity = new CorporatePromo
         {
-            Title = req.Title,
-            Description = req.Description,
-            StartDate = req.StartDate,
-            EndDate = req.EndDate,
-            BannerUrl = req.BannerUrl,
-            IsActive = true,
-            CreationDate = now,
-            CreatedBy = _currentUser.UserId,
-            LastUpdateDate = now,
-            LastUpdateBy = _currentUser.UserId
+            Title              = req.Title,
+            Description        = req.Description,
+            StartDate          = req.StartDate,
+            EndDate            = req.EndDate,
+            BannerUrl          = req.BannerUrl,
+            IsActive           = true,
+            DoubleSponsorBonus = req.DoubleSponsorBonus,
+            DoubleBuilderBonus = req.DoubleBuilderBonus,
+            ResetFsbCountdown  = req.ResetFsbCountdown,
+            CreationDate       = now,
+            CreatedBy          = _currentUser.UserId,
+            LastUpdateDate     = now,
+            LastUpdateBy       = _currentUser.UserId
         };
 
         await _db.CorporatePromos.AddAsync(entity, cancellationToken);

@@ -1,5 +1,6 @@
 @inject IViewContextService ViewContext
 @inject HttpClient Http
+@inject NavigationManager Nav
 @inject IJSRuntime JS
 @inject IStringLocalizer<SharedResources> L
 
@@ -19,6 +20,14 @@
 
 <LoadingSpinner IsLoading="@_isLoading" />
 
+@*
+    Cascade the resolved profile/billing base path so each child card can swap its
+    HTTP route between BizCenter (member viewing self) and AdminAPI (admin viewing
+    a member) without each card re-deriving the rule. The cascade name keeps
+    siblings free to bind their own MemberProfileId parameter when they need it.
+*@
+<CascadingValue Name="ProfileIsAdmin" Value="@IsAdminContext" IsFixed="false">
+<CascadingValue Name="ProfileApiBase" Value="@ProfileBase" IsFixed="false">
 @if (!_isLoading && _profile is not null)
 {
     <ProfileHeaderCard MemberId="@_profile.MemberId"
@@ -37,7 +46,7 @@
                 <i class="ri-user-line me-1"></i>@L["UserProfile.Tab.Profile"]
             </button>
         </li>
-        @if (_canEdit)
+        @if (_canEditCredentials)
         {
             <li class="nav-item">
                 <button class="nav-link @(_tab == "account" ? "active" : "")"
@@ -104,9 +113,12 @@
 
                 @if (_canEdit)
                 {
-                    <WebsiteSlugCard InitialSlug="@_profile.ReplicateSiteSlug"
-                                     UrlPrefix="@_websitePrefix"
-                                     OnSaved="OnSlugSaved" />
+                    @if (_canEditCredentials)
+                    {
+                        <WebsiteSlugCard InitialSlug="@_profile.ReplicateSiteSlug"
+                                         UrlPrefix="@_websitePrefix"
+                                         OnSaved="OnSlugSaved" />
+                    }
 
                     <DisplayPreferencesCard ShowBusinessName="@_profile.ShowBusinessName"
                                             IsEmailPublic="@_profile.IsEmailPublic"
@@ -139,7 +151,7 @@
             </div>
         </div>
     }
-    else if (_tab == "account" && _canEdit)
+    else if (_tab == "account" && _canEditCredentials)
     {
         <div class="row g-4">
             <div class="col-12">
@@ -234,6 +246,8 @@
         </div>
     }
 }
+</CascadingValue>
+</CascadingValue>
 
 @if (!string.IsNullOrEmpty(_error))
 {
@@ -270,7 +284,14 @@
     // owner without leaking any cross-member edit rights.
     private bool _canEdit =>
         !string.IsNullOrEmpty(ViewContext.ViewingMemberId)
-        || ViewContext.IsAdminContext;
+        || IsAdminContext;
+
+    // Sensitive identity edits — password, email, 2FA, public website slug — only the
+    // owning member can change these. Admins viewing another member's profile see the
+    // data but the entry points are hidden so an account-takeover via admin tooling is
+    // impossible from this UI. Recovery requests still flow through support tickets.
+    private bool _canEditCredentials =>
+        _canEdit && !IsAdminContext;
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
@@ -284,13 +305,16 @@
         await LoadProfileAsync();
     }
 
+    private string ProfileBase => ProfileApiPaths.ProfileBase(Nav, MemberProfileId);
+    private bool IsAdminContext => Nav.Uri.Contains("/admin/", StringComparison.OrdinalIgnoreCase);
+
     private async Task LoadProfileAsync()
     {
         _isLoading = true; _error = null; StateHasChanged();
         try
         {
             var resp = await Http.GetFromJsonAsync<ApiResponse<ProfileApiDto>>(
-                "api/v1/bizcenter/profile");
+                $"{ProfileBase}/profile");
             if (resp?.Success == true && resp.Data is not null)
             {
                 _profile = resp.Data;
@@ -321,7 +345,7 @@
             // Pull cards through the same endpoint PaymentMethodTab uses;
             // pick the IsDefault one for the BillingInfoCard preview.
             var resp = await Http.GetFromJsonAsync<ApiResponse<List<CreditCardApiDto>>>(
-                "api/v1/bizcenter/billing/credit-cards");
+                $"{ProfileBase}/billing/credit-cards");
             var def = resp?.Data?.FirstOrDefault(c => c.IsDefault);
             _defaultCard = def is null ? null : new BillingInfoCard.DefaultCardInfo
             {

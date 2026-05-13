@@ -1,3 +1,4 @@
+using Hangfire;
 using MediatR;
 using MLMConquerorGlobalEdition.CommissionEngine.Features.CalculatePresidentialBonus;
 
@@ -6,6 +7,7 @@ namespace MLMConquerorGlobalEdition.CommissionEngine.Jobs;
 /// <summary>
 /// HangFire recurring job — runs monthly on the 1st at 4:00 AM UTC.
 /// </summary>
+[Queue("commissions")]
 public class PresidentialBonusJob
 {
     private readonly IMediator _mediator;

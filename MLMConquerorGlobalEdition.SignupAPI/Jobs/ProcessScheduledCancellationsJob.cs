@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
@@ -13,6 +14,7 @@ namespace MLMConquerorGlobalEdition.SignupAPI.Jobs;
 /// and finalises the cancellation: flips status to Cancelled, marks the member
 /// Inactive, and reverses all MemberStatisticEntity values up the sponsor chain.
 /// </summary>
+[Queue("signups")]
 public class ProcessScheduledCancellationsJob
 {
     private readonly AppDbContext _db;

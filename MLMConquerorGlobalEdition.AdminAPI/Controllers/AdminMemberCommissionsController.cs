@@ -82,11 +82,23 @@ public class AdminMemberCommissionsController : ControllerBase
     [HttpGet("dual-residual")]
     public async Task<IActionResult> GetDualResidual(
         string memberId,
-        [FromQuery] int page     = 1,
-        [FromQuery] int pageSize = 10,
+        [FromQuery] int  page     = 1,
+        [FromQuery] int  pageSize = 10,
+        [FromQuery] int? year     = null,
+        [FromQuery] int? month    = null,
         CancellationToken ct = default)
         => Ok(ApiResponse<PagedResult<CommissionEarningView>>.Ok(
-            await _service.GetDualResidualAsync(memberId, page, pageSize, ct)));
+            await _service.GetDualResidualAsync(memberId, page, pageSize, year, month, ct)));
+
+    /// <summary>GET /api/v1/admin/members/{memberId}/commissions/dual-residual/chart
+    /// — last N (default 6) monthly aggregates for the residuals histogram.</summary>
+    [HttpGet("dual-residual/chart")]
+    public async Task<IActionResult> GetDualResidualChart(
+        string memberId,
+        [FromQuery] int months = 6,
+        CancellationToken ct = default)
+        => Ok(ApiResponse<List<MLMConquerorGlobalEdition.Repository.Services.Commissions.MonthlyAmountView>>.Ok(
+            await _service.GetDualResidualChartAsync(memberId, months, ct)));
 
     // ─── Fast Start Bonus ─────────────────────────────────────────────────
 

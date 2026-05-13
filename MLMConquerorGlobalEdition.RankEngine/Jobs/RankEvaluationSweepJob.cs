@@ -1,3 +1,4 @@
+using Hangfire;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -18,6 +19,7 @@ namespace MLMConquerorGlobalEdition.RankEngine.Jobs;
 ///
 /// Idempotent: EvaluateRankHandler is safe to re-run per member (only promotes when criteria are met).
 /// </summary>
+[Queue("rank")]
 public class RankEvaluationSweepJob
 {
     private const string JobSource = "RankEvaluationSweepJob";

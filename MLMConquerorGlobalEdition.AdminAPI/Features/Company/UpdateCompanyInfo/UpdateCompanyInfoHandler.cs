@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.AdminAPI.DTOs.Company;
 using MLMConquerorGlobalEdition.Domain.Entities.General;
+using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
 using ICurrentUserService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICurrentUserService;
@@ -27,6 +28,12 @@ public class UpdateCompanyInfoHandler : IRequestHandler<UpdateCompanyInfoCommand
 
     public async Task<Result<CompanyInfoDto>> Handle(UpdateCompanyInfoCommand cmd, CancellationToken ct)
     {
+        // Parse the payout frequency loosely (case-insensitive). Anything we
+        // can't recognize falls back to Weekly so a typo from the admin form
+        // doesn't silently flip every signup to Daily.
+        if (!Enum.TryParse<PayoutFrequency>(cmd.DefaultPayoutFrequency, ignoreCase: true, out var freq))
+            freq = PayoutFrequency.Weekly;
+
         var now     = _dateTime.Now;
         var company = await _db.CompanyInfo.FirstOrDefaultAsync(ct);
 
@@ -35,33 +42,35 @@ public class UpdateCompanyInfoHandler : IRequestHandler<UpdateCompanyInfoCommand
             // First-time setup — create the singleton row
             company = new CompanyInfo
             {
-                CompanyName    = cmd.CompanyName,
-                CompanyLegalId = cmd.CompanyLegalId,
-                Address        = cmd.Address,
-                Phone          = cmd.Phone,
-                SupportEmail   = cmd.SupportEmail,
-                PresidentName  = cmd.PresidentName,
-                WebsiteUrl     = cmd.WebsiteUrl,
-                LogoUrl        = cmd.LogoUrl,
-                CreationDate   = now,
-                CreatedBy      = _currentUser.UserId,
-                LastUpdateDate = now,
-                LastUpdateBy   = _currentUser.UserId
+                CompanyName            = cmd.CompanyName,
+                CompanyLegalId         = cmd.CompanyLegalId,
+                Address                = cmd.Address,
+                Phone                  = cmd.Phone,
+                SupportEmail           = cmd.SupportEmail,
+                PresidentName          = cmd.PresidentName,
+                WebsiteUrl             = cmd.WebsiteUrl,
+                LogoUrl                = cmd.LogoUrl,
+                DefaultPayoutFrequency = freq,
+                CreationDate           = now,
+                CreatedBy              = _currentUser.UserId,
+                LastUpdateDate         = now,
+                LastUpdateBy           = _currentUser.UserId
             };
             await _db.CompanyInfo.AddAsync(company, ct);
         }
         else
         {
-            company.CompanyName    = cmd.CompanyName;
-            company.CompanyLegalId = cmd.CompanyLegalId;
-            company.Address        = cmd.Address;
-            company.Phone          = cmd.Phone;
-            company.SupportEmail   = cmd.SupportEmail;
-            company.PresidentName  = cmd.PresidentName;
-            company.WebsiteUrl     = cmd.WebsiteUrl;
-            company.LogoUrl        = cmd.LogoUrl;
-            company.LastUpdateDate = now;
-            company.LastUpdateBy   = _currentUser.UserId;
+            company.CompanyName            = cmd.CompanyName;
+            company.CompanyLegalId         = cmd.CompanyLegalId;
+            company.Address                = cmd.Address;
+            company.Phone                  = cmd.Phone;
+            company.SupportEmail           = cmd.SupportEmail;
+            company.PresidentName          = cmd.PresidentName;
+            company.WebsiteUrl             = cmd.WebsiteUrl;
+            company.LogoUrl                = cmd.LogoUrl;
+            company.DefaultPayoutFrequency = freq;
+            company.LastUpdateDate         = now;
+            company.LastUpdateBy           = _currentUser.UserId;
         }
 
         await _db.SaveChangesAsync(ct);
@@ -76,6 +85,7 @@ public class UpdateCompanyInfoHandler : IRequestHandler<UpdateCompanyInfoCommand
             company.PresidentName,
             company.WebsiteUrl,
             company.LogoUrl,
+            company.DefaultPayoutFrequency.ToString(),
             company.CreationDate,
             company.LastUpdateDate));
     }

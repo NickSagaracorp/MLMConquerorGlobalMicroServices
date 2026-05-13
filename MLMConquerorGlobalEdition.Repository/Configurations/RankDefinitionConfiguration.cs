@@ -5,10 +5,12 @@ using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 namespace MLMConquerorGlobalEdition.Repository.Configurations;
 
 /// <summary>
-/// Full 19-rank structure from the MWR Life Compensation Plan.
+/// Full 20-rank structure from the MWR Life Compensation Plan.
 /// SortOrder is used by:
 ///   - CommissionType.LifeTimeRank (minimum qualifying rank for Presidential/Boost)
 ///   - MemberRankHistory (tracking lifetime/current rank)
+/// Lifestyle Consultant is the default starting rank for every new ambassador
+///   (no requirements; assigned implicitly until the member earns Silver).
 /// Silver/Gold/Platinum qualify via Enrollment Team points.
 /// Titanium through Black Royal qualify via Dual Team points.
 /// </summary>
@@ -24,6 +26,7 @@ public class RankDefinitionConfiguration : IEntityTypeConfiguration<RankDefiniti
         builder.Property(x => x.CertificateTemplateUrl).HasMaxLength(1000);
 
         builder.HasData(
+            new RankDefinition { Id = 20, Name = "Lifestyle Consultant", Description = "Default starting rank — no requirements. Earned automatically on signup.", SortOrder = 0,  Status = RankDefinitionStatus.Active, CreationDate = SeedDate, CreatedBy = "seed" },
             new RankDefinition { Id = 1,  Name = "Silver",         Description = "18 ET points (3 Elite/Turbo members). DTR: $4/day.",        SortOrder = 1,  Status = RankDefinitionStatus.Active, CreationDate = SeedDate, CreatedBy = "seed" },
             new RankDefinition { Id = 2,  Name = "Gold",           Description = "72 ET points (12 Elite/Turbo members). DTR: $10/day.",       SortOrder = 2,  Status = RankDefinitionStatus.Active, CreationDate = SeedDate, CreatedBy = "seed" },
             new RankDefinition { Id = 3,  Name = "Platinum",       Description = "175 ET points. DTR: $15/day. Boost Bonus unlocked.",         SortOrder = 3,  Status = RankDefinitionStatus.Active, CreationDate = SeedDate, CreatedBy = "seed" },

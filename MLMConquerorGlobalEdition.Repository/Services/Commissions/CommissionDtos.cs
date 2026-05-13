@@ -136,3 +136,12 @@ public class CarBonusStatsView
     public int     TeamPointsTarget { get; set; }
     public string  MonthLabel       { get; set; } = string.Empty;
 }
+
+/// <summary>One month bucket on a commission trend chart. Used by the Daily
+/// Residuals histogram on the Residuals page.</summary>
+public class MonthlyAmountView
+{
+    public int     Year   { get; set; }
+    public int     Month  { get; set; }   // 1..12
+    public decimal Amount { get; set; }
+}

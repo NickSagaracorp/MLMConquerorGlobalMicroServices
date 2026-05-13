@@ -1,3 +1,4 @@
+using Hangfire;
 using MediatR;
 using MLMConquerorGlobalEdition.CommissionEngine.Features.CalculateBoostBonus;
 using MLMConquerorGlobalEdition.CommissionEngine.Services;
@@ -14,6 +15,7 @@ namespace MLMConquerorGlobalEdition.CommissionEngine.Jobs;
 /// Idempotent: <see cref="CalculateBoostBonusHandler"/> returns ALREADY_CALCULATED
 /// when a week was already processed, so re-triggering a done week is always safe.
 /// </summary>
+[Queue("commissions")]
 public class BoostBonusSweepJob
 {
     private const int LookbackWeeks = 4;

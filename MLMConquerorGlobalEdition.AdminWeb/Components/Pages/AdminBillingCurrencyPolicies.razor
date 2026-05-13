@@ -1,0 +1,264 @@
+@page "/admin/billing/currency-policies"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin,BillingManager")]
+@inject HttpClient Http
+
+<PageTitle>Currency Policies — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Billing"), new("Currency Policies") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-money-dollar-box-line me-2 text-primary"></i>Currency Presentment Policies
+        </h6>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+        <button class="btn btn-primary btn-sm" @onclick="OpenCreate"><i class="ri-add-line me-1"></i>New Policy</button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="CurrencyPolicyDto" DataSource="@_items"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="25" PageSizes="@(new int[]{25,50,100})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn Field="@nameof(CurrencyPolicyDto.Id)" HeaderText="ID" Width="70" TextAlign="TextAlign.Center" />
+                    <GridColumn Field="@nameof(CurrencyPolicyDto.PresentmentCurrency)" HeaderText="Currency" Width="120">
+                        <Template><span class="badge bg-primary">@(((CurrencyPolicyDto)context).PresentmentCurrency)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Markup %" Width="120" TextAlign="TextAlign.Right">
+                        <Template>@(((CurrencyPolicyDto)context).MarkupPercent.ToString("F2"))%</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Description" Width="240">
+                        <Template><span class="small text-muted">@(((CurrencyPolicyDto)context).Description ?? "—")</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Status" Width="110" TextAlign="TextAlign.Center">
+                        <Template><span class="badge @(((CurrencyPolicyDto)context).IsActive ? "bg-success" : "bg-secondary")">@(((CurrencyPolicyDto)context).IsActive ? "Active" : "Inactive")</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="100" TextAlign="TextAlign.Center">
+                        <Template>
+                            <button class="btn btn-sm btn-outline-primary py-0" @onclick="() => OpenEdit((CurrencyPolicyDto)context)"><i class="ri-edit-line"></i></button>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+@* ── Exchange Rates panel ── *@
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-exchange-dollar-line me-2 text-primary"></i>Latest Exchange Rate Snapshots <small class="text-muted fw-normal">(base USD)</small>
+        </h6>
+        <button class="btn btn-outline-primary btn-sm" @onclick="RefreshRates" disabled="@_refreshingRates">
+            @if (_refreshingRates) { <span class="spinner-border spinner-border-sm me-1"></span> }
+            <i class="ri-refresh-line me-1"></i>Refresh exchange rates now
+        </button>
+    </div>
+    <div class="card-body p-0">
+        @if (_rates.Count == 0)
+        {
+            <div class="text-center py-4 text-muted small">No exchange rate snapshots available yet.</div>
+        }
+        else
+        {
+            <table class="table table-sm mb-0">
+                <thead class="table-light">
+                    <tr><th>Quote Currency</th><th class="text-end">Rate (USD → currency)</th><th>Fetched (UTC)</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in _rates)
+                    {
+                        <tr>
+                            <td><span class="badge bg-light text-dark border">@r.Currency</span></td>
+                            <td class="text-end fw-semibold">@r.Rate.ToString("F6")</td>
+                            <td class="small text-muted">@r.FetchedAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+    <div class="card-footer bg-light small text-muted">
+        Note: this endpoint returns the last known rates. The live refresh runs on an hourly Hangfire job (queue <code>billing</code>); use the Hangfire dashboard to trigger it immediately.
+    </div>
+</div>
+
+@if (_showForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold">@(_editId is null ? "New Currency Policy" : "Edit Currency Policy")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseForm"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Presentment Currency <span class="text-danger">*</span></label>
+                            <select class="form-select" @bind="_form.PresentmentCurrency" disabled="@(_editId is not null)">
+                                <option value="">— Select —</option>
+                                @foreach (var c in CurrencyOptions)
+                                {
+                                    <option value="@c">@c</option>
+                                }
+                            </select>
+                            @if (_editId is not null)
+                            {
+                                <div class="form-text">Currency cannot be changed after creation.</div>
+                            }
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Markup %</label>
+                            <input type="number" step="0.01" class="form-control" @bind="_form.MarkupPercent" />
+                            <div class="form-text">Applied on top of the converted amount (default 2).</div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Description</label>
+                            <textarea class="form-control" rows="2" @bind="_form.Description" placeholder="Optional"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="cpActive" @bind="_form.IsActive" />
+                                <label class="form-check-label" for="cpActive">Active</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                    <button class="btn btn-primary" @onclick="Save" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        @(_editId is null ? "Create" : "Save Changes")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private static readonly string[] CurrencyOptions = { "EUR", "CAD", "AUD", "GBP", "USD" };
+
+    private List<CurrencyPolicyDto> _items = new();
+    private List<ExchangeRateDto> _rates = new();
+    private bool _loading = true;
+    private bool _saving;
+    private bool _refreshingRates;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private bool _showForm;
+    private int? _editId;
+    private PolicyFormModel _form = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        await LoadRates();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<IEnumerable<CurrencyPolicyDto>>>("api/v1/admin/billing/currency-policies");
+            if (resp?.Success == true && resp.Data is not null)
+                _items = resp.Data.ToList();
+            else { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load currency policies."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private async Task LoadRates()
+    {
+        // The refresh endpoint also returns the latest snapshots; reuse it as a read.
+        try
+        {
+            var resp = await Http.PostAsJsonAsync("api/v1/admin/billing/exchange-rates/refresh", new { });
+            if (resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadFromJsonAsync<ApiResp<IEnumerable<ExchangeRateDto>>>();
+                if (body?.Success == true && body.Data is not null)
+                    _rates = body.Data.OrderBy(r => r.Currency).ToList();
+            }
+        }
+        catch { /* non-critical */ }
+    }
+
+    private async Task RefreshRates()
+    {
+        _refreshingRates = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.PostAsJsonAsync("api/v1/admin/billing/exchange-rates/refresh", new { });
+            if (resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadFromJsonAsync<ApiResp<IEnumerable<ExchangeRateDto>>>();
+                if (body?.Success == true && body.Data is not null)
+                    _rates = body.Data.OrderBy(r => r.Currency).ToList();
+                _alertMsg = body?.Message ?? "Exchange rates refreshed.";
+                _alertIsError = false;
+            }
+            else { _alertMsg = $"Refresh failed ({resp.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _refreshingRates = false; }
+    }
+
+    private void OpenCreate() { _editId = null; _form = new() { MarkupPercent = 2m, IsActive = true }; _showForm = true; }
+
+    private void OpenEdit(CurrencyPolicyDto p)
+    {
+        _editId = p.Id;
+        _form = new PolicyFormModel { PresentmentCurrency = p.PresentmentCurrency, MarkupPercent = p.MarkupPercent, Description = p.Description, IsActive = p.IsActive };
+        _showForm = true;
+    }
+
+    private void CloseForm() { _showForm = false; _editId = null; }
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(_form.PresentmentCurrency)) { _alertMsg = "Presentment currency is required."; _alertIsError = true; return; }
+        _saving = true;
+        try
+        {
+            var payload = new { _form.PresentmentCurrency, _form.MarkupPercent, _form.IsActive, _form.Description };
+            var response = _editId is null
+                ? await Http.PostAsJsonAsync("api/v1/admin/billing/currency-policies", payload)
+                : await Http.PutAsJsonAsync($"api/v1/admin/billing/currency-policies/{_editId}", payload);
+            if (response.IsSuccessStatusCode) { _alertMsg = _editId is null ? "Created." : "Updated."; _alertIsError = false; CloseForm(); await LoadAsync(); }
+            else { _alertMsg = $"Save failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private class PolicyFormModel
+    {
+        public string PresentmentCurrency { get; set; } = string.Empty;
+        public decimal MarkupPercent { get; set; }
+        public string? Description { get; set; }
+        public bool IsActive { get; set; }
+    }
+
+    private record CurrencyPolicyDto(int Id, string PresentmentCurrency, decimal MarkupPercent, bool IsActive, string? Description);
+    private record ExchangeRateDto(string Currency, decimal Rate, DateTime FetchedAtUtc);
+    private record ApiResp<T>(bool Success, T? Data, string? Message, IEnumerable<string>? Errors);
+}

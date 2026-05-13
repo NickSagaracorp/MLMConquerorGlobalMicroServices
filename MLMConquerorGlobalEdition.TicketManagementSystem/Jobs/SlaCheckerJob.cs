@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -11,6 +12,7 @@ namespace MLMConquerorGlobalEdition.TicketManagementSystem.Jobs;
 /// HangFire recurring job — runs every 5 minutes.
 /// Evaluates SLA status for all open tickets and fires breach events.
 /// </summary>
+[Queue("tickets")]
 public class SlaCheckerJob
 {
     private readonly IServiceScopeFactory _scopeFactory;

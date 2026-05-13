@@ -133,10 +133,11 @@ public class SignupsController : ControllerBase
     public async Task<IActionResult> ValidateToken(
         [FromBody] ValidateTokenRequest request, CancellationToken ct)
     {
-        // Fire-and-forget telemetry — token validation is informational, we don't block here
-        // since the user can keep typing variants on a single page load. The result lives in
-        // the table for after-the-fact fraud review.
-        _ = _fraud.RecordAsync(
+        // Telemetry — token validation is informational. Awaited (not fire-and-forget) because
+        // both this call and the mediator handler share the request-scoped AppDbContext, and
+        // running them concurrently triggers EF Core's ConcurrencyDetector. The recording is
+        // a single INSERT plus a COUNT, so the latency cost is negligible.
+        await _fraud.RecordAsync(
             request.VisitorId, SignupRiskFlow.TokenValidation,
             request.SponsorReplicateSite, ResolveClientIp(), Request.Headers.UserAgent.ToString(),
             null, null, ct);
