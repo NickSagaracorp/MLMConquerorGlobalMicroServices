@@ -1,6 +1,11 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.AdminAPI.DTOs.RecurringPerformance;
+using MLMConquerorGlobalEdition.AdminAPI.Features.RecurringPerformance.GetSettings;
+using MLMConquerorGlobalEdition.AdminAPI.Features.RecurringPerformance.UpdateSettings;
+using MLMConquerorGlobalEdition.AdminAPI.Features.RecurringPerformance.PreviewPlan;
 using MLMConquerorGlobalEdition.Domain.Entities.Billing;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
@@ -11,6 +16,8 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 /// <summary>
 /// Admin endpoints for the recurring billing / dunning engine.
 /// Routes under /api/v1/admin/billing/recurring-*
+/// Also exposes the high-volume performance tunable endpoints under
+/// /api/v1/admin/billing/recurring-performance/
 /// </summary>
 [ApiController]
 [Route("api/v1/admin/billing")]
@@ -18,12 +25,14 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 public class AdminRecurringBillingController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IMediator    _mediator;
 
     private const string ConsolidationMinimumKey = "DailyResidualConsolidationMinimum";
 
-    public AdminRecurringBillingController(AppDbContext db)
+    public AdminRecurringBillingController(AppDbContext db, IMediator mediator)
     {
-        _db = db;
+        _db       = db;
+        _mediator = mediator;
     }
 
     // ── Recurring Plans ─────────────────────────────────────────────────────
@@ -338,6 +347,62 @@ public class AdminRecurringBillingController : ControllerBase
             ConsolidationMinimumKey,
             request.DailyResidualConsolidationMinimum,
             "Minimum pending daily-residual balance (USD) before consolidation.")));
+    }
+
+    // ── Recurring Performance Settings (§10.7 high-volume tunables) ───────────
+
+    /// <summary>
+    /// GET /api/v1/admin/billing/recurring-performance/settings
+    /// Returns all §10.7 high-volume tunables as a grouped structured payload.
+    /// Includes supported* arrays for dropdown population.
+    /// </summary>
+    [HttpGet("recurring-performance/settings")]
+    public async Task<IActionResult> GetRecurringPerformanceSettings(CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new GetRecurringPerformanceSettingsQuery(), ct);
+
+        if (!result.IsSuccess)
+            return StatusCode(500, ApiResponse<object>.Fail(result.ErrorCode!, result.Error!));
+
+        return Ok(ApiResponse<RecurringPerformanceSettingsDto>.Ok(result.Value!));
+    }
+
+    /// <summary>
+    /// PUT /api/v1/admin/billing/recurring-performance/settings
+    /// Validates and persists all §10.7 high-volume tunables.
+    /// </summary>
+    [HttpPut("recurring-performance/settings")]
+    public async Task<IActionResult> UpdateRecurringPerformanceSettings(
+        [FromBody] UpdateRecurringPerformanceSettingsRequest request, CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(
+            new UpdateRecurringPerformanceSettingsCommand(request), ct);
+
+        if (!result.IsSuccess)
+        {
+            if (result.ErrorCode == "VALIDATION")
+                return BadRequest(ApiResponse<object>.Fail(result.ErrorCode, result.Error!));
+
+            return StatusCode(500, ApiResponse<object>.Fail(result.ErrorCode!, result.Error!));
+        }
+
+        return Ok(ApiResponse<RecurringPerformanceSettingsDto>.Ok(result.Value!));
+    }
+
+    /// <summary>
+    /// GET /api/v1/admin/billing/recurring-performance/preview
+    /// Runs the Stage 1 planner in dry-run mode against today's pending workload.
+    /// No RecurringBillingBatch or RecurringBillingBatchShard rows are written.
+    /// </summary>
+    [HttpGet("recurring-performance/preview")]
+    public async Task<IActionResult> GetRecurringPerformancePreview(CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new PreviewRecurringPerformanceQuery(), ct);
+
+        if (!result.IsSuccess)
+            return StatusCode(500, ApiResponse<object>.Fail(result.ErrorCode!, result.Error!));
+
+        return Ok(ApiResponse<RecurringPerformancePreviewDto>.Ok(result.Value!));
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.Domain.Entities.Billing;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 using MLMConquerorGlobalEdition.Domain.Entities.Email;
 using MLMConquerorGlobalEdition.Domain.Entities.Events;
@@ -14,7 +15,6 @@ using MLMConquerorGlobalEdition.Domain.Entities.Support;
 using MLMConquerorGlobalEdition.Domain.Entities.Tokens;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Entities.Wallet;
-using MLMConquerorGlobalEdition.Domain.Entities.Billing;
 using MLMConquerorGlobalEdition.Domain.Entities.Marketing;
 using MLMConquerorGlobalEdition.Repository.Identity;
 using MLMConquerorGlobalEdition.Repository.Interceptors;
@@ -121,6 +121,12 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     public DbSet<RecurringBillingPlanProduct> RecurringBillingPlanProducts => Set<RecurringBillingPlanProduct>();
     public DbSet<SubscriptionBillingState>    SubscriptionBillingStates    => Set<SubscriptionBillingState>();
     public DbSet<RecurringBillingAttempt>     RecurringBillingAttempts     => Set<RecurringBillingAttempt>();
+
+    // ── High-Volume Recurring Billing Pipeline (§10) ──────────────────────
+    public DbSet<RecurringBillingBatch>       RecurringBillingBatches      => Set<RecurringBillingBatch>();
+    public DbSet<RecurringBillingBatchShard>  RecurringBillingBatchShards  => Set<RecurringBillingBatchShard>();
+    public DbSet<PointDeltaEvent>             PointDeltaEvents             => Set<PointDeltaEvent>();
+    public DbSet<CommissionTriggerQueue>      CommissionTriggerQueues      => Set<CommissionTriggerQueue>();
 
     // ── Global Parameters ─────────────────────────────────────────────────
     public DbSet<GlobalParameter> GlobalParameters => Set<GlobalParameter>();

@@ -40,6 +40,14 @@ public class SubscriptionBillingState : AuditChangesStringKey
     public string? LastAttemptOutcome { get; set; }
     public string? LastFailureReason { get; set; }
 
+    /// <summary>
+    /// Monotonically increasing surrogate key used for shard range partitioning in the
+    /// high-volume pipeline (§10.3). Set by the database on INSERT via IDENTITY(1,1).
+    /// Shard boundaries are expressed as [ShardKey_start, ShardKey_end] ranges, providing
+    /// a stable, contiguous, numeric space to partition across without cursor drift.
+    /// </summary>
+    public long ShardKey { get; set; }
+
     // Navigation
     public RecurringBillingPlan? Plan { get; set; }
 }

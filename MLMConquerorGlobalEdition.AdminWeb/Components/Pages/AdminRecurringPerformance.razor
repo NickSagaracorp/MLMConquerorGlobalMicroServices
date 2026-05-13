@@ -1,0 +1,636 @@
+@page "/admin/billing/recurring-performance"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin,BillingManager")]
+@inject HttpClient Http
+
+<PageTitle>Recurring Performance — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Billing"), new("Recurring Performance") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="d-flex align-items-center mb-3">
+    <h5 class="fw-bold mb-0 flex-grow-1">
+        <i class="ri-speed-up-line me-2 text-primary"></i>Recurring Billing Performance
+    </h5>
+    <button class="btn btn-outline-secondary btn-sm" @onclick="RefreshPreview" disabled="@_previewLoading">
+        @if (_previewLoading) { <span class="spinner-border spinner-border-sm me-1"></span> } else { <i class="ri-refresh-line me-1"></i> }
+        Refresh preview
+    </button>
+</div>
+
+@if (_loading)
+{
+    <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else
+{
+    <div class="row g-3">
+        @* ── Left column: settings ── *@
+        <div class="col-lg-7">
+
+            @* Window *@
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header py-3">
+                    <h6 class="card-title mb-0 fw-semibold">
+                        <i class="ri-time-line me-2 text-primary"></i>Window
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Target completion window (hours)</label>
+                            <input type="number" min="1" max="24" step="1"
+                                   class="form-control @(WindowHoursValid ? "" : "is-invalid")"
+                                   @bind="_form.Window.TargetCompletionWindowHours" @bind:event="oninput" />
+                            <div class="invalid-feedback">Must be an integer between 1 and 24.</div>
+                            <div class="form-text">How long the nightly batch may run before it's flagged late.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Batch start (UTC)</label>
+                            <input type="text" placeholder="HH:mm"
+                                   class="form-control @(BatchStartValid ? "" : "is-invalid")"
+                                   @bind="_form.Window.BatchStartTimeUtc" @bind:event="oninput" />
+                            <div class="invalid-feedback">Must match the 24-hour <code>HH:mm</code> format.</div>
+                            <div class="form-text"><em>@BatchStartEtNote</em></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Per-gateway capacity *@
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header py-3">
+                    <h6 class="card-title mb-0 fw-semibold">
+                        <i class="ri-server-line me-2 text-primary"></i>Per-gateway capacity
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:30%">Gateway</th>
+                                <th style="width:22%">Min workers</th>
+                                <th style="width:24%">Max concurrency</th>
+                                <th style="width:24%">Window offset (min)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in _form.PerGateway)
+                            {
+                                var r = row;
+                                var minOk = r.MinWorkers >= 1;
+                                var maxOk = r.MaxConcurrency >= r.MinWorkers && r.MaxConcurrency >= 1;
+                                var offsetOk = r.WindowOffsetMinutes is >= 0 and <= 720;
+                                <tr>
+                                    <td>
+                                        <span class="fw-semibold">@ProcessorLabel(r.Processor)</span>
+                                        <div><code class="small text-muted">@r.Processor</code></div>
+                                    </td>
+                                    <td>
+                                        <input type="number" min="1" step="1"
+                                               class="form-control form-control-sm @(minOk ? "" : "is-invalid")"
+                                               @bind="r.MinWorkers" @bind:event="oninput" />
+                                        @if (!minOk) { <div class="invalid-feedback d-block small">Must be ≥ 1.</div> }
+                                    </td>
+                                    <td>
+                                        <input type="number" min="1" step="1"
+                                               class="form-control form-control-sm @(maxOk ? "" : "is-invalid")"
+                                               @bind="r.MaxConcurrency" @bind:event="oninput" />
+                                        @if (!maxOk) { <div class="invalid-feedback d-block small">Must be ≥ Min workers.</div> }
+                                    </td>
+                                    <td>
+                                        <input type="number" min="0" max="720" step="1"
+                                               class="form-control form-control-sm @(offsetOk ? "" : "is-invalid")"
+                                               @bind="r.WindowOffsetMinutes" @bind:event="oninput" />
+                                        @if (!offsetOk) { <div class="invalid-feedback d-block small">0 – 720 minutes.</div> }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-footer bg-light small text-muted">
+                    7 gateways are tuned independently. Workers needed today are computed in the preview panel.
+                </div>
+            </div>
+
+            @* Latency sampling *@
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header py-3">
+                    <h6 class="card-title mb-0 fw-semibold">
+                        <i class="ri-line-chart-line me-2 text-primary"></i>Latency sampling
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-5">
+                            <label class="form-label fw-semibold">Sampling window (days)</label>
+                            <input type="number" min="1" max="90" step="1"
+                                   class="form-control @(LatencyDaysValid ? "" : "is-invalid")"
+                                   @bind="_form.LatencySamplingDays" @bind:event="oninput" />
+                            <div class="invalid-feedback">Must be between 1 and 90.</div>
+                            <div class="form-text">How far back the planner looks to estimate average latency per gateway.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Cascade behaviour *@
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header py-3">
+                    <h6 class="card-title mb-0 fw-semibold">
+                        <i class="ri-git-merge-line me-2 text-primary"></i>Cascade behaviour
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Cascade strategy</label>
+                            <select class="form-select"
+                                    @bind="_form.CascadeStrategy"
+                                    disabled="@(_supportedCascadeStrategies.Count <= 1)"
+                                    title="@(_supportedCascadeStrategies.Count <= 1 ? "Currently only one option is supported" : null)">
+                                @foreach (var opt in _supportedCascadeStrategies)
+                                {
+                                    <option value="@opt">@opt</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Aggregator trigger mode</label>
+                            <select class="form-select"
+                                    @bind="_form.AggregatorTriggerMode"
+                                    disabled="@(_supportedAggregatorTriggerModes.Count <= 1)"
+                                    title="@(_supportedAggregatorTriggerModes.Count <= 1 ? "Currently only one option is supported" : null)">
+                                @foreach (var opt in _supportedAggregatorTriggerModes)
+                                {
+                                    <option value="@opt">@opt</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Save bar *@
+            <div class="d-flex gap-2 mb-3">
+                <button class="btn btn-primary" @onclick="Save" disabled="@(_saving || !IsDirty || !ClientValid)">
+                    @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                    Save changes
+                </button>
+                <button class="btn btn-link" @onclick="Discard" disabled="@(_saving || !IsDirty)">Discard</button>
+                @if (!ClientValid)
+                {
+                    <span class="text-danger small align-self-center"><i class="ri-error-warning-line me-1"></i>Fix highlighted fields before saving.</span>
+                }
+            </div>
+        </div>
+
+        @* ── Right column: today's plan preview ── *@
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm sticky-top" style="top:1rem;">
+                <div class="card-header py-3 d-flex align-items-center gap-2">
+                    <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+                        <i class="ri-eye-line me-2 text-primary"></i>Today's plan preview
+                    </h6>
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="RefreshPreview" disabled="@_previewLoading"><i class="ri-refresh-line"></i></button>
+                </div>
+                <div class="card-body">
+                    @if (_previewLoading)
+                    {
+                        <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+                    }
+                    else if (_preview is null)
+                    {
+                        <div class="text-muted small">No projection available.</div>
+                    }
+                    else
+                    {
+                        <div class="mb-2">
+                            <div class="display-6 fw-bold text-primary lh-1">@_preview.PendingBills.ToString("N0")</div>
+                            <div class="small text-muted">Pending recurring bills today</div>
+                            <div class="small text-muted mt-1">as of @_preview.AsOfUtc.ToString("yyyy-MM-dd HH:mm 'UTC'")</div>
+                        </div>
+
+                        @if (_preview.PerGateway.Count > 0)
+                        {
+                            <table class="table table-sm align-middle mt-3 mb-2">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Gateway</th>
+                                        <th class="text-end">Cases</th>
+                                        <th class="text-end">Avg latency</th>
+                                        <th class="text-end">Workers</th>
+                                        <th class="text-center">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var g in _preview.PerGateway)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <span class="fw-semibold">@ProcessorLabel(g.Processor)</span>
+                                            </td>
+                                            <td class="text-end">@g.CasesAssigned.ToString("N0")</td>
+                                            <td class="text-end"><code class="small">@FormatLatency(g.AvgLatencyMs)</code></td>
+                                            <td class="text-end">@g.WorkersNeeded</td>
+                                            <td class="text-center">
+                                                @if (g.HitFloor)
+                                                {
+                                                    <span class="badge bg-warning text-dark" title="Clamped up by MinWorkers floor">Floor</span>
+                                                }
+                                                else if (g.HitCeiling)
+                                                {
+                                                    <span class="badge bg-warning text-dark" title="Clamped down by MaxConcurrency ceiling">Ceiling</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-success">OK</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                        else
+                        {
+                            <div class="text-muted small mt-3">No gateways have pending workload right now.</div>
+                        }
+
+                        <div class="mt-3 pt-2 border-top">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1">
+                                    <span class="small text-muted">Estimated completion</span>
+                                    <div class="fw-semibold">@FormatMinutes(_preview.Estimated.CompletionMinutes)</div>
+                                </div>
+                                <div>
+                                    @if (_preview.Estimated.WithinTarget)
+                                    {
+                                        <span class="text-success fw-semibold">
+                                            <i class="ri-check-line me-1"></i>within @_preview.TargetWindowHours h target
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-danger fw-semibold">
+                                            <i class="ri-error-warning-line me-1"></i>over @_preview.TargetWindowHours h target
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        @if (_preview.Notes is { Count: > 0 })
+                        {
+                            <div class="mt-3 pt-2 border-top">
+                                @foreach (var note in _preview.Notes)
+                                {
+                                    <div class="small text-muted fst-italic"><i class="ri-information-line me-1"></i>@note</div>
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    // Keyed by the CardProcessor enum NAME (the API serializes the enum as its name via JsonStringEnumConverter).
+    private static readonly Dictionary<string, string> ProcessorOptions = new()
+    {
+        ["NmiSpreedly"]   = "NMI (Spreedly)",
+        ["NmiDirect"]     = "NMI Direct",
+        ["CheckoutEUR"]   = "Checkout.com EUR",
+        ["CheckoutUS"]    = "Checkout.com US",
+        ["CheckoutUsLlc"] = "Checkout US LLC",
+        ["Shift4"]        = "Shift4",
+        ["StripeEms"]     = "Stripe EMS"
+    };
+
+    private static readonly System.Text.RegularExpressions.Regex HhMmRegex =
+        new(@"^([01]\d|2[0-3]):[0-5]\d$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    private bool _loading = true;
+    private bool _previewLoading;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+
+    private SettingsForm _form = new();
+    private SettingsForm _baseline = new();
+    private List<string> _supportedCascadeStrategies = new();
+    private List<string> _supportedAggregatorTriggerModes = new();
+    private PreviewDto? _preview;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        await LoadPreviewAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<SettingsDto>>("api/v1/admin/billing/recurring-performance/settings");
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _form     = FromDto(resp.Data);
+                _baseline = FromDto(resp.Data);
+                _supportedCascadeStrategies      = resp.Data.SupportedCascadeStrategies      ?? new List<string>();
+                _supportedAggregatorTriggerModes = resp.Data.SupportedAggregatorTriggerModes ?? new List<string>();
+
+                // Ensure the current values are present in the dropdown options so binding never goes blank.
+                if (!_supportedCascadeStrategies.Contains(_form.CascadeStrategy))
+                    _supportedCascadeStrategies.Insert(0, _form.CascadeStrategy);
+                if (!_supportedAggregatorTriggerModes.Contains(_form.AggregatorTriggerMode))
+                    _supportedAggregatorTriggerModes.Insert(0, _form.AggregatorTriggerMode);
+            }
+            else
+            {
+                _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load performance settings.";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private async Task LoadPreviewAsync()
+    {
+        _previewLoading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<PreviewDto>>("api/v1/admin/billing/recurring-performance/preview");
+            if (resp?.Success == true && resp.Data is not null)
+                _preview = resp.Data;
+            else
+                _preview = null;
+        }
+        catch
+        {
+            // Preview is best-effort — don't surface as a hard error.
+            _preview = null;
+        }
+        finally { _previewLoading = false; }
+    }
+
+    private async Task RefreshPreview() => await LoadPreviewAsync();
+
+    private async Task Save()
+    {
+        if (!ClientValid)
+        {
+            _alertMsg = "Please fix the highlighted fields before saving."; _alertIsError = true; return;
+        }
+        _saving = true;
+        try
+        {
+            var payload = new
+            {
+                window = new
+                {
+                    targetCompletionWindowHours = _form.Window.TargetCompletionWindowHours,
+                    batchStartTimeUtc           = _form.Window.BatchStartTimeUtc
+                },
+                perGateway = _form.PerGateway.Select(r => new
+                {
+                    processor           = r.Processor,                 // string (enum name) — never int
+                    minWorkers          = r.MinWorkers,
+                    maxConcurrency      = r.MaxConcurrency,
+                    windowOffsetMinutes = r.WindowOffsetMinutes
+                }).ToList(),
+                latencySamplingDays   = _form.LatencySamplingDays,
+                cascadeStrategy       = _form.CascadeStrategy,        // string (enum name) — never int
+                aggregatorTriggerMode = _form.AggregatorTriggerMode   // string (enum name) — never int
+            };
+
+            var response = await Http.PutAsJsonAsync("api/v1/admin/billing/recurring-performance/settings", payload);
+            if (response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadFromJsonAsync<ApiResp<SettingsDto>>();
+                if (body?.Success == true && body.Data is not null)
+                {
+                    _form     = FromDto(body.Data);
+                    _baseline = FromDto(body.Data);
+                }
+                _alertMsg = "Performance settings saved."; _alertIsError = false;
+                await LoadPreviewAsync();
+            }
+            else
+            {
+                var body = await response.Content.ReadFromJsonAsync<ApiResp<object>>();
+                _alertMsg = body?.Errors?.FirstOrDefault() ?? $"Save failed ({response.StatusCode}).";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private void Discard()
+    {
+        _form = Clone(_baseline);
+        _alertMsg = null;
+    }
+
+    // ── Validation ──────────────────────────────────────────────────────────
+
+    private bool WindowHoursValid =>
+        _form.Window.TargetCompletionWindowHours is >= 1 and <= 24;
+
+    private bool BatchStartValid =>
+        !string.IsNullOrWhiteSpace(_form.Window.BatchStartTimeUtc) && HhMmRegex.IsMatch(_form.Window.BatchStartTimeUtc);
+
+    private bool LatencyDaysValid =>
+        _form.LatencySamplingDays is >= 1 and <= 90;
+
+    private bool RowsValid => _form.PerGateway.All(r =>
+        r.MinWorkers >= 1 &&
+        r.MaxConcurrency >= r.MinWorkers &&
+        r.WindowOffsetMinutes is >= 0 and <= 720);
+
+    private bool ClientValid =>
+        WindowHoursValid && BatchStartValid && LatencyDaysValid && RowsValid &&
+        _form.PerGateway.Count == 7 &&
+        !string.IsNullOrWhiteSpace(_form.CascadeStrategy) &&
+        !string.IsNullOrWhiteSpace(_form.AggregatorTriggerMode) &&
+        _supportedCascadeStrategies.Contains(_form.CascadeStrategy) &&
+        _supportedAggregatorTriggerModes.Contains(_form.AggregatorTriggerMode);
+
+    private bool IsDirty => !FormEquals(_form, _baseline);
+
+    private static bool FormEquals(SettingsForm a, SettingsForm b)
+    {
+        if (a.Window.TargetCompletionWindowHours != b.Window.TargetCompletionWindowHours) return false;
+        if (!string.Equals(a.Window.BatchStartTimeUtc, b.Window.BatchStartTimeUtc, StringComparison.Ordinal)) return false;
+        if (a.LatencySamplingDays != b.LatencySamplingDays) return false;
+        if (!string.Equals(a.CascadeStrategy, b.CascadeStrategy, StringComparison.Ordinal)) return false;
+        if (!string.Equals(a.AggregatorTriggerMode, b.AggregatorTriggerMode, StringComparison.Ordinal)) return false;
+        if (a.PerGateway.Count != b.PerGateway.Count) return false;
+        for (var i = 0; i < a.PerGateway.Count; i++)
+        {
+            var x = a.PerGateway[i]; var y = b.PerGateway[i];
+            if (x.Processor != y.Processor) return false;
+            if (x.MinWorkers != y.MinWorkers) return false;
+            if (x.MaxConcurrency != y.MaxConcurrency) return false;
+            if (x.WindowOffsetMinutes != y.WindowOffsetMinutes) return false;
+        }
+        return true;
+    }
+
+    // ── Helpers ─────────────────────────────────────────────────────────────
+
+    private static string ProcessorLabel(string code) =>
+        ProcessorOptions.TryGetValue(code, out var v) ? v : code;
+
+    /// <summary>Formats latency milliseconds compactly (e.g. "1 800 ms" or "2.4 s").</summary>
+    private static string FormatLatency(long ms)
+    {
+        if (ms <= 0) return "—";
+        if (ms < 1000) return $"{ms} ms";
+        return $"{(ms / 1000d):F1} s";
+    }
+
+    /// <summary>Formats fractional minutes as "h hr m min".</summary>
+    private static string FormatMinutes(double minutes)
+    {
+        if (minutes < 0 || double.IsNaN(minutes)) return "—";
+        var total = (int)Math.Round(minutes);
+        var h = total / 60;
+        var m = total % 60;
+        if (h == 0) return $"{m} min";
+        if (m == 0) return $"{h} hr";
+        return $"{h} hr {m} min";
+    }
+
+    /// <summary>
+    /// Small note that converts the configured UTC batch-start time into US Eastern.
+    /// Computed client-side so it stays accurate if the offset changes.
+    /// </summary>
+    private string BatchStartEtNote
+    {
+        get
+        {
+            if (!BatchStartValid) return "Eastern Time equivalent will display once the field is valid.";
+            var parts = _form.Window.BatchStartTimeUtc.Split(':');
+            if (parts.Length != 2 || !int.TryParse(parts[0], out var h) || !int.TryParse(parts[1], out var m))
+                return string.Empty;
+
+            // ET = UTC − 4 (Daylight) most of the year; this is a display hint, not a settlement value.
+            var utc = new TimeSpan(h, m, 0);
+            var etTotal = (utc - TimeSpan.FromHours(4) + TimeSpan.FromDays(1)).TotalMinutes % (24 * 60);
+            var etH = ((int)etTotal) / 60;
+            var etM = ((int)etTotal) % 60;
+            return $"{_form.Window.BatchStartTimeUtc} UTC ≈ {etH:00}:{etM:00} ET";
+        }
+    }
+
+    // ── Mapping ─────────────────────────────────────────────────────────────
+
+    private static SettingsForm FromDto(SettingsDto dto) => new()
+    {
+        Window = new WindowForm
+        {
+            TargetCompletionWindowHours = dto.Window?.TargetCompletionWindowHours ?? 3,
+            BatchStartTimeUtc           = dto.Window?.BatchStartTimeUtc ?? "05:00"
+        },
+        PerGateway = (dto.PerGateway ?? new List<GatewayRowDto>())
+            .Select(r => new GatewayRowForm
+            {
+                Processor           = r.Processor,
+                MinWorkers          = r.MinWorkers,
+                MaxConcurrency      = r.MaxConcurrency,
+                WindowOffsetMinutes = r.WindowOffsetMinutes
+            }).ToList(),
+        LatencySamplingDays   = dto.LatencySamplingDays,
+        CascadeStrategy       = dto.CascadeStrategy ?? string.Empty,
+        AggregatorTriggerMode = dto.AggregatorTriggerMode ?? string.Empty
+    };
+
+    private static SettingsForm Clone(SettingsForm src) => new()
+    {
+        Window = new WindowForm
+        {
+            TargetCompletionWindowHours = src.Window.TargetCompletionWindowHours,
+            BatchStartTimeUtc           = src.Window.BatchStartTimeUtc
+        },
+        PerGateway = src.PerGateway.Select(r => new GatewayRowForm
+        {
+            Processor           = r.Processor,
+            MinWorkers          = r.MinWorkers,
+            MaxConcurrency      = r.MaxConcurrency,
+            WindowOffsetMinutes = r.WindowOffsetMinutes
+        }).ToList(),
+        LatencySamplingDays   = src.LatencySamplingDays,
+        CascadeStrategy       = src.CascadeStrategy,
+        AggregatorTriggerMode = src.AggregatorTriggerMode
+    };
+
+    // ── Form models (mutable, used for inputs) ──────────────────────────────
+
+    private class SettingsForm
+    {
+        public WindowForm Window { get; set; } = new();
+        public List<GatewayRowForm> PerGateway { get; set; } = new();
+        public int LatencySamplingDays { get; set; }
+        public string CascadeStrategy { get; set; } = string.Empty;
+        public string AggregatorTriggerMode { get; set; } = string.Empty;
+    }
+    private class WindowForm
+    {
+        public int TargetCompletionWindowHours { get; set; }
+        public string BatchStartTimeUtc { get; set; } = string.Empty;
+    }
+    private class GatewayRowForm
+    {
+        public string Processor { get; set; } = string.Empty;
+        public int MinWorkers { get; set; }
+        public int MaxConcurrency { get; set; }
+        public int WindowOffsetMinutes { get; set; }
+    }
+
+    // ── DTO records (deserialization shapes) ────────────────────────────────
+    //
+    // CRITICAL: every enum-backed field (Processor, CascadeStrategy, AggregatorTriggerMode)
+    // is typed as `string`, NOT `int`. AdminAPI uses JsonStringEnumConverter, so the wire
+    // shape is the enum NAME ("NmiSpreedly", "DeferredUplineRollup", "AfterAllChargeWorkers").
+    // Binding these to `int` would silently default to 0 and break PUT validation.
+
+    private record SettingsDto(
+        WindowDto? Window,
+        List<GatewayRowDto>? PerGateway,
+        int LatencySamplingDays,
+        string? CascadeStrategy,
+        string? AggregatorTriggerMode,
+        List<string>? SupportedCascadeStrategies,
+        List<string>? SupportedAggregatorTriggerModes);
+
+    private record WindowDto(int TargetCompletionWindowHours, string BatchStartTimeUtc);
+
+    private record GatewayRowDto(string Processor, int MinWorkers, int MaxConcurrency, int WindowOffsetMinutes);
+
+    private record PreviewDto(
+        DateTime AsOfUtc,
+        int PendingBills,
+        int TargetWindowHours,
+        List<GatewayPreviewRowDto> PerGateway,
+        EstimatedDto Estimated,
+        List<string>? Notes);
+
+    private record GatewayPreviewRowDto(string Processor, int CasesAssigned, long AvgLatencyMs, int WorkersNeeded, bool HitFloor, bool HitCeiling);
+
+    private record EstimatedDto(double CompletionMinutes, bool WithinTarget);
+
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+}

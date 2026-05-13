@@ -8,13 +8,17 @@ using MLMConquerorGlobalEdition.Repository.Context;
 namespace MLMConquerorGlobalEdition.Billing.Jobs;
 
 /// <summary>
-/// HangFire recurring job — Daily (see Program.cs for schedule), queue "billing".
+/// HangFire recurring job — Daily 7:00 AM UTC, queue "billing".
+///
+/// Acts as the safety-net fallback for the high-volume pipeline.
 ///
 /// Responsibilities:
 /// 1. Lazily ensure SubscriptionBillingState for any subscription whose product is governed
 ///    by an active RecurringBillingPlan (safety net — normally EnsureState is called on signup).
 /// 2. Find all states with Status ∈ {Active, Retrying, AwaitingAnniversaryRetry}
 ///    and NextAttemptDate &lt;= today, and invoke the processor for each.
+///    States already covered by a RecurringBillingBatchShard for today are skipped
+///    to avoid double-processing with the high-volume pipeline (§10.7 skip guard).
 /// Idempotent: the per-state NextAttemptDate prevents re-processing within a day.
 /// </summary>
 [Queue("billing")]
@@ -49,22 +53,40 @@ public class RecurringBillingSweepJob
         await EnsureMissingStatesAsync(today, ct);
 
         // ── Phase 2: Process all due states ──────────────────────────────────────
+        // Skip states already covered by a RecurringBillingBatchShard for today
+        // (they are processed by the high-volume pipeline workers).
+        var coveredShardRanges = await _db.RecurringBillingBatchShards
+            .AsNoTracking()
+            .Where(s => !s.IsDeleted
+                     && _db.RecurringBillingBatches.Any(b => b.Id == s.BatchId
+                            && b.RunDate.Date == today && !b.IsDeleted))
+            .Select(s => new { s.IdRangeStart, s.IdRangeEnd })
+            .ToListAsync(ct);
+
         var dueStateIds = await _db.SubscriptionBillingStates
             .AsNoTracking()
             .Where(s => (s.Status == RecurringBillingStatus.Active
                       || s.Status == RecurringBillingStatus.Retrying
                       || s.Status == RecurringBillingStatus.AwaitingAnniversaryRetry)
                      && s.NextAttemptDate.Date <= today)
-            .Select(s => s.Id)
+            .Select(s => new { s.Id, s.ShardKey })
             .ToListAsync(ct);
 
+        // Filter out states whose ShardKey falls within any covered shard range.
+        var dueStateIdFiltered = coveredShardRanges.Count == 0
+            ? dueStateIds.Select(s => s.Id).ToList()
+            : dueStateIds
+                .Where(s => !coveredShardRanges.Any(r => s.ShardKey >= r.IdRangeStart && s.ShardKey <= r.IdRangeEnd))
+                .Select(s => s.Id)
+                .ToList();
+
         _logger.LogInformation(
-            "RecurringBillingSweepJob: {Count} subscription billing states due for processing.",
-            dueStateIds.Count);
+            "RecurringBillingSweepJob: {Total} due states found; {Covered} covered by high-volume shards; {ToProcess} to process.",
+            dueStateIds.Count, dueStateIds.Count - dueStateIdFiltered.Count, dueStateIdFiltered.Count);
 
         int succeeded = 0, failed = 0, skipped = 0;
 
-        foreach (var stateId in dueStateIds)
+        foreach (var stateId in dueStateIdFiltered)
         {
             try
             {

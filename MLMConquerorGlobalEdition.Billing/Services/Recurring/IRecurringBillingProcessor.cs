@@ -26,5 +26,6 @@ public class RecurringBillingProcessorResult
     public string Outcome { get; init; } = string.Empty; // "Success" | "Failed" | "Scheduled" | "Skipped"
     public string? FundingSource { get; init; }
     public string? PaymentHistoryId { get; init; }
+    public string? OrderId { get; init; }
     public string? FailureReason { get; init; }
 }

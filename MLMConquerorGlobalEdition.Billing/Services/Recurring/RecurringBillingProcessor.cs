@@ -226,7 +226,8 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
             BillingStateId  = state.Id,
             Outcome         = "Success",
             FundingSource   = "CommissionBalance",
-            PaymentHistoryId = fund.PaymentHistoryId
+            PaymentHistoryId = fund.PaymentHistoryId,
+            OrderId          = order.Id
         });
     }
 
@@ -401,7 +402,8 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
             BillingStateId   = state.Id,
             Outcome          = "Success",
             FundingSource    = "CreditCard",
-            PaymentHistoryId = outcome.PaymentHistoryId
+            PaymentHistoryId = outcome.PaymentHistoryId,
+            OrderId          = order.Id
         });
     }
 

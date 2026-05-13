@@ -69,5 +69,24 @@ public class ApiCredential : AuditChangesStringKey
         }
     }
 
+    /// <summary>
+    /// The Spreedly downstream-gateway-token for this processor.
+    /// When Spreedly is provisioned with a downstream gateway (e.g. NMI, Checkout.com),
+    /// Spreedly assigns a gateway token that must be passed on every charge request so
+    /// Spreedly knows which downstream processor to route to.
+    /// Stored encrypted (ENC:...) like all secrets. Set/rotated via the admin credentials UI.
+    /// </summary>
+    private string? _spreedlyGatewayTokenEncrypted;
+    public string? SpreedlyGatewayTokenEncrypted
+    {
+        get => _spreedlyGatewayTokenEncrypted;
+        set
+        {
+            if (value is not null && !value.StartsWith("ENC:"))
+                throw new WalletPasswordStorageException();
+            _spreedlyGatewayTokenEncrypted = value;
+        }
+    }
+
     public bool IsActive { get; set; } = true;
 }

@@ -12,6 +12,19 @@ public class GatewayChargeRequest
     public string? TokenizedCardRef     { get; init; }
     public string? NetworkTransactionId { get; init; }
     public bool    IsRecurring          { get; init; }
+
+    /// <summary>
+    /// The member's Spreedly payment_method_token (from MemberCreditCard.SpreedlyPaymentMethodToken).
+    /// Required by SpreedlyCardGatewayService. The routing engine populates this before
+    /// passing the request to the gateway.
+    /// </summary>
+    public string? SpreedlyPaymentMethodToken { get; init; }
+
+    /// <summary>
+    /// Which downstream processor the routing engine has selected for this charge.
+    /// SpreedlyCardGatewayService uses this to look up the correct Spreedly downstream-gateway-token.
+    /// </summary>
+    public CardProcessor DownstreamProcessor { get; init; }
 }
 
 public class GatewayChargeResult

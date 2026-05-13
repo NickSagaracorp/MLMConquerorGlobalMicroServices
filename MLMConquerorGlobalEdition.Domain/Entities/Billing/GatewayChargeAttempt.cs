@@ -29,6 +29,14 @@ public class GatewayChargeAttempt : AuditChangesLongKey
     public DateTime      AttemptedAtUtc        { get; set; }
     public DateTime?     CompletedAtUtc        { get; set; }
 
+    /// <summary>
+    /// Round-trip latency of the gateway call in milliseconds.
+    /// Recorded by GatewayChargeOrchestrator after each attempt.
+    /// Used by RecurringBillingPlanner (§10.3) to size the worker pool.
+    /// Null when the outcome is "Scheduled" (async/deferred path — no round-trip measured).
+    /// </summary>
+    public long?         LatencyMs             { get; set; }
+
     // ── Context ───────────────────────────────────────────────────────────
     public string        MemberId              { get; set; } = string.Empty;
     public BillingOperationType OperationType  { get; set; }

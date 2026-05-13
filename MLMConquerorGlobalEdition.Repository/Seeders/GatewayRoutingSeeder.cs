@@ -334,6 +334,16 @@ public static class GatewayRoutingSeeder
     // converter — so the admin UI lists them out of the box. The operator
     // fills in BaseUrl / keys and flips IsActive from the UI; no secrets are
     // seeded here.
+    //
+    // Per BILLING-RULES §3 (Spreedly universal vault):
+    //   - "Spreedly" row: ApiKeyEncrypted = Spreedly environment key (API auth).
+    //   - One row per CardProcessor: SpreedlyGatewayTokenEncrypted = the Spreedly
+    //     downstream-gateway-token assigned when that processor was provisioned in
+    //     the Spreedly dashboard. The operator sets each token via the admin
+    //     Credentials page after provisioning.
+    //
+    // Idempotent: if any ApiCredential row already exists, skip the entire block
+    // (the table is either already seeded or managed by migrations).
 
     private static async Task SeedApiCredentialPlaceholdersAsync(AppDbContext db, ILogger logger)
     {
@@ -342,6 +352,14 @@ public static class GatewayRoutingSeeder
         var now = DateTime.UtcNow;
         var placeholders = new[]
         {
+            // ── Spreedly environment credential (the master API key) ──────────
+            // ApiKeyEncrypted = Spreedly environment key. BaseUrl = Spreedly core API.
+            new ApiCredential { ServiceKey = "Spreedly",             Environment = "Production", BaseUrl = "https://core.spreedly.com",          IsActive = false, CreatedBy = Actor, CreationDate = now, LastUpdateDate = now },
+
+            // ── Per-processor rows ─────────────────────────────────────────────
+            // ApiKeyEncrypted = processor-side credential (for reference / NMI Direct only).
+            // SpreedlyGatewayTokenEncrypted = the Spreedly downstream-gateway-token for this processor
+            //   (set after provisioning the gateway in the Spreedly dashboard).
             new ApiCredential { ServiceKey = "NmiSpreedly",          Environment = "Production", BaseUrl = "https://core.spreedly.com",          IsActive = false, CreatedBy = Actor, CreationDate = now, LastUpdateDate = now },
             new ApiCredential { ServiceKey = "NmiDirect",            Environment = "Production", BaseUrl = "https://secure.networkmerchants.com", IsActive = false, CreatedBy = Actor, CreationDate = now, LastUpdateDate = now },
             new ApiCredential { ServiceKey = "CheckoutEUR",          Environment = "Production", BaseUrl = "https://api.checkout.com",            IsActive = false, CreatedBy = Actor, CreationDate = now, LastUpdateDate = now },
@@ -349,11 +367,13 @@ public static class GatewayRoutingSeeder
             new ApiCredential { ServiceKey = "CheckoutUsLlc",        Environment = "Production", BaseUrl = "https://api.checkout.com",            IsActive = false, CreatedBy = Actor, CreationDate = now, LastUpdateDate = now },
             new ApiCredential { ServiceKey = "Shift4",               Environment = "Production", BaseUrl = "https://api.shift4.com",               IsActive = false, CreatedBy = Actor, CreationDate = now, LastUpdateDate = now },
             new ApiCredential { ServiceKey = "StripeEms",            Environment = "Production", BaseUrl = "https://api.stripe.com",               IsActive = false, CreatedBy = Actor, CreationDate = now, LastUpdateDate = now },
+
+            // ── Currency converter ─────────────────────────────────────────────
             new ApiCredential { ServiceKey = "CurrencyConverterApi", Environment = "Production", BaseUrl = "https://api.currconv.com",             IsActive = false, CreatedBy = Actor, CreationDate = now, LastUpdateDate = now },
         };
 
         db.ApiCredentials.AddRange(placeholders);
         await db.SaveChangesAsync();
-        logger.LogInformation("GatewayRoutingSeeder: {Count} API credential placeholders seeded.", placeholders.Length);
+        logger.LogInformation("GatewayRoutingSeeder: {Count} API credential placeholders seeded (incl. Spreedly master + per-processor gateway tokens).", placeholders.Length);
     }
 }

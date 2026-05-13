@@ -10,6 +10,7 @@ using Microsoft.OpenApi.Models;
 using MLMConquerorGlobalEdition.Billing.Jobs;
 using MLMConquerorGlobalEdition.Billing.Middleware;
 using MLMConquerorGlobalEdition.Billing.Services.Recurring;
+using MLMConquerorGlobalEdition.Billing.Services.Recurring.HighVolume;
 using MLMConquerorGlobalEdition.Billing.Services;
 using MLMConquerorGlobalEdition.Billing.Services.CardGateway;
 using MLMConquerorGlobalEdition.Billing.Services.Routing;
@@ -55,21 +56,13 @@ builder.Services.AddScoped<IGatewayService>(sp => sp.GetRequiredService<StripeGa
 builder.Services.AddScoped<IGatewayService>(sp => sp.GetRequiredService<EWalletGatewayService>());
 builder.Services.AddScoped<IGatewayResolver, GatewayResolver>();
 
-// ── Card gateway stubs ────────────────────────────────────────────────────
-builder.Services.AddScoped<NmiSpreedlyGatewayService>();
-builder.Services.AddScoped<NmiDirectGatewayService>();
-builder.Services.AddScoped<CheckoutEurGatewayService>();
-builder.Services.AddScoped<CheckoutUsGatewayService>();
-builder.Services.AddScoped<CheckoutUsLlcGatewayService>();
-builder.Services.AddScoped<Shift4GatewayService>();
-builder.Services.AddScoped<StripeEmsGatewayService>();
-builder.Services.AddScoped<ICardGatewayService>(sp => sp.GetRequiredService<NmiSpreedlyGatewayService>());
-builder.Services.AddScoped<ICardGatewayService>(sp => sp.GetRequiredService<NmiDirectGatewayService>());
-builder.Services.AddScoped<ICardGatewayService>(sp => sp.GetRequiredService<CheckoutEurGatewayService>());
-builder.Services.AddScoped<ICardGatewayService>(sp => sp.GetRequiredService<CheckoutUsGatewayService>());
-builder.Services.AddScoped<ICardGatewayService>(sp => sp.GetRequiredService<CheckoutUsLlcGatewayService>());
-builder.Services.AddScoped<ICardGatewayService>(sp => sp.GetRequiredService<Shift4GatewayService>());
-builder.Services.AddScoped<ICardGatewayService>(sp => sp.GetRequiredService<StripeEmsGatewayService>());
+// ── Card gateway — Spreedly universal proxy ───────────────────────────────
+// Per BILLING-RULES §3, all processor-specific stub classes are collapsed into a
+// single SpreedlyCardGatewayService. The routing engine selects the downstream
+// processor; SpreedlyCardGatewayService looks up the per-processor Spreedly
+// gateway token from ApiCredential and calls Spreedly's purchase endpoint.
+builder.Services.AddScoped<SpreedlyCardGatewayService>();
+builder.Services.AddScoped<ICardGatewayService>(sp => sp.GetRequiredService<SpreedlyCardGatewayService>());
 builder.Services.AddScoped<ICardGatewayResolver, CardGatewayResolver>();
 
 // ── Routing engine ────────────────────────────────────────────────────────
@@ -86,11 +79,22 @@ builder.Services.AddScoped<ICommissionBalanceService, CommissionBalanceService>(
 builder.Services.AddScoped<IRecurringBillingEnrollmentService, RecurringBillingEnrollmentService>();
 builder.Services.AddScoped<IRecurringBillingProcessor, RecurringBillingProcessor>();
 
+// ── High-volume pipeline services (§10) ──────────────────────────────────
+builder.Services.AddScoped<IRecurringBillingPlanner, RecurringBillingPlanner>();
+builder.Services.AddScoped<IRecurringChargeWorker, RecurringChargeWorker>();
+builder.Services.AddScoped<IUplineAggregator, UplineAggregator>();
+builder.Services.AddScoped<IDownstreamTriggers, DownstreamTriggers>();
+
 builder.Services.AddScoped<MembershipAutoRenewalJob>();
 builder.Services.AddScoped<CommissionPayoutJob>();
 builder.Services.AddScoped<ExchangeRateRefreshJob>();
 builder.Services.AddScoped<DelayedFallbackChargeJob>();
 builder.Services.AddScoped<RecurringBillingSweepJob>();
+builder.Services.AddScoped<RecurringBillingPlanningJob>();
+builder.Services.AddScoped<ChargeWorkerDispatchJob>();
+builder.Services.AddScoped<ChargeWorkerJob>();
+builder.Services.AddScoped<UplineAggregatorJob>();
+builder.Services.AddScoped<DownstreamTriggersJob>();
 
 var hangfireConnStr = builder.Configuration.GetConnectionString("HangFire")
     ?? builder.Configuration.GetConnectionString("DefaultConnection")!;
@@ -109,11 +113,23 @@ builder.Services.AddHangfire(config =>
             DisableGlobalLocks = true
         }));
 
-// Restrict this Hangfire server to its own queue so it does not pick up
+// Restrict this Hangfire server to its own queues so it does not pick up
 // jobs whose types live in assemblies this service does not reference.
+// Per-processor queues ("billing-{processor}") allow horizontal scaling:
+// on high-volume days each processor pool can have dedicated workers.
 builder.Services.AddHangfireServer(options =>
 {
-    options.Queues = new[] { "billing" };
+    options.Queues = new[]
+    {
+        "billing",
+        "billing-nmi-spreedly",
+        "billing-nmi-direct",
+        "billing-checkout-eur",
+        "billing-checkout-us",
+        "billing-checkout-us-llc",
+        "billing-shift4",
+        "billing-stripe-ems"
+    };
 });
 
 builder.Services.AddControllers();
@@ -218,10 +234,18 @@ RecurringJob.AddOrUpdate<ExchangeRateRefreshJob>(
     "0 * * * *",                    // Every hour
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
+// High-volume pipeline Stage 1 — runs before RecurringBillingSweepJob.
+// BatchStartTimeUtc defaults to 05:00 UTC; can be changed via GlobalParameter.
+RecurringJob.AddOrUpdate<RecurringBillingPlanningJob>(
+    "recurring-billing-planning",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "0 5 * * *",                    // Daily 5:00 AM UTC
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
 RecurringJob.AddOrUpdate<RecurringBillingSweepJob>(
     "recurring-billing-sweep",
     job => job.ExecuteAsync(CancellationToken.None),
-    "0 7 * * *",                    // Daily 7:00 AM UTC (after MembershipAutoRenewalJob at 6:00 AM)
+    "0 7 * * *",                    // Daily 7:00 AM UTC — safety-net fallback after high-volume pipeline
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
 // Auto-payout disabled by business decision: PaymentDate on a CommissionEarning

@@ -24,6 +24,11 @@ public class SubscriptionBillingStateConfiguration : IEntityTypeConfiguration<Su
         builder.HasIndex(x => x.MembershipSubscriptionId).IsUnique();
         builder.HasIndex(x => x.RecurringBillingPlanId);
 
+        // ShardKey: database-assigned monotonic identity used for batch shard partitioning.
+        // ValueGeneratedOnAdd ensures the DB sets it via IDENTITY; we never set it from code.
+        builder.Property(x => x.ShardKey).ValueGeneratedOnAdd();
+        builder.HasIndex(x => x.ShardKey).IsUnique();
+
         builder.HasQueryFilter(x => !x.IsDeleted);
 
         builder.HasOne(x => x.Plan)

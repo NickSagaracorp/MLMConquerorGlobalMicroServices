@@ -16,6 +16,8 @@ using MLMConquerorGlobalEdition.SharedKernel.Behaviors;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SharedKernel.Logging;
 using MLMConquerorGlobalEdition.Repository.Seeders;
+using MLMConquerorGlobalEdition.Billing.Services.Routing;
+using MLMConquerorGlobalEdition.Billing.Services.Recurring.HighVolume;
 using ICacheService         = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
 using IEmailService         = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IEmailService;
 using IErrorTrackingService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IErrorTrackingService;
@@ -72,6 +74,22 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Wallets
                             MLMConquerorGlobalEdition.Repository.Services.Wallets.MemberWalletService>();
 builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 builder.Services.AddSingleton<IHtmlSanitizerService, HtmlSanitizerService>();
+
+// ── Billing routing + high-volume planner (preview endpoint) ─────────────
+// Note: Billing services bind to the sibling `MLMConquerorGlobalEdition.Billing.Services.IDateTimeProvider`
+// (separate type from SharedKernel's — same simple name, different namespace), so both must be registered.
+// Same for ICurrencyConversionService which the GatewayRouter takes transitively.
+builder.Services.AddSingleton<MLMConquerorGlobalEdition.Billing.Services.IDateTimeProvider,
+                               MLMConquerorGlobalEdition.Billing.Services.DateTimeProvider>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Billing.Services.Routing.ICurrencyConversionService,
+                            MLMConquerorGlobalEdition.Billing.Services.Routing.CurrencyConversionService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Billing.Services.Routing.ICardBrandDetector,
+                            MLMConquerorGlobalEdition.Billing.Services.Routing.CardBrandDetector>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Billing.Services.Routing.IGatewaySplitSelector,
+                            MLMConquerorGlobalEdition.Billing.Services.Routing.GatewaySplitSelector>();
+builder.Services.AddScoped<IGatewayRouter,
+                            MLMConquerorGlobalEdition.Billing.Services.Routing.GatewayRouter>();
+builder.Services.AddScoped<IRecurringBillingPlanner, RecurringBillingPlanner>();
 builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IS3StorageService, S3StorageService>();

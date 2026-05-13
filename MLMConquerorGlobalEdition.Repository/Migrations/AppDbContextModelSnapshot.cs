@@ -89,6 +89,10 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("SpreedlyGatewayTokenEncrypted")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ServiceKey", "Environment")
@@ -313,6 +317,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<string>("GatewayTransactionId")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<long?>("LatencyMs")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("MemberId")
                         .IsRequired()
@@ -673,6 +680,151 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.ToTable("RecurringBillingAttempts");
                 });
 
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Billing.RecurringBillingBatch", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("CaseCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Gateway")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LastUpdateBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("LastUpdateDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime>("RunDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ScheduledStartTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WorkerCount")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("RunDate", "Gateway");
+
+                    b.ToTable("RecurringBillingBatches");
+                });
+
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Billing.RecurringBillingBatchShard", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("AssignedWorkerKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("BatchId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("CasesProcessed")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("IdRangeEnd")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("IdRangeStart")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LastUpdateBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("LastUpdateDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("ShardIndex")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchId", "ShardIndex")
+                        .IsUnique();
+
+                    b.HasIndex("BatchId", "Status");
+
+                    b.ToTable("RecurringBillingBatchShards");
+                });
+
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Billing.RecurringBillingPlan", b =>
                 {
                     b.Property<int>("Id")
@@ -854,6 +1006,12 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
+                    b.Property<long>("ShardKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("ShardKey"));
+
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
@@ -865,6 +1023,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .IsUnique();
 
                     b.HasIndex("RecurringBillingPlanId");
+
+                    b.HasIndex("ShardKey")
+                        .IsUnique();
 
                     b.HasIndex("Status", "NextAttemptDate");
 
@@ -1104,6 +1265,61 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("CommissionOperationType");
+                });
+
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Commission.CommissionTriggerQueue", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("BatchId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("IsProcessed")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("MemberId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("OrderId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TriggerType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MemberId");
+
+                    b.HasIndex("BatchId", "IsProcessed");
+
+                    b.ToTable("CommissionTriggerQueues");
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Commission.CommissionType", b =>
@@ -4571,6 +4787,75 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.ToTable("CommissionCountDownHistories");
                 });
 
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Commission.PointDeltaEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime?>("AppliedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("BatchId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DualTeamDelta")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EnrollmentDelta")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EventType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FailureReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("MemberId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("OrderId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("PersonalDelta")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ProductId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MemberId");
+
+                    b.HasIndex("BatchId", "Status");
+
+                    b.ToTable("PointDeltaEvents");
+                });
+
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Email.EmailTemplate", b =>
                 {
                     b.Property<int>("Id")
@@ -7252,8 +7537,14 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<string>("DeletedBy")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("DualTeamContribution")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("EndDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("EnrollmentContribution")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("HoldDate")
                         .HasColumnType("datetime2");
@@ -7284,6 +7575,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasColumnType("nvarchar(20)");
 
                     b.Property<int>("MembershipLevelId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PersonalContribution")
                         .HasColumnType("int");
 
                     b.Property<int?>("PreviousMembershipLevelId")
@@ -14065,6 +14359,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<byte[]>("RowVersion")
                         .HasColumnType("varbinary(max)");
 
+                    b.Property<string>("SpreedlyPaymentMethodToken")
+                        .HasColumnType("nvarchar(max)");
+
                     b.HasKey("Id");
 
                     b.ToTable("CreditCards");
@@ -14619,6 +14916,17 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Navigation("GatewayRoutingRule");
                 });
 
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Billing.RecurringBillingBatchShard", b =>
+                {
+                    b.HasOne("MLMConquerorGlobalEdition.Domain.Entities.Billing.RecurringBillingBatch", "Batch")
+                        .WithMany("Shards")
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Batch");
+                });
+
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Billing.RecurringBillingPlanProduct", b =>
                 {
                     b.HasOne("MLMConquerorGlobalEdition.Domain.Entities.Billing.RecurringBillingPlan", "Plan")
@@ -15147,6 +15455,11 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Billing.GatewayRoutingRule", b =>
                 {
                     b.Navigation("Splits");
+                });
+
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Billing.RecurringBillingBatch", b =>
+                {
+                    b.Navigation("Shards");
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Billing.RecurringBillingPlan", b =>

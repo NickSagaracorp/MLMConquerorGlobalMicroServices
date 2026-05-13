@@ -44,15 +44,21 @@ public static class RecurringBillingSeeder
     private const string TravelPlanName     = "Travel Advantage";
     private const string LifestylePlanName  = "Lifestyle Ambassador (Annual)";
 
-    // ── Parameter key ─────────────────────────────────────────────────────────
-    private const string ConsolidationMinimumKey = "DailyResidualConsolidationMinimum";
+    // ── Parameter keys ────────────────────────────────────────────────────────
+    private const string ConsolidationMinimumKey              = "DailyResidualConsolidationMinimum";
+    private const string TargetCompletionWindowHoursKey       = "RecurringBilling:TargetCompletionWindowHours";
+    private const string BatchStartTimeUtcKey                 = "RecurringBilling:BatchStartTimeUtc";
+    private const string LatencySamplingDaysKey               = "RecurringBilling:LatencySamplingDays";
+    private const string CascadeStrategyKey                   = "RecurringBilling:CascadeStrategy";
+    private const string AggregatorTriggerModeKey             = "RecurringBilling:AggregatorTriggerMode";
 
     public static async Task SeedAsync(AppDbContext db, ILogger logger)
     {
         var now = DateTime.UtcNow;
 
-        // 1. GlobalParameter: DailyResidualConsolidationMinimum
+        // 1. GlobalParameters (consolidation minimum + high-volume pipeline tunables)
         await SeedGlobalParameterAsync(db, logger, now);
+        await SeedHighVolumeParametersAsync(db, logger, now);
 
         // 2. Token types (one per recurring product)
         var (eliteTokenId, vipTokenId, turboTokenId, lifestyleTokenId) =
@@ -87,6 +93,77 @@ public static class RecurringBillingSeeder
 
         await db.SaveChangesAsync();
         logger.LogInformation("RecurringBillingSeeder: GlobalParameter '{Key}' seeded.", ConsolidationMinimumKey);
+    }
+
+    // ── 1b. High-Volume Pipeline Parameters ───────────────────────────────────
+
+    private static readonly (string Key, string Value, string Description)[] HighVolumeParams =
+    {
+        (TargetCompletionWindowHoursKey, "3",
+            "Target window (hours) for completing the nightly recurring-billing batch. Used by the planner to compute worker counts."),
+        (BatchStartTimeUtcKey, "05:00",
+            "UTC time (HH:mm) when the daily RecurringBillingPlanningJob runs. Default 05:00 = 01:00 ET."),
+        (LatencySamplingDaysKey, "14",
+            "Rolling window (days) of GatewayChargeAttempt data used to compute average charge latency per processor."),
+        (CascadeStrategyKey, "DeferredUplineRollup",
+            "How upline stat updates are applied after batch charging. Only supported value today: DeferredUplineRollup."),
+        (AggregatorTriggerModeKey, "AfterAllChargeWorkers",
+            "When the UplineAggregatorJob is triggered. Supported: AfterAllChargeWorkers (Streaming planned for later)."),
+
+        // ── Per-processor floor/ceiling/offset (one row per CardProcessor value) ──
+        ("RecurringBilling:MinWorkersPerGateway:NmiSpreedly",   "2",  "Minimum charge workers for NmiSpreedly gateway."),
+        ("RecurringBilling:MinWorkersPerGateway:NmiDirect",     "2",  "Minimum charge workers for NmiDirect gateway."),
+        ("RecurringBilling:MinWorkersPerGateway:CheckoutEUR",   "2",  "Minimum charge workers for CheckoutEUR gateway."),
+        ("RecurringBilling:MinWorkersPerGateway:CheckoutUS",    "2",  "Minimum charge workers for CheckoutUS gateway."),
+        ("RecurringBilling:MinWorkersPerGateway:CheckoutUsLlc", "2",  "Minimum charge workers for CheckoutUsLlc gateway."),
+        ("RecurringBilling:MinWorkersPerGateway:Shift4",        "2",  "Minimum charge workers for Shift4 gateway."),
+        ("RecurringBilling:MinWorkersPerGateway:StripeEms",     "2",  "Minimum charge workers for StripeEms gateway."),
+
+        ("RecurringBilling:MaxConcurrencyPerGateway:NmiSpreedly",   "10", "Maximum concurrent charge workers for NmiSpreedly (respects Spreedly rate limits)."),
+        ("RecurringBilling:MaxConcurrencyPerGateway:NmiDirect",     "10", "Maximum concurrent charge workers for NmiDirect."),
+        ("RecurringBilling:MaxConcurrencyPerGateway:CheckoutEUR",   "10", "Maximum concurrent charge workers for CheckoutEUR."),
+        ("RecurringBilling:MaxConcurrencyPerGateway:CheckoutUS",    "10", "Maximum concurrent charge workers for CheckoutUS."),
+        ("RecurringBilling:MaxConcurrencyPerGateway:CheckoutUsLlc", "10", "Maximum concurrent charge workers for CheckoutUsLlc."),
+        ("RecurringBilling:MaxConcurrencyPerGateway:Shift4",        "10", "Maximum concurrent charge workers for Shift4."),
+        ("RecurringBilling:MaxConcurrencyPerGateway:StripeEms",     "10", "Maximum concurrent charge workers for StripeEms."),
+
+        ("RecurringBilling:GatewayWindowOffsetMinutes:NmiSpreedly",   "0",  "Minutes to delay start of NmiSpreedly charge workers (stagger gateway windows)."),
+        ("RecurringBilling:GatewayWindowOffsetMinutes:NmiDirect",     "0",  "Minutes to delay start of NmiDirect charge workers."),
+        ("RecurringBilling:GatewayWindowOffsetMinutes:CheckoutEUR",   "30", "Minutes to delay start of CheckoutEUR charge workers."),
+        ("RecurringBilling:GatewayWindowOffsetMinutes:CheckoutUS",    "0",  "Minutes to delay start of CheckoutUS charge workers."),
+        ("RecurringBilling:GatewayWindowOffsetMinutes:CheckoutUsLlc", "0",  "Minutes to delay start of CheckoutUsLlc charge workers."),
+        ("RecurringBilling:GatewayWindowOffsetMinutes:Shift4",        "30", "Minutes to delay start of Shift4 charge workers."),
+        ("RecurringBilling:GatewayWindowOffsetMinutes:StripeEms",     "60", "Minutes to delay start of StripeEms charge workers."),
+    };
+
+    private static async Task SeedHighVolumeParametersAsync(AppDbContext db, ILogger logger, DateTime now)
+    {
+        int seeded = 0;
+        foreach (var (key, value, description) in HighVolumeParams)
+        {
+            if (await db.GlobalParameters.AnyAsync(p => p.Key == key))
+                continue;
+
+            db.GlobalParameters.Add(new GlobalParameter
+            {
+                Key          = key,
+                Value        = value,
+                Description  = description,
+                CreatedBy    = Actor,
+                CreationDate = now
+            });
+            seeded++;
+        }
+
+        if (seeded > 0)
+        {
+            await db.SaveChangesAsync();
+            logger.LogInformation("RecurringBillingSeeder: {Count} high-volume pipeline parameters seeded.", seeded);
+        }
+        else
+        {
+            logger.LogInformation("RecurringBillingSeeder: high-volume pipeline parameters already exist — skipped.");
+        }
     }
 
     // ── 2. Token Types ─────────────────────────────────────────────────────────

@@ -171,7 +171,7 @@
         <AuthorizeView Roles="SuperAdmin,Admin,BillingManager">
             <Authorized>
                 @* ── Billing ── *@
-                <li class="menu-item @(IsSection("/admin/billing/gateways","/admin/billing/routing-rules","/admin/billing/country-groups","/admin/billing/currency-policies","/admin/billing/credentials","/admin/billing/routing-counters","/admin/billing/charge-attempts","/admin/billing/recurring-plans","/admin/billing/recurring-states","/admin/billing/recurring-attempts","/admin/billing/recurring-settings") ? "open active" : "")">
+                <li class="menu-item @(IsSection("/admin/billing/gateways","/admin/billing/routing-rules","/admin/billing/country-groups","/admin/billing/currency-policies","/admin/billing/credentials","/admin/billing/routing-counters","/admin/billing/charge-attempts","/admin/billing/recurring-plans","/admin/billing/recurring-states","/admin/billing/recurring-attempts","/admin/billing/recurring-settings","/admin/billing/recurring-performance") ? "open active" : "")">
                     <a href="javascript:void(0);" class="menu-link menu-toggle">
                         <i class="ri-bank-card-2-line menu-icon"></i>
                         <span class="title">Billing</span>
@@ -230,6 +230,11 @@
                         <li class="menu-item @IsActive("/admin/billing/recurring-settings")">
                             <a href="/admin/billing/recurring-settings" class="menu-link @IsActive("/admin/billing/recurring-settings")">
                                 <span class="title">Recurring Settings</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/billing/recurring-performance")">
+                            <a href="/admin/billing/recurring-performance" class="menu-link @IsActive("/admin/billing/recurring-performance")">
+                                <span class="title">Recurring Performance</span>
                             </a>
                         </li>
                     </ul>

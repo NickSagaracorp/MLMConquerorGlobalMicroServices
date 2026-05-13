@@ -37,6 +37,13 @@ public class MemberCreditCard : AuditChangesStringKey
     public bool IsDefault { get; set; }
 
     /// <summary>
+    /// The Spreedly payment_method_token assigned when this card was vaulted at Spreedly.
+    /// This is the single token used for all downstream gateway charges — one vault, many processors.
+    /// Populated by the card-vaulting flow; null for legacy cards vaulted before Spreedly integration.
+    /// </summary>
+    public string? SpreedlyPaymentMethodToken { get; set; }
+
+    /// <summary>
     /// Order in which this card is tried when charging the member's recurring fees.
     /// Lower = earlier. Tied to drag-and-drop on the BizCenter Payment Method tab.
     /// </summary>
