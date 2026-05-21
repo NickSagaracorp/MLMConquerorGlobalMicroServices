@@ -6,6 +6,7 @@ using MLMConquerorGlobalEdition.RankEngine.DTOs;
 using MLMConquerorGlobalEdition.RankEngine.Mappings;
 using MLMConquerorGlobalEdition.RankEngine.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.RankEngine.Features.GetRankProgress;
@@ -14,11 +15,19 @@ public class GetRankProgressHandler : IRequestHandler<GetRankProgressQuery, Resu
 {
     private readonly AppDbContext _db;
     private readonly IDateTimeProvider _dateTime;
+    private readonly IEnrollmentTeamPointsService _enrollment;
+    private readonly IPersonalCustomerPointsService _personal;
 
-    public GetRankProgressHandler(AppDbContext db, IDateTimeProvider dateTime)
+    public GetRankProgressHandler(
+        AppDbContext db,
+        IDateTimeProvider dateTime,
+        IEnrollmentTeamPointsService enrollment,
+        IPersonalCustomerPointsService personal)
     {
         _db = db;
         _dateTime = dateTime;
+        _enrollment = enrollment;
+        _personal = personal;
     }
 
     public async Task<Result<RankProgressResponse>> Handle(GetRankProgressQuery request, CancellationToken ct)
@@ -76,7 +85,8 @@ public class GetRankProgressHandler : IRequestHandler<GetRankProgressQuery, Resu
 
     internal async Task<RankMetricsResponse> ComputeMetricsAsync(string memberId, CancellationToken ct)
     {
-        // Personal points: sum QualificationPoins from member's completed orders via LINQ join
+        // Own qualification points across ALL completed orders (display metric only) —
+        // distinct from PersonalCustomerPoints, the universal-gate input computed below.
         var personalPoints = await (
             from o in _db.Orders.AsNoTracking()
             join od in _db.OrderDetails.AsNoTracking() on o.Id equals od.OrderId
@@ -96,21 +106,21 @@ public class GetRankProgressHandler : IRequestHandler<GetRankProgressQuery, Resu
         // Qualifying team points: cap each branch at 50% of total (weaker leg × 2)
         var qualifyingTeam = Math.Min(leftPoints, rightPoints) * 2;
 
-        // Enrollment tree count (direct downline + subtree via HierarchyPath prefix)
+        // Enrollment tree node (still needed for qualified-member counts)
         var memberGenealogyNode = await _db.GenealogyTree
             .AsNoTracking()
             .FirstOrDefaultAsync(g => g.MemberId == memberId, ct);
 
-        var enrollmentCount = 0;
         var placementQualifiedCount = 0;
         var enrollmentQualifiedCount = 0;
+
+        // ET points via the single source of truth (replaces the former headcount).
+        var enrollmentTeamPoints = await _enrollment.GetRawEnrollmentTeamPointsAsync(memberId, ct);
+        var personalCustomerPoints = await _personal.GetPersonalCustomerPointsAsync(memberId, ct);
 
         if (memberGenealogyNode is not null)
         {
             var subtreePath = memberGenealogyNode.HierarchyPath;
-            enrollmentCount = await _db.GenealogyTree
-                .AsNoTracking()
-                .CountAsync(g => g.HierarchyPath.StartsWith(subtreePath) && g.MemberId != memberId, ct);
 
             // Qualified = members with at least one active subscription in subtree
             var subtreeMembers = await _db.GenealogyTree
@@ -164,7 +174,8 @@ public class GetRankProgressHandler : IRequestHandler<GetRankProgressQuery, Resu
             LeftLegPoints = leftPoints,
             RightLegPoints = rightPoints,
             QualifyingTeamPoints = qualifyingTeam,
-            EnrollmentTeamCount = enrollmentCount,
+            EnrollmentTeamPoints = enrollmentTeamPoints,
+            PersonalCustomerPoints = personalCustomerPoints,
             PlacementQualifiedTeamMembers = placementQualifiedCount,
             EnrollmentQualifiedTeamMembers = enrollmentQualifiedCount,
             SponsoredMembers = directSponsored,
@@ -180,7 +191,7 @@ public class GetRankProgressHandler : IRequestHandler<GetRankProgressQuery, Resu
 
         var p1 = Pct(metrics.PersonalPoints, req.PersonalPoints);
         var p2 = Pct((double)metrics.QualifyingTeamPoints, req.TeamPoints);
-        var p3 = Pct(metrics.EnrollmentTeamCount, req.EnrollmentTeam);
+        var p3 = Pct(metrics.EnrollmentTeamPoints, req.EnrollmentTeam);
         var p4 = Pct(metrics.SponsoredMembers, req.SponsoredMembers);
         var p5 = Pct(metrics.ExternalMembers, req.ExternalMembers);
         var p6 = Pct((double)metrics.SalesVolume, (double)req.SalesVolume);
@@ -189,7 +200,7 @@ public class GetRankProgressHandler : IRequestHandler<GetRankProgressQuery, Resu
         if (req.PersonalPoints > 0) activeThresholds.Add(p1);
         if (req.TeamPoints > 0) activeThresholds.Add(p2);
         if (req.EnrollmentTeam > 0) activeThresholds.Add(p3);
-        if (req.SponsoredMembers > 0) activeThresholds.Add(p4);
+        // SponsoredMembers is governed by the universal gate, not a per-rank axis — excluded from overall progress.
         if (req.ExternalMembers > 0) activeThresholds.Add(p5);
         if (req.SalesVolume > 0) activeThresholds.Add(p6);
 

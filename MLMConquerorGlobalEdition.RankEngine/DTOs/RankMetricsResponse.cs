@@ -7,7 +7,13 @@ public class RankMetricsResponse
     public decimal LeftLegPoints { get; set; }
     public decimal RightLegPoints { get; set; }
     public decimal QualifyingTeamPoints { get; set; }
-    public int EnrollmentTeamCount { get; set; }
+
+    /// <summary>ET points (sum of the enrollment downline). Replaces the former headcount.</summary>
+    public int EnrollmentTeamPoints { get; set; }
+
+    /// <summary>Personal Customer Points — the universal gate's personal-points input.</summary>
+    public int PersonalCustomerPoints { get; set; }
+
     public int PlacementQualifiedTeamMembers { get; set; }
     public int EnrollmentQualifiedTeamMembers { get; set; }
     public int SponsoredMembers { get; set; }

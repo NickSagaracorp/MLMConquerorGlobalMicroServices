@@ -12,13 +12,18 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 /// <inheritdoc />
 public class EnrollmentTeamService : IEnrollmentTeamService
 {
-    private readonly AppDbContext            _db;
-    private readonly IRankComputationService _ranks;
+    private readonly AppDbContext                  _db;
+    private readonly IRankComputationService       _ranks;
+    private readonly IEnrollmentTeamPointsService  _etPoints;
 
-    public EnrollmentTeamService(AppDbContext db, IRankComputationService ranks)
+    public EnrollmentTeamService(
+        AppDbContext db,
+        IRankComputationService ranks,
+        IEnrollmentTeamPointsService etPoints)
     {
-        _db    = db;
-        _ranks = ranks;
+        _db       = db;
+        _ranks    = ranks;
+        _etPoints = etPoints;
     }
 
     // ─── My Team ───────────────────────────────────────────────────────────
@@ -215,11 +220,11 @@ public class EnrollmentTeamService : IEnrollmentTeamService
             .Select(m => new { m.MemberId, m.FirstName, m.LastName })
             .ToListAsync(ct);
 
-        var allStats = await _db.MemberStatistics.AsNoTracking()
-            .Where(s => allFilteredIds.Contains(s.MemberId))
-            .Select(s => new { s.MemberId, s.EnrollmentPoints })
-            .ToListAsync(ct);
-        var allStatsMap = allStats.ToDictionary(s => s.MemberId, s => s.EnrollmentPoints);
+        // Single source of truth: fetch branch points once via the dedicated service
+        // (reads MemberStatisticEntity.EnrollmentPoints per direct child, same data as
+        // the previous double-query approach but centralised and cache-friendly).
+        var branchPointsList = await _etPoints.GetEnrollmentBranchPointsAsync(memberId, ct);
+        var allStatsMap = branchPointsList.ToDictionary(b => b.ChildMemberId, b => b.BranchPoints);
 
         // Live current rank — same source the Profile and Residuals widgets
         // consume. Pulling from MemberRankHistories.AchievedAt would freeze the
@@ -249,12 +254,9 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         var currentCap = CalcCap(currentRankDef);
         var nextCap    = nextRankDef is not null ? CalcCap(nextRankDef) : currentCap;
 
-        var pageIds   = profiles.Select(p => p.MemberId).ToList();
-        var pageStats = await _db.MemberStatistics.AsNoTracking()
-            .Where(s => pageIds.Contains(s.MemberId))
-            .Select(s => new { s.MemberId, s.EnrollmentPoints })
-            .ToListAsync(ct);
-        var pageStatsMap = pageStats.ToDictionary(s => s.MemberId, s => s.EnrollmentPoints);
+        var pageIds      = profiles.Select(p => p.MemberId).ToList();
+        // pageStatsMap is derived from the already-fetched allStatsMap — no extra DB round-trip.
+        var pageStatsMap = pageIds.ToDictionary(id => id, id => allStatsMap.GetValueOrDefault(id, 0));
 
         var totalPoints          = allStatsMap.Values.Sum();
         var totalEligibleCurrent = allFilteredIds.Sum(id =>

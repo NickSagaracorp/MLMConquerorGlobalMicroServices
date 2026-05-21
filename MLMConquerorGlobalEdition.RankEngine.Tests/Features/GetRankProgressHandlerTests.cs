@@ -5,6 +5,7 @@ using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.RankEngine.Features.GetRankProgress;
 using MLMConquerorGlobalEdition.RankEngine.Services;
 using MLMConquerorGlobalEdition.RankEngine.Tests.Helpers;
+using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 
 namespace MLMConquerorGlobalEdition.RankEngine.Tests.Features;
 
@@ -65,7 +66,8 @@ public class GetRankProgressHandlerTests
     public async Task Handle_WhenMemberNotFound_ReturnsFailure()
     {
         await using var db = InMemoryDbHelper.Create();
-        var handler = new GetRankProgressHandler(db, BuildClock().Object);
+        var handler = new GetRankProgressHandler(db, BuildClock().Object,
+            new EnrollmentTeamPointsService(db), new PersonalCustomerPointsService(db));
 
         var result = await handler.Handle(
             new GetRankProgressQuery("AMB-GHOST"), CancellationToken.None);
@@ -82,7 +84,8 @@ public class GetRankProgressHandlerTests
         await db.RankDefinitions.AddAsync(BuildRank(1, sortOrder: 1));
         await db.SaveChangesAsync();
 
-        var handler = new GetRankProgressHandler(db, BuildClock().Object);
+        var handler = new GetRankProgressHandler(db, BuildClock().Object,
+            new EnrollmentTeamPointsService(db), new PersonalCustomerPointsService(db));
         var result  = await handler.Handle(new GetRankProgressQuery("AMB-001"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -104,7 +107,8 @@ public class GetRankProgressHandlerTests
         await db.MemberRankHistories.AddAsync(BuildHistory("AMB-001", rankId: 1, rankSortOrder: 1));
         await db.SaveChangesAsync();
 
-        var handler = new GetRankProgressHandler(db, BuildClock().Object);
+        var handler = new GetRankProgressHandler(db, BuildClock().Object,
+            new EnrollmentTeamPointsService(db), new PersonalCustomerPointsService(db));
         var result  = await handler.Handle(new GetRankProgressQuery("AMB-001"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -125,7 +129,8 @@ public class GetRankProgressHandlerTests
         await db.MemberRankHistories.AddAsync(BuildHistory("AMB-001", rankId: 1, rankSortOrder: 1));
         await db.SaveChangesAsync();
 
-        var handler = new GetRankProgressHandler(db, BuildClock().Object);
+        var handler = new GetRankProgressHandler(db, BuildClock().Object,
+            new EnrollmentTeamPointsService(db), new PersonalCustomerPointsService(db));
         var result  = await handler.Handle(new GetRankProgressQuery("AMB-001"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -150,7 +155,8 @@ public class GetRankProgressHandlerTests
         });
         await db.SaveChangesAsync();
 
-        var handler = new GetRankProgressHandler(db, BuildClock().Object);
+        var handler = new GetRankProgressHandler(db, BuildClock().Object,
+            new EnrollmentTeamPointsService(db), new PersonalCustomerPointsService(db));
         var result  = await handler.Handle(new GetRankProgressQuery("AMB-001"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -169,7 +175,8 @@ public class GetRankProgressHandlerTests
         await db.RankDefinitions.AddAsync(BuildRank(1, sortOrder: 1));
         await db.SaveChangesAsync();
 
-        var handler = new GetRankProgressHandler(db, BuildClock().Object);
+        var handler = new GetRankProgressHandler(db, BuildClock().Object,
+            new EnrollmentTeamPointsService(db), new PersonalCustomerPointsService(db));
         var result  = await handler.Handle(new GetRankProgressQuery("AMB-001"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();

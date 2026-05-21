@@ -3,8 +3,11 @@ using MLMConquerorGlobalEdition.BizCenter.DTOs.Ranks;
 using MLMConquerorGlobalEdition.BizCenter.Features.Ranks.GetRankDashboard;
 using MLMConquerorGlobalEdition.BizCenter.Services;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
+using MLMConquerorGlobalEdition.Domain.Entities.Membership;
+using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
+using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.SharedKernel;
@@ -41,8 +44,50 @@ public class GetRankDashboardHandlerTests : IDisposable
 
     public void Dispose() => _db.Dispose();
 
+    private static RankComputationService BuildRankComputationService(AppDbContext db)
+        => new(db, new RankQualificationService(
+            db,
+            new EnrollmentTeamPointsService(db),
+            new PersonalCustomerPointsService(db)));
+
+    /// <summary>
+    /// Gives <paramref name="memberId"/> an Active membership backed by a Completed order
+    /// with a product worth 12 QualificationPoins — enough to clear the universal rank gate
+    /// via the PCP-only branch (pcp >= 12).
+    /// </summary>
+    private static async Task AddGateEligibleMembershipAsync(AppDbContext db, string memberId)
+    {
+        var now = DateTime.UtcNow;
+        var orderId   = $"gate-ord-{memberId}";
+        var productId = $"gate-prd-{memberId}";
+        db.Orders.Add(new Orders
+        {
+            Id = orderId, MemberId = memberId, Status = OrderStatus.Completed,
+            OrderDate = now, CreatedBy = "test", CreationDate = now, LastUpdateDate = now
+        });
+        db.Products.Add(new Product
+        {
+            Id = productId, Name = "Gate Product", Description = "d", ImageUrl = "x",
+            MonthlyFee = 0m, SetupFee = 0m, QualificationPoins = 12,
+            CreatedBy = "test", CreationDate = now, LastUpdateDate = now
+        });
+        db.OrderDetails.Add(new OrderDetail
+        {
+            OrderId = orderId, ProductId = productId, Quantity = 1,
+            UnitPrice = 0m, CreatedBy = "test", CreationDate = now
+        });
+        db.MembershipSubscriptions.Add(new MembershipSubscription
+        {
+            MemberId = memberId, MembershipLevelId = 1,
+            SubscriptionStatus = MembershipStatus.Active,
+            StartDate = now, LastOrderId = orderId,
+            CreatedBy = "test", CreationDate = now, LastUpdateDate = now
+        });
+        await db.SaveChangesAsync();
+    }
+
     private GetRankDashboardHandler CreateHandler() =>
-        new(new RankComputationService(_db), _currentUser.Object, _cache.Object);
+        new(BuildRankComputationService(_db), _currentUser.Object, _cache.Object);
 
 
     [Fact]
@@ -70,7 +115,9 @@ public class GetRankDashboardHandlerTests : IDisposable
         rankDef.Requirements.Add(new RankRequirement
         {
             RankDefinitionId = rankDef.Id, LevelNo = 0,
-            TeamPoints = 0, EnrollmentTeam = 0
+            TeamPoints = 0, EnrollmentTeam = 0,
+            // Opt out the sponsored/external axes (default = 1 blocks members with 0 downlines).
+            SponsoredMembers = 0, ExternalMembers = 0
         });
         _db.RankDefinitions.Add(rankDef);
         _db.MemberRankHistories.Add(new MemberRankHistory
@@ -80,6 +127,8 @@ public class GetRankDashboardHandlerTests : IDisposable
             AchievedAt       = DateTime.UtcNow.AddDays(-30)
         });
         await _db.SaveChangesAsync();
+        // Give the member 12 PCP so the universal rank gate passes (pcp >= 12 branch).
+        await AddGateEligibleMembershipAsync(_db, MemberId);
 
         var result = await CreateHandler().Handle(new GetRankDashboardQuery(), default);
 
@@ -163,9 +212,10 @@ public class GetRankDashboardHandlerTests : IDisposable
         var gold     = new RankDefinition { Id = 2, Name = "Gold",     SortOrder = 3 };
         var platinum = new RankDefinition { Id = 3, Name = "Platinum", SortOrder = 5 };
         // Silver/Gold qualify with member's stats; Platinum requires more.
-        silver.Requirements.Add(new RankRequirement   { LevelNo = 0, TeamPoints = 0,    EnrollmentTeam = 0 });
-        gold.Requirements.Add(new RankRequirement     { LevelNo = 0, TeamPoints = 1000, EnrollmentTeam = 0 });
-        platinum.Requirements.Add(new RankRequirement { LevelNo = 0, TeamPoints = 5000, EnrollmentTeam = 0 });
+        // SponsoredMembers=0 and ExternalMembers=0 opt out those axes (default=1 would block a solo member).
+        silver.Requirements.Add(new RankRequirement   { LevelNo = 0, TeamPoints = 0,    EnrollmentTeam = 0, SponsoredMembers = 0, ExternalMembers = 0 });
+        gold.Requirements.Add(new RankRequirement     { LevelNo = 0, TeamPoints = 1000, EnrollmentTeam = 0, SponsoredMembers = 0, ExternalMembers = 0 });
+        platinum.Requirements.Add(new RankRequirement { LevelNo = 0, TeamPoints = 5000, EnrollmentTeam = 0, SponsoredMembers = 0, ExternalMembers = 0 });
         _db.RankDefinitions.AddRange(silver, gold, platinum);
 
         _db.MemberStatistics.Add(new MemberStatisticEntity
@@ -185,6 +235,8 @@ public class GetRankDashboardHandlerTests : IDisposable
             new MemberRankHistory { MemberId = MemberId, RankDefinitionId = gold.Id,     AchievedAt = DateTime.UtcNow.AddDays(-5) }
         );
         await _db.SaveChangesAsync();
+        // Give the member 12 PCP so the universal rank gate passes (pcp >= 12 branch).
+        await AddGateEligibleMembershipAsync(_db, MemberId);
 
         var result = await CreateHandler().Handle(new GetRankDashboardQuery(), default);
 

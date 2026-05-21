@@ -15,6 +15,8 @@ using MLMConquerorGlobalEdition.BizCenter.Middleware;
 using MLMConquerorGlobalEdition.BizCenter.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Services;
+using MLMConquerorGlobalEdition.Repository.Services.Ranks;
+using MLMConquerorGlobalEdition.Repository.Seeders;
 using FluentValidation;
 using MLMConquerorGlobalEdition.SharedKernel.Behaviors;
 using MLMConquerorGlobalEdition.SharedKernel.Logging;
@@ -58,8 +60,12 @@ builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Ranks.IRankComputationService,
-                            MLMConquerorGlobalEdition.Repository.Services.Ranks.RankComputationService>();
+// Registers all rank services in one call:
+//   IEnrollmentTeamPointsService, IPersonalCustomerPointsService,
+//   IRankQualificationService, IRankComputationService.
+// EnrollmentTeamService now depends on IEnrollmentTeamPointsService so this
+// call must precede the EnrollmentTeamService registration.
+builder.Services.AddRankServices();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTreeNodeService,
                             MLMConquerorGlobalEdition.Repository.Services.Teams.DualTreeNodeService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IEnrollmentTeamService,
@@ -267,11 +273,13 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Apply pending EF migrations automatically on startup (idempotent).
+// Apply pending EF migrations and seed baseline data on startup (idempotent).
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var db     = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     await db.Database.MigrateAsync();
+    await RankGateSeeder.SeedAsync(db, logger);
 }
 
 if (!app.Environment.IsDevelopment())

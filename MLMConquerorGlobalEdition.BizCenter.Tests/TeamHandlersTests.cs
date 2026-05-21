@@ -8,6 +8,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Tests;
 
@@ -30,6 +31,12 @@ public class TeamHandlersTests : IDisposable
     }
 
     public void Dispose() => _db.Dispose();
+
+    private static RankComputationService BuildRankComputationService(AppDbContext db)
+        => new(db, new RankQualificationService(
+            db,
+            new EnrollmentTeamPointsService(db),
+            new PersonalCustomerPointsService(db)));
 
     private MemberProfile BuildProfile(string memberId, string? sponsorId = null) => new()
     {
@@ -107,7 +114,7 @@ public class TeamHandlersTests : IDisposable
 
         var handler = new GetTeamMembersHandler(
             _db, _currentUser.Object,
-            new MLMConquerorGlobalEdition.Repository.Services.Ranks.RankComputationService(_db));
+            BuildRankComputationService(_db));
         var result  = await handler.Handle(new GetTeamMembersQuery(1, 20), default);
 
         result.IsSuccess.Should().BeTrue();
@@ -121,7 +128,7 @@ public class TeamHandlersTests : IDisposable
     {
         var handler = new GetTeamMembersHandler(
             _db, _currentUser.Object,
-            new MLMConquerorGlobalEdition.Repository.Services.Ranks.RankComputationService(_db));
+            BuildRankComputationService(_db));
         var result  = await handler.Handle(new GetTeamMembersQuery(1, 20), default);
 
         result.IsSuccess.Should().BeTrue();
@@ -138,7 +145,7 @@ public class TeamHandlersTests : IDisposable
 
         var handler = new GetTeamMembersHandler(
             _db, _currentUser.Object,
-            new MLMConquerorGlobalEdition.Repository.Services.Ranks.RankComputationService(_db));
+            BuildRankComputationService(_db));
         var result  = await handler.Handle(new GetTeamMembersQuery(1, 3), default);
 
         result.Value!.TotalCount.Should().Be(5);

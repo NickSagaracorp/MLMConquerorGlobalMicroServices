@@ -4,9 +4,9 @@ using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.RankEngine.Features.EvaluateRank;
 using MLMConquerorGlobalEdition.RankEngine.Features.GenerateCertificate;
-using MLMConquerorGlobalEdition.RankEngine.Features.GetRankProgress;
 using MLMConquerorGlobalEdition.RankEngine.Services;
 using MLMConquerorGlobalEdition.RankEngine.Tests.Helpers;
+using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
 using IEmailService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IEmailService;
 using IPushNotificationService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IPushNotificationService;
@@ -72,19 +72,59 @@ public class EvaluateRankHandlerTests
         return m;
     }
 
+    private static IRankQualificationService BuildQualification(
+        MLMConquerorGlobalEdition.Repository.Context.AppDbContext db)
+    {
+        var et = new EnrollmentTeamPointsService(db);
+        var pcp = new PersonalCustomerPointsService(db);
+        return new RankQualificationService(db, et, pcp);
+    }
+
     private EvaluateRankHandler BuildHandler(
         MLMConquerorGlobalEdition.Repository.Context.AppDbContext db)
     {
-        var progressHelper = new GetRankProgressHandler(db, BuildClock().Object);
         return new EvaluateRankHandler(
             db,
             BuildClock().Object,
             BuildUser().Object,
-            progressHelper,
+            BuildQualification(db),
             BuildCache().Object,
             BuildPush().Object,
             BuildEmail().Object,
             BuildMediator().Object);
+    }
+
+    /// <summary>Gives a member an Active membership worth enough PCP to clear the gate (>= 12).</summary>
+    private static async Task SatisfyGateAsync(
+        MLMConquerorGlobalEdition.Repository.Context.AppDbContext db, string memberId)
+    {
+        var orderId = $"ORD-{memberId}";
+        await db.Orders.AddAsync(new MLMConquerorGlobalEdition.Domain.Entities.Orders.Orders
+        {
+            Id = orderId, MemberId = memberId,
+            Status = MLMConquerorGlobalEdition.Domain.Entities.Orders.OrderStatus.Completed,
+            OrderDate = FixedNow, CreatedBy = "seed", CreationDate = FixedNow, LastUpdateDate = FixedNow
+        });
+        await db.Products.AddAsync(new MLMConquerorGlobalEdition.Domain.Entities.Orders.Product
+        {
+            Id = $"PRD-{memberId}", Name = "Membership", Description = "d", ImageUrl = "x",
+            MonthlyFee = 0, SetupFee = 0, QualificationPoins = 12,
+            CreatedBy = "seed", CreationDate = FixedNow, LastUpdateDate = FixedNow
+        });
+        await db.OrderDetails.AddAsync(new MLMConquerorGlobalEdition.Domain.Entities.Orders.OrderDetail
+        {
+            OrderId = orderId, ProductId = $"PRD-{memberId}", Quantity = 1, UnitPrice = 0,
+            CreatedBy = "seed", CreationDate = FixedNow
+        });
+        await db.MembershipSubscriptions.AddAsync(
+            new MLMConquerorGlobalEdition.Domain.Entities.Membership.MembershipSubscription
+            {
+                MemberId = memberId, MembershipLevelId = 1,
+                SubscriptionStatus = MLMConquerorGlobalEdition.Domain.Entities.Membership.MembershipStatus.Active,
+                StartDate = FixedNow, LastOrderId = orderId,
+                CreatedBy = "seed", CreationDate = FixedNow, LastUpdateDate = FixedNow
+            });
+        await db.SaveChangesAsync();
     }
 
     private static MemberProfile BuildMember(string memberId) => new()
@@ -175,6 +215,8 @@ public class EvaluateRankHandlerTests
         // Requires 100 personal points; member has none
         await db.RankDefinitions.AddAsync(BuildRank(1, sortOrder: 1, personalPointsReq: 100));
         await db.SaveChangesAsync();
+        // Gate satisfied — this test isolates the PersonalPoints axis failure.
+        await SatisfyGateAsync(db, "AMB-001");
 
         var handler = BuildHandler(db);
         var result  = await handler.Handle(
@@ -192,6 +234,7 @@ public class EvaluateRankHandlerTests
         // Rank requires 0 personal points and 0 sponsored members — member qualifies immediately
         await db.RankDefinitions.AddAsync(BuildRank(1, sortOrder: 1, personalPointsReq: 0));
         await db.SaveChangesAsync();
+        await SatisfyGateAsync(db, "AMB-001");
 
         var handler = BuildHandler(db);
         var result  = await handler.Handle(
@@ -217,6 +260,7 @@ public class EvaluateRankHandlerTests
             BuildRank(1, sortOrder: 1, personalPointsReq: 0),
             BuildRank(2, sortOrder: 2, personalPointsReq: 0));
         await db.SaveChangesAsync();
+        await SatisfyGateAsync(db, "AMB-001");
 
         var handler = BuildHandler(db);
         var result  = await handler.Handle(
@@ -235,12 +279,12 @@ public class EvaluateRankHandlerTests
         await db.MemberProfiles.AddAsync(BuildMember("AMB-001"));
         await db.RankDefinitions.AddAsync(BuildRank(1, sortOrder: 1, personalPointsReq: 0));
         await db.SaveChangesAsync();
+        await SatisfyGateAsync(db, "AMB-001");
 
         var cache   = BuildCache();
-        var progressHelper = new GetRankProgressHandler(db, BuildClock().Object);
         var handler = new EvaluateRankHandler(
             db, BuildClock().Object, BuildUser().Object,
-            progressHelper, cache.Object,
+            BuildQualification(db), cache.Object,
             BuildPush().Object, BuildEmail().Object, BuildMediator().Object);
 
         await handler.Handle(new EvaluateRankCommand("AMB-001"), CancellationToken.None);

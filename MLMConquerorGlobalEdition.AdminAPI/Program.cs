@@ -16,6 +16,7 @@ using MLMConquerorGlobalEdition.SharedKernel.Behaviors;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SharedKernel.Logging;
 using MLMConquerorGlobalEdition.Repository.Seeders;
+using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.Billing.Services.Routing;
 using MLMConquerorGlobalEdition.Billing.Services.Recurring.HighVolume;
 using ICacheService         = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
@@ -60,8 +61,7 @@ builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Ranks.IRankComputationService,
-                            MLMConquerorGlobalEdition.Repository.Services.Ranks.RankComputationService>();
+builder.Services.AddRankServices();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTreeNodeService,
                             MLMConquerorGlobalEdition.Repository.Services.Teams.DualTreeNodeService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTeamService,
@@ -265,6 +265,7 @@ using (var scope = app.Services.CreateScope())
     await CountryProductDefaultSeeder.SeedAsync(db, logger);
     await GatewayRoutingSeeder.SeedAsync(db, logger);
     await RecurringBillingSeeder.SeedAsync(db, logger);
+    await RankGateSeeder.SeedAsync(db, logger);
 }
 
 if (!app.Environment.IsDevelopment())

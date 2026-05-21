@@ -20,6 +20,7 @@ using MLMConquerorGlobalEdition.RankEngine.Mappings;
 using MLMConquerorGlobalEdition.RankEngine.Middleware;
 using MLMConquerorGlobalEdition.RankEngine.Services;
 using MLMConquerorGlobalEdition.Repository.Seeders;
+using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using IEmailService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IEmailService;
 using NullEmailService = MLMConquerorGlobalEdition.SharedKernel.Services.NullEmailService;
 
@@ -47,6 +48,8 @@ builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
 
 // Register GetRankProgressHandler as scoped so EvaluateRankHandler can inject it
 builder.Services.AddScoped<GetRankProgressHandler>();
+// Rank services — single source of truth for ET points, PCP, and qualification.
+builder.Services.AddRankServices();
 
 builder.Services.AddStackExchangeRedisCache(options =>
 {
@@ -155,6 +158,7 @@ using (var scope = app.Services.CreateScope())
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     await db.Database.MigrateAsync();
     await CompanyInfoSeeder.SeedAsync(db, logger);
+    await RankGateSeeder.SeedAsync(db, logger);
 }
 
 app.UseMiddleware<DomainExceptionMiddleware>();

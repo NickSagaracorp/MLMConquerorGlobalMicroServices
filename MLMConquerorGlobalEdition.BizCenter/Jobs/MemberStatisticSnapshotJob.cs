@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Jobs;
@@ -13,7 +14,10 @@ namespace MLMConquerorGlobalEdition.BizCenter.Jobs;
 ///
 /// Responsibilities:
 ///   1. Refresh QualifiedSponsoredMembers in MemberStatisticEntity from live
-///      MemberProfile data so the live counter never drifts.
+///      MemberProfile data so the live counter never drifts. Also re-grounds
+///      EnrollmentPoints (own + downline) against actual completed orders via
+///      <see cref="IEnrollmentTeamPointsService.RecomputeEnrollmentPointsAsync"/>
+///      to correct drift from incremental signup / upline-aggregator updates.
 ///   2. Upsert a row into MemberStatisticHistory for the current calendar
 ///      month per member, mirroring the live MemberStatisticEntity values
 ///      and joining the L/R leg points from DualTeamTree. Running multiple
@@ -30,15 +34,18 @@ public class MemberStatisticSnapshotJob
     private readonly AppDbContext _db;
     private readonly IDateTimeProvider _dateTime;
     private readonly ILogger<MemberStatisticSnapshotJob> _logger;
+    private readonly IEnrollmentTeamPointsService _enrollmentPoints;
 
     public MemberStatisticSnapshotJob(
         AppDbContext db,
         IDateTimeProvider dateTime,
-        ILogger<MemberStatisticSnapshotJob> logger)
+        ILogger<MemberStatisticSnapshotJob> logger,
+        IEnrollmentTeamPointsService enrollmentPoints)
     {
-        _db       = db;
-        _dateTime = dateTime;
-        _logger   = logger;
+        _db               = db;
+        _dateTime         = dateTime;
+        _logger           = logger;
+        _enrollmentPoints = enrollmentPoints;
     }
 
     public async Task ExecuteAsync(CancellationToken ct = default)
@@ -57,6 +64,7 @@ public class MemberStatisticSnapshotJob
 
         var stats = await _db.MemberStatistics.ToListAsync(ct);
         var updated = 0;
+        var etUpdated = 0;
 
         foreach (var stat in stats)
         {
@@ -66,9 +74,25 @@ public class MemberStatisticSnapshotJob
                 stat.QualifiedSponsoredMembers = count;
                 updated++;
             }
+
+            // Re-ground the materialized EnrollmentPoints (own + downline) against
+            // actual completed orders, correcting drift from the incremental
+            // signup / upline-aggregator updates.
+            // NOTE: _enrollmentPoints shares this job's scoped AppDbContext. Its
+            // queries are AsNoTracking, so they do not collide with the tracked
+            // `stats` entities above — keep them AsNoTracking if this is changed.
+            // This is one recompute (a small subtree + order aggregate query) per
+            // member; acceptable for a nightly batch. If the member base grows into
+            // the tens of thousands, rewrite as a single set-based aggregate query.
+            var recomputedEt = await _enrollmentPoints.RecomputeEnrollmentPointsAsync(stat.MemberId, ct);
+            if (stat.EnrollmentPoints != recomputedEt)
+            {
+                stat.EnrollmentPoints = recomputedEt;
+                etUpdated++;
+            }
         }
 
-        if (updated > 0)
+        if (updated > 0 || etUpdated > 0)
             await _db.SaveChangesAsync(ct);
 
         // ── 2. Upsert monthly history snapshot ──────────────────────────────
@@ -124,8 +148,8 @@ public class MemberStatisticSnapshotJob
             await _db.SaveChangesAsync(ct);
 
         _logger.LogInformation(
-            "MemberStatisticSnapshotJob: completed — sponsor counts updated: {Updated}; history rows: +{Inserted} new, {Refreshed} refreshed for {Year}-{Month:00} at {Now}.",
-            updated, inserted, refreshed, year, month, now);
+            "MemberStatisticSnapshotJob: completed — sponsor counts updated: {Updated}; EnrollmentPoints re-grounded: {EtUpdated}; history rows: +{Inserted} new, {Refreshed} refreshed for {Year}-{Month:00} at {Now}.",
+            updated, etUpdated, inserted, refreshed, year, month, now);
     }
 
     private static void CopyStatToHistory(

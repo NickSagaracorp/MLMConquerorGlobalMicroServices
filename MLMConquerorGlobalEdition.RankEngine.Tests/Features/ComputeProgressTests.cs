@@ -34,7 +34,7 @@ public class ComputeProgressTests
     {
         PersonalPoints               = personalPoints,
         QualifyingTeamPoints         = teamPoints,
-        EnrollmentTeamCount          = enrollmentTeam,
+        EnrollmentTeamPoints         = enrollmentTeam,
         SponsoredMembers             = sponsoredMembers,
         ExternalMembers              = externalMembers,
         SalesVolume                  = salesVolume

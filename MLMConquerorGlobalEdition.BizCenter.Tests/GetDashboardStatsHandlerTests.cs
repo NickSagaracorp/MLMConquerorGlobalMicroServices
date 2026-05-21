@@ -34,8 +34,14 @@ public class GetDashboardStatsHandlerTests : IDisposable
 
     public void Dispose() => _db.Dispose();
 
+    private static RankComputationService BuildRankComputationService(AppDbContext db)
+        => new(db, new RankQualificationService(
+            db,
+            new EnrollmentTeamPointsService(db),
+            new PersonalCustomerPointsService(db)));
+
     private GetDashboardStatsHandler CreateHandler() =>
-        new(_db, _currentUser.Object, _dateTime.Object, new RankComputationService(_db));
+        new(_db, _currentUser.Object, _dateTime.Object, BuildRankComputationService(_db));
 
 
     [Fact]

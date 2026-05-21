@@ -3,10 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.RankEngine.DTOs;
 using MLMConquerorGlobalEdition.RankEngine.Features.GenerateCertificate;
-using MLMConquerorGlobalEdition.RankEngine.Features.GetRankProgress;
 using MLMConquerorGlobalEdition.RankEngine.Mappings;
 using MLMConquerorGlobalEdition.RankEngine.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.SharedKernel;
 using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
 using IEmailService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IEmailService;
@@ -19,7 +19,7 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
     private readonly AppDbContext _db;
     private readonly IDateTimeProvider _dateTime;
     private readonly ICurrentUserService _currentUser;
-    private readonly GetRankProgressHandler _progressHelper;
+    private readonly IRankQualificationService _qualification;
     private readonly ICacheService _cache;
     private readonly IPushNotificationService _push;
     private readonly IEmailService _email;
@@ -29,7 +29,7 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
         AppDbContext db,
         IDateTimeProvider dateTime,
         ICurrentUserService currentUser,
-        GetRankProgressHandler progressHelper,
+        IRankQualificationService qualification,
         ICacheService cache,
         IPushNotificationService push,
         IEmailService email,
@@ -38,7 +38,7 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
         _db = db;
         _dateTime = dateTime;
         _currentUser = currentUser;
-        _progressHelper = progressHelper;
+        _qualification = qualification;
         _cache = cache;
         _push = push;
         _email = email;
@@ -66,6 +66,7 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
 
         // All active ranks above current, ordered ascending (evaluate from next to highest)
         var candidateRanks = await _db.RankDefinitions
+            .AsNoTracking()
             .Include(r => r.Requirements)
             .Where(r => r.Status == RankDefinitionStatus.Active && r.SortOrder > currentSortOrder)
             .OrderBy(r => r.SortOrder)
@@ -85,16 +86,14 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
             });
         }
 
-        // Compute current metrics once
-        var metrics = await _progressHelper.ComputeMetricsAsync(command.MemberId, ct);
-
-        // Find the highest rank the member qualifies for
+        // Find the highest rank the member qualifies for — via the single authority.
         RankDefinition? highestQualifiedRank = null;
         foreach (var rank in candidateRanks)
         {
             if (rank.Requirements.Count == 0) continue;
             var requirement = rank.Requirements.OrderBy(r => r.LevelNo).First();
-            if (MeetsRequirements(metrics, requirement))
+            var result = await _qualification.QualifiesForRankAsync(command.MemberId, requirement, ct);
+            if (result.Qualifies)
                 highestQualifiedRank = rank;
         }
 
@@ -215,18 +214,5 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
         return hierarchyPath
             .Split('/', StringSplitOptions.RemoveEmptyEntries)
             .Where(id => id != selfMemberId);
-    }
-
-    private static bool MeetsRequirements(RankMetricsResponse metrics, RankRequirement req)
-    {
-        if (metrics.PersonalPoints < req.PersonalPoints) return false;
-        if (metrics.QualifyingTeamPoints < req.TeamPoints) return false;
-        if (metrics.EnrollmentTeamCount < req.EnrollmentTeam) return false;
-        if (metrics.PlacementQualifiedTeamMembers < req.PlacementQualifiedTeamMembers) return false;
-        if (metrics.EnrollmentQualifiedTeamMembers < req.EnrollmentQualifiedTeamMembers) return false;
-        if (metrics.SponsoredMembers < req.SponsoredMembers) return false;
-        if (metrics.ExternalMembers < req.ExternalMembers) return false;
-        if (metrics.SalesVolume < req.SalesVolume) return false;
-        return true;
     }
 }

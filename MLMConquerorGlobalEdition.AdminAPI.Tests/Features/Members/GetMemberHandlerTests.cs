@@ -2,12 +2,20 @@ using MLMConquerorGlobalEdition.AdminAPI.Features.Members.GetMember;
 using MLMConquerorGlobalEdition.AdminAPI.Tests.Helpers;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Enums;
+using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Tests.Features.Members;
 
 public class GetMemberHandlerTests
 {
     private static readonly DateTime FixedNow = new(2026, 3, 20, 12, 0, 0, DateTimeKind.Utc);
+
+    private static RankComputationService BuildRankComputationService(AppDbContext db)
+        => new(db, new RankQualificationService(
+            db,
+            new EnrollmentTeamPointsService(db),
+            new PersonalCustomerPointsService(db)));
 
     private static MemberProfile BuildMember(string memberId) => new()
     {
@@ -29,7 +37,7 @@ public class GetMemberHandlerTests
         await using var db = InMemoryDbHelper.Create();
         var handler = new GetMemberHandler(
             db,
-            new MLMConquerorGlobalEdition.Repository.Services.Ranks.RankComputationService(db));
+            BuildRankComputationService(db));
 
         var result = await handler.Handle(new GetMemberQuery("AMB-999"), CancellationToken.None);
 
@@ -46,7 +54,7 @@ public class GetMemberHandlerTests
 
         var handler = new GetMemberHandler(
             db,
-            new MLMConquerorGlobalEdition.Repository.Services.Ranks.RankComputationService(db));
+            BuildRankComputationService(db));
         var result = await handler.Handle(new GetMemberQuery("AMB-001"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -80,7 +88,7 @@ public class GetMemberHandlerTests
 
         var handler = new GetMemberHandler(
             db,
-            new MLMConquerorGlobalEdition.Repository.Services.Ranks.RankComputationService(db));
+            BuildRankComputationService(db));
         var result = await handler.Handle(new GetMemberQuery("AMB-001"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -101,7 +109,7 @@ public class GetMemberHandlerTests
 
         var handler = new GetMemberHandler(
             db,
-            new MLMConquerorGlobalEdition.Repository.Services.Ranks.RankComputationService(db));
+            BuildRankComputationService(db));
         var result = await handler.Handle(new GetMemberQuery("AMB-001"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
