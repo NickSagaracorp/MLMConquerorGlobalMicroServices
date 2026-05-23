@@ -18,6 +18,7 @@ using MLMConquerorGlobalEdition.Repository.Services;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.Repository.Seeders;
 using FluentValidation;
+using FluentValidation.AspNetCore;
 using MLMConquerorGlobalEdition.SharedKernel.Behaviors;
 using MLMConquerorGlobalEdition.SharedKernel.Logging;
 using ICacheService             = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
@@ -57,6 +58,9 @@ builder.Services.AddMediatR(cfg =>
 
 // Auto-register all FluentValidation validators in this assembly
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
+// Run DTO-level validators automatically on every model-binding (defense-in-depth
+// against injection / oversize payloads BEFORE handlers execute).
+builder.Services.AddFluentValidationAutoValidation();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
@@ -72,6 +76,12 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.I
                             MLMConquerorGlobalEdition.Repository.Services.Teams.EnrollmentTeamService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTeamService,
                             MLMConquerorGlobalEdition.Repository.Services.Teams.DualTeamService>();
+
+// Sprint-15 Bug C: shared dual-team leg-points recalculator (also injected
+// by SignupAPI). Both placement handlers route through this so leg points stay
+// consistent regardless of which service did the placement.
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Trees.IDualTeamPointsRecalculator,
+                            MLMConquerorGlobalEdition.Repository.Services.Trees.DualTeamPointsRecalculator>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Commissions.ICommissionsService,
                             MLMConquerorGlobalEdition.Repository.Services.Commissions.CommissionsService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Wallets.IMemberWalletService,

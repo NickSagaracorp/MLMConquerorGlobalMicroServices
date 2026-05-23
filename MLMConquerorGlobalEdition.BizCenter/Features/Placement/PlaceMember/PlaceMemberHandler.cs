@@ -6,6 +6,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Domain.Exceptions;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Trees;
 using MLMConquerorGlobalEdition.SharedKernel;
 using IDateTimeProvider = MLMConquerorGlobalEdition.BizCenter.Services.IDateTimeProvider;
 
@@ -16,18 +17,21 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
     private const int PlacementWindowDays       = 30;
     private const int MaxPlacementOpportunities = 2;
 
-    private readonly AppDbContext        _db;
-    private readonly ICurrentUserService _currentUser;
-    private readonly IDateTimeProvider   _clock;
+    private readonly AppDbContext                _db;
+    private readonly ICurrentUserService         _currentUser;
+    private readonly IDateTimeProvider           _clock;
+    private readonly IDualTeamPointsRecalculator _legPoints;
 
     public PlaceMemberHandler(
-        AppDbContext        db,
-        ICurrentUserService currentUser,
-        IDateTimeProvider   clock)
+        AppDbContext                db,
+        ICurrentUserService         currentUser,
+        IDateTimeProvider           clock,
+        IDualTeamPointsRecalculator legPoints)
     {
         _db          = db;
         _currentUser = currentUser;
         _clock       = clock;
+        _legPoints   = legPoints;
     }
 
     public async Task<Result<PlaceMemberResult>> Handle(
@@ -165,7 +169,10 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
 
             await _db.SaveChangesAsync(ct);
 
-            await RecalculateUplineStatsAsync(command.TargetParentMemberId, ct);
+            // Sprint-15 Bug C: leg-points recalculation moved to the shared
+            // IDualTeamPointsRecalculator so SignupAPI's PlaceMemberHandler can
+            // call the same code path. Behavior here is unchanged.
+            await _legPoints.RecalculateForUplinesAsync(command.TargetParentMemberId, ct);
 
             await tx.CommitAsync(ct);
 
@@ -206,64 +213,5 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
             .AnyAsync(d => enrolledByThisMember.Contains(d.MemberId)
                         && d.HierarchyPath.StartsWith(hierarchyPath)
                         && d.MemberId != memberId, ct);
-    }
-
-    /// <summary>
-    /// Walks up the Dual Team from the given node and recalculates
-    /// LeftLegPoints / RightLegPoints for each ancestor, plus syncs
-    /// MemberStatistics.DualTeamPoints (= LeftLeg + RightLeg = sum of all downline points).
-    /// Ghost points are NOT transferred — only organic tree points.
-    /// </summary>
-    private async Task RecalculateUplineStatsAsync(string startMemberId, CancellationToken ct)
-    {
-        var current = startMemberId;
-        while (!string.IsNullOrEmpty(current))
-        {
-            var node = await _db.DualTeamTree
-                .FirstOrDefaultAsync(d => d.MemberId == current, ct);
-
-            if (node is null) break;
-
-            var leftTotal  = await SumSubtreePointsAsync(current, TreeSide.Left,  ct);
-            var rightTotal = await SumSubtreePointsAsync(current, TreeSide.Right, ct);
-
-            node.LeftLegPoints  = leftTotal;
-            node.RightLegPoints = rightTotal;
-            node.LastUpdateDate = _clock.UtcNow;
-            node.LastUpdateBy   = "system";
-
-            // Mirror onto MemberStatistics so ranks/dashboards see the same number.
-            var stats = await _db.MemberStatistics.FirstOrDefaultAsync(s => s.MemberId == current, ct);
-            if (stats is not null)
-                stats.DualTeamPoints = (int)(leftTotal + rightTotal);
-
-            current = node.ParentMemberId;
-        }
-
-        await _db.SaveChangesAsync(ct);
-    }
-
-    /// <summary>
-    /// Sum of <see cref="MemberStatisticEntity.PersonalPoints"/> for every member in the
-    /// subtree on the given side, INCLUDING the immediate leg-root member. Returns 0 when
-    /// the side is empty.
-    /// </summary>
-    private async Task<decimal> SumSubtreePointsAsync(
-        string parentMemberId, TreeSide side, CancellationToken ct)
-    {
-        var child = await _db.DualTeamTree
-            .AsNoTracking()
-            .FirstOrDefaultAsync(d => d.ParentMemberId == parentMemberId && d.Side == side, ct);
-
-        if (child is null) return 0m;
-
-        var total = await (
-            from d in _db.DualTeamTree.AsNoTracking()
-            join s in _db.MemberStatistics.AsNoTracking() on d.MemberId equals s.MemberId
-            where d.HierarchyPath.StartsWith(child.HierarchyPath)
-            select (decimal?)s.PersonalPoints
-        ).SumAsync(ct);
-
-        return total ?? 0m;
     }
 }

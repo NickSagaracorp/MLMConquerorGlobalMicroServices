@@ -2,6 +2,8 @@ using System.Security.Cryptography;
 using System.Text.Json.Serialization;
 using Amazon.S3;
 using AspNetCoreRateLimit;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 using Hangfire;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -56,6 +58,13 @@ builder.Services.AddMediatR(cfg =>
     cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ErrorHandlingBehavior<,>));
 });
 
+// FluentValidation — register all *Validator types in this assembly so that
+// (a) MediatR command validators run inside the pipeline, AND
+// (b) DTO-level validators run during model binding via AddFluentValidationAutoValidation,
+//     giving us defense-in-depth (regex / length / whitelist) before any handler executes.
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+builder.Services.AddFluentValidationAutoValidation();
+
 
 // Services
 builder.Services.AddHttpContextAccessor();
@@ -75,6 +84,15 @@ builder.Services.AddSingleton<IAmazonS3>(_ =>
     return new AmazonS3Client(accessKey, secretKey, Amazon.RegionEndpoint.GetBySystemName(region));
 });
 builder.Services.AddScoped<IS3FileService, S3FileService>();
+
+// Sprint-15 Bug C: shared dual-team leg-points recalculator. Both SignupAPI and
+// BizCenter placement handlers depend on this so a placement created by either
+// side leaves LeftLegPoints / RightLegPoints + MemberStatistics.DualTeamPoints
+// consistent up the binary tree.
+builder.Services.AddScoped<
+    MLMConquerorGlobalEdition.Repository.Services.Trees.IDualTeamPointsRecalculator,
+    MLMConquerorGlobalEdition.Repository.Services.Trees.DualTeamPointsRecalculator>();
+
 builder.Services.AddScoped<ISponsorBonusService, SponsorBonusService>();
 builder.Services.AddScoped<IFastStartBonusService, FastStartBonusService>();
 builder.Services.AddScoped<ITokenRedemptionService, TokenRedemptionService>();

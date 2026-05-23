@@ -36,14 +36,11 @@ public class GenerateCertificateHandlerTests
         return m;
     }
 
-    private static Mock<IS3FileService> BuildS3(string url = "https://s3.example.com/cert.pdf")
+    private static Mock<ICertificateStorage> BuildStorage(string url = "https://localhost:7009/certificates/cert.pdf")
     {
-        var m = new Mock<IS3FileService>();
-        m.Setup(s => s.UploadAsync(
-                It.IsAny<string>(),
-                It.IsAny<Stream>(),
-                It.IsAny<string>(),
-                It.IsAny<CancellationToken>()))
+        var m = new Mock<ICertificateStorage>();
+        m.Setup(s => s.SaveAsync(
+                It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(url);
         return m;
     }
@@ -51,10 +48,10 @@ public class GenerateCertificateHandlerTests
     private GenerateCertificateHandler BuildHandler(
         MLMConquerorGlobalEdition.Repository.Context.AppDbContext db,
         Mock<ICertificatePdfFillerService>? pdfFiller = null,
-        Mock<IS3FileService>? s3 = null) =>
+        Mock<ICertificateStorage>? storage = null) =>
         new(db,
             (pdfFiller ?? BuildPdfFiller()).Object,
-            (s3 ?? BuildS3()).Object,
+            (storage ?? BuildStorage()).Object,
             BuildClock().Object,
             BuildUser().Object);
 
@@ -135,17 +132,16 @@ public class GenerateCertificateHandlerTests
                 certUrl: "https://s3.example.com/existing.pdf"));
         await db.SaveChangesAsync();
 
-        var s3      = BuildS3();
-        var handler = BuildHandler(db, s3: s3);
+        var storage = BuildStorage();
+        var handler = BuildHandler(db, storage: storage);
         var result  = await handler.Handle(
             new GenerateCertificateCommand("HIST-001"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         result.Value!.CertificateUrl.Should().Be("https://s3.example.com/existing.pdf");
-        // S3 upload must not be called again
-        s3.Verify(s => s.UploadAsync(
-            It.IsAny<string>(), It.IsAny<Stream>(),
-            It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        // Storage save must not be called again
+        storage.Verify(s => s.SaveAsync(
+            It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -161,17 +157,16 @@ public class GenerateCertificateHandlerTests
                 certUrl: null));
         await db.SaveChangesAsync();
 
-        var s3      = BuildS3();
-        var handler = BuildHandler(db, s3: s3);
+        var storage = BuildStorage();
+        var handler = BuildHandler(db, storage: storage);
         // Request cert for the second history record
         var result  = await handler.Handle(
             new GenerateCertificateCommand("HIST-002"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         result.Value!.CertificateUrl.Should().Be("https://s3.example.com/first.pdf");
-        s3.Verify(s => s.UploadAsync(
-            It.IsAny<string>(), It.IsAny<Stream>(),
-            It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        storage.Verify(s => s.SaveAsync(
+            It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -201,7 +196,7 @@ public class GenerateCertificateHandlerTests
         await db.SaveChangesAsync();
 
         const string expectedUrl = "https://s3.example.com/generated.pdf";
-        var handler = BuildHandler(db, s3: BuildS3(expectedUrl));
+        var handler = BuildHandler(db, storage: BuildStorage(expectedUrl));
         var result  = await handler.Handle(
             new GenerateCertificateCommand("HIST-001"), CancellationToken.None);
 
@@ -212,5 +207,105 @@ public class GenerateCertificateHandlerTests
         // Persisted to DB
         var savedHistory = db.MemberRankHistories.Single(h => h.Id == "HIST-001");
         savedHistory.GeneratedCertificateUrl.Should().Be(expectedUrl);
+    }
+
+    [Fact]
+    public async Task Handle_WhenRankNotCertificateEligible_ReturnsFailure()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await db.RankDefinitions.AddAsync(BuildRank(20, sortOrder: 0)); // Lifestyle Consultant
+        await db.MemberProfiles.AddAsync(BuildMember("AMB-001"));
+        await db.MemberRankHistories.AddAsync(BuildHistory("HIST-001", "AMB-001", rankId: 20));
+        await db.SaveChangesAsync();
+
+        var handler = BuildHandler(db);
+        var result  = await handler.Handle(
+            new GenerateCertificateCommand("HIST-001"), CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be("RANK_NOT_CERTIFICATE_ELIGIBLE");
+    }
+
+    [Fact]
+    public async Task Handle_WhenCertificateExistsAndForceTrue_RebuildsAndUpdatesUrl()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await db.RankDefinitions.AddAsync(BuildRank(1, sortOrder: 1));
+        await db.MemberProfiles.AddAsync(BuildMember("AMB-001"));
+        await db.MemberRankHistories.AddAsync(
+            BuildHistory("HIST-001", "AMB-001", rankId: 1,
+                certUrl: "https://localhost:7009/certificates/old.pdf"));
+        await db.SaveChangesAsync();
+
+        const string newUrl = "https://localhost:7009/certificates/new.pdf";
+        var storage = BuildStorage(newUrl);
+        var handler = BuildHandler(db, storage: storage);
+
+        var result = await handler.Handle(
+            new GenerateCertificateCommand("HIST-001", Force: true), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.CertificateUrl.Should().Be(newUrl);
+        storage.Verify(s => s.SaveAsync(
+            It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<CancellationToken>()), Times.Once);
+        db.MemberRankHistories.Single(h => h.Id == "HIST-001")
+            .GeneratedCertificateUrl.Should().Be(newUrl);
+    }
+
+    [Fact]
+    public async Task Handle_WhenForceRegenerating_UsesEarliestAchievedDate()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await db.RankDefinitions.AddAsync(BuildRank(1, sortOrder: 1));
+        await db.MemberProfiles.AddAsync(BuildMember("AMB-001"));
+
+        var firstAchieved  = new DateTime(2026, 1, 10, 0, 0, 0, DateTimeKind.Utc);
+        var secondAchieved = new DateTime(2026, 3, 20, 0, 0, 0, DateTimeKind.Utc);
+
+        var earliest = BuildHistory("HIST-001", "AMB-001", rankId: 1, certUrl: "x");
+        earliest.AchievedAt = firstAchieved;
+        var later = BuildHistory("HIST-002", "AMB-001", rankId: 1);
+        later.AchievedAt = secondAchieved;
+        await db.MemberRankHistories.AddRangeAsync(earliest, later);
+        await db.SaveChangesAsync();
+
+        CertificateTemplateData? captured = null;
+        var pdfFiller = new Mock<ICertificatePdfFillerService>();
+        pdfFiller.Setup(p => p.FillAsync(
+                It.IsAny<int>(), It.IsAny<CertificateTemplateData>(), It.IsAny<CancellationToken>()))
+            .Callback<int, CertificateTemplateData, CancellationToken>((_, d, _) => captured = d)
+            .ReturnsAsync(new byte[] { 0x25 });
+
+        var handler = BuildHandler(db, pdfFiller: pdfFiller);
+        await handler.Handle(new GenerateCertificateCommand("HIST-002", Force: true), CancellationToken.None);
+
+        captured.Should().NotBeNull();
+        captured!.AchievedAt.Should().Be(firstAchieved);
+    }
+
+    [Fact]
+    public async Task Handle_WhenForceRegenerating_UsesCurrentMemberName()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await db.RankDefinitions.AddAsync(BuildRank(1, sortOrder: 1));
+        var member = BuildMember("AMB-001");
+        member.FirstName = "Corrected";
+        member.LastName  = "Name";
+        await db.MemberProfiles.AddAsync(member);
+        await db.MemberRankHistories.AddAsync(
+            BuildHistory("HIST-001", "AMB-001", rankId: 1, certUrl: "x"));
+        await db.SaveChangesAsync();
+
+        CertificateTemplateData? captured = null;
+        var pdfFiller = new Mock<ICertificatePdfFillerService>();
+        pdfFiller.Setup(p => p.FillAsync(
+                It.IsAny<int>(), It.IsAny<CertificateTemplateData>(), It.IsAny<CancellationToken>()))
+            .Callback<int, CertificateTemplateData, CancellationToken>((_, d, _) => captured = d)
+            .ReturnsAsync(new byte[] { 0x25 });
+
+        var handler = BuildHandler(db, pdfFiller: pdfFiller);
+        await handler.Handle(new GenerateCertificateCommand("HIST-001", Force: true), CancellationToken.None);
+
+        captured!.FullName.Should().Be("Corrected Name");
     }
 }

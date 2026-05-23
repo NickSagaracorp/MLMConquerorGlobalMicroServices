@@ -115,3 +115,6 @@ logs/
 *.zip
 *.rar
 *.7z
+
+# ── Generated rank certificates (artifacts, not source) ───────────────────────
+MLMConquerorGlobalEdition.RankEngine/wwwroot/certificates/*.pdf

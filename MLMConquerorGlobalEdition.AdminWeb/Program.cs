@@ -66,6 +66,12 @@ builder.Services.AddHttpClient("HelpdeskApi", client =>
     client.BaseAddress = new Uri(builder.Configuration["HelpdeskApiUrl"] ?? "http://localhost:5045");
 }).AddHttpMessageHandler<AdminApiAuthHandler>();
 
+// HTTP client to RankEngine — attaches JWT Bearer token automatically
+builder.Services.AddHttpClient("RankEngineApi", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["RankEngineApiBaseUrl"] ?? "https://localhost:7009");
+}).AddHttpMessageHandler<AdminApiAuthHandler>();
+
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())

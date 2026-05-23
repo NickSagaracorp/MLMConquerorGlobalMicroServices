@@ -63,6 +63,9 @@ builder.Services.AddTransient<IEmailService, NullEmailService>();
 
 builder.Services.AddScoped<RankEvaluationSweepJob>();
 builder.Services.AddScoped<ProcessRankQueueJob>();
+// Fan-out notification jobs enqueued by EvaluateRankHandler — each runs on its own
+// DI scope so concurrent rank evaluations never share an AppDbContext.
+builder.Services.AddScoped<RankNotificationJobs>();
 builder.Services.AddHangfire(cfg => cfg
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
     .UseSimpleAssemblyNameTypeSerializer()
@@ -93,26 +96,70 @@ builder.Services.AddSingleton<IAmazonS3>(_ =>
 });
 builder.Services.AddScoped<IS3FileService, S3FileService>();
 
-// Certificate generation — fills PDF AcroForm templates stored in CertificateTemplates/
-builder.Services.AddScoped<ICertificatePdfFillerService, ITextCertificatePdfFillerService>();
+// Certificate generation — draws the recipient name + date onto the PDF templates
+// stored in CertificateTemplates/ (resolved relative to the app content root).
+builder.Services.AddScoped<ICertificatePdfFillerService>(sp =>
+{
+    var env    = sp.GetRequiredService<IWebHostEnvironment>();
+    var logger = sp.GetRequiredService<ILogger<ITextCertificatePdfFillerService>>();
+    var folder = Path.Combine(env.ContentRootPath, "CertificateTemplates");
+    return new ITextCertificatePdfFillerService(folder, logger);
+});
+
+// Certificate storage — local filesystem until S3 credentials are available.
+builder.Services.AddScoped<ICertificateStorage>(sp =>
+{
+    var env = sp.GetRequiredService<IWebHostEnvironment>();
+    var cfg = sp.GetRequiredService<IConfiguration>();
+
+    var provider = cfg["CertificateStorage:Provider"] ?? "Local";
+    if (!string.Equals(provider, "Local", StringComparison.OrdinalIgnoreCase))
+        throw new NotSupportedException(
+            $"CertificateStorage provider '{provider}' is not yet implemented. Use 'Local'.");
+
+    var localPath = cfg["CertificateStorage:LocalPath"] ?? "wwwroot/certificates";
+    var folder    = Path.IsPathRooted(localPath)
+        ? localPath
+        : Path.Combine(env.ContentRootPath, localPath);
+    var baseUrl   = cfg["CertificateStorage:PublicBaseUrl"] ?? "https://localhost:7009";
+
+    return new LocalCertificateStorage(folder, baseUrl);
+});
 
 // Controllers
 builder.Services.AddControllers();
 
-// JWT Authentication
-var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured.");
+// JWT Authentication — matches AdminAPI/SignupAPI (RSA, asymmetric). Tokens are signed
+// by AuthController with the PrivateKey; every API validates them with the PublicKey.
+var publicKeyBase64 = builder.Configuration["Jwt:PublicKeyBase64"]
+    ?? throw new InvalidOperationException("Jwt:PublicKeyBase64 not configured.");
+
+if (publicKeyBase64.StartsWith("REPLACE_WITH_") && !builder.Environment.IsDevelopment())
+    throw new InvalidOperationException(
+        "JWT RSA public key must be set before running in non-Development mode.");
+
+RsaSecurityKey? jwtValidationKey = null;
+if (!publicKeyBase64.StartsWith("REPLACE_WITH_"))
+{
+    var rsa = System.Security.Cryptography.RSA.Create();
+    rsa.ImportSubjectPublicKeyInfo(Convert.FromBase64String(publicKeyBase64), out _);
+    jwtValidationKey = new RsaSecurityKey(rsa);
+}
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.UseSecurityTokenValidators = true;
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+            ValidateIssuer           = true,
+            ValidateAudience         = true,
+            ValidateLifetime         = true,
+            ValidateIssuerSigningKey = jwtValidationKey is not null,
+            ValidIssuer              = builder.Configuration["Jwt:Issuer"],
+            ValidAudience            = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey         = jwtValidationKey,
+            ClockSkew                = TimeSpan.Zero
         };
     });
 
@@ -164,15 +211,23 @@ using (var scope = app.Services.CreateScope())
 app.UseMiddleware<DomainExceptionMiddleware>();
 app.UseSwagger();
 app.UseSwaggerUI();
+
+// Serve generated certificate PDFs from wwwroot/certificates (unguessable file names).
+app.UseStaticFiles();
 app.UseIpRateLimiting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
 app.UseHangfireDashboard("/hangfire");
-// Near-real-time: process RankEvaluationQueue entries written by SignupAPI
+// Near-real-time: process RankEvaluationQueue entries written by SignupAPI.
+// Queue MUST be "rank" — this RankEngine Hangfire server only processes that queue
+// (per the per-service-queue isolation rule). Leaving it as "default" parks the job
+// in a queue no server picks up, and after 5 retries Hangfire marks the recurring job
+// as poisoned and stops scheduling it.
 RecurringJob.AddOrUpdate<ProcessRankQueueJob>(
     "process-rank-queue",
+    "rank",
     job => job.ExecuteAsync(CancellationToken.None),
     "*/5 * * * *",
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
@@ -180,6 +235,7 @@ RecurringJob.AddOrUpdate<ProcessRankQueueJob>(
 // Nightly safety net: Phase 1 = recover missed queue entries, Phase 2 = full ambassador sweep
 RecurringJob.AddOrUpdate<RankEvaluationSweepJob>(
     "rank-evaluation-sweep",
+    "rank",
     job => job.ExecuteAsync(CancellationToken.None),
     "30 3 * * *",
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });

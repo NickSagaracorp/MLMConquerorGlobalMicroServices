@@ -3,6 +3,8 @@
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @inject HttpClient Http
 @inject NavigationManager Nav
+@inject IHttpClientFactory HttpClientFactory
+@inject IJSRuntime Js
 
 @using Syncfusion.Blazor.Grids
 @using Syncfusion.Blazor.Inputs
@@ -360,12 +362,128 @@ else
                 </div>
             </div>
         </div>
-        <div class="card border-0 shadow-sm">
+        <div class="card border-0 shadow-sm mb-4">
             <div class="card-body p-4 text-center py-4">
                 <i class="ri-award-line fs-2 text-primary d-block mb-3"></i>
                 <a href="/admin/config/ranks/dashboard?memberId=@MemberId" class="btn btn-outline-primary btn-sm">
                     <i class="ri-external-link-line me-1"></i>View Rank Dashboard
                 </a>
+            </div>
+        </div>
+
+        @* ── Rank Certificates ─────────────────────────────────────────────
+           Certificate-eligible rank achievements for this member, served by
+           RankEngine (https://localhost:7009). Admins can generate, view,
+           regenerate or delete the PDF certificate per achievement. *@
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3 flex-wrap gap-2">
+                    <h5 class="fw-semibold mb-0">
+                        <i class="ri-medal-2-line text-primary me-2"></i>Rank Certificates
+                    </h5>
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="LoadCertificatesAsync" disabled="@_certLoading">
+                        <i class="ri-refresh-line me-1"></i>Refresh
+                    </button>
+                </div>
+
+                @if (_certMsg is not null)
+                {
+                    <div class="alert @(_certError ? "alert-danger" : "alert-success") alert-dismissible">
+                        @_certMsg
+                        <button type="button" class="btn-close" @onclick="() => _certMsg = null"></button>
+                    </div>
+                }
+
+                @if (_certLoading)
+                {
+                    <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+                }
+                else if (_certLoadError is not null)
+                {
+                    <div class="alert alert-danger mb-0">@_certLoadError</div>
+                }
+                else if (_certificates.Count == 0)
+                {
+                    <div class="text-center py-4 text-muted">
+                        <i class="ri-medal-2-line fs-2 d-block mb-2"></i>
+                        <p class="mb-0">This member has no certificate-eligible rank achievements yet.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>First Achieved</th>
+                                    <th>Certificate</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var cert in _certificates.OrderBy(c => c.SortOrder))
+                                {
+                                    <tr @key="cert.MemberRankHistoryId">
+                                        <td class="fw-semibold">
+                                            <span class="badge bg-info text-dark fs-13">@cert.RankName</span>
+                                        </td>
+                                        <td>@cert.FirstAchievedAt.ToString("yyyy-MM-dd")</td>
+                                        <td>
+                                            @if (cert.HasCertificate)
+                                            {
+                                                <span class="badge bg-success">
+                                                    <i class="ri-check-line me-1"></i>Generated
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">
+                                                    <i class="ri-close-line me-1"></i>Not generated
+                                                </span>
+                                            }
+                                        </td>
+                                        <td class="text-end">
+                                            @{ var busy = _certBusyId == cert.MemberRankHistoryId; }
+                                            @if (cert.HasCertificate)
+                                            {
+                                                @if (!string.IsNullOrWhiteSpace(cert.CertificateUrl))
+                                                {
+                                                    <a href="@cert.CertificateUrl" target="_blank" rel="noopener"
+                                                       class="btn btn-outline-primary btn-sm me-1">
+                                                        <i class="ri-file-pdf-2-line me-1"></i>View PDF
+                                                    </a>
+                                                }
+                                                <button class="btn btn-outline-secondary btn-sm me-1"
+                                                        @onclick="() => RegenerateCertificateAsync(cert.MemberRankHistoryId)"
+                                                        disabled="@busy">
+                                                    @if (busy) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                                                    else { <i class="ri-refresh-line me-1"></i> }
+                                                    Regenerate
+                                                </button>
+                                                <button class="btn btn-outline-danger btn-sm"
+                                                        @onclick="() => DeleteCertificateAsync(cert.MemberRankHistoryId, cert.RankName)"
+                                                        disabled="@busy">
+                                                    <i class="ri-delete-bin-line me-1"></i>Delete
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <button class="btn btn-primary btn-sm"
+                                                        @onclick="() => GenerateCertificateAsync(cert.MemberRankHistoryId)"
+                                                        disabled="@busy">
+                                                    @if (busy) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                                                    else { <i class="ri-add-line me-1"></i> }
+                                                    Generate
+                                                </button>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
             </div>
         </div>
     }
@@ -724,7 +842,145 @@ else
         {
             await LoadMembershipAsync();
         }
+        else if (tabKey == "ranks" && !_certLoaded)
+        {
+            await LoadCertificatesAsync();
+        }
     }
+
+    // ── Rank Certificates state ───────────────────────────────────────────
+    private List<RankCertificateDto> _certificates = new();
+    private bool    _certLoading;
+    private bool    _certLoaded;
+    private string? _certLoadError;
+    private string? _certBusyId;
+    private string? _certMsg;
+    private bool    _certError;
+
+    private HttpClient RankEngineClient => HttpClientFactory.CreateClient("RankEngineApi");
+
+    private async Task LoadCertificatesAsync()
+    {
+        _certLoading   = true;
+        _certLoadError = null;
+        try
+        {
+            var resp = await RankEngineClient.GetFromJsonAsync<ApiResp<List<RankCertificateDto>>>(
+                $"api/v1/ranks/certificates/{MemberId}");
+            if (resp?.Success == true)
+            {
+                _certificates = resp.Data ?? new();
+            }
+            else
+            {
+                _certLoadError = FormatApiError(resp, "Unable to load rank certificates.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _certLoadError = ex.Message;
+        }
+        finally
+        {
+            _certLoading = false;
+            _certLoaded  = true;
+        }
+    }
+
+    private async Task GenerateCertificateAsync(string memberRankHistoryId)
+        => await RunCertificateActionAsync(
+            memberRankHistoryId,
+            client => client.PostAsync($"api/v1/ranks/certificate/generate/{memberRankHistoryId}", null),
+            "Certificate generated.");
+
+    private async Task RegenerateCertificateAsync(string memberRankHistoryId)
+        => await RunCertificateActionAsync(
+            memberRankHistoryId,
+            client => client.PostAsync($"api/v1/ranks/certificate/{memberRankHistoryId}/regenerate", null),
+            "Certificate regenerated.");
+
+    private async Task DeleteCertificateAsync(string memberRankHistoryId, string rankName)
+    {
+        var confirmed = await Js.InvokeAsync<bool>(
+            "confirm", $"Delete the certificate for '{rankName}'? This cannot be undone.");
+        if (!confirmed) return;
+
+        await RunCertificateActionAsync(
+            memberRankHistoryId,
+            client => client.DeleteAsync($"api/v1/ranks/certificate/{memberRankHistoryId}"),
+            "Certificate deleted.");
+    }
+
+    /// <summary>
+    /// Runs a certificate POST/DELETE action, then reloads the list and surfaces
+    /// a success / error alert using the page's existing alert pattern.
+    /// </summary>
+    private async Task RunCertificateActionAsync(
+        string memberRankHistoryId,
+        Func<HttpClient, Task<HttpResponseMessage>> action,
+        string successMessage)
+    {
+        _certBusyId = memberRankHistoryId;
+        _certMsg    = null;
+        try
+        {
+            var client   = RankEngineClient;
+            var response = await action(client);
+            ApiResp<object>? body = null;
+            try { body = await response.Content.ReadFromJsonAsync<ApiResp<object>>(); }
+            catch { /* non-JSON body (e.g. 204 / error page) — fall back to status code */ }
+
+            if (response.IsSuccessStatusCode && body?.Success != false)
+            {
+                _certMsg   = successMessage;
+                _certError = false;
+            }
+            else
+            {
+                _certMsg   = FormatApiError(body, $"Action failed ({(int)response.StatusCode}).");
+                _certError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _certMsg   = ex.Message;
+            _certError = true;
+        }
+        finally
+        {
+            _certBusyId = null;
+        }
+
+        // Reload the list so status / URL reflect the result.
+        await LoadCertificatesAsync();
+    }
+
+    /// <summary>Builds a human-readable error from a non-success ApiResponse envelope.</summary>
+    private static string FormatApiError<T>(ApiResp<T>? resp, string fallback)
+    {
+        if (resp is null) return fallback;
+        var parts = new List<string>();
+        if (resp.Errors is not null)
+            parts.AddRange(resp.Errors.Where(e => !string.IsNullOrWhiteSpace(e)));
+        var detail = parts.Count > 0 ? string.Join(" ", parts) : null;
+        var prefix = string.IsNullOrWhiteSpace(resp.ErrorCode) ? null : $"[{resp.ErrorCode}] ";
+        return (prefix, detail) switch
+        {
+            (null,  null)   => fallback,
+            (_,     null)   => $"{prefix}{fallback}",
+            (null,  _)      => detail!,
+            (_,     _)      => $"{prefix}{detail}"
+        };
+    }
+
+    private record RankCertificateDto(
+        string   MemberRankHistoryId,
+        int      RankDefinitionId,
+        string   RankName,
+        int      SortOrder,
+        DateTime FirstAchievedAt,
+        string?  CertificateUrl,
+        bool     HasCertificate);
 
     // ── Membership tab state ──────────────────────────────────────────────
     private MembershipDetailDto? _membership;
@@ -819,7 +1075,7 @@ else
         string? CurrentRank, int? CurrentRankId,
         string? LifetimeRank, int? LifetimeRankId);
 
-    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors, string? ErrorCode = null);
 
     private class RankDefItem
     {

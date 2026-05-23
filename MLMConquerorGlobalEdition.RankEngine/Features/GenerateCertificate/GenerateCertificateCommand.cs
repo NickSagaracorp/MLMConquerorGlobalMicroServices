@@ -4,4 +4,9 @@ using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.RankEngine.Features.GenerateCertificate;
 
-public record GenerateCertificateCommand(string MemberRankHistoryId) : IRequest<Result<CertificateGenerationResponse>>;
+/// <summary>
+/// Generates the certificate PDF for a rank achievement.
+/// Force = true rebuilds even when a certificate already exists (admin regeneration).
+/// </summary>
+public record GenerateCertificateCommand(string MemberRankHistoryId, bool Force = false)
+    : IRequest<Result<CertificateGenerationResponse>>;

@@ -1,3 +1,4 @@
+using Hangfire;
 using MediatR;
 using MLMConquerorGlobalEdition.RankEngine.Features.EvaluateRank;
 using MLMConquerorGlobalEdition.RankEngine.Features.GenerateCertificate;
@@ -5,14 +6,12 @@ using MLMConquerorGlobalEdition.RankEngine.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
-using IEmailService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IEmailService;
-using IPushNotificationService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IPushNotificationService;
 
 namespace MLMConquerorGlobalEdition.RankEngine.Tests.Helpers;
 
 /// <summary>
 /// Builds a fully-wired <see cref="EvaluateRankHandler"/> for reachability tests.
-/// All side-effect dependencies (cache, push, email, mediator) are no-op mocks.
+/// Side-effect dependencies (cache, background jobs, mediator) are no-op mocks.
 /// The qualification service is real so it exercises actual rank logic against the in-memory DB.
 /// </summary>
 public static class RankReachabilityTestHandlerFactory
@@ -42,25 +41,17 @@ public static class RankReachabilityTestHandlerFactory
         return m;
     }
 
-    private static Mock<IPushNotificationService> BuildPush()
+    /// <summary>
+    /// IBackgroundJobClient mock — Enqueue&lt;T&gt; is an extension that delegates to
+    /// Create(...); we stub Create to return a fake job id so the extension is happy.
+    /// </summary>
+    private static Mock<IBackgroundJobClient> BuildJobs()
     {
-        var m = new Mock<IPushNotificationService>();
-        m.Setup(p => p.SendAsync(
-                It.IsAny<string>(), It.IsAny<string>(),
-                It.IsAny<string>(), It.IsAny<string>(),
-                It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-        return m;
-    }
-
-    private static Mock<IEmailService> BuildEmail()
-    {
-        var m = new Mock<IEmailService>();
-        m.Setup(e => e.SendAsync(
-                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
-                It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
-                It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+        var m = new Mock<IBackgroundJobClient>();
+        m.Setup(c => c.Create(
+                It.IsAny<Hangfire.Common.Job>(),
+                It.IsAny<Hangfire.States.IState>()))
+            .Returns("test-job-id");
         return m;
     }
 
@@ -92,7 +83,7 @@ public static class RankReachabilityTestHandlerFactory
             BuildUser().Object,
             BuildQualification(db),
             BuildCache().Object,
-            BuildPush().Object,
-            BuildEmail().Object,
-            BuildMediator().Object);
+            BuildMediator().Object,
+            BuildJobs().Object,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<EvaluateRankHandler>.Instance);
 }

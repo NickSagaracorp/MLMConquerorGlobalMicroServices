@@ -29,11 +29,23 @@ public class GetMembersHandler : IRequestHandler<GetMembersQuery, Result<PagedRe
         _cache = cache;
     }
 
+    /// <summary>
+    /// Maximum rows per page the admin members listing will return. Higher values
+    /// (a) explode the multi-join projection cost (sponsors + dual-team parents +
+    /// subscriptions + ranks resolved per page) and (b) overload the Syncfusion
+    /// SfGrid Excel-filter index on the AdminWeb side. Mirrored by the AdminWeb
+    /// Members.razor page-size dropdown.
+    /// </summary>
+    private const int MaxPageSize = 100;
+
     public async Task<Result<PagedResult<AdminMemberDto>>> Handle(
         GetMembersQuery request, CancellationToken cancellationToken)
     {
+        // Clamp defensively — clients are not trusted to honor the documented max.
+        var pageSize    = Math.Clamp(request.Page.PageSize, 1, MaxPageSize);
+        var pageNumber  = Math.Max(1, request.Page.Page);
         var fingerprint = BuildFilterFingerprint(request.StatusFilter, request.SponsorId, request.SearchTerm);
-        var cacheKey    = CacheKeys.AdminMembers(request.Page.Page, request.Page.PageSize, fingerprint);
+        var cacheKey    = CacheKeys.AdminMembers(pageNumber, pageSize, fingerprint);
 
         if (!request.BypassCache)
         {
@@ -66,8 +78,8 @@ public class GetMembersHandler : IRequestHandler<GetMembersQuery, Result<PagedRe
 
         var pageItems = await query
             .OrderByDescending(m => m.CreationDate)
-            .Skip((request.Page.Page - 1) * request.Page.PageSize)
-            .Take(request.Page.PageSize)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
             .Select(m => new
             {
                 m.MemberId, m.FirstName, m.LastName, m.Phone, m.Email,
@@ -162,8 +174,8 @@ public class GetMembersHandler : IRequestHandler<GetMembersQuery, Result<PagedRe
         {
             Items = items,
             TotalCount = totalCount,
-            Page = request.Page.Page,
-            PageSize = request.Page.PageSize
+            Page = pageNumber,
+            PageSize = pageSize
         };
 
         await _cache.SetAsync(cacheKey, result, CacheKeys.AdminMembersTtl, cancellationToken);

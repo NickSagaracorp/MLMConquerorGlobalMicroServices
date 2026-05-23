@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MLMConquerorGlobalEdition.RankEngine.DTOs;
 using MLMConquerorGlobalEdition.RankEngine.Features.EvaluateRank;
+using MLMConquerorGlobalEdition.RankEngine.Features.DeleteCertificate;
 using MLMConquerorGlobalEdition.RankEngine.Features.GenerateCertificate;
+using MLMConquerorGlobalEdition.RankEngine.Features.GetMemberCertificates;
 using MLMConquerorGlobalEdition.RankEngine.Features.GetRankDefinitions;
 using MLMConquerorGlobalEdition.RankEngine.Features.GetRankProgress;
 using MLMConquerorGlobalEdition.SharedKernel;
@@ -52,7 +54,7 @@ public class RanksController : ControllerBase
     /// Admin only — also called by the nightly HangFire rank sweep job.
     /// </summary>
     [HttpPost("evaluate/{memberId}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,SuperAdmin")]
     [ProducesResponseType(typeof(ApiResponse<RankEvaluationResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Evaluate(string memberId, CancellationToken ct)
@@ -66,10 +68,11 @@ public class RanksController : ControllerBase
     }
 
     /// <summary>
-    /// Generates (or regenerates) the certificate PDF URL for a specific rank history record.
-    /// The actual PDF rendering is handled asynchronously by the certificate background service.
+    /// Generates the certificate PDF for a rank history record. Admin only —
+    /// auto-generation on promotion runs in-process via MediatR and is unaffected.
     /// </summary>
     [HttpPost("certificate/generate/{memberRankHistoryId}")]
+    [Authorize(Roles = "Admin,SuperAdmin")]
     [ProducesResponseType(typeof(ApiResponse<CertificateGenerationResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GenerateCertificate(string memberRankHistoryId, CancellationToken ct)
@@ -80,5 +83,54 @@ public class RanksController : ControllerBase
             return NotFound(ApiResponse<object>.Fail(result.ErrorCode!, result.Error!));
 
         return Ok(ApiResponse<CertificateGenerationResponse>.Ok(result.Value!));
+    }
+
+    /// <summary>
+    /// Force-regenerates a certificate (corrupt file or corrected member name). Rebuilds the
+    /// PDF with the member's current name and the original first-achievement date. Admin only.
+    /// </summary>
+    [HttpPost("certificate/{memberRankHistoryId}/regenerate")]
+    [Authorize(Roles = "Admin,SuperAdmin")]
+    [ProducesResponseType(typeof(ApiResponse<CertificateGenerationResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RegenerateCertificate(string memberRankHistoryId, CancellationToken ct)
+    {
+        var result = await _mediator.Send(
+            new GenerateCertificateCommand(memberRankHistoryId, Force: true), ct);
+
+        if (!result.IsSuccess)
+            return NotFound(ApiResponse<object>.Fail(result.ErrorCode!, result.Error!));
+
+        return Ok(ApiResponse<CertificateGenerationResponse>.Ok(result.Value!));
+    }
+
+    /// <summary>Deletes a member's certificate (file + stored URL). Admin only.</summary>
+    [HttpDelete("certificate/{memberRankHistoryId}")]
+    [Authorize(Roles = "Admin,SuperAdmin")]
+    [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteCertificate(string memberRankHistoryId, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new DeleteCertificateCommand(memberRankHistoryId), ct);
+
+        if (!result.IsSuccess)
+            return NotFound(ApiResponse<object>.Fail(result.ErrorCode!, result.Error!));
+
+        return Ok(ApiResponse<bool>.Ok(true));
+    }
+
+    /// <summary>Lists a member's certificate-eligible rank achievements with status. Admin only.</summary>
+    [HttpGet("certificates/{memberId}")]
+    [Authorize(Roles = "Admin,SuperAdmin")]
+    [ProducesResponseType(typeof(ApiResponse<List<MemberCertificateDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetMemberCertificates(string memberId, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetMemberCertificatesQuery(memberId), ct);
+
+        if (!result.IsSuccess)
+            return NotFound(ApiResponse<object>.Fail(result.ErrorCode!, result.Error!));
+
+        return Ok(ApiResponse<List<MemberCertificateDto>>.Ok(result.Value!));
     }
 }

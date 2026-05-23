@@ -227,6 +227,31 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
         await _db.GenealogyTree.AddAsync(genealogyNode, ct);
         await _db.CommissionCountDowns.AddAsync(fsbCountdown, ct);
 
+        // Sprint-15 Bug D — a sponsor-less ambassador (fresh tree root) used to
+        // get only a GenealogyEntity row; the binary tree had no corresponding
+        // DualTeamEntity. That left the new root unable to accumulate
+        // LeftLegPoints / RightLegPoints and made every downstream PlaceMember
+        // call against this root fail with "no root node". Mirror RootAmbassadorSeeder
+        // and seed the binary root here too. Members WITH a sponsor are placed
+        // separately by PlaceMember (auto or manual) so we deliberately do not
+        // create a binary node for them at signup time.
+        if (string.IsNullOrEmpty(sponsorMemberId))
+        {
+            var dualTeamRoot = new DualTeamEntity
+            {
+                MemberId       = memberId,
+                ParentMemberId = null,
+                HierarchyPath  = $"/{memberId}/",
+                Side           = TreeSide.Left,
+                LeftLegPoints  = 0,
+                RightLegPoints = 0,
+                CreatedBy      = req.Email,
+                CreationDate   = now,
+                LastUpdateDate = now
+            };
+            await _db.DualTeamTree.AddAsync(dualTeamRoot, ct);
+        }
+
         // Seed the preferred wallet from the country's default gateway. Status
         // is Pending so the ambassador must complete the gateway-specific
         // fields (Dwolla account, eWallet credentials, etc.) before the

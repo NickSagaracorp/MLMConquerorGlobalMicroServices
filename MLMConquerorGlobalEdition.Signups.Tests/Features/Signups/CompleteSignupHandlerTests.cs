@@ -594,5 +594,105 @@ public class CompleteSignupHandlerTests
         result.Value.MemberId.Should().Be(memberId);
         result.Value.Email.Should().Be(email);
     }
+
+    /// <summary>
+    /// Sprint-15 Bug A — proves IncrementAncestorStatsAsync uses additive
+    /// upsert semantics. Two sequential Complete calls under the same sponsor
+    /// must yield EnrollmentPoints = 2 × delta, EnrollmentTeamSize = 2, and
+    /// QualifiedSponsoredMembers = 2 on the sponsor's MemberStatistics row —
+    /// not 1 (which is what the old read-modify-write produced under any
+    /// re-entrancy because the second read started from the original tracker
+    /// snapshot in some scenarios).
+    ///
+    /// The InMemory provider serializes all operations so true thread-race
+    /// reproduction needs SQL Server; the additive contract is the part we
+    /// can prove deterministically here.
+    /// </summary>
+    [Fact]
+    public async Task Handle_WhenTwoMembersCompleteUnderSameSponsor_StatsAccumulateAdditively()
+    {
+        await using var db = InMemoryDbHelper.Create();
+
+        // Seed sponsor with a genealogy node so ParseHierarchyPath returns it as an ancestor.
+        const string sponsorId = "AMB-SPONSOR";
+        const string sponsorEmail = "sponsor@example.com";
+        var sponsorMember = BuildMember(sponsorId, sponsorEmail);
+        sponsorMember.Status = MemberAccountStatus.Active;
+        await db.MemberProfiles.AddAsync(sponsorMember);
+        await db.GenealogyTree.AddAsync(new MLMConquerorGlobalEdition.Domain.Entities.Tree.GenealogyEntity
+        {
+            MemberId       = sponsorId,
+            HierarchyPath  = $"/{sponsorId}/",
+            Level          = 1,
+            CreatedBy      = sponsorEmail,
+            CreationDate   = FixedNow,
+            LastUpdateDate = FixedNow
+        });
+
+        // Product worth 10 qualification points.
+        await db.Products.AddAsync(new Product
+        {
+            Id                = "P-QUAL",
+            Name              = "Qualifying Pack",
+            Description       = "Worth 10 qual points",
+            ImageUrl          = "https://cdn.example.com/qual.png",
+            MonthlyFee        = 80,
+            SetupFee          = 0,
+            QualificationPoins= 10,
+            IsActive          = true,
+            CreatedBy         = "seed",
+            CreationDate      = FixedNow,
+            LastUpdateDate    = FixedNow
+        });
+
+        // Two pending members sponsored by the same upline.
+        async Task SeedPendingAsync(string memberId, string email, string orderId, string subId)
+        {
+            var m = BuildMember(memberId, email);
+            m.SponsorMemberId = sponsorId;
+            await db.MemberProfiles.AddAsync(m);
+
+            var o = BuildPendingOrder(orderId, memberId);
+            await db.Orders.AddAsync(o);
+            await db.OrderDetails.AddAsync(BuildOrderDetail(orderId, "P-QUAL", 80));
+            await db.MembershipSubscriptions.AddAsync(BuildPendingSubscription(subId, memberId));
+        }
+
+        await SeedPendingAsync("AMB-CHILD1", "child1@example.com", "ORD-C1", "SUB-C1");
+        await SeedPendingAsync("AMB-CHILD2", "child2@example.com", "ORD-C2", "SUB-C2");
+        await db.SaveChangesAsync();
+
+        var userMgr = UserManagerHelper.Create();
+        userMgr.Setup(u => u.FindByEmailAsync("child1@example.com"))
+               .ReturnsAsync(BuildInactiveUser("AMB-CHILD1", "child1@example.com"));
+        userMgr.Setup(u => u.FindByEmailAsync("child2@example.com"))
+               .ReturnsAsync(BuildInactiveUser("AMB-CHILD2", "child2@example.com"));
+        userMgr.Setup(u => u.UpdateAsync(It.IsAny<ApplicationUser>()))
+               .ReturnsAsync(IdentityResult.Success);
+
+        var handler = new CompleteSignupHandler(
+            db, BuildDateTimeMock().Object, BuildS3Mock().Object,
+            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object,
+            userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
+            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object);
+
+        var r1 = await handler.Handle(new CompleteSignupCommand("ORD-C1", BuildRequest()), CancellationToken.None);
+        var r2 = await handler.Handle(new CompleteSignupCommand("ORD-C2", BuildRequest()), CancellationToken.None);
+
+        r1.IsSuccess.Should().BeTrue();
+        r2.IsSuccess.Should().BeTrue();
+
+        var sponsorStats = await db.MemberStatistics
+            .FirstOrDefaultAsync(s => s.MemberId == sponsorId);
+
+        sponsorStats.Should().NotBeNull(
+            "the sponsor's ancestor row must exist after the first child completes");
+        sponsorStats!.EnrollmentPoints.Should().Be(20,
+            "both children carry 10 qual points and increments must accumulate, not overwrite");
+        sponsorStats.EnrollmentTeamSize.Should().Be(2,
+            "EnrollmentTeamSize must increment by 1 per descendant");
+        sponsorStats.QualifiedSponsoredMembers.Should().Be(2,
+            "QualifiedSponsoredMembers must increment once per directly-sponsored ambassador");
+    }
 }
 

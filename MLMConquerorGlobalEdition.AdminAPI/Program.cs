@@ -12,6 +12,7 @@ using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Identity;
 using MLMConquerorGlobalEdition.Repository.Services;
 using FluentValidation;
+using FluentValidation.AspNetCore;
 using MLMConquerorGlobalEdition.SharedKernel.Behaviors;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SharedKernel.Logging;
@@ -57,6 +58,9 @@ builder.Services.AddMediatR(cfg =>
 });
 
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+// Run DTO-level validators automatically on every model-binding (defense-in-depth
+// against injection / oversize payloads BEFORE handlers execute).
+builder.Services.AddFluentValidationAutoValidation();
 
 
 builder.Services.AddHttpContextAccessor();

@@ -1,16 +1,16 @@
+using Hangfire;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.RankEngine.DTOs;
 using MLMConquerorGlobalEdition.RankEngine.Features.GenerateCertificate;
+using MLMConquerorGlobalEdition.RankEngine.Jobs;
 using MLMConquerorGlobalEdition.RankEngine.Mappings;
 using MLMConquerorGlobalEdition.RankEngine.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.SharedKernel;
 using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
-using IEmailService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IEmailService;
-using IPushNotificationService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IPushNotificationService;
 
 namespace MLMConquerorGlobalEdition.RankEngine.Features.EvaluateRank;
 
@@ -21,9 +21,9 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
     private readonly ICurrentUserService _currentUser;
     private readonly IRankQualificationService _qualification;
     private readonly ICacheService _cache;
-    private readonly IPushNotificationService _push;
-    private readonly IEmailService _email;
     private readonly ISender _mediator;
+    private readonly IBackgroundJobClient _jobs;
+    private readonly ILogger<EvaluateRankHandler> _logger;
 
     public EvaluateRankHandler(
         AppDbContext db,
@@ -31,18 +31,18 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
         ICurrentUserService currentUser,
         IRankQualificationService qualification,
         ICacheService cache,
-        IPushNotificationService push,
-        IEmailService email,
-        ISender mediator)
+        ISender mediator,
+        IBackgroundJobClient jobs,
+        ILogger<EvaluateRankHandler> logger)
     {
         _db = db;
         _dateTime = dateTime;
         _currentUser = currentUser;
         _qualification = qualification;
         _cache = cache;
-        _push = push;
-        _email = email;
         _mediator = mediator;
+        _jobs = jobs;
+        _logger = logger;
     }
 
     public async Task<Result<RankEvaluationResponse>> Handle(EvaluateRankCommand command, CancellationToken ct)
@@ -130,34 +130,48 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
         // Invalidate rank cache for this member
         await _cache.RemoveAsync(CacheKeys.MemberRank(command.MemberId), ct);
 
-        // Notify member of rank achievement
-        _ = _push.SendAsync(
-            command.MemberId,
-            NotificationEvents.RankAchieved,
-            "Rank Achieved!",
-            $"Congratulations! You have achieved the '{highestQualifiedRank.Name}' rank.",
-            ct);
+        // Generate the achievement certificate synchronously: it shares this scope's
+        // AppDbContext (safe because awaited sequentially), and the cert is the user-
+        // visible deliverable of a promotion — we want it on disk before we return.
+        // A cert failure is logged but never aborts the promotion (admin can regenerate).
+        try
+        {
+            var certResult = await _mediator.Send(new GenerateCertificateCommand(rankHistory.Id), ct);
+            if (!certResult.IsSuccess)
+                _logger.LogWarning(
+                    "Certificate generation failed for member {MemberId}, rank '{Rank}': {Code} — {Error}",
+                    command.MemberId, highestQualifiedRank.Name, certResult.ErrorCode, certResult.Error);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Certificate generation threw for member {MemberId}, rank '{Rank}'.",
+                command.MemberId, highestQualifiedRank.Name);
+        }
 
-        // Auto-generate achievement certificate (fire-and-forget; failure is non-blocking)
-        _ = _mediator.Send(new GenerateCertificateCommand(rankHistory.Id), ct);
+        // ── Notifications: decoupled via Hangfire ────────────────────────────────────
+        // Push / email / upline notifications are enqueued as separate Hangfire jobs
+        // (RankNotificationJobs). Each job runs on its OWN DI scope with its OWN
+        // AppDbContext and gets Hangfire's retry / durability for free. This keeps the
+        // evaluation path fast under signup-burst load: dozens of simultaneous signups
+        // produce dozens of queue entries → ProcessRankQueueJob churns through them
+        // quickly because each EvaluateRank call no longer waits on notification I/O.
 
-        // Send congratulatory email to the ambassador
-        var memberFullName = $"{member.FirstName} {member.LastName}".Trim();
-        _ = _email.SendAsync(
-            member.Email,
-            memberFullName,
-            "en",
-            NotificationEvents.RankAchieved,
-            new Dictionary<string, string>
-            {
-                ["FullName"]   = memberFullName,
-                ["RankName"]   = highestQualifiedRank.Name,
-                ["AchievedAt"] = now.ToString("MMMM dd, yyyy")
-            },
-            ct);
+        _jobs.Enqueue<RankNotificationJobs>(j =>
+            j.NotifyRankAchievedAsync(command.MemberId, highestQualifiedRank.Name));
 
-        // Notify all unique uplines (enrollment tree + dual team — deduplicated)
-        await NotifyUplines(command.MemberId, highestQualifiedRank.Name, ct);
+        _jobs.Enqueue<RankNotificationJobs>(j =>
+            j.SendRankAchievedEmailAsync(command.MemberId, highestQualifiedRank.Name, now));
+
+        // Upline notifications — we still compute the upline set here (one DB read on
+        // this scope, safe), then enqueue one job per unique upline so the fan-out
+        // happens across Hangfire workers, not serially in this handler.
+        var uplines = await ComputeAllUplinesAsync(command.MemberId, ct);
+        foreach (var uplineMemberId in uplines)
+        {
+            _jobs.Enqueue<RankNotificationJobs>(j =>
+                j.NotifyUplineRankAchievedAsync(uplineMemberId, highestQualifiedRank.Name));
+        }
 
         return Result<RankEvaluationResponse>.Success(new RankEvaluationResponse
         {
@@ -173,10 +187,10 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
     }
 
     /// <summary>
-    /// Collects all ancestor MemberIds from both the enrollment tree and dual-team tree,
-    /// deduplicates them, and sends one UplineRankAchieved push notification per unique upline.
+    /// Collects all unique ancestor MemberIds from both the enrollment tree and the
+    /// dual-team tree, deduplicated. Pure computation — no notifications fired here.
     /// </summary>
-    private async Task NotifyUplines(string memberId, string rankName, CancellationToken ct)
+    private async Task<List<string>> ComputeAllUplinesAsync(string memberId, CancellationToken ct)
     {
         var genealogyNode = await _db.GenealogyTree
             .AsNoTracking()
@@ -189,17 +203,7 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
         var genealogyUplines = ParseAncestors(genealogyNode?.HierarchyPath, memberId);
         var dualTeamUplines  = ParseAncestors(dualTeamNode?.HierarchyPath, memberId);
 
-        var allUplines = genealogyUplines.Union(dualTeamUplines).ToList();
-
-        foreach (var uplineMemberId in allUplines)
-        {
-            _ = _push.SendAsync(
-                uplineMemberId,
-                NotificationEvents.UplineRankAchieved,
-                "Team Member Rank Achievement!",
-                $"A member in your team has achieved the '{rankName}' rank.",
-                ct);
-        }
+        return genealogyUplines.Union(dualTeamUplines).ToList();
     }
 
     /// <summary>

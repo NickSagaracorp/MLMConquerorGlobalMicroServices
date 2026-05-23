@@ -776,4 +776,70 @@ public class SignupAmbassadorHandlerTests
         var member = await db.MemberProfiles.FirstAsync(m => m.MemberId == result.Value!.MemberId);
         member.SponsorMemberId.Should().Be("AMB-000099");
     }
+
+    /// <summary>
+    /// Sprint-15 Bug D — a sponsor-less ambassador signup must seed a
+    /// <see cref="DualTeamEntity"/> root row so the binary tree has a root
+    /// to accumulate leg points and so downstream PlaceMember calls can
+    /// find it. Previously only <see cref="GenealogyEntity"/> was created
+    /// and the binary tree was left empty for the root.
+    /// </summary>
+    [Fact]
+    public async Task Handle_WhenNoSponsor_CreatesDualTeamRootRow()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await db.MembershipLevels.AddAsync(BuildLevel());
+        await db.SaveChangesAsync();
+
+        var handler = BuildHandler(db);
+        var result  = await handler.Handle(
+            new SignupAmbassadorCommand(BuildRequest(sponsorSlug: null, slug: "root-amb")),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+
+        var dualNode = await db.DualTeamTree
+            .FirstOrDefaultAsync(d => d.MemberId == result.Value!.MemberId);
+
+        dualNode.Should().NotBeNull(
+            "a sponsor-less signup must seed the binary tree's root node — " +
+            "see RootAmbassadorSeeder for the canonical shape.");
+        dualNode!.ParentMemberId.Should().BeNull();
+        dualNode.HierarchyPath.Should().Be($"/{result.Value!.MemberId}/");
+        dualNode.LeftLegPoints.Should().Be(0);
+        dualNode.RightLegPoints.Should().Be(0);
+    }
+
+    /// <summary>
+    /// Sprint-15 Bug D — companion negative case. When a sponsor IS resolved
+    /// we deliberately do NOT auto-create a binary node — placement
+    /// (auto or manual) is a separate explicit step and writes the dual-tree
+    /// node itself. Re-asserts the existing contract didn't drift.
+    /// </summary>
+    [Fact]
+    public async Task Handle_WhenSponsorResolved_DoesNotCreateDualTeamRow()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        var sponsor = BuildSponsor("AMB-000077", slug: "sponsor-site");
+        await db.MemberProfiles.AddAsync(sponsor);
+        await db.MembershipLevels.AddAsync(BuildLevel());
+        await db.GenealogyTree.AddAsync(new GenealogyEntity {
+            MemberId = "AMB-000077", HierarchyPath = "/AMB-000077/", Level = 1,
+            CreatedBy = "seed", CreationDate = FixedNow, LastUpdateDate = FixedNow });
+        await db.SaveChangesAsync();
+
+        var handler = BuildHandler(db);
+        var result  = await handler.Handle(
+            new SignupAmbassadorCommand(BuildRequest(sponsorSlug: "sponsor-site", slug: "downline-amb")),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+
+        var dualNode = await db.DualTeamTree
+            .FirstOrDefaultAsync(d => d.MemberId == result.Value!.MemberId);
+
+        dualNode.Should().BeNull(
+            "a sponsored signup must NOT auto-populate the binary tree — " +
+            "PlaceMember is a separate explicit step.");
+    }
 }

@@ -27,6 +27,16 @@
         <button class="btn btn-primary btn-sm" @onclick="() => { _page = 1; _ = LoadAsync(); }">
             <i class="ri-search-line me-1"></i>Search
         </button>
+        @* Page size capped at 100. Higher values (e.g. 250) overload SfGrid's     *@
+        @* Excel-style filter index on a 15-column template-heavy grid and freeze the *@
+        @* SignalR circuit. Server-side cap mirrors this in GetMembersHandler.        *@
+        <select class="form-select form-select-sm w-auto" style="min-width:110px"
+                title="Rows per page"
+                @bind="_pageSize" @bind:after="() => { _page = 1; _ = LoadAsync(); }">
+            <option value="25">25 / page</option>
+            <option value="50">50 / page</option>
+            <option value="100">100 / page</option>
+        </select>
         <button type="button"
                 class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
                 title="Refresh from server"
@@ -55,8 +65,7 @@
         else
         {
             <SfGrid TValue="AdminMemberDto" DataSource="@_members"
-                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
-                <GridPageSettings PageSize="50" PageSizes="@(new int[]{50,100,250,500,1000})" />
+                    AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
                 <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
                 <GridColumns>
                     <GridColumn Field="@nameof(AdminMemberDto.MemberId)" HeaderText="Member ID" Width="130" AllowFiltering="true">
@@ -185,22 +194,36 @@
                 </GridColumns>
             </SfGrid>
 
-            @if (_totalPages > 1)
+            @if (_totalCount > 0)
             {
-                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
-                    <small class="text-muted">@_totalCount members — Page @_page of @_totalPages</small>
-                    <nav>
-                        <ul class="pagination pagination-sm mb-0">
-                            <li class="page-item @(_page == 1 ? "disabled" : "")">
-                                <button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button>
-                            </li>
-                            @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
-                            { var pg = i; <li class="page-item @(_page == pg ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(pg)">@pg</button></li> }
-                            <li class="page-item @(_page == _totalPages ? "disabled" : "")">
-                                <button class="page-link" @onclick="() => ChangePage(_page + 1)">›</button>
-                            </li>
-                        </ul>
-                    </nav>
+                var fromRow = ((_page - 1) * _pageSize) + 1;
+                var toRow   = Math.Min(_page * _pageSize, _totalCount);
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light flex-wrap gap-2">
+                    <small class="text-muted">
+                        Showing <strong>@fromRow–@toRow</strong> of <strong>@_totalCount</strong> members
+                        — Page @_page of @_totalPages
+                    </small>
+                    @if (_totalPages > 1)
+                    {
+                        <nav>
+                            <ul class="pagination pagination-sm mb-0">
+                                <li class="page-item @(_page == 1 ? "disabled" : "")">
+                                    <button class="page-link" @onclick="() => ChangePage(1)" title="First">«</button>
+                                </li>
+                                <li class="page-item @(_page == 1 ? "disabled" : "")">
+                                    <button class="page-link" @onclick="() => ChangePage(_page - 1)" title="Previous">‹</button>
+                                </li>
+                                @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
+                                { var pg = i; <li class="page-item @(_page == pg ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(pg)">@pg</button></li> }
+                                <li class="page-item @(_page == _totalPages ? "disabled" : "")">
+                                    <button class="page-link" @onclick="() => ChangePage(_page + 1)" title="Next">›</button>
+                                </li>
+                                <li class="page-item @(_page == _totalPages ? "disabled" : "")">
+                                    <button class="page-link" @onclick="() => ChangePage(_totalPages)" title="Last">»</button>
+                                </li>
+                            </ul>
+                        </nav>
+                    }
                 </div>
             }
         }
@@ -212,7 +235,7 @@
     private bool    _loading           = true;
     private string? _error;
     private int     _page              = 1;
-    private const int PageSize         = 20;
+    private int     _pageSize          = 50;
     private int     _totalCount;
     private int     _totalPages        = 1;
     private string  _search            = string.Empty;
@@ -231,10 +254,15 @@
 
     private async Task LoadAsync(bool bypassCache = false)
     {
+        // Defensive cap mirroring the server-side guard. If something ever bypasses
+        // the dropdown (state restoration, URL tampering, future code change) we still
+        // refuse to ask the API for more rows than the grid can render safely.
+        if (_pageSize > 100) _pageSize = 100;
+
         _loading = true; _error = null; StateHasChanged();
         try
         {
-            var url = $"api/v1/admin/members?page={_page}&pageSize={PageSize}";
+            var url = $"api/v1/admin/members?page={_page}&pageSize={_pageSize}";
             if (!string.IsNullOrWhiteSpace(_statusFilter)) url += $"&status={_statusFilter}";
             if (!string.IsNullOrWhiteSpace(_search))       url += $"&search={Uri.EscapeDataString(_search)}";
             if (bypassCache)                                url += "&bypassCache=true";
@@ -248,7 +276,13 @@
             else { _error = resp?.Errors?.FirstOrDefault() ?? "Failed to load members."; }
         }
         catch (Exception ex) { _error = $"API error: {ex.Message}"; }
-        finally { _loading = false; }
+        finally
+        {
+            // Guarantee the spinner is dismissed and the UI re-renders even if the
+            // caller doesn't await us or a downstream component throws during render.
+            _loading = false;
+            StateHasChanged();
+        }
     }
 
     private async Task ChangePage(int p) { if (p < 1 || p > _totalPages) return; _page = p; await LoadAsync(); }

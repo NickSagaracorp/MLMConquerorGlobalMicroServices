@@ -1,3 +1,4 @@
+using Hangfire;
 using MediatR;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
@@ -8,8 +9,6 @@ using MLMConquerorGlobalEdition.RankEngine.Services;
 using MLMConquerorGlobalEdition.RankEngine.Tests.Helpers;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
-using IEmailService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IEmailService;
-using IPushNotificationService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IPushNotificationService;
 
 namespace MLMConquerorGlobalEdition.RankEngine.Tests.Features;
 
@@ -39,25 +38,17 @@ public class EvaluateRankHandlerTests
         return m;
     }
 
-    private static Mock<IPushNotificationService> BuildPush()
+    /// <summary>
+    /// IBackgroundJobClient mock — Enqueue&lt;T&gt; is an extension that calls Create(...)
+    /// internally; we stub Create to return a fake job id so the extension is happy.
+    /// </summary>
+    private static Mock<IBackgroundJobClient> BuildJobs()
     {
-        var m = new Mock<IPushNotificationService>();
-        m.Setup(p => p.SendAsync(
-                It.IsAny<string>(), It.IsAny<string>(),
-                It.IsAny<string>(), It.IsAny<string>(),
-                It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-        return m;
-    }
-
-    private static Mock<IEmailService> BuildEmail()
-    {
-        var m = new Mock<IEmailService>();
-        m.Setup(e => e.SendAsync(
-                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
-                It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
-                It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+        var m = new Mock<IBackgroundJobClient>();
+        m.Setup(c => c.Create(
+                It.IsAny<Hangfire.Common.Job>(),
+                It.IsAny<Hangfire.States.IState>()))
+            .Returns("test-job-id");
         return m;
     }
 
@@ -89,9 +80,9 @@ public class EvaluateRankHandlerTests
             BuildUser().Object,
             BuildQualification(db),
             BuildCache().Object,
-            BuildPush().Object,
-            BuildEmail().Object,
-            BuildMediator().Object);
+            BuildMediator().Object,
+            BuildJobs().Object,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<EvaluateRankHandler>.Instance);
     }
 
     /// <summary>Gives a member an Active membership worth enough PCP to clear the gate (>= 12).</summary>
@@ -285,7 +276,8 @@ public class EvaluateRankHandlerTests
         var handler = new EvaluateRankHandler(
             db, BuildClock().Object, BuildUser().Object,
             BuildQualification(db), cache.Object,
-            BuildPush().Object, BuildEmail().Object, BuildMediator().Object);
+            BuildMediator().Object, BuildJobs().Object,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<EvaluateRankHandler>.Instance);
 
         await handler.Handle(new EvaluateRankCommand("AMB-001"), CancellationToken.None);
 
