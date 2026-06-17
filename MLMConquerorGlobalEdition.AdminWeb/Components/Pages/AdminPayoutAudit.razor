@@ -1,0 +1,738 @@
+@page "/admin/billing/payout-audit"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin,BillingManager")]
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<PageTitle>Payout Audit — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Billing"), new("Payout Audit") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+@* ── Receipt auto-send toggle ─────────────────────────────────────────────── *@
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-3 d-flex align-items-center gap-3 flex-wrap">
+        <div class="flex-grow-1">
+            <span class="fw-semibold"><i class="ri-mail-send-line me-2 text-primary"></i>Auto-send receipt emails</span>
+            <div class="small text-muted">When enabled, a receipt email is sent automatically each time a payout completes.</div>
+        </div>
+        <div class="form-check form-switch fs-5 mb-0">
+            <input class="form-check-input" type="checkbox" role="switch" id="autoSendToggle"
+                   checked="@_autoSend" disabled="@_autoSendBusy"
+                   @onchange="OnAutoSendToggled" />
+            <label class="form-check-label small fw-semibold ms-1" for="autoSendToggle">
+                @if (_autoSendBusy) { <span class="spinner-border spinner-border-sm"></span> }
+                else { @(_autoSend ? "On" : "Off") }
+            </label>
+        </div>
+    </div>
+</div>
+
+@* ── Filters ──────────────────────────────────────────────────────────────── *@
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-3">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label fw-semibold small mb-1">From</label>
+                <input type="date" class="form-control form-control-sm" @bind="_from" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-semibold small mb-1">To</label>
+                <input type="date" class="form-control form-control-sm" @bind="_to" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-semibold small mb-1">Ambassador (Member ID)</label>
+                <input class="form-control form-control-sm" @bind="_memberId" placeholder="optional" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-semibold small mb-1">Gateway</label>
+                <select class="form-select form-select-sm" @bind="_walletFilter">
+                    <option value="">All gateways</option>
+                    @foreach (var w in WalletTypes)
+                    {
+                        <option value="@w">@GatewayLabel(w)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-semibold small mb-1">Outcome</label>
+                <select class="form-select form-select-sm" @bind="_outcomeFilter">
+                    <option value="">All</option>
+                    <option value="Success">Success</option>
+                    <option value="Failed">Failed</option>
+                    <option value="Pending">Pending</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-primary btn-sm w-100" @onclick="Search" disabled="@_loading">
+                    @if (_loading) { <span class="spinner-border spinner-border-sm me-1"></span> } else { <i class="ri-search-line me-1"></i> }
+                    Search
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ── Audit table ──────────────────────────────────────────────────────────── *@
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2 flex-wrap">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-shield-check-line me-2 text-primary"></i>Payout audit trail
+        </h6>
+        <span class="small text-muted">@_totalCount records</span>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="PayoutAuditRowDto" DataSource="@_items"
+                    AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridEvents TValue="PayoutAuditRowDto" RowSelected="OnRowSelected" />
+                <GridSelectionSettings Type="Syncfusion.Blazor.Grids.SelectionType.Single" />
+                <GridColumns>
+                    <GridColumn HeaderText="Process date (UTC)" Width="150">
+                        <Template>
+                            @{ var r = (PayoutAuditRowDto)context; }
+                            <span class="small">@r.ProcessDateUtc.ToString("yyyy-MM-dd HH:mm")</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Ambassador" Width="150">
+                        <Template>
+                            @{ var r = (PayoutAuditRowDto)context; }
+                            <a href="/admin/members/@r.MemberId" target="_blank" rel="noopener"
+                               class="text-primary text-decoration-none" @onclick:stopPropagation="true">
+                                <code class="small">@r.MemberId</code>
+                            </a>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Gateway" Width="150">
+                        <Template><span class="small">@GatewayLabel(((PayoutAuditRowDto)context).WalletTypeSnapshot)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Amount" Width="110" TextAlign="TextAlign.Right">
+                        <Template><span class="fw-semibold">@(((PayoutAuditRowDto)context).AmountUsd.ToString("C"))</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Outcome" Width="120" TextAlign="TextAlign.Center">
+                        <Template>@RenderOutcome(((PayoutAuditRowDto)context).Outcome)</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Receipt" Width="90" TextAlign="TextAlign.Center">
+                        <Template>
+                            @if (((PayoutAuditRowDto)context).HasReceipt)
+                            {
+                                <i class="ri-file-text-line text-success fs-5" title="Receipt available"></i>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">—</span>
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Anchored" Width="100" TextAlign="TextAlign.Center">
+                        <Template>
+                            @if (((PayoutAuditRowDto)context).Anchored)
+                            {
+                                <i class="ri-anchor-line text-primary fs-5" title="Anchored to immutable chain"></i>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">—</span>
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="" Width="90" TextAlign="TextAlign.Center">
+                        <Template>
+                            @{ var r = (PayoutAuditRowDto)context; }
+                            <button class="btn btn-sm btn-outline-primary py-0" @onclick="() => OpenDetail(r.PayoutAttemptId, r.MemberId)" @onclick:stopPropagation="true">
+                                <i class="ri-eye-line me-1"></i>View
+                            </button>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+
+            @if (_items.Count == 0)
+            {
+                <div class="text-center text-muted py-4">No payout records for the selected filters.</div>
+            }
+
+            @if (_totalPages > 1)
+            {
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
+                    <small class="text-muted">@_totalCount records — Page @_page of @_totalPages</small>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>
+                            @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
+                            { var pg = i; <li class="page-item @(_page == pg ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(pg)">@pg</button></li> }
+                            <li class="page-item @(_page == _totalPages ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page + 1)">›</button></li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+        }
+    </div>
+    <div class="card-footer bg-light small text-muted">
+        Read-only immutable audit. Snapshots are frozen at the moment of payout and cannot be altered.
+    </div>
+</div>
+
+@* ── Detail drawer (offcanvas) ────────────────────────────────────────────── *@
+@if (_showDetail)
+{
+    <div class="offcanvas-backdrop fade show" @onclick="CloseDetail"></div>
+    <div class="offcanvas offcanvas-end show d-block" tabindex="-1" style="visibility:visible;width:min(640px,95vw)">
+        <div class="offcanvas-header border-bottom">
+            <h5 class="offcanvas-title fw-bold">
+                <i class="ri-receipt-line me-2 text-primary"></i>Payout detail
+            </h5>
+            <button type="button" class="btn-close" @onclick="CloseDetail"></button>
+        </div>
+        <div class="offcanvas-body">
+            @if (_detailLoading)
+            {
+                <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+            }
+            else if (_detail is null)
+            {
+                <div class="alert alert-warning">Detail could not be loaded.</div>
+            }
+            else
+            {
+                var d = _detail;
+
+                @* ── Authenticity badge ── *@
+                <div class="mb-3">
+                    @if (_verify is null)
+                    {
+                        <button class="btn btn-outline-primary btn-sm" @onclick="VerifyAsync" disabled="@_verifyBusy">
+                            @if (_verifyBusy) { <span class="spinner-border spinner-border-sm me-1"></span> } else { <i class="ri-shield-keyhole-line me-1"></i> }
+                            Verify authenticity
+                        </button>
+                    }
+                    else if (_verify.HasReceipt && !_verify.HashMatches)
+                    {
+                        <div class="alert alert-danger d-flex align-items-start mb-0">
+                            <i class="ri-alarm-warning-fill fs-3 me-2"></i>
+                            <div>
+                                <div class="fw-bold text-uppercase">Tampered — hash mismatch</div>
+                                <div class="small">@(_verify.Detail ?? "The stored receipt hash does not match the recomputed value.")</div>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                            @if (_verify.HasReceipt)
+                            {
+                                <span class="badge bg-success"><i class="ri-checkbox-circle-line me-1"></i>Hash OK</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">No receipt</span>
+                            }
+                            <span class="badge @(_verify.ChainValid ? "bg-success" : "bg-secondary")">
+                                <i class="ri-link me-1"></i>@(_verify.ChainValid ? "Chain valid" : "Chain n/a")
+                            </span>
+                            <span class="badge @(_verify.Anchored ? "bg-success" : "bg-secondary")">
+                                <i class="ri-anchor-line me-1"></i>@(_verify.Anchored ? "Anchored" : "Not anchored")
+                            </span>
+                            <button class="btn btn-link btn-sm p-0 ms-1" @onclick="VerifyAsync" disabled="@_verifyBusy" title="Re-verify">
+                                <i class="ri-refresh-line"></i>
+                            </button>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(_verify.AnchorRef))
+                        {
+                            <div class="small text-muted mt-1">Anchor ref: <code>@_verify.AnchorRef</code></div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(_verify.Detail))
+                        {
+                            <div class="small text-muted mt-1">@_verify.Detail</div>
+                        }
+                    }
+                </div>
+
+                @* ── Actions ── *@
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    @if (d.HasReceipt || _detailHasReceipt)
+                    {
+                        <button class="btn btn-outline-success btn-sm" @onclick="DownloadReceiptAsync" disabled="@_downloadBusy">
+                            @if (_downloadBusy) { <span class="spinner-border spinner-border-sm me-1"></span> } else { <i class="ri-download-2-line me-1"></i> }
+                            Download receipt
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" @onclick="ResendReceiptAsync" disabled="@_resendBusy">
+                            @if (_resendBusy) { <span class="spinner-border spinner-border-sm me-1"></span> } else { <i class="ri-mail-send-line me-1"></i> }
+                            Resend email
+                        </button>
+                    }
+                    else
+                    {
+                        <span class="small text-muted align-self-center">No receipt available for this payout.</span>
+                    }
+                </div>
+
+                @* ── Immutable snapshot ── *@
+                <h6 class="fw-bold border-bottom pb-1 mb-2"><i class="ri-lock-line me-1 text-muted"></i>Frozen snapshot</h6>
+                <dl class="row small mb-3">
+                    <dt class="col-5 text-muted">Attempt ID</dt><dd class="col-7"><code>@d.PayoutAttemptId</code></dd>
+                    <dt class="col-5 text-muted">Member</dt>
+                    <dd class="col-7"><a href="/admin/members/@d.MemberId" target="_blank" rel="noopener" class="text-primary"><code>@d.MemberId</code></a></dd>
+                    <dt class="col-5 text-muted">Gateway (snapshot)</dt><dd class="col-7">@GatewayLabel(d.WalletTypeSnapshot)</dd>
+                    <dt class="col-5 text-muted">Account (snapshot)</dt><dd class="col-7"><span class="text-break">@(d.PayoutAccountSnapshot ?? "—")</span></dd>
+                    <dt class="col-5 text-muted">Account meta (snapshot)</dt><dd class="col-7"><span class="text-break">@(d.PayoutAccountMetaSnapshot ?? "—")</span></dd>
+                    <dt class="col-5 text-muted">Disbursement mode</dt><dd class="col-7">@(d.DisbursementMode ?? "—")</dd>
+                </dl>
+
+                @* ── Amounts & outcome ── *@
+                <h6 class="fw-bold border-bottom pb-1 mb-2"><i class="ri-money-dollar-circle-line me-1 text-muted"></i>Amounts &amp; outcome</h6>
+                <dl class="row small mb-3">
+                    <dt class="col-5 text-muted">Amount (USD)</dt><dd class="col-7 fw-semibold">@d.AmountUsd.ToString("C")</dd>
+                    <dt class="col-5 text-muted">Outcome</dt><dd class="col-7">@RenderOutcome(d.Outcome)</dd>
+                    <dt class="col-5 text-muted">Process date (UTC)</dt><dd class="col-7">@d.ProcessDateUtc.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+                    <dt class="col-5 text-muted">Completed (UTC)</dt><dd class="col-7">@(d.CompletedAtUtc?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—")</dd>
+                    <dt class="col-5 text-muted">Gateway txn</dt><dd class="col-7"><code class="text-break">@(d.GatewayTransactionId ?? "—")</code></dd>
+                    @if (!string.IsNullOrWhiteSpace(d.GatewayErrorCode) || !string.IsNullOrWhiteSpace(d.GatewayErrorMessage))
+                    {
+                        <dt class="col-5 text-muted">Gateway error code</dt><dd class="col-7 text-danger fw-semibold">@(d.GatewayErrorCode ?? "—")</dd>
+                        <dt class="col-5 text-muted">Gateway error message</dt><dd class="col-7 text-danger">@(d.GatewayErrorMessage ?? "—")</dd>
+                    }
+                </dl>
+
+                @* ── Receipt chain refs ── *@
+                @if (!string.IsNullOrWhiteSpace(d.ReceiptSha256) || d.LedgerSeq is not null || !string.IsNullOrWhiteSpace(d.AnchorRef) || !string.IsNullOrWhiteSpace(d.ReceiptUrl))
+                {
+                    <h6 class="fw-bold border-bottom pb-1 mb-2"><i class="ri-fingerprint-line me-1 text-muted"></i>Receipt chain</h6>
+                    <dl class="row small mb-3">
+                        @if (!string.IsNullOrWhiteSpace(d.ReceiptUrl))
+                        {
+                            <dt class="col-5 text-muted">Receipt URL</dt><dd class="col-7 text-break"><code>@d.ReceiptUrl</code></dd>
+                        }
+                        <dt class="col-5 text-muted">SHA-256</dt><dd class="col-7 text-break"><code>@(d.ReceiptSha256 ?? "—")</code></dd>
+                        <dt class="col-5 text-muted">Ledger seq</dt><dd class="col-7">@(d.LedgerSeq?.ToString() ?? "—")</dd>
+                        <dt class="col-5 text-muted">Anchor ref</dt><dd class="col-7 text-break"><code>@(d.AnchorRef ?? "—")</code></dd>
+                    </dl>
+                }
+
+                @* ── Itemized earnings ── *@
+                <h6 class="fw-bold border-bottom pb-1 mb-2"><i class="ri-list-check-2 me-1 text-muted"></i>Earnings (@(d.Earnings?.Count ?? 0))</h6>
+                @if (d.Earnings is { Count: > 0 })
+                {
+                    <table class="table table-sm small mb-3">
+                        <thead><tr><th>Commission earning ID</th><th class="text-end">Amount</th></tr></thead>
+                        <tbody>
+                            @foreach (var e in d.Earnings)
+                            {
+                                <tr><td><code class="small">@e.CommissionEarningId</code></td><td class="text-end">@e.Amount.ToString("C")</td></tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr class="fw-semibold border-top">
+                                <td>Total</td>
+                                <td class="text-end">@d.Earnings.Sum(e => e.Amount).ToString("C")</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                }
+                else
+                {
+                    <div class="text-muted small mb-3">No itemized earnings recorded.</div>
+                }
+
+                @* ── Member gateway history (indexed by member, not this payout) ── *@
+                <h6 class="fw-bold border-bottom pb-1 mb-2">
+                    <i class="ri-history-line me-1 text-muted"></i>Member gateway history
+                </h6>
+                <div class="small text-muted mb-2">
+                    Gateway call log for this member across all payouts (the log is indexed by member, not by this single payout).
+                </div>
+                @if (_gatewayLogLoading)
+                {
+                    <div class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+                }
+                else if (_gatewayLog is { Count: > 0 })
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm small mb-0">
+                            <thead>
+                                <tr>
+                                    <th>When (UTC)</th><th>Gateway</th><th>Operation</th>
+                                    <th class="text-center">HTTP</th><th class="text-center">OK</th>
+                                    <th class="text-end">ms</th><th>Error</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var l in _gatewayLog)
+                                {
+                                    <tr>
+                                        <td class="text-nowrap">@l.CreationDate.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                        <td>@GatewayLabel(l.WalletType)</td>
+                                        <td>@l.Operation</td>
+                                        <td class="text-center">@l.HttpStatusCode</td>
+                                        <td class="text-center">
+                                            @if (l.Success) { <i class="ri-check-line text-success"></i> } else { <i class="ri-close-line text-danger"></i> }
+                                        </td>
+                                        <td class="text-end">@l.DurationMs</td>
+                                        <td class="text-danger">@(l.ErrorMessage ?? "—")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-muted small">No gateway calls logged for this member.</div>
+                }
+            }
+        </div>
+    </div>
+}
+
+@code {
+    // WalletType enum NAMES — AdminAPI serializes enums as names (JsonStringEnumConverter).
+    private static readonly string[] WalletTypes =
+    {
+        "Dwolla", "Propay", "WireTransferCanada", "eWallet",
+        "Paypal", "Volet", "Yestransfer", "Crypto", "Advancash"
+    };
+
+    private static readonly Dictionary<string, string> GatewayLabels = new()
+    {
+        ["Dwolla"]             = "Dwolla",
+        ["Propay"]             = "ProPay",
+        ["WireTransferCanada"] = "Wire Transfer (Canada)",
+        ["eWallet"]            = "eWallet (I-Payout)",
+        ["Paypal"]             = "PayPal",
+        ["Volet"]              = "Volet",
+        ["Yestransfer"]        = "Yestransfer",
+        ["Crypto"]             = "Crypto",
+        ["Advancash"]          = "AdvCash"
+    };
+
+    private const int PageSize = 20;
+
+    // Filters
+    private DateTime? _from;
+    private DateTime? _to;
+    private string _memberId = string.Empty;
+    private string _walletFilter = string.Empty;
+    private string _outcomeFilter = string.Empty;
+
+    private bool _loading = true;
+    private string? _alertMsg;
+    private bool _alertIsError;
+
+    private List<PayoutAuditRowDto> _items = new();
+    private int _page = 1;
+    private int _totalCount;
+    private int _totalPages = 1;
+
+    // Auto-send setting
+    private bool _autoSend;
+    private bool _autoSendBusy;
+
+    // Detail drawer
+    private bool _showDetail;
+    private bool _detailLoading;
+    private string? _detailAttemptId;
+    private string? _detailMemberId;
+    private bool _detailHasReceipt;
+    private PayoutAuditDetailDto? _detail;
+
+    private bool _gatewayLogLoading;
+    private List<PayoutGatewayLogDto>? _gatewayLog;
+
+    private ReceiptVerificationDto? _verify;
+    private bool _verifyBusy;
+    private bool _downloadBusy;
+    private bool _resendBusy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(LoadAutoSendAsync(), LoadAsync());
+    }
+
+    private async Task LoadAutoSendAsync()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<bool>>("api/v1/admin/payouts/receipt-email-setting");
+            if (resp?.Success == true) _autoSend = resp.Data;
+        }
+        catch { /* non-fatal — leave toggle off */ }
+    }
+
+    private async Task OnAutoSendToggled(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        var newValue = e.Value is bool b && b;
+        _autoSendBusy = true; StateHasChanged();
+        try
+        {
+            var response = await Http.PutAsJsonAsync("api/v1/admin/payouts/receipt-email-setting", new { autoSend = newValue });
+            if (response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadFromJsonAsync<ApiResp<bool>>();
+                _autoSend = body?.Success == true ? body.Data : newValue;
+                _alertMsg = $"Auto-send receipt emails {(_autoSend ? "enabled" : "disabled")}.";
+                _alertIsError = false;
+            }
+            else
+            {
+                _alertMsg = "Failed to update auto-send setting.";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _autoSendBusy = false; StateHasChanged(); }
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true; _alertMsg = null; StateHasChanged();
+        try
+        {
+            var url = $"api/v1/admin/payouts/audit?page={_page}&pageSize={PageSize}";
+            if (_from is not null) url += $"&from={_from.Value:yyyy-MM-dd}";
+            if (_to is not null) url += $"&to={_to.Value:yyyy-MM-dd}";
+            if (!string.IsNullOrWhiteSpace(_memberId)) url += $"&memberId={Uri.EscapeDataString(_memberId.Trim())}";
+            if (!string.IsNullOrWhiteSpace(_walletFilter)) url += $"&walletType={Uri.EscapeDataString(_walletFilter)}";
+            if (!string.IsNullOrWhiteSpace(_outcomeFilter)) url += $"&outcome={Uri.EscapeDataString(_outcomeFilter)}";
+
+            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<PayoutAuditRowDto>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _items = resp.Data.Items.ToList();
+                _totalCount = resp.Data.TotalCount;
+                _totalPages = resp.Data.TotalPages <= 0 ? 1 : resp.Data.TotalPages;
+            }
+            else
+            {
+                _items = new(); _totalCount = 0; _totalPages = 1;
+                _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load payout audit.";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; StateHasChanged(); }
+    }
+
+    private async Task Search() { _page = 1; await LoadAsync(); }
+
+    private async Task ChangePage(int p) { if (p < 1 || p > _totalPages) return; _page = p; await LoadAsync(); }
+
+    private async Task OnRowSelected(Syncfusion.Blazor.Grids.RowSelectEventArgs<PayoutAuditRowDto> args)
+    {
+        if (args.Data is not null)
+            await OpenDetail(args.Data.PayoutAttemptId, args.Data.MemberId);
+    }
+
+    private async Task OpenDetail(string attemptId, string memberId)
+    {
+        _detailAttemptId = attemptId;
+        _detailMemberId = memberId;
+        _detail = null;
+        _verify = null;
+        _gatewayLog = null;
+        _detailHasReceipt = false;
+        _showDetail = true;
+        _detailLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<PayoutAuditDetailDto>>($"api/v1/admin/payouts/audit/{attemptId}");
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _detail = resp.Data;
+                _detailHasReceipt = !string.IsNullOrWhiteSpace(_detail.ReceiptUrl) || !string.IsNullOrWhiteSpace(_detail.ReceiptSha256);
+            }
+            else
+            {
+                _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load payout detail.";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _detailLoading = false; StateHasChanged(); }
+
+        await LoadGatewayLogAsync(attemptId, memberId);
+    }
+
+    private async Task LoadGatewayLogAsync(string attemptId, string memberId)
+    {
+        _gatewayLogLoading = true; StateHasChanged();
+        try
+        {
+            var url = $"api/v1/admin/payouts/audit/{attemptId}/gateway-log?memberId={Uri.EscapeDataString(memberId)}";
+            var resp = await Http.GetFromJsonAsync<ApiResp<List<PayoutGatewayLogDto>>>(url);
+            if (resp?.Success == true) _gatewayLog = resp.Data ?? new();
+            else _gatewayLog = new();
+        }
+        catch { _gatewayLog = new(); }
+        finally { _gatewayLogLoading = false; StateHasChanged(); }
+    }
+
+    private void CloseDetail() => _showDetail = false;
+
+    private async Task VerifyAsync()
+    {
+        if (_detailAttemptId is null) return;
+        _verifyBusy = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<ReceiptVerificationDto>>($"api/v1/admin/payouts/audit/{_detailAttemptId}/verify");
+            if (resp?.Success == true && resp.Data is not null) _verify = resp.Data;
+            else { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Verification failed."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _verifyBusy = false; StateHasChanged(); }
+    }
+
+    private async Task DownloadReceiptAsync()
+    {
+        if (_detailAttemptId is null) return;
+        _downloadBusy = true; StateHasChanged();
+        try
+        {
+            // Fetch through the authenticated AdminApi client (JWT message handler), then push to browser as a blob.
+            var bytes = await Http.GetByteArrayAsync($"api/v1/admin/payouts/audit/{_detailAttemptId}/receipt");
+            var base64 = Convert.ToBase64String(bytes);
+            await JS.InvokeVoidAsync("mlmDownloadFile", $"payout-receipt-{_detailAttemptId}.pdf", "application/pdf", base64);
+        }
+        catch (Exception ex) { _alertMsg = $"Download failed: {ex.Message}"; _alertIsError = true; StateHasChanged(); }
+        finally { _downloadBusy = false; StateHasChanged(); }
+    }
+
+    private async Task ResendReceiptAsync()
+    {
+        if (_detailAttemptId is null) return;
+        _resendBusy = true; StateHasChanged();
+        try
+        {
+            var response = await Http.PostAsync($"api/v1/admin/payouts/{_detailAttemptId}/receipt/resend", content: null);
+            if (response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadFromJsonAsync<ApiResp<bool>>();
+                if (body?.Success == true && body.Data)
+                {
+                    _alertMsg = "Receipt email re-sent successfully.";
+                    _alertIsError = false;
+                }
+                else
+                {
+                    _alertMsg = body?.Errors?.FirstOrDefault() ?? "Resend returned no confirmation.";
+                    _alertIsError = true;
+                }
+            }
+            else
+            {
+                var body = await response.Content.ReadFromJsonAsync<ApiResp<object>>();
+                _alertMsg = body?.Errors?.FirstOrDefault() ?? $"Resend failed ({(int)response.StatusCode}).";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _resendBusy = false; StateHasChanged(); }
+    }
+
+    private RenderFragment RenderOutcome(string outcome) => builder =>
+    {
+        var seq = 0;
+        builder.OpenElement(seq++, "span");
+        switch (outcome)
+        {
+            case "Success":
+                builder.AddAttribute(seq++, "class", "text-success fw-semibold");
+                builder.AddAttribute(seq++, "title", "Payout succeeded");
+                builder.OpenElement(seq++, "i");
+                builder.AddAttribute(seq++, "class", "ri-checkbox-circle-fill me-1");
+                builder.CloseElement();
+                builder.AddContent(seq++, "Success");
+                break;
+            case "Failed":
+                builder.AddAttribute(seq++, "class", "text-danger fw-semibold");
+                builder.AddAttribute(seq++, "title", "Payout failed");
+                builder.OpenElement(seq++, "i");
+                builder.AddAttribute(seq++, "class", "ri-close-circle-fill me-1");
+                builder.CloseElement();
+                builder.AddContent(seq++, "Failed");
+                break;
+            default:
+                builder.AddAttribute(seq++, "class", "badge bg-warning text-dark");
+                builder.AddContent(seq++, string.IsNullOrWhiteSpace(outcome) ? "Pending" : outcome);
+                break;
+        }
+        builder.CloseElement();
+    };
+
+    private static string GatewayLabel(string? walletType)
+        => walletType is not null && GatewayLabels.TryGetValue(walletType, out var v) ? v : (walletType ?? "—");
+
+    // ── DTO shapes ───────────────────────────────────────────────────────────
+    // WalletType bound as string (enum NAME) per JsonStringEnumConverter.
+
+    private record PayoutAuditRowDto(
+        string PayoutAttemptId,
+        string MemberId,
+        string WalletTypeSnapshot,
+        string? PayoutAccountSnapshot,
+        decimal AmountUsd,
+        string Outcome,
+        DateTime ProcessDateUtc,
+        DateTime? CompletedAtUtc,
+        string? GatewayTransactionId,
+        string? GatewayErrorCode,
+        bool HasReceipt,
+        bool Anchored);
+
+    private record PayoutAuditDetailDto(
+        string PayoutAttemptId,
+        string MemberId,
+        string WalletTypeSnapshot,
+        string? PayoutAccountSnapshot,
+        string? PayoutAccountMetaSnapshot,
+        decimal AmountUsd,
+        string Outcome,
+        DateTime ProcessDateUtc,
+        DateTime? CompletedAtUtc,
+        string? GatewayTransactionId,
+        string? GatewayErrorCode,
+        string? GatewayErrorMessage,
+        string? DisbursementMode,
+        string? ReceiptUrl,
+        string? ReceiptSha256,
+        long? LedgerSeq,
+        string? AnchorRef,
+        bool HasReceipt,
+        List<EarningLine>? Earnings);
+
+    private record EarningLine(string CommissionEarningId, decimal Amount);
+
+    private record PayoutGatewayLogDto(
+        long Id,
+        string WalletType,
+        string Operation,
+        int HttpStatusCode,
+        bool Success,
+        string? ErrorMessage,
+        int DurationMs,
+        DateTime CreationDate);
+
+    private record ReceiptVerificationDto(
+        bool HasReceipt,
+        bool HashMatches,
+        bool ChainValid,
+        bool Anchored,
+        string? AnchorRef,
+        string? Detail);
+
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+}

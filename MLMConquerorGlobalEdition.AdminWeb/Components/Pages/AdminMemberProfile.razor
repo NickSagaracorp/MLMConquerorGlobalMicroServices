@@ -750,6 +750,17 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        // Allow deep-linking straight to a tab via ?tab=... (e.g. from the
+        // Payouts dashboard → /admin/members/{id}?tab=commissions#pending).
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        if (query.TryGetValue("tab", out var tabVal))
+        {
+            var requested = tabVal.ToString();
+            if (_tabs.Any(t => t.Key == requested))
+                _activeTab = requested;
+        }
+
         _loading = true;
         try
         {

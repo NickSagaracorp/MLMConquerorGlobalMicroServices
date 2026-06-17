@@ -22,7 +22,8 @@ public class CommissionCategoryConfiguration : IEntityTypeConfiguration<Commissi
             new CommissionCategory { Id = 5, Name = "Reversals",                Description = "Negative-amount entries that reverse previously paid commissions within the chargeback window.",          IsActive = true, CreationDate = SeedDate, CreatedBy = "seed" },
             new CommissionCategory { Id = 6, Name = "Builder Bonus",            Description = "Standard sponsor bonus paid on top of Member Bonus when a qualifying ambassador enrolls a new member.",  IsActive = true, CreationDate = SeedDate, CreatedBy = "seed" },
             new CommissionCategory { Id = 7, Name = "Builder Bonus Turbo",      Description = "Enhanced sponsor bonus program with elevated payout rates, completely separate from standard Builder Bonus.", IsActive = true, CreationDate = SeedDate, CreatedBy = "seed" },
-            new CommissionCategory { Id = 8, Name = "Deductions",               Description = "Administrative fee deductions and token-related deductions applied at payout or on token consumption.",   IsActive = true, CreationDate = SeedDate, CreatedBy = "seed" }
+            new CommissionCategory { Id = 8, Name = "Deductions",               Description = "Administrative fee deductions and token-related deductions applied at payout or on token consumption.",   IsActive = true, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionCategory { Id = 9, Name = "Rank Seniority Bonus",    Description = "Once-per-rank bonus for holding a rank ≥14 consecutive days.",                                                  IsActive = true, CreationDate = SeedDate, CreatedBy = "seed" }
         );
     }
 }

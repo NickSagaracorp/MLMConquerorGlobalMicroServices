@@ -118,3 +118,7 @@ logs/
 
 # ── Generated rank certificates (artifacts, not source) ───────────────────────
 MLMConquerorGlobalEdition.RankEngine/wwwroot/certificates/*.pdf
+
+# MemPalace per-project files (issue #185)
+mempalace.yaml
+entities.json

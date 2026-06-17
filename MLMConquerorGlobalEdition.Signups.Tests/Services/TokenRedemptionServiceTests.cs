@@ -114,7 +114,7 @@ public class TokenRedemptionServiceTests
         var svc = MakeService(db);
 
         var result = await svc.RedeemForSignupAsync(
-            "X4P2A9N", Sponsor, NewMember, OrderId,
+            "X4P2A9N", NewMember, OrderId,
             new[] { VipId }, FixedNow, CancellationToken.None);
 
         await db.SaveChangesAsync();
@@ -148,7 +148,7 @@ public class TokenRedemptionServiceTests
         var svc = MakeService(db);
 
         var result = await svc.RedeemForSignupAsync(
-            "BADCODE", Sponsor, NewMember, OrderId,
+            "BADCODE", NewMember, OrderId,
             new[] { VipId }, FixedNow, CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
@@ -163,7 +163,7 @@ public class TokenRedemptionServiceTests
         var svc = MakeService(db);
 
         var result = await svc.RedeemForSignupAsync(
-            "X4P2A9N", Sponsor, NewMember, OrderId,
+            "X4P2A9N", NewMember, OrderId,
             new[] { VipId }, FixedNow, CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
@@ -171,17 +171,36 @@ public class TokenRedemptionServiceTests
     }
 
     [Fact]
-    public async Task RedeemForSignup_WhenSponsorIsNotCurrentOwner_ReturnsTokenNotValid()
+    public async Task RedeemForSignup_WhenTokenOwnerIsNotSponsor_StillSucceedsAndCreditsOwner()
     {
+        // A token shared down the owner's downline is redeemed for a signup that is
+        // NOT placed under the owner. Ownership is no longer tied to the sponsor, so
+        // the redemption succeeds and the ledger/balance are credited to the true owner.
         await using var db = await SeedAsync(ownerId: Other);
         var svc = MakeService(db);
 
         var result = await svc.RedeemForSignupAsync(
-            "X4P2A9N", Sponsor, NewMember, OrderId,
+            "X4P2A9N", NewMember, OrderId,
             new[] { VipId }, FixedNow, CancellationToken.None);
 
-        result.IsSuccess.Should().BeFalse();
-        result.ErrorCode.Should().Be("TOKEN_NOT_VALID");
+        await db.SaveChangesAsync();
+
+        result.IsSuccess.Should().BeTrue();
+
+        var instance = await db.TokenTransactions.AsNoTracking()
+            .FirstAsync(t => t.ReferenceId == "X4P2A9N");
+        instance.Status.Should().Be(TokenInstanceStatus.Used);
+        instance.UsedByMemberId.Should().Be(NewMember);
+
+        var ledger = await db.TokenTransactions.AsNoTracking()
+            .Where(t => t.ReferenceId == null && t.TransactionType == TokenTransactionType.Used)
+            .ToListAsync();
+        ledger.Should().ContainSingle();
+        ledger[0].MemberId.Should().Be(Other);
+
+        var balance = await db.TokenBalances.AsNoTracking()
+            .FirstAsync(tb => tb.MemberId == Other && tb.TokenTypeId == 13);
+        balance.Balance.Should().Be(0);
     }
 
     [Fact]
@@ -191,7 +210,7 @@ public class TokenRedemptionServiceTests
         var svc = MakeService(db);
 
         var result = await svc.RedeemForSignupAsync(
-            "X4P2A9N", Sponsor, NewMember, OrderId,
+            "X4P2A9N", NewMember, OrderId,
             new[] { EliteId }, FixedNow, CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
@@ -207,7 +226,7 @@ public class TokenRedemptionServiceTests
         var svc = MakeService(db);
 
         var result = await svc.RedeemForSignupAsync(
-            "X4P2A9N", Sponsor, NewMember, OrderId,
+            "X4P2A9N", NewMember, OrderId,
             new[] { VipId }, FixedNow, CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
@@ -222,7 +241,7 @@ public class TokenRedemptionServiceTests
         var svc = MakeService(db);
 
         var first = await svc.RedeemForSignupAsync(
-            "X4P2A9N", Sponsor, NewMember, OrderId,
+            "X4P2A9N", NewMember, OrderId,
             new[] { VipId }, FixedNow, CancellationToken.None);
 
         await db.SaveChangesAsync();
@@ -230,7 +249,7 @@ public class TokenRedemptionServiceTests
 
         // Second call should now see Status=Used and reject.
         var second = await svc.RedeemForSignupAsync(
-            "X4P2A9N", Sponsor, "AMB-NEW0002", "order-002",
+            "X4P2A9N", "AMB-NEW0002", "order-002",
             new[] { VipId }, FixedNow, CancellationToken.None);
 
         second.IsSuccess.Should().BeFalse();
@@ -244,7 +263,7 @@ public class TokenRedemptionServiceTests
         var svc = MakeService(db);
 
         var result = await svc.RedeemForSignupAsync(
-            "  ", Sponsor, NewMember, OrderId,
+            "  ", NewMember, OrderId,
             new[] { VipId }, FixedNow, CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();

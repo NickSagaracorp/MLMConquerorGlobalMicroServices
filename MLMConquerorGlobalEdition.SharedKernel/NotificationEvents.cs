@@ -23,4 +23,7 @@ public static class NotificationEvents
 
     /// <summary>Sent during login when the user has two-factor authentication enabled. Variables: { Code, ExpiresInMinutes }.</summary>
     public const string TwoFactorCode        = "TWO_FACTOR_CODE";
+
+    /// <summary>Sent to an ambassador when a payout receipt is issued. Variables: { FullName, AmountUsd, Gateway, ProcessDate, ReceiptUrl }.</summary>
+    public const string PayoutReceiptIssued  = "PAYOUT_RECEIPT_ISSUED";
 }

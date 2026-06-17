@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Trees;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
@@ -14,18 +15,21 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Features.Placement.AdminPlaceMember
 /// </summary>
 public class AdminPlaceMemberHandler : IRequestHandler<AdminPlaceMemberCommand, Result<string>>
 {
-    private readonly AppDbContext        _db;
-    private readonly ICurrentUserService _currentUser;
-    private readonly IDateTimeProvider   _clock;
+    private readonly AppDbContext               _db;
+    private readonly ICurrentUserService        _currentUser;
+    private readonly IDateTimeProvider          _clock;
+    private readonly IDualTeamPointsRecalculator _legPoints;
 
     public AdminPlaceMemberHandler(
-        AppDbContext        db,
-        ICurrentUserService currentUser,
-        IDateTimeProvider   clock)
+        AppDbContext               db,
+        ICurrentUserService        currentUser,
+        IDateTimeProvider          clock,
+        IDualTeamPointsRecalculator legPoints)
     {
         _db          = db;
         _currentUser = currentUser;
         _clock       = clock;
+        _legPoints   = legPoints;
     }
 
     public async Task<Result<string>> Handle(AdminPlaceMemberCommand command, CancellationToken ct)
@@ -155,7 +159,11 @@ public class AdminPlaceMemberHandler : IRequestHandler<AdminPlaceMemberCommand, 
 
             await _db.SaveChangesAsync(ct);
 
-            await RecalculateUplineStatsAsync(command.TargetParentMemberId, ct);
+            // Sprint-15 follow-up — was a local SumSubtreePointsAsync that
+            // CountAsync'd nodes instead of summing PersonalPoints (wrong
+            // values). Delegate to the shared recalculator (single source of
+            // truth used by SignupAPI + BizCenter).
+            await _legPoints.RecalculateForUplinesAsync(command.TargetParentMemberId, ct);
 
             await tx.CommitAsync(ct);
 
@@ -167,40 +175,5 @@ public class AdminPlaceMemberHandler : IRequestHandler<AdminPlaceMemberCommand, 
             await tx.RollbackAsync(ct);
             throw;
         }
-    }
-
-    private async Task RecalculateUplineStatsAsync(string startMemberId, CancellationToken ct)
-    {
-        var current = startMemberId;
-        while (!string.IsNullOrEmpty(current))
-        {
-            var node = await _db.DualTeamTree
-                .FirstOrDefaultAsync(d => d.MemberId == current, ct);
-
-            if (node is null) break;
-
-            node.LeftLegPoints  = await SumSubtreePointsAsync(current, TreeSide.Left, ct);
-            node.RightLegPoints = await SumSubtreePointsAsync(current, TreeSide.Right, ct);
-            node.LastUpdateDate = _clock.Now;
-            node.LastUpdateBy   = "admin-system";
-
-            current = node.ParentMemberId;
-        }
-
-        await _db.SaveChangesAsync(ct);
-    }
-
-    private async Task<decimal> SumSubtreePointsAsync(
-        string parentMemberId, TreeSide side, CancellationToken ct)
-    {
-        var child = await _db.DualTeamTree
-            .AsNoTracking()
-            .FirstOrDefaultAsync(d => d.ParentMemberId == parentMemberId && d.Side == side, ct);
-
-        if (child is null) return 0m;
-
-        return await _db.DualTeamTree
-            .AsNoTracking()
-            .CountAsync(d => d.HierarchyPath.StartsWith(child.HierarchyPath), ct);
     }
 }

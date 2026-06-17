@@ -23,17 +23,15 @@ public class GetAllTeamMembersHandler : IRequestHandler<GetAllTeamMembersQuery, 
         var memberId = _currentUser.MemberId;
         var hierarchySearchPattern = "/" + memberId + "/";
 
-        // Full subtree via materialized path — all descendants
-        var subtreeMemberIds = await _db.GenealogyTree
-            .AsNoTracking()
-            .Where(g => g.HierarchyPath.Contains(hierarchySearchPattern))
-            .Select(g => g.MemberId)
-            .ToListAsync(ct);
-
-        var query = _db.MemberProfiles
-            .AsNoTracking()
-            .Where(m => subtreeMemberIds.Contains(m.MemberId))
-            .OrderByDescending(m => m.EnrollDate);
+        // JOIN the genealogy subtree to profiles and page at the DB — instead of loading ALL
+        // ~120k descendant ids into memory and re-querying with Contains(allIds). Only the
+        // requested page ever materializes.
+        var query =
+            from g in _db.GenealogyTree.AsNoTracking()
+            where g.HierarchyPath.Contains(hierarchySearchPattern)
+            join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
+            orderby m.EnrollDate descending
+            select m;
 
         var totalCount = await query.CountAsync(ct);
 

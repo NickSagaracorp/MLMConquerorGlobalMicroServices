@@ -41,6 +41,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     public DbSet<MemberIdentificationType> MemberIdentificationTypes => Set<MemberIdentificationType>();
     public DbSet<MemberStatisticEntity> MemberStatistics => Set<MemberStatisticEntity>();
     public DbSet<MemberStatisticHistoryEntity> MemberStatisticHistories => Set<MemberStatisticHistoryEntity>();
+    public DbSet<MemberStatisticDelta> MemberStatisticDeltas => Set<MemberStatisticDelta>();
     public DbSet<MemberProfileNotificationTracking> MemberNotifications => Set<MemberProfileNotificationTracking>();
     public DbSet<MemberFcmToken> MemberFcmTokens => Set<MemberFcmToken>();
 
@@ -61,6 +62,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
 
     public DbSet<GenealogyEntity> GenealogyTree => Set<GenealogyEntity>();
     public DbSet<DualTeamEntity> DualTeamTree => Set<DualTeamEntity>();
+    public DbSet<DualTeamLegFrontier> DualTeamLegFrontiers => Set<DualTeamLegFrontier>();
     public DbSet<PlacementLog> PlacementLogs => Set<PlacementLog>();
     public DbSet<GhostPointEntity> GhostPoints => Set<GhostPointEntity>();
 
@@ -130,6 +132,14 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
 
     // ── Global Parameters ─────────────────────────────────────────────────
     public DbSet<GlobalParameter> GlobalParameters => Set<GlobalParameter>();
+
+    // ── Payout Gateway + Audit ────────────────────────────────────────────
+    // Payout gateway config (active flag + minimum payout + fees) lives on the single
+    // PaymentGatewayInfo catalog (DbSet PaymentGateways); the old per-WalletType
+    // PayoutGatewaySetting table was retired in favor of that one source of truth.
+    public DbSet<PayoutAttempt>         PayoutAttempts        => Set<PayoutAttempt>();
+    public DbSet<PayoutAttemptEarning>  PayoutAttemptEarnings => Set<PayoutAttemptEarning>();
+    public DbSet<PayoutBatch>           PayoutBatches         => Set<PayoutBatch>();
 
     // ── Billing Gateway Routing Engine ────────────────────────────────────
     public DbSet<PaymentGatewayCatalog>  GatewayCatalog        => Set<PaymentGatewayCatalog>();

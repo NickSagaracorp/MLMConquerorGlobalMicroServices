@@ -59,6 +59,264 @@ internal static class Program
     private const string SqlConnString =
         "Server=.;Database=MLMConquerorGlobalEditionDb;Integrated Security=True;TrustServerCertificate=True;";
 
+    // 1000 first names + 1000 surnames spanning 11 cultural buckets:
+    // American/British, Spanish/Latino, French, Italian, German/Dutch/Austrian,
+    // Portuguese/Brazilian, Russian/Polish/Slavic, Scandinavian/Nordic,
+    // Greek/Balkan/Turkish/Romanian, Arabic/Middle Eastern/Hebrew/Persian,
+    // Asian (Chinese/Japanese/Korean/Vietnamese/Indian/Thai).
+    // All entries pass NamePattern (accented letters, apostrophes, hyphens, spaces, periods).
+    // De-duplicated across buckets. Exactly 1000 unique entries per array.
+    private static readonly string[] _firstNames =
+    {
+        // American / British  (100)
+        "James", "Mary", "Michael", "Jennifer", "Robert", "Patricia", "John", "Linda", "David", "Susan",
+        "William", "Charlotte", "George", "Emily", "Henry", "Olivia", "Edward", "Sophie", "Thomas", "Margaret",
+        "Christopher", "Elizabeth", "Daniel", "Barbara", "Matthew", "Jessica", "Anthony", "Sarah", "Andrew", "Karen",
+        "Joshua", "Nancy", "Kenneth", "Lisa", "Brian", "Betty", "Steven", "Helen", "Kevin", "Sandra",
+        "Jason", "Donna", "Eric", "Carol", "Stephen", "Ruth", "Larry", "Sharon", "Jeffrey", "Michelle",
+        "Frank", "Laura", "Scott", "Amanda", "Raymond", "Melissa", "Patrick", "Deborah", "Alexander", "Stephanie",
+        "Jack", "Rebecca", "Dennis", "Virginia", "Jerry", "Kathleen", "Tyler", "Pamela", "Aaron", "Martha",
+        "Jose", "Debra", "Adam", "Amy", "Nathan", "Anna", "Russell", "Brenda", "Ryan", "Emma",
+        "Douglas", "Madison", "Peter", "Catherine", "Walter", "Christine", "Harold", "Samantha", "Carl", "Janet",
+        "Albert", "Bella", "Wayne", "Diana", "Roy", "Julie", "Eugene", "Joyce", "Louis", "Victoria",
+        // Spanish / Latino  (99)
+        "Carlos", "Lucía", "Javier", "María", "Diego", "Isabel", "Miguel", "Carmen", "Mateo", "Valentina",
+        "Santiago", "Camila", "Sebastián", "Daniela", "Andrés", "Renata", "Joaquín", "Antonella", "Emilio", "Esperanza",
+        "Alejandro", "Sofía", "Tomás", "Martina", "Nicolás", "Mariana", "Gabriel", "Paula", "Adrián", "Lourdes",
+        "Ignacio", "Catalina", "Vicente", "Florencia", "Cristóbal", "Agustina", "Hernán", "Macarena", "Federico", "Bárbara",
+        "Esteban", "Rocío", "Maximiliano", "Pilar", "Benjamín", "Mercedes", "Felipe", "Belén", "Rodrigo", "Trinidad",
+        "Iván", "Constanza", "Pablo", "Soledad", "Manuel", "Beatriz", "Álvaro", "Verónica", "Salvador", "Ramón",
+        "Inés", "Lorenzo", "Adriana", "Bautista", "Lola", "Cristian", "Natalia", "Damián", "Susana", "Eduardo",
+        "Mónica", "Fernando", "Cristina", "Gerardo", "Lorena", "Gonzalo", "Marisol", "Hugo", "Yolanda", "Joaquim",
+        "Amparo", "Jorge", "Concepción", "Julián", "Encarnación", "Leandro", "Inmaculada", "Mauricio", "Soraya", "Octavio",
+        "Begoña", "Pedro", "Magdalena", "Rafael", "Rosario", "Sergio", "Teresa", "Tadeo", "Estela",
+        // French  (93)
+        "Pierre", "Camille", "Antoine", "Claire", "Henri", "Étienne", "Amélie", "Lucas", "Manon", "Théo",
+        "Inès", "Léa", "Jules", "Chloé", "Élodie", "Arthur", "Margaux", "Juliette", "Maxime", "Pauline",
+        "Quentin", "Élise", "Adrien", "Romain", "Mathilde", "Florian", "Aurélie", "Benoît", "Caroline", "Damien",
+        "Coralie", "Édouard", "Delphine", "Fabien", "Émilie", "Gaëtan", "Fanny", "Guillaume", "Gabrielle", "Cédric",
+        "Hélène", "Olivier", "Isabelle", "Vincent", "Joséphine", "Sylvain", "Lætitia", "Mathieu", "Marion", "Nicolas",
+        "Nadine", "Pascal", "Océane", "Régis", "Rachel", "Renaud", "Sandrine", "Stéphane", "Solène", "Sébastien",
+        "Stéphanie", "Bastien", "Valérie", "Bertrand", "Véronique", "Christophe", "Yvette", "Clément", "Zoé", "Christian",
+        "Anaïs", "Cyril", "Bérénice", "Didier", "Brigitte", "Émile", "Cécile", "Frédéric", "François", "Christelle",
+        "Constance", "Gilles", "Diane", "Jérôme", "Estelle", "Laurent", "Florence", "Loïc", "Geneviève", "Marc",
+        "Hortense", "Yannick", "Anne",
+        // Italian  (88)
+        "Marco", "Giulia", "Sofia", "Matteo", "Chiara", "Alessandro", "Francesca", "Giovanni", "Luca", "Aurora",
+        "Andrea", "Beatrice", "Davide", "Camilla", "Edoardo", "Elena", "Filippo", "Federica", "Francesco", "Gaia",
+        "Gabriele", "Giorgia", "Giacomo", "Greta", "Giulio", "Ilaria", "Leonardo", "Letizia", "Mattia", "Lucia",
+        "Niccolò", "Maria", "Pietro", "Marta", "Riccardo", "Matilde", "Salvatore", "Mia", "Samuele", "Nicole",
+        "Simone", "Noemi", "Stefano", "Paola", "Tommaso", "Rachele", "Vincenzo", "Alberto", "Roberta", "Antonio",
+        "Sara", "Bruno", "Serena", "Carlo", "Silvia", "Cesare", "Sole", "Cristiano", "Stella", "Damiano",
+        "Susanna", "Domenico", "Emanuele", "Veronica", "Enzo", "Viola", "Ettore", "Vittoria", "Fabio", "Adele",
+        "Fausto", "Alessia", "Flavio", "Gennaro", "Giorgio", "Arianna", "Giuseppe", "Bianca", "Ivano", "Carlotta",
+        "Lapo", "Cecilia", "Massimo", "Daria", "Mauro", "Eleonora", "Michele", "Eva",
+        // German / Dutch / Austrian  (88)
+        "Hans", "Klaus", "Friedrich", "Wilhelm", "Heidi", "Lukas", "Lena", "Felix", "Johanna", "Leon",
+        "Maximilian", "Hannah", "Paul", "Jonas", "Sophia", "Elias", "Lina", "Noah", "Marie", "Finn",
+        "Lara", "Tim", "Klara", "Tobias", "Helga", "Stefan", "Ingrid", "Andreas", "Ursula", "Markus",
+        "Petra", "Renate", "Wolfgang", "Sabine", "Jürgen", "Dieter", "Monika", "Günther", "Annelies", "Gerhard",
+        "Beate", "Manfred", "Birgit", "Helmut", "Doris", "Bernd", "Edith", "Rainer", "Erika", "Horst",
+        "Hilde", "Karl", "Inge", "Otto", "Karin", "Werner", "Liesel", "Margot", "Heinz", "Roswitha",
+        "Sebastian", "Sigrid", "Sven", "Sonja", "Mathias", "Tanja", "Vera", "Christoph", "Waltraud", "Jan",
+        "Carola", "Henrik", "Bettina", "Pieter", "Joris", "Frieda", "Sander", "Gisela", "Bas", "Helma",
+        "Daan", "Astrid", "Jeroen", "Cornelia", "Hendrik", "Heike", "Wouter", "Trudi",
+        // Portuguese / Brazilian  (71)
+        "João", "Larissa", "Gustavo", "Júlia", "Ana", "Luana", "Letícia", "Bruna", "Carolina", "Henrique",
+        "Vanessa", "André", "Patrícia", "Vitor", "Marcelo", "Tatiana", "Cláudia", "Tiago", "Diogo", "Rui",
+        "Nuno", "Helena", "Joana", "Inês", "Bernardo", "Margarida", "Afonso", "Marisa", "Duarte", "Gonçalo",
+        "Francisco", "Catarina", "Vasco", "Filipa", "Liliana", "Madalena", "Martim", "Núria", "Caio", "Aline",
+        "Davi", "Cíntia", "Débora", "Erick", "Eliane", "Geraldo", "Fernanda", "Igor", "Gabriela", "Heloísa",
+        "Júlio", "Isabela", "Karla", "Mateus", "Murilo", "Mirela", "Otávio", "Natália", "Olívia", "Renato",
+        "Pâmela", "Ricardo", "Priscila", "Sérgio", "Raquel", "Vinícius", "Sabrina", "Wallace", "Tamires", "Yago",
+        "Yasmin",
+        // Russian / Polish / Slavic  (87)
+        "Aleksandr", "Anastasia", "Dmitri", "Mikhail", "Olga", "Sergei", "Natasha", "Nikolai", "Svetlana", "Vladimir",
+        "Irina", "Andrei", "Yelena", "Aleksei", "Lyudmila", "Boris", "Galina", "Pavel", "Marina", "Yulia",
+        "Vasily", "Polina", "Yuri", "Maxim", "Veronika", "Konstantin", "Anya", "Stanislav", "Kristina", "Roman",
+        "Yekaterina", "Artyom", "Alyona", "Denis", "Inna", "Egor", "Larisa", "Fyodor", "Margarita", "Grigori",
+        "Ilya", "Yana", "Kirill", "Zoya", "Lev", "Piotr", "Agnieszka", "Krzysztof", "Katarzyna", "Tomasz",
+        "Wojciech", "Jakub", "Joanna", "Andrzej", "Mateusz", "Ewa", "Marcin", "Aleksandra", "Bartosz", "Małgorzata",
+        "Łukasz", "Beata", "Kamil", "Justyna", "Dawid", "Karolina", "Filip", "Hubert", "Václav", "Jana",
+        "Jaroslav", "Hana", "Miroslav", "Lucie", "Zdeněk", "Bohdan", "Yaroslava", "Taras", "Oksana", "Mykola",
+        "Iryna", "Vasyl", "Halyna", "Dmytro", "Khrystyna", "Volodymyr", "Lyubov",
+        // Scandinavian / Nordic  (86)
+        "Erik", "Lars", "Olav", "Knut", "Bjørn", "Solveig", "Magnus", "Liv", "Linnea", "Anders",
+        "Maja", "Saga", "Nils", "Elsa", "Jens", "Freja", "Tor", "Kari", "Mette", "Mikkel",
+        "Sofie", "Lasse", "Tove", "Mads", "Pernille", "Søren", "Ole", "Lone", "Niels", "Hanne",
+        "Per", "Frode", "Vidar", "Synnøve", "Tuva", "Vilde", "Erling", "Wenche", "Gunnar", "Gunhild",
+        "Halvard", "Kjersti", "Ivar", "Aslaug", "Brita", "Kjell", "Borghild", "Leif", "Dagny", "Mikael",
+        "Eli", "Roar", "Marit", "Stein", "Randi", "Trond", "Reidun", "Aksel", "Vigdis", "Brage",
+        "Yngvild", "Eivind", "Aud", "Espen", "Gerd", "Jorunn", "Kristian", "Annika", "Mattias", "Ebba",
+        "Oskar", "Stina", "Viktor", "Tilde", "Aleksi", "Aino", "Eero", "Helmi", "Juhani", "Liisa",
+        "Mikko", "Pirjo", "Tapio", "Päivi", "Veikko", "Sanna",
+        // Greek / Balkan / Turkish / Romanian  (87)
+        "Yannis", "Eleni", "Dimitris", "Kostas", "Nikos", "Katerina", "Vasilis", "Despina", "Stavros", "Ioanna",
+        "Christos", "Vasiliki", "Spiros", "Dimitra", "Theodoros", "Petros", "Athina", "Manolis", "Magdalini", "Apostolos",
+        "Evangelia", "Lefteris", "Konstantina", "Panagiotis", "Stamatia", "Aleksandar", "Milica", "Marko", "Jovana", "Stevan",
+        "Tamara", "Nemanja", "Anja", "Strahinja", "Suzana", "Dragan", "Nada", "Goran", "Vesna", "Branko",
+        "Slavica", "Mirko", "Snežana", "Predrag", "Biljana", "Mehmet", "Ayşe", "Mustafa", "Fatma", "Bekir",
+        "Zeynep", "Hüseyin", "Hatice", "Hasan", "Emine", "İbrahim", "Esra", "Cem", "Merve", "Burak",
+        "Elif", "Murat", "Sevgi", "Emre", "Gül", "Ion", "Sorinel", "Mihăiță", "Ioana", "Vlăduț",
+        "Andreea", "Vasilică", "Mihaela", "Bogdan", "Florin", "Răzvan", "Roxana", "Sorin", "Alina", "Tudor",
+        "Adrian", "Costin", "Marin", "Otilia", "Ramona", "Valentin", "Sanda",
+        // Arabic / Middle Eastern / Hebrew / Persian  (91)
+        "Mohammed", "Fatima", "Ahmed", "Aisha", "Anwarul", "Mahnoor", "Omar", "Khadija", "Sufyan", "Zainab",
+        "Khaled", "Layla", "Hassan", "Noor", "Hussein", "Salma", "Ibrahim", "Mahmoud", "Hala", "Abdullah",
+        "Amina", "Tariq", "Rania", "Saif", "Bilal", "Rashid", "Reem", "Karim", "Dalia", "Walid",
+        "Hanan", "Samir", "Iman", "Faisal", "Manal", "Anwar", "Nour", "Jamal", "Rim", "Adel",
+        "Nasser", "Mona", "Wael", "Asma", "Hakim", "Samira", "Avraham", "Yitzhak", "Rivka", "Yaakov",
+        "Moshe", "Leah", "Esther", "Miriam", "Yosef", "Tamar", "Eitan", "Dana", "Noam", "Yael",
+        "Itai", "Shira", "Ariel", "Naomi", "Asaf", "Hadar", "Boaz", "Maya", "Eyal", "Talia",
+        "Roni", "Liat", "Reza", "Sahar", "Hossein", "Zahra", "Mehdi", "Fatemeh", "Saeed", "Yasaman",
+        "Babak", "Niloofar", "Farhad", "Kamran", "Shirin", "Arash", "Parisa", "Behrooz", "Leila", "Cyrus",
+        "Mitra",
+        // Asian (Chinese / Japanese / Korean / Vietnamese / Indian / Thai)  (98)
+        "Wei", "Mei", "Jian", "Ling", "Hao", "Xia", "Jun", "Yan", "Tao", "Hong",
+        "Bo", "Fang", "Cheng", "Qian", "Feng", "Hua", "Gang", "Ying", "Hui", "Jing",
+        "Hiroshi", "Yuki", "Takeshi", "Sakura", "Kenji", "Hina", "Daichi", "Aiko", "Haruto", "Ren",
+        "Yui", "Sota", "Riku", "Rin", "Yuto", "Saki", "Kaito", "Akari", "Min-jun", "Seo-yeon",
+        "Do-yun", "Ji-woo", "Si-woo", "Ha-eun", "Joon-ho", "Ye-jin", "Hyun-woo", "Soo-jin", "Jin-ho", "Mi-na",
+        "Sung-min", "Hye-jin", "Jae-yong", "Eun-ji", "Tae-hyun", "Yu-jin", "Min-seok", "Bo-ra", "Anh", "Thanh",
+        "Bao", "Linh", "Duy", "Mai", "Hieu", "Trang", "Long", "Hoa", "Phong", "Nhung",
+        "Hung", "Diep", "Khoa", "Thuy", "Tuan", "Hang", "Quang", "Phuong", "Aarav", "Aanya",
+        "Vihaan", "Diya", "Arjun", "Ananya", "Reyansh", "Saanvi", "Krishna", "Ishita", "Rahul", "Priya",
+        "Rohan", "Kavya", "Aditya", "Pooja", "Vivaan", "Riya", "Karan", "Neha",
+        // Extra (international, less-common)  (12)
+        "Esmé", "Romilly", "Tarquin", "Calliope", "Beauregard", "Persephone", "Cassian", "Genevieve", "Octavia", "Reginald",
+        "Aurelio", "Bartholomew",
+    };
+
+    private static readonly string[] _lastNames =
+    {
+        // American / British  (100)
+        "Smith", "Johnson", "Williams", "Brown", "Davis", "Miller", "Wilson", "Anderson", "Taylor", "Thomas",
+        "Walker", "Wright", "Robinson", "Clark", "Lewis", "Lee", "Hall", "Allen", "Young", "King",
+        "Scott", "Green", "Baker", "Adams", "Nelson", "Hill", "Campbell", "Mitchell", "Roberts", "Carter",
+        "Phillips", "Evans", "Turner", "Parker", "Edwards", "Collins", "Stewart", "Morris", "Murphy", "Cook",
+        "Rogers", "Morgan", "Cooper", "Peterson", "Bailey", "Reed", "Kelly", "Howard", "Cox", "Ward",
+        "Richardson", "Watson", "Brooks", "Bennett", "Gray", "James", "Hughes", "Price", "Myers", "Long",
+        "Foster", "Sanders", "Ross", "Powell", "Whitfield", "Russell", "Sutton", "Jenkins", "Gibson", "Murray",
+        "Coleman", "Perry", "Butler", "Barnes", "Fisher", "Henderson", "Marsden", "Ford", "Hamilton", "Graham",
+        "O'Brien", "O'Connor", "Sullivan", "McCarthy", "McDonald", "McKenna", "Fitzgerald", "Walsh", "O'Neill", "Kennedy",
+        "Lloyd", "Wallace", "Bishop", "Mason", "Crawford", "Spencer", "Knight", "Stone", "Lambert", "Pearson",
+        // Spanish / Latino  (100)
+        "García", "Rodríguez", "Martínez", "Hernández", "López", "González", "Pérez", "Sánchez", "Ramírez", "Torres",
+        "Flores", "Rivera", "Vásquez", "Morales", "Castillo", "Jiménez", "Ortiz", "Reyes", "Cruz", "Gómez",
+        "Ramos", "Ruiz", "Gutiérrez", "Mendoza", "Vargas", "Ortega", "Aguilar", "Castro", "Romero", "Núñez",
+        "Álvarez", "Domínguez", "Soto", "Salazar", "Herrera", "Vega", "Medina", "Suárez", "Cervantes", "Rojas",
+        "Acosta", "Cabrera", "Espinoza", "Velázquez", "Rosales", "Padilla", "Cortés", "Delgado", "Estrada", "Fuentes",
+        "Guerrero", "Ibarra", "Juárez", "Lara", "Maldonado", "Navarro", "Peña", "Quintero", "Rangel", "Salinas",
+        "Tapia", "Ulloa", "Valdez", "Zamora", "Bravo", "Cárdenas", "Escobar", "Galván", "Huerta", "León",
+        "Méndez", "Sepúlveda", "Ochoa", "Palacios", "Quiroga", "Rosa", "Serrano", "Trujillo", "Vidal", "Zúñiga",
+        "Aldana", "Bautista", "Calderón", "Dávila", "Elizondo", "Fajardo", "Granados", "Hidalgo", "Ibáñez", "Lozano",
+        "Marín", "Olivares", "Pacheco", "Quintana", "Rentería", "Saavedra", "Toledo", "Urbina", "Villarreal", "Yáñez",
+        // French  (97)
+        "Dubois", "Lefèvre", "Moreau", "Laurent", "Bernard", "Petit", "Durand", "Leroy", "Roux", "Fournier",
+        "Michel", "Garcia", "David", "Bertrand", "Robert", "Richard", "Martin", "Lemaire", "Boucher", "Mercier",
+        "Faure", "Vincent", "Renard", "Henry", "Bonnet", "François", "Martinez", "Legrand", "Garnier", "Chevalier",
+        "Carpentier", "Dumas", "Lecomte", "Fontaine", "Charpentier", "Marchand", "Picard", "Roche", "Brun", "Lefebvre",
+        "Schmitt", "Mathieu", "Royer", "Berger", "Charron", "Aubert", "Olivier", "Caron", "Gauthier", "Perrot",
+        "Roussel", "Riviere", "Renaud", "Hamon", "Joly", "Lacroix", "Adam", "Hubert", "Marechal", "Klein",
+        "Robin", "Hervé", "Daniel", "Pinet", "Sauvage", "Carre", "Lemoine", "Pichon", "Pasquier", "Maillard",
+        "Charles", "Léger", "Briand", "Chevallier", "Lefort", "Maire", "Tessier", "Andre", "Roy", "Bouvier",
+        "Camus", "Lemaitre", "Salmon", "Beaumont", "Beaulieu", "Allard", "Bouchard", "Cousin", "Devaux", "Forestier",
+        "Gillet", "Herbert", "Imbert", "Joubert", "Lebreton", "Magnier", "Noël",
+        // Italian  (100)
+        "Rossi", "Russo", "Ferrari", "Esposito", "Bianchi", "Romano", "Conti", "Ricci", "Marino", "Greco",
+        "Bruno", "Gallo", "Costa", "Fontana", "Mancini", "Rizzo", "Moretti", "Marini", "Caruso", "Ferrara",
+        "Galli", "Martini", "Leone", "Longo", "Gentile", "Martinelli", "Vitale", "Lombardi", "Serra", "Coppola",
+        "De Luca", "De Santis", "Mariani", "Rinaldi", "Sanna", "Caputo", "Pellegrini", "Palumbo", "Sartori", "Fabbri",
+        "Villa", "Negri", "Conte", "Bianco", "Riva", "Grassi", "Valentini", "Battaglia", "Sorrentino", "Testa",
+        "Barbieri", "Carbone", "Damico", "Farina", "Ferri", "Fiore", "Giordano", "Grasso", "Lombardo", "Mazza",
+        "Messina", "Monti", "Orlando", "Parisi", "Piras", "Rizzi", "Sanchez", "Santoro", "Silvestri", "Vinci",
+        "Aiello", "Amato", "Basile", "Benedetti", "Bellini", "Calabrese", "Cattaneo", "Cipriani", "Colombo", "Corti",
+        "Damiani", "De Angelis", "Dellucci", "Donati", "Falcone", "Federico", "Fini", "Franco", "Galliani", "Gatti",
+        "Giuliani", "Locatelli", "Manzo", "Marchetti", "Milani", "Morelli", "Pace", "Piccolo", "Sala", "Trevisan",
+        // German / Dutch / Austrian  (96)
+        "Müller", "Schmidt", "Schneider", "Fischer", "Weber", "Wagner", "Becker", "Hoffmann", "Van der Berg", "De Vries",
+        "Schäfer", "Koch", "Bauer", "Richter", "Wolf", "Schröder", "Neumann", "Schwarz", "Zimmermann", "Braun",
+        "Krüger", "Hofmann", "Hartmann", "Lange", "Werner", "Schmitz", "Krause", "Meier", "Lehmann", "Schmid",
+        "Schulze", "Maier", "Köhler", "Herrmann", "König", "Walter", "Mayer", "Huber", "Kaiser", "Fuchs",
+        "Peters", "Lang", "Scholz", "Möller", "Weiß", "Jung", "Hahn", "Schubert", "Vogel", "Friedrich",
+        "Keller", "Günther", "Frank", "Winkler", "Roth", "Beck", "Lorenz", "Baumann", "Franke", "Albrecht",
+        "Schuster", "Simon", "Ludwig", "Böhm", "Winter", "Kraus", "Schumacher", "Krämer", "Vogt", "Stein",
+        "Jäger", "Otto", "Sommer", "Groß", "Seidel", "Heinrich", "Brandt", "Haas", "Schreiber", "Graf",
+        "Janssen", "Bakker", "Jansen", "Visser", "Smit", "Meijer", "De Boer", "Mulder", "Dijkstra", "De Groot",
+        "Hendriks", "Van Dijk", "Van den Berg", "Van Leeuwen", "Kuipers", "Peeters",
+        // Portuguese / Brazilian  (94)
+        "Silva", "Santos", "Oliveira", "Souza", "Pereira", "Almeida", "Carvalho", "Gomes", "Martins", "Lopes",
+        "Soares", "Vieira", "Ribeiro", "Fernandes", "Marques", "Rocha", "Cardoso", "Dias", "Campos", "Teixeira",
+        "Correia", "Mendes", "Nogueira", "Moreira", "Cavalcanti", "Macedo", "Andrade", "Barbosa", "Barros", "Batista",
+        "Borges", "Brito", "Cabral", "Cunha", "Duarte", "Esteves", "Farias", "Figueiredo", "Freitas", "Guimarães",
+        "Henriques", "Jesus", "Lima", "Loureiro", "Magalhães", "Matos", "Melo", "Miranda", "Monteiro", "Morais",
+        "Moura", "Nascimento", "Neto", "Neves", "Nunes", "Pinheiro", "Pinto", "Queiroz", "Reis", "Rezende",
+        "Rodrigues", "Sá", "Salgado", "Saraiva", "Sequeira", "Silveira", "Simões", "Tavares", "Valente", "Vasconcelos",
+        "Veloso", "Ventura", "Xavier", "Zacarias", "Amaral", "Antunes", "Araújo", "Azevedo", "Bastos", "Bezerra",
+        "Cordeiro", "Coutinho", "Damasceno", "Eça", "Falcão", "Galvão", "Iglesias", "Jordão", "Lacerda", "Maia",
+        "Negreiros", "Ornelas", "Paixão", "Quadros",
+        // Russian / Polish / Slavic  (100)
+        "Ivanov", "Petrov", "Smirnov", "Volkov", "Kuznetsov", "Popov", "Sokolov", "Fedorov", "Morozov", "Lebedev",
+        "Mikhailov", "Yegorov", "Andreyev", "Pavlov", "Romanov", "Stepanov", "Nikolaev", "Zaitsev", "Solovyov", "Vasilyev",
+        "Bogdanov", "Voronov", "Filippov", "Maksimov", "Sidorov", "Kuzmin", "Karpov", "Belov", "Komarov", "Gorbunov",
+        "Markov", "Yudin", "Tarasov", "Kalinin", "Yakovlev", "Antonov", "Borisov", "Davydov", "Korolev", "Krylov",
+        "Kowalski", "Nowak", "Wójcik", "Kowalczyk", "Kamiński", "Lewandowski", "Zieliński", "Szymański", "Woźniak", "Dąbrowski",
+        "Kozłowski", "Jankowski", "Mazur", "Krawczyk", "Kaczmarek", "Piotrowski", "Grabowski", "Pawłowski", "Michalski", "Nowakowski",
+        "Adamczyk", "Dudek", "Zając", "Wieczorek", "Jabłoński", "Król", "Majewski", "Olszewski", "Jaworski", "Wróbel",
+        "Malinowski", "Pawlak", "Witkowski", "Walczak", "Stępień", "Górski", "Rutkowski", "Michalak", "Sikora", "Ostrowski",
+        "Novák", "Svoboda", "Novotný", "Dvořák", "Černý", "Procházka", "Kučera", "Veselý", "Horák", "Pospíšil",
+        "Shevchenko", "Boyko", "Tkachenko", "Kovalenko", "Bondarenko", "Ivanenko", "Hrytsenko", "Marchenko", "Pavlenko", "Kravchenko",
+        // Scandinavian / Nordic  (100)
+        "Andersson", "Johansson", "Lindberg", "Hansen", "Nielsen", "Eriksson", "Karlsson", "Nilsson", "Larsson", "Olsson",
+        "Persson", "Svensson", "Gustafsson", "Jonsson", "Pettersson", "Bergström", "Berg", "Lindqvist", "Lundgren", "Sandberg",
+        "Henriksson", "Lindgren", "Carlsson", "Bergman", "Lundberg", "Holmgren", "Wallin", "Lindström", "Magnusson", "Engström",
+        "Eklund", "Sjöberg", "Forsberg", "Dahlberg", "Strömberg", "Hellström", "Lund", "Holmberg", "Forsell", "Norberg",
+        "Hagström", "Lindholm", "Berglund", "Edström", "Wikström", "Åström", "Ström", "Öberg", "Ekström", "Wahlberg",
+        "Pedersen", "Jensen", "Christensen", "Larsen", "Sørensen", "Rasmussen", "Jørgensen", "Mortensen", "Thomsen", "Madsen",
+        "Knudsen", "Christiansen", "Mikkelsen", "Poulsen", "Johansen", "Møller", "Iversen", "Olesen", "Bach", "Lauridsen",
+        "Olsen", "Hagen", "Johnsen", "Dahl", "Haugen", "Lie", "Solberg", "Berge", "Bakken", "Engen",
+        "Korhonen", "Mäkinen", "Nieminen", "Mäkelä", "Hämäläinen", "Laine", "Heikkinen", "Koskinen", "Järvinen", "Lehtonen",
+        "Sigurðsson", "Jónsson", "Magnúsdóttir", "Bjarnason", "Einarsson", "Ólafsson", "Þórsson", "Guðmundsson", "Pálsson", "Stefánsdóttir",
+        // Greek / Balkan / Turkish / Romanian  (100)
+        "Papadopoulos", "Pappas", "Dimitriou", "Georgiou", "Nikolaou", "Konstantinou", "Christodoulou", "Antoniou", "Theodorou", "Stavrou",
+        "Vasileiou", "Karagiannis", "Markou", "Panagiotou", "Stefanou", "Petrou", "Andreou", "Ioannou", "Athanasiou", "Demetriou",
+        "Manolopoulos", "Spyrou", "Papandreou", "Mitsotakis", "Karamanlis", "Tsipras", "Venizelos", "Onassis", "Mavros", "Christofias",
+        "Petrović", "Jovanović", "Marković", "Đorđević", "Stojanović", "Pavlović", "Nikolić", "Đukić", "Lazić", "Ilić",
+        "Mihajlović", "Stanković", "Lukić", "Janković", "Popović", "Tomić", "Vasić", "Knežević", "Šarić", "Vuković",
+        "Yıldız", "Yılmaz", "Kaya", "Demir", "Çelik", "Şahin", "Aydın", "Özdemir", "Arslan", "Doğan",
+        "Kılıç", "Aslan", "Çetin", "Kara", "Koç", "Kurt", "Polat", "Erdoğan", "Şimşek", "Güler",
+        "Popescu", "Ionescu", "Pop", "Stan", "Stoica", "Dumitru", "Constantin", "Marin", "Diaconu", "Cristea",
+        "Florea", "Tudor", "Mihai", "Vasile", "Munteanu", "Radu", "Dragomir", "Voinea", "Stănescu", "Petrescu",
+        "Bălan", "Niță", "Manea", "Iliescu", "Cojocaru", "Pavel", "Apostol", "Lupu", "Tomescu", "Vlad",
+        // Arabic / Middle Eastern / Hebrew / Persian  (98)
+        "Al-Sayed", "Al-Hassan", "Al-Khoury", "Al-Masri", "Al-Najjar", "Al-Ahmad", "Al-Saleh", "Al-Mansour", "Al-Farouk", "Al-Tayeb",
+        "Hadid", "Khalil", "Nassar", "Saleh", "Rahman", "Aziz", "Karim", "Habib", "Mahdi", "Said",
+        "Rashid", "Jabari", "Sharif", "Tahir", "Shaheen", "Farah", "Abboud", "Bishara", "Daher", "Eid",
+        "Fakhoury", "Ghanem", "Hourani", "Issa", "Jaber", "Kassis", "Mansour", "Naser", "Obeid", "Qasim",
+        "Riyad", "Sabbagh", "Tannous", "Zayed", "Awad", "Boulos", "Chedid", "Diab", "Elias", "Ferzli",
+        "Cohen", "Levi", "Mizrahi", "Peretz", "Friedman", "Goldberg", "Katz", "Shapiro", "Avraham", "Rosenberg",
+        "Schwartz", "Stern", "Weiss", "Adler", "Berkowitz", "Greenberg", "Hoffman", "Kaplan", "Lieberman", "Berman",
+        "Goldstein", "Silverman", "Wasserman", "Yael", "Zukerman", "Bar", "Tal", "Or", "Hosseini", "Mohammadi",
+        "Karimi", "Ahmadi", "Rezaei", "Hashemi", "Sadeghi", "Razavi", "Tehrani", "Esfahani", "Bahmani", "Ghasemi",
+        "Heydari", "Jafari", "Kashani", "Mirzaei", "Nazari", "Pourrahmani", "Qureshi", "Shirazi",
+        // Asian (Chinese / Japanese / Korean / Vietnamese / Indian / Thai)  (15)
+        "Wang", "Li", "Zhang", "Liu", "Chen", "Yang", "Huang", "Zhao", "Wu", "Zhou",
+        "Xu", "Sun", "Ma", "Zhu", "Hu",
+    };
+
+    // Active, no-state-required ISO2 countries (validated against the Countries table)
+    // so signups originate from a realistic multi-region spread instead of all-CA.
+    // US included — the rig sends a valid random SSN, which US signups require. (An earlier
+    // INTERNAL_ERROR on US+SSN turned out to be the MemberId-collision bug, now fixed; US
+    // signups verified working 5/5.)
+    private static readonly string[] _countries =
+    {
+        "US", "CA", "MX", "BR", "CL", "CO", "PE", "UY", "PY", "BO",
+        "GB", "FR", "DE", "ES", "IT", "NL", "PT", "DK",
+        "ZA", "NG", "KE", "EG", "MA", "GH", "TZ",
+        "PH", "AU", "DO", "GT", "CR", "PA", "JM", "TT",
+    };
+
     public static async Task<int> Main(string[] args)
     {
         Console.OutputEncoding = Encoding.UTF8;
@@ -66,6 +324,8 @@ internal static class Program
         var waves = new[] { 10, 30, 60, 120, 200 };
         var sponsorCount = 20;
         var interWaveDelaySec = 10;
+        string? sponsorsFile = null;
+        var singleN = 0;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -75,18 +335,38 @@ internal static class Program
                 sponsorCount = int.Parse(args[++i]);
             else if (args[i] == "--pause" && i + 1 < args.Length)
                 interWaveDelaySec = int.Parse(args[++i]);
+            else if (args[i] == "--sponsors-file" && i + 1 < args.Length)
+                sponsorsFile = args[++i];
+            else if (args[i] == "--single" && i + 1 < args.Length)
+                singleN = int.Parse(args[++i]);
         }
 
-        Console.WriteLine("Loading sponsor pool from DB (AMB-* in A's downline with slug + DT row)…");
-        var allSponsors = LoadSponsorsFromDb();
-        Console.WriteLine($"Found {allSponsors.Count} candidate sponsors. Rotating across the first {sponsorCount}.");
-        if (allSponsors.Count == 0)
+        List<string> sponsors;
+        if (sponsorsFile != null && File.Exists(sponsorsFile))
         {
-            Console.Error.WriteLine("No sponsors. Aborting.");
-            return 1;
+            Console.WriteLine($"Loading sponsor pool from file: {sponsorsFile}");
+            sponsors = File.ReadAllLines(sponsorsFile)
+                .Select(l => l.Trim())
+                .Where(l => l.Length > 0 && !l.StartsWith("#"))
+                .Select(l => l.Split('|')[1].Trim())
+                .Where(s => s.Length > 0)
+                .Distinct()
+                .ToList();
+            Console.WriteLine($"Loaded {sponsors.Count} sponsors from file.");
         }
-
-        var sponsors = allSponsors.Take(sponsorCount).ToList();
+        else
+        {
+            Console.WriteLine("Loading sponsor pool from DB (AMB-* in A's downline with slug + DT row)…");
+            var allSponsors = LoadSponsorsFromDb();
+            Console.WriteLine($"Found {allSponsors.Count} candidate sponsors. Rotating across the first {sponsorCount}.");
+            if (allSponsors.Count == 0)
+            {
+                Console.Error.WriteLine("No sponsors. Aborting.");
+                return 1;
+            }
+            sponsors = allSponsors.Take(sponsorCount).ToList();
+        }
+        if (singleN > 0) { waves = new[] { singleN }; }
 
         var handler = new HttpClientHandler
         {
@@ -109,6 +389,7 @@ internal static class Program
         Console.WriteLine($"Inter-wave pause: {interWaveDelaySec}s");
         Console.WriteLine();
 
+        var overallSw = Stopwatch.StartNew();
         var waveIdx = 0;
         foreach (var n in waves)
         {
@@ -187,6 +468,12 @@ internal static class Program
             waveResults.Add(summary);
             PrintWaveSummary(summary);
 
+            // DIAGNOSTIC: dump up to 3 distinct failure bodies for this wave so we can see WHY.
+            var failBodies = results.Where(r => !r.Success && r.ErrorBody is not null)
+                .Select(r => $"p{r.Phase}/http{r.HttpStatus}: {r.ErrorBody}")
+                .Distinct().Take(3).ToList();
+            foreach (var fb in failBodies) Console.WriteLine($"   FAILBODY {fb}");
+
             if (waveIdx < waves.Length)
             {
                 Console.WriteLine($"--- pausing {interWaveDelaySec}s before next wave ---");
@@ -194,10 +481,34 @@ internal static class Program
             }
         }
 
+        overallSw.Stop();
         Console.WriteLine();
         Console.WriteLine("==========================================");
         Console.WriteLine("Final aggregate table:");
         PrintTable(waveResults);
+
+        var totalSubmitted = waveResults.Sum(w => w.Total);
+        var totalOk = waveResults.Sum(w => w.Successes);
+        var overallSec = overallSw.Elapsed.TotalSeconds;
+        var overallThrough = overallSec > 0 ? totalSubmitted / overallSec : 0;
+        var successPct = totalSubmitted == 0 ? 0 : totalOk * 100.0 / totalSubmitted;
+        var aggregateP50 = waveResults.Count == 0 ? 0 : waveResults.Max(w => w.P50);
+        var aggregateP95 = waveResults.Count == 0 ? 0 : waveResults.Max(w => w.P95);
+        var aggregateP99 = waveResults.Count == 0 ? 0 : waveResults.Max(w => w.P99);
+        var aggregateMax = waveResults.Count == 0 ? 0 : waveResults.Max(w => w.Max);
+        // True grand-mean: weight each wave's mean by its count
+        var grandMean = totalSubmitted == 0
+            ? 0
+            : waveResults.Sum(w => w.Mean * w.Total) / totalSubmitted;
+        Console.WriteLine();
+        Console.WriteLine("===========================================================================");
+        Console.WriteLine($" >>> {totalSubmitted} SIMULTANEOUS SIGNUPS ACROSS {sponsors.Count} SPONSORS <<<");
+        Console.WriteLine($" TOTAL WALL-CLOCK : {overallSec:F2} s");
+        Console.WriteLine($" MEAN LATENCY/sig : {grandMean:F0} ms");
+        Console.WriteLine($" THROUGHPUT       : {overallThrough:F2} signups/sec");
+        Console.WriteLine($" SUCCESS RATE     : {successPct:F1}%  ({totalOk}/{totalSubmitted})");
+        Console.WriteLine($" LATENCY p50/p95/p99/max : {aggregateP50}/{aggregateP95}/{aggregateP99}/{aggregateMax} ms");
+        Console.WriteLine("===========================================================================");
 
         // Write reports
         var ts = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
@@ -322,17 +633,25 @@ internal static class Program
         var sw = Stopwatch.StartNew();
         var result = new SignupResult { Phase = 1, SponsorSlug = sponsorSlug };
 
-        // Letters-only first name (NamePattern ^[\p{L}][\p{L} '\-\.]{0,49}$ rejects digits)
-        const string firstName = "Loader";
-        const string lastName  = "Conqueror";
+        // Realistic first/last names rotated from a multi-cultural pool — easier to
+        // eyeball / trace in DB grids than "Loader Conqueror". NamePattern
+        // ^[\p{L}][\p{L} '\-\.]{0,49}$ accepts accented letters / apostrophes / hyphens.
+        var firstName = _firstNames[Random.Shared.Next(_firstNames.Length)];
+        var lastName  = _lastNames [Random.Shared.Next(_lastNames.Length )];
         var emailSlug = $"lt{run}{wave}{idx}{Guid.NewGuid().ToString("N").Substring(0, 6)}".ToLowerInvariant();
         var email     = $"lt.{emailSlug}@example.com";
         var siteSlug  = $"lt-{run}-w{wave}-i{idx}-{Guid.NewGuid().ToString("N").Substring(0, 6)}";
         var visitorId = Guid.NewGuid().ToString("N"); // hex32, no hyphens — passes VisitorIdPattern
+        var country   = _countries[Random.Shared.Next(_countries.Length)]; // multi-country spread, not all CA
 
         try
         {
             // ---- Phase 1 ----
+            // SSN is required by AmbassadorSignupRequestValidator when Country == US
+            // (format XXX-XX-XXXX). Other countries ignore it. Always send a valid random
+            // SSN so a US country roll doesn't 400 at phase 1 (was ~31% of failures).
+            var ssn = $"{Random.Shared.Next(100, 900):000}-{Random.Shared.Next(1, 100):00}-{Random.Shared.Next(1, 10000):0000}";
+
             var p1Body = new
             {
                 SponsorReplicateSite = sponsorSlug,
@@ -343,7 +662,8 @@ internal static class Program
                 Password             = "P@ssw0rd!2026",
                 ConfirmPassword      = "P@ssw0rd!2026",
                 Phone                = "+15550000000",
-                Country              = "CA",
+                Country              = country,
+                Ssn                  = ssn,
                 MembershipLevelId    = MembershipLevelEliteId,
                 VisitorId            = visitorId,
                 ShowBusinessName     = false,
@@ -453,6 +773,7 @@ internal static class Program
         public double WallClockSec;
         public double Throughput;
         public long   P50, P95, P99, Max;
+        public double Mean;
         public string FailureTally = "";
         public List<string> IntegrityChecks = new();
     }
@@ -483,6 +804,7 @@ internal static class Program
             P95         = Percentile(latencies, 0.95),
             P99         = Percentile(latencies, 0.99),
             Max         = latencies.Length > 0 ? latencies.Max() : 0,
+            Mean        = latencies.Length > 0 ? latencies.Average() : 0,
             FailureTally= failTally.Count == 0 ? "—" : string.Join(", ", failTally),
             IntegrityChecks = integrity
         };
@@ -499,7 +821,7 @@ internal static class Program
     {
         Console.WriteLine($"   total={s.Total}  ok={s.Successes}  fail={s.Failures}  success-rate={s.SuccessRate:F1}%");
         Console.WriteLine($"   wall-clock={s.WallClockSec:F2}s  throughput={s.Throughput:F2}/sec");
-        Console.WriteLine($"   latency-ms  p50={s.P50}  p95={s.P95}  p99={s.P99}  max={s.Max}");
+        Console.WriteLine($"   latency-ms  MEAN={s.Mean:F0}  p50={s.P50}  p95={s.P95}  p99={s.P99}  max={s.Max}");
         Console.WriteLine($"   top failures: {s.FailureTally}");
         if (s.IntegrityChecks.Count > 0)
         {
@@ -510,10 +832,10 @@ internal static class Program
 
     private static void PrintTable(List<WaveSummary> rows)
     {
-        Console.WriteLine($"| Wave | Conc | OK | Fail | Success% | Wall(s) | Tput/s | p50  | p95  | p99  | Max  | Top failures |");
-        Console.WriteLine($"|------|------|----|------|----------|---------|--------|------|------|------|------|--------------|");
+        Console.WriteLine($"| Wave | Conc | OK | Fail | Success% | Wall(s) | Tput/s | Mean | p50  | p95  | p99  | Max  | Top failures |");
+        Console.WriteLine($"|------|------|----|------|----------|---------|--------|------|------|------|------|------|--------------|");
         foreach (var s in rows)
-            Console.WriteLine($"| {s.WaveIdx,4} | {s.Concurrent,4} | {s.Successes,2} | {s.Failures,4} | {s.SuccessRate,7:F1}% | {s.WallClockSec,7:F2} | {s.Throughput,6:F2} | {s.P50,4} | {s.P95,4} | {s.P99,4} | {s.Max,4} | {s.FailureTally} |");
+            Console.WriteLine($"| {s.WaveIdx,4} | {s.Concurrent,4} | {s.Successes,3} | {s.Failures,4} | {s.SuccessRate,7:F1}% | {s.WallClockSec,7:F2} | {s.Throughput,6:F2} | {s.Mean,4:F0} | {s.P50,4} | {s.P95,4} | {s.P99,4} | {s.Max,4} | {s.FailureTally} |");
     }
 
     private static string BuildMarkdownReport(
@@ -530,10 +852,10 @@ internal static class Program
         sb.AppendLine();
         sb.AppendLine("## Wave-by-wave results");
         sb.AppendLine();
-        sb.AppendLine($"| Wave | Conc | OK | Fail | Success% | Wall(s) | Tput/s | p50(ms) | p95(ms) | p99(ms) | Max(ms) | Top failures |");
-        sb.AppendLine($"|------|------|----|------|----------|---------|--------|---------|---------|---------|---------|--------------|");
+        sb.AppendLine($"| Wave | Conc | OK | Fail | Success% | Wall(s) | Tput/s | Mean(ms) | p50(ms) | p95(ms) | p99(ms) | Max(ms) | Top failures |");
+        sb.AppendLine($"|------|------|----|------|----------|---------|--------|----------|---------|---------|---------|---------|--------------|");
         foreach (var s in rows)
-            sb.AppendLine($"| {s.WaveIdx} | {s.Concurrent} | {s.Successes} | {s.Failures} | {s.SuccessRate:F1}% | {s.WallClockSec:F2} | {s.Throughput:F2} | {s.P50} | {s.P95} | {s.P99} | {s.Max} | {s.FailureTally} |");
+            sb.AppendLine($"| {s.WaveIdx} | {s.Concurrent} | {s.Successes} | {s.Failures} | {s.SuccessRate:F1}% | {s.WallClockSec:F2} | {s.Throughput:F2} | {s.Mean:F0} | {s.P50} | {s.P95} | {s.P99} | {s.Max} | {s.FailureTally} |");
         sb.AppendLine();
         sb.AppendLine("## MemberStatistics integrity (Bug A: atomic-MERGE fix)");
         sb.AppendLine();

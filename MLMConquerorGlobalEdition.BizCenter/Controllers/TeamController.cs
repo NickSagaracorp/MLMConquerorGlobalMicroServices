@@ -15,7 +15,10 @@ using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetVisualizerChildren;
 using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetDualTreeNode;
 using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetDualTreeStats;
 using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetDualTeamMyTeam;
+using MLMConquerorGlobalEdition.Repository.Grid;
+using MLMConquerorGlobalEdition.Repository.Services.Teams;
 using MLMConquerorGlobalEdition.SharedKernel;
+using ICurrentUserService = MLMConquerorGlobalEdition.BizCenter.Services.ICurrentUserService;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Controllers;
 
@@ -24,9 +27,52 @@ namespace MLMConquerorGlobalEdition.BizCenter.Controllers;
 [Authorize]
 public class TeamController : ControllerBase
 {
-    private readonly IMediator _mediator;
+    private readonly IMediator              _mediator;
+    private readonly IDualTeamService       _dualTeam;
+    private readonly IEnrollmentTeamService _enrollment;
+    private readonly ICurrentUserService    _currentUser;
 
-    public TeamController(IMediator mediator) => _mediator = mediator;
+    public TeamController(
+        IMediator              mediator,
+        IDualTeamService       dualTeam,
+        IEnrollmentTeamService enrollment,
+        ICurrentUserService    currentUser)
+    {
+        _mediator    = mediator;
+        _dualTeam    = dualTeam;
+        _enrollment  = enrollment;
+        _currentUser = currentUser;
+    }
+
+    // ─── Server-side grid reads (search/filter/sort/page span the whole team) ──
+    // These delegate straight to the shared team services — the same ones the
+    // Admin controllers use — so Admin and BizCenter grids behave identically.
+    // They return the service view; its JSON shape matches the existing *Dto
+    // (the MediatR handlers map 1:1), so the frontend deserializes unchanged.
+
+    /// <summary>POST /api/v1/bizcenter/team/dual-tree/my-team/grid</summary>
+    [HttpPost("dual-tree/my-team/grid")]
+    public async Task<IActionResult> GetDualTeamMyTeamGrid([FromBody] GridDataRequest request, CancellationToken ct = default)
+    {
+        var result = await _dualTeam.GetMyTeamGridAsync(_currentUser.MemberId, request, ct);
+        return Ok(ApiResponse<PagedResult<DualTeamMyTeamMemberView>>.Ok(result));
+    }
+
+    /// <summary>POST /api/v1/bizcenter/team/enrollment/my-team/grid</summary>
+    [HttpPost("enrollment/my-team/grid")]
+    public async Task<IActionResult> GetEnrollmentMyTeamGrid([FromBody] GridDataRequest request, CancellationToken ct = default)
+    {
+        var result = await _enrollment.GetMyTeamGridAsync(_currentUser.MemberId, request, ct);
+        return Ok(ApiResponse<PagedResult<EnrollmentMyTeamMemberView>>.Ok(result));
+    }
+
+    /// <summary>POST /api/v1/bizcenter/team/enrollment/customers/grid</summary>
+    [HttpPost("enrollment/customers/grid")]
+    public async Task<IActionResult> GetEnrollmentCustomersGrid([FromBody] GridDataRequest request, CancellationToken ct = default)
+    {
+        var result = await _enrollment.GetCustomersGridAsync(_currentUser.MemberId, request, ct);
+        return Ok(ApiResponse<PagedResult<EnrollmentCustomerView>>.Ok(result));
+    }
 
     /// <summary>GET /api/v1/bizcenter/team/enrollment — direct sponsored members</summary>
     [HttpGet("enrollment")]
@@ -174,6 +220,35 @@ public class TeamController : ControllerBase
     {
         var rows = await dualTeamService.GetResidualLegsAsync(currentUser.MemberId, ct);
         return Ok(ApiResponse<List<MLMConquerorGlobalEdition.Repository.Services.Teams.DualLegRowView>>.Ok(rows));
+    }
+
+    /// <summary>GET /api/v1/bizcenter/team/dual-tree/search?term=&amp;take=25 — find nodes in the
+    /// viewer's binary subtree by name or member id. Each hit carries its path from the root so the
+    /// visualizer can open that branch and highlight the match. Shares IDualTeamService with Admin.</summary>
+    [HttpGet("dual-tree/search")]
+    public async Task<IActionResult> SearchDualTree(
+        [FromServices] MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTeamService dualTeamService,
+        [FromServices] MLMConquerorGlobalEdition.BizCenter.Services.ICurrentUserService currentUser,
+        [FromQuery] string? term = null,
+        [FromQuery] int take = 25,
+        CancellationToken ct = default)
+    {
+        var hits = await dualTeamService.SearchBinarySubtreeAsync(currentUser.MemberId, term, take, ct);
+        return Ok(ApiResponse<List<MLMConquerorGlobalEdition.Repository.Services.Teams.DualTreeSearchMatchView>>.Ok(hits));
+    }
+
+    /// <summary>GET /api/v1/bizcenter/team/dual-tree/deepest?side=Left|Right — the deepest node on
+    /// the viewer's given leg, with its path from the root, for the "jump to deepest left/right"
+    /// navigation arrows. Returns null data when that leg is empty. Shares IDualTeamService with Admin.</summary>
+    [HttpGet("dual-tree/deepest")]
+    public async Task<IActionResult> GetDualTreeDeepest(
+        [FromServices] MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTeamService dualTeamService,
+        [FromServices] MLMConquerorGlobalEdition.BizCenter.Services.ICurrentUserService currentUser,
+        [FromQuery] Domain.Enums.TreeSide side,
+        CancellationToken ct = default)
+    {
+        var target = await dualTeamService.GetDeepestNodeAsync(currentUser.MemberId, side, ct);
+        return Ok(ApiResponse<MLMConquerorGlobalEdition.Repository.Services.Teams.DualTreeNavTargetView?>.Ok(target));
     }
 
     /// <summary>GET /api/v1/bizcenter/team/dual-tree/history?months=6 — last N

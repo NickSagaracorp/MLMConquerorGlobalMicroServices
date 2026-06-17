@@ -242,6 +242,48 @@ public class PlaceMemberHandlerTests
     }
 
     /// <summary>
+    /// Sprint-15 Bug 10 — defensive HierarchyPath normalize. Legacy parent
+    /// rows historically existed where HierarchyPath was missing its trailing
+    /// slash (e.g. "/AMB-000001"). Concatenating "{path}{newId}/" against such
+    /// a parent glued IDs together: "/AMB-000001AMB-000002/". The handler now
+    /// uses TrimEnd('/') + '/' to guarantee exactly one separator regardless.
+    /// We simulate the malformed state by inserting a parent row directly into
+    /// the in-memory DB with no trailing slash, then placing under it.
+    /// </summary>
+    [Fact]
+    public async Task Handle_WhenSponsorPathMissingTrailingSlash_NewPathHasSlashBetweenIds()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await db.MemberProfiles.AddRangeAsync(
+            BuildMember("AMB-000002", FixedNow.AddDays(-5)),
+            BuildMember("AMB-000001", FixedNow.AddDays(-60))
+        );
+        // MALFORMED parent — no trailing slash on HierarchyPath.
+        await db.DualTeamTree.AddAsync(new DualTeamEntity {
+            MemberId       = "AMB-000001",
+            ParentMemberId = null,
+            Side           = TreeSide.Left,
+            HierarchyPath  = "/AMB-000001",
+            CreatedBy      = "seed",
+            LastUpdateDate = FixedNow
+        });
+        await db.SaveChangesAsync();
+
+        var handler = new PlaceMemberHandler(db, DateTimeAt(FixedNow).Object, NullPush().Object, NullLegPoints().Object);
+
+        var result = await handler.Handle(
+            new PlaceMemberCommand("AMB-000002", "AMB-000001", "Left"), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+
+        var node = db.DualTeamTree.First(n => n.MemberId == "AMB-000002");
+        // The defensive normalize must insert a single '/' between the two IDs.
+        // Without the fix this would be "/AMB-000001AMB-000002/" (Bug 10).
+        node.HierarchyPath.Should().Be("/AMB-000001/AMB-000002/");
+        node.HierarchyPath.Should().NotContain("AMB-000001AMB-000002");
+    }
+
+    /// <summary>
     /// Sprint-15 Bug C verification — every successful placement must invoke
     /// the shared <see cref="IDualTeamPointsRecalculator"/> with the actual
     /// PARENT id we placed under (BFS may have chosen a deeper parent than

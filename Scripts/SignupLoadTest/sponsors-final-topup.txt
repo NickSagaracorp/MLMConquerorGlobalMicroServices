@@ -1,0 +1,12 @@
+﻿# Final topup
+# bucket|slug|EP|ETSize|DTL|DTR|DirectSponsored|MemberId|CurRankName
+F|lt-c8241e81-w1-i305-781f89|0|0|0|0|0|AMB-649733|X
+F|lt-a222f227-w5-i38-99af70|0|0|0|0|0|AMB-625654|X
+F|lt-db8d45a6-w1-i355-ac5b90|0|0|0|0|0|AMB-784853|X
+F|lt-c8241e81-w1-i142-6b8b95|0|0|0|0|0|AMB-134072|X
+F|lt-b036a425-w1-i70-58bea0|0|0|0|0|0|AMB-834767|X
+F|lt-57ae4616-w1-i2-bb9112|0|0|0|0|0|AMB-240329|X
+F|lt-c4b8202b-w1-i145-aebc85|0|0|0|0|0|AMB-133278|X
+F|lt-db8d45a6-w1-i285-d6339c|0|0|0|0|0|AMB-675786|X
+F|lt-ecd8fb8e-w1-i161-969918|0|0|0|0|0|AMB-406806|X
+F|lt-c4b8202b-w1-i266-ff8a46|0|0|0|0|0|AMB-693131|X

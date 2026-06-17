@@ -2,6 +2,7 @@
 using MLMConquerorGlobalEdition.CommissionEngine.Services;
 using MLMConquerorGlobalEdition.CommissionEngine.Tests.Helpers;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
+using MLMConquerorGlobalEdition.Domain.Entities.Events;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
@@ -200,6 +201,103 @@ public class CalculateSponsorBonusHandlerTests
         result.IsSuccess.Should().BeTrue();
         result.Value!.RecordsCreated.Should().Be(0);
         db.CommissionEarnings.Should().HaveCount(1);
+    }
+
+    private static CorporatePromo BuildPromo(
+        int sponsorMultiplier = 1, int builderMultiplier = 1, string id = "PROMO-1")
+    {
+        // AuditInterceptor stamps Order.CreationDate at real wall-clock-now on save —
+        // it doesn't honor BuildOrder's FixedNow. Anchor the promo window to UtcNow
+        // so the order's actual saved CreationDate falls inside it.
+        var realNow = DateTime.UtcNow;
+        return new CorporatePromo
+        {
+            Id                     = id,
+            Title                  = "Test Promo",
+            StartDate              = realNow.AddDays(-7),
+            EndDate                = realNow.AddDays(7),
+            IsActive               = true,
+            SponsorBonusMultiplier = sponsorMultiplier,
+            BuilderBonusMultiplier = builderMultiplier,
+            CreatedBy              = "seed",
+            CreationDate           = realNow.AddDays(-7),
+            LastUpdateDate         = realNow.AddDays(-7)
+        };
+    }
+
+    [Fact]
+    public async Task Handle_WhenActivePromoHas3xSponsorMultiplier_AmountIsTripled()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await db.Orders.AddAsync(BuildOrder("ORD-PROMO3X", "AMB-PROMO3X"));
+        await db.MemberProfiles.AddAsync(BuildMember("AMB-PROMO3X", sponsor: "AMB-SPONSOR"));
+        await db.Products.AddAsync(BuildProduct("P-VIP", membershipLevelId: 2));
+        await db.CommissionTypes.AddAsync(BuildSponsorBonusType(id: 10, levelNo: 2, Amount: 20));
+        await db.OrderDetails.AddAsync(new OrderDetail
+        {
+            OrderId = "ORD-PROMO3X", ProductId = "P-VIP", Quantity = 1, UnitPrice = 80,
+            CreatedBy = "seed", CreationDate = FixedNow
+        });
+        await db.CorporatePromos.AddAsync(BuildPromo(sponsorMultiplier: 3));
+        await db.SaveChangesAsync();
+
+        var handler = new CalculateSponsorBonusHandler(db, BuildClock().Object, BuildUser().Object);
+        var result  = await handler.Handle(
+            new CalculateSponsorBonusCommand("AMB-PROMO3X", "ORD-PROMO3X"), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        var earning = db.CommissionEarnings.Single();
+        earning.Amount.Should().Be(60); // 20 × 3
+        earning.Notes.Should().Contain("3×").And.Contain("Test Promo");
+    }
+
+    [Fact]
+    public async Task Handle_WhenActivePromoHas5xSponsorMultiplier_AmountIsQuintupled()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await db.Orders.AddAsync(BuildOrder("ORD-PROMO5X", "AMB-PROMO5X"));
+        await db.MemberProfiles.AddAsync(BuildMember("AMB-PROMO5X", sponsor: "AMB-SPONSOR"));
+        await db.Products.AddAsync(BuildProduct("P-VIP", membershipLevelId: 2));
+        await db.CommissionTypes.AddAsync(BuildSponsorBonusType(id: 10, levelNo: 2, Amount: 20));
+        await db.OrderDetails.AddAsync(new OrderDetail
+        {
+            OrderId = "ORD-PROMO5X", ProductId = "P-VIP", Quantity = 1, UnitPrice = 80,
+            CreatedBy = "seed", CreationDate = FixedNow
+        });
+        await db.CorporatePromos.AddAsync(BuildPromo(sponsorMultiplier: 5));
+        await db.SaveChangesAsync();
+
+        var handler = new CalculateSponsorBonusHandler(db, BuildClock().Object, BuildUser().Object);
+        var result  = await handler.Handle(
+            new CalculateSponsorBonusCommand("AMB-PROMO5X", "ORD-PROMO5X"), CancellationToken.None);
+
+        db.CommissionEarnings.Single().Amount.Should().Be(100); // 20 × 5
+    }
+
+    [Fact]
+    public async Task Handle_WhenPromoMultiplierIs1_PaysBaseAmountAndDoesNotStampPromoNote()
+    {
+        // Multiplier=1 means "no boost" — the promo row exists (maybe it has
+        // BuilderBonusMultiplier > 1) but Sponsor side stays at base amount.
+        await using var db = InMemoryDbHelper.Create();
+        await db.Orders.AddAsync(BuildOrder("ORD-NOBOOST", "AMB-NOBOOST"));
+        await db.MemberProfiles.AddAsync(BuildMember("AMB-NOBOOST", sponsor: "AMB-SPONSOR"));
+        await db.Products.AddAsync(BuildProduct("P-VIP", membershipLevelId: 2));
+        await db.CommissionTypes.AddAsync(BuildSponsorBonusType(id: 10, levelNo: 2, Amount: 20));
+        await db.OrderDetails.AddAsync(new OrderDetail
+        {
+            OrderId = "ORD-NOBOOST", ProductId = "P-VIP", Quantity = 1, UnitPrice = 80,
+            CreatedBy = "seed", CreationDate = FixedNow
+        });
+        await db.CorporatePromos.AddAsync(BuildPromo(sponsorMultiplier: 1, builderMultiplier: 4));
+        await db.SaveChangesAsync();
+
+        var handler = new CalculateSponsorBonusHandler(db, BuildClock().Object, BuildUser().Object);
+        await handler.Handle(new CalculateSponsorBonusCommand("AMB-NOBOOST", "ORD-NOBOOST"), CancellationToken.None);
+
+        var earning = db.CommissionEarnings.Single();
+        earning.Amount.Should().Be(20); // base only
+        earning.Notes.Should().BeNull();
     }
 
     [Fact]

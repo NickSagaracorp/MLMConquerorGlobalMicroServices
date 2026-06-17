@@ -36,6 +36,8 @@ builder.Services.AddMediatR(cfg =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
+builder.Services.AddSingleton<MLMConquerorGlobalEdition.SharedKernel.Interfaces.IDateTimeProvider>(
+    sp => sp.GetRequiredService<IDateTimeProvider>());
 
 // Error Tracking — singleton; uses IServiceScopeFactory for isolated DB writes
 builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();

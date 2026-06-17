@@ -68,13 +68,14 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
                 throw new DuplicateReplicateSiteException(req.ReplicateSiteSlug);
         }
 
-        // Resolve sponsor by replicate site slug — this is the public identifier ambassadors share.
+        // Resolve sponsor by either replicate-site slug OR MemberId — referral links use both.
         string? sponsorMemberId = null;
         if (!string.IsNullOrEmpty(req.SponsorReplicateSite))
         {
             sponsorMemberId = await _db.MemberProfiles
                 .AsNoTracking()
-                .Where(x => x.ReplicateSiteSlug == req.SponsorReplicateSite
+                .Where(x => (x.ReplicateSiteSlug == req.SponsorReplicateSite ||
+                             x.MemberId == req.SponsorReplicateSite)
                          && x.Status == MemberAccountStatus.Active)
                 .Select(x => x.MemberId)
                 .FirstOrDefaultAsync(ct);
@@ -91,7 +92,24 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
             return Result<SignupResponse>.Failure(
                 "MEMBERSHIP_LEVEL_NOT_FOUND", "The selected membership level is invalid or inactive.");
 
-        var memberId = GenerateMemberId();
+        // Build + save the whole signup inside a retry loop. GenerateUniqueMemberIdAsync probes
+        // for a free id, but under true simultaneity two requests can pass that existence check
+        // for the same id; AK_MemberProfiles_MemberId then rejects the loser's insert. Rather
+        // than surface a 500/INTERNAL_ERROR we clear the rejected batch, draw a fresh id and
+        // rebuild. The single SaveChanges is one transaction, so a failed attempt leaves no
+        // orphan rows.
+        string memberId;
+        string orderId;
+        GenealogyEntity? sponsorNode = null;
+        for (var idAttempt = 0; ; idAttempt++)
+        {
+        var candidateId = await GenerateUniqueMemberIdAsync(ct);
+        if (candidateId is null)
+            return Result<SignupResponse>.Failure(
+                "MEMBER_ID_EXHAUSTED", "Could not allocate a unique member id. The AMB-###### space is saturated.");
+        memberId = candidateId;
+        try
+        {
 
         // ── Payout defaults ──────────────────────────────────────────────────
         // Company-level frequency seeds every new ambassador; country-level
@@ -143,7 +161,7 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
             LastUpdateDate    = now
         };
 
-        var orderId = Guid.NewGuid().ToString();
+        orderId = Guid.NewGuid().ToString();
         string orderNo;
         do { orderNo = OrderNumberHelper.Generate(membershipLevel.Name, now); }
         while (await _db.Orders.AnyAsync(o => o.OrderNo == orderNo, ct));
@@ -181,7 +199,7 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
 
         order.MembershipSubscriptionId = subscriptionId;
 
-        GenealogyEntity? sponsorNode = null;
+        sponsorNode = null;
         if (!string.IsNullOrEmpty(sponsorMemberId))
         {
             sponsorNode = await _db.GenealogyTree
@@ -294,7 +312,15 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
             }
         }
 
-        await _db.SaveChangesAsync(ct);
+            await _db.SaveChangesAsync(ct);
+            break; // saved cleanly
+        }
+        catch (DbUpdateException ex) when (IsDuplicateMemberIdViolation(ex) && idAttempt < 5)
+        {
+            // Concurrent MemberId collision — drop the rejected batch and rebuild with a fresh id.
+            _db.ChangeTracker.Clear();
+        }
+        }
 
         // Notify all uplines in the enrollment tree (genealogy)
         if (sponsorNode is not null)
@@ -348,9 +374,31 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
         });
     }
 
-    private static string GenerateMemberId()
+    /// <summary>
+    /// Allocate a member id that is not already taken. The original implementation returned a
+    /// blind <c>Random.Shared.Next(1, 999999)</c> with no uniqueness check; once the AMB-######
+    /// space filled up (80k+ members) ~8% of signups collided with an existing id even
+    /// single-threaded, surfacing as a UNIQUE KEY violation (AK_MemberProfiles_MemberId) →
+    /// DbUpdateException → INTERNAL_ERROR. We now probe the DB and pick a free id. The unique
+    /// index remains the hard backstop for the rare concurrent race (two requests drawing the
+    /// same free id in the same instant); such a loser fails its single SaveChanges transaction
+    /// and rolls back cleanly (no orphan rows). Returns null only if the space is truly saturated.
+    /// </summary>
+    /// <summary>True when a save failed specifically because the MemberId unique index rejected
+    /// a concurrent duplicate (so the caller can retry with a fresh id).</summary>
+    private static bool IsDuplicateMemberIdViolation(DbUpdateException ex)
+        => ex.InnerException?.Message is { } m
+           && m.Contains("AK_MemberProfiles_MemberId", StringComparison.OrdinalIgnoreCase);
+
+    private async Task<string?> GenerateUniqueMemberIdAsync(CancellationToken ct)
     {
-        var number = Random.Shared.Next(1, 999999);
-        return $"AMB-{number:D6}";
+        const int maxAttempts = 100;
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            var candidate = $"AMB-{Random.Shared.Next(1, 1_000_000):D6}";
+            if (!await _db.MemberProfiles.AsNoTracking().AnyAsync(x => x.MemberId == candidate, ct))
+                return candidate;
+        }
+        return null;
     }
 }

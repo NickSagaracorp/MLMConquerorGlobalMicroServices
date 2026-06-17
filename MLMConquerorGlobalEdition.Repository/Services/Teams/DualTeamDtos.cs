@@ -7,6 +7,48 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 /// downline sits on. Used by both BizCenter (member's own view) and Admin
 /// (member profile drill-down). Do NOT duplicate this shape elsewhere.
 /// </summary>
+/// <summary>Left/right leg totals for a member's binary position, plus the per-leg points cap
+/// for the member's NEXT rank (MaxTeamPointsPerBranch × nextRank.TeamPoints; 0 = the dual-team
+/// dimension does not apply at that rank). Single shape consumed by BOTH the Admin
+/// dual-tree/stats endpoint and the BizCenter one — do not recompute leg points anywhere else.</summary>
+public class DualTreeStatsView
+{
+    public decimal LeftLegPoints  { get; set; }
+    public decimal RightLegPoints { get; set; }
+    public int     NextRankLegCap { get; set; }
+    public string? NextRankName   { get; set; }
+}
+
+/// <summary>One ancestor on the path from the binary-tree root down to a node — used by the
+/// visualizer to open (drill to) the branch that contains a searched/deepest node.</summary>
+public class DualTreePathNodeView
+{
+    public string MemberId { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+}
+
+/// <summary>A binary-subtree search hit: the matched node plus its path from the root (gateway →
+/// … → match), the leg it sits on, and its depth below the root. The UI navigates the tree to an
+/// ancestor on <see cref="Path"/> so the match becomes visible, then highlights it.</summary>
+public class DualTreeSearchMatchView
+{
+    public string                    MemberId { get; set; } = string.Empty;
+    public string                    FullName { get; set; } = string.Empty;
+    public string                    Leg      { get; set; } = string.Empty; // "Left" / "Right" / ""
+    public int                       Depth    { get; set; }                 // levels below the root
+    public List<DualTreePathNodeView> Path    { get; set; } = new();        // root-exclusive → match (last = match)
+}
+
+/// <summary>Navigation target for the "go to deepest of left/right leg" arrows: the deepest node
+/// on a leg plus its path so the UI can drill straight to it.</summary>
+public class DualTreeNavTargetView
+{
+    public string                    MemberId { get; set; } = string.Empty;
+    public string                    FullName { get; set; } = string.Empty;
+    public int                       Depth    { get; set; }
+    public List<DualTreePathNodeView> Path    { get; set; } = new();
+}
+
 /// <summary>One month bucket on the Total Dual Team Points trend chart.
 /// Keeps both legs separate so the UI can render grouped Left/Right bars and
 /// derive Total client-side without a second round-trip.</summary>

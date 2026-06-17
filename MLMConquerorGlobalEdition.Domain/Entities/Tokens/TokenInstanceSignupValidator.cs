@@ -5,21 +5,24 @@ namespace MLMConquerorGlobalEdition.Domain.Entities.Tokens;
 
 /// <summary>
 /// Pure-domain validator that decides whether a redeemable token instance can be used
-/// to complete a NEW SIGNUP under a given sponsor with a given product selection.
+/// to complete a NEW SIGNUP with a given product selection.
+///
+/// Token ownership is intentionally NOT checked against the sponsor: in the real-world
+/// workflow a token owner shares the code with someone in their downline rather than
+/// formally redistributing it, so a token may legitimately be redeemed for a signup that
+/// is not placed directly under the owner.
 ///
 /// Order of checks (fail-fast):
 ///   1. Status must be Issued or Distributed.        → TokenAlreadyUsedException (generic msg)
 ///   2. ExpiresAt, if set, must be in the future.    → TokenExpiredException (generic msg)
 ///   3. TokenType must be Active and Category=Enrollment.
 ///                                                    → TokenAlreadyUsedException (generic msg — Upgrade tokens are not legal in signup)
-///   4. Current owner (TokenTransaction.MemberId) must equal sponsorMemberId.
-///                                                    → TokenNotOwnedBySponsorException (generic msg)
-///   5. Selected products must be a subset of the token's Role=Granted products.
+///   4. Selected products must be a subset of the token's Role=Granted products.
 ///                                                    → TokenProductMismatchException (specific msg)
 ///
 /// Generic-message exceptions intentionally collapse to the same error code "TOKEN_NOT_VALID"
-/// so a caller cannot distinguish "not yours" from "already used" from "expired" — only the
-/// product-mismatch case carries a different code with details.
+/// so a caller cannot distinguish "already used" from "expired" — only the product-mismatch
+/// case carries a different code with details.
 /// </summary>
 public static class TokenInstanceSignupValidator
 {
@@ -29,14 +32,12 @@ public static class TokenInstanceSignupValidator
     /// <param name="instance">The TokenTransaction row representing the redeemable instance (ReferenceId != null).</param>
     /// <param name="tokenType">The TokenType for this instance (Category, IsActive consulted).</param>
     /// <param name="grantedProducts">All TokenTypeProduct rows for this TokenType — only those with Role=Granted are used.</param>
-    /// <param name="sponsorMemberId">MemberId of the sponsor under whom the signup is being performed.</param>
     /// <param name="selectedProductIds">Product IDs the user picked in the signup wizard.</param>
     /// <param name="now">Current UTC time (use IDateTimeProvider in the caller).</param>
     public static void Validate(
         TokenTransaction instance,
         TokenType tokenType,
         IReadOnlyCollection<TokenTypeProduct> grantedProducts,
-        string sponsorMemberId,
         IReadOnlyCollection<string> selectedProductIds,
         DateTime now)
     {
@@ -64,11 +65,7 @@ public static class TokenInstanceSignupValidator
             throw new TokenAlreadyUsedException();
         }
 
-        // 4. Current owner must equal sponsor
-        if (!string.Equals(instance.MemberId, sponsorMemberId, StringComparison.OrdinalIgnoreCase))
-            throw new TokenNotOwnedBySponsorException();
-
-        // 5. Product subset check
+        // 4. Product subset check
         var allowed = grantedProducts
             .Where(p => p.Role == TokenProductRole.Granted)
             .Select(p => p.ProductId)

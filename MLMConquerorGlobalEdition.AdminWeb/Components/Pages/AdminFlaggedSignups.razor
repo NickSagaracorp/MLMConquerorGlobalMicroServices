@@ -1,0 +1,469 @@
+@page "/admin/security/flagged-signups"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin")]
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<PageTitle>Flagged Signups — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Security"), new("Flagged Signups") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="d-flex gap-2 mb-3 flex-wrap">
+    <a href="/admin/security/audit" class="btn btn-outline-secondary btn-sm">
+        <i class="ri-shield-check-line me-1"></i>Access Audit
+    </a>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small mb-1">Visitor ID</label>
+                <input class="form-control form-control-sm" @bind="_visitorIdFilter" placeholder="FingerprintJS visitorId" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-semibold small mb-1">IP Address</label>
+                <input class="form-control form-control-sm" @bind="_ipAddressFilter" placeholder="e.g. 1.2.3.4" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-semibold small mb-1">Sponsor Site</label>
+                <input class="form-control form-control-sm" @bind="_sponsorFilter" placeholder="replicate site" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-semibold small mb-1">From (UTC)</label>
+                <input type="date" class="form-control form-control-sm" @bind="_fromFilter" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-semibold small mb-1">To (UTC)</label>
+                <input type="date" class="form-control form-control-sm" @bind="_toFilter" />
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+                <button class="btn btn-primary btn-sm w-100" @onclick="Search" title="Search">
+                    <i class="ri-search-line"></i>
+                </button>
+            </div>
+        </div>
+        <div class="row g-3 align-items-center mt-2">
+            <div class="col-md-3">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="switchOnlyFlagged" @bind="_onlyFlagged" />
+                    <label class="form-check-label small" for="switchOnlyFlagged">Only flagged</label>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="switchIncludeCleared" @bind="_includeCleared" />
+                    <label class="form-check-label small" for="switchIncludeCleared">Include cleared</label>
+                </div>
+            </div>
+            <div class="col-md-6 d-flex justify-content-end gap-2">
+                <button class="btn btn-outline-secondary btn-sm" @onclick="ClearFilters">
+                    <i class="ri-eraser-line me-1"></i>Clear
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync" title="Refresh">
+                    <i class="ri-refresh-line"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else if (!_items.Any())
+        {
+            <div class="text-center text-muted py-5">
+                <i class="ri-shield-cross-line" style="font-size:2rem;"></i>
+                <div class="mt-2">No fingerprint events match the current filters.</div>
+            </div>
+        }
+        else
+        {
+            <SfGrid TValue="FlaggedSignupDto" DataSource="@_items"
+                    AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn HeaderText="Created (UTC)" Width="150">
+                        <Template><span class="small text-muted">@(((FlaggedSignupDto)context).CreationDate.ToString("yyyy-MM-dd HH:mm"))</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Visitor ID" Width="220">
+                        <Template>
+                            @{ var v = ((FlaggedSignupDto)context).VisitorId ?? string.Empty; }
+                            <div class="d-flex align-items-center gap-1">
+                                <code class="small" title="@v">@TruncateMid(v, 18)</code>
+                                <button class="btn btn-link btn-sm p-0" title="Copy" @onclick="() => CopyAsync(v)">
+                                    <i class="ri-file-copy-line"></i>
+                                </button>
+                            </div>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Flow" Width="140" TextAlign="TextAlign.Center">
+                        <Template>
+                            @{ var f = ((FlaggedSignupDto)context).Flow ?? string.Empty; }
+                            <span class="badge @FlowBadge(f)">@f</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Flagged" Width="100" TextAlign="TextAlign.Center">
+                        <Template>
+                            @{ var dto = (FlaggedSignupDto)context; }
+                            @if (dto.IsFlagged)
+                            {
+                                <span class="badge bg-danger" title="@dto.FlagReason">Flagged</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">—</span>
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Cleared" Width="120" TextAlign="TextAlign.Center">
+                        <Template>
+                            @{ var dto = (FlaggedSignupDto)context; }
+                            @if (dto.Cleared)
+                            {
+                                var tip = $"Cleared at {(dto.ClearedAt?.ToString("yyyy-MM-dd HH:mm") ?? "?")} by {dto.ClearedBy ?? "?"} — {dto.ClearReason ?? "—"}";
+                                <span class="badge bg-success" title="@tip">Cleared</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">—</span>
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Sponsor" Width="140">
+                        <Template><span class="small">@(((FlaggedSignupDto)context).SponsorReplicateSite ?? "—")</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="IP Address" Width="140">
+                        <Template><code class="small">@(((FlaggedSignupDto)context).IpAddress ?? "—")</code></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="220" TextAlign="TextAlign.Center">
+                        <Template>
+                            @{ var dto = (FlaggedSignupDto)context; }
+                            <div class="d-flex justify-content-center gap-1">
+                                <button class="btn btn-sm btn-outline-warning py-0"
+                                        disabled="@dto.Cleared"
+                                        @onclick="() => OpenUnblockVisitor(dto)"
+                                        title="Clear all events for this visitorId">
+                                    <i class="ri-shield-cross-line"></i> Unblock visitor
+                                </button>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary py-0 dropdown-toggle"
+                                            type="button"
+                                            data-bs-toggle="dropdown"
+                                            disabled="@dto.Cleared"
+                                            title="More">
+                                        <i class="ri-more-2-fill"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li>
+                                            <button class="dropdown-item small"
+                                                    @onclick="() => OpenUnblockIp(dto)"
+                                                    disabled="@(string.IsNullOrWhiteSpace(dto.IpAddress))">
+                                                <i class="ri-global-line me-1"></i>Unblock by IP
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+
+            @if (_totalPages > 1)
+            {
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
+                    <small class="text-muted">@_totalCount events — Page @_page of @_totalPages</small>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>
+                            @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
+                            { var pg = i; <li class="page-item @(_page == pg ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(pg)">@pg</button></li> }
+                            <li class="page-item @(_page == _totalPages ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page + 1)">›</button></li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+        }
+    </div>
+    <div class="card-footer bg-light small text-muted">
+        Fingerprint events recorded by the signup join page. When a legitimate customer is blocked,
+        clear their <strong>visitorId</strong> (or IP, if visitorId is missing) so the duplicate-threshold guard
+        stops counting prior attempts. Cleared rows still exist in the DB for the audit trail.
+    </div>
+</div>
+
+@if (_showUnblockModal && _unblockTarget is not null)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold text-warning">
+                        <i class="ri-shield-cross-line me-1"></i>
+                        Unblock @(_unblockTarget.Mode == UnblockMode.Visitor ? "Visitor" : "IP Address")
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseUnblockModal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">
+                        You are about to clear
+                        <strong>@_unblockTarget.MatchingCount</strong>
+                        fingerprint event(s) for
+                        @if (_unblockTarget.Mode == UnblockMode.Visitor)
+                        {
+                            <text>visitor <code>@_unblockTarget.Value</code></text>
+                        }
+                        else
+                        {
+                            <text>IP <code>@_unblockTarget.Value</code></text>
+                        }.
+                        The user will be able to retry signup immediately.
+                    </p>
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Reason <span class="text-danger">*</span></label>
+                        <textarea class="form-control form-control-sm" rows="3" maxlength="500"
+                                  placeholder="e.g. Confirmed legitimate user — duplicate due to office NAT"
+                                  @bind="_unblockReason" @bind:event="oninput"></textarea>
+                        <small class="text-muted">@_unblockReason.Length / 500</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseUnblockModal" disabled="@_saving">Cancel</button>
+                    <button class="btn btn-warning"
+                            @onclick="ConfirmUnblock"
+                            disabled="@(_saving || string.IsNullOrWhiteSpace(_unblockReason))">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Confirm
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    // ── Filters ─────────────────────────────────────────────────────────
+    private string  _visitorIdFilter = string.Empty;
+    private string  _ipAddressFilter = string.Empty;
+    private string  _sponsorFilter   = string.Empty;
+    private DateTime? _fromFilter;
+    private DateTime? _toFilter;
+    private bool    _onlyFlagged;
+    private bool    _includeCleared;
+
+    // ── Grid state ──────────────────────────────────────────────────────
+    private List<FlaggedSignupDto> _items = new();
+    private bool _loading = true;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private int _page = 1;
+    private const int PageSize = 25;
+    private int _totalCount;
+    private int _totalPages = 1;
+
+    // ── Unblock modal ───────────────────────────────────────────────────
+    private bool _showUnblockModal;
+    private bool _saving;
+    private string _unblockReason = string.Empty;
+    private UnblockTarget? _unblockTarget;
+
+    private enum UnblockMode { Visitor, Ip }
+    private record UnblockTarget(UnblockMode Mode, string Value, int MatchingCount);
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var qs = new List<string>
+            {
+                $"page={_page}",
+                $"pageSize={PageSize}",
+                $"onlyFlagged={_onlyFlagged.ToString().ToLower()}",
+                $"includeCleared={_includeCleared.ToString().ToLower()}"
+            };
+            if (!string.IsNullOrWhiteSpace(_visitorIdFilter))
+                qs.Add($"visitorId={Uri.EscapeDataString(_visitorIdFilter.Trim())}");
+            if (!string.IsNullOrWhiteSpace(_ipAddressFilter))
+                qs.Add($"ipAddress={Uri.EscapeDataString(_ipAddressFilter.Trim())}");
+            if (!string.IsNullOrWhiteSpace(_sponsorFilter))
+                qs.Add($"sponsorReplicateSite={Uri.EscapeDataString(_sponsorFilter.Trim())}");
+            if (_fromFilter.HasValue)
+                qs.Add($"from={Uri.EscapeDataString(_fromFilter.Value.ToString("o"))}");
+            if (_toFilter.HasValue)
+                qs.Add($"to={Uri.EscapeDataString(_toFilter.Value.ToString("o"))}");
+
+            var url = $"api/v1/admin/security/flagged-signups?{string.Join("&", qs)}";
+            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<FlaggedSignupDto>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _items = resp.Data.Items.ToList();
+                _totalCount = resp.Data.TotalCount;
+                _totalPages = resp.Data.TotalPages;
+            }
+            else
+            {
+                _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load flagged signups.";
+                _alertIsError = true;
+                _items = new();
+                _totalCount = 0; _totalPages = 1;
+            }
+        }
+        catch (Exception ex)
+        {
+            _alertMsg = $"Error: {ex.Message}";
+            _alertIsError = true;
+        }
+        finally { _loading = false; }
+    }
+
+    private async Task Search() { _page = 1; await LoadAsync(); }
+
+    private async Task ClearFilters()
+    {
+        _visitorIdFilter = string.Empty;
+        _ipAddressFilter = string.Empty;
+        _sponsorFilter   = string.Empty;
+        _fromFilter      = null;
+        _toFilter        = null;
+        _onlyFlagged     = false;
+        _includeCleared  = false;
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task ChangePage(int p)
+    {
+        if (p < 1 || p > _totalPages) return;
+        _page = p;
+        await LoadAsync();
+    }
+
+    // ── Unblock flow ────────────────────────────────────────────────────
+    private void OpenUnblockVisitor(FlaggedSignupDto dto)
+    {
+        var v = dto.VisitorId ?? string.Empty;
+        var matching = _items.Count(x => string.Equals(x.VisitorId, v, StringComparison.Ordinal) && !x.Cleared);
+        _unblockTarget = new UnblockTarget(UnblockMode.Visitor, v, matching);
+        _unblockReason = string.Empty;
+        _showUnblockModal = true;
+    }
+
+    private void OpenUnblockIp(FlaggedSignupDto dto)
+    {
+        var ip = dto.IpAddress ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(ip)) return;
+        var matching = _items.Count(x => string.Equals(x.IpAddress, ip, StringComparison.Ordinal) && !x.Cleared);
+        _unblockTarget = new UnblockTarget(UnblockMode.Ip, ip, matching);
+        _unblockReason = string.Empty;
+        _showUnblockModal = true;
+    }
+
+    private void CloseUnblockModal()
+    {
+        _showUnblockModal = false;
+        _unblockTarget = null;
+        _unblockReason = string.Empty;
+    }
+
+    private async Task ConfirmUnblock()
+    {
+        if (_unblockTarget is null) return;
+        if (string.IsNullOrWhiteSpace(_unblockReason)) return;
+        _saving = true;
+        try
+        {
+            var body = new UnblockRequest(
+                _unblockTarget.Mode == UnblockMode.Visitor ? _unblockTarget.Value : null,
+                _unblockTarget.Mode == UnblockMode.Ip      ? _unblockTarget.Value : null,
+                _unblockReason.Trim());
+
+            var resp = await Http.PostAsJsonAsync("api/v1/admin/security/flagged-signups/unblock", body);
+            if (resp.IsSuccessStatusCode)
+            {
+                var payload = await resp.Content.ReadFromJsonAsync<ApiResp<int>>();
+                var n = payload?.Data ?? 0;
+                _alertMsg = $"Cleared {n} row(s) for {(_unblockTarget.Mode == UnblockMode.Visitor ? "visitor" : "IP")} {_unblockTarget.Value}.";
+                _alertIsError = false;
+                CloseUnblockModal();
+                await LoadAsync();
+            }
+            else
+            {
+                var payload = await resp.Content.ReadFromJsonAsync<ApiResp<object>>();
+                _alertMsg = payload?.Errors?.FirstOrDefault() ?? $"Unblock failed ({resp.StatusCode}).";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _alertMsg = $"Error: {ex.Message}";
+            _alertIsError = true;
+        }
+        finally { _saving = false; }
+    }
+
+    // ── Utilities ───────────────────────────────────────────────────────
+    private async Task CopyAsync(string text)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            _alertMsg = "Copied to clipboard.";
+            _alertIsError = false;
+        }
+        catch
+        {
+            _alertMsg = "Could not copy to clipboard.";
+            _alertIsError = true;
+        }
+    }
+
+    private static string TruncateMid(string s, int max)
+    {
+        if (string.IsNullOrEmpty(s) || s.Length <= max) return s;
+        var keep = (max - 1) / 2;
+        return $"{s[..keep]}…{s[^keep..]}";
+    }
+
+    private static string FlowBadge(string flow) => flow switch
+    {
+        "AmbassadorSignup" => "bg-primary",
+        "MemberSignup"     => "bg-info text-dark",
+        "TokenValidation"  => "bg-secondary",
+        _                  => "bg-light text-dark border"
+    };
+
+    // ── DTOs ────────────────────────────────────────────────────────────
+    private record FlaggedSignupDto(
+        long Id,
+        string VisitorId,
+        string Flow,
+        string? SponsorReplicateSite,
+        string? IpAddress,
+        string? UserAgent,
+        string? OrderId,
+        string? MemberId,
+        bool IsFlagged,
+        string? FlagReason,
+        bool Cleared,
+        DateTime? ClearedAt,
+        string? ClearedBy,
+        string? ClearReason,
+        DateTime CreationDate);
+
+    private record UnblockRequest(string? VisitorId, string? IpAddress, string Reason);
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+}

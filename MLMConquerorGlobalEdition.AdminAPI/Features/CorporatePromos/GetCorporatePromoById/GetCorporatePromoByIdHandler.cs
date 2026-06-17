@@ -41,8 +41,8 @@ public class GetCorporatePromoByIdHandler
             IsActive                    = promo.IsActive,
             MemberCount                 = memberCount,
             CreationDate                = promo.CreationDate,
-            DoubleSponsorBonus          = promo.DoubleSponsorBonus,
-            DoubleBuilderBonus          = promo.DoubleBuilderBonus,
+            SponsorBonusMultiplier      = promo.SponsorBonusMultiplier,
+            BuilderBonusMultiplier      = promo.BuilderBonusMultiplier,
             ResetFsbCountdown           = promo.ResetFsbCountdown,
             ResetFsbCountdownExecutedAt = promo.ResetFsbCountdownExecutedAt
         });

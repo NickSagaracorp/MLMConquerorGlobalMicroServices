@@ -5,6 +5,7 @@ using MLMConquerorGlobalEdition.AdminAPI.Tests.Helpers;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
+using MLMConquerorGlobalEdition.Repository.Services.Trees;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Tests.Features.Placement;
@@ -24,6 +25,14 @@ public class AdminPlaceMemberHandlerTests
     {
         var m = new Mock<IDateTimeProvider>();
         m.Setup(x => x.Now).Returns(FixedNow);
+        return m;
+    }
+
+    private static Mock<IDualTeamPointsRecalculator> NullLegPoints()
+    {
+        var m = new Mock<IDualTeamPointsRecalculator>();
+        m.Setup(r => r.RecalculateForUplinesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+         .Returns(Task.CompletedTask);
         return m;
     }
 
@@ -54,8 +63,9 @@ public class AdminPlaceMemberHandlerTests
     };
 
     private static AdminPlaceMemberHandler CreateHandler(
-        Repository.Context.AppDbContext db) =>
-        new(db, CurrentUser().Object, Clock().Object);
+        Repository.Context.AppDbContext db,
+        Mock<IDualTeamPointsRecalculator>? legPoints = null) =>
+        new(db, CurrentUser().Object, Clock().Object, (legPoints ?? NullLegPoints()).Object);
 
     [Fact]
     public async Task Handle_WhenMemberToPlaceDoesNotExist_ReturnsMemberNotFound()
@@ -164,5 +174,29 @@ public class AdminPlaceMemberHandlerTests
 
         var node = db.DualTeamTree.First(d => d.MemberId == "amb-001");
         node.HierarchyPath.Should().Be("/parent-001/amb-001/");
+    }
+
+    /// <summary>
+    /// Sprint-15 follow-up — every successful admin placement must invoke the
+    /// shared <see cref="IDualTeamPointsRecalculator"/> with the target parent
+    /// id. The previous local implementation counted nodes instead of summing
+    /// PersonalPoints, so leg-point values drifted on every admin placement.
+    /// </summary>
+    [Fact]
+    public async Task Handle_WhenSuccessful_InvokesLegPointsRecalculatorWithTargetParent()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        db.MemberProfiles.Add(BuildProfile("amb-001"));
+        db.DualTeamTree.Add(BuildNode("parent-001", null, TreeSide.Left, "/parent-001/"));
+        await db.SaveChangesAsync();
+
+        var legPoints = NullLegPoints();
+        var result = await CreateHandler(db, legPoints).Handle(
+            new AdminPlaceMemberCommand("amb-001", "parent-001", "Right"),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        legPoints.Verify(r => r.RecalculateForUplinesAsync(
+            "parent-001", It.IsAny<CancellationToken>()), Times.Once);
     }
 }

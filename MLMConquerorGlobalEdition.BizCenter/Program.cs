@@ -70,6 +70,7 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 // EnrollmentTeamService now depends on IEnrollmentTeamPointsService so this
 // call must precede the EnrollmentTeamService registration.
 builder.Services.AddRankServices();
+MLMConquerorGlobalEdition.Repository.Services.Teams.PlacementServicesRegistration.AddPlacementServices(builder.Services);
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTreeNodeService,
                             MLMConquerorGlobalEdition.Repository.Services.Teams.DualTreeNodeService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IEnrollmentTeamService,
@@ -196,6 +197,20 @@ builder.Services.AddHangfireServer(options =>
 
 builder.Services.AddControllers();
 builder.Services.AddHttpClient("certificates");
+
+// Typed HttpClient for RankEngine on-demand calls (currently just the member
+// self-service certificate-generation endpoint). The BaseAddress falls back to
+// the canonical dev port (7009) so local environments work without extra config.
+{
+    var rankEngineBaseUrl = builder.Configuration["Services:RankEngineBaseUrl"]
+                            ?? "https://localhost:7009/";
+    builder.Services.AddHttpClient("rankengine", c =>
+    {
+        c.BaseAddress = new Uri(rankEngineBaseUrl);
+        c.Timeout     = TimeSpan.FromSeconds(15);
+    });
+}
+builder.Services.AddScoped<IRankEngineClient, RankEngineClient>();
 
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")

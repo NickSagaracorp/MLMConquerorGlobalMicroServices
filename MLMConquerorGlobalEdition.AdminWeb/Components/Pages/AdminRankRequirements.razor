@@ -257,7 +257,7 @@
         finally { _loading = false; }
     }
 
-    private void OpenCreate() { _editId = null; _form = new() { MaxTeamPointsPerBranch = 0.5, MaxEnrollmentTeamPointsPerBranch = 0.5, ExternalMembers = 1, SponsoredMembers = 1 }; _showForm = true; }
+    private void OpenCreate() { _editId = null; _form = new() { MaxTeamPointsPerBranch = 0.5, MaxEnrollmentTeamPointsPerBranch = 0.5, ExternalMembers = 0, SponsoredMembers = 1 }; _showForm = true; }
 
     private void OpenEdit(RankRequirementDto item)
     {

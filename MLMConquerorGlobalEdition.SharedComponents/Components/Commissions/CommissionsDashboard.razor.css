@@ -1,0 +1,72 @@
+/* ============================================================
+   History section tabs (year selector + detail modal categories)
+   Real pill-style tabs with an unmistakable active highlight using
+   the project's "success" green accent. Shared by BizCenterWeb and
+   AdminWeb via the SharedComponents RCL (CSS isolation = app-agnostic).
+   ============================================================ */
+
+.history-tabs {
+    --history-tab-accent: var(--bs-success, #198754);
+    list-style: none;
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+    padding-bottom: 1rem !important;
+}
+
+.history-tabs .nav-item {
+    display: flex;
+}
+
+/* Inactive tab: outlined pill, muted text */
+.history-tab {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    line-height: 1.2;
+    color: var(--bs-secondary-color, #6c757d);
+    background-color: transparent;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color .15s ease-in-out,
+                background-color .15s ease-in-out,
+                border-color .15s ease-in-out,
+                box-shadow .15s ease-in-out;
+}
+
+/* Hover state for inactive tabs */
+.history-tab:hover {
+    color: var(--history-tab-accent);
+    border-color: var(--history-tab-accent);
+    background-color: rgba(25, 135, 84, 0.08);
+}
+
+/* Keyboard focus visibility (do not strip the ring) */
+.history-tab:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);
+}
+
+/* Active / selected tab: solid green accent, clearly highlighted */
+.history-tab.active {
+    color: #fff;
+    background-color: var(--history-tab-accent);
+    border-color: var(--history-tab-accent);
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(25, 135, 84, 0.30);
+}
+
+.history-tab.active:hover {
+    color: #fff;
+    background-color: var(--history-tab-accent);
+    border-color: var(--history-tab-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .history-tab {
+        transition: none;
+    }
+}

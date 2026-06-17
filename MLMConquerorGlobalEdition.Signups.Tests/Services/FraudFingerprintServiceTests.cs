@@ -138,6 +138,42 @@ public class FraudFingerprintServiceTests
     }
 
     [Fact]
+    public async Task RecordAsync_WhenPriorRowsAreCleared_TheyDoNotCountTowardThreshold()
+    {
+        // Admin clears the prior fingerprints (legitimate user blocked by mistake).
+        // After clearing, the visitor must be able to submit at least <threshold> more attempts
+        // before the guard trips again.
+        await using var db = InMemoryDbHelper.Create();
+        var svc = MakeService(db);
+
+        await svc.RecordAsync("visitor-Y", SignupRiskFlow.AmbassadorSignup, "s", null, null, null, null, CancellationToken.None);
+        await svc.RecordAsync("visitor-Y", SignupRiskFlow.AmbassadorSignup, "s", null, null, null, null, CancellationToken.None);
+
+        // Admin clears every existing row for this visitor.
+        var existing = await db.SignupRiskFingerprints.Where(x => x.VisitorId == "visitor-Y").ToListAsync();
+        foreach (var row in existing)
+        {
+            row.Cleared     = true;
+            row.ClearedAt   = DateTime.Now;
+            row.ClearedBy   = "admin-uid";
+            row.ClearReason = "Support call — confirmed legit";
+        }
+        await db.SaveChangesAsync();
+
+        // Visitor retries. With cleared rows excluded, count is 0+1 → still under the threshold of 3.
+        var third = await svc.RecordAsync("visitor-Y", SignupRiskFlow.AmbassadorSignup, "s", null, null, null, null, CancellationToken.None);
+        third.IsFlagged.Should().BeFalse();
+
+        // Two more attempts to confirm the counter genuinely restarted.
+        var fourth = await svc.RecordAsync("visitor-Y", SignupRiskFlow.AmbassadorSignup, "s", null, null, null, null, CancellationToken.None);
+        fourth.IsFlagged.Should().BeFalse();
+
+        var fifth = await svc.RecordAsync("visitor-Y", SignupRiskFlow.AmbassadorSignup, "s", null, null, null, null, CancellationToken.None);
+        fifth.IsFlagged.Should().BeTrue();
+        fifth.FlagReason.Should().Be("DUP_VISITOR_3_IN_1H");
+    }
+
+    [Fact]
     public async Task RecordAsync_TruncatesOversizedFields()
     {
         await using var db = InMemoryDbHelper.Create();

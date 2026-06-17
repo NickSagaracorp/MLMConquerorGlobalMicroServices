@@ -33,10 +33,17 @@ public class MemberProfilesWalletHistory : AuditChangesLongKey
 
 public enum WalletHistoryAction
 {
-    Created        = 1,
-    AccountChanged = 2,
-    StatusChanged  = 3,
-    SetAsDefault   = 4,
-    UnsetAsDefault = 5,
-    Deleted        = 6
+    Created           = 1,
+    AccountChanged    = 2,
+    StatusChanged     = 3,
+    SetAsDefault      = 4,
+    UnsetAsDefault    = 5,
+    Deleted           = 6,
+    /// <summary>
+    /// Admin updated the country's default payout gateway and chose to apply
+    /// the change retroactively. Members whose wallet matched the previous
+    /// default get their WalletType swapped. ChangeReason carries the country
+    /// + old → new gateway summary for forensic traceability.
+    /// </summary>
+    WalletTypeChanged = 7
 }

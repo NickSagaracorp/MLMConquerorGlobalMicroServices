@@ -69,7 +69,7 @@ public class GetFinancialDashboardHandlerTests
         result.Value!.TotalMembersActive.Should().Be(0);
         result.Value.TotalCommissionsPaid.Should().Be(0);
         result.Value.TotalCommissionsPending.Should().Be(0);
-        result.Value.TotalRevenueThisMonth.Should().Be(0);
+        result.Value.TotalRevenue.Should().Be(0);
     }
 
     [Fact]
@@ -119,6 +119,33 @@ public class GetFinancialDashboardHandlerTests
         var handler = new GetFinancialDashboardHandler(db, DateTimeProvider().Object, new NoOpCacheService());
         var result = await handler.Handle(new GetFinancialDashboardQuery(), CancellationToken.None);
 
-        result.Value!.TotalRevenueThisMonth.Should().Be(800m);
+        result.Value!.TotalRevenue.Should().Be(800m);
+    }
+
+    [Fact]
+    public async Task Handle_WithExplicitRange_FiltersCommissionsAndRevenueToWindow()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        var from = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var to   = new DateTime(2026, 1, 31, 23, 59, 59, DateTimeKind.Utc);
+
+        // In-window
+        db.CommissionEarnings.Add(new CommissionEarning { BeneficiaryMemberId="AMB-001", CommissionTypeId=1, Amount=100m, Status=CommissionEarningStatus.Paid, EarnedDate=new DateTime(2026,1,15,0,0,0,DateTimeKind.Utc), PaymentDate=new DateTime(2026,1,17,0,0,0,DateTimeKind.Utc), CreationDate=from, LastUpdateDate=from, CreatedBy="seed" });
+        db.Orders.Add(BuildOrder(500m, new DateTime(2026,1,10,0,0,0,DateTimeKind.Utc)));
+        // Out-of-window (February)
+        db.CommissionEarnings.Add(new CommissionEarning { BeneficiaryMemberId="AMB-001", CommissionTypeId=1, Amount=999m, Status=CommissionEarningStatus.Paid, EarnedDate=new DateTime(2026,2,15,0,0,0,DateTimeKind.Utc), PaymentDate=new DateTime(2026,2,17,0,0,0,DateTimeKind.Utc), CreationDate=from, LastUpdateDate=from, CreatedBy="seed" });
+        db.Orders.Add(BuildOrder(7777m, new DateTime(2026,2,10,0,0,0,DateTimeKind.Utc)));
+        await db.SaveChangesAsync();
+
+        var handler = new GetFinancialDashboardHandler(db, DateTimeProvider().Object, new NoOpCacheService());
+        var result  = await handler.Handle(new GetFinancialDashboardQuery(from, to), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.RangeFrom.Should().Be(from);
+        result.Value.RangeTo.Should().Be(to);
+        result.Value.TotalCommissionsPaid.Should().Be(100m);   // Feb 999 excluded
+        result.Value.TotalRevenue.Should().Be(500m);            // Feb 7777 excluded
+        result.Value.NetCashFlow.Should().Be(400m);             // 500 - 100
+        result.Value.CommissionToRevenuePct.Should().Be(20m);  // 100/500
     }
 }

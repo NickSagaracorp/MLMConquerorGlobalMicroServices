@@ -401,6 +401,88 @@ public class CorporatePromosHandlerTests
     }
 
     [Fact]
+    public async Task Create_WhenMultipliersProvided_PersistsThem()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        var handler = new CreateCorporatePromoHandler(db, CurrentUser().Object, Clock().Object);
+
+        await handler.Handle(new CreateCorporatePromoCommand(new CreateCorporatePromoRequest
+        {
+            Title                  = "Boosted Promo",
+            StartDate              = PromoStart,
+            EndDate                = PromoEnd,
+            SponsorBonusMultiplier = 3,
+            BuilderBonusMultiplier = 5
+        }), CancellationToken.None);
+
+        var saved = db.CorporatePromos.Single();
+        saved.SponsorBonusMultiplier.Should().Be(3);
+        saved.BuilderBonusMultiplier.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task Create_WhenMultipliersOmitted_DefaultsToOne()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        var handler = new CreateCorporatePromoHandler(db, CurrentUser().Object, Clock().Object);
+
+        await handler.Handle(new CreateCorporatePromoCommand(new CreateCorporatePromoRequest
+        {
+            Title     = "Plain Promo",
+            StartDate = PromoStart,
+            EndDate   = PromoEnd
+        }), CancellationToken.None);
+
+        var saved = db.CorporatePromos.Single();
+        saved.SponsorBonusMultiplier.Should().Be(1);
+        saved.BuilderBonusMultiplier.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Update_WhenMultipliersChanged_PersistsNewValues()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        var promo = BuildPromo();
+        promo.SponsorBonusMultiplier = 2;
+        promo.BuilderBonusMultiplier = 2;
+        await db.CorporatePromos.AddAsync(promo);
+        await db.SaveChangesAsync();
+
+        var handler = new UpdateCorporatePromoHandler(db, CurrentUser().Object, Clock().Object);
+        await handler.Handle(
+            new UpdateCorporatePromoCommand("PROMO-001", new UpdateCorporatePromoRequest
+            {
+                Title                  = "Q1 Promo",
+                StartDate              = PromoStart,
+                EndDate                = PromoEnd,
+                IsActive               = true,
+                SponsorBonusMultiplier = 4,
+                BuilderBonusMultiplier = 5
+            }), CancellationToken.None);
+
+        var updated = db.CorporatePromos.Single();
+        updated.SponsorBonusMultiplier.Should().Be(4);
+        updated.BuilderBonusMultiplier.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task GetById_ReturnsMultipliersInDto()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        var promo = BuildPromo();
+        promo.SponsorBonusMultiplier = 3;
+        promo.BuilderBonusMultiplier = 4;
+        await db.CorporatePromos.AddAsync(promo);
+        await db.SaveChangesAsync();
+
+        var handler = new GetCorporatePromoByIdHandler(db);
+        var result  = await handler.Handle(new GetCorporatePromoByIdQuery("PROMO-001"), CancellationToken.None);
+
+        result.Value!.SponsorBonusMultiplier.Should().Be(3);
+        result.Value.BuilderBonusMultiplier.Should().Be(4);
+    }
+
+    [Fact]
     public async Task Update_WhenPromoExists_UpdatesFields()
     {
         await using var db = InMemoryDbHelper.Create();

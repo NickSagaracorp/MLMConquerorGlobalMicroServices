@@ -131,7 +131,10 @@ else if (_contests.Count > 0)
                     }
                     @if (!string.IsNullOrWhiteSpace(d.Description))
                     {
-                        <p class="mb-3">@d.Description</p>
+                        @* Description is admin-entered richtext (HTML) — render it as
+                           markup instead of escaping. No project-level sanitizer exists;
+                           the source is trusted corporate-admin input. *@
+                        <p class="mb-3">@((MarkupString)d.Description)</p>
                     }
                     <ul class="list-unstyled mb-0 small text-muted">
                         <li><i class="ri-calendar-line me-1"></i>

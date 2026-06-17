@@ -1,0 +1,706 @@
+@page "/admin/billing/payout-batches"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin,BillingManager")]
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<PageTitle>Payout Batches — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Billing"), new("Payout Batches") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+@* ── Filters ──────────────────────────────────────────────────────────────── *@
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-3">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small mb-1">Status</label>
+                <select class="form-select form-select-sm" @bind="_statusFilter" @bind:after="Search">
+                    <option value="">All statuses</option>
+                    <option value="Exported">Exported</option>
+                    <option value="Reconciled">Reconciled</option>
+                    <option value="PartiallyReconciled">Partially reconciled</option>
+                    <option value="Cancelled">Cancelled</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small mb-1">Gateway</label>
+                <select class="form-select form-select-sm" @bind="_walletFilter" @bind:after="Search">
+                    <option value="">All gateways</option>
+                    @foreach (var w in WalletTypes)
+                    {
+                        <option value="@w">@GatewayLabel(w)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-outline-secondary btn-sm w-100" @onclick="Search" disabled="@_loading">
+                    @if (_loading) { <span class="spinner-border spinner-border-sm me-1"></span> } else { <i class="ri-refresh-line me-1"></i> }
+                    Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ── Batches table ────────────────────────────────────────────────────────── *@
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2 flex-wrap">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-stack-line me-2 text-primary"></i>Payout batches
+        </h6>
+        <span class="small text-muted">@_totalCount records</span>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="PayoutBatchRowDto" DataSource="@_items"
+                    AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridColumns>
+                    <GridColumn HeaderText="Gateway" Width="170">
+                        <Template><span class="small fw-semibold">@GatewayLabel(((PayoutBatchRowDto)context).WalletType)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Process date (UTC)" Width="140">
+                        <Template>
+                            @{ var r = (PayoutBatchRowDto)context; }
+                            <span class="small">@r.ProcessDateUtc.ToString("yyyy-MM-dd")</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Status" Width="150" TextAlign="TextAlign.Center">
+                        <Template>@RenderStatus(((PayoutBatchRowDto)context).Status)</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Members" Width="100" TextAlign="TextAlign.Right">
+                        <Template><span class="small">@(((PayoutBatchRowDto)context).MemberCount)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Total (USD)" Width="130" TextAlign="TextAlign.Right">
+                        <Template><span class="fw-semibold">@(((PayoutBatchRowDto)context).TotalAmountUsd.ToString("C"))</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Created (UTC)" Width="140">
+                        <Template>
+                            @{ var r = (PayoutBatchRowDto)context; }
+                            <span class="small">@r.CreationDate.ToString("yyyy-MM-dd HH:mm")</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Reconciled (UTC)" Width="140">
+                        <Template>
+                            @{ var r = (PayoutBatchRowDto)context; }
+                            <span class="small">@(r.ReconciledAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Export" Width="100" TextAlign="TextAlign.Center">
+                        <Template>
+                            @{ var r = (PayoutBatchRowDto)context; }
+                            <button class="btn btn-sm btn-outline-success py-0" title="Download export CSV"
+                                    @onclick="() => DownloadBatchCsv(r)" disabled="@(_downloadingId == r.Id)">
+                                @if (_downloadingId == r.Id) { <span class="spinner-border spinner-border-sm"></span> }
+                                else { <i class="ri-download-2-line"></i> }
+                            </button>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="220" TextAlign="TextAlign.Center">
+                        <Template>
+                            @{ var r = (PayoutBatchRowDto)context; }
+                            <div class="d-flex justify-content-center gap-1 flex-wrap">
+                                <button class="btn btn-sm btn-outline-primary py-0" @onclick="() => OpenDetail(r.Id)">
+                                    <i class="ri-eye-line me-1"></i>View
+                                </button>
+                                @if (r.Status == "Exported")
+                                {
+                                    <button class="btn btn-sm btn-outline-secondary py-0" title="Upload gateway result file to reconcile"
+                                            @onclick="() => OpenReconcile(r)">
+                                        <i class="ri-upload-2-line me-1"></i>Reconcile
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-success py-0" title="Mark the whole batch as paid"
+                                            @onclick="() => ConfirmAction(r, BatchAction.MarkPaid)">
+                                        <i class="ri-check-double-line"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger py-0" title="Cancel batch and release reservations"
+                                            @onclick="() => ConfirmAction(r, BatchAction.Cancel)">
+                                        <i class="ri-close-line"></i>
+                                    </button>
+                                }
+                            </div>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+
+            @if (_items.Count == 0)
+            {
+                <div class="text-center text-muted py-4">No payout batches for the selected filters.</div>
+            }
+
+            @if (_totalPages > 1)
+            {
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
+                    <small class="text-muted">@_totalCount records — Page @_page of @_totalPages</small>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>
+                            @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
+                            { var pg = i; <li class="page-item @(_page == pg ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(pg)">@pg</button></li> }
+                            <li class="page-item @(_page == _totalPages ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page + 1)">›</button></li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+        }
+    </div>
+    <div class="card-footer bg-light small text-muted">
+        Export a batch CSV from the Payouts dashboard, upload it to the gateway portal, then reconcile here with the gateway's result file.
+    </div>
+</div>
+
+@* ── Reconcile uploader modal ─────────────────────────────────────────────── *@
+@if (_showReconcile && _reconcileRow is not null)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">
+                        <i class="ri-upload-cloud-2-line me-2 text-primary"></i>Reconcile batch
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseReconcile"></button>
+                </div>
+                <div class="modal-body">
+                    <dl class="row small mb-3">
+                        <dt class="col-5 text-muted">Gateway</dt><dd class="col-7">@GatewayLabel(_reconcileRow.WalletType)</dd>
+                        <dt class="col-5 text-muted">Process date</dt><dd class="col-7">@_reconcileRow.ProcessDateUtc.ToString("yyyy-MM-dd")</dd>
+                        <dt class="col-5 text-muted">Members</dt><dd class="col-7">@_reconcileRow.MemberCount</dd>
+                        <dt class="col-5 text-muted">Total</dt><dd class="col-7 fw-semibold">@_reconcileRow.TotalAmountUsd.ToString("C")</dd>
+                    </dl>
+
+                    <label class="form-label fw-semibold small mb-1">Gateway result file <span class="text-danger">*</span></label>
+                    <InputFile OnChange="OnReconcileFileSelected" accept=".csv,.txt,.xlsx" class="form-control form-control-sm" />
+                    <div class="form-text">Upload the result file the gateway portal returns after processing — max 20 MB.</div>
+                    @if (_reconcileFile is not null)
+                    {
+                        <div class="small text-muted mt-1">
+                            <i class="ri-attachment-2 me-1"></i>@_reconcileFile.Name (@FormatSize(_reconcileFile.Size))
+                        </div>
+                    }
+
+                    @if (_reconcileResult is not null)
+                    {
+                        <div class="alert alert-info mt-3 mb-0">
+                            <div class="fw-semibold mb-1"><i class="ri-check-line me-1"></i>Reconciliation result</div>
+                            <div class="small">
+                                Succeeded: <span class="text-success fw-semibold">@_reconcileResult.Succeeded</span> ·
+                                Failed: <span class="text-danger fw-semibold">@_reconcileResult.Failed</span> ·
+                                Batch status: <span class="fw-semibold">@_reconcileResult.BatchStatus</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseReconcile" disabled="@_reconcileBusy">Close</button>
+                    <button class="btn btn-primary" @onclick="SubmitReconcile" disabled="@(_reconcileBusy || _reconcileFile is null)">
+                        @if (_reconcileBusy) { <span class="spinner-border spinner-border-sm me-1"></span> } else { <i class="ri-upload-2-line me-1"></i> }
+                        Upload &amp; reconcile
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ── Confirm action modal (mark-paid / cancel) ────────────────────────────── *@
+@if (_showConfirm && _confirmRow is not null)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold @(_confirmAction == BatchAction.Cancel ? "text-danger" : "text-success")">
+                        @if (_confirmAction == BatchAction.Cancel)
+                        {
+                            <i class="ri-close-circle-line me-2"></i><text>Cancel batch</text>
+                        }
+                        else
+                        {
+                            <i class="ri-check-double-line me-2"></i><text>Mark batch paid</text>
+                        }
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseConfirm"></button>
+                </div>
+                <div class="modal-body">
+                    @if (_confirmAction == BatchAction.Cancel)
+                    {
+                        <p class="mb-2">Cancel the <strong>@GatewayLabel(_confirmRow.WalletType)</strong> batch for
+                            <strong>@_confirmRow.ProcessDateUtc.ToString("yyyy-MM-dd")</strong> and release all reservations?</p>
+                    }
+                    else
+                    {
+                        <p class="mb-2">Mark the whole <strong>@GatewayLabel(_confirmRow.WalletType)</strong> batch for
+                            <strong>@_confirmRow.ProcessDateUtc.ToString("yyyy-MM-dd")</strong> as paid?</p>
+                        <p class="small text-muted mb-0">Use this only as a fallback when no gateway result file is available.</p>
+                    }
+                    <dl class="row small mb-0 mt-2">
+                        <dt class="col-5 text-muted">Members</dt><dd class="col-7">@_confirmRow.MemberCount</dd>
+                        <dt class="col-5 text-muted">Total</dt><dd class="col-7 fw-semibold">@_confirmRow.TotalAmountUsd.ToString("C")</dd>
+                    </dl>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseConfirm" disabled="@_confirmBusy">Back</button>
+                    <button class="btn @(_confirmAction == BatchAction.Cancel ? "btn-danger" : "btn-success")"
+                            @onclick="ExecuteConfirmedAction" disabled="@_confirmBusy">
+                        @if (_confirmBusy) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        @(_confirmAction == BatchAction.Cancel ? "Cancel batch" : "Mark paid")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ── Detail drawer (offcanvas) ────────────────────────────────────────────── *@
+@if (_showDetail)
+{
+    <div class="offcanvas-backdrop fade show" @onclick="CloseDetail"></div>
+    <div class="offcanvas offcanvas-end show d-block" tabindex="-1" style="visibility:visible;width:min(720px,95vw)">
+        <div class="offcanvas-header border-bottom">
+            <h5 class="offcanvas-title fw-bold">
+                <i class="ri-stack-line me-2 text-primary"></i>Batch detail
+            </h5>
+            <button type="button" class="btn-close" @onclick="CloseDetail"></button>
+        </div>
+        <div class="offcanvas-body">
+            @if (_detailLoading)
+            {
+                <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+            }
+            else if (_detail is null)
+            {
+                <div class="alert alert-warning">Detail could not be loaded.</div>
+            }
+            else
+            {
+                var d = _detail;
+
+                <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+                    @RenderStatus(d.Status)
+                    <span class="badge bg-light text-dark border">@GatewayLabel(d.WalletType)</span>
+                    <span class="badge bg-light text-dark border">@d.ProcessDateUtc.ToString("yyyy-MM-dd")</span>
+                </div>
+
+                <h6 class="fw-bold border-bottom pb-1 mb-2"><i class="ri-information-line me-1 text-muted"></i>Summary</h6>
+                <dl class="row small mb-3">
+                    <dt class="col-5 text-muted">Batch ID</dt><dd class="col-7"><code>@d.Id</code></dd>
+                    <dt class="col-5 text-muted">Members</dt><dd class="col-7">@d.MemberCount</dd>
+                    <dt class="col-5 text-muted">Total (USD)</dt><dd class="col-7 fw-semibold">@d.TotalAmountUsd.ToString("C")</dd>
+                    <dt class="col-5 text-muted">Created (UTC)</dt><dd class="col-7">@d.CreationDate.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+                    <dt class="col-5 text-muted">Reconciled (UTC)</dt><dd class="col-7">@(d.ReconciledAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—")</dd>
+                    <dt class="col-5 text-muted">Reconciled by</dt><dd class="col-7">@(d.ReconciledBy ?? "—")</dd>
+                    @if (!string.IsNullOrWhiteSpace(d.ExportCsvUrl))
+                    {
+                        <dt class="col-5 text-muted">Export CSV</dt><dd class="col-7 text-break"><code>@d.ExportCsvUrl</code></dd>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(d.ResultCsvUrl))
+                    {
+                        <dt class="col-5 text-muted">Result CSV</dt><dd class="col-7 text-break"><code>@d.ResultCsvUrl</code></dd>
+                    }
+                </dl>
+
+                <h6 class="fw-bold border-bottom pb-1 mb-2">
+                    <i class="ri-team-line me-1 text-muted"></i>Members (@(d.Members?.Count ?? 0))
+                </h6>
+                @if (d.Members is { Count: > 0 })
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm small mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Member</th>
+                                    <th class="text-end">Amount</th>
+                                    <th class="text-center">Outcome</th>
+                                    <th>Error</th>
+                                    <th class="text-center"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var m in d.Members)
+                                {
+                                    <tr>
+                                        <td><code class="small">@m.MemberId</code></td>
+                                        <td class="text-end">@m.AmountUsd.ToString("C")</td>
+                                        <td class="text-center">@RenderOutcome(m.Outcome)</td>
+                                        <td class="text-danger small">@(m.GatewayErrorMessage ?? "—")</td>
+                                        <td class="text-center">
+                                            <a href="@AuditUrl(m.PayoutAttemptId)" target="_blank" rel="noopener"
+                                               class="text-primary text-decoration-none" title="Open in payout audit">
+                                                <i class="ri-external-link-line"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-muted small">No members recorded for this batch.</div>
+                }
+            }
+        </div>
+    </div>
+}
+
+@code {
+    // WalletType enum NAMES — AdminAPI serializes enums as names (JsonStringEnumConverter).
+    private static readonly string[] WalletTypes =
+    {
+        "Dwolla", "Propay", "WireTransferCanada", "eWallet",
+        "Paypal", "Volet", "Yestransfer", "Crypto", "Advancash"
+    };
+
+    private static readonly Dictionary<string, string> GatewayLabels = new()
+    {
+        ["Dwolla"]             = "Dwolla",
+        ["Propay"]             = "ProPay",
+        ["WireTransferCanada"] = "Wire Transfer (Canada)",
+        ["eWallet"]            = "eWallet (I-Payout)",
+        ["Paypal"]             = "PayPal",
+        ["Volet"]              = "Volet",
+        ["Yestransfer"]        = "Yestransfer",
+        ["Crypto"]             = "Crypto",
+        ["Advancash"]          = "AdvCash"
+    };
+
+    private const int PageSize = 20;
+    private const long MaxFileSizeBytes = 20L * 1024 * 1024; // 20 MB
+
+    private enum BatchAction { MarkPaid, Cancel }
+
+    // Filters
+    private string _statusFilter = string.Empty;
+    private string _walletFilter = string.Empty;
+
+    private bool _loading = true;
+    private string? _alertMsg;
+    private bool _alertIsError;
+
+    private List<PayoutBatchRowDto> _items = new();
+    private int _page = 1;
+    private int _totalCount;
+    private int _totalPages = 1;
+
+    // Per-row export download spinner
+    private string? _downloadingId;
+
+    // Reconcile modal
+    private bool _showReconcile;
+    private PayoutBatchRowDto? _reconcileRow;
+    private IBrowserFile? _reconcileFile;
+    private bool _reconcileBusy;
+    private BatchReconcileResult? _reconcileResult;
+
+    // Confirm modal
+    private bool _showConfirm;
+    private PayoutBatchRowDto? _confirmRow;
+    private BatchAction _confirmAction;
+    private bool _confirmBusy;
+
+    // Detail drawer
+    private bool _showDetail;
+    private bool _detailLoading;
+    private PayoutBatchDetailDto? _detail;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; _alertMsg = null; StateHasChanged();
+        try
+        {
+            var url = $"api/v1/admin/payouts/batches?page={_page}&pageSize={PageSize}";
+            if (!string.IsNullOrWhiteSpace(_statusFilter)) url += $"&status={Uri.EscapeDataString(_statusFilter)}";
+            if (!string.IsNullOrWhiteSpace(_walletFilter)) url += $"&walletType={Uri.EscapeDataString(_walletFilter)}";
+
+            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<PayoutBatchRowDto>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _items = resp.Data.Items.ToList();
+                _totalCount = resp.Data.TotalCount;
+                _totalPages = resp.Data.TotalPages <= 0 ? 1 : resp.Data.TotalPages;
+            }
+            else
+            {
+                _items = new(); _totalCount = 0; _totalPages = 1;
+                _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load payout batches.";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; StateHasChanged(); }
+    }
+
+    private async Task Search() { _page = 1; await LoadAsync(); }
+
+    private async Task ChangePage(int p) { if (p < 1 || p > _totalPages) return; _page = p; await LoadAsync(); }
+
+    // ── Download the export CSV for an existing batch. ───────────────────────
+    private async Task DownloadBatchCsv(PayoutBatchRowDto row)
+    {
+        _downloadingId = row.Id; StateHasChanged();
+        try
+        {
+            var bytes = await Http.GetByteArrayAsync($"api/v1/admin/payouts/batches/{row.Id}/csv");
+            var base64 = Convert.ToBase64String(bytes);
+            var fileName = $"payout-batch-{row.WalletType}-{row.ProcessDateUtc:yyyy-MM-dd}.csv";
+            await JS.InvokeVoidAsync("mlmDownloadFile", fileName, "text/csv", base64);
+        }
+        catch (Exception ex) { _alertMsg = $"Download failed: {ex.Message}"; _alertIsError = true; }
+        finally { _downloadingId = null; StateHasChanged(); }
+    }
+
+    // ── Reconcile (multipart upload of the gateway result file). ─────────────
+    private void OpenReconcile(PayoutBatchRowDto row)
+    {
+        _reconcileRow = row;
+        _reconcileFile = null;
+        _reconcileResult = null;
+        _showReconcile = true;
+    }
+
+    private void CloseReconcile()
+    {
+        _showReconcile = false;
+        _reconcileRow = null;
+        _reconcileFile = null;
+        _reconcileResult = null;
+    }
+
+    private void OnReconcileFileSelected(InputFileChangeEventArgs e) => _reconcileFile = e.File;
+
+    private async Task SubmitReconcile()
+    {
+        if (_reconcileRow is null || _reconcileFile is null) return;
+        _reconcileBusy = true; StateHasChanged();
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            var stream = _reconcileFile.OpenReadStream(MaxFileSizeBytes);
+            var fileContent = new StreamContent(stream);
+            fileContent.Headers.ContentType =
+                new System.Net.Http.Headers.MediaTypeHeaderValue(
+                    string.IsNullOrWhiteSpace(_reconcileFile.ContentType) ? "text/csv" : _reconcileFile.ContentType);
+            content.Add(fileContent, "file", _reconcileFile.Name);
+
+            using var response = await Http.PostAsync($"api/v1/admin/payouts/batches/{_reconcileRow.Id}/reconcile", content);
+            if (response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadFromJsonAsync<ApiResp<BatchReconcileResult>>();
+                if (body?.Success == true && body.Data is not null)
+                {
+                    _reconcileResult = body.Data;
+                    _alertMsg = $"Reconciled batch — {body.Data.Succeeded} succeeded, {body.Data.Failed} failed (status: {body.Data.BatchStatus}).";
+                    _alertIsError = false;
+                    await LoadAsync();
+                }
+                else
+                {
+                    _alertMsg = body?.Errors?.FirstOrDefault() ?? "Reconcile returned no result.";
+                    _alertIsError = true;
+                }
+            }
+            else
+            {
+                _alertMsg = await TryReadErrorAsync(response) ?? $"Reconcile failed ({(int)response.StatusCode}).";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _reconcileBusy = false; StateHasChanged(); }
+    }
+
+    // ── Mark-paid / cancel (confirmation gated). ─────────────────────────────
+    private void ConfirmAction(PayoutBatchRowDto row, BatchAction action)
+    {
+        _confirmRow = row;
+        _confirmAction = action;
+        _showConfirm = true;
+    }
+
+    private void CloseConfirm()
+    {
+        _showConfirm = false;
+        _confirmRow = null;
+    }
+
+    private async Task ExecuteConfirmedAction()
+    {
+        if (_confirmRow is null) return;
+        _confirmBusy = true; StateHasChanged();
+        var verb = _confirmAction == BatchAction.Cancel ? "cancel" : "mark-paid";
+        try
+        {
+            using var response = await Http.PostAsync($"api/v1/admin/payouts/batches/{_confirmRow.Id}/{verb}", content: null);
+            if (response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadFromJsonAsync<ApiResp<BatchReconcileResult>>();
+                if (body?.Success == true && body.Data is not null)
+                {
+                    _alertMsg = _confirmAction == BatchAction.Cancel
+                        ? $"Batch cancelled (status: {body.Data.BatchStatus})."
+                        : $"Batch marked paid — {body.Data.Succeeded} succeeded, {body.Data.Failed} failed (status: {body.Data.BatchStatus}).";
+                    _alertIsError = false;
+                    CloseConfirm();
+                    await LoadAsync();
+                }
+                else
+                {
+                    _alertMsg = body?.Errors?.FirstOrDefault() ?? "Action returned no result.";
+                    _alertIsError = true;
+                }
+            }
+            else
+            {
+                _alertMsg = await TryReadErrorAsync(response) ?? $"Action failed ({(int)response.StatusCode}).";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _confirmBusy = false; StateHasChanged(); }
+    }
+
+    // ── Detail drawer. ───────────────────────────────────────────────────────
+    private async Task OpenDetail(string batchId)
+    {
+        _detail = null;
+        _showDetail = true;
+        _detailLoading = true;
+        StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<PayoutBatchDetailDto>>($"api/v1/admin/payouts/batches/{batchId}");
+            if (resp?.Success == true && resp.Data is not null) _detail = resp.Data;
+            else { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load batch detail."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _detailLoading = false; StateHasChanged(); }
+    }
+
+    private void CloseDetail() => _showDetail = false;
+
+    private static async Task<string?> TryReadErrorAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            var body = await response.Content.ReadFromJsonAsync<ApiResp<object>>();
+            return body?.Errors?.FirstOrDefault();
+        }
+        catch { return null; }
+    }
+
+    private static string FormatSize(long bytes)
+        => bytes < 1024 ? $"{bytes} B"
+         : bytes < 1024 * 1024 ? $"{bytes / 1024d:0.#} KB"
+         : $"{bytes / (1024d * 1024d):0.#} MB";
+
+    private static string GatewayLabel(string? walletType)
+        => walletType is not null && GatewayLabels.TryGetValue(walletType, out var v) ? v : (walletType ?? "—");
+
+    // Deep-link to the payout audit screen, filtered to this attempt's member.
+    private static string AuditUrl(string payoutAttemptId) => $"/admin/billing/payout-audit?attempt={payoutAttemptId}";
+
+    private RenderFragment RenderStatus(string status) => builder =>
+    {
+        var (css, icon, label) = status switch
+        {
+            "Exported"            => ("bg-info text-dark",   "ri-file-download-line",  "Exported"),
+            "Reconciled"          => ("bg-success",          "ri-checkbox-circle-line", "Reconciled"),
+            "PartiallyReconciled" => ("bg-warning text-dark", "ri-error-warning-line",  "Partial"),
+            "Cancelled"           => ("bg-secondary",        "ri-close-circle-line",   "Cancelled"),
+            _                     => ("bg-light text-dark border", "ri-question-line", string.IsNullOrWhiteSpace(status) ? "—" : status)
+        };
+        var seq = 0;
+        builder.OpenElement(seq++, "span");
+        builder.AddAttribute(seq++, "class", $"badge {css}");
+        builder.OpenElement(seq++, "i");
+        builder.AddAttribute(seq++, "class", $"{icon} me-1");
+        builder.CloseElement();
+        builder.AddContent(seq++, label);
+        builder.CloseElement();
+    };
+
+    private RenderFragment RenderOutcome(string? outcome) => builder =>
+    {
+        var seq = 0;
+        builder.OpenElement(seq++, "span");
+        switch (outcome)
+        {
+            case "Success":
+                builder.AddAttribute(seq++, "class", "text-success fw-semibold");
+                builder.AddAttribute(seq++, "title", "Paid");
+                builder.OpenElement(seq++, "i");
+                builder.AddAttribute(seq++, "class", "ri-checkbox-circle-fill me-1");
+                builder.CloseElement();
+                builder.AddContent(seq++, "Success");
+                break;
+            case "Failed":
+                builder.AddAttribute(seq++, "class", "text-danger fw-semibold");
+                builder.AddAttribute(seq++, "title", "Failed");
+                builder.OpenElement(seq++, "i");
+                builder.AddAttribute(seq++, "class", "ri-close-circle-fill me-1");
+                builder.CloseElement();
+                builder.AddContent(seq++, "Failed");
+                break;
+            default:
+                builder.AddAttribute(seq++, "class", "badge bg-warning text-dark");
+                builder.AddContent(seq++, string.IsNullOrWhiteSpace(outcome) ? "Pending" : outcome);
+                break;
+        }
+        builder.CloseElement();
+    };
+
+    // ── DTO shapes ───────────────────────────────────────────────────────────
+    // WalletType / Status bound as string (enum NAME) per JsonStringEnumConverter.
+
+    private record PayoutBatchRowDto(
+        string Id,
+        string WalletType,
+        DateTime ProcessDateUtc,
+        string Status,
+        int MemberCount,
+        decimal TotalAmountUsd,
+        DateTime CreationDate,
+        DateTime? ReconciledAt);
+
+    private record PayoutBatchDetailDto(
+        string Id,
+        string WalletType,
+        DateTime ProcessDateUtc,
+        string Status,
+        int MemberCount,
+        decimal TotalAmountUsd,
+        DateTime CreationDate,
+        DateTime? ReconciledAt,
+        string? ExportCsvUrl,
+        string? ResultCsvUrl,
+        string? ReconciledBy,
+        List<BatchMemberLine>? Members);
+
+    private record BatchMemberLine(
+        string PayoutAttemptId,
+        string MemberId,
+        decimal AmountUsd,
+        string Outcome,
+        string? GatewayErrorMessage);
+
+    private record BatchReconcileResult(int Succeeded, int Failed, string BatchStatus);
+
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+}

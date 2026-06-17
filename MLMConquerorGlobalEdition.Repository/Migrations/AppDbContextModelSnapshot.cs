@@ -600,6 +600,232 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.ToTable("GatewayCatalog");
                 });
 
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Billing.PayoutAttempt", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("AmountUsd")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("AttemptedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("CompletedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DisbursementMode")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EarningsCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("GatewayErrorCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("GatewayErrorMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("GatewayTransactionId")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("LastUpdateBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("LastUpdateDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("LatencyMs")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("MemberId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("PayoutAccountMetaSnapshot")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("PayoutAccountSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("PayoutBatchId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("ProcessDateUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReceiptAnchorRef")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<long?>("ReceiptLedgerSeq")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ReceiptPrevHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("ReceiptSha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("ReceiptUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("WalletTypeSnapshot")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PayoutBatchId");
+
+                    b.HasIndex("MemberId", "ProcessDateUtc");
+
+                    b.HasIndex("Outcome", "ProcessDateUtc");
+
+                    b.ToTable("PayoutAttempts");
+                });
+
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Billing.PayoutAttemptEarning", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("CommissionEarningId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("PayoutAttemptId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CommissionEarningId");
+
+                    b.HasIndex("PayoutAttemptId");
+
+                    b.ToTable("PayoutAttemptEarnings");
+                });
+
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Billing.PayoutBatch", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ExportCsvUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LastUpdateBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("LastUpdateDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("MemberCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("ProcessDateUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ReconciledAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReconciledBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ResultCsvUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<decimal>("TotalAmountUsd")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("WalletType")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WalletType", "ProcessDateUtc");
+
+                    b.ToTable("PayoutBatches");
+                });
+
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Billing.RecurringBillingAttempt", b =>
                 {
                     b.Property<long>("Id")
@@ -1141,6 +1367,15 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Administrative fee deductions and token-related deductions applied at payout or on token consumption.",
                             IsActive = true,
                             Name = "Deductions"
+                        },
+                        new
+                        {
+                            Id = 9,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Once-per-rank bonus for holding a rank ≥14 consecutive days.",
+                            IsActive = true,
+                            Name = "Rank Seniority Bonus"
                         });
                 });
 
@@ -4581,6 +4816,709 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             SponsoredMembers = 0,
                             TeamPoints = 1000,
                             TriggerOrder = 0
+                        },
+                        new
+                        {
+                            Id = 86,
+                            Amount = 100m,
+                            CommissionCategoryId = 9,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Cummulative = false,
+                            CurrentRank = 0,
+                            DaysAfterJoining = 0,
+                            Description = "Once-per-rank seniority bonus for Silver (rank 1). Grant when ambassador holds Silver ≥14 consecutive days.",
+                            EnrollmentTeam = 0,
+                            ExternalMembers = 0,
+                            IsActive = true,
+                            IsEnrollmentBased = false,
+                            IsPaidOnRenewal = false,
+                            IsPaidOnSignup = false,
+                            IsRealTime = false,
+                            IsSponsorBonus = false,
+                            LevelNo = 0,
+                            LifeTimeRank = 1,
+                            MaxEnrollmentTeamPointsPerBranch = 0.5,
+                            MaxTeamPointsPerBranch = 0.5,
+                            MembersRebill = 0,
+                            Name = "Rank Seniority Bonus – Silver",
+                            NewMembers = 0,
+                            PaymentDelayDays = 0,
+                            Percentage = 0m,
+                            PersonalPoints = 0,
+                            ResidualBased = false,
+                            ResidualOverCommissionType = 0,
+                            ResidualPercentage = 0.0,
+                            ReverseId = 0,
+                            SponsoredMembers = 0,
+                            TeamPoints = 0,
+                            TriggerOrder = 0
+                        },
+                        new
+                        {
+                            Id = 87,
+                            Amount = 100m,
+                            CommissionCategoryId = 9,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Cummulative = false,
+                            CurrentRank = 0,
+                            DaysAfterJoining = 0,
+                            Description = "Once-per-rank seniority bonus for Gold (rank 2). Grant when ambassador holds Gold ≥14 consecutive days.",
+                            EnrollmentTeam = 0,
+                            ExternalMembers = 0,
+                            IsActive = true,
+                            IsEnrollmentBased = false,
+                            IsPaidOnRenewal = false,
+                            IsPaidOnSignup = false,
+                            IsRealTime = false,
+                            IsSponsorBonus = false,
+                            LevelNo = 0,
+                            LifeTimeRank = 2,
+                            MaxEnrollmentTeamPointsPerBranch = 0.5,
+                            MaxTeamPointsPerBranch = 0.5,
+                            MembersRebill = 0,
+                            Name = "Rank Seniority Bonus – Gold",
+                            NewMembers = 0,
+                            PaymentDelayDays = 0,
+                            Percentage = 0m,
+                            PersonalPoints = 0,
+                            ResidualBased = false,
+                            ResidualOverCommissionType = 0,
+                            ResidualPercentage = 0.0,
+                            ReverseId = 0,
+                            SponsoredMembers = 0,
+                            TeamPoints = 0,
+                            TriggerOrder = 0
+                        },
+                        new
+                        {
+                            Id = 88,
+                            Amount = 100m,
+                            CommissionCategoryId = 9,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Cummulative = false,
+                            CurrentRank = 0,
+                            DaysAfterJoining = 0,
+                            Description = "Once-per-rank seniority bonus for Platinum (rank 3). Grant when ambassador holds Platinum ≥14 consecutive days.",
+                            EnrollmentTeam = 0,
+                            ExternalMembers = 0,
+                            IsActive = true,
+                            IsEnrollmentBased = false,
+                            IsPaidOnRenewal = false,
+                            IsPaidOnSignup = false,
+                            IsRealTime = false,
+                            IsSponsorBonus = false,
+                            LevelNo = 0,
+                            LifeTimeRank = 3,
+                            MaxEnrollmentTeamPointsPerBranch = 0.5,
+                            MaxTeamPointsPerBranch = 0.5,
+                            MembersRebill = 0,
+                            Name = "Rank Seniority Bonus – Platinum",
+                            NewMembers = 0,
+                            PaymentDelayDays = 0,
+                            Percentage = 0m,
+                            PersonalPoints = 0,
+                            ResidualBased = false,
+                            ResidualOverCommissionType = 0,
+                            ResidualPercentage = 0.0,
+                            ReverseId = 0,
+                            SponsoredMembers = 0,
+                            TeamPoints = 0,
+                            TriggerOrder = 0
+                        },
+                        new
+                        {
+                            Id = 89,
+                            Amount = 100m,
+                            CommissionCategoryId = 9,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Cummulative = false,
+                            CurrentRank = 0,
+                            DaysAfterJoining = 0,
+                            Description = "Once-per-rank seniority bonus for Titanium (rank 4). Grant when ambassador holds Titanium ≥14 consecutive days.",
+                            EnrollmentTeam = 0,
+                            ExternalMembers = 0,
+                            IsActive = true,
+                            IsEnrollmentBased = false,
+                            IsPaidOnRenewal = false,
+                            IsPaidOnSignup = false,
+                            IsRealTime = false,
+                            IsSponsorBonus = false,
+                            LevelNo = 0,
+                            LifeTimeRank = 4,
+                            MaxEnrollmentTeamPointsPerBranch = 0.5,
+                            MaxTeamPointsPerBranch = 0.5,
+                            MembersRebill = 0,
+                            Name = "Rank Seniority Bonus – Titanium",
+                            NewMembers = 0,
+                            PaymentDelayDays = 0,
+                            Percentage = 0m,
+                            PersonalPoints = 0,
+                            ResidualBased = false,
+                            ResidualOverCommissionType = 0,
+                            ResidualPercentage = 0.0,
+                            ReverseId = 0,
+                            SponsoredMembers = 0,
+                            TeamPoints = 0,
+                            TriggerOrder = 0
+                        },
+                        new
+                        {
+                            Id = 90,
+                            Amount = 100m,
+                            CommissionCategoryId = 9,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Cummulative = false,
+                            CurrentRank = 0,
+                            DaysAfterJoining = 0,
+                            Description = "Once-per-rank seniority bonus for Jade (rank 5). Grant when ambassador holds Jade ≥14 consecutive days.",
+                            EnrollmentTeam = 0,
+                            ExternalMembers = 0,
+                            IsActive = true,
+                            IsEnrollmentBased = false,
+                            IsPaidOnRenewal = false,
+                            IsPaidOnSignup = false,
+                            IsRealTime = false,
+                            IsSponsorBonus = false,
+                            LevelNo = 0,
+                            LifeTimeRank = 5,
+                            MaxEnrollmentTeamPointsPerBranch = 0.5,
+                            MaxTeamPointsPerBranch = 0.5,
+                            MembersRebill = 0,
+                            Name = "Rank Seniority Bonus – Jade",
+                            NewMembers = 0,
+                            PaymentDelayDays = 0,
+                            Percentage = 0m,
+                            PersonalPoints = 0,
+                            ResidualBased = false,
+                            ResidualOverCommissionType = 0,
+                            ResidualPercentage = 0.0,
+                            ReverseId = 0,
+                            SponsoredMembers = 0,
+                            TeamPoints = 0,
+                            TriggerOrder = 0
+                        },
+                        new
+                        {
+                            Id = 91,
+                            Amount = 100m,
+                            CommissionCategoryId = 9,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Cummulative = false,
+                            CurrentRank = 0,
+                            DaysAfterJoining = 0,
+                            Description = "Once-per-rank seniority bonus for Pearl (rank 6). Grant when ambassador holds Pearl ≥14 consecutive days.",
+                            EnrollmentTeam = 0,
+                            ExternalMembers = 0,
+                            IsActive = true,
+                            IsEnrollmentBased = false,
+                            IsPaidOnRenewal = false,
+                            IsPaidOnSignup = false,
+                            IsRealTime = false,
+                            IsSponsorBonus = false,
+                            LevelNo = 0,
+                            LifeTimeRank = 6,
+                            MaxEnrollmentTeamPointsPerBranch = 0.5,
+                            MaxTeamPointsPerBranch = 0.5,
+                            MembersRebill = 0,
+                            Name = "Rank Seniority Bonus – Pearl",
+                            NewMembers = 0,
+                            PaymentDelayDays = 0,
+                            Percentage = 0m,
+                            PersonalPoints = 0,
+                            ResidualBased = false,
+                            ResidualOverCommissionType = 0,
+                            ResidualPercentage = 0.0,
+                            ReverseId = 0,
+                            SponsoredMembers = 0,
+                            TeamPoints = 0,
+                            TriggerOrder = 0
+                        },
+                        new
+                        {
+                            Id = 92,
+                            Amount = 100m,
+                            CommissionCategoryId = 9,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Cummulative = false,
+                            CurrentRank = 0,
+                            DaysAfterJoining = 0,
+                            Description = "Once-per-rank seniority bonus for Emerald (rank 7). Grant when ambassador holds Emerald ≥14 consecutive days.",
+                            EnrollmentTeam = 0,
+                            ExternalMembers = 0,
+                            IsActive = true,
+                            IsEnrollmentBased = false,
+                            IsPaidOnRenewal = false,
+                            IsPaidOnSignup = false,
+                            IsRealTime = false,
+                            IsSponsorBonus = false,
+                            LevelNo = 0,
+                            LifeTimeRank = 7,
+                            MaxEnrollmentTeamPointsPerBranch = 0.5,
+                            MaxTeamPointsPerBranch = 0.5,
+                            MembersRebill = 0,
+                            Name = "Rank Seniority Bonus – Emerald",
+                            NewMembers = 0,
+                            PaymentDelayDays = 0,
+                            Percentage = 0m,
+                            PersonalPoints = 0,
+                            ResidualBased = false,
+                            ResidualOverCommissionType = 0,
+                            ResidualPercentage = 0.0,
+                            ReverseId = 0,
+                            SponsoredMembers = 0,
+                            TeamPoints = 0,
+                            TriggerOrder = 0
+                        },
+                        new
+                        {
+                            Id = 93,
+                            Amount = 100m,
+                            CommissionCategoryId = 9,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Cummulative = false,
+                            CurrentRank = 0,
+                            DaysAfterJoining = 0,
+                            Description = "Once-per-rank seniority bonus for Ruby (rank 8). Grant when ambassador holds Ruby ≥14 consecutive days.",
+                            EnrollmentTeam = 0,
+                            ExternalMembers = 0,
+                            IsActive = true,
+                            IsEnrollmentBased = false,
+                            IsPaidOnRenewal = false,
+                            IsPaidOnSignup = false,
+                            IsRealTime = false,
+                            IsSponsorBonus = false,
+                            LevelNo = 0,
+                            LifeTimeRank = 8,
+                            MaxEnrollmentTeamPointsPerBranch = 0.5,
+                            MaxTeamPointsPerBranch = 0.5,
+                            MembersRebill = 0,
+                            Name = "Rank Seniority Bonus – Ruby",
+                            NewMembers = 0,
+                            PaymentDelayDays = 0,
+                            Percentage = 0m,
+                            PersonalPoints = 0,
+                            ResidualBased = false,
+                            ResidualOverCommissionType = 0,
+                            ResidualPercentage = 0.0,
+                            ReverseId = 0,
+                            SponsoredMembers = 0,
+                            TeamPoints = 0,
+                            TriggerOrder = 0
+                        },
+                        new
+                        {
+                            Id = 94,
+                            Amount = 100m,
+                            CommissionCategoryId = 9,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Cummulative = false,
+                            CurrentRank = 0,
+                            DaysAfterJoining = 0,
+                            Description = "Once-per-rank seniority bonus for Sapphire (rank 9). Grant when ambassador holds Sapphire ≥14 consecutive days.",
+                            EnrollmentTeam = 0,
+                            ExternalMembers = 0,
+                            IsActive = true,
+                            IsEnrollmentBased = false,
+                            IsPaidOnRenewal = false,
+                            IsPaidOnSignup = false,
+                            IsRealTime = false,
+                            IsSponsorBonus = false,
+                            LevelNo = 0,
+                            LifeTimeRank = 9,
+                            MaxEnrollmentTeamPointsPerBranch = 0.5,
+                            MaxTeamPointsPerBranch = 0.5,
+                            MembersRebill = 0,
+                            Name = "Rank Seniority Bonus – Sapphire",
+                            NewMembers = 0,
+                            PaymentDelayDays = 0,
+                            Percentage = 0m,
+                            PersonalPoints = 0,
+                            ResidualBased = false,
+                            ResidualOverCommissionType = 0,
+                            ResidualPercentage = 0.0,
+                            ReverseId = 0,
+                            SponsoredMembers = 0,
+                            TeamPoints = 0,
+                            TriggerOrder = 0
+                        },
+                        new
+                        {
+                            Id = 95,
+                            Amount = 100m,
+                            CommissionCategoryId = 9,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Cummulative = false,
+                            CurrentRank = 0,
+                            DaysAfterJoining = 0,
+                            Description = "Once-per-rank seniority bonus for Diamond (rank 10). Grant when ambassador holds Diamond ≥14 consecutive days.",
+                            EnrollmentTeam = 0,
+                            ExternalMembers = 0,
+                            IsActive = true,
+                            IsEnrollmentBased = false,
+                            IsPaidOnRenewal = false,
+                            IsPaidOnSignup = false,
+                            IsRealTime = false,
+                            IsSponsorBonus = false,
+                            LevelNo = 0,
+                            LifeTimeRank = 10,
+                            MaxEnrollmentTeamPointsPerBranch = 0.5,
+                            MaxTeamPointsPerBranch = 0.5,
+                            MembersRebill = 0,
+                            Name = "Rank Seniority Bonus – Diamond",
+                            NewMembers = 0,
+                            PaymentDelayDays = 0,
+                            Percentage = 0m,
+                            PersonalPoints = 0,
+                            ResidualBased = false,
+                            ResidualOverCommissionType = 0,
+                            ResidualPercentage = 0.0,
+                            ReverseId = 0,
+                            SponsoredMembers = 0,
+                            TeamPoints = 0,
+                            TriggerOrder = 0
+                        },
+                        new
+                        {
+                            Id = 96,
+                            Amount = 100m,
+                            CommissionCategoryId = 9,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Cummulative = false,
+                            CurrentRank = 0,
+                            DaysAfterJoining = 0,
+                            Description = "Once-per-rank seniority bonus for Double Diamond (rank 11). Grant when ambassador holds Double Diamond ≥14 consecutive days.",
+                            EnrollmentTeam = 0,
+                            ExternalMembers = 0,
+                            IsActive = true,
+                            IsEnrollmentBased = false,
+                            IsPaidOnRenewal = false,
+                            IsPaidOnSignup = false,
+                            IsRealTime = false,
+                            IsSponsorBonus = false,
+                            LevelNo = 0,
+                            LifeTimeRank = 11,
+                            MaxEnrollmentTeamPointsPerBranch = 0.5,
+                            MaxTeamPointsPerBranch = 0.5,
+                            MembersRebill = 0,
+                            Name = "Rank Seniority Bonus – Double Diamond",
+                            NewMembers = 0,
+                            PaymentDelayDays = 0,
+                            Percentage = 0m,
+                            PersonalPoints = 0,
+                            ResidualBased = false,
+                            ResidualOverCommissionType = 0,
+                            ResidualPercentage = 0.0,
+                            ReverseId = 0,
+                            SponsoredMembers = 0,
+                            TeamPoints = 0,
+                            TriggerOrder = 0
+                        },
+                        new
+                        {
+                            Id = 97,
+                            Amount = 100m,
+                            CommissionCategoryId = 9,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Cummulative = false,
+                            CurrentRank = 0,
+                            DaysAfterJoining = 0,
+                            Description = "Once-per-rank seniority bonus for Triple Diamond (rank 12). Grant when ambassador holds Triple Diamond ≥14 consecutive days.",
+                            EnrollmentTeam = 0,
+                            ExternalMembers = 0,
+                            IsActive = true,
+                            IsEnrollmentBased = false,
+                            IsPaidOnRenewal = false,
+                            IsPaidOnSignup = false,
+                            IsRealTime = false,
+                            IsSponsorBonus = false,
+                            LevelNo = 0,
+                            LifeTimeRank = 12,
+                            MaxEnrollmentTeamPointsPerBranch = 0.5,
+                            MaxTeamPointsPerBranch = 0.5,
+                            MembersRebill = 0,
+                            Name = "Rank Seniority Bonus – Triple Diamond",
+                            NewMembers = 0,
+                            PaymentDelayDays = 0,
+                            Percentage = 0m,
+                            PersonalPoints = 0,
+                            ResidualBased = false,
+                            ResidualOverCommissionType = 0,
+                            ResidualPercentage = 0.0,
+                            ReverseId = 0,
+                            SponsoredMembers = 0,
+                            TeamPoints = 0,
+                            TriggerOrder = 0
+                        },
+                        new
+                        {
+                            Id = 98,
+                            Amount = 100m,
+                            CommissionCategoryId = 9,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Cummulative = false,
+                            CurrentRank = 0,
+                            DaysAfterJoining = 0,
+                            Description = "Once-per-rank seniority bonus for Blue Diamond (rank 13). Grant when ambassador holds Blue Diamond ≥14 consecutive days.",
+                            EnrollmentTeam = 0,
+                            ExternalMembers = 0,
+                            IsActive = true,
+                            IsEnrollmentBased = false,
+                            IsPaidOnRenewal = false,
+                            IsPaidOnSignup = false,
+                            IsRealTime = false,
+                            IsSponsorBonus = false,
+                            LevelNo = 0,
+                            LifeTimeRank = 13,
+                            MaxEnrollmentTeamPointsPerBranch = 0.5,
+                            MaxTeamPointsPerBranch = 0.5,
+                            MembersRebill = 0,
+                            Name = "Rank Seniority Bonus – Blue Diamond",
+                            NewMembers = 0,
+                            PaymentDelayDays = 0,
+                            Percentage = 0m,
+                            PersonalPoints = 0,
+                            ResidualBased = false,
+                            ResidualOverCommissionType = 0,
+                            ResidualPercentage = 0.0,
+                            ReverseId = 0,
+                            SponsoredMembers = 0,
+                            TeamPoints = 0,
+                            TriggerOrder = 0
+                        },
+                        new
+                        {
+                            Id = 99,
+                            Amount = 100m,
+                            CommissionCategoryId = 9,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Cummulative = false,
+                            CurrentRank = 0,
+                            DaysAfterJoining = 0,
+                            Description = "Once-per-rank seniority bonus for Black Diamond (rank 14). Grant when ambassador holds Black Diamond ≥14 consecutive days.",
+                            EnrollmentTeam = 0,
+                            ExternalMembers = 0,
+                            IsActive = true,
+                            IsEnrollmentBased = false,
+                            IsPaidOnRenewal = false,
+                            IsPaidOnSignup = false,
+                            IsRealTime = false,
+                            IsSponsorBonus = false,
+                            LevelNo = 0,
+                            LifeTimeRank = 14,
+                            MaxEnrollmentTeamPointsPerBranch = 0.5,
+                            MaxTeamPointsPerBranch = 0.5,
+                            MembersRebill = 0,
+                            Name = "Rank Seniority Bonus – Black Diamond",
+                            NewMembers = 0,
+                            PaymentDelayDays = 0,
+                            Percentage = 0m,
+                            PersonalPoints = 0,
+                            ResidualBased = false,
+                            ResidualOverCommissionType = 0,
+                            ResidualPercentage = 0.0,
+                            ReverseId = 0,
+                            SponsoredMembers = 0,
+                            TeamPoints = 0,
+                            TriggerOrder = 0
+                        },
+                        new
+                        {
+                            Id = 100,
+                            Amount = 100m,
+                            CommissionCategoryId = 9,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Cummulative = false,
+                            CurrentRank = 0,
+                            DaysAfterJoining = 0,
+                            Description = "Once-per-rank seniority bonus for Royal (rank 15). Grant when ambassador holds Royal ≥14 consecutive days.",
+                            EnrollmentTeam = 0,
+                            ExternalMembers = 0,
+                            IsActive = true,
+                            IsEnrollmentBased = false,
+                            IsPaidOnRenewal = false,
+                            IsPaidOnSignup = false,
+                            IsRealTime = false,
+                            IsSponsorBonus = false,
+                            LevelNo = 0,
+                            LifeTimeRank = 15,
+                            MaxEnrollmentTeamPointsPerBranch = 0.5,
+                            MaxTeamPointsPerBranch = 0.5,
+                            MembersRebill = 0,
+                            Name = "Rank Seniority Bonus – Royal",
+                            NewMembers = 0,
+                            PaymentDelayDays = 0,
+                            Percentage = 0m,
+                            PersonalPoints = 0,
+                            ResidualBased = false,
+                            ResidualOverCommissionType = 0,
+                            ResidualPercentage = 0.0,
+                            ReverseId = 0,
+                            SponsoredMembers = 0,
+                            TeamPoints = 0,
+                            TriggerOrder = 0
+                        },
+                        new
+                        {
+                            Id = 101,
+                            Amount = 100m,
+                            CommissionCategoryId = 9,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Cummulative = false,
+                            CurrentRank = 0,
+                            DaysAfterJoining = 0,
+                            Description = "Once-per-rank seniority bonus for Double Royal (rank 16). Grant when ambassador holds Double Royal ≥14 consecutive days.",
+                            EnrollmentTeam = 0,
+                            ExternalMembers = 0,
+                            IsActive = true,
+                            IsEnrollmentBased = false,
+                            IsPaidOnRenewal = false,
+                            IsPaidOnSignup = false,
+                            IsRealTime = false,
+                            IsSponsorBonus = false,
+                            LevelNo = 0,
+                            LifeTimeRank = 16,
+                            MaxEnrollmentTeamPointsPerBranch = 0.5,
+                            MaxTeamPointsPerBranch = 0.5,
+                            MembersRebill = 0,
+                            Name = "Rank Seniority Bonus – Double Royal",
+                            NewMembers = 0,
+                            PaymentDelayDays = 0,
+                            Percentage = 0m,
+                            PersonalPoints = 0,
+                            ResidualBased = false,
+                            ResidualOverCommissionType = 0,
+                            ResidualPercentage = 0.0,
+                            ReverseId = 0,
+                            SponsoredMembers = 0,
+                            TeamPoints = 0,
+                            TriggerOrder = 0
+                        },
+                        new
+                        {
+                            Id = 102,
+                            Amount = 100m,
+                            CommissionCategoryId = 9,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Cummulative = false,
+                            CurrentRank = 0,
+                            DaysAfterJoining = 0,
+                            Description = "Once-per-rank seniority bonus for Triple Royal (rank 17). Grant when ambassador holds Triple Royal ≥14 consecutive days.",
+                            EnrollmentTeam = 0,
+                            ExternalMembers = 0,
+                            IsActive = true,
+                            IsEnrollmentBased = false,
+                            IsPaidOnRenewal = false,
+                            IsPaidOnSignup = false,
+                            IsRealTime = false,
+                            IsSponsorBonus = false,
+                            LevelNo = 0,
+                            LifeTimeRank = 17,
+                            MaxEnrollmentTeamPointsPerBranch = 0.5,
+                            MaxTeamPointsPerBranch = 0.5,
+                            MembersRebill = 0,
+                            Name = "Rank Seniority Bonus – Triple Royal",
+                            NewMembers = 0,
+                            PaymentDelayDays = 0,
+                            Percentage = 0m,
+                            PersonalPoints = 0,
+                            ResidualBased = false,
+                            ResidualOverCommissionType = 0,
+                            ResidualPercentage = 0.0,
+                            ReverseId = 0,
+                            SponsoredMembers = 0,
+                            TeamPoints = 0,
+                            TriggerOrder = 0
+                        },
+                        new
+                        {
+                            Id = 103,
+                            Amount = 100m,
+                            CommissionCategoryId = 9,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Cummulative = false,
+                            CurrentRank = 0,
+                            DaysAfterJoining = 0,
+                            Description = "Once-per-rank seniority bonus for Blue Royal (rank 18). Grant when ambassador holds Blue Royal ≥14 consecutive days.",
+                            EnrollmentTeam = 0,
+                            ExternalMembers = 0,
+                            IsActive = true,
+                            IsEnrollmentBased = false,
+                            IsPaidOnRenewal = false,
+                            IsPaidOnSignup = false,
+                            IsRealTime = false,
+                            IsSponsorBonus = false,
+                            LevelNo = 0,
+                            LifeTimeRank = 18,
+                            MaxEnrollmentTeamPointsPerBranch = 0.5,
+                            MaxTeamPointsPerBranch = 0.5,
+                            MembersRebill = 0,
+                            Name = "Rank Seniority Bonus – Blue Royal",
+                            NewMembers = 0,
+                            PaymentDelayDays = 0,
+                            Percentage = 0m,
+                            PersonalPoints = 0,
+                            ResidualBased = false,
+                            ResidualOverCommissionType = 0,
+                            ResidualPercentage = 0.0,
+                            ReverseId = 0,
+                            SponsoredMembers = 0,
+                            TeamPoints = 0,
+                            TriggerOrder = 0
+                        },
+                        new
+                        {
+                            Id = 104,
+                            Amount = 100m,
+                            CommissionCategoryId = 9,
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Cummulative = false,
+                            CurrentRank = 0,
+                            DaysAfterJoining = 0,
+                            Description = "Once-per-rank seniority bonus for Black Royal (rank 19). Grant when ambassador holds Black Royal ≥14 consecutive days.",
+                            EnrollmentTeam = 0,
+                            ExternalMembers = 0,
+                            IsActive = true,
+                            IsEnrollmentBased = false,
+                            IsPaidOnRenewal = false,
+                            IsPaidOnSignup = false,
+                            IsRealTime = false,
+                            IsSponsorBonus = false,
+                            LevelNo = 0,
+                            LifeTimeRank = 19,
+                            MaxEnrollmentTeamPointsPerBranch = 0.5,
+                            MaxTeamPointsPerBranch = 0.5,
+                            MembersRebill = 0,
+                            Name = "Rank Seniority Bonus – Black Royal",
+                            NewMembers = 0,
+                            PaymentDelayDays = 0,
+                            Percentage = 0m,
+                            PersonalPoints = 0,
+                            ResidualBased = false,
+                            ResidualOverCommissionType = 0,
+                            ResidualPercentage = 0.0,
+                            ReverseId = 0,
+                            SponsoredMembers = 0,
+                            TeamPoints = 0,
+                            TriggerOrder = 0
                         });
                 });
 
@@ -5255,6 +6193,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<string>("BannerUrl")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("BuilderBonusMultiplier")
+                        .HasColumnType("int");
+
                     b.Property<string>("CreatedBy")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -5270,12 +6211,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("DoubleBuilderBonus")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("DoubleSponsorBonus")
-                        .HasColumnType("bit");
 
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("datetime2");
@@ -5300,6 +6235,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.Property<byte[]>("RowVersion")
                         .HasColumnType("varbinary(max)");
+
+                    b.Property<int>("SponsorBonusMultiplier")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("datetime2");
@@ -6415,6 +7353,20 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("ClearReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("Cleared")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("ClearedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ClearedBy")
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
                     b.Property<string>("CountryIso2")
                         .HasMaxLength(2)
                         .HasColumnType("nvarchar(2)");
@@ -6471,7 +7423,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("IpAddress", "CreationDate");
 
-                    b.HasIndex("VisitorId", "CreationDate");
+                    b.HasIndex("VisitorId", "CreationDate", "Cleared");
 
                     b.ToTable("SignupRiskFingerprints", (string)null);
                 });
@@ -7156,6 +8108,56 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasIndex("MemberProfileId");
 
                     b.ToTable("MemberNotifications");
+                });
+
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Member.MemberStatisticDelta", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime?>("AppliedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("EnrollmentPointsDelta")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EnrollmentTeamSizeDelta")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsApplied")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("MemberId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("QualifiedSponsoredMembersDelta")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SourceMemberId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsApplied", "CreationDate");
+
+                    b.HasIndex("MemberId", "IsApplied");
+
+                    b.ToTable("MemberStatisticDeltas", (string)null);
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Member.MemberStatisticEntity", b =>
@@ -8762,7 +9764,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             DailyBonus = 4m,
                             EnrollmentQualifiedTeamMembers = 0,
                             EnrollmentTeam = 18,
-                            ExternalMembers = 1,
+                            ExternalMembers = 0,
                             LevelNo = 1,
                             LifetimeHoldingDuration = 0,
                             MaxEnrollmentTeamPointsPerBranch = 0.66000000000000003,
@@ -8787,7 +9789,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             DailyBonus = 10m,
                             EnrollmentQualifiedTeamMembers = 0,
                             EnrollmentTeam = 72,
-                            ExternalMembers = 1,
+                            ExternalMembers = 0,
                             LevelNo = 2,
                             LifetimeHoldingDuration = 0,
                             MaxEnrollmentTeamPointsPerBranch = 0.5,
@@ -8812,7 +9814,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             DailyBonus = 15m,
                             EnrollmentQualifiedTeamMembers = 0,
                             EnrollmentTeam = 175,
-                            ExternalMembers = 1,
+                            ExternalMembers = 0,
                             LevelNo = 3,
                             LifetimeHoldingDuration = 0,
                             MaxEnrollmentTeamPointsPerBranch = 0.5,
@@ -8837,7 +9839,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             DailyBonus = 25m,
                             EnrollmentQualifiedTeamMembers = 0,
                             EnrollmentTeam = 175,
-                            ExternalMembers = 1,
+                            ExternalMembers = 0,
                             LevelNo = 4,
                             LifetimeHoldingDuration = 0,
                             MaxEnrollmentTeamPointsPerBranch = 0.5,
@@ -8862,7 +9864,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             DailyBonus = 40m,
                             EnrollmentQualifiedTeamMembers = 0,
                             EnrollmentTeam = 350,
-                            ExternalMembers = 1,
+                            ExternalMembers = 0,
                             LevelNo = 5,
                             LifetimeHoldingDuration = 0,
                             MaxEnrollmentTeamPointsPerBranch = 0.5,
@@ -8887,7 +9889,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             DailyBonus = 80m,
                             EnrollmentQualifiedTeamMembers = 0,
                             EnrollmentTeam = 750,
-                            ExternalMembers = 1,
+                            ExternalMembers = 0,
                             LevelNo = 6,
                             LifetimeHoldingDuration = 0,
                             MaxEnrollmentTeamPointsPerBranch = 0.5,
@@ -8912,7 +9914,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             DailyBonus = 150m,
                             EnrollmentQualifiedTeamMembers = 0,
                             EnrollmentTeam = 1500,
-                            ExternalMembers = 1,
+                            ExternalMembers = 0,
                             LevelNo = 7,
                             LifetimeHoldingDuration = 0,
                             MaxEnrollmentTeamPointsPerBranch = 0.5,
@@ -8937,7 +9939,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             DailyBonus = 300m,
                             EnrollmentQualifiedTeamMembers = 0,
                             EnrollmentTeam = 3000,
-                            ExternalMembers = 1,
+                            ExternalMembers = 0,
                             LevelNo = 8,
                             LifetimeHoldingDuration = 0,
                             MaxEnrollmentTeamPointsPerBranch = 0.5,
@@ -8962,7 +9964,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             DailyBonus = 500m,
                             EnrollmentQualifiedTeamMembers = 0,
                             EnrollmentTeam = 5000,
-                            ExternalMembers = 1,
+                            ExternalMembers = 0,
                             LevelNo = 9,
                             LifetimeHoldingDuration = 0,
                             MaxEnrollmentTeamPointsPerBranch = 0.5,
@@ -8987,7 +9989,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             DailyBonus = 750m,
                             EnrollmentQualifiedTeamMembers = 0,
                             EnrollmentTeam = 7500,
-                            ExternalMembers = 1,
+                            ExternalMembers = 0,
                             LevelNo = 10,
                             LifetimeHoldingDuration = 0,
                             MaxEnrollmentTeamPointsPerBranch = 0.5,
@@ -9012,7 +10014,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             DailyBonus = 1000m,
                             EnrollmentQualifiedTeamMembers = 0,
                             EnrollmentTeam = 10000,
-                            ExternalMembers = 1,
+                            ExternalMembers = 0,
                             LevelNo = 11,
                             LifetimeHoldingDuration = 0,
                             MaxEnrollmentTeamPointsPerBranch = 0.5,
@@ -9037,7 +10039,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             DailyBonus = 1500m,
                             EnrollmentQualifiedTeamMembers = 0,
                             EnrollmentTeam = 15000,
-                            ExternalMembers = 1,
+                            ExternalMembers = 0,
                             LevelNo = 12,
                             LifetimeHoldingDuration = 0,
                             MaxEnrollmentTeamPointsPerBranch = 0.5,
@@ -9062,7 +10064,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             DailyBonus = 2000m,
                             EnrollmentQualifiedTeamMembers = 0,
                             EnrollmentTeam = 30000,
-                            ExternalMembers = 1,
+                            ExternalMembers = 0,
                             LevelNo = 13,
                             LifetimeHoldingDuration = 0,
                             MaxEnrollmentTeamPointsPerBranch = 0.5,
@@ -9087,7 +10089,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             DailyBonus = 3000m,
                             EnrollmentQualifiedTeamMembers = 0,
                             EnrollmentTeam = 60000,
-                            ExternalMembers = 1,
+                            ExternalMembers = 0,
                             LevelNo = 14,
                             LifetimeHoldingDuration = 0,
                             MaxEnrollmentTeamPointsPerBranch = 0.5,
@@ -9112,7 +10114,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             DailyBonus = 4000m,
                             EnrollmentQualifiedTeamMembers = 0,
                             EnrollmentTeam = 100000,
-                            ExternalMembers = 1,
+                            ExternalMembers = 0,
                             LevelNo = 15,
                             LifetimeHoldingDuration = 0,
                             MaxEnrollmentTeamPointsPerBranch = 0.5,
@@ -9137,7 +10139,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             DailyBonus = 5000m,
                             EnrollmentQualifiedTeamMembers = 0,
                             EnrollmentTeam = 150000,
-                            ExternalMembers = 1,
+                            ExternalMembers = 0,
                             LevelNo = 16,
                             LifetimeHoldingDuration = 0,
                             MaxEnrollmentTeamPointsPerBranch = 0.5,
@@ -9162,7 +10164,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             DailyBonus = 7500m,
                             EnrollmentQualifiedTeamMembers = 0,
                             EnrollmentTeam = 200000,
-                            ExternalMembers = 1,
+                            ExternalMembers = 0,
                             LevelNo = 17,
                             LifetimeHoldingDuration = 0,
                             MaxEnrollmentTeamPointsPerBranch = 0.5,
@@ -9187,7 +10189,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             DailyBonus = 10000m,
                             EnrollmentQualifiedTeamMembers = 0,
                             EnrollmentTeam = 250000,
-                            ExternalMembers = 1,
+                            ExternalMembers = 0,
                             LevelNo = 18,
                             LifetimeHoldingDuration = 0,
                             MaxEnrollmentTeamPointsPerBranch = 0.5,
@@ -9212,7 +10214,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             DailyBonus = 15000m,
                             EnrollmentQualifiedTeamMembers = 0,
                             EnrollmentTeam = 350000,
-                            ExternalMembers = 1,
+                            ExternalMembers = 0,
                             LevelNo = 19,
                             LifetimeHoldingDuration = 0,
                             MaxEnrollmentTeamPointsPerBranch = 0.5,
@@ -14077,8 +15079,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.Property<string>("HierarchyPath")
                         .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
@@ -14098,7 +15099,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("ParentMemberId")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<decimal>("RightLegPoints")
                         .HasPrecision(18, 4)
@@ -14112,11 +15113,66 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("HierarchyPath");
+                    b.HasIndex("MemberId")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
 
-                    b.HasIndex("MemberId");
+                    b.HasIndex("ParentMemberId");
+
+                    b.HasIndex(new[] { "MemberId" }, "IX_DualTeamTree_MemberId_Lookup");
 
                     b.ToTable("DualTeamTree");
+                });
+
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Tree.DualTeamLegFrontier", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DeepestDepth")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DeepestMemberId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LastUpdateBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("LastUpdateDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("PreferredSide")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("SponsorMemberId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SponsorMemberId")
+                        .IsUnique();
+
+                    b.ToTable("DualTeamLegFrontiers");
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Tree.GenealogyEntity", b =>
@@ -14139,8 +15195,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.Property<string>("HierarchyPath")
                         .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
@@ -14159,14 +15214,14 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("ParentMemberId")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<byte[]>("RowVersion")
                         .HasColumnType("varbinary(max)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("HierarchyPath");
+                    b.HasIndex("ParentMemberId");
 
                     b.HasIndex("MemberId", "CreationDate");
 
@@ -14591,6 +15646,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<decimal?>("MinAdminFee")
                         .HasColumnType("decimal(10,2)");
 
+                    b.Property<decimal>("MinimumPayoutAmount")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<int>("WalletType")
                         .HasColumnType("int");
 
@@ -14613,6 +15671,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "I-Payout maintains your in-account balance. Once you register, I-Payout sends a confirmation email; you must verify before payouts can be sent. Funds typically arrive within 24 hours of approval. International withdrawals from your I-Payout account to a bank may incur additional fees from I-Payout itself. Admin fee: $1.95 USD per transaction.",
                             DisplayName = "eWallet (I-Payout)",
                             IsActive = true,
+                            MinimumPayoutAmount = 25m,
                             WalletType = 4
                         },
                         new
@@ -14626,6 +15685,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "Dwolla pushes commissions directly into your linked US bank account. You must complete Dwolla's identity verification before your account is approved. Standard ACH transfers settle in 3–5 business days. Dwolla is US-only. Admin fee: $1.95 USD per transaction.",
                             DisplayName = "Dwolla",
                             IsActive = true,
+                            MinimumPayoutAmount = 25m,
                             WalletType = 1
                         },
                         new
@@ -14640,6 +15700,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             DisplayName = "Crypto (Bitcoin / USDT)",
                             IsActive = true,
                             MinAdminFee = 6.95m,
+                            MinimumPayoutAmount = 25m,
                             WalletType = 9
                         },
                         new
@@ -14653,6 +15714,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Description = "AdvCash holds funds in your AdvCash account in the currency of your choice. From there you can withdraw to bank, card, or other gateways. Verification through AdvCash is required to lift withdrawal limits. Available in most regions worldwide. Admin fee: $1.95 USD per transaction.",
                             DisplayName = "AdvCash",
                             IsActive = true,
+                            MinimumPayoutAmount = 25m,
                             WalletType = 10
                         });
                 });

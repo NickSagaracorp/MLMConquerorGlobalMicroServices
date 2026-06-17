@@ -65,11 +65,12 @@ public class FraudFingerprintService : IFraudFingerprintService
         };
 
         // Threshold check: count prior events (any flow) for this visitorId within window.
+        // Cleared rows are excluded — admin has manually verified the visitor is legitimate.
         var dupCount = string.IsNullOrEmpty(visitorId)
             ? 0
             : await _db.SignupRiskFingerprints
                 .AsNoTracking()
-                .CountAsync(f => f.VisitorId == safeVisitor && f.CreationDate >= windowAt, ct);
+                .CountAsync(f => f.VisitorId == safeVisitor && f.CreationDate >= windowAt && !f.Cleared, ct);
 
         if (dupCount + 1 >= _threshold)
         {

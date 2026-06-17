@@ -24,6 +24,7 @@ using IPushNotificationService = MLMConquerorGlobalEdition.SharedKernel.Interfac
 using CacheService = MLMConquerorGlobalEdition.SharedKernel.Services.CacheService;
 using MLMConquerorGlobalEdition.SharedKernel.Logging;
 using MLMConquerorGlobalEdition.SignupAPI.Jobs;
+using MLMConquerorGlobalEdition.Repository.Jobs;
 using MLMConquerorGlobalEdition.SignupAPI.Middleware;
 using MLMConquerorGlobalEdition.SignupAPI.Services;
 
@@ -186,6 +187,7 @@ builder.Services.AddScoped<ProcessScheduledCancellationsJob>();
 builder.Services.AddScoped<BuilderBonusSweepJob>();
 builder.Services.AddScoped<FastStartBonusSweepJob>();
 builder.Services.AddScoped<ContestPointsSweepJob>();
+builder.Services.AddScoped<ApplyMemberStatisticDeltasJob>();
 builder.Services.AddHangfire(cfg => cfg
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
     .UseSimpleAssemblyNameTypeSerializer()
@@ -361,6 +363,31 @@ RecurringJob.AddOrUpdate<ContestPointsSweepJob>(
     job => job.ExecuteAsync(CancellationToken.None),
     "*/10 * * * *",                    // every 10 minutes
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc, QueueName = "signups" });
+
+// Sprint-16 — drains MemberStatisticDeltas into MemberStatistics. Phase-3 of
+// CompleteSignup enqueues 1 delta per ancestor (76 per signup at the deep end
+// of the tree) in a single batch insert; this job groups by upline + applies
+// the summed deltas once per cycle. 1-min cadence: stat staleness < 60s,
+// well below the 5-min rank evaluation cycle and the nightly snapshot job.
+RecurringJob.AddOrUpdate<ApplyMemberStatisticDeltasJob>(
+    "apply-member-statistic-deltas",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "* * * * *",
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc, QueueName = "signups" });
+
+// Dev-only: drain the MemberStatisticDelta queue on-demand, in SignupAPI's own process so
+// the job type resolves (the shared Hangfire recurring scheduler on sibling services cannot
+// load this assembly and poisons the recurring entry — see apply-member-statistic-deltas).
+// Runs the same job code, draining until empty.
+if (app.Environment.IsDevelopment())
+{
+    app.MapPost("/api/v1/dev/drain-deltas",
+        async (MLMConquerorGlobalEdition.Repository.Jobs.ApplyMemberStatisticDeltasJob job, CancellationToken ct) =>
+        {
+            await job.ExecuteAsync(ct);
+            return Results.Ok(new { drained = true });
+        }).AllowAnonymous();
+}
 
 app.MapGet("/health", async (AppDbContext db, CancellationToken ct) =>
 {

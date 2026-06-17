@@ -14,6 +14,7 @@ public class PaymentGatewayInfoConfiguration : IEntityTypeConfiguration<PaymentG
         builder.Property(x => x.Description).IsRequired().HasMaxLength(2000);
         builder.Property(x => x.AdminFee).HasColumnType("decimal(10,2)");
         builder.Property(x => x.MinAdminFee).HasColumnType("decimal(10,2)");
+        builder.Property(x => x.MinimumPayoutAmount).HasColumnType("decimal(18,2)");
         builder.Property(x => x.Currency).IsRequired().HasMaxLength(3);
 
         builder.HasIndex(x => x.WalletType).IsUnique();
@@ -36,6 +37,7 @@ public class PaymentGatewayInfoConfiguration : IEntityTypeConfiguration<PaymentG
                 AdminFeeKind = AdminFeeKind.Fixed,
                 MinAdminFee  = null,
                 Currency     = "USD",
+                MinimumPayoutAmount = 25m,
                 IsActive     = true,
                 CreatedBy    = "seed",
                 CreationDate = seedDate
@@ -54,6 +56,7 @@ public class PaymentGatewayInfoConfiguration : IEntityTypeConfiguration<PaymentG
                 AdminFeeKind = AdminFeeKind.Fixed,
                 MinAdminFee  = null,
                 Currency     = "USD",
+                MinimumPayoutAmount = 25m,
                 IsActive     = true,
                 CreatedBy    = "seed",
                 CreationDate = seedDate
@@ -72,6 +75,7 @@ public class PaymentGatewayInfoConfiguration : IEntityTypeConfiguration<PaymentG
                 AdminFeeKind = AdminFeeKind.Percentage,
                 MinAdminFee  = 6.95m,
                 Currency     = "USD",
+                MinimumPayoutAmount = 25m,
                 IsActive     = true,
                 CreatedBy    = "seed",
                 CreationDate = seedDate
@@ -90,6 +94,7 @@ public class PaymentGatewayInfoConfiguration : IEntityTypeConfiguration<PaymentG
                 AdminFeeKind = AdminFeeKind.Fixed,
                 MinAdminFee  = null,
                 Currency     = "USD",
+                MinimumPayoutAmount = 25m,
                 IsActive     = true,
                 CreatedBy    = "seed",
                 CreationDate = seedDate

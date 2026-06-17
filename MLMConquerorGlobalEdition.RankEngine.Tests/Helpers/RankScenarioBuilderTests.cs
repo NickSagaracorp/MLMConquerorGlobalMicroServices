@@ -68,7 +68,7 @@ public class RankScenarioBuilderTests
         result.MeetsGate.Should().BeTrue("gate: 3+ sponsored with 9+ PCP");
         result.MeetsDualTeam.Should().BeTrue("DT: both legs at ceil(700000/2) satisfies 700000 DT threshold");
         result.MeetsEnrollmentTeam.Should().BeTrue("ET: two branches each at ceil(350000/2) satisfies 350000 ET threshold");
-        result.MeetsExternalMembers.Should().BeTrue("1 external member required — first sponsored is ExternalMember");
+        result.MeetsExternalMembers.Should().BeTrue("ExternalMembers axis is opted out at the seed (threshold = 0) — every member passes");
         result.MeetsPersonalPoints.Should().BeTrue("subject PersonalPoints = Max(1, requirement.PersonalPoints)");
         result.Qualifies.Should().BeTrue(
             "the builder must produce a member who satisfies every axis for rank 19 (Black Royal)");

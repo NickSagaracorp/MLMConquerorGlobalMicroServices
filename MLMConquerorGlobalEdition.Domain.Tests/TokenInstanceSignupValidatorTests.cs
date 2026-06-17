@@ -47,7 +47,7 @@ public class TokenInstanceSignupValidatorTests
         var granted = GrantedLinks(VipId);
 
         var act = () => TokenInstanceSignupValidator.Validate(
-            inst, type, granted, SponsorId, new[] { VipId }, Now);
+            inst, type, granted, new[] { VipId }, Now);
 
         act.Should().NotThrow();
     }
@@ -60,7 +60,7 @@ public class TokenInstanceSignupValidatorTests
         var granted = GrantedLinks(VipId);
 
         var act = () => TokenInstanceSignupValidator.Validate(
-            inst, type, granted, SponsorId, new[] { VipId }, Now);
+            inst, type, granted, new[] { VipId }, Now);
 
         act.Should().NotThrow();
     }
@@ -74,7 +74,7 @@ public class TokenInstanceSignupValidatorTests
         var granted = GrantedLinks(SubId, EliteId);
 
         var act = () => TokenInstanceSignupValidator.Validate(
-            inst, type, granted, SponsorId, new[] { EliteId }, Now);
+            inst, type, granted, new[] { EliteId }, Now);
 
         act.Should().NotThrow();
     }
@@ -85,7 +85,7 @@ public class TokenInstanceSignupValidatorTests
         var inst = Instance(SponsorId, TokenInstanceStatus.Used);
 
         var act = () => TokenInstanceSignupValidator.Validate(
-            inst, EnrollmentType(), GrantedLinks(VipId), SponsorId, new[] { VipId }, Now);
+            inst, EnrollmentType(), GrantedLinks(VipId), new[] { VipId }, Now);
 
         act.Should().Throw<TokenAlreadyUsedException>()
            .Which.Code.Should().Be("TOKEN_NOT_VALID");
@@ -97,7 +97,7 @@ public class TokenInstanceSignupValidatorTests
         var inst = Instance(SponsorId, TokenInstanceStatus.Voided);
 
         var act = () => TokenInstanceSignupValidator.Validate(
-            inst, EnrollmentType(), GrantedLinks(VipId), SponsorId, new[] { VipId }, Now);
+            inst, EnrollmentType(), GrantedLinks(VipId), new[] { VipId }, Now);
 
         act.Should().Throw<TokenAlreadyUsedException>();
     }
@@ -108,22 +108,23 @@ public class TokenInstanceSignupValidatorTests
         var inst = Instance(SponsorId, TokenInstanceStatus.Issued, expires: Now.AddDays(-1));
 
         var act = () => TokenInstanceSignupValidator.Validate(
-            inst, EnrollmentType(), GrantedLinks(VipId), SponsorId, new[] { VipId }, Now);
+            inst, EnrollmentType(), GrantedLinks(VipId), new[] { VipId }, Now);
 
         act.Should().Throw<TokenExpiredException>()
            .Which.Code.Should().Be("TOKEN_NOT_VALID");
     }
 
     [Fact]
-    public void Validate_WhenCurrentOwnerIsNotSponsor_ThrowsTokenNotOwnedBySponsorException()
+    public void Validate_WhenCurrentOwnerIsNotSponsor_Succeeds()
     {
+        // Token ownership is no longer tied to the sponsor: a code shared with
+        // someone in the owner's downline must still redeem for that signup.
         var inst = Instance(OtherMember, TokenInstanceStatus.Issued);
 
         var act = () => TokenInstanceSignupValidator.Validate(
-            inst, EnrollmentType(), GrantedLinks(VipId), SponsorId, new[] { VipId }, Now);
+            inst, EnrollmentType(), GrantedLinks(VipId), new[] { VipId }, Now);
 
-        act.Should().Throw<TokenNotOwnedBySponsorException>()
-           .Which.Code.Should().Be("TOKEN_NOT_VALID");
+        act.Should().NotThrow();
     }
 
     [Fact]
@@ -134,7 +135,7 @@ public class TokenInstanceSignupValidatorTests
         var granted = GrantedLinks(VipId);
 
         var act = () => TokenInstanceSignupValidator.Validate(
-            inst, EnrollmentType(), granted, SponsorId, new[] { EliteId }, Now);
+            inst, EnrollmentType(), granted, new[] { EliteId }, Now);
 
         var ex = act.Should().Throw<TokenProductMismatchException>().Which;
         ex.Code.Should().Be("TOKEN_PRODUCT_MISMATCH");
@@ -149,7 +150,7 @@ public class TokenInstanceSignupValidatorTests
         var granted = GrantedLinks(VipId);
 
         var act = () => TokenInstanceSignupValidator.Validate(
-            inst, EnrollmentType(), granted, SponsorId, new[] { VipId, TurboId }, Now);
+            inst, EnrollmentType(), granted, new[] { VipId, TurboId }, Now);
 
         act.Should().Throw<TokenProductMismatchException>();
     }
@@ -160,7 +161,7 @@ public class TokenInstanceSignupValidatorTests
         var inst = Instance(SponsorId, TokenInstanceStatus.Issued);
 
         var act = () => TokenInstanceSignupValidator.Validate(
-            inst, EnrollmentType(), GrantedLinks(VipId), SponsorId, Array.Empty<string>(), Now);
+            inst, EnrollmentType(), GrantedLinks(VipId), Array.Empty<string>(), Now);
 
         act.Should().Throw<TokenProductMismatchException>();
     }
@@ -180,7 +181,7 @@ public class TokenInstanceSignupValidatorTests
         inst.TokenTypeId = 56;
 
         var act = () => TokenInstanceSignupValidator.Validate(
-            inst, upgradeType, GrantedLinks(VipId), SponsorId, new[] { VipId }, Now);
+            inst, upgradeType, GrantedLinks(VipId), new[] { VipId }, Now);
 
         act.Should().Throw<TokenAlreadyUsedException>()
            .Which.Code.Should().Be("TOKEN_NOT_VALID");
@@ -194,7 +195,7 @@ public class TokenInstanceSignupValidatorTests
         var inst = Instance(SponsorId, TokenInstanceStatus.Issued);
 
         var act = () => TokenInstanceSignupValidator.Validate(
-            inst, type, GrantedLinks(VipId), SponsorId, new[] { VipId }, Now);
+            inst, type, GrantedLinks(VipId), new[] { VipId }, Now);
 
         act.Should().Throw<TokenAlreadyUsedException>();
     }
@@ -207,19 +208,8 @@ public class TokenInstanceSignupValidatorTests
         inst.ReferenceId = null;
 
         var act = () => TokenInstanceSignupValidator.Validate(
-            inst, EnrollmentType(), GrantedLinks(VipId), SponsorId, new[] { VipId }, Now);
+            inst, EnrollmentType(), GrantedLinks(VipId), new[] { VipId }, Now);
 
         act.Should().Throw<TokenAlreadyUsedException>();
-    }
-
-    [Fact]
-    public void Validate_OwnerCheck_IsCaseInsensitive()
-    {
-        var inst = Instance(SponsorId.ToUpperInvariant(), TokenInstanceStatus.Issued);
-
-        var act = () => TokenInstanceSignupValidator.Validate(
-            inst, EnrollmentType(), GrantedLinks(VipId), SponsorId, new[] { VipId }, Now);
-
-        act.Should().NotThrow();
     }
 }

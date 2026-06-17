@@ -52,6 +52,23 @@
                         <Template><span class="small">@(((CorporatePromoDto)context).EndDate.ToString("yyyy-MM-dd"))</span></Template>
                     </GridColumn>
                     <GridColumn Field="@nameof(CorporatePromoDto.MemberCount)" HeaderText="Signups" Width="100" TextAlign="TextAlign.Center" />
+                    <GridColumn HeaderText="Mechanics" Width="180">
+                        <Template>
+                            @{ var p = (CorporatePromoDto)context; }
+                            @if (p.SponsorBonusMultiplier > 1)
+                            {
+                                <span class="badge bg-warning text-dark me-1" title="Sponsor Bonus Multiplier">Sponsor @(p.SponsorBonusMultiplier)×</span>
+                            }
+                            @if (p.BuilderBonusMultiplier > 1)
+                            {
+                                <span class="badge bg-info text-dark me-1" title="Builder Bonus Multiplier">Builder @(p.BuilderBonusMultiplier)×</span>
+                            }
+                            @if (p.SponsorBonusMultiplier <= 1 && p.BuilderBonusMultiplier <= 1)
+                            {
+                                <span class="text-muted small">—</span>
+                            }
+                        </Template>
+                    </GridColumn>
                     <GridColumn HeaderText="Status" Width="110">
                         <Template>
                             <span class="badge @BoolBadge(((CorporatePromoDto)context).IsActive)">
@@ -119,28 +136,36 @@
                             <h6 class="fw-semibold mb-2"><i class="ri-flashlight-line me-1 text-warning"></i>Promo Mechanics</h6>
                             <p class="text-muted small mb-2">
                                 Mechanics apply to orders whose creation date falls inside this promo's window.
-                                Toggle independently — a promo can double Sponsor only, Builder only, both, or neither.
+                                Each multiplier is configured independently — choose <em>1× (no boost)</em> to disable a bonus boost.
                             </p>
                         </div>
 
                         <div class="col-md-6">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="promoDblSponsor" @bind="_form.DoubleSponsorBonus" />
-                                <label class="form-check-label" for="promoDblSponsor">
-                                    <span class="fw-semibold">2× Sponsor Bonus</span>
-                                    <span class="d-block text-muted small">Cat 1 (Member Bonus) paid at double the configured tier amount.</span>
-                                </label>
-                            </div>
+                            <label class="form-label fw-semibold" for="promoSponsorMult">Sponsor Bonus Multiplier</label>
+                            <select id="promoSponsorMult" class="form-select" @bind="_form.SponsorBonusMultiplier">
+                                <option value="1">1× (no boost)</option>
+                                <option value="2">2×</option>
+                                <option value="3">3×</option>
+                                <option value="4">4×</option>
+                                <option value="5">5×</option>
+                            </select>
+                            <small class="text-muted d-block mt-1">
+                                Cat 1 (Member Bonus) payouts multiplied by this factor for orders inside [Start, End].
+                            </small>
                         </div>
 
                         <div class="col-md-6">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="promoDblBuilder" @bind="_form.DoubleBuilderBonus" />
-                                <label class="form-check-label" for="promoDblBuilder">
-                                    <span class="fw-semibold">2× Builder Bonus</span>
-                                    <span class="d-block text-muted small">Cat 6 + Cat 7 differential payouts up the chain at 2×.</span>
-                                </label>
-                            </div>
+                            <label class="form-label fw-semibold" for="promoBuilderMult">Builder Bonus Multiplier</label>
+                            <select id="promoBuilderMult" class="form-select" @bind="_form.BuilderBonusMultiplier">
+                                <option value="1">1× (no boost)</option>
+                                <option value="2">2×</option>
+                                <option value="3">3×</option>
+                                <option value="4">4×</option>
+                                <option value="5">5×</option>
+                            </select>
+                            <small class="text-muted d-block mt-1">
+                                Cat 6 + Cat 7 differential payouts multiplied by this factor up the chain.
+                            </small>
                         </div>
 
                         <div class="col-12">
@@ -266,8 +291,8 @@
             EndDate                     = p.EndDate,
             BannerUrl                   = p.BannerUrl,
             IsActive                    = p.IsActive,
-            DoubleSponsorBonus          = p.DoubleSponsorBonus,
-            DoubleBuilderBonus          = p.DoubleBuilderBonus,
+            SponsorBonusMultiplier      = p.SponsorBonusMultiplier,
+            BuilderBonusMultiplier      = p.BuilderBonusMultiplier,
             ResetFsbCountdown           = p.ResetFsbCountdown,
             ResetFsbCountdownExecutedAt = p.ResetFsbCountdownExecutedAt
         };
@@ -293,8 +318,8 @@
                     _form.StartDate,
                     _form.EndDate,
                     _form.BannerUrl,
-                    _form.DoubleSponsorBonus,
-                    _form.DoubleBuilderBonus,
+                    _form.SponsorBonusMultiplier,
+                    _form.BuilderBonusMultiplier,
                     _form.ResetFsbCountdown
                 });
             }
@@ -309,8 +334,8 @@
                     _form.EndDate,
                     _form.BannerUrl,
                     _form.IsActive,
-                    _form.DoubleSponsorBonus,
-                    _form.DoubleBuilderBonus,
+                    _form.SponsorBonusMultiplier,
+                    _form.BuilderBonusMultiplier,
                     _form.ResetFsbCountdown
                 });
             }
@@ -376,7 +401,7 @@
         string Id, string Title, string? Description,
         DateTime StartDate, DateTime EndDate,
         string? BannerUrl, bool IsActive, int MemberCount,
-        bool DoubleSponsorBonus, bool DoubleBuilderBonus,
+        int SponsorBonusMultiplier, int BuilderBonusMultiplier,
         bool ResetFsbCountdown, DateTime? ResetFsbCountdownExecutedAt);
 
     private class CorporatePromoFormModel
@@ -387,8 +412,8 @@
         public DateTime  EndDate                     { get; set; } = DateTime.Now.AddDays(30);
         public string?   BannerUrl                   { get; set; }
         public bool      IsActive                    { get; set; } = true;
-        public bool      DoubleSponsorBonus          { get; set; }
-        public bool      DoubleBuilderBonus          { get; set; }
+        public int       SponsorBonusMultiplier      { get; set; } = 1;
+        public int       BuilderBonusMultiplier      { get; set; } = 1;
         public bool      ResetFsbCountdown           { get; set; }
         public DateTime? ResetFsbCountdownExecutedAt { get; set; }
     }

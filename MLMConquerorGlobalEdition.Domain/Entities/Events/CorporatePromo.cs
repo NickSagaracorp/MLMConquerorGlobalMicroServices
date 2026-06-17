@@ -12,18 +12,19 @@ public class CorporatePromo : AuditChangesStringKey
     public bool IsActive { get; set; } = true;
 
     /// <summary>
-    /// When true, every Sponsor Bonus (Cat 1) earning created by orders that
-    /// fall inside [StartDate, EndDate] is paid at 2× the configured amount.
-    /// The multiplier is applied at calculation time so admins editing the
-    /// commission type's <c>Amount</c> mid-promo don't break payouts.
+    /// Multiplier applied to every Sponsor Bonus (Cat 1) earning created by orders that
+    /// fall inside [StartDate, EndDate]. 1 = no promo, 2..5 = 2×..5× the configured amount.
+    /// Applied at calculation time so admins editing the commission type's <c>Amount</c>
+    /// mid-promo don't break payouts. Bounded 1-5 by validation.
     /// </summary>
-    public bool DoubleSponsorBonus { get; set; }
+    public int SponsorBonusMultiplier { get; set; } = 1;
 
     /// <summary>
-    /// Same multiplier rule, applied to Builder Bonus (Cat 6 + Cat 7) earnings.
-    /// Independent of DoubleSponsorBonus so a promo can double either or both.
+    /// Multiplier applied to Builder Bonus (Cat 6 + Cat 7) differential payouts.
+    /// 1 = no promo, 2..5 = 2×..5× the tier amount. Independent of SponsorBonusMultiplier
+    /// so a promo can boost either or both. Bounded 1-5 by validation.
     /// </summary>
-    public bool DoubleBuilderBonus { get; set; }
+    public int BuilderBonusMultiplier { get; set; } = 1;
 
     /// <summary>
     /// When true, the admin can trigger a one-shot job that resets the FSB

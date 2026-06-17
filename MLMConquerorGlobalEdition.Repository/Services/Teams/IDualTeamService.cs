@@ -1,3 +1,4 @@
+using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
@@ -13,6 +14,13 @@ public interface IDualTeamService
         string memberId, int page, int pageSize, string? search,
         DateTime? from, DateTime? to,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Server-side grid read (search · per-column filter · sort · page) over the
+    /// viewer's whole binary subtree, so the grid finds matches on any page.
+    /// </summary>
+    Task<PagedResult<DualTeamMyTeamMemberView>> GetMyTeamGridAsync(
+        string memberId, GridDataRequest request, CancellationToken ct = default);
 
     /// <summary>
     /// Three-row "Dual Team Members" feed for the Residuals page: the viewer
@@ -35,4 +43,30 @@ public interface IDualTeamService
     /// </summary>
     Task<List<DualLegMonthlyPointView>> GetDualTeamHistoryAsync(
         string memberId, int months, CancellationToken ct = default);
+
+    /// <summary>
+    /// Left/right leg point totals for a member's binary position + the per-leg cap toward the
+    /// member's next rank. Reads the denormalised <c>DualTeamTree.LeftLegPoints/RightLegPoints</c>
+    /// (maintained by the placement engine; the same values rank qualification uses) — O(1),
+    /// never an O(downline) subtree recompute. Single source for both Admin and BizCenter
+    /// dual-tree/stats endpoints.
+    /// </summary>
+    Task<DualTreeStatsView> GetDualTreeStatsAsync(string memberId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Find members in <paramref name="rootMemberId"/>'s binary subtree whose name or member id
+    /// matches <paramref name="term"/>. Each hit carries its path from the root (so the
+    /// visualizer can drill to the branch and highlight it), the leg it sits on and its depth.
+    /// Capped at <paramref name="take"/>; shallowest matches first. Empty term / no match → empty.
+    /// </summary>
+    Task<List<DualTreeSearchMatchView>> SearchBinarySubtreeAsync(
+        string rootMemberId, string? term, int take = 25, CancellationToken ct = default);
+
+    /// <summary>
+    /// The deepest node on <paramref name="rootMemberId"/>'s <paramref name="side"/> leg (for the
+    /// "jump to deepest left/right" navigation arrows), with its path from the root. Null when
+    /// that leg is empty.
+    /// </summary>
+    Task<DualTreeNavTargetView?> GetDeepestNodeAsync(
+        string rootMemberId, Domain.Enums.TreeSide side, CancellationToken ct = default);
 }

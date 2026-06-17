@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.RankEngine.DTOs;
 using MLMConquerorGlobalEdition.RankEngine.Features.EvaluateRank;
 using MLMConquerorGlobalEdition.RankEngine.Features.DeleteCertificate;
@@ -8,6 +9,8 @@ using MLMConquerorGlobalEdition.RankEngine.Features.GenerateCertificate;
 using MLMConquerorGlobalEdition.RankEngine.Features.GetMemberCertificates;
 using MLMConquerorGlobalEdition.RankEngine.Features.GetRankDefinitions;
 using MLMConquerorGlobalEdition.RankEngine.Features.GetRankProgress;
+using MLMConquerorGlobalEdition.RankEngine.Services;
+using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.RankEngine.Controllers;
@@ -69,7 +72,8 @@ public class RanksController : ControllerBase
 
     /// <summary>
     /// Generates the certificate PDF for a rank history record. Admin only —
-    /// auto-generation on promotion runs in-process via MediatR and is unaffected.
+    /// EvaluateRank no longer auto-generates certificates, so this and the member
+    /// self-service path are the only two ways a certificate gets created.
     /// </summary>
     [HttpPost("certificate/generate/{memberRankHistoryId}")]
     [Authorize(Roles = "Admin,SuperAdmin")]
@@ -77,6 +81,51 @@ public class RanksController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GenerateCertificate(string memberRankHistoryId, CancellationToken ct)
     {
+        var result = await _mediator.Send(new GenerateCertificateCommand(memberRankHistoryId), ct);
+
+        if (!result.IsSuccess)
+            return NotFound(ApiResponse<object>.Fail(result.ErrorCode!, result.Error!));
+
+        return Ok(ApiResponse<CertificateGenerationResponse>.Ok(result.Value!));
+    }
+
+    /// <summary>
+    /// Member self-service certificate generation. The caller's JWT must own the
+    /// MemberRankHistory record — admin role is NOT required. Used by BizCenter
+    /// when the member taps "View certificate" and one has not been minted yet.
+    /// Ownership is enforced by matching MemberRankHistory.MemberId against the
+    /// JWT's MemberId claim — a mismatch returns 404 (we deliberately avoid
+    /// leaking the existence of someone else's rank history).
+    /// </summary>
+    [HttpPost("certificate/member-generate/{memberRankHistoryId}")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<CertificateGenerationResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> MemberGenerateCertificate(
+        string memberRankHistoryId,
+        [FromServices] AppDbContext db,
+        [FromServices] ICurrentUserService currentUser,
+        CancellationToken ct)
+    {
+        var memberId = currentUser.MemberId;
+        if (string.IsNullOrEmpty(memberId))
+            return Unauthorized(ApiResponse<object>.Fail(
+                "MEMBER_ID_MISSING",
+                "Caller does not have a MemberId claim."));
+
+        // Ownership check first — return 404 (not 403) so we don't leak the existence
+        // of someone else's rank history record.
+        var owned = await db.MemberRankHistories
+            .AsNoTracking()
+            .AnyAsync(h => h.Id == memberRankHistoryId
+                           && h.MemberId == memberId
+                           && !h.IsDeleted, ct);
+
+        if (!owned)
+            return NotFound(ApiResponse<object>.Fail(
+                "RANK_HISTORY_NOT_FOUND",
+                "Rank history record not found."));
+
         var result = await _mediator.Send(new GenerateCertificateCommand(memberRankHistoryId), ct);
 
         if (!result.IsSuccess)

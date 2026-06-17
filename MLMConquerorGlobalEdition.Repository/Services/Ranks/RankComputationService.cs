@@ -40,16 +40,23 @@ public class RankComputationService : IRankComputationService
             })
             .ToListAsync(ct);
 
+        // Evaluate ALL ranks against a SINGLE member snapshot. The previous code looped
+        // QualifiesForRankAsync per rank (~20 calls), and each call re-loaded the full
+        // qualification snapshot (gate + dual leg + enrollment branches + stats + external +
+        // orders) — so GetSummaryAsync did ~20× the DB work (≈60s for a 120k-downline member).
+        // QualifiesForAllRanksAsync loads the snapshot once and reuses it across all ranks.
+        var reqs = ranks.Where(r => r.Req is not null).Select(r => r.Req!).ToList();
+        var evaluations = await _qualification.QualifiesForAllRanksAsync(memberId, reqs, ct);
+        var resultByReqId = evaluations.ToDictionary(e => e.Requirement.Id, e => e.Result);
+
         // Highest rank the member qualifies for, evaluated through the single authority.
         (int SortOrder, int Id, string Name, int DtThreshold, int EtThreshold,
          int EligibleDt, int EligibleEt)? current = null;
 
         foreach (var rank in ranks)
         {
-            if (rank.Req is null)
-                continue;
-            var result = await _qualification.QualifiesForRankAsync(memberId, rank.Req, ct);
-            if (!result.Qualifies)
+            if (rank.Req is null) continue;
+            if (!resultByReqId.TryGetValue(rank.Req.Id, out var result) || !result.Qualifies)
                 continue;
             current = (rank.SortOrder, rank.Id, rank.Name,
                 rank.Req.TeamPoints, rank.Req.EnrollmentTeam,
@@ -61,9 +68,8 @@ public class RankComputationService : IRankComputationService
 
         var nextEligibleDt = 0;
         var nextEligibleEt = 0;
-        if (nextRank?.Req is not null)
+        if (nextRank?.Req is not null && resultByReqId.TryGetValue(nextRank.Req.Id, out var nextResult))
         {
-            var nextResult = await _qualification.QualifiesForRankAsync(memberId, nextRank.Req, ct);
             nextEligibleDt = nextResult.EligibleDualTeamPoints;
             nextEligibleEt = nextResult.EligibleEnrollmentTeamPoints;
         }

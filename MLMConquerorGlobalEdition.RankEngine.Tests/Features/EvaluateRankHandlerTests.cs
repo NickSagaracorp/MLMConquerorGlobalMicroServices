@@ -1,10 +1,9 @@
 using Hangfire;
-using MediatR;
+using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.RankEngine.Features.EvaluateRank;
-using MLMConquerorGlobalEdition.RankEngine.Features.GenerateCertificate;
 using MLMConquerorGlobalEdition.RankEngine.Services;
 using MLMConquerorGlobalEdition.RankEngine.Tests.Helpers;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
@@ -52,17 +51,6 @@ public class EvaluateRankHandlerTests
         return m;
     }
 
-    private static Mock<ISender> BuildMediator()
-    {
-        var m = new Mock<ISender>();
-        m.Setup(s => s.Send(
-                It.IsAny<GenerateCertificateCommand>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(SharedKernel.Result<DTOs.CertificateGenerationResponse>.Success(
-                new DTOs.CertificateGenerationResponse()));
-        return m;
-    }
-
     private static IRankQualificationService BuildQualification(
         MLMConquerorGlobalEdition.Repository.Context.AppDbContext db)
     {
@@ -80,9 +68,7 @@ public class EvaluateRankHandlerTests
             BuildUser().Object,
             BuildQualification(db),
             BuildCache().Object,
-            BuildMediator().Object,
-            BuildJobs().Object,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<EvaluateRankHandler>.Instance);
+            BuildJobs().Object);
     }
 
     /// <summary>Gives a member an Active membership worth enough PCP to clear the gate (>= 12).</summary>
@@ -259,8 +245,163 @@ public class EvaluateRankHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value!.RankAchieved.Should().BeTrue();
-        // Should achieve rank 2 (highest qualifying)
+        // Headline rank in the response is rank 2 (the highest qualifying)
         result.Value.AchievedRank!.SortOrder.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Handle_WhenSkippingMultipleRanks_PersistsChainedIntermediateHistoryRows()
+    {
+        // A member with no rank history qualifies for ranks 1..5 in one evaluation.
+        // The handler must persist 5 MemberRankHistory rows (one per intermediate rank)
+        // with PreviousRankId chained so the promotion story is preserved end-to-end.
+        await using var db = InMemoryDbHelper.Create();
+        await db.MemberProfiles.AddAsync(BuildMember("AMB-001"));
+        await db.RankDefinitions.AddRangeAsync(
+            BuildRank(1, sortOrder: 1),
+            BuildRank(2, sortOrder: 2),
+            BuildRank(3, sortOrder: 3),
+            BuildRank(4, sortOrder: 4),
+            BuildRank(5, sortOrder: 5));
+        await db.SaveChangesAsync();
+        await SatisfyGateAsync(db, "AMB-001");
+
+        var handler = BuildHandler(db);
+        var result  = await handler.Handle(
+            new EvaluateRankCommand("AMB-001"), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.RankAchieved.Should().BeTrue();
+        result.Value.AchievedRank!.SortOrder.Should().Be(5);
+
+        var history = db.MemberRankHistories
+            .Include(h => h.RankDefinition)
+            .OrderBy(h => h.RankDefinition!.SortOrder)
+            .ToList();
+
+        history.Should().HaveCount(5);
+        history.Select(h => h.RankDefinitionId).Should().BeEquivalentTo(new[] { 1, 2, 3, 4, 5 });
+
+        // PreviousRankId chain: 1 → null, 2 → 1, 3 → 2, 4 → 3, 5 → 4
+        history[0].PreviousRankId.Should().BeNull();
+        history[1].PreviousRankId.Should().Be(1);
+        history[2].PreviousRankId.Should().Be(2);
+        history[3].PreviousRankId.Should().Be(3);
+        history[4].PreviousRankId.Should().Be(4);
+
+        // Every intermediate row has NO certificate URL — certs are generated on demand.
+        history.Should().OnlyContain(h => h.GeneratedCertificateUrl == null);
+    }
+
+    [Fact]
+    public async Task Handle_WhenEvaluationSucceeds_DoesNotAutoGenerateCertificate()
+    {
+        // Verifies the cert auto-generation has been removed: a successful promotion
+        // leaves GeneratedCertificateUrl null on every row. The on-demand path
+        // (BizCenter / Admin) is the only way certs are produced now.
+        await using var db = InMemoryDbHelper.Create();
+        await db.MemberProfiles.AddAsync(BuildMember("AMB-001"));
+        await db.RankDefinitions.AddAsync(BuildRank(1, sortOrder: 1));
+        await db.SaveChangesAsync();
+        await SatisfyGateAsync(db, "AMB-001");
+
+        var handler = BuildHandler(db);
+        await handler.Handle(new EvaluateRankCommand("AMB-001"), CancellationToken.None);
+
+        var rows = db.MemberRankHistories.ToList();
+        rows.Should().NotBeEmpty();
+        rows.Should().OnlyContain(h => h.GeneratedCertificateUrl == null,
+            "EvaluateRank no longer auto-generates certificates — they are minted on demand.");
+    }
+
+    [Fact]
+    public async Task Handle_WhenSkippingFromExistingRank_ChainsFromCurrentRank()
+    {
+        // Member currently holds rank 2 (SortOrder 2) and now qualifies up to rank 5.
+        // Only intermediate rows for 3, 4, 5 should be created, with PreviousRankId
+        // starting from the current rank's id (2).
+        await using var db = InMemoryDbHelper.Create();
+        await db.MemberProfiles.AddAsync(BuildMember("AMB-001"));
+        await db.RankDefinitions.AddRangeAsync(
+            BuildRank(1, sortOrder: 1),
+            BuildRank(2, sortOrder: 2),
+            BuildRank(3, sortOrder: 3),
+            BuildRank(4, sortOrder: 4),
+            BuildRank(5, sortOrder: 5));
+        await db.MemberRankHistories.AddAsync(new MemberRankHistory
+        {
+            MemberId         = "AMB-001",
+            RankDefinitionId = 2,
+            AchievedAt       = FixedNow.AddDays(-30),
+            CreatedBy        = "seed",
+            CreationDate     = FixedNow.AddDays(-30),
+            LastUpdateDate   = FixedNow.AddDays(-30)
+        });
+        await db.SaveChangesAsync();
+        await SatisfyGateAsync(db, "AMB-001");
+
+        var handler = BuildHandler(db);
+        var result  = await handler.Handle(
+            new EvaluateRankCommand("AMB-001"), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.RankAchieved.Should().BeTrue();
+        result.Value.AchievedRank!.SortOrder.Should().Be(5);
+
+        // Newly-created rows are the three intermediate ranks (3, 4, 5). They are stamped at
+        // the evaluation instant with a monotonic +1s offset per rank, so filter by the
+        // evaluation window rather than an exact-equals on FixedNow.
+        var newRows = db.MemberRankHistories
+            .Include(h => h.RankDefinition)
+            .Where(h => h.AchievedAt >= FixedNow)
+            .OrderBy(h => h.RankDefinition!.SortOrder)
+            .ToList();
+
+        newRows.Should().HaveCount(3);
+        newRows.Select(h => h.RankDefinitionId).Should().BeEquivalentTo(new[] { 3, 4, 5 });
+        newRows[0].PreviousRankId.Should().Be(2);
+        newRows[1].PreviousRankId.Should().Be(3);
+        newRows[2].PreviousRankId.Should().Be(4);
+    }
+
+    [Fact]
+    public async Task Handle_WhenSkippingMultipleRanks_StampsDistinctIncreasingAchievedAt()
+    {
+        // A member who jumps several ranks in ONE evaluation must NOT have every rank row
+        // recorded at the identical instant — that produces physically impossible history
+        // ("achieved two ranks at the exact same second"). Each successive rank's AchievedAt
+        // must be strictly greater than the previous one, ordered by SortOrder.
+        await using var db = InMemoryDbHelper.Create();
+        await db.MemberProfiles.AddAsync(BuildMember("AMB-001"));
+        await db.RankDefinitions.AddRangeAsync(
+            BuildRank(1, sortOrder: 1),
+            BuildRank(2, sortOrder: 2),
+            BuildRank(3, sortOrder: 3));
+        await db.SaveChangesAsync();
+        await SatisfyGateAsync(db, "AMB-001");
+
+        var handler = BuildHandler(db);
+        var result  = await handler.Handle(new EvaluateRankCommand("AMB-001"), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+
+        var rows = db.MemberRankHistories
+            .Include(h => h.RankDefinition)
+            .OrderBy(h => h.RankDefinition!.SortOrder)
+            .ToList();
+
+        rows.Should().HaveCount(3);
+
+        // No two ranks share an AchievedAt …
+        rows.Select(h => h.AchievedAt).Distinct().Should().HaveCount(3,
+            "each rank in a multi-rank climb must have its own distinct AchievedAt");
+
+        // … and they strictly increase with SortOrder.
+        rows[0].AchievedAt.Should().BeBefore(rows[1].AchievedAt);
+        rows[1].AchievedAt.Should().BeBefore(rows[2].AchievedAt);
+
+        // First rank lands on the evaluation instant; later ranks carry the monotonic offset.
+        rows[0].AchievedAt.Should().Be(FixedNow);
     }
 
     [Fact]
@@ -276,8 +417,7 @@ public class EvaluateRankHandlerTests
         var handler = new EvaluateRankHandler(
             db, BuildClock().Object, BuildUser().Object,
             BuildQualification(db), cache.Object,
-            BuildMediator().Object, BuildJobs().Object,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<EvaluateRankHandler>.Instance);
+            BuildJobs().Object);
 
         await handler.Handle(new EvaluateRankCommand("AMB-001"), CancellationToken.None);
 

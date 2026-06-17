@@ -115,19 +115,21 @@ public class CalculateSponsorBonusHandler
         // Active CorporatePromo lookup. The order's CreationDate anchors which
         // promo applies — using `now` here would let admins game payouts by
         // recalculating after a promo expires. When the matching promo has
-        // DoubleSponsorBonus set, we pay 2× the configured amount and stamp
+        // a SponsorBonusMultiplier > 1, we pay (multiplier × amount) and stamp
         // the earning's note so accounting can audit which promo drove it.
         var activePromo = await _db.CorporatePromos.AsNoTracking()
             .Where(p => p.IsActive
-                     && p.DoubleSponsorBonus
+                     && p.SponsorBonusMultiplier > 1
                      && order.CreationDate >= p.StartDate
                      && order.CreationDate <= p.EndDate)
             .OrderByDescending(p => p.StartDate)
             .FirstOrDefaultAsync(ct);
 
-        var amount = activePromo is not null ? baseAmount * 2m : baseAmount;
+        var amount = activePromo is not null
+            ? baseAmount * activePromo.SponsorBonusMultiplier
+            : baseAmount;
         var note   = activePromo is not null
-            ? $"2× Sponsor Bonus — promo '{activePromo.Title}' ({activePromo.Id})"
+            ? $"{activePromo.SponsorBonusMultiplier}× Sponsor Bonus — promo '{activePromo.Title}' ({activePromo.Id})"
             : null;
 
         var earning = new CommissionEarning

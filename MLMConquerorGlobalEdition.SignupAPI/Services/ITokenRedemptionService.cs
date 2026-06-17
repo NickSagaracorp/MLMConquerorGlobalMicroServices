@@ -12,7 +12,6 @@ public interface ITokenRedemptionService
 {
     Task<Result<bool>> RedeemForSignupAsync(
         string tokenCode,
-        string sponsorMemberId,
         string newMemberId,
         string orderId,
         IReadOnlyCollection<string> selectedProductIds,

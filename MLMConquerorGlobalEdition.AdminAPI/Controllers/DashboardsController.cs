@@ -34,10 +34,12 @@ public class DashboardsController : ControllerBase
 
     [HttpGet("financial")]
     public async Task<IActionResult> GetFinancial(
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
         [FromQuery] bool bypassCache = false,
         CancellationToken ct = default)
     {
-        var result = await _mediator.Send(new GetFinancialDashboardQuery(bypassCache), ct);
+        var result = await _mediator.Send(new GetFinancialDashboardQuery(from, to, bypassCache), ct);
 
         if (!result.IsSuccess)
             return BadRequest(ApiResponse<FinancialDashboardDto>.Fail(result.ErrorCode!, result.Error!));

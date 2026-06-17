@@ -1,0 +1,25 @@
+# Delta Drain Measurements — Double Diamond test (T29 architecture)
+# All waves combined
+
+Wave1.Signups=350
+Wave1.InitialPendingDeltas=1263
+Wave1.DrainTimeSec=3.3  (1 cycle after manual rearm)
+
+Wave2_fill.Signups=498
+Wave2.InitialPendingDeltas=2992
+Wave2.DrainTimeSec=37.2 (6 cycles after manual rearm)
+
+Wave3_topup.Signups=60+5+5=70
+Wave3.InitialPendingDeltas=~420
+Wave3.DrainTimeSec=5.3 (1 cycle)
+
+# NOTE: Hangfire recurring entry "apply-member-statistic-deltas" was in error state
+# (JobLoadException: 'Could not resolve assembly MLMConquerorGlobalEdition.SignupAPI'
+# with RetryAttempt=5 -> max). The scheduler does not fire automatically. The job
+# *executes correctly* in SignupAPI's in-process worker once enqueued; only the
+# recurring cron tick is broken. Manual rearm (clear RetryAttempt+Error, reset
+# NextExecution) was used for each drain.
+
+# In a healthy scheduler the perceived end-to-end "signup latency + deltas applied"
+# would add at most ~60s wait + ~1s job runtime per 1000-row batch.
+DrainEndUtc=2026-05-24T18:05:00Z

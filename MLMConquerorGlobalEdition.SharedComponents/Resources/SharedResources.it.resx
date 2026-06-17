@@ -649,6 +649,7 @@
   <data name="Team.LegLeft" xml:space="preserve"><value>Sinistra</value></data>
   <data name="Team.LegRight" xml:space="preserve"><value>Destra</value></data>
   <data name="Team.NoCandidatesAvailable" xml:space="preserve"><value>Nessun ambasciatore disponibile per il piazzamento.</value></data>
+  <data name="Team.SearchCandidatesPlaceholder" xml:space="preserve"><value>Cerca per nome o id membro…</value></data>
   <data name="Team.PlacementConfirmation" xml:space="preserve"><value>Conferma Piazzamento</value></data>
   <data name="Team.AmbassadorLabel" xml:space="preserve"><value>Ambasciatore:</value></data>
   <data name="Team.UnderLabel" xml:space="preserve"><value>Sotto:</value></data>
@@ -690,6 +691,7 @@
   <data name="Team.EligibleNextRank" xml:space="preserve"><value>Idonei (Prossimo Rango)</value></data>
   <data name="Team.TotalRaw" xml:space="preserve"><value>Totale Grezzo</value></data>
   <data name="Team.PointsTowardNext" xml:space="preserve"><value>{0} / {1} punti verso {2}</value></data>
+  <data name="Team.LegPointsTowardNext" xml:space="preserve"><value>{0} pti verso {1}</value></data>
   <data name="Team.DtRequirementNotApplicable" xml:space="preserve"><value>Requisito DT: N/D per {0}</value></data>
   <data name="Team.EtRequirementNotApplicable" xml:space="preserve"><value>Requisito ET: N/D per {0}</value></data>
   <data name="Team.DailyResidualsEarning" xml:space="preserve"><value>Guadagni Residui Giornalieri</value></data>

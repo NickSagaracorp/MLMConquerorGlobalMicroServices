@@ -1,0 +1,72 @@
+﻿# sponsors-cascade-sapphire-20260523-220242  â€” 70 sponsors selected for cascade promotions during Sapphire wave
+# Format: MemberId|Slug|Bucket|EP|ETS|DTL|DTR|CurRank|ExpectedTarget
+# Note: rig takes col[1]=Slug; the rest is documentation for cross-check post-wave.
+AMB-550531|g-7717c939-up1|TitaniumPlus|EP=756|ETS=125|DTL=3252|DTR=3120|CurRank=0|Target=Titanium+
+AMB-452026|g-7717c939-up7|TitaniumPlus|EP=654|ETS=108|DTL=522|DTR=402|CurRank=0|Target=Titanium+
+AMB-565792|g-7717c939-up8|TitaniumPlus|EP=516|ETS=85|DTL=252|DTR=2862|CurRank=0|Target=Titanium+
+AMB-107495|p-33f6d261-up4|TitaniumPlus|EP=462|ETS=76|DTL=210|DTR=2172|CurRank=0|Target=Titanium+
+AMB-199916|g-7717c939-up10|TitaniumPlus|EP=414|ETS=68|DTL=228|DTR=2628|CurRank=0|Target=Titanium+
+AMB-679522|g-7717c939-up3|TitaniumPlus|EP=378|ETS=62|DTL=1686|DTR=1560|CurRank=0|Target=Titanium+
+AMB-151521|p-33f6d261-up2|TitaniumPlus|EP=372|ETS=61|DTL=234|DTR=2388|CurRank=0|Target=Titanium+
+AMB-052251|g-7717c939-up5|TitaniumPlus|EP=348|ETS=57|DTL=930|DTR=750|CurRank=0|Target=Titanium+
+AMB-369634|g-7717c939-up9|TitaniumPlus|EP=324|ETS=53|DTL=318|DTR=198|CurRank=0|Target=Titanium+
+AMB-175623|g-7717c939-up4|TitaniumPlus|EP=300|ETS=49|DTL=288|DTR=3414|CurRank=0|Target=Titanium+
+AMB-140171|lt-c727361f-l50-23-28c12f|TitaniumPlus|EP=222|ETS=36|DTL=810|DTR=786|CurRank=0|Target=Titanium+
+AMB-637178|g-7717c939-up6|TitaniumPlus|EP=198|ETS=32|DTL=288|DTR=3120|CurRank=0|Target=Titanium+
+AMB-873986|p-33f6d261-up16|PlatinumPush|EP=168|ETS=27|DTL=126|DTR=1578|CurRank=0|Target=Platinum(or Titanium)
+AMB-710416|lt-c727361f-l20-16-e78ceb|PlatinumPush|EP=168|ETS=27|DTL=18|DTR=606|CurRank=0|Target=Platinum(or Titanium)
+AMB-052156|lt-c727361f-l20-1-52747e|PlatinumPush|EP=156|ETS=25|DTL=6|DTR=390|CurRank=0|Target=Platinum(or Titanium)
+AMB-944930|lt-a222f227-w3-i6-abd4a8|PlatinumPush|EP=150|ETS=24|DTL=42|DTR=30|CurRank=0|Target=Platinum(or Titanium)
+AMB-095648|probe-f315ad|PlatinumPush|EP=150|ETS=24|DTL=102|DTR=0|CurRank=0|Target=Platinum(or Titanium)
+AMB-450721|lt-c4b8202b-w1-i45-e1b982|GoldPush|EP=66|ETS=10|DTL=0|DTR=0|CurRank=0|Target=Gold
+AMB-745095|lt-a222f227-w5-i87-443918|GoldPush|EP=66|ETS=10|DTL=6|DTR=6|CurRank=0|Target=Gold
+AMB-857647|lt-c727361f-l50-13-d847ec|GoldPush|EP=66|ETS=10|DTL=138|DTR=174|CurRank=0|Target=Gold
+AMB-651107|lt-c727361f-l50-27-232d28|GoldPush|EP=60|ETS=9|DTL=0|DTR=0|CurRank=0|Target=Gold
+AMB-632691|lt-c4b8202b-w1-i168-b1194c|GoldPush|EP=60|ETS=9|DTL=6|DTR=6|CurRank=0|Target=Gold
+AMB-960705|lt-ecd8fb8e-w1-i82-c54fd5|GoldPush|EP=60|ETS=9|DTL=36|DTR=0|CurRank=0|Target=Gold
+AMB-418748|lt-a222f227-w5-i68-ecf49e|GoldPush|EP=60|ETS=9|DTL=6|DTR=6|CurRank=0|Target=Gold
+AMB-027275|lt-a222f227-w2-i6-300cf9|GoldPush|EP=60|ETS=9|DTL=90|DTR=114|CurRank=0|Target=Gold
+AMB-261186|lt-ecd8fb8e-w1-i159-07a59c|GoldPush|EP=60|ETS=9|DTL=0|DTR=0|CurRank=0|Target=Gold
+AMB-099711|lt-c727361f-l20-8-ba356d|GoldPush|EP=60|ETS=9|DTL=18|DTR=558|CurRank=0|Target=Gold
+AMB-120036|lt-a222f227-w5-i69-672215|GoldPush|EP=60|ETS=9|DTL=6|DTR=6|CurRank=0|Target=Gold
+AMB-128599|lt-c727361f-l20-6-75e807|GoldPush|EP=60|ETS=9|DTL=6|DTR=342|CurRank=0|Target=Gold
+AMB-657049|p-33f6d261-up17|GoldPush|EP=48|ETS=7|DTL=108|DTR=0|CurRank=0|Target=Gold
+AMB-674818|lt-a222f227-w2-i9-7cada7|GoldPush|EP=42|ETS=6|DTL=30|DTR=0|CurRank=0|Target=Gold
+AMB-688116|lt-a222f227-w5-i106-f650b1|GoldPush|EP=42|ETS=6|DTL=6|DTR=6|CurRank=0|Target=Gold
+AMB-889519|lt-c727361f-l50-43-cd6878|GoldPush|EP=42|ETS=6|DTL=390|DTR=378|CurRank=0|Target=Gold
+AMB-919479|lt-c4b8202b-w1-i9-9c2581|GoldPush|EP=42|ETS=6|DTL=0|DTR=0|CurRank=0|Target=Gold
+AMB-975856|lt-a222f227-w4-i116-72670b|GoldPush|EP=42|ETS=6|DTL=18|DTR=18|CurRank=0|Target=Gold
+AMB-635068|lt-c727361f-l20-18-3d09b3|GoldPush|EP=42|ETS=6|DTL=6|DTR=270|CurRank=0|Target=Gold
+AMB-335884|lt-9d788e06-w1-i124-da4cd9|SilverPush|EP=6|ETS=0|DTL=0|DTR=0|CurRank=0|Target=Silver
+AMB-719546|lt-a222f227-w5-i55-d3501d|SilverPush|EP=6|ETS=0|DTL=6|DTR=6|CurRank=0|Target=Silver
+AMB-878442|lt-ecd8fb8e-w1-i118-13dea0|SilverPush|EP=6|ETS=0|DTL=72|DTR=0|CurRank=0|Target=Silver
+AMB-691253|lt-9d788e06-w1-i297-7ec5fe|SilverPush|EP=6|ETS=0|DTL=0|DTR=0|CurRank=0|Target=Silver
+AMB-737791|lt-c4b8202b-w1-i297-ef4c85|SilverPush|EP=6|ETS=0|DTL=0|DTR=0|CurRank=0|Target=Silver
+AMB-911154|lt-a222f227-w5-i61-12e6a8|SilverPush|EP=6|ETS=0|DTL=24|DTR=6|CurRank=0|Target=Silver
+AMB-127953|lt-9d788e06-w1-i117-41a2a8|SilverPush|EP=6|ETS=0|DTL=0|DTR=0|CurRank=0|Target=Silver
+AMB-965929|lt-a222f227-w5-i26-e073bb|SilverPush|EP=6|ETS=0|DTL=0|DTR=0|CurRank=0|Target=Silver
+AMB-060991|lt-9d788e06-w1-i100-4565b3|SilverPush|EP=6|ETS=0|DTL=0|DTR=0|CurRank=0|Target=Silver
+AMB-318396|lt-9d788e06-w1-i26-feef8d|SilverPush|EP=6|ETS=0|DTL=0|DTR=0|CurRank=0|Target=Silver
+AMB-398472|lt-ecd8fb8e-w1-i27-916a71|SilverPush|EP=6|ETS=0|DTL=66|DTR=0|CurRank=0|Target=Silver
+AMB-343051|lt-c727361f-l5-2-2bca54|SilverPush|EP=6|ETS=0|DTL=6|DTR=894|CurRank=0|Target=Silver
+AMB-574630|lt-ecd8fb8e-w1-i81-c530eb|SilverPush|EP=6|ETS=0|DTL=0|DTR=0|CurRank=0|Target=Silver
+AMB-277628|lt-ecd8fb8e-w1-i85-5bcd28|SilverPush|EP=6|ETS=0|DTL=0|DTR=0|CurRank=0|Target=Silver
+AMB-513899|lt-9d788e06-w1-i296-a750d1|SilverPush|EP=6|ETS=0|DTL=0|DTR=0|CurRank=0|Target=Silver
+AMB-465451|lt-9d788e06-w1-i41-4c1d46|SilverPush|EP=6|ETS=0|DTL=6|DTR=6|CurRank=0|Target=Silver
+AMB-195322|lt-c4b8202b-w1-i146-5a2c07|SilverPush|EP=6|ETS=0|DTL=0|DTR=0|CurRank=0|Target=Silver
+AMB-384192|lt-a222f227-w4-i74-9d259b|SilverPush|EP=6|ETS=0|DTL=18|DTR=6|CurRank=0|Target=Silver
+AMB-409312|lt-8ff5dfd4-w1-i125-7ec324|SilverPush|EP=6|ETS=0|DTL=6|DTR=6|CurRank=0|Target=Silver
+AMB-636998|lt-9d788e06-w1-i211-580c56|SilverPush|EP=6|ETS=0|DTL=0|DTR=0|CurRank=0|Target=Silver
+AMB-737549|lt-8ff5dfd4-w1-i166-dc0285|SilverPush|EP=6|ETS=0|DTL=42|DTR=6|CurRank=0|Target=Silver
+AMB-995540|lt-a222f227-w5-i60-396aea|SilverPush|EP=6|ETS=0|DTL=0|DTR=0|CurRank=0|Target=Silver
+AMB-454097|lt-a222f227-w3-i35-7ab391|SilverPush|EP=6|ETS=0|DTL=66|DTR=42|CurRank=0|Target=Silver
+AMB-449467|lt-9d788e06-w1-i130-770de2|SilverPush|EP=6|ETS=0|DTL=6|DTR=6|CurRank=0|Target=Silver
+AMB-839966|lt-8ff5dfd4-w1-i114-837d67|SilverPush|EP=6|ETS=0|DTL=126|DTR=6|CurRank=0|Target=Silver
+AMB-168977|lt-ecd8fb8e-w1-i178-f1c87a|SilverPush|EP=6|ETS=0|DTL=0|DTR=0|CurRank=0|Target=Silver
+AMB-028734|lt-c4b8202b-w1-i171-fea184|SilverPush|EP=6|ETS=0|DTL=0|DTR=0|CurRank=0|Target=Silver
+AMB-655831|lt-ecd8fb8e-w1-i254-7ebb06|SilverPush|EP=6|ETS=0|DTL=0|DTR=0|CurRank=0|Target=Silver
+AMB-849133|lt-a222f227-w5-i144-6cac72|Filler|EP=6|ETS=0|DTL=6|DTR=6|CurRank=0|Target=no-promotion-(filler)
+AMB-360803|lt-ecd8fb8e-w1-i29-80bba9|Filler|EP=6|ETS=0|DTL=0|DTR=0|CurRank=0|Target=no-promotion-(filler)
+AMB-687533|lt-a222f227-w4-i33-520b82|Filler|EP=6|ETS=0|DTL=18|DTR=18|CurRank=0|Target=no-promotion-(filler)
+AMB-263704|lt-8ff5dfd4-w1-i81-58abbd|Filler|EP=6|ETS=0|DTL=162|DTR=18|CurRank=0|Target=no-promotion-(filler)
+AMB-287059|lt-c4b8202b-w1-i50-1596af|Filler|EP=6|ETS=0|DTL=6|DTR=6|CurRank=0|Target=no-promotion-(filler)

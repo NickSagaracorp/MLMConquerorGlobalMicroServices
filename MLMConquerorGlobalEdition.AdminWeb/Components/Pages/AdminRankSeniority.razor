@@ -1,0 +1,300 @@
+@page "/admin/ranks/seniority"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin")]
+@inject HttpClient Http
+
+<PageTitle>Rank Seniority Bonus — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Rank Reports"), new("Seniority Bonus") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+@* ── Filters ──────────────────────────────────────────────────────────────── *@
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-3">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label fw-semibold small mb-1">Rank</label>
+                <select class="form-select form-select-sm" @bind="_rankFilter">
+                    <option value="">All ranks</option>
+                    @foreach (var r in _ranks)
+                    {
+                        <option value="@r.Id">@r.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold small mb-1">Minimum consecutive days</label>
+                <input type="number" min="1" class="form-control form-control-sm" @bind="_minDays" />
+            </div>
+            <div class="col-md-4">
+                <button class="btn btn-primary btn-sm w-100" @onclick="Search" disabled="@_loading">
+                    @if (_loading) { <span class="spinner-border spinner-border-sm me-1"></span> } else { <i class="ri-search-line me-1"></i> }
+                    Search
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ── Seniority table ──────────────────────────────────────────────────────── *@
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2 flex-wrap">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-calendar-check-line me-2 text-primary"></i>Seniority bonus candidates
+        </h6>
+        <span class="small text-muted">@_totalCount records</span>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="SeniorityRow" DataSource="@_items"
+                    AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridColumns>
+                    <GridColumn HeaderText="Full name" Width="200">
+                        <Template>
+                            @{ var r = (SeniorityRow)context; }
+                            <a href="/admin/members/@r.MemberId" target="_blank" rel="noopener"
+                               class="text-primary text-decoration-none">
+                                <span class="fw-semibold">@r.FullName</span>
+                            </a>
+                            <div><code class="small text-muted">@r.MemberId</code></div>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Rank" Width="140">
+                        <Template>
+                            @{ var r = (SeniorityRow)context; }
+                            <span class="badge bg-primary">@r.RankName</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Consecutive days" Width="130" TextAlign="TextAlign.Center">
+                        <Template>
+                            @{ var r = (SeniorityRow)context; }
+                            <span class="badge bg-success fs-6">@r.ConsecutiveDays</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Streak start" Width="120">
+                        <Template>
+                            @{ var r = (SeniorityRow)context; }
+                            <span class="small">@r.StreakStartDate.ToString("yyyy-MM-dd")</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Streak end" Width="120">
+                        <Template>
+                            @{ var r = (SeniorityRow)context; }
+                            <span class="small">@r.StreakEndDate.ToString("yyyy-MM-dd")</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Bonus amount" Width="120" TextAlign="TextAlign.Right">
+                        <Template>
+                            @{ var r = (SeniorityRow)context; }
+                            <span class="fw-semibold">@r.BonusAmount.ToString("C")</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="" Width="120" TextAlign="TextAlign.Center">
+                        <Template>
+                            @{ var r = (SeniorityRow)context; }
+                            <button class="btn btn-sm btn-success py-0"
+                                    @onclick="() => ConfirmGrant(r)"
+                                    disabled="@_granting">
+                                <i class="ri-hand-coin-line me-1"></i>Grant
+                            </button>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+
+            @if (_items.Count == 0)
+            {
+                <div class="text-center text-muted py-4">No seniority candidates for the selected filters.</div>
+            }
+
+            @if (_totalPages > 1)
+            {
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
+                    <small class="text-muted">@_totalCount records — Page @_page of @_totalPages</small>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>
+                            @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
+                            { var pg = i; <li class="page-item @(_page == pg ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(pg)">@pg</button></li> }
+                            <li class="page-item @(_page == _totalPages ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page + 1)">›</button></li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+        }
+    </div>
+    <div class="card-footer bg-light small text-muted">
+        Granting a seniority bonus creates a commission earning and removes the member from this list.
+    </div>
+</div>
+
+@* ── Grant confirmation modal ─────────────────────────────────────────────── *@
+@if (_showGrantConfirm && _grantTarget is not null)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold"><i class="ri-hand-coin-line me-2 text-success"></i>Grant seniority bonus</h5>
+                    <button type="button" class="btn-close" @onclick="CloseGrant"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">Grant a seniority bonus to:</p>
+                    <dl class="row small mb-0">
+                        <dt class="col-5 text-muted">Member</dt>
+                        <dd class="col-7"><span class="fw-semibold">@_grantTarget.FullName</span> <code class="small">@_grantTarget.MemberId</code></dd>
+                        <dt class="col-5 text-muted">Rank</dt>
+                        <dd class="col-7">@_grantTarget.RankName</dd>
+                        <dt class="col-5 text-muted">Consecutive days</dt>
+                        <dd class="col-7">@_grantTarget.ConsecutiveDays</dd>
+                        <dt class="col-5 text-muted">Bonus amount</dt>
+                        <dd class="col-7 fw-semibold">@_grantTarget.BonusAmount.ToString("C")</dd>
+                    </dl>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseGrant" disabled="@_granting">Cancel</button>
+                    <button class="btn btn-success" @onclick="DoGrant" disabled="@_granting">
+                        @if (_granting) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Confirm grant
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private const int PageSize = 20;
+
+    // Filters
+    private string _rankFilter = string.Empty;
+    private int _minDays = 14;
+
+    private bool _loading = true;
+    private string? _alertMsg;
+    private bool _alertIsError;
+
+    private List<RankOption> _ranks = new();
+    private List<SeniorityRow> _items = new();
+    private int _page = 1;
+    private int _totalCount;
+    private int _totalPages = 1;
+
+    // Grant
+    private bool _showGrantConfirm;
+    private SeniorityRow? _grantTarget;
+    private bool _granting;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRanksAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadRanksAsync()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<IEnumerable<RankOption>>>("api/v1/admin/rank-definitions");
+            if (resp?.Success == true && resp.Data is not null)
+                _ranks = resp.Data.OrderBy(r => r.SortOrder).ToList();
+        }
+        catch { /* non-fatal — leave the rank filter on "All ranks" */ }
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true; _alertMsg = null; StateHasChanged();
+        try
+        {
+            var minDays = _minDays < 1 ? 1 : _minDays;
+            var url = $"api/v1/admin/ranks/reports/seniority?minDays={minDays}&page={_page}&pageSize={PageSize}";
+            if (!string.IsNullOrWhiteSpace(_rankFilter)) url += $"&rankId={Uri.EscapeDataString(_rankFilter)}";
+
+            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<SeniorityRow>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _items = resp.Data.Items.ToList();
+                _totalCount = resp.Data.TotalCount;
+                _totalPages = resp.Data.TotalPages <= 0 ? 1 : resp.Data.TotalPages;
+            }
+            else
+            {
+                _items = new(); _totalCount = 0; _totalPages = 1;
+                _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load seniority candidates.";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; StateHasChanged(); }
+    }
+
+    private async Task Search() { _page = 1; await LoadAsync(); }
+
+    private async Task ChangePage(int p) { if (p < 1 || p > _totalPages) return; _page = p; await LoadAsync(); }
+
+    private void ConfirmGrant(SeniorityRow r) { _grantTarget = r; _showGrantConfirm = true; }
+    private void CloseGrant() { _showGrantConfirm = false; _grantTarget = null; }
+
+    private async Task DoGrant()
+    {
+        if (_grantTarget is null) return;
+        _granting = true; StateHasChanged();
+        try
+        {
+            var body = new { MemberId = _grantTarget.MemberId, RankDefinitionId = _grantTarget.RankDefinitionId };
+            var response = await Http.PostAsJsonAsync("api/v1/admin/ranks/reports/seniority/grant", body);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ApiResp<string>>();
+                if (result?.Success == true)
+                {
+                    _alertMsg = $"Seniority bonus granted to {_grantTarget.FullName} (earning {result.Data}).";
+                    _alertIsError = false;
+                    CloseGrant();
+                    await LoadAsync(); // row disappears
+                }
+                else
+                {
+                    _alertMsg = result?.Errors?.FirstOrDefault() ?? "Grant returned no confirmation.";
+                    _alertIsError = true;
+                }
+            }
+            else
+            {
+                var result = await response.Content.ReadFromJsonAsync<ApiResp<object>>();
+                _alertMsg = result?.Errors?.FirstOrDefault() ?? $"Grant failed ({(int)response.StatusCode}).";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _granting = false; StateHasChanged(); }
+    }
+
+    // ── DTO shapes ───────────────────────────────────────────────────────────
+    private record RankOption(int Id, string Name, int SortOrder);
+
+    private record SeniorityRow(
+        string MemberId,
+        string FullName,
+        int RankDefinitionId,
+        string RankName,
+        int ConsecutiveDays,
+        DateTime StreakStartDate,
+        DateTime StreakEndDate,
+        decimal BonusAmount);
+
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+}

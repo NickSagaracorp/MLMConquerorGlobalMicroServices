@@ -2,6 +2,7 @@ using MLMConquerorGlobalEdition.AdminAPI.Features.Placement.AdminRemovePlacement
 using MLMConquerorGlobalEdition.AdminAPI.Tests.Helpers;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
+using MLMConquerorGlobalEdition.Repository.Services.Trees;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Tests.Features.Placement;
@@ -24,6 +25,14 @@ public class AdminRemovePlacementHandlerTests
         return m;
     }
 
+    private static Mock<IDualTeamPointsRecalculator> NullLegPoints()
+    {
+        var m = new Mock<IDualTeamPointsRecalculator>();
+        m.Setup(r => r.RecalculateForUplinesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+         .Returns(Task.CompletedTask);
+        return m;
+    }
+
     private static DualTeamEntity BuildNode(string memberId, string? parentId = null,
         TreeSide side = TreeSide.Left, string path = "") => new()
     {
@@ -38,8 +47,9 @@ public class AdminRemovePlacementHandlerTests
     };
 
     private static AdminRemovePlacementHandler CreateHandler(
-        Repository.Context.AppDbContext db) =>
-        new(db, CurrentUser().Object, Clock().Object);
+        Repository.Context.AppDbContext db,
+        Mock<IDualTeamPointsRecalculator>? legPoints = null) =>
+        new(db, CurrentUser().Object, Clock().Object, (legPoints ?? NullLegPoints()).Object);
 
     [Fact]
     public async Task Handle_WhenMemberNotInTree_ReturnsNotPlaced()
@@ -130,5 +140,49 @@ public class AdminRemovePlacementHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Contain("exitosamente");
+    }
+
+    /// <summary>
+    /// Sprint-15 follow-up — admin removal must invoke the shared
+    /// <see cref="IDualTeamPointsRecalculator"/> on the removed node's parent
+    /// so leg-points up the chain reflect the missing subtree.
+    /// </summary>
+    [Fact]
+    public async Task Handle_WhenSuccessful_InvokesLegPointsRecalculatorWithRemovedParent()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        db.DualTeamTree.Add(BuildNode("amb-001", "parent-001", TreeSide.Left, "/parent-001/amb-001/"));
+        await db.SaveChangesAsync();
+
+        var legPoints = NullLegPoints();
+        var result = await CreateHandler(db, legPoints).Handle(
+            new AdminRemovePlacementCommand("amb-001"),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        legPoints.Verify(r => r.RecalculateForUplinesAsync(
+            "parent-001", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    /// <summary>
+    /// Sprint-15 follow-up — when the removed node was a floating root with no
+    /// parent, the recalculator must NOT be invoked (there's no upline chain).
+    /// </summary>
+    [Fact]
+    public async Task Handle_WhenRemovedNodeHasNoParent_DoesNotInvokeLegPointsRecalculator()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        // Floating root — no ParentMemberId.
+        db.DualTeamTree.Add(BuildNode("amb-001", null, TreeSide.Left, "/amb-001/"));
+        await db.SaveChangesAsync();
+
+        var legPoints = NullLegPoints();
+        var result = await CreateHandler(db, legPoints).Handle(
+            new AdminRemovePlacementCommand("amb-001"),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        legPoints.Verify(r => r.RecalculateForUplinesAsync(
+            It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

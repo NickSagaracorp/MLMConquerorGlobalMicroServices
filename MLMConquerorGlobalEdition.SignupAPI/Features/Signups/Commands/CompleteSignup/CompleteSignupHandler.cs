@@ -109,7 +109,6 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
 
             var redemption = await _tokenRedemption.RedeemForSignupAsync(
                 tokenCode:           req.TokenCode ?? string.Empty,
-                sponsorMemberId:     member.SponsorMemberId ?? string.Empty,
                 newMemberId:         member.MemberId,
                 orderId:             order.Id,
                 selectedProductIds:  selectedProductIds,
@@ -200,22 +199,42 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
             {
                 var ancestorIds = ParseHierarchyPath(sponsorNode.HierarchyPath);
 
-                // Sprint-15 Bug A: concurrent signups under the same upline were
-                // losing 80+ of 88 EnrollmentPoints increments because EF read-
-                // modify-write doesn't serialize. Atomic upsert per ancestor
-                // closes the race — see IncrementAncestorStatsAsync.
+                // Sprint-16 — eventual-consistency pipeline. Previously this loop
+                // executed one MERGE … WITH (HOLDLOCK) per ancestor (Sprint-15 Bug A
+                // fix) which was correct but serialised on shared rows near the
+                // root and pushed mean signup latency to ~16s at 350-concurrent.
+                //
+                // We now enqueue one MemberStatisticDelta row per ancestor in a
+                // single batch insert. ApplyMemberStatisticDeltasJob (recurring,
+                // every minute, "signups" queue) groups by MemberId and rolls
+                // the summed delta into MemberStatistics with one MERGE per
+                // distinct upline per cycle — so 350 concurrent signups under
+                // the same upline produce one MERGE instead of 350.
+                //
+                // Stat freshness lag: up to ~1 min. Rank evaluation runs every
+                // 5 min via ProcessRankQueueJob so the deltas are always caught
+                // up before evaluation; for extra safety the apply job re-enqueues
+                // a RankEvaluationQueue entry for each member whose stats it just
+                // updated (mirrors SignupAmbassadorHandler L255).
+                var deltas = new List<MemberStatisticDelta>(ancestorIds.Count);
                 foreach (var ancestorId in ancestorIds)
                 {
                     var qualDelta = ancestorId == member.SponsorMemberId ? 1 : 0;
-                    await IncrementAncestorStatsAsync(
-                        ancestorId,
-                        enrollmentPointsDelta:         totalQualPoints,
-                        enrollmentTeamSizeDelta:       1,
-                        qualifiedSponsoredMembersDelta:qualDelta,
-                        createdBy:                     member.Email,
-                        now:                           now,
-                        ct:                            ct);
+                    deltas.Add(new MemberStatisticDelta
+                    {
+                        MemberId                       = ancestorId,
+                        EnrollmentPointsDelta          = totalQualPoints,
+                        EnrollmentTeamSizeDelta        = 1,
+                        QualifiedSponsoredMembersDelta = qualDelta,
+                        SourceMemberId                 = member.MemberId,
+                        IsApplied                      = false,
+                        CreatedBy                      = member.Email,
+                        CreationDate                   = now
+                    });
                 }
+
+                if (deltas.Count > 0)
+                    await _db.MemberStatisticDeltas.AddRangeAsync(deltas, ct);
             }
         }
 
@@ -255,86 +274,6 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
             RefreshToken = refreshToken,
             TokenExpiry  = now.Add(_jwtService.AccessTokenExpiry)
         });
-    }
-
-    /// <summary>
-    /// Sprint-15 Bug A — atomic upsert of an ancestor's MemberStatistics row.
-    ///
-    /// On SQL Server we issue a single MERGE …  WITH (HOLDLOCK) statement so two
-    /// concurrent signups walking the same ancestor cannot both read 0 and write 1,
-    /// losing one of the +1s. HOLDLOCK promotes the MERGE to serializable for the
-    /// matched/missed key range, which is what makes the upsert race-free in the
-    /// absence of a unique index on MemberId.
-    ///
-    /// On the in-memory provider used by unit tests there is no concurrency and
-    /// no SQL — we fall back to a read-modify-write that hits the change tracker.
-    /// </summary>
-    private async Task IncrementAncestorStatsAsync(
-        string ancestorId,
-        int enrollmentPointsDelta,
-        int enrollmentTeamSizeDelta,
-        int qualifiedSponsoredMembersDelta,
-        string createdBy,
-        DateTime now,
-        CancellationToken ct)
-    {
-        var providerName = _db.Database.ProviderName ?? string.Empty;
-        var isInMemory   = providerName.Contains("InMemory", StringComparison.OrdinalIgnoreCase);
-
-        if (isInMemory)
-        {
-            var existing = await _db.MemberStatistics
-                .FirstOrDefaultAsync(s => s.MemberId == ancestorId, ct);
-
-            if (existing is not null)
-            {
-                existing.EnrollmentPoints          += enrollmentPointsDelta;
-                existing.EnrollmentTeamSize        += enrollmentTeamSizeDelta;
-                existing.QualifiedSponsoredMembers += qualifiedSponsoredMembersDelta;
-            }
-            else
-            {
-                await _db.MemberStatistics.AddAsync(new MemberStatisticEntity
-                {
-                    MemberId                  = ancestorId,
-                    EnrollmentPoints          = enrollmentPointsDelta,
-                    EnrollmentTeamSize        = enrollmentTeamSizeDelta,
-                    QualifiedSponsoredMembers = qualifiedSponsoredMembersDelta,
-                    CreatedBy                 = createdBy,
-                    CreationDate              = now
-                }, ct);
-            }
-            return;
-        }
-
-        // SQL Server path — MERGE with HOLDLOCK is the canonical race-free upsert
-        // when no unique index covers the merge predicate (MemberId here has no
-        // unique constraint as of 2026-05). FormattableString parameters keep
-        // the values bound, not interpolated, so no SQL injection surface.
-        FormattableString mergeSql = $@"
-MERGE INTO MemberStatistics WITH (HOLDLOCK) AS target
-USING (SELECT {ancestorId} AS MemberId) AS source
-   ON target.MemberId = source.MemberId
-WHEN MATCHED THEN
-    UPDATE SET
-        EnrollmentPoints          = target.EnrollmentPoints          + {enrollmentPointsDelta},
-        EnrollmentTeamSize        = target.EnrollmentTeamSize        + {enrollmentTeamSizeDelta},
-        QualifiedSponsoredMembers = target.QualifiedSponsoredMembers + {qualifiedSponsoredMembersDelta}
-WHEN NOT MATCHED THEN
-    INSERT (MemberId, PersonalPoints, ExternalCustomerPoints, DualTeamSize,
-            EnrollmentTeamSize, DualTeamPoints, EnrollmentPoints,
-            QualifiedSponsoredMembers, QualifiedSponsoredExternalCustomers,
-            EnrollmentTeamGrowth, DualteamGrowth, EnrollmentTeamPointsGrowth,
-            DualTeamPointsGrowth, CurrentWeekIncomeGrowth, CurrentMonthIncomeGrowth,
-            CurrentYearIncomeGrowth, CreationDate, CreatedBy)
-    VALUES (source.MemberId, 0, 0, 0,
-            {enrollmentTeamSizeDelta}, 0, {enrollmentPointsDelta},
-            {qualifiedSponsoredMembersDelta}, 0,
-            0, 0, 0,
-            0, 0, 0,
-            0, {now}, {createdBy});";
-
-        await _db.Database.ExecuteSqlInterpolatedAsync(mergeSql, ct);
     }
 
     private static string BuildMaskedCardNumber(string first6, string last4)

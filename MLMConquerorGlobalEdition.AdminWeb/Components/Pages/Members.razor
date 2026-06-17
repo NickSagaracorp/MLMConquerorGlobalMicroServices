@@ -3,10 +3,72 @@
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Grid
+@using Syncfusion.Blazor.Data
 
 <PageTitle>Members — Admin</PageTitle>
 
 <BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Members") })" />
+
+@* Four headline counters above the grid. Cached server-side (~30s) so a   *@
+@* "Refresh" click and a page back-and-forth don't re-run the four COUNT   *@
+@* queries. Quietly degrades to "—" on error — never breaks the page.     *@
+<div class="row g-3 mb-3">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body py-3">
+                <div class="d-flex align-items-start gap-2">
+                    <i class="ri-user-line fs-4 text-success"></i>
+                    <div class="flex-grow-1">
+                        <div class="fs-3 fw-bold lh-1">@FormatStat(_stats?.TotalActive)</div>
+                        <small class="text-muted">Active Members</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body py-3">
+                <div class="d-flex align-items-start gap-2">
+                    <i class="ri-user-add-line fs-4 text-primary"></i>
+                    <div class="flex-grow-1">
+                        <div class="fs-3 fw-bold lh-1">@FormatStat(_stats?.NewSignupsLast24Hours)</div>
+                        <small class="text-muted">New Signups (24h)</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body py-3">
+                <div class="d-flex align-items-start gap-2">
+                    <i class="ri-user-unfollow-line fs-4 text-danger"></i>
+                    <div class="flex-grow-1">
+                        <div class="fs-3 fw-bold lh-1">@FormatStat(_stats?.CancellationsLast24Hours)</div>
+                        <small class="text-muted">Cancellations (24h)</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body py-3">
+                <div class="d-flex align-items-start gap-2">
+                    <i class="ri-share-forward-line fs-4 text-info"></i>
+                    <div class="flex-grow-1">
+                        <div class="fs-3 fw-bold lh-1">@FormatStat(_stats?.PlacementsLast24Hours)</div>
+                        <small class="text-muted">Placements (24h)</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="card border-0 shadow-sm">
     <div class="card-header py-3 d-flex align-items-center gap-3 flex-wrap">
@@ -17,30 +79,19 @@
                placeholder="Search by name, ID..."
                @bind="_search" @bind:event="oninput" @onkeyup="OnSearchKey" />
         <select class="form-select form-select-sm w-auto" style="min-width:140px"
-                @bind="_statusFilter" @bind:after="() => { _page = 1; _ = LoadAsync(); }">
+                @bind="_statusFilter" @bind:after="OnStatusChangedAsync">
             <option value="">All Statuses</option>
             <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
             <option value="Suspended">Suspended</option>
             <option value="Pending">Pending</option>
         </select>
-        <button class="btn btn-primary btn-sm" @onclick="() => { _page = 1; _ = LoadAsync(); }">
+        <button class="btn btn-primary btn-sm" @onclick="ApplySearchAsync">
             <i class="ri-search-line me-1"></i>Search
         </button>
-        @* Page size capped at 100. Higher values (e.g. 250) overload SfGrid's     *@
-        @* Excel-style filter index on a 15-column template-heavy grid and freeze the *@
-        @* SignalR circuit. Server-side cap mirrors this in GetMembersHandler.        *@
-        <select class="form-select form-select-sm w-auto" style="min-width:110px"
-                title="Rows per page"
-                @bind="_pageSize" @bind:after="() => { _page = 1; _ = LoadAsync(); }">
-            <option value="25">25 / page</option>
-            <option value="50">50 / page</option>
-            <option value="100">100 / page</option>
-        </select>
         <button type="button"
                 class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
                 title="Refresh from server"
-                disabled="@_loading"
                 @onclick="RefreshAsync">
             <i class="ri-refresh-line"></i>
             <span>Refresh</span>
@@ -54,240 +105,255 @@
         </div>
     }
     <div class="card-body p-0">
-        @if (_loading)
-        {
-            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
-        }
-        else if (_error is not null)
-        {
-            <div class="alert alert-danger m-3">@_error</div>
-        }
-        else
-        {
-            <SfGrid TValue="AdminMemberDto" DataSource="@_members"
-                    AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
-                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
-                <GridColumns>
-                    <GridColumn Field="@nameof(AdminMemberDto.MemberId)" HeaderText="Member ID" Width="130" AllowFiltering="true">
-                        <Template>
-                            @{ var m = (AdminMemberDto)context; }
-                            <a href="/admin/members/@m.MemberId" target="_blank" class="text-decoration-none">
-                                <code class="text-primary">@m.MemberId</code>
-                            </a>
-                        </Template>
-                    </GridColumn>
-                    <GridColumn Field="@nameof(AdminMemberDto.FirstName)" HeaderText="Name" Width="180" AllowFiltering="true">
-                        <Template>
-                            @{ var m = (AdminMemberDto)context; }
-                            <a href="/admin/members/@m.MemberId" target="_blank" class="text-primary">
-                                @m.FirstName @m.LastName
-                            </a>
-                        </Template>
-                    </GridColumn>
-                    <GridColumn Field="@nameof(AdminMemberDto.Email)" HeaderText="Email" Width="200" AllowFiltering="true">
-                        <Template>
-                            @(((AdminMemberDto)context).Email ?? "—")
-                        </Template>
-                    </GridColumn>
-                    <GridColumn Field="@nameof(AdminMemberDto.Phone)" HeaderText="Phone" Width="130" AllowFiltering="true">
-                        <Template>
-                            @(((AdminMemberDto)context).Phone ?? "—")
-                        </Template>
-                    </GridColumn>
-                    <GridColumn Field="@nameof(AdminMemberDto.Country)" HeaderText="Country" Width="110" AllowFiltering="true" />
-                    <GridColumn Field="@nameof(AdminMemberDto.ReplicateSiteSlug)" HeaderText="Website" Width="160" AllowFiltering="true">
-                        <Template>
-                            @(((AdminMemberDto)context).ReplicateSiteSlug ?? "—")
-                        </Template>
-                    </GridColumn>
-                    <GridColumn Field="@nameof(AdminMemberDto.MembershipLevelName)" HeaderText="Membership" Width="150" AllowFiltering="true">
-                        <Template>
-                            @{ var lvl = ((AdminMemberDto)context).MembershipLevelName; }
-                            @if (!string.IsNullOrWhiteSpace(lvl))
-                            {
-                                <span class="badge bg-info text-dark">@lvl</span>
-                            }
-                            else
-                            {
-                                <span class="text-muted">—</span>
-                            }
-                        </Template>
-                    </GridColumn>
-                    <GridColumn Field="@nameof(AdminMemberDto.LifetimeRankName)" HeaderText="Lifetime Rank" Width="150" AllowFiltering="true">
-                        <Template>
-                            @{ var lr = ((AdminMemberDto)context).LifetimeRankName; }
-                            @if (!string.IsNullOrWhiteSpace(lr))
-                            {
-                                <span class="badge bg-warning text-dark">@lr</span>
-                            }
-                            else
-                            {
-                                <span class="text-muted">—</span>
-                            }
-                        </Template>
-                    </GridColumn>
-                    <GridColumn Field="@nameof(AdminMemberDto.SponsorFullName)" HeaderText="Sponsor" Width="180" AllowFiltering="true">
-                        <Template>
-                            @{ var m = (AdminMemberDto)context; }
-                            @if (!string.IsNullOrWhiteSpace(m.SponsorMemberId) && !string.IsNullOrWhiteSpace(m.SponsorFullName))
-                            {
-                                <a href="/admin/members/@m.SponsorMemberId" target="_blank" class="text-primary">@m.SponsorFullName</a>
-                            }
-                            else
-                            {
-                                <span class="text-muted">—</span>
-                            }
-                        </Template>
-                    </GridColumn>
-                    <GridColumn Field="@nameof(AdminMemberDto.DualTeamUplineFullName)" HeaderText="Upline" Width="180" AllowFiltering="true">
-                        <Template>
-                            @{ var m = (AdminMemberDto)context; }
-                            @if (!string.IsNullOrWhiteSpace(m.DualTeamParentMemberId) && !string.IsNullOrWhiteSpace(m.DualTeamUplineFullName))
-                            {
-                                <a href="/admin/members/@m.DualTeamParentMemberId" target="_blank" class="text-primary">@m.DualTeamUplineFullName</a>
-                            }
-                            else
-                            {
-                                <span class="text-muted">—</span>
-                            }
-                        </Template>
-                    </GridColumn>
-                    <GridColumn Field="@nameof(AdminMemberDto.MemberType)" HeaderText="Type" Width="120" AllowFiltering="true">
-                        <Template>
-                            <span class="badge bg-secondary">@(((AdminMemberDto)context).MemberType)</span>
-                        </Template>
-                    </GridColumn>
-                    <GridColumn Field="@nameof(AdminMemberDto.Status)" HeaderText="Status" Width="110" AllowFiltering="true">
-                        <Template>
-                            <span class="badge @StatusBadge(((AdminMemberDto)context).Status)">@(((AdminMemberDto)context).Status)</span>
-                        </Template>
-                    </GridColumn>
-                    <GridColumn Field="@nameof(AdminMemberDto.EnrollDate)" HeaderText="Enrolled" Width="130" Format="yyyy-MM-dd" Type="ColumnType.Date" AllowFiltering="true" />
-                    <GridColumn Field="@nameof(AdminMemberDto.ExpirationDate)" HeaderText="Expiration Date" Width="140" Format="yyyy-MM-dd" Type="ColumnType.Date" AllowFiltering="true" />
-                    <GridColumn HeaderText="Actions" Width="170" TextAlign="TextAlign.Center" AllowFiltering="false">
-                        <Template>
-                            @{ var m = (AdminMemberDto)context; }
-                            <a href="/admin/members/@m.MemberId" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2" title="View Profile">
-                                <i class="ri-eye-line"></i>
-                            </a>
-                            <button class="btn btn-sm btn-outline-secondary py-0 px-2 ms-1" title="Binary Tree"
-                                @onclick="@(() => Navigation.NavigateTo($"/admin/network/binary-tree?memberId={m.MemberId}"))">
-                                <i class="ri-node-tree"></i>
+        @* Server-side grid: search / column filters / sort / paging ALL travel to the     *@
+        @* server via ServerGridAdaptor, so they span EVERY record — not just the current   *@
+        @* page. PageSize options capped at 100 (server mirrors this cap). The Excel filter  *@
+        @* menu also issues its own reads for distinct values; the same endpoint serves them.*@
+        <SfGrid TValue="AdminMemberDto" @ref="_grid"
+                AllowPaging="true" AllowSorting="true" AllowFiltering="true"
+                AllowResizing="true" GridLines="GridLine.Horizontal">
+            <SfDataManager Adaptor="Adaptors.CustomAdaptor">
+                <ServerGridAdaptor TValue="AdminMemberDto"
+                                   Http="Http"
+                                   Endpoint="api/v1/admin/members/grid"
+                                   QueryStringProvider="BuildQueryString"
+                                   AccessTokenProvider="GetTokenAsync" />
+            </SfDataManager>
+            <GridPageSettings PageSize="50" PageSizes="@(new[] { "25", "50", "100" })" />
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+            <GridColumns>
+                <GridColumn Field="@nameof(AdminMemberDto.MemberId)" HeaderText="Member ID" Width="130" AllowFiltering="true">
+                    <Template>
+                        @{ var m = (AdminMemberDto)context; }
+                        <a href="/admin/members/@m.MemberId" target="_blank" class="text-decoration-none">
+                            <code class="text-primary">@m.MemberId</code>
+                        </a>
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(AdminMemberDto.FirstName)" HeaderText="Name" Width="180" AllowFiltering="true">
+                    <Template>
+                        @{ var m = (AdminMemberDto)context; }
+                        <a href="/admin/members/@m.MemberId" target="_blank" class="text-primary">
+                            @m.FirstName @m.LastName
+                        </a>
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(AdminMemberDto.Email)" HeaderText="Email" Width="200" AllowFiltering="true">
+                    <Template>
+                        @(((AdminMemberDto)context).Email ?? "—")
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(AdminMemberDto.Phone)" HeaderText="Phone" Width="130" AllowFiltering="true">
+                    <Template>
+                        @(((AdminMemberDto)context).Phone ?? "—")
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(AdminMemberDto.Country)" HeaderText="Country" Width="110" AllowFiltering="true" />
+                <GridColumn Field="@nameof(AdminMemberDto.ReplicateSiteSlug)" HeaderText="Website" Width="160" AllowFiltering="true">
+                    <Template>
+                        @(((AdminMemberDto)context).ReplicateSiteSlug ?? "—")
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(AdminMemberDto.MembershipLevelName)" HeaderText="Membership" Width="150" AllowFiltering="true">
+                    <Template>
+                        @{ var lvl = ((AdminMemberDto)context).MembershipLevelName; }
+                        @if (!string.IsNullOrWhiteSpace(lvl))
+                        {
+                            <span class="badge bg-info text-dark">@lvl</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(AdminMemberDto.LifetimeRankName)" HeaderText="Lifetime Rank" Width="150" AllowFiltering="true">
+                    <Template>
+                        @{ var lr = ((AdminMemberDto)context).LifetimeRankName; }
+                        @if (!string.IsNullOrWhiteSpace(lr))
+                        {
+                            <span class="badge bg-warning text-dark">@lr</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(AdminMemberDto.SponsorFullName)" HeaderText="Sponsor" Width="180" AllowFiltering="true">
+                    <Template>
+                        @{ var m = (AdminMemberDto)context; }
+                        @if (!string.IsNullOrWhiteSpace(m.SponsorMemberId) && !string.IsNullOrWhiteSpace(m.SponsorFullName))
+                        {
+                            <a href="/admin/members/@m.SponsorMemberId" target="_blank" class="text-primary">@m.SponsorFullName</a>
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(AdminMemberDto.DualTeamUplineFullName)" HeaderText="Upline" Width="180" AllowFiltering="true">
+                    <Template>
+                        @{ var m = (AdminMemberDto)context; }
+                        @if (!string.IsNullOrWhiteSpace(m.DualTeamParentMemberId) && !string.IsNullOrWhiteSpace(m.DualTeamUplineFullName))
+                        {
+                            <a href="/admin/members/@m.DualTeamParentMemberId" target="_blank" class="text-primary">@m.DualTeamUplineFullName</a>
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(AdminMemberDto.MemberType)" HeaderText="Type" Width="120" AllowFiltering="true">
+                    <Template>
+                        <span class="badge bg-secondary">@(((AdminMemberDto)context).MemberType)</span>
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(AdminMemberDto.Status)" HeaderText="Status" Width="110" AllowFiltering="true">
+                    <Template>
+                        <span class="badge @StatusBadge(((AdminMemberDto)context).Status)">@(((AdminMemberDto)context).Status)</span>
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(AdminMemberDto.EnrollDate)" HeaderText="Enrolled" Width="130" Format="yyyy-MM-dd" Type="ColumnType.Date" AllowFiltering="true" />
+                <GridColumn Field="@nameof(AdminMemberDto.ExpirationDate)" HeaderText="Expiration Date" Width="140" Format="yyyy-MM-dd" Type="ColumnType.Date" AllowFiltering="true" />
+                <GridColumn HeaderText="Actions" Width="170" TextAlign="TextAlign.Center" AllowFiltering="false">
+                    <Template>
+                        @{ var m = (AdminMemberDto)context; }
+                        <a href="/admin/members/@m.MemberId" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2" title="View Profile">
+                            <i class="ri-eye-line"></i>
+                        </a>
+                        <button class="btn btn-sm btn-outline-secondary py-0 px-2 ms-1" title="Binary Tree"
+                            @onclick="@(() => Navigation.NavigateTo($"/admin/network/binary-tree?memberId={m.MemberId}"))">
+                            <i class="ri-node-tree"></i>
+                        </button>
+                        @if (m.Status == "Pending")
+                        {
+                            <button class="btn btn-sm btn-outline-warning py-0 px-2 ms-1" title="Retry Complete Signup"
+                                disabled="@_retryingMemberId.Equals(m.MemberId)"
+                                @onclick="@(() => RetryCompleteAsync(m.MemberId))">
+                                @if (_retryingMemberId == m.MemberId)
+                                {
+                                    <span class="spinner-border spinner-border-sm" role="status"></span>
+                                }
+                                else
+                                {
+                                    <i class="ri-refresh-line"></i>
+                                }
                             </button>
-                            @if (m.Status == "Pending")
-                            {
-                                <button class="btn btn-sm btn-outline-warning py-0 px-2 ms-1" title="Retry Complete Signup"
-                                    disabled="@_retryingMemberId.Equals(m.MemberId)"
-                                    @onclick="@(() => RetryCompleteAsync(m.MemberId))">
-                                    @if (_retryingMemberId == m.MemberId)
-                                    {
-                                        <span class="spinner-border spinner-border-sm" role="status"></span>
-                                    }
-                                    else
-                                    {
-                                        <i class="ri-refresh-line"></i>
-                                    }
-                                </button>
-                            }
-                        </Template>
-                    </GridColumn>
-                </GridColumns>
-            </SfGrid>
-
-            @if (_totalCount > 0)
-            {
-                var fromRow = ((_page - 1) * _pageSize) + 1;
-                var toRow   = Math.Min(_page * _pageSize, _totalCount);
-                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light flex-wrap gap-2">
-                    <small class="text-muted">
-                        Showing <strong>@fromRow–@toRow</strong> of <strong>@_totalCount</strong> members
-                        — Page @_page of @_totalPages
-                    </small>
-                    @if (_totalPages > 1)
-                    {
-                        <nav>
-                            <ul class="pagination pagination-sm mb-0">
-                                <li class="page-item @(_page == 1 ? "disabled" : "")">
-                                    <button class="page-link" @onclick="() => ChangePage(1)" title="First">«</button>
-                                </li>
-                                <li class="page-item @(_page == 1 ? "disabled" : "")">
-                                    <button class="page-link" @onclick="() => ChangePage(_page - 1)" title="Previous">‹</button>
-                                </li>
-                                @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
-                                { var pg = i; <li class="page-item @(_page == pg ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(pg)">@pg</button></li> }
-                                <li class="page-item @(_page == _totalPages ? "disabled" : "")">
-                                    <button class="page-link" @onclick="() => ChangePage(_page + 1)" title="Next">›</button>
-                                </li>
-                                <li class="page-item @(_page == _totalPages ? "disabled" : "")">
-                                    <button class="page-link" @onclick="() => ChangePage(_totalPages)" title="Last">»</button>
-                                </li>
-                            </ul>
-                        </nav>
-                    }
-                </div>
-            }
-        }
+                        }
+                    </Template>
+                </GridColumn>
+            </GridColumns>
+        </SfGrid>
     </div>
 </div>
 
 @code {
-    private List<AdminMemberDto> _members = new();
-    private bool    _loading           = true;
-    private string? _error;
-    private int     _page              = 1;
-    private int     _pageSize          = 50;
-    private int     _totalCount;
-    private int     _totalPages        = 1;
+    private SfGrid<AdminMemberDto>? _grid;
+
+    // The JWT lives as an "access_token" claim on the ClaimsPrincipal. Resolved here from the
+    // cascading AuthenticationState (reliable even inside Syncfusion's ReadAsync context) and
+    // handed to the adaptor so it attaches Authorization: Bearer per request — sidestepping the
+    // 401 seen when AdminApiAuthHandler's own provider fallback returns no token.
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private async Task<string?> GetTokenAsync()
+    {
+        if (AuthState is null) return null;
+        var state = await AuthState;
+        return state.User.FindFirstValue("access_token");
+    }
+
     private string  _search            = string.Empty;
     private string  _statusFilter      = string.Empty;
     private string  _retryingMemberId  = string.Empty;
     private string? _retryMessage;
     private bool    _retryIsError;
+    private MemberStatsDto? _stats;
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    // When true, the NEXT ServerGridAdaptor read appends bypassCache=true so the admin
+    // sees fresh data on a "Refresh" click. Reset to false after that single read.
+    private bool _bypassCacheOnce;
 
-    /// <summary>
-    /// User-triggered "Refresh" action. Re-fetches the current page bypassing
-    /// the AdminAPI's server-side cache so the admin can see fresh data on demand.
-    /// </summary>
-    private Task RefreshAsync() => LoadAsync(bypassCache: true);
-
-    private async Task LoadAsync(bool bypassCache = false)
+    protected override async Task OnInitializedAsync()
     {
-        // Defensive cap mirroring the server-side guard. If something ever bypasses
-        // the dropdown (state restoration, URL tampering, future code change) we still
-        // refuse to ask the API for more rows than the grid can render safely.
-        if (_pageSize > 100) _pageSize = 100;
-
-        _loading = true; _error = null; StateHasChanged();
-        try
-        {
-            var url = $"api/v1/admin/members?page={_page}&pageSize={_pageSize}";
-            if (!string.IsNullOrWhiteSpace(_statusFilter)) url += $"&status={_statusFilter}";
-            if (!string.IsNullOrWhiteSpace(_search))       url += $"&search={Uri.EscapeDataString(_search)}";
-            if (bypassCache)                                url += "&bypassCache=true";
-            var resp = await Http.GetFromJsonAsync<ApiResponse<PagedResult<AdminMemberDto>>>(url);
-            if (resp?.Success == true && resp.Data is not null)
-            {
-                _members    = resp.Data.Items.ToList();
-                _totalCount = resp.Data.TotalCount;
-                _totalPages = resp.Data.TotalPages;
-            }
-            else { _error = resp?.Errors?.FirstOrDefault() ?? "Failed to load members."; }
-        }
-        catch (Exception ex) { _error = $"API error: {ex.Message}"; }
-        finally
-        {
-            // Guarantee the spinner is dismissed and the UI re-renders even if the
-            // caller doesn't await us or a downstream component throws during render.
-            _loading = false;
-            StateHasChanged();
-        }
+        // The grid loads itself through the adaptor; we only need the headline stats here.
+        await LoadStatsAsync();
     }
 
-    private async Task ChangePage(int p) { if (p < 1 || p > _totalPages) return; _page = p; await LoadAsync(); }
+    /// <summary>
+    /// Builds the extra query string the <see cref="ServerGridAdaptor{T}"/> appends to its
+    /// endpoint on each read. The closure is re-evaluated on every read, so it always reflects
+    /// the current status filter and a one-shot cache bypass. Status is carried as a query param
+    /// (matching the endpoint contract) rather than as a column filter so it survives the Excel
+    /// filter menu's own value-list reads.
+    /// </summary>
+    private string? BuildQueryString()
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(_statusFilter))
+            parts.Add($"status={Uri.EscapeDataString(_statusFilter)}");
+        if (_bypassCacheOnce)
+        {
+            parts.Add("bypassCache=true");
+            _bypassCacheOnce = false; // consume — only the triggering refresh bypasses cache
+        }
+        return parts.Count == 0 ? null : string.Join("&", parts);
+    }
 
-    private async Task OnSearchKey(KeyboardEventArgs e) { if (e.Key == "Enter") { _page = 1; await LoadAsync(); } }
+    /// <summary>
+    /// "Search" button + Enter key. Drives Syncfusion's built-in search, which fires a server
+    /// read with the term in <c>dm.Search</c>; the adaptor maps it to <c>GridDataRequest.Search</c>.
+    /// </summary>
+    private async Task ApplySearchAsync()
+    {
+        if (_grid is not null)
+            await _grid.SearchAsync(_search ?? string.Empty);
+    }
+
+    private async Task OnSearchKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await ApplySearchAsync();
+    }
+
+    /// <summary>Status dropdown change → re-read the grid (status travels as a query param).</summary>
+    private async Task OnStatusChangedAsync()
+    {
+        if (_grid is not null) await _grid.Refresh();
+    }
+
+    /// <summary>
+    /// "Refresh" — forces a cache bypass on the next adaptor read and re-pulls the grid plus
+    /// the headline counters so the admin sees fresh data on demand.
+    /// </summary>
+    private async Task RefreshAsync()
+    {
+        _bypassCacheOnce = true;
+        var stats = LoadStatsAsync(bypassCache: true);
+        if (_grid is not null) await _grid.Refresh();
+        await stats;
+    }
+
+    private async Task LoadStatsAsync(bool bypassCache = false)
+    {
+        try
+        {
+            var url = "api/v1/admin/members/stats";
+            if (bypassCache) url += "?bypassCache=true";
+            var resp = await Http.GetFromJsonAsync<ApiResponse<MemberStatsDto>>(url);
+            if (resp?.Success == true) _stats = resp.Data;
+        }
+        catch
+        {
+            // Silently degrade — the stat cards render "—" when _stats is null.
+            // The grid below is the source of truth; the stat row is a nice-to-have.
+        }
+        finally { StateHasChanged(); }
+    }
+
+    private static string FormatStat(int? value) => value?.ToString("N0") ?? "—";
 
     private async Task RetryCompleteAsync(string memberId)
     {
@@ -309,7 +375,7 @@
             {
                 _retryMessage = $"Signup completed for {memberId}. Reloading list…";
                 _retryIsError = false;
-                await LoadAsync();
+                if (_grid is not null) await _grid.Refresh();
             }
             else
             {
@@ -328,7 +394,7 @@
     private record PendingSignupDto(string MemberId, string FullName, string Email,
         string Country, string? SponsorMemberId, DateTime EnrollDate, string OrderId, decimal OrderTotal);
 
-    private record AdminMemberDto(string MemberId, string FirstName, string LastName,
+    public record AdminMemberDto(string MemberId, string FirstName, string LastName,
         string? Phone, string? Email, string Country, string Status, string MemberType,
         DateTime EnrollDate, DateTime? ExpirationDate,
         string? SponsorMemberId, string? SponsorFullName,
@@ -336,6 +402,15 @@
         string? ReplicateSiteSlug, string? MembershipLevelName,
         string? LifetimeRankName,
         DateTime CreationDate);
-    private record PagedResult<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
     private record ApiResponse<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+
+    // Mirrors MLMConquerorGlobalEdition.AdminAPI.DTOs.Members.MemberStatsDto.
+    // AdminWeb intentionally doesn't reference the AdminAPI project (it talks to
+    // it over HTTP), so the contract is duplicated by JSON shape — same naming
+    // convention the page already uses for AdminMemberDto / PendingSignupDto.
+    private record MemberStatsDto(
+        int TotalActive,
+        int NewSignupsLast24Hours,
+        int CancellationsLast24Hours,
+        int PlacementsLast24Hours);
 }

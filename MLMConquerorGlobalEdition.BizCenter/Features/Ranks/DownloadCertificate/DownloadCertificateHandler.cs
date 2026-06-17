@@ -10,11 +10,16 @@ public class DownloadCertificateHandler : IRequestHandler<DownloadCertificateQue
 {
     private readonly AppDbContext        _db;
     private readonly ICurrentUserService _currentUser;
+    private readonly IRankEngineClient   _rankEngine;
 
-    public DownloadCertificateHandler(AppDbContext db, ICurrentUserService currentUser)
+    public DownloadCertificateHandler(
+        AppDbContext db,
+        ICurrentUserService currentUser,
+        IRankEngineClient rankEngine)
     {
         _db          = db;
         _currentUser = currentUser;
+        _rankEngine  = rankEngine;
     }
 
     public async Task<Result<string>> Handle(DownloadCertificateQuery request, CancellationToken ct)
@@ -33,11 +38,25 @@ public class DownloadCertificateHandler : IRequestHandler<DownloadCertificateQue
                 "RANK_HISTORY_NOT_FOUND",
                 "Rank history record not found.");
 
+        // Lazy generation: certificates are no longer auto-minted during the rank
+        // evaluation. If the URL is missing, trigger generation on demand (RankEngine
+        // re-enforces ownership) — the bearer token from the caller's request is
+        // relayed so RankEngine treats it as the same authenticated principal.
         if (history.GeneratedCertificateUrl is null)
-            return Result<string>.Failure(
-                "CERTIFICATE_NOT_READY",
-                "The certificate for this rank achievement has not been generated yet. " +
-                "Please try again in a few moments.");
+        {
+            if (string.IsNullOrEmpty(request.BearerToken))
+                return Result<string>.Failure(
+                    "AUTH_TOKEN_MISSING",
+                    "Caller bearer token is required to generate the certificate.");
+
+            var generated = await _rankEngine.GenerateMemberCertificateAsync(
+                request.RankHistoryId, request.BearerToken, ct);
+
+            if (!generated.IsSuccess)
+                return generated;
+
+            return Result<string>.Success(generated.Value!);
+        }
 
         return Result<string>.Success(history.GeneratedCertificateUrl);
     }

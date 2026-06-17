@@ -61,6 +61,64 @@
             </Authorized>
         </AuthorizeView>
 
+        <AuthorizeView Roles="SuperAdmin,Admin,BillingManager">
+            <Authorized>
+                @* ── Payouts ── *@
+                <li class="menu-item @(IsSection("/admin/billing/payouts","/admin/billing/payout-audit","/admin/billing/payout-batches","/admin/billing/payout-gateways") ? "open active" : "")">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="ri-hand-coin-line menu-icon"></i>
+                        <span class="title">Payouts</span>
+                    </a>
+                    <ul class="menu-sub">
+                        <li class="menu-item @IsActive("/admin/billing/payouts")">
+                            <a href="/admin/billing/payouts" class="menu-link @IsActive("/admin/billing/payouts")">
+                                <span class="title">Payouts</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/billing/payout-audit")">
+                            <a href="/admin/billing/payout-audit" class="menu-link @IsActive("/admin/billing/payout-audit")">
+                                <span class="title">Payout Audit</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/billing/payout-batches")">
+                            <a href="/admin/billing/payout-batches" class="menu-link @IsActive("/admin/billing/payout-batches")">
+                                <span class="title">Payout Batches</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/billing/payout-gateways")">
+                            <a href="/admin/billing/payout-gateways" class="menu-link @IsActive("/admin/billing/payout-gateways")">
+                                <span class="title">Payout Gateways</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="SuperAdmin,Admin">
+            <Authorized>
+                @* ── Rank Reports ── *@
+                <li class="menu-item @(IsSection("/admin/ranks/first-achievements","/admin/ranks/seniority") ? "open active" : "")">
+                    <a href="javascript:void(0);" class="menu-link menu-toggle">
+                        <i class="ri-medal-line menu-icon"></i>
+                        <span class="title">Rank Reports</span>
+                    </a>
+                    <ul class="menu-sub">
+                        <li class="menu-item @IsActive("/admin/ranks/first-achievements")">
+                            <a href="/admin/ranks/first-achievements" class="menu-link @IsActive("/admin/ranks/first-achievements")">
+                                <span class="title">First Achievements</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/ranks/seniority")">
+                            <a href="/admin/ranks/seniority" class="menu-link @IsActive("/admin/ranks/seniority")">
+                                <span class="title">Seniority Bonus</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+            </Authorized>
+        </AuthorizeView>
+
         <AuthorizeView Roles="SuperAdmin,Admin,SupportManager,SupportLevel1,SupportLevel2,SupportLevel3,IT">
             <Authorized>
                 <li class="menu-item @(IsSection("/admin/tickets","/admin/helpdesk/","/admin/config/ticket-categories") ? "open active" : "")">
@@ -341,6 +399,11 @@
                         <li class="menu-item @IsActive("/admin/security/audit")">
                             <a href="/admin/security/audit" class="menu-link @IsActive("/admin/security/audit")">
                                 <span class="title">Access Audit</span>
+                            </a>
+                        </li>
+                        <li class="menu-item @IsActive("/admin/security/flagged-signups")">
+                            <a href="/admin/security/flagged-signups" class="menu-link @IsActive("/admin/security/flagged-signups")">
+                                <span class="title">Flagged Signups</span>
                             </a>
                         </li>
                     </ul>

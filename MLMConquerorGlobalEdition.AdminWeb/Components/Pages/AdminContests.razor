@@ -4,6 +4,7 @@
 @inject HttpClient Http
 @inject NavigationManager Nav
 @using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.RichTextEditor
 
 <PageTitle>Contests — Admin</PageTitle>
 
@@ -254,7 +255,9 @@
                                     </div>
                                     <div class="col-12">
                                         <label class="form-label small fw-semibold">Description</label>
-                                        <textarea class="form-control form-control-sm" rows="2" @bind="tt.Description"></textarea>
+                                        <SfRichTextEditor @bind-Value="tt.Description" Height="200" Placeholder="Localized description…">
+                                            <RichTextEditorToolbarSettings Items="@_rteToolbar" />
+                                        </SfRichTextEditor>
                                     </div>
                                 </div>
                             </div>
@@ -341,6 +344,26 @@
         new("en","English"), new("es","Spanish"), new("pt","Portuguese"), new("fr","French"),
         new("de","German"),  new("it","Italian"), new("ko","Korean"),     new("zh","Chinese"),
         new("ka","Georgian")
+    };
+
+    // Rich text editor toolbar — mirrors the pattern used across AdminWeb (e.g. AdminCorporateEvents).
+    private static readonly List<ToolbarItemModel> _rteToolbar = new()
+    {
+        new() { Command = ToolbarCommand.Bold },
+        new() { Command = ToolbarCommand.Italic },
+        new() { Command = ToolbarCommand.Underline },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.Formats },
+        new() { Command = ToolbarCommand.Alignments },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.OrderedList },
+        new() { Command = ToolbarCommand.UnorderedList },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.CreateLink },
+        new() { Command = ToolbarCommand.Image },
+        new() { Command = ToolbarCommand.Separator },
+        new() { Command = ToolbarCommand.Undo },
+        new() { Command = ToolbarCommand.Redo }
     };
 
     private List<ContestDto> _items = new();

@@ -1,0 +1,636 @@
+@page "/admin/billing/payouts"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin,BillingManager")]
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<PageTitle>Payouts Dashboard — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Billing"), new("Payouts") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+@* ── Filters: process date + gateway ─────────────────────────────────────── *@
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-3 d-flex align-items-end gap-3 flex-wrap">
+        <div>
+            <label class="form-label fw-semibold mb-1 small">Process date</label>
+            <input type="date" class="form-control form-control-sm" style="min-width:170px"
+                   @bind="_processDate" @bind:after="OnFiltersChanged" />
+        </div>
+        <div>
+            <label class="form-label fw-semibold mb-1 small">Gateway</label>
+            <select class="form-select form-select-sm" style="min-width:180px"
+                    @bind="_walletFilter" @bind:after="OnFiltersChanged">
+                <option value="">All gateways</option>
+                @foreach (var w in WalletTypes)
+                {
+                    <option value="@w">@GatewayLabel(w)</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label class="form-label fw-semibold mb-1 small">Commission type</label>
+            <select class="form-select form-select-sm" style="min-width:200px"
+                    @bind="_commissionTypeFilter" @bind:after="OnFiltersChanged">
+                <option value="">All types</option>
+                @foreach (var ct in _commissionTypes)
+                {
+                    <option value="@ct.Id">@ct.Name</option>
+                }
+            </select>
+        </div>
+        <div class="flex-grow-1"></div>
+
+        @* ── Export batch CSV ─────────────────────────────────────────────── *@
+        @if (string.IsNullOrWhiteSpace(_walletFilter))
+        {
+            <div class="dropdown">
+                <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button"
+                        data-bs-toggle="dropdown" aria-expanded="false" disabled="@(_exportingWallet is not null)">
+                    @if (_exportingWallet is not null) { <span class="spinner-border spinner-border-sm me-1"></span> } else { <i class="ri-file-download-line me-1"></i> }
+                    Export CSV
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><h6 class="dropdown-header">Export batch for @_processDate.ToString("yyyy-MM-dd")</h6></li>
+                    @foreach (var w in WalletTypes)
+                    {
+                        var wt = w;
+                        <li><button class="dropdown-item" type="button" @onclick="() => ExportBatchCsv(wt)">@GatewayLabel(wt)</button></li>
+                    }
+                </ul>
+            </div>
+        }
+        else
+        {
+            <button class="btn btn-outline-primary btn-sm" @onclick="() => ExportBatchCsv(_walletFilter)"
+                    disabled="@(_exportingWallet is not null)"
+                    title="Export the @GatewayLabel(_walletFilter) batch for @_processDate.ToString("yyyy-MM-dd")">
+                @if (_exportingWallet is not null) { <span class="spinner-border spinner-border-sm me-1"></span> } else { <i class="ri-file-download-line me-1"></i> }
+                Export CSV
+            </button>
+        }
+
+        <button class="btn btn-outline-secondary btn-sm" @onclick="RefreshAll" disabled="@(_statsLoading || _loading)">
+            @if (_statsLoading || _loading) { <span class="spinner-border spinner-border-sm me-1"></span> } else { <i class="ri-refresh-line me-1"></i> }
+            Refresh
+        </button>
+    </div>
+</div>
+
+@* ── Stat cards per gateway ──────────────────────────────────────────────── *@
+<h6 class="fw-bold mb-2">
+    <i class="ri-dashboard-3-line me-2 text-primary"></i>Gateway batch status
+    <span class="small text-muted fw-normal ms-1">for @_processDate.ToString("yyyy-MM-dd")</span>
+</h6>
+
+@if (_commissionTypeFilter is not null)
+{
+    <div class="small text-muted mb-2" title="Un payout liquida el bundle completo del ambassador; lo pagado no se puede atribuir a un solo tipo de comisión.">
+        <i class="ri-information-line me-1"></i>El "Pagado del día" no se segmenta por tipo de comisión.
+    </div>
+}
+
+@if (_statsLoading)
+{
+    <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+}
+else if (_stats is null || _stats.Gateways.Count == 0)
+{
+    <div class="alert alert-light border text-muted mb-4">No payout activity for the selected date.</div>
+}
+else
+{
+    <div class="row g-3 mb-4">
+        @foreach (var g in _stats.Gateways)
+        {
+            var paidRan = g.PaidTotal > 0;
+            <div class="col-sm-6 col-md-4 col-xl-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="fw-semibold flex-grow-1">@GatewayLabel(g.WalletType)</span>
+                            @if (paidRan)
+                            {
+                                <span class="badge bg-success" title="Payouts have been paid on this date"><i class="ri-check-line me-1"></i>Ran</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary" title="No payouts paid yet on this date">Not run</span>
+                            }
+                        </div>
+                        <div class="d-flex justify-content-between align-items-baseline">
+                            <span class="small text-muted">Pending</span>
+                            <span class="fw-bold fs-5 text-warning">@g.PendingTotal.ToString("C")</span>
+                        </div>
+                        <div class="small text-muted text-end mb-2">@g.PendingCount @(g.PendingCount == 1 ? "member" : "members")</div>
+                        <div class="d-flex justify-content-between align-items-baseline border-top pt-2">
+                            <span class="small text-muted">Paid (this day)</span>
+                            <span class="fw-bold fs-6 text-success">@g.PaidTotal.ToString("C")</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@* ── Pending payouts table ───────────────────────────────────────────────── *@
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2 flex-wrap">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-hand-coin-line me-2 text-primary"></i>Pending payouts
+        </h6>
+        <span class="small text-muted">@_totalCount records</span>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="PendingRow" DataSource="@_items"
+                    AllowSorting="true" AllowFiltering="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn Field="FullName" HeaderText="Member" Width="220">
+                        <Template>
+                            @{ var row = (PendingRow)context; }
+                            <a href="@ProfileCommissionsPendingUrl(row.MemberId)"
+                               target="_blank" rel="noopener"
+                               class="text-primary fw-semibold text-decoration-none"
+                               title="Open profile › Commissions › Pending">
+                                @row.FullName
+                            </a>
+                            <div>
+                                <a href="@ProfileCommissionsPendingUrl(row.MemberId)"
+                                   target="_blank" rel="noopener" class="text-decoration-none"
+                                   title="Open profile › Commissions › Pending">
+                                    <code class="small text-muted">@row.MemberId</code>
+                                </a>
+                            </div>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="PendingAmount" HeaderText="Pending amount" Width="140" TextAlign="TextAlign.Right">
+                        <Template><span class="fw-semibold">@(((PendingRow)context).PendingAmount.ToString("C"))</span></Template>
+                    </GridColumn>
+                    <GridColumn Field="WalletType" HeaderText="Gateway" Width="150">
+                        <Template><span class="small">@GatewayLabel(((PendingRow)context).WalletType)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Last attempt" Width="130" TextAlign="TextAlign.Center"
+                                AllowFiltering="false" AllowSorting="false">
+                        <Template>
+                            @{ var row = (PendingRow)context; }
+                            @if (_results.TryGetValue(row.MemberId, out var res))
+                            {
+                                @RenderOutcome(res.Outcome, res.GatewayErrorCode, res.GatewayErrorMessage, row.MemberId)
+                            }
+                            else if (!string.IsNullOrWhiteSpace(row.LastAttemptOutcome))
+                            {
+                                @RenderOutcome(row.LastAttemptOutcome!, null, row.LastAttemptError, row.MemberId)
+                            }
+                            else
+                            {
+                                <span class="text-muted small">—</span>
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Action" Width="120" TextAlign="TextAlign.Center"
+                                AllowFiltering="false" AllowSorting="false">
+                        <Template>
+                            @{ var row = (PendingRow)context; }
+                            <button class="btn btn-sm btn-outline-success py-0"
+                                    @onclick="() => PayMember(row)"
+                                    disabled="@(_payingMemberId == row.MemberId)">
+                                @if (_payingMemberId == row.MemberId)
+                                {
+                                    <span class="spinner-border spinner-border-sm"></span>
+                                }
+                                else
+                                {
+                                    <text><i class="ri-bank-card-line me-1"></i>Pay</text>
+                                }
+                            </button>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+
+            @if (_items.Count == 0)
+            {
+                <div class="text-center text-muted py-4">No pending payouts for the selected filters.</div>
+            }
+
+            @if (_totalPages > 1)
+            {
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
+                    <small class="text-muted">@_totalCount records — Page @_page of @_totalPages</small>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>
+                            @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
+                            { var pg = i; <li class="page-item @(_page == pg ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(pg)">@pg</button></li> }
+                            <li class="page-item @(_page == _totalPages ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page + 1)">›</button></li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@* ── Gateway error popup ─────────────────────────────────────────────────── *@
+@if (_showErrorModal)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold text-danger">
+                        <i class="ri-error-warning-line me-2"></i>Gateway response
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseErrorModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <div class="small text-muted">Member</div>
+                        <code>@_errorMemberId</code>
+                    </div>
+                    <div class="mb-3">
+                        <div class="small text-muted">Error code</div>
+                        <div class="fw-semibold">@(_errorCode ?? "—")</div>
+                    </div>
+                    <div>
+                        <div class="small text-muted">Error message</div>
+                        <div class="border rounded p-2 bg-light">@(_errorMessage ?? "No message returned by the gateway.")</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseErrorModal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    // WalletType enum NAMES — AdminAPI serializes enums as names (JsonStringEnumConverter),
+    // so WalletType is bound as a string on the wire and round-tripped as the name.
+    // Populated at init from the ACTIVE payout gateways the operator actually has
+    // configured (GET api/v1/admin/payout-gateways, filtered isActive==true) — no
+    // longer the hardcoded 9-enum list, which showed gateways the user never uses.
+    private List<string> WalletTypes = new();
+
+    // DisplayName lookup keyed by wallet-type name, sourced from the same endpoint.
+    private Dictionary<string, string> GatewayLabels = new();
+
+    private const int PageSize = 20;
+
+    private DateTime _processDate = DateTime.UtcNow.Date;
+    private string   _walletFilter = string.Empty;
+    private int?     _commissionTypeFilter;
+
+    private List<CommissionTypeOption> _commissionTypes = new();
+
+    private bool _statsLoading = true;
+    private bool _loading = true;
+    private string? _alertMsg;
+    private bool _alertIsError;
+
+    private PayoutStatsDto? _stats;
+
+    private List<PendingRow> _items = new();
+    private int _page = 1;
+    private int _totalCount;
+    private int _totalPages = 1;
+
+    // Per-member payout results captured this session (override the row's LastAttempt display).
+    private readonly Dictionary<string, PayoutResultDto> _results = new();
+    private string? _payingMemberId;
+
+    // Batch CSV export
+    private string? _exportingWallet;
+
+    // Error popup state
+    private bool _showErrorModal;
+    private string? _errorMemberId;
+    private string? _errorCode;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadGatewaysAsync();
+        await LoadCommissionTypesAsync();
+        await RefreshAll();
+    }
+
+    // Load the ACTIVE payout gateways the operator has configured. These drive the
+    // Gateway <select> and the stat-card / export labels. The select value is still
+    // the enum NAME (string) the pending/stats/export endpoints expect. On failure we
+    // fall back to empty lists so the rest of the dashboard keeps working.
+    private async Task LoadGatewaysAsync()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<IEnumerable<PayoutGatewayOption>>>(
+                "api/v1/admin/payout-gateways");
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                var active = resp.Data.Where(g => g.IsActive).ToList();
+                WalletTypes = active.Select(g => g.WalletType).ToList();
+                GatewayLabels = active.ToDictionary(g => g.WalletType, g => g.DisplayName);
+            }
+            else
+            {
+                WalletTypes = new();
+                GatewayLabels = new();
+            }
+        }
+        catch
+        {
+            // Don't break the page if the gateway catalog is unavailable.
+            WalletTypes = new();
+            GatewayLabels = new();
+        }
+    }
+
+    private async Task LoadCommissionTypesAsync()
+    {
+        try
+        {
+            // The list endpoint is paged; pull a generous page so all active types fit.
+            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<CommissionTypeOption>>>(
+                "api/v1/admin/commission-types?page=1&pageSize=500");
+            if (resp?.Success == true && resp.Data is not null)
+                _commissionTypes = resp.Data.Items.ToList();
+        }
+        catch (Exception ex) { _alertMsg = $"Commission types error: {ex.Message}"; _alertIsError = true; }
+    }
+
+    private async Task RefreshAll()
+    {
+        await Task.WhenAll(LoadStatsAsync(), LoadPendingAsync());
+    }
+
+    private async Task OnFiltersChanged()
+    {
+        _page = 1;
+        await RefreshAll();
+    }
+
+    private async Task LoadStatsAsync()
+    {
+        _statsLoading = true; StateHasChanged();
+        try
+        {
+            var iso = _processDate.ToString("yyyy-MM-dd");
+            var statsUrl = $"api/v1/admin/payouts/stats?processDate={iso}";
+            if (_commissionTypeFilter is not null) statsUrl += $"&commissionTypeId={_commissionTypeFilter}";
+            var resp = await Http.GetFromJsonAsync<ApiResp<PayoutStatsDto>>(statsUrl);
+            if (resp?.Success == true && resp.Data is not null)
+                _stats = resp.Data;
+            else
+                _stats = null;
+        }
+        catch (Exception ex) { _alertMsg = $"Stats error: {ex.Message}"; _alertIsError = true; _stats = null; }
+        finally { _statsLoading = false; StateHasChanged(); }
+    }
+
+    private async Task LoadPendingAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var iso = _processDate.ToString("yyyy-MM-dd");
+            var url = $"api/v1/admin/payouts/pending?processDate={iso}&page={_page}&pageSize={PageSize}";
+            if (!string.IsNullOrWhiteSpace(_walletFilter)) url += $"&walletType={_walletFilter}";
+            if (_commissionTypeFilter is not null) url += $"&commissionTypeId={_commissionTypeFilter}";
+
+            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<PendingRow>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _items = resp.Data.Items.ToList();
+                _totalCount = resp.Data.TotalCount;
+                _totalPages = resp.Data.TotalPages <= 0 ? 1 : resp.Data.TotalPages;
+            }
+            else
+            {
+                _items = new();
+                _totalCount = 0;
+                _totalPages = 1;
+                _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load pending payouts.";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; StateHasChanged(); }
+    }
+
+    private async Task ChangePage(int p)
+    {
+        if (p < 1 || p > _totalPages) return;
+        _page = p;
+        await LoadPendingAsync();
+    }
+
+    // ── Export the gateway batch as a CSV (POST returns text/csv). ────────────
+    // Fetched through the authenticated AdminApi client, then pushed to the
+    // browser as a blob via the shared mlmDownloadFile helper.
+    private async Task ExportBatchCsv(string walletType)
+    {
+        if (string.IsNullOrWhiteSpace(walletType)) return;
+        _exportingWallet = walletType;
+        _alertMsg = null;
+        StateHasChanged();
+        try
+        {
+            var payload = new { walletType, processDate = _processDate };
+            using var response = await Http.PostAsJsonAsync("api/v1/admin/payouts/batches/export", payload);
+            if (response.IsSuccessStatusCode)
+            {
+                var bytes = await response.Content.ReadAsByteArrayAsync();
+                if (bytes.Length == 0)
+                {
+                    _alertMsg = $"No payable members for {GatewayLabel(walletType)} on {_processDate:yyyy-MM-dd}.";
+                    _alertIsError = true;
+                }
+                else
+                {
+                    var base64 = Convert.ToBase64String(bytes);
+                    var fileName = $"payout-batch-{walletType}-{_processDate:yyyy-MM-dd}.csv";
+                    await JS.InvokeVoidAsync("mlmDownloadFile", fileName, "text/csv", base64);
+                    _alertMsg = $"Exported {GatewayLabel(walletType)} batch for {_processDate:yyyy-MM-dd}.";
+                    _alertIsError = false;
+                    // The batch is now reserved/exported — refresh stats + pending list.
+                    await RefreshAll();
+                }
+            }
+            else
+            {
+                var body = await TryReadErrorAsync(response);
+                _alertMsg = body ?? $"Export failed ({(int)response.StatusCode}).";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Export error: {ex.Message}"; _alertIsError = true; }
+        finally { _exportingWallet = null; StateHasChanged(); }
+    }
+
+    private static async Task<string?> TryReadErrorAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            var body = await response.Content.ReadFromJsonAsync<ApiResp<object>>();
+            return body?.Errors?.FirstOrDefault();
+        }
+        catch { return null; }
+    }
+
+    private async Task PayMember(PendingRow row)
+    {
+        _payingMemberId = row.MemberId;
+        StateHasChanged();
+        try
+        {
+            var payload = new { processDate = _processDate };
+            var response = await Http.PostAsJsonAsync($"api/v1/admin/members/{row.MemberId}/payout", payload);
+            if (response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadFromJsonAsync<ApiResp<PayoutResultDto>>();
+                if (body?.Success == true && body.Data is not null)
+                {
+                    _results[row.MemberId] = body.Data;
+                    if (body.Data.Outcome == "Success")
+                    {
+                        _alertMsg = $"Payout for {row.FullName} succeeded ({body.Data.AmountUsd.ToString("C")}).";
+                        _alertIsError = false;
+                        // Refresh stats + list so the paid amount moves and the row may drop off.
+                        await LoadStatsAsync();
+                        await LoadPendingAsync();
+                    }
+                    else
+                    {
+                        _alertMsg = $"Payout for {row.FullName}: {body.Data.Outcome}.";
+                        _alertIsError = body.Data.Outcome == "Failed";
+                    }
+                }
+                else
+                {
+                    _alertMsg = body?.Errors?.FirstOrDefault() ?? "Payout returned no result.";
+                    _alertIsError = true;
+                }
+            }
+            else
+            {
+                var body = await response.Content.ReadFromJsonAsync<ApiResp<object>>();
+                _alertMsg = body?.Errors?.FirstOrDefault() ?? $"Payout failed ({(int)response.StatusCode}).";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _payingMemberId = null; StateHasChanged(); }
+    }
+
+    private RenderFragment RenderOutcome(string outcome, string? code, string? message, string memberId) => builder =>
+    {
+        var seq = 0;
+        if (outcome == "Success")
+        {
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", "text-success");
+            builder.AddAttribute(seq++, "title", "Payout succeeded");
+            builder.OpenElement(seq++, "i");
+            builder.AddAttribute(seq++, "class", "ri-checkbox-circle-fill fs-5");
+            builder.CloseElement();
+            builder.CloseElement();
+        }
+        else if (outcome == "Failed")
+        {
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", "text-danger me-1");
+            builder.AddAttribute(seq++, "title", "Payout failed");
+            builder.OpenElement(seq++, "i");
+            builder.AddAttribute(seq++, "class", "ri-close-circle-fill fs-5");
+            builder.CloseElement();
+            builder.CloseElement();
+
+            // Comment icon → opens the gateway error popup.
+            builder.OpenElement(seq++, "button");
+            builder.AddAttribute(seq++, "class", "btn btn-link p-0 align-baseline text-decoration-none");
+            builder.AddAttribute(seq++, "title", "View gateway error");
+            builder.AddAttribute(seq++, "onclick",
+                EventCallback.Factory.Create(this, () => OpenErrorModal(memberId, code, message)));
+            builder.OpenElement(seq++, "i");
+            builder.AddAttribute(seq++, "class", "ri-chat-3-line fs-6 text-muted");
+            builder.CloseElement();
+            builder.CloseElement();
+        }
+        else // Pending or anything else
+        {
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", "badge bg-warning text-dark");
+            builder.AddContent(seq++, outcome);
+            builder.CloseElement();
+        }
+    };
+
+    private void OpenErrorModal(string memberId, string? code, string? message)
+    {
+        _errorMemberId = memberId;
+        _errorCode = code;
+        _errorMessage = message;
+        _showErrorModal = true;
+    }
+
+    private void CloseErrorModal() => _showErrorModal = false;
+
+    private string GatewayLabel(string walletType) =>
+        GatewayLabels.TryGetValue(walletType, out var v) ? v : walletType;
+
+    // Deep-link to the member profile, Commissions tab, Pending section.
+    // AdminMemberProfile reads ?tab=commissions; #pending scrolls to the Pending card.
+    private static string ProfileCommissionsPendingUrl(string memberId) =>
+        $"/admin/members/{memberId}?tab=commissions#pending";
+
+    // ── DTO shapes (deserialization) ────────────────────────────────────────
+    // WalletType is bound as string (enum NAME) — never int — per JsonStringEnumConverter.
+
+    private record PendingRow(
+        string MemberId,
+        string FullName,
+        decimal PendingAmount,
+        string WalletType,
+        string? LastAttemptOutcome,
+        string? LastAttemptError);
+
+    private record PayoutStatsDto(DateTime ProcessDate, List<GatewayStat> Gateways)
+    {
+        public List<GatewayStat> Gateways { get; init; } = Gateways ?? new();
+    }
+
+    private record GatewayStat(string WalletType, decimal PendingTotal, int PendingCount, decimal PaidTotal);
+
+    private record PayoutResultDto(
+        string MemberId,
+        string Outcome,
+        decimal AmountUsd,
+        int EarningsCount,
+        string? GatewayErrorCode,
+        string? GatewayErrorMessage);
+
+    // Commission-type dropdown option (only Id + Name are needed off the CommissionTypeDto).
+    private record CommissionTypeOption(int Id, string Name);
+
+    // Payout-gateway option — WalletType is the enum NAME (string). Only the fields the
+    // dropdown/labels need are bound off the full PaymentGatewayInfo DTO.
+    private record PayoutGatewayOption(string WalletType, string DisplayName, bool IsActive);
+
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+}

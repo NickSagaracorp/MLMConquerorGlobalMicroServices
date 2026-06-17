@@ -7,6 +7,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
@@ -54,6 +55,22 @@ public class AdminMemberDualTeamController : ControllerBase
         return Ok(ApiResponse<PagedResult<MLMConquerorGlobalEdition.Repository.Services.Teams.DualTeamMyTeamMemberView>>.Ok(view));
     }
 
+    /// <summary>
+    /// Route: POST api/v1/admin/members/{memberId}/team/my-team/grid
+    /// Server-side grid read (search · per-column filter · sort · page) over the
+    /// member's whole binary subtree, so the grid finds matches on any page.
+    /// </summary>
+    [HttpPost("my-team/grid")]
+    public async Task<IActionResult> GetMyTeamGrid(
+        string memberId,
+        [FromBody] GridDataRequest request,
+        [FromServices] MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTeamService dualTeamService,
+        CancellationToken ct = default)
+    {
+        var view = await dualTeamService.GetMyTeamGridAsync(memberId, request, ct);
+        return Ok(ApiResponse<PagedResult<MLMConquerorGlobalEdition.Repository.Services.Teams.DualTeamMyTeamMemberView>>.Ok(view));
+    }
+
     // ─── My Dual Team Members ────────────────────────────────────────────────
     [HttpGet("members")]
     public async Task<IActionResult> GetMembers(
@@ -71,53 +88,48 @@ public class AdminMemberDualTeamController : ControllerBase
             return Ok(ApiResponse<PagedResult<DualTeamMemberDto>>.Ok(new PagedResult<DualTeamMemberDto>()));
 
         var pathPrefix = rootNode.HierarchyPath;
+        var rootDepth  = pathPrefix.Split('/', StringSplitOptions.RemoveEmptyEntries).Length;
 
-        // 2. All nodes in subtree (excluding root itself)
-        var subtreeNodes = await _db.DualTeamTree.AsNoTracking()
-            .Where(d => d.HierarchyPath.StartsWith(pathPrefix) && d.MemberId != memberId)
-            .Select(d => new { d.MemberId, d.ParentMemberId, d.Side, d.HierarchyPath, d.LeftLegPoints, d.RightLegPoints })
-            .ToListAsync(ct);
-
-        if (!subtreeNodes.Any())
-            return Ok(ApiResponse<PagedResult<DualTeamMemberDto>>.Ok(new PagedResult<DualTeamMemberDto>()));
-
-        var subtreeIds = subtreeNodes.Select(n => n.MemberId).ToHashSet();
-
-        // Compute level from hierarchy depth
-        var rootDepth = pathPrefix.Split('/', StringSplitOptions.RemoveEmptyEntries).Length;
-        var levelMap  = subtreeNodes.ToDictionary(
-            n => n.MemberId,
-            n => n.HierarchyPath.Split('/', StringSplitOptions.RemoveEmptyEntries).Length - rootDepth);
-
-        var nodeMap = subtreeNodes.ToDictionary(n => n.MemberId);
-
-        // 3. Member profiles
-        var profileQuery = _db.MemberProfiles.AsNoTracking()
-            .Where(p => subtreeIds.Contains(p.MemberId));
+        // 2. Page the binary subtree at the DB (join DualTeamTree subtree → profiles), instead
+        //    of loading ALL ~120k subtree nodes into memory + Contains(allIds). Only the page's
+        //    rows (≤ pageSize) are materialized; level/leg come from the page rows' own paths.
+        var baseQuery =
+            from d in _db.DualTeamTree.AsNoTracking()
+            where d.HierarchyPath.StartsWith(pathPrefix) && d.MemberId != memberId
+            join m in _db.MemberProfiles.AsNoTracking() on d.MemberId equals m.MemberId
+            select new
+            {
+                m.MemberId, m.FirstName, m.LastName, m.Country, m.SponsorMemberId, m.Status, m.CreationDate,
+                d.HierarchyPath, d.ParentMemberId, d.Side, d.LeftLegPoints, d.RightLegPoints
+            };
 
         if (!string.IsNullOrWhiteSpace(search))
-            profileQuery = profileQuery.Where(p =>
-                p.FirstName.Contains(search) || p.LastName.Contains(search) || p.MemberId.Contains(search));
+            baseQuery = baseQuery.Where(x =>
+                x.FirstName.Contains(search) || x.LastName.Contains(search) || x.MemberId.Contains(search));
 
-        var totalCount = await profileQuery.CountAsync(ct);
+        var totalCount = await baseQuery.CountAsync(ct);
 
-        var profiles = await profileQuery
-            .OrderBy(p => p.CreationDate)
+        var pageRows = await baseQuery
+            .OrderBy(x => x.CreationDate)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(p => new
-            {
-                p.MemberId,
-                p.FirstName,
-                p.LastName,
-                p.Country,
-                p.SponsorMemberId,
-                p.Status,
-                p.CreationDate
-            })
             .ToListAsync(ct);
 
+        if (pageRows.Count == 0)
+            return Ok(ApiResponse<PagedResult<DualTeamMemberDto>>.Ok(
+                new PagedResult<DualTeamMemberDto> { Items = new List<DualTeamMemberDto>(), TotalCount = totalCount, Page = page, PageSize = pageSize }));
+
+        var profiles = pageRows
+            .Select(x => new { x.MemberId, x.FirstName, x.LastName, x.Country, x.SponsorMemberId, x.Status, x.CreationDate })
+            .ToList();
         var pageIds = profiles.Select(p => p.MemberId).ToHashSet();
+
+        var levelMap = pageRows.ToDictionary(
+            x => x.MemberId,
+            x => x.HierarchyPath.Split('/', StringSplitOptions.RemoveEmptyEntries).Length - rootDepth);
+        var nodeMap = pageRows.ToDictionary(
+            x => x.MemberId,
+            x => new { x.ParentMemberId, x.Side, x.LeftLegPoints, x.RightLegPoints });
 
         // 4. Stats
         var stats = await _db.MemberStatistics.AsNoTracking()
@@ -163,13 +175,6 @@ public class AdminMemberDualTeamController : ControllerBase
         var viewerSummary = await _ranks.GetSummaryAsync(memberId, ct);
         var currentRankDef = allRanks.FirstOrDefault(r => r.SortOrder == viewerSummary.CurrentRankSortOrder);
         var nextRankDef    = allRanks.FirstOrDefault(r => r.SortOrder >  viewerSummary.CurrentRankSortOrder);
-
-        static int CalcLegCap(Domain.Entities.Rank.RankDefinition? rankDef)
-        {
-            var req = rankDef?.Requirements.OrderBy(r => r.LevelNo).FirstOrDefault();
-            if (req is null || req.TeamPoints <= 0 || req.MaxTeamPointsPerBranch <= 0) return 0;
-            return (int)Math.Round(req.MaxTeamPointsPerBranch * req.TeamPoints);
-        }
 
         var legCapCurrent = CalcLegCap(currentRankDef);
         var legCapNext    = CalcLegCap(nextRankDef);
@@ -300,18 +305,32 @@ public class AdminMemberDualTeamController : ControllerBase
     public async Task<IActionResult> GetTreeStats(
         string memberId,
         string statsId,
+        [FromServices] MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTeamService dualTeamService,
         CancellationToken ct = default)
     {
-        var node = await _db.DualTeamTree.AsNoTracking()
-            .FirstOrDefaultAsync(d => d.MemberId == statsId, ct);
-
+        // Single source of truth shared with BizCenter — see IDualTeamService.GetDualTreeStatsAsync.
+        var v = await dualTeamService.GetDualTreeStatsAsync(statsId, ct);
         var dto = new DualTreeStatsDto
         {
-            LeftLegPoints  = (int)(node?.LeftLegPoints  ?? 0),
-            RightLegPoints = (int)(node?.RightLegPoints ?? 0)
+            LeftLegPoints  = (int)v.LeftLegPoints,
+            RightLegPoints = (int)v.RightLegPoints,
+            NextRankLegCap = v.NextRankLegCap,
+            NextRankName   = v.NextRankName
         };
 
         return Ok(ApiResponse<DualTreeStatsDto>.Ok(dto));
+    }
+
+    /// <summary>
+    /// Per-leg dual-team points cap for a rank — the same rule the rank engine
+    /// applies for qualification: cap = MaxTeamPointsPerBranch × rank.TeamPoints.
+    /// Returns 0 when the rank has no dual-team requirement (DT does not apply).
+    /// </summary>
+    private static int CalcLegCap(Domain.Entities.Rank.RankDefinition? rankDef)
+    {
+        var req = rankDef?.Requirements.OrderBy(r => r.LevelNo).FirstOrDefault();
+        if (req is null || req.TeamPoints <= 0 || req.MaxTeamPointsPerBranch <= 0) return 0;
+        return (int)Math.Round(req.MaxTeamPointsPerBranch * req.TeamPoints);
     }
 
     // ─── Residuals page legs feed ────────────────────────────────────────────
@@ -344,6 +363,36 @@ public class AdminMemberDualTeamController : ControllerBase
         return Ok(ApiResponse<List<MLMConquerorGlobalEdition.Repository.Services.Teams.DualLegMonthlyPointView>>.Ok(rows));
     }
 
+    // ─── Binary Tree: Search ─────────────────────────────────────────────────
+    /// <summary>GET .../team/dual-tree/search?term=&amp;take=25 — find nodes in the member's
+    /// binary subtree by name or member id. Each hit carries its path from the root so the
+    /// visualizer can open (drill to) that branch and highlight the match. Shared with BizCenter.</summary>
+    [HttpGet("dual-tree/search")]
+    public async Task<IActionResult> SearchTree(
+        string memberId,
+        [FromServices] MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTeamService dualTeamService,
+        [FromQuery] string? term = null,
+        [FromQuery] int take = 25,
+        CancellationToken ct = default)
+    {
+        var hits = await dualTeamService.SearchBinarySubtreeAsync(memberId, term, take, ct);
+        return Ok(ApiResponse<List<MLMConquerorGlobalEdition.Repository.Services.Teams.DualTreeSearchMatchView>>.Ok(hits));
+    }
+
+    /// <summary>GET .../team/dual-tree/deepest?side=Left|Right — the deepest node on the given
+    /// leg, with its path from the root, for the "jump to deepest left/right" navigation arrows.
+    /// Returns null data when that leg is empty. Shared with BizCenter.</summary>
+    [HttpGet("dual-tree/deepest")]
+    public async Task<IActionResult> GetDeepest(
+        string memberId,
+        [FromServices] MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTeamService dualTeamService,
+        [FromQuery] Domain.Enums.TreeSide side,
+        CancellationToken ct = default)
+    {
+        var target = await dualTeamService.GetDeepestNodeAsync(memberId, side, ct);
+        return Ok(ApiResponse<MLMConquerorGlobalEdition.Repository.Services.Teams.DualTreeNavTargetView?>.Ok(target));
+    }
+
     // ─── Available For Placement ─────────────────────────────────────────────
     /// <summary>
     /// Returns all ambassadors in the member's enrollment genealogy downline
@@ -353,46 +402,39 @@ public class AdminMemberDualTeamController : ControllerBase
     [HttpGet("dual-tree/available-for-placement")]
     public async Task<IActionResult> GetAvailableForPlacement(
         string memberId,
+        [FromQuery] string? search = null,
+        [FromQuery] int take = 200,
         CancellationToken ct = default)
     {
-        // 1. Build the hierarchy filter from the member's genealogy node
+        // Unplaced ambassadors in the member's genealogy downline, search-filtered and capped.
+        // The previous version materialized ALL ~120k downline ids, ran two Contains(allIds)
+        // queries, then did an O(downline) StartsWith COUNT per candidate (O(downline×candidates)
+        // → 32s / 500 for a top-rank member). Now: one JOIN over the subtree + NOT EXISTS for
+        // "not placed", a cap, and a single batched floating-children count.
+        take = Math.Clamp(take, 1, 500);
         var hierarchyFilter = $"/{memberId}/";
 
-        // 2. Collect all downline MemberIds from the genealogy tree
-        var downlineIds = await _db.GenealogyTree.AsNoTracking()
-            .Where(g => g.HierarchyPath.Contains(hierarchyFilter))
-            .Select(g => g.MemberId)
-            .ToListAsync(ct);
+        var q =
+            from g in _db.GenealogyTree.AsNoTracking()
+            where g.HierarchyPath.Contains(hierarchyFilter)
+            join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
+            where m.MemberId != memberId
+               && m.MemberType == MemberType.Ambassador
+               && !m.IsDeleted
+               && !_db.DualTeamTree.Any(d => d.MemberId == m.MemberId)   // not yet placed
+            select m;
 
-        // 3. Also include direct sponsored members (in case they are not yet in genealogy tree)
-        var directSponsoredIds = await _db.MemberProfiles.AsNoTracking()
-            .Where(m => m.SponsorMemberId == memberId && !m.IsDeleted)
-            .Select(m => m.MemberId)
-            .ToListAsync(ct);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.ToLower();
+            q = q.Where(m => m.FirstName.ToLower().Contains(s)
+                          || m.LastName.ToLower().Contains(s)
+                          || m.MemberId.ToLower().Contains(s));
+        }
 
-        // 4. Combine both sets into one distinct candidate pool
-        var candidateIds = downlineIds
-            .Union(directSponsoredIds)
-            .Where(id => id != memberId)
-            .Distinct()
-            .ToList();
-
-        if (!candidateIds.Any())
-            return Ok(ApiResponse<List<PlacementCandidateDto>>.Ok(new List<PlacementCandidateDto>()));
-
-        // 5. Collect IDs already placed in the dual tree
-        var alreadyPlacedIds = await _db.DualTeamTree.AsNoTracking()
-            .Where(d => candidateIds.Contains(d.MemberId))
-            .Select(d => d.MemberId)
-            .ToHashSetAsync(ct);
-
-        // 6. Query ambassador profiles — Ambassador type, not deleted, not yet placed
-        var candidates = await _db.MemberProfiles.AsNoTracking()
-            .Where(m => candidateIds.Contains(m.MemberId)
-                     && m.MemberType == MemberType.Ambassador
-                     && !m.IsDeleted
-                     && !alreadyPlacedIds.Contains(m.MemberId))
+        var candidates = await q
             .OrderBy(m => m.FirstName).ThenBy(m => m.LastName)
+            .Take(take)
             .Select(m => new PlacementCandidateDto
             {
                 MemberId = m.MemberId,
@@ -401,13 +443,21 @@ public class AdminMemberDualTeamController : ControllerBase
             })
             .ToListAsync(ct);
 
-        // 7. For each candidate, count floating descendants from a previous unplacement.
-        //    Floating nodes have HierarchyPath starting with /{candidateId}/.
-        foreach (var c in candidates)
+        // Floating descendants left by a prior unplacement: a single batched count of each
+        // candidate's DIRECT dual children (indexed ParentMemberId) — non-zero only flags that
+        // placing this candidate re-attaches a floating subtree. Replaces the per-candidate
+        // O(downline) HierarchyPath.StartsWith scan.
+        if (candidates.Count > 0)
         {
-            var fp = $"/{c.MemberId}/";
-            c.FloatingSubtreeSize = await _db.DualTeamTree.AsNoTracking()
-                .CountAsync(d => d.HierarchyPath.StartsWith(fp), ct);
+            var candIds = candidates.Select(c => c.MemberId).ToList();
+            var floating = await _db.DualTeamTree.AsNoTracking()
+                .Where(d => d.ParentMemberId != null && candIds.Contains(d.ParentMemberId))
+                .GroupBy(d => d.ParentMemberId!)
+                .Select(grp => new { Id = grp.Key, Cnt = grp.Count() })
+                .ToDictionaryAsync(x => x.Id, x => x.Cnt, ct);
+
+            foreach (var c in candidates)
+                c.FloatingSubtreeSize = floating.GetValueOrDefault(c.MemberId);
         }
 
         return Ok(ApiResponse<List<PlacementCandidateDto>>.Ok(candidates));
@@ -482,7 +532,13 @@ public class AdminMemberDualTeamController : ControllerBase
 
     public class DualTreeStatsDto
     {
-        public int LeftLegPoints  { get; set; }
-        public int RightLegPoints { get; set; }
+        public int     LeftLegPoints  { get; set; }
+        public int     RightLegPoints { get; set; }
+        /// <summary>Per-leg points cap to reach the next rank
+        /// (MaxTeamPointsPerBranch × nextRank.TeamPoints). 0 ⇒ the dual-team
+        /// dimension does not apply at the next rank — render the bar as N/A.</summary>
+        public int     NextRankLegCap { get; set; }
+        /// <summary>Name of the next rank the cap targets, or null when already at top rank.</summary>
+        public string? NextRankName   { get; set; }
     }
 }

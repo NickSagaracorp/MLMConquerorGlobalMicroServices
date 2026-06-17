@@ -1,7 +1,5 @@
 using Hangfire;
-using MediatR;
 using MLMConquerorGlobalEdition.RankEngine.Features.EvaluateRank;
-using MLMConquerorGlobalEdition.RankEngine.Features.GenerateCertificate;
 using MLMConquerorGlobalEdition.RankEngine.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
@@ -55,17 +53,6 @@ public static class RankReachabilityTestHandlerFactory
         return m;
     }
 
-    private static Mock<ISender> BuildMediator()
-    {
-        var m = new Mock<ISender>();
-        m.Setup(s => s.Send(
-                It.IsAny<GenerateCertificateCommand>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(SharedKernel.Result<DTOs.CertificateGenerationResponse>.Success(
-                new DTOs.CertificateGenerationResponse()));
-        return m;
-    }
-
     private static IRankQualificationService BuildQualification(AppDbContext db)
     {
         var et = new EnrollmentTeamPointsService(db);
@@ -83,7 +70,5 @@ public static class RankReachabilityTestHandlerFactory
             BuildUser().Object,
             BuildQualification(db),
             BuildCache().Object,
-            BuildMediator().Object,
-            BuildJobs().Object,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<EvaluateRankHandler>.Instance);
+            BuildJobs().Object);
 }

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using MLMConquerorGlobalEdition.Domain.Constants;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 
 namespace MLMConquerorGlobalEdition.Repository.Configurations;
@@ -95,6 +96,7 @@ namespace MLMConquerorGlobalEdition.Repository.Configurations;
 /// │ 83  │ BB Turbo – Blue Royal (rank 18)        │ Cat 7 · LifeTimeRank=18     │
 /// │ 84  │ BB Turbo – Black Royal (rank 19)       │ Cat 7 · LifeTimeRank=19     │
 /// │ 85  │ Car Bonus                              │ Cat 4 · $500/mo, 1000 ET pts│
+/// │86-104│ Rank Seniority Bonus – [Rank]         │ Cat 9 · LifeTimeRank=1..19  │
 /// └─────┴────────────────────────────────────────┴──────────────────────────── │
 ///
 /// TeamPoints for DTR Silver/Gold/Platinum = Enrollment Team points (ET-based ranks).
@@ -642,7 +644,37 @@ public class CommissionTypeSeedConfiguration : IEntityTypeConfiguration<Commissi
                 TeamPoints     = 1000,
                 IsEnrollmentBased = true,
                 CreationDate = SeedDate, CreatedBy = "seed"
-            }
+            },
+
+            // ═══════════════════════════════════════════════════════════════════
+            // CATEGORY 9 — RANK SENIORITY BONUS (Per-Rank, IDs 86-104)
+            // One entry per rank (Silver=1 .. Black Royal=19).
+            // LifeTimeRank = RankDefinition.Id (= SortOrder 1..19).
+            // Granted once per rank when an ambassador holds that rank for ≥14
+            // consecutive days of qualifying daily residual.
+            // A CommissionEarning with this CommissionTypeId IS the "already granted" record.
+            // Amounts are placeholders ($100) — set real amounts via the commission-type admin config.
+            // ═══════════════════════════════════════════════════════════════════
+
+            new CommissionType { Id = RankSeniorityBonus.FirstTypeId + 0,  CommissionCategoryId = RankSeniorityBonus.CategoryId, Name = "Rank Seniority Bonus – Silver",         Description = "Once-per-rank seniority bonus for Silver (rank 1). Grant when ambassador holds Silver ≥14 consecutive days.",         Percentage = 0m, Amount = 100m, PaymentDelayDays = 0, IsActive = true, LifeTimeRank = 1,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = RankSeniorityBonus.FirstTypeId + 1,  CommissionCategoryId = RankSeniorityBonus.CategoryId, Name = "Rank Seniority Bonus – Gold",           Description = "Once-per-rank seniority bonus for Gold (rank 2). Grant when ambassador holds Gold ≥14 consecutive days.",           Percentage = 0m, Amount = 100m, PaymentDelayDays = 0, IsActive = true, LifeTimeRank = 2,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = RankSeniorityBonus.FirstTypeId + 2,  CommissionCategoryId = RankSeniorityBonus.CategoryId, Name = "Rank Seniority Bonus – Platinum",       Description = "Once-per-rank seniority bonus for Platinum (rank 3). Grant when ambassador holds Platinum ≥14 consecutive days.",       Percentage = 0m, Amount = 100m, PaymentDelayDays = 0, IsActive = true, LifeTimeRank = 3,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = RankSeniorityBonus.FirstTypeId + 3,  CommissionCategoryId = RankSeniorityBonus.CategoryId, Name = "Rank Seniority Bonus – Titanium",       Description = "Once-per-rank seniority bonus for Titanium (rank 4). Grant when ambassador holds Titanium ≥14 consecutive days.",       Percentage = 0m, Amount = 100m, PaymentDelayDays = 0, IsActive = true, LifeTimeRank = 4,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = RankSeniorityBonus.FirstTypeId + 4,  CommissionCategoryId = RankSeniorityBonus.CategoryId, Name = "Rank Seniority Bonus – Jade",           Description = "Once-per-rank seniority bonus for Jade (rank 5). Grant when ambassador holds Jade ≥14 consecutive days.",           Percentage = 0m, Amount = 100m, PaymentDelayDays = 0, IsActive = true, LifeTimeRank = 5,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = RankSeniorityBonus.FirstTypeId + 5,  CommissionCategoryId = RankSeniorityBonus.CategoryId, Name = "Rank Seniority Bonus – Pearl",          Description = "Once-per-rank seniority bonus for Pearl (rank 6). Grant when ambassador holds Pearl ≥14 consecutive days.",          Percentage = 0m, Amount = 100m, PaymentDelayDays = 0, IsActive = true, LifeTimeRank = 6,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = RankSeniorityBonus.FirstTypeId + 6,  CommissionCategoryId = RankSeniorityBonus.CategoryId, Name = "Rank Seniority Bonus – Emerald",        Description = "Once-per-rank seniority bonus for Emerald (rank 7). Grant when ambassador holds Emerald ≥14 consecutive days.",        Percentage = 0m, Amount = 100m, PaymentDelayDays = 0, IsActive = true, LifeTimeRank = 7,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = RankSeniorityBonus.FirstTypeId + 7,  CommissionCategoryId = RankSeniorityBonus.CategoryId, Name = "Rank Seniority Bonus – Ruby",           Description = "Once-per-rank seniority bonus for Ruby (rank 8). Grant when ambassador holds Ruby ≥14 consecutive days.",           Percentage = 0m, Amount = 100m, PaymentDelayDays = 0, IsActive = true, LifeTimeRank = 8,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = RankSeniorityBonus.FirstTypeId + 8,  CommissionCategoryId = RankSeniorityBonus.CategoryId, Name = "Rank Seniority Bonus – Sapphire",       Description = "Once-per-rank seniority bonus for Sapphire (rank 9). Grant when ambassador holds Sapphire ≥14 consecutive days.",       Percentage = 0m, Amount = 100m, PaymentDelayDays = 0, IsActive = true, LifeTimeRank = 9,  CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = RankSeniorityBonus.FirstTypeId + 9,  CommissionCategoryId = RankSeniorityBonus.CategoryId, Name = "Rank Seniority Bonus – Diamond",        Description = "Once-per-rank seniority bonus for Diamond (rank 10). Grant when ambassador holds Diamond ≥14 consecutive days.",        Percentage = 0m, Amount = 100m, PaymentDelayDays = 0, IsActive = true, LifeTimeRank = 10, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = RankSeniorityBonus.FirstTypeId + 10, CommissionCategoryId = RankSeniorityBonus.CategoryId, Name = "Rank Seniority Bonus – Double Diamond",  Description = "Once-per-rank seniority bonus for Double Diamond (rank 11). Grant when ambassador holds Double Diamond ≥14 consecutive days.",  Percentage = 0m, Amount = 100m, PaymentDelayDays = 0, IsActive = true, LifeTimeRank = 11, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = RankSeniorityBonus.FirstTypeId + 11, CommissionCategoryId = RankSeniorityBonus.CategoryId, Name = "Rank Seniority Bonus – Triple Diamond",  Description = "Once-per-rank seniority bonus for Triple Diamond (rank 12). Grant when ambassador holds Triple Diamond ≥14 consecutive days.",  Percentage = 0m, Amount = 100m, PaymentDelayDays = 0, IsActive = true, LifeTimeRank = 12, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = RankSeniorityBonus.FirstTypeId + 12, CommissionCategoryId = RankSeniorityBonus.CategoryId, Name = "Rank Seniority Bonus – Blue Diamond",    Description = "Once-per-rank seniority bonus for Blue Diamond (rank 13). Grant when ambassador holds Blue Diamond ≥14 consecutive days.",    Percentage = 0m, Amount = 100m, PaymentDelayDays = 0, IsActive = true, LifeTimeRank = 13, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = RankSeniorityBonus.FirstTypeId + 13, CommissionCategoryId = RankSeniorityBonus.CategoryId, Name = "Rank Seniority Bonus – Black Diamond",   Description = "Once-per-rank seniority bonus for Black Diamond (rank 14). Grant when ambassador holds Black Diamond ≥14 consecutive days.",   Percentage = 0m, Amount = 100m, PaymentDelayDays = 0, IsActive = true, LifeTimeRank = 14, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = RankSeniorityBonus.FirstTypeId + 14, CommissionCategoryId = RankSeniorityBonus.CategoryId, Name = "Rank Seniority Bonus – Royal",           Description = "Once-per-rank seniority bonus for Royal (rank 15). Grant when ambassador holds Royal ≥14 consecutive days.",           Percentage = 0m, Amount = 100m, PaymentDelayDays = 0, IsActive = true, LifeTimeRank = 15, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = RankSeniorityBonus.FirstTypeId + 15, CommissionCategoryId = RankSeniorityBonus.CategoryId, Name = "Rank Seniority Bonus – Double Royal",    Description = "Once-per-rank seniority bonus for Double Royal (rank 16). Grant when ambassador holds Double Royal ≥14 consecutive days.",    Percentage = 0m, Amount = 100m, PaymentDelayDays = 0, IsActive = true, LifeTimeRank = 16, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = RankSeniorityBonus.FirstTypeId + 16, CommissionCategoryId = RankSeniorityBonus.CategoryId, Name = "Rank Seniority Bonus – Triple Royal",    Description = "Once-per-rank seniority bonus for Triple Royal (rank 17). Grant when ambassador holds Triple Royal ≥14 consecutive days.",    Percentage = 0m, Amount = 100m, PaymentDelayDays = 0, IsActive = true, LifeTimeRank = 17, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = RankSeniorityBonus.FirstTypeId + 17, CommissionCategoryId = RankSeniorityBonus.CategoryId, Name = "Rank Seniority Bonus – Blue Royal",      Description = "Once-per-rank seniority bonus for Blue Royal (rank 18). Grant when ambassador holds Blue Royal ≥14 consecutive days.",      Percentage = 0m, Amount = 100m, PaymentDelayDays = 0, IsActive = true, LifeTimeRank = 18, CreationDate = SeedDate, CreatedBy = "seed" },
+            new CommissionType { Id = RankSeniorityBonus.FirstTypeId + 18, CommissionCategoryId = RankSeniorityBonus.CategoryId, Name = "Rank Seniority Bonus – Black Royal",     Description = "Once-per-rank seniority bonus for Black Royal (rank 19). Grant when ambassador holds Black Royal ≥14 consecutive days.",     Percentage = 0m, Amount = 100m, PaymentDelayDays = 0, IsActive = true, LifeTimeRank = 19, CreationDate = SeedDate, CreatedBy = "seed" }
         );
     }
 }

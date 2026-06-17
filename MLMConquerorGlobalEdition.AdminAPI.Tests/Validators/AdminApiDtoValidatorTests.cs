@@ -185,6 +185,59 @@ public class CreateCorporatePromoRequestValidatorTests
             StartDate = DateTime.UtcNow,
             EndDate = DateTime.UtcNow.AddDays(-1),
         }).ShouldHaveValidationErrorFor(x => x.EndDate);
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    public void Validate_SponsorBonusMultiplier_WithinRange_Passes(int multiplier)
+        => _v.TestValidate(new CreateCorporatePromoRequest
+        {
+            Title                  = "Promo",
+            StartDate              = DateTime.UtcNow,
+            EndDate                = DateTime.UtcNow.AddDays(30),
+            SponsorBonusMultiplier = multiplier
+        }).ShouldNotHaveValidationErrorFor(x => x.SponsorBonusMultiplier);
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(6)]
+    [InlineData(100)]
+    public void Validate_SponsorBonusMultiplier_OutOfRange_Fails(int multiplier)
+        => _v.TestValidate(new CreateCorporatePromoRequest
+        {
+            Title                  = "Promo",
+            StartDate              = DateTime.UtcNow,
+            EndDate                = DateTime.UtcNow.AddDays(30),
+            SponsorBonusMultiplier = multiplier
+        }).ShouldHaveValidationErrorFor(x => x.SponsorBonusMultiplier);
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(5)]
+    public void Validate_BuilderBonusMultiplier_WithinRange_Passes(int multiplier)
+        => _v.TestValidate(new CreateCorporatePromoRequest
+        {
+            Title                  = "Promo",
+            StartDate              = DateTime.UtcNow,
+            EndDate                = DateTime.UtcNow.AddDays(30),
+            BuilderBonusMultiplier = multiplier
+        }).ShouldNotHaveValidationErrorFor(x => x.BuilderBonusMultiplier);
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(6)]
+    public void Validate_BuilderBonusMultiplier_OutOfRange_Fails(int multiplier)
+        => _v.TestValidate(new CreateCorporatePromoRequest
+        {
+            Title                  = "Promo",
+            StartDate              = DateTime.UtcNow,
+            EndDate                = DateTime.UtcNow.AddDays(30),
+            BuilderBonusMultiplier = multiplier
+        }).ShouldHaveValidationErrorFor(x => x.BuilderBonusMultiplier);
 }
 
 public class UpsertPromoProductCommissionRequestValidatorTests

@@ -8,8 +8,10 @@ public class MemberSignupRequestValidator : AbstractValidator<MemberSignupReques
     public MemberSignupRequestValidator()
     {
         RuleFor(x => x.SponsorReplicateSite)
-            .MaximumLength(ValidationPatterns.ReplicateSlugMaxLength)
-            .Matches(ValidationPatterns.ReplicateSlugPattern)
+            .MaximumLength(64)
+            .Must(value =>
+                System.Text.RegularExpressions.Regex.IsMatch(value!, ValidationPatterns.MemberIdPattern) ||
+                System.Text.RegularExpressions.Regex.IsMatch(value!, ValidationPatterns.ReplicateSlugPattern))
                 .WithMessage("Sponsor replicate site is malformed.")
             .When(x => !string.IsNullOrEmpty(x.SponsorReplicateSite));
 

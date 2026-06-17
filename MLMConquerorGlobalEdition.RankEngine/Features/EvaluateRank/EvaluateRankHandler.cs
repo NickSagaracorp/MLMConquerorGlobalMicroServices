@@ -3,7 +3,6 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.RankEngine.DTOs;
-using MLMConquerorGlobalEdition.RankEngine.Features.GenerateCertificate;
 using MLMConquerorGlobalEdition.RankEngine.Jobs;
 using MLMConquerorGlobalEdition.RankEngine.Mappings;
 using MLMConquerorGlobalEdition.RankEngine.Services;
@@ -21,9 +20,7 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
     private readonly ICurrentUserService _currentUser;
     private readonly IRankQualificationService _qualification;
     private readonly ICacheService _cache;
-    private readonly ISender _mediator;
     private readonly IBackgroundJobClient _jobs;
-    private readonly ILogger<EvaluateRankHandler> _logger;
 
     public EvaluateRankHandler(
         AppDbContext db,
@@ -31,18 +28,14 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
         ICurrentUserService currentUser,
         IRankQualificationService qualification,
         ICacheService cache,
-        ISender mediator,
-        IBackgroundJobClient jobs,
-        ILogger<EvaluateRankHandler> logger)
+        IBackgroundJobClient jobs)
     {
         _db = db;
         _dateTime = dateTime;
         _currentUser = currentUser;
         _qualification = qualification;
         _cache = cache;
-        _mediator = mediator;
         _jobs = jobs;
-        _logger = logger;
     }
 
     public async Task<Result<RankEvaluationResponse>> Handle(EvaluateRankCommand command, CancellationToken ct)
@@ -86,14 +79,32 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
             });
         }
 
-        // Find the highest rank the member qualifies for — via the single authority.
+        // Batched qualification: load member inputs ONCE, evaluate every candidate rank's
+        // primary requirement in-memory. Each rank's "primary" requirement is the lowest
+        // LevelNo row (kept aligned with the previous foreach loop semantics).
+        // Ranks with no requirements rows are skipped exactly as before.
+        var primaryRequirements = candidateRanks
+            .Where(r => r.Requirements.Count > 0)
+            .Select(r => r.Requirements.OrderBy(rr => rr.LevelNo).First())
+            .ToList();
+
+        var qualificationResults = await _qualification.QualifiesForAllRanksAsync(
+            command.MemberId, primaryRequirements, ct);
+
+        // Project results back onto candidate ranks so we know per-rank qualification.
+        var qualifiesByRankId = qualificationResults
+            .ToDictionary(r => r.Requirement.RankDefinitionId, r => r.Result.Qualifies);
+
+        // Highest qualifying rank: walk ranks ascending and pick the largest SortOrder that qualifies.
+        // We intentionally do NOT stop at the first non-qualifying rank — qualification is
+        // not strictly monotonic across rank rows (a higher rank can opt-out of an axis the
+        // member fails on a lower rank). Picking the maximum qualifying SortOrder mirrors
+        // the original foreach behavior.
         RankDefinition? highestQualifiedRank = null;
         foreach (var rank in candidateRanks)
         {
             if (rank.Requirements.Count == 0) continue;
-            var requirement = rank.Requirements.OrderBy(r => r.LevelNo).First();
-            var result = await _qualification.QualifiesForRankAsync(command.MemberId, requirement, ct);
-            if (result.Qualifies)
+            if (qualifiesByRankId.TryGetValue(rank.Id, out var ok) && ok)
                 highestQualifiedRank = rank;
         }
 
@@ -111,61 +122,86 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
             });
         }
 
-        // Record the rank achievement
+        // ── Skip-rank: persist EVERY qualifying intermediate rank between current and
+        //    the highest qualifying rank as its own MemberRankHistory row. Walking
+        //    ranks in ascending SortOrder lets us chain PreviousRankId so the history
+        //    tells the full promotion story even when a member jumps multiple ranks
+        //    in one evaluation. Certificates are NOT generated here — they are minted
+        //    on demand when the member or admin actually requests one.
         var now = _dateTime.Now;
-        var rankHistory = new MemberRankHistory
-        {
-            MemberId = command.MemberId,
-            RankDefinitionId = highestQualifiedRank.Id,
-            PreviousRankId = currentRankHistory?.RankDefinitionId,
-            AchievedAt = now,
-            CreatedBy = _currentUser.UserId,
-            CreationDate = now,
-            LastUpdateDate = now
-        };
+        var createdBy = _currentUser.UserId;
 
-        await _db.MemberRankHistories.AddAsync(rankHistory, ct);
+        var ranksToRecord = candidateRanks
+            .Where(r => r.Requirements.Count > 0
+                        && r.SortOrder > currentSortOrder
+                        && r.SortOrder <= highestQualifiedRank.SortOrder
+                        && qualifiesByRankId.TryGetValue(r.Id, out var ok) && ok)
+            .OrderBy(r => r.SortOrder)
+            .ToList();
+
+        int? previousRankId = currentRankHistory?.RankDefinitionId;
+        MemberRankHistory? topHistoryRow = null;
+        // A multi-rank climb is recognized in a single evaluation instant, but recording
+        // every intermediate rank with the SAME AchievedAt produces physically impossible
+        // history ("achieved two ranks at the exact same second"). Stamp each successive
+        // rank with a monotonic +1s offset (ranksToRecord is already ordered by SortOrder)
+        // so the achievements are strictly increasing and distinct, matching the order in
+        // which the member crossed each threshold. The offset is intentionally tiny — it
+        // reflects the real promotion sequence, not a fabricated multi-minute gap.
+        var rankOffset = 0;
+        foreach (var rank in ranksToRecord)
+        {
+            var achievedAt = now.AddSeconds(rankOffset);
+            var row = new MemberRankHistory
+            {
+                MemberId = command.MemberId,
+                RankDefinitionId = rank.Id,
+                PreviousRankId = previousRankId,
+                AchievedAt = achievedAt,
+                CreatedBy = createdBy,
+                CreationDate = achievedAt,
+                LastUpdateDate = achievedAt
+            };
+            await _db.MemberRankHistories.AddAsync(row, ct);
+            previousRankId = rank.Id;
+            topHistoryRow = row;
+            rankOffset++;
+        }
+
+        // Defensive fallback: if for any reason no intermediate row qualified (e.g., the
+        // highest rank's requirements pass but a lower rank's don't because of an opt-out
+        // pattern), still record the headline promotion so the system stays in a consistent
+        // state. This mirrors the legacy single-row behavior for that edge case.
+        if (topHistoryRow is null)
+        {
+            topHistoryRow = new MemberRankHistory
+            {
+                MemberId = command.MemberId,
+                RankDefinitionId = highestQualifiedRank.Id,
+                PreviousRankId = currentRankHistory?.RankDefinitionId,
+                AchievedAt = now,
+                CreatedBy = createdBy,
+                CreationDate = now,
+                LastUpdateDate = now
+            };
+            await _db.MemberRankHistories.AddAsync(topHistoryRow, ct);
+        }
+
         await _db.SaveChangesAsync(ct);
 
         // Invalidate rank cache for this member
         await _cache.RemoveAsync(CacheKeys.MemberRank(command.MemberId), ct);
 
-        // Generate the achievement certificate synchronously: it shares this scope's
-        // AppDbContext (safe because awaited sequentially), and the cert is the user-
-        // visible deliverable of a promotion — we want it on disk before we return.
-        // A cert failure is logged but never aborts the promotion (admin can regenerate).
-        try
-        {
-            var certResult = await _mediator.Send(new GenerateCertificateCommand(rankHistory.Id), ct);
-            if (!certResult.IsSuccess)
-                _logger.LogWarning(
-                    "Certificate generation failed for member {MemberId}, rank '{Rank}': {Code} — {Error}",
-                    command.MemberId, highestQualifiedRank.Name, certResult.ErrorCode, certResult.Error);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex,
-                "Certificate generation threw for member {MemberId}, rank '{Rank}'.",
-                command.MemberId, highestQualifiedRank.Name);
-        }
-
-        // ── Notifications: decoupled via Hangfire ────────────────────────────────────
-        // Push / email / upline notifications are enqueued as separate Hangfire jobs
-        // (RankNotificationJobs). Each job runs on its OWN DI scope with its OWN
-        // AppDbContext and gets Hangfire's retry / durability for free. This keeps the
-        // evaluation path fast under signup-burst load: dozens of simultaneous signups
-        // produce dozens of queue entries → ProcessRankQueueJob churns through them
-        // quickly because each EvaluateRank call no longer waits on notification I/O.
-
+        // ── Notifications: fire ONLY for the headline rank (the highest reached in this
+        //    evaluation). One promotion event per evaluation — not one per intermediate row.
+        //    Push / email / upline notifications run as Hangfire jobs on their own DI scopes
+        //    so a notification I/O hiccup never blocks the evaluation path.
         _jobs.Enqueue<RankNotificationJobs>(j =>
             j.NotifyRankAchievedAsync(command.MemberId, highestQualifiedRank.Name));
 
         _jobs.Enqueue<RankNotificationJobs>(j =>
             j.SendRankAchievedEmailAsync(command.MemberId, highestQualifiedRank.Name, now));
 
-        // Upline notifications — we still compute the upline set here (one DB read on
-        // this scope, safe), then enqueue one job per unique upline so the fan-out
-        // happens across Hangfire workers, not serially in this handler.
         var uplines = await ComputeAllUplinesAsync(command.MemberId, ct);
         foreach (var uplineMemberId in uplines)
         {

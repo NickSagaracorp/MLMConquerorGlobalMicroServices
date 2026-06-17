@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using MLMConquerorGlobalEdition.Billing.Extensions;
 using MLMConquerorGlobalEdition.Billing.Jobs;
 using MLMConquerorGlobalEdition.Billing.Middleware;
 using MLMConquerorGlobalEdition.Billing.Services.Recurring;
@@ -85,6 +86,21 @@ builder.Services.AddScoped<IRecurringChargeWorker, RecurringChargeWorker>();
 builder.Services.AddScoped<IUplineAggregator, UplineAggregator>();
 builder.Services.AddScoped<IDownstreamTriggers, DownstreamTriggers>();
 
+// ── SharedKernel deps required by PayoutReceiptService ───────────────────
+// PayoutReceiptService (registered via AddPayoutServices) depends on
+// SharedKernel.Interfaces.IEmailService.  The Billing-local IDateTimeProvider
+// (line ~40) satisfies the IDateTimeProvider constructor parameter because
+// PayoutReceiptService lives inside the Billing.Services.* namespace hierarchy
+// and the compiler resolves the unqualified name to the Billing-local type.
+// IEmailService has no Billing-local equivalent, so we register the SharedKernel
+// NullEmailService here — the same concrete type AdminAPI uses at its line 170.
+builder.Services.AddTransient<
+    MLMConquerorGlobalEdition.SharedKernel.Interfaces.IEmailService,
+    MLMConquerorGlobalEdition.SharedKernel.Services.NullEmailService>();
+
+// ── Payout gateway abstraction + orchestrator ─────────────────────────────
+builder.Services.AddPayoutServices();
+
 builder.Services.AddScoped<MembershipAutoRenewalJob>();
 builder.Services.AddScoped<CommissionPayoutJob>();
 builder.Services.AddScoped<ExchangeRateRefreshJob>();
@@ -95,6 +111,8 @@ builder.Services.AddScoped<ChargeWorkerDispatchJob>();
 builder.Services.AddScoped<ChargeWorkerJob>();
 builder.Services.AddScoped<UplineAggregatorJob>();
 builder.Services.AddScoped<DownstreamTriggersJob>();
+builder.Services.AddScoped<ReceiptAnchorJob>();
+builder.Services.AddScoped<PayoutReconciliationJob>();
 
 var hangfireConnStr = builder.Configuration.GetConnectionString("HangFire")
     ?? builder.Configuration.GetConnectionString("DefaultConnection")!;
@@ -246,6 +264,18 @@ RecurringJob.AddOrUpdate<RecurringBillingSweepJob>(
     "recurring-billing-sweep",
     job => job.ExecuteAsync(CancellationToken.None),
     "0 7 * * *",                    // Daily 7:00 AM UTC — safety-net fallback after high-volume pipeline
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+RecurringJob.AddOrUpdate<ReceiptAnchorJob>(
+    "receipt-anchor",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "0 5 * * *",                    // Daily 5:00 AM UTC
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+RecurringJob.AddOrUpdate<PayoutReconciliationJob>(
+    "payout-reconciliation",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "*/30 * * * *",                 // Every 30 minutes — recover crash-stuck Pending payouts
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
 // Auto-payout disabled by business decision: PaymentDate on a CommissionEarning

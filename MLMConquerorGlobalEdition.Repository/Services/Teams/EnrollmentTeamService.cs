@@ -4,6 +4,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.SharedKernel;
 
@@ -26,6 +27,46 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         _etPoints = etPoints;
     }
 
+    /// <summary>
+    /// Columns the my-team grid can search/sort/filter AT THE DB — i.e. those present in the
+    /// light <see cref="BuildMyTeamQueryable"/> projection. Enriched columns (rank/membership/
+    /// sponsor name) are filled per-page only, so grid operations on them are dropped (see
+    /// <see cref="SanitizeGridRequest"/>) rather than forcing a 120k-row subquery scan.
+    /// </summary>
+    private static readonly string[] MyTeamDbFields =
+    {
+        nameof(EnrollmentMyTeamMemberView.MemberId),
+        nameof(EnrollmentMyTeamMemberView.FullName),
+        nameof(EnrollmentMyTeamMemberView.Email),
+        nameof(EnrollmentMyTeamMemberView.Phone),
+        nameof(EnrollmentMyTeamMemberView.Country),
+        nameof(EnrollmentMyTeamMemberView.Level),
+        nameof(EnrollmentMyTeamMemberView.EnrollDate),
+        nameof(EnrollmentMyTeamMemberView.SponsorMemberId),
+        nameof(EnrollmentMyTeamMemberView.AccountStatus),
+    };
+
+    /// <summary>String DB columns the my-team grid search box matches against.</summary>
+    private static readonly string[] MyTeamSearchableFields =
+    {
+        nameof(EnrollmentMyTeamMemberView.MemberId),
+        nameof(EnrollmentMyTeamMemberView.FullName),
+        nameof(EnrollmentMyTeamMemberView.Email),
+        nameof(EnrollmentMyTeamMemberView.Phone),
+        nameof(EnrollmentMyTeamMemberView.Country),
+        nameof(EnrollmentMyTeamMemberView.AccountStatus),
+    };
+
+    /// <summary>Drop sorts/filters that reference columns not in the DB projection so the grid
+    /// query stays a fast indexed seek instead of erroring on a null-constant column.</summary>
+    private static void SanitizeGridRequest(GridDataRequest request)
+    {
+        request.Sorts   = request.Sorts.Where(s => MyTeamDbFields.Contains(s.Field, StringComparer.OrdinalIgnoreCase)).ToList();
+        request.Filters = request.Filters.Where(f => MyTeamDbFields.Contains(f.Field, StringComparer.OrdinalIgnoreCase)).ToList();
+        if (request.Sorts.Count == 0)
+            request.Sorts.Add(new GridSort { Field = nameof(EnrollmentMyTeamMemberView.EnrollDate), Direction = "desc" });
+    }
+
     // ─── My Team ───────────────────────────────────────────────────────────
     public async Task<PagedResult<EnrollmentMyTeamMemberView>> GetMyTeamAsync(
         string memberId, int page, int pageSize, string? search,
@@ -35,64 +76,110 @@ public class EnrollmentTeamService : IEnrollmentTeamService
             .FirstOrDefaultAsync(g => g.MemberId == memberId, ct);
         if (myNode is null) return new PagedResult<EnrollmentMyTeamMemberView>();
 
-        var pathPrefix = myNode.HierarchyPath;
-        var rootLevel  = myNode.Level;
-
-        // Exclude the viewer themselves: their own HierarchyPath naturally
-        // starts with `pathPrefix`, so without this filter they show up at
-        // their own absolute genealogy level. The "My Team" view is for
-        // descendants only.
-        var downlineNodes = await _db.GenealogyTree.AsNoTracking()
-            .Where(g => g.HierarchyPath.StartsWith(pathPrefix) && g.MemberId != memberId)
-            .Select(g => new { g.MemberId, g.Level })
-            .ToListAsync(ct);
-
-        var downlineIds = downlineNodes.Select(x => x.MemberId).ToList();
-        // Levels are stored as absolute depth in the genealogy tree; rebase
-        // them so the viewer's direct downline appears as Level 1.
-        var levelMap    = downlineNodes.ToDictionary(x => x.MemberId, x => x.Level - rootLevel);
-        if (!downlineIds.Any()) return new PagedResult<EnrollmentMyTeamMemberView>();
-
-        var profileQuery = _db.MemberProfiles.AsNoTracking()
-            .Where(m => downlineIds.Contains(m.MemberId));
+        var query = BuildMyTeamQueryable(myNode.HierarchyPath, myNode.Level, memberId);
 
         if (!string.IsNullOrWhiteSpace(search))
         {
             var s = search.ToLower();
-            profileQuery = profileQuery.Where(m =>
-                m.FirstName.ToLower().Contains(s) ||
-                m.LastName.ToLower().Contains(s)  ||
-                m.MemberId.ToLower().Contains(s)  ||
-                (m.Email != null && m.Email.ToLower().Contains(s)));
+            query = query.Where(v =>
+                v.FullName.ToLower().Contains(s) ||
+                v.MemberId.ToLower().Contains(s) ||
+                (v.Email != null && v.Email.ToLower().Contains(s)));
         }
-        if (from.HasValue) profileQuery = profileQuery.Where(m => m.EnrollDate >= from.Value);
-        if (to.HasValue)   profileQuery = profileQuery.Where(m => m.EnrollDate <= to.Value);
+        if (from.HasValue) query = query.Where(v => v.EnrollDate >= from.Value);
+        if (to.HasValue)   query = query.Where(v => v.EnrollDate <= to.Value);
 
-        var totalCount = await profileQuery.CountAsync(ct);
-        var profiles = await profileQuery
-            .OrderByDescending(m => m.EnrollDate)
+        var total = await query.CountAsync(ct);
+        var items = await query
+            .OrderByDescending(v => v.EnrollDate)
             .Skip((page - 1) * pageSize).Take(pageSize)
-            .Select(m => new
-            {
-                m.MemberId, m.FirstName, m.LastName, m.Email, m.Phone,
-                m.Country, m.EnrollDate, m.SponsorMemberId,
-                AccountStatus = m.Status.ToString()
-            })
             .ToListAsync(ct);
 
-        var pageIds = profiles.Select(p => p.MemberId).ToList();
+        await EnrichPageAsync(items, ct);
+
+        return new PagedResult<EnrollmentMyTeamMemberView>
+        {
+            Items = items, TotalCount = total, Page = page, PageSize = pageSize
+        };
+    }
+
+    /// <summary>
+    /// Server-side grid read over the viewer's WHOLE enrollment (genealogy)
+    /// downline, so search / filter / sort span every page. Computed columns
+    /// (Level, NextRankPercent) are resolved in C#, so the pipeline runs
+    /// in-memory over the materialized downline (bounded per member).
+    /// </summary>
+    public async Task<PagedResult<EnrollmentMyTeamMemberView>> GetMyTeamGridAsync(
+        string memberId, GridDataRequest request, CancellationToken ct = default)
+    {
+        var myNode = await _db.GenealogyTree.AsNoTracking()
+            .FirstOrDefaultAsync(g => g.MemberId == memberId, ct);
+        if (myNode is null) return new PagedResult<EnrollmentMyTeamMemberView>();
+
+        SanitizeGridRequest(request);
+
+        // DB-side search/filter/sort/page over the projected downline query — only the
+        // requested page (≤ pageSize rows) is materialized, instead of the whole subtree.
+        var query  = BuildMyTeamQueryable(myNode.HierarchyPath, myNode.Level, memberId);
+        var result = await query.ToGridResultAsync(request, MyTeamSearchableFields, ct: ct);
+        await EnrichPageAsync(result.Items, ct);
+        return result;
+    }
+
+    /// <summary>
+    /// LIGHT DB projection of the viewer's enrollment downline — only directly-translatable
+    /// profile columns, so the grid's search · filter · sort · COUNT · page all run fast in SQL
+    /// with NO per-row subqueries and NO full-subtree materialization (the previous version
+    /// loaded the WHOLE subtree — 120k+ rows × 7 tables via Contains(allIds) — and paged in
+    /// memory, taking &gt;60s). The enriched columns (sponsor/upline name, membership, rank,
+    /// points, dates, NextRankPercent) are filled for the requested PAGE only by
+    /// <see cref="EnrichPageAsync"/>. Search/sort on those enriched columns therefore falls back
+    /// to the page (they are null in this projection) — acceptable since the load path uses the
+    /// default EnrollDate sort, and enriched-column search at 120k scale needs denormalization.
+    /// </summary>
+    private IQueryable<EnrollmentMyTeamMemberView> BuildMyTeamQueryable(
+        string pathPrefix, int rootLevel, string memberId)
+    {
+        return
+            from g in _db.GenealogyTree.AsNoTracking()
+            where g.HierarchyPath.StartsWith(pathPrefix) && g.MemberId != memberId
+            join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
+            select new EnrollmentMyTeamMemberView
+            {
+                MemberId        = m.MemberId,
+                FullName        = m.FirstName + " " + m.LastName,
+                Email           = m.Email,
+                Phone           = m.Phone,
+                Country         = m.Country,
+                Level           = g.Level - rootLevel,
+                EnrollDate      = m.EnrollDate,
+                SponsorMemberId = m.SponsorMemberId,
+                AccountStatus   = m.Status.ToString()
+            };
+    }
+
+    /// <summary>
+    /// Fills every enriched column on an already-paged set of rows (≤ pageSize). This is the old
+    /// full-subtree enrichment, but scoped to the page's handful of member ids (Contains(~20))
+    /// instead of all 120k — so it is cheap regardless of downline size.
+    /// </summary>
+    private async Task EnrichPageAsync(
+        IEnumerable<EnrollmentMyTeamMemberView> items, CancellationToken ct)
+    {
+        var rows = items as IList<EnrollmentMyTeamMemberView> ?? items.ToList();
+        if (rows.Count == 0) return;
+        var ids = rows.Select(r => r.MemberId).ToList();
 
         var subscriptions = await _db.MembershipSubscriptions.AsNoTracking()
             .Include(s => s.MembershipLevel)
-            .Where(s => pageIds.Contains(s.MemberId)
-                     && s.SubscriptionStatus != MembershipStatus.Cancelled)
+            .Where(s => ids.Contains(s.MemberId) && s.SubscriptionStatus != MembershipStatus.Cancelled)
             .OrderByDescending(s => s.StartDate)
             .ToListAsync(ct);
         var subMap = subscriptions.GroupBy(s => s.MemberId).ToDictionary(g => g.Key, g => g.First());
 
         var rankHistories = await _db.MemberRankHistories.AsNoTracking()
             .Include(r => r.RankDefinition)
-            .Where(r => pageIds.Contains(r.MemberId))
+            .Where(r => ids.Contains(r.MemberId))
             .ToListAsync(ct);
         var currentRankMap  = rankHistories.GroupBy(r => r.MemberId)
             .ToDictionary(g => g.Key, g => g.OrderByDescending(r => r.AchievedAt).First());
@@ -100,23 +187,21 @@ public class EnrollmentTeamService : IEnrollmentTeamService
             .ToDictionary(g => g.Key, g => g.OrderByDescending(r => r.RankDefinition?.SortOrder ?? 0).First());
 
         var dualNodes = await _db.DualTeamTree.AsNoTracking()
-            .Where(d => pageIds.Contains(d.MemberId)).ToListAsync(ct);
+            .Where(d => ids.Contains(d.MemberId)).ToListAsync(ct);
         var dualMap = dualNodes.ToDictionary(d => d.MemberId);
 
         var statsMap = await _db.MemberStatistics.AsNoTracking()
-            .Where(s => pageIds.Contains(s.MemberId))
+            .Where(s => ids.Contains(s.MemberId))
             .ToDictionaryAsync(s => s.MemberId, ct);
 
-        var lastPayments = await _db.PaymentHistories.AsNoTracking()
-            .Where(p => pageIds.Contains(p.MemberId)
+        var lastPaymentMap = (await _db.PaymentHistories.AsNoTracking()
+            .Where(p => ids.Contains(p.MemberId)
                      && p.TransactionStatus == PaymentHistoryTransactionStatus.Captured)
             .GroupBy(p => p.MemberId)
             .Select(g => new { MemberId = g.Key, LastDate = g.Max(p => p.ProcessedAt) })
-            .ToListAsync(ct);
-        var lastPaymentMap = lastPayments.ToDictionary(x => x.MemberId, x => x.LastDate);
+            .ToListAsync(ct)).ToDictionary(x => x.MemberId, x => x.LastDate);
 
-        var resolveIds = profiles.Where(p => p.SponsorMemberId != null)
-            .Select(p => p.SponsorMemberId!)
+        var resolveIds = rows.Where(r => r.SponsorMemberId != null).Select(r => r.SponsorMemberId!)
             .Union(dualNodes.Where(d => d.ParentMemberId != null).Select(d => d.ParentMemberId!))
             .Distinct().ToList();
         var nameMap = await _db.MemberProfiles.AsNoTracking()
@@ -124,19 +209,17 @@ public class EnrollmentTeamService : IEnrollmentTeamService
             .Select(m => new { m.MemberId, FullName = m.FirstName + " " + m.LastName })
             .ToDictionaryAsync(m => m.MemberId, m => m.FullName, ct);
 
-        // Headline rank requirement = lowest LevelNo per rank (works for LevelNo=0 or =SortOrder).
         var allRanks = await _db.RankDefinitions.AsNoTracking()
             .Include(r => r.Requirements).OrderBy(r => r.SortOrder).ToListAsync(ct);
 
-        var items = profiles.Select(p =>
+        foreach (var row in rows)
         {
-            subMap.TryGetValue(p.MemberId, out var sub);
-            currentRankMap.TryGetValue(p.MemberId, out var cr);
-            lifetimeRankMap.TryGetValue(p.MemberId, out var lr);
-            dualMap.TryGetValue(p.MemberId, out var dual);
-            statsMap.TryGetValue(p.MemberId, out var stat);
-            lastPaymentMap.TryGetValue(p.MemberId, out var lastPayDate);
-            nameMap.TryGetValue(p.SponsorMemberId ?? "", out var sponsorName);
+            subMap.TryGetValue(row.MemberId, out var sub);
+            currentRankMap.TryGetValue(row.MemberId, out var cr);
+            lifetimeRankMap.TryGetValue(row.MemberId, out var lr);
+            dualMap.TryGetValue(row.MemberId, out var dual);
+            statsMap.TryGetValue(row.MemberId, out var stat);
+            nameMap.TryGetValue(row.SponsorMemberId ?? "", out var sponsorName);
             nameMap.TryGetValue(dual?.ParentMemberId ?? "", out var uplineName);
 
             var currentSortOrder = cr?.RankDefinition?.SortOrder ?? 0;
@@ -150,41 +233,24 @@ public class EnrollmentTeamService : IEnrollmentTeamService
             }
             else if (cr is not null) pct = 100;
 
-            return new EnrollmentMyTeamMemberView
-            {
-                MemberId             = p.MemberId,
-                FullName             = $"{p.FirstName} {p.LastName}",
-                Email                = p.Email,
-                Phone                = p.Phone,
-                Country              = p.Country,
-                Level                = levelMap.GetValueOrDefault(p.MemberId),
-                EnrollDate           = p.EnrollDate,
-                SponsorMemberId      = p.SponsorMemberId,
-                SponsorFullName      = sponsorName,
-                DualUplineMemberId   = dual?.ParentMemberId,
-                DualUplineFullName   = uplineName,
-                AccountStatus        = p.AccountStatus,
-                MembershipStatus     = sub?.SubscriptionStatus.ToString() ?? "None",
-                IsQualified          = sub?.SubscriptionStatus == MembershipStatus.Active,
-                MembershipLevelName  = sub?.MembershipLevel?.Name,
-                CurrentRankName      = cr?.RankDefinition?.Name,
-                RankDate             = cr?.AchievedAt,
-                LifetimeRankName     = lr?.RankDefinition?.Name,
-                NextRankPercent      = pct,
-                QualificationPoints  = stat?.PersonalPoints   ?? 0,
-                EnrollmentTeamPoints = stat?.EnrollmentPoints ?? 0,
-                LeftTeamPoints       = dual?.LeftLegPoints  ?? 0,
-                RightTeamPoints      = dual?.RightLegPoints ?? 0,
-                SuspensionDate       = sub?.HoldDate,
-                CancellationDate     = sub?.CancellationDate,
-                LastPaymentDate      = lastPaymentMap.TryGetValue(p.MemberId, out var d) ? d : null
-            };
-        }).ToList();
-
-        return new PagedResult<EnrollmentMyTeamMemberView>
-        {
-            Items = items, TotalCount = totalCount, Page = page, PageSize = pageSize
-        };
+            row.SponsorFullName      = sponsorName;
+            row.DualUplineMemberId   = dual?.ParentMemberId;
+            row.DualUplineFullName   = uplineName;
+            row.MembershipStatus     = sub?.SubscriptionStatus.ToString() ?? "None";
+            row.IsQualified          = sub?.SubscriptionStatus == MembershipStatus.Active;
+            row.MembershipLevelName  = sub?.MembershipLevel?.Name;
+            row.CurrentRankName      = cr?.RankDefinition?.Name;
+            row.RankDate             = cr?.AchievedAt;
+            row.LifetimeRankName     = lr?.RankDefinition?.Name;
+            row.NextRankPercent      = pct;
+            row.QualificationPoints  = stat?.PersonalPoints   ?? 0;
+            row.EnrollmentTeamPoints = stat?.EnrollmentPoints ?? 0;
+            row.LeftTeamPoints       = dual?.LeftLegPoints  ?? 0;
+            row.RightTeamPoints      = dual?.RightLegPoints ?? 0;
+            row.SuspensionDate       = sub?.HoldDate;
+            row.CancellationDate     = sub?.CancellationDate;
+            row.LastPaymentDate      = lastPaymentMap.TryGetValue(row.MemberId, out var d) ? d : null;
+        }
     }
 
     // ─── Branches ──────────────────────────────────────────────────────────
@@ -425,6 +491,17 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         };
     }
 
+    /// <summary>String DB columns the enrollment customers grid search box matches against.</summary>
+    private static readonly string[] CustomerSearchableFields =
+    {
+        nameof(EnrollmentCustomerView.MemberId),
+        nameof(EnrollmentCustomerView.FullName),
+        nameof(EnrollmentCustomerView.Email),
+        nameof(EnrollmentCustomerView.Phone),
+        nameof(EnrollmentCustomerView.Country),
+        nameof(EnrollmentCustomerView.AccountStatus),
+    };
+
     // ─── Customers ─────────────────────────────────────────────────────────
     public async Task<PagedResult<EnrollmentCustomerView>> GetCustomersAsync(
         string memberId, int page, int pageSize, string? search,
@@ -434,74 +511,103 @@ public class EnrollmentTeamService : IEnrollmentTeamService
             .FirstOrDefaultAsync(g => g.MemberId == memberId, ct);
         if (myNode is null) return new PagedResult<EnrollmentCustomerView>();
 
-        var pathPrefix = myNode.HierarchyPath;
-        var downlineIds = await _db.GenealogyTree.AsNoTracking()
-            .Where(g => g.HierarchyPath.StartsWith(pathPrefix))
-            .Select(g => g.MemberId).ToListAsync(ct);
-        if (!downlineIds.Any()) return new PagedResult<EnrollmentCustomerView>();
-
-        var query = _db.MemberProfiles.AsNoTracking()
-            .Where(m => downlineIds.Contains(m.MemberId)
-                     && m.MemberType == MemberType.ExternalMember);
-
+        var q = BuildCustomerQueryable(myNode.HierarchyPath);
         if (!string.IsNullOrWhiteSpace(search))
         {
             var s = search.ToLower();
-            query = query.Where(m =>
-                m.FirstName.ToLower().Contains(s) ||
-                m.LastName.ToLower().Contains(s)  ||
-                m.MemberId.ToLower().Contains(s));
+            q = q.Where(v => v.FullName.ToLower().Contains(s) || v.MemberId.ToLower().Contains(s));
         }
 
-        var totalCount = await query.CountAsync(ct);
-        var profiles = await query.OrderByDescending(m => m.EnrollDate)
+        var total = await q.CountAsync(ct);
+        var items = await q.OrderByDescending(v => v.EnrollDate)
             .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+        await EnrichCustomerPageAsync(items, ct);
 
-        var pageIds = profiles.Select(p => p.MemberId).ToList();
+        return new PagedResult<EnrollmentCustomerView>
+        {
+            Items = items, TotalCount = total, Page = page, PageSize = pageSize
+        };
+    }
+
+    /// <summary>
+    /// Server-side grid read over the viewer's external-member customers — DB-side
+    /// search/filter/sort/count/page on a light projection, page-only enrichment (was a
+    /// whole-subtree Contains(allIds) load + in-memory page).
+    /// </summary>
+    public async Task<PagedResult<EnrollmentCustomerView>> GetCustomersGridAsync(
+        string memberId, GridDataRequest request, CancellationToken ct = default)
+    {
+        var myNode = await _db.GenealogyTree.AsNoTracking()
+            .FirstOrDefaultAsync(g => g.MemberId == memberId, ct);
+        if (myNode is null) return new PagedResult<EnrollmentCustomerView>();
+
+        if (!request.Sorts.Any(s => CustomerSearchableFields.Contains(s.Field, StringComparer.OrdinalIgnoreCase)
+                                 || string.Equals(s.Field, nameof(EnrollmentCustomerView.EnrollDate), StringComparison.OrdinalIgnoreCase)))
+            request.Sorts.Add(new GridSort { Field = nameof(EnrollmentCustomerView.EnrollDate), Direction = "desc" });
+
+        var q      = BuildCustomerQueryable(myNode.HierarchyPath);
+        var result = await q.ToGridResultAsync(request, CustomerSearchableFields, ct: ct);
+        await EnrichCustomerPageAsync(result.Items, ct);
+        return result;
+    }
+
+    /// <summary>Light DB projection of the viewer's external-member customers (profile columns
+    /// only). Enriched columns (sponsor name, membership, points) filled per-page by
+    /// <see cref="EnrichCustomerPageAsync"/>.</summary>
+    private IQueryable<EnrollmentCustomerView> BuildCustomerQueryable(string pathPrefix)
+    {
+        return
+            from g in _db.GenealogyTree.AsNoTracking()
+            where g.HierarchyPath.StartsWith(pathPrefix)
+            join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
+            where m.MemberType == MemberType.ExternalMember
+            select new EnrollmentCustomerView
+            {
+                MemberId        = m.MemberId,
+                FullName        = m.FirstName + " " + m.LastName,
+                Email           = m.Email,
+                Phone           = m.Phone,
+                Country         = m.Country,
+                EnrollDate      = m.EnrollDate,
+                SponsorMemberId = m.SponsorMemberId,
+                AccountStatus   = m.Status.ToString()
+            };
+    }
+
+    private async Task EnrichCustomerPageAsync(
+        IEnumerable<EnrollmentCustomerView> items, CancellationToken ct)
+    {
+        var rows = items as IList<EnrollmentCustomerView> ?? items.ToList();
+        if (rows.Count == 0) return;
+        var ids = rows.Select(r => r.MemberId).ToList();
 
         var subs = await _db.MembershipSubscriptions.AsNoTracking()
             .Include(s => s.MembershipLevel)
-            .Where(s => pageIds.Contains(s.MemberId))
+            .Where(s => ids.Contains(s.MemberId))
             .OrderByDescending(s => s.StartDate).ToListAsync(ct);
         var subMap = subs.GroupBy(s => s.MemberId).ToDictionary(g => g.Key, g => g.First());
 
         var statsMap = await _db.MemberStatistics.AsNoTracking()
-            .Where(s => pageIds.Contains(s.MemberId))
+            .Where(s => ids.Contains(s.MemberId))
             .ToDictionaryAsync(s => s.MemberId, ct);
 
-        var sponsorIds = profiles.Where(p => p.SponsorMemberId != null)
-            .Select(p => p.SponsorMemberId!).Distinct().ToList();
+        var sponsorIds = rows.Where(r => r.SponsorMemberId != null)
+            .Select(r => r.SponsorMemberId!).Distinct().ToList();
         var nameMap = await _db.MemberProfiles.AsNoTracking()
             .Where(m => sponsorIds.Contains(m.MemberId))
             .Select(m => new { m.MemberId, FullName = m.FirstName + " " + m.LastName })
             .ToDictionaryAsync(m => m.MemberId, m => m.FullName, ct);
 
-        var items = profiles.Select(p =>
+        foreach (var row in rows)
         {
-            subMap.TryGetValue(p.MemberId, out var sub);
-            statsMap.TryGetValue(p.MemberId, out var stat);
-            nameMap.TryGetValue(p.SponsorMemberId ?? "", out var sponsorName);
-            return new EnrollmentCustomerView
-            {
-                MemberId         = p.MemberId,
-                FullName         = $"{p.FirstName} {p.LastName}",
-                Email            = p.Email,
-                Phone            = p.Phone,
-                Country          = p.Country,
-                EnrollDate       = p.EnrollDate,
-                SponsorMemberId  = p.SponsorMemberId,
-                SponsorFullName  = sponsorName,
-                AccountStatus    = p.Status.ToString(),
-                MembershipStatus = sub?.SubscriptionStatus.ToString() ?? "None",
-                MembershipLevel  = sub?.MembershipLevel?.Name,
-                PersonalPoints   = stat?.PersonalPoints ?? 0
-            };
-        }).ToList();
-
-        return new PagedResult<EnrollmentCustomerView>
-        {
-            Items = items, TotalCount = totalCount, Page = page, PageSize = pageSize
-        };
+            subMap.TryGetValue(row.MemberId, out var sub);
+            statsMap.TryGetValue(row.MemberId, out var stat);
+            nameMap.TryGetValue(row.SponsorMemberId ?? "", out var sponsorName);
+            row.SponsorFullName  = sponsorName;
+            row.MembershipStatus = sub?.SubscriptionStatus.ToString() ?? "None";
+            row.MembershipLevel  = sub?.MembershipLevel?.Name;
+            row.PersonalPoints   = stat?.PersonalPoints ?? 0;
+        }
     }
 
     // ─── Visualizer Stats ──────────────────────────────────────────────────
@@ -509,20 +615,22 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         string memberId, CancellationToken ct = default)
     {
         var pattern = "/" + memberId + "/";
-        var downlineMemberIds = await _db.GenealogyTree.AsNoTracking()
-            .Where(g => g.HierarchyPath.Contains(pattern))
-            .Select(g => g.MemberId).ToListAsync(ct);
-        if (!downlineMemberIds.Any()) return new EnrollmentVisualizerStatsView();
 
-        var statusCounts = await _db.MemberProfiles.AsNoTracking()
-            .Where(m => downlineMemberIds.Contains(m.MemberId))
-            .GroupBy(m => m.Status)
-            .Select(g => new { Status = g.Key, Count = g.Count() })
-            .ToListAsync(ct);
+        // Single grouped JOIN — count by status in SQL instead of pulling all 120k+ downline
+        // ids into memory and re-querying with Contains(allIds).
+        var statusCounts = await (
+            from g in _db.GenealogyTree.AsNoTracking()
+            where g.HierarchyPath.Contains(pattern)
+            join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
+            group m by m.Status into grp
+            select new { Status = grp.Key, Count = grp.Count() }
+        ).ToListAsync(ct);
+
+        if (statusCounts.Count == 0) return new EnrollmentVisualizerStatsView();
 
         return new EnrollmentVisualizerStatsView
         {
-            TotalMembers     = downlineMemberIds.Count,
+            TotalMembers     = statusCounts.Sum(x => x.Count),
             TotalQualified   = statusCounts.Where(x => x.Status == MemberAccountStatus.Active).Sum(x => x.Count),
             TotalUnqualified = statusCounts.Where(x => x.Status == MemberAccountStatus.Inactive
                                                     || x.Status == MemberAccountStatus.Suspended).Sum(x => x.Count),

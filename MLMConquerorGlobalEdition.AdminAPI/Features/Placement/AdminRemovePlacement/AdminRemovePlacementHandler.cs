@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Trees;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
@@ -13,18 +14,21 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Features.Placement.AdminRemovePlace
 /// </summary>
 public class AdminRemovePlacementHandler : IRequestHandler<AdminRemovePlacementCommand, Result<string>>
 {
-    private readonly AppDbContext        _db;
-    private readonly ICurrentUserService _currentUser;
-    private readonly IDateTimeProvider   _clock;
+    private readonly AppDbContext               _db;
+    private readonly ICurrentUserService        _currentUser;
+    private readonly IDateTimeProvider          _clock;
+    private readonly IDualTeamPointsRecalculator _legPoints;
 
     public AdminRemovePlacementHandler(
-        AppDbContext        db,
-        ICurrentUserService currentUser,
-        IDateTimeProvider   clock)
+        AppDbContext               db,
+        ICurrentUserService        currentUser,
+        IDateTimeProvider          clock,
+        IDualTeamPointsRecalculator legPoints)
     {
         _db          = db;
         _currentUser = currentUser;
         _clock       = clock;
+        _legPoints   = legPoints;
     }
 
     public async Task<Result<string>> Handle(AdminRemovePlacementCommand command, CancellationToken ct)
@@ -81,8 +85,12 @@ public class AdminRemovePlacementHandler : IRequestHandler<AdminRemovePlacementC
 
             await _db.SaveChangesAsync(ct);
 
+            // Sprint-15 follow-up — was a local CountSubtreeAsync that
+            // CountAsync'd nodes instead of summing PersonalPoints (wrong
+            // values). Delegate to the shared recalculator (single source of
+            // truth used by SignupAPI + BizCenter).
             if (!string.IsNullOrEmpty(parentId))
-                await RecalculateUplineStatsAsync(parentId, ct);
+                await _legPoints.RecalculateForUplinesAsync(parentId, ct);
 
             await tx.CommitAsync(ct);
 
@@ -93,40 +101,5 @@ public class AdminRemovePlacementHandler : IRequestHandler<AdminRemovePlacementC
             await tx.RollbackAsync(ct);
             throw;
         }
-    }
-
-    private async Task RecalculateUplineStatsAsync(string startMemberId, CancellationToken ct)
-    {
-        var current = startMemberId;
-        while (!string.IsNullOrEmpty(current))
-        {
-            var node = await _db.DualTeamTree
-                .FirstOrDefaultAsync(d => d.MemberId == current, ct);
-
-            if (node is null) break;
-
-            node.LeftLegPoints  = await CountSubtreeAsync(current, Domain.Enums.TreeSide.Left, ct);
-            node.RightLegPoints = await CountSubtreeAsync(current, Domain.Enums.TreeSide.Right, ct);
-            node.LastUpdateDate = _clock.Now;
-            node.LastUpdateBy   = "admin-system";
-
-            current = node.ParentMemberId;
-        }
-
-        await _db.SaveChangesAsync(ct);
-    }
-
-    private async Task<decimal> CountSubtreeAsync(
-        string parentMemberId, Domain.Enums.TreeSide side, CancellationToken ct)
-    {
-        var child = await _db.DualTeamTree
-            .AsNoTracking()
-            .FirstOrDefaultAsync(d => d.ParentMemberId == parentMemberId && d.Side == side, ct);
-
-        if (child is null) return 0m;
-
-        return await _db.DualTeamTree
-            .AsNoTracking()
-            .CountAsync(d => d.HierarchyPath.StartsWith(child.HierarchyPath), ct);
     }
 }

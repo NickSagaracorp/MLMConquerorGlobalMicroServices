@@ -12,7 +12,9 @@ public class CurrentUserService : ICurrentUserService
     private ClaimsPrincipal? User => _httpContextAccessor.HttpContext?.User;
 
     public string UserId => User?.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
-    public string MemberId => User?.FindFirstValue("MemberId") ?? string.Empty;
+    // JWT claim name is "memberId" (lowercase) — emitted by SignupAPI.JwtService
+    // and used by every other service's CurrentUserService.
+    public string MemberId => User?.FindFirstValue("memberId") ?? string.Empty;
     public string Email => User?.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
     public bool IsAdmin => User?.IsInRole("Admin") ?? false;
     public IEnumerable<string> Roles => User?.FindAll(ClaimTypes.Role).Select(c => c.Value) ?? Enumerable.Empty<string>();

@@ -1,14 +1,17 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Identity;
+using MLMConquerorGlobalEdition.Repository.Jobs;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Commands.CompleteSignup;
+using MLMConquerorGlobalEdition.SignupAPI.Jobs;
 using MLMConquerorGlobalEdition.SignupAPI.Services;
 using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
 
@@ -98,7 +101,7 @@ public class SignupRankInputsTests
     {
         var m = new Mock<ITokenRedemptionService>();
         m.Setup(s => s.RedeemForSignupAsync(
-                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
                 It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<DateTime>(),
                 It.IsAny<CancellationToken>()))
          .ReturnsAsync(MLMConquerorGlobalEdition.SharedKernel.Result<bool>.Success(true));
@@ -333,11 +336,19 @@ public class SignupRankInputsTests
         var result = await handler.Handle(
             new CompleteSignupCommand(orderId, BuildRequest()), CancellationToken.None);
 
+        // Sprint-16 — ancestor propagation is now eventual-consistency. The handler
+        // enqueues MemberStatisticDelta rows and ApplyMemberStatisticDeltasJob rolls
+        // them up on its cadence. To assert the rank-engine input contract is still
+        // honoured end-to-end, we drain the queue inline.
+        var applyJob = new ApplyMemberStatisticDeltasJob(
+            db, BuildDateTimeMock().Object, NullLogger<ApplyMemberStatisticDeltasJob>.Instance);
+        await applyJob.ExecuteAsync(CancellationToken.None);
+
         // Assert — handler succeeded
         result.IsSuccess.Should().BeTrue(
             because: "all required data is present and the signup is valid");
 
-        // N's own stats are seeded with its own QualificationPoins
+        // N's own stats are seeded INLINE (no race because the new member doesn't exist anywhere else)
         var nStats = await db.MemberStatistics.FirstOrDefaultAsync(s => s.MemberId == nId);
         nStats.Should().NotBeNull(because: "CompleteSignupHandler must create a stat row for the new member");
         nStats!.PersonalPoints.Should().Be(qualPoints,
@@ -345,14 +356,14 @@ public class SignupRankInputsTests
         nStats.EnrollmentPoints.Should().Be(qualPoints,
             because: "a new leaf member's EnrollmentPoints seed equals its own PersonalPoints");
 
-        // S (direct sponsor) gets +qualPoints
+        // S (direct sponsor) gets +qualPoints AFTER the delta-apply job runs.
         // The handler loads the SPONSOR'S GenealogyEntity (sGeneNode) whose
         // HierarchyPath="/{gId}/{sId}/", which ParseHierarchyPath splits into [gId, sId].
-        // Both G and S are therefore in the ancestor list.
+        // Both G and S are therefore in the ancestor list — both got a delta row.
         var sStatsAfter = await db.MemberStatistics.FirstOrDefaultAsync(s => s.MemberId == sId);
         sStatsAfter.Should().NotBeNull();
         sStatsAfter!.EnrollmentPoints.Should().Be(sStartPoints + qualPoints,
-            because: "the direct sponsor S must have its EnrollmentPoints incremented by N's qualification points");
+            because: "the direct sponsor S must have its EnrollmentPoints incremented by N's qualification points (post-drain)");
 
         // G (grandparent) also gets +qualPoints — the WHOLE upline is walked, not just the direct sponsor
         var gStatsAfter = await db.MemberStatistics.FirstOrDefaultAsync(s => s.MemberId == gId);

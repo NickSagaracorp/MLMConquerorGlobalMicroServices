@@ -185,8 +185,10 @@ public class ValidateTokenHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenOwnerIsNotSponsor_ReturnsGenericMessage()
+    public async Task Handle_WhenOwnerIsNotSponsor_StillValid()
     {
+        // Token ownership is decoupled from the sponsor — a code shared down the
+        // owner's downline validates for a signup that is not placed under the owner.
         await using var db = await SeedAsync(ownerId: OtherMember);
         var handler = MakeHandler(db);
 
@@ -197,8 +199,8 @@ public class ValidateTokenHandlerTests
             SelectedProductIds   = new List<string> { VipId }
         }), CancellationToken.None);
 
-        result.Value!.Valid.Should().BeFalse();
-        result.Value.Message.Should().Be("This token is not valid for this signup.");
+        result.Value!.Valid.Should().BeTrue();
+        result.Value.Message.Should().Be("Token is valid.");
     }
 
     [Fact]

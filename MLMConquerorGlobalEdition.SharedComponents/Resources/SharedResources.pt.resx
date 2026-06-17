@@ -653,6 +653,7 @@
   <data name="Team.LegLeft" xml:space="preserve"><value>Esquerda</value></data>
   <data name="Team.LegRight" xml:space="preserve"><value>Direita</value></data>
   <data name="Team.NoCandidatesAvailable" xml:space="preserve"><value>Não há embaixadores disponíveis para placement.</value></data>
+  <data name="Team.SearchCandidatesPlaceholder" xml:space="preserve"><value>Pesquisar por nome ou id de membro…</value></data>
   <data name="Team.PlacementConfirmation" xml:space="preserve"><value>Confirmação de Placement</value></data>
   <data name="Team.AmbassadorLabel" xml:space="preserve"><value>Embaixador:</value></data>
   <data name="Team.UnderLabel" xml:space="preserve"><value>Sob:</value></data>
@@ -696,6 +697,7 @@
   <data name="Team.EligibleNextRank" xml:space="preserve"><value>Elegíveis (Próximo Rango)</value></data>
   <data name="Team.TotalRaw" xml:space="preserve"><value>Total Bruto</value></data>
   <data name="Team.PointsTowardNext" xml:space="preserve"><value>{0} / {1} pontos para {2}</value></data>
+  <data name="Team.LegPointsTowardNext" xml:space="preserve"><value>{0} pts para {1}</value></data>
   <data name="Team.DtRequirementNotApplicable" xml:space="preserve"><value>Requisito DT: N/A para {0}</value></data>
   <data name="Team.EtRequirementNotApplicable" xml:space="preserve"><value>Requisito ET: N/A para {0}</value></data>
   <data name="Team.DailyResidualsEarning" xml:space="preserve"><value>Ganhos Residuais Diários</value></data>

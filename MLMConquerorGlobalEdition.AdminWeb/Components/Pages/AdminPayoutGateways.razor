@@ -1,0 +1,231 @@
+@page "/admin/billing/payout-gateways"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin,BillingManager")]
+@inject HttpClient Http
+
+<PageTitle>Payout Gateways — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Billing"), new("Payout Gateways") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-bank-card-2-line me-2 text-primary"></i>Payout Gateway Catalog
+        </h6>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync"><i class="ri-refresh-line"></i></button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="PayoutGatewayDto" DataSource="@_items"
+                    AllowPaging="true" AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridPageSettings PageSize="25" PageSizes="@(new int[]{25,50,100})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn Field="@nameof(PayoutGatewayDto.DisplayName)" HeaderText="Display Name" Width="200">
+                        <Template><span class="fw-semibold">@(((PayoutGatewayDto)context).DisplayName)</span></Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(PayoutGatewayDto.WalletType)" HeaderText="Wallet Type" Width="160">
+                        <Template><code class="text-primary">@(((PayoutGatewayDto)context).WalletType)</code></Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(PayoutGatewayDto.MinimumPayoutAmount)" HeaderText="Minimum payout" Width="150" TextAlign="TextAlign.Right">
+                        <Template><span>@(((PayoutGatewayDto)context).MinimumPayoutAmount.ToString("C"))</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Admin fee" Width="170">
+                        <Template>@AdminFeeLabel((PayoutGatewayDto)context)</Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(PayoutGatewayDto.Currency)" HeaderText="Currency" Width="110" TextAlign="TextAlign.Center">
+                        <Template><span class="small">@(((PayoutGatewayDto)context).Currency)</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Status" Width="110" TextAlign="TextAlign.Center">
+                        <Template><span class="badge @BoolBadge(((PayoutGatewayDto)context).IsActive)">@(((PayoutGatewayDto)context).IsActive ? "Active" : "Inactive")</span></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="100" TextAlign="TextAlign.Center">
+                        <Template>
+                            <button class="btn btn-sm btn-outline-primary py-0" @onclick="() => OpenEdit((PayoutGatewayDto)context)"><i class="ri-edit-line"></i></button>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+@if (_showForm && _editItem is not null)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold">Edit Payout Gateway — @_editItem.WalletType</h5>
+                    <button type="button" class="btn-close" @onclick="CloseForm"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Display Name</label>
+                            <input class="form-control" @bind="_form.DisplayName" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Minimum payout amount</label>
+                            <input type="number" step="0.01" min="0" class="form-control" @bind="_form.MinimumPayoutAmount" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Currency</label>
+                            <input class="form-control" @bind="_form.Currency" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Admin fee</label>
+                            <input type="number" step="0.01" min="0" class="form-control" @bind="_form.AdminFee" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Admin fee kind</label>
+                            <select class="form-select" @bind="_form.AdminFeeKind">
+                                <option value="Fixed">Fixed</option>
+                                <option value="Percentage">Percentage</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Min admin fee (optional)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" @bind="_form.MinAdminFee"
+                                   placeholder="@(_form.AdminFeeKind == "Percentage" ? "Floor for percentage fee" : "Leave blank for fixed")" />
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="pgActive" @bind="_form.IsActive" />
+                                <label class="form-check-label" for="pgActive">Active (available for payouts)</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                    <button class="btn btn-primary" @onclick="Save" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<PayoutGatewayDto> _items = new();
+    private bool _loading = true;
+    private bool _saving;
+    private string? _alertMsg;
+    private bool _alertIsError;
+    private bool _showForm;
+    private PayoutGatewayDto? _editItem;
+    private GatewayFormModel _form = new();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<IEnumerable<PayoutGatewayDto>>>("api/v1/admin/payout-gateways");
+            if (resp?.Success == true && resp.Data is not null)
+                _items = resp.Data.ToList();
+            else { _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load payout gateways."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private void OpenEdit(PayoutGatewayDto g)
+    {
+        _editItem = g;
+        _form = new GatewayFormModel
+        {
+            DisplayName = g.DisplayName,
+            MinimumPayoutAmount = g.MinimumPayoutAmount,
+            AdminFee = g.AdminFee,
+            AdminFeeKind = g.AdminFeeKind,
+            MinAdminFee = g.MinAdminFee,
+            Currency = g.Currency,
+            IsActive = g.IsActive
+        };
+        _showForm = true;
+    }
+
+    private void CloseForm() { _showForm = false; _editItem = null; }
+
+    private async Task Save()
+    {
+        if (_editItem is null) return;
+        _saving = true;
+        try
+        {
+            // walletType in the route is the enum NAME (e.g. "eWallet"); enums round-trip
+            // as names on the wire per JsonStringEnumConverter.
+            var response = await Http.PutAsJsonAsync($"api/v1/admin/payout-gateways/{_editItem.WalletType}", new
+            {
+                _form.DisplayName,
+                _form.AdminFee,
+                _form.AdminFeeKind,
+                _form.MinAdminFee,
+                _form.Currency,
+                _form.MinimumPayoutAmount,
+                _form.IsActive
+            });
+            if (response.IsSuccessStatusCode) { _alertMsg = "Payout gateway updated."; _alertIsError = false; CloseForm(); await LoadAsync(); }
+            else { _alertMsg = $"Save failed ({response.StatusCode})."; _alertIsError = true; }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    // Fixed: "$5.00". Percentage: "2% (min $6.95)" using MinAdminFee when present.
+    private static string AdminFeeLabel(PayoutGatewayDto g)
+    {
+        if (string.Equals(g.AdminFeeKind, "Percentage", StringComparison.OrdinalIgnoreCase))
+        {
+            var pct = $"{g.AdminFee:0.##}%";
+            return g.MinAdminFee is > 0 ? $"{pct} (min {g.MinAdminFee.Value.ToString("C")})" : pct;
+        }
+        return g.AdminFee.ToString("C");
+    }
+
+    private static string BoolBadge(bool val) => val ? "bg-success" : "bg-secondary";
+
+    private class GatewayFormModel
+    {
+        public string DisplayName { get; set; } = string.Empty;
+        public decimal MinimumPayoutAmount { get; set; }
+        public decimal AdminFee { get; set; }
+        public string AdminFeeKind { get; set; } = "Fixed";
+        public decimal? MinAdminFee { get; set; }
+        public string Currency { get; set; } = string.Empty;
+        public bool IsActive { get; set; }
+    }
+
+    // WalletType / AdminFeeKind come back as enum NAMES (JsonStringEnumConverter), e.g. "eWallet", "Percentage".
+    private record PayoutGatewayDto(
+        int Id,
+        string WalletType,
+        string DisplayName,
+        string? Description,
+        decimal AdminFee,
+        string AdminFeeKind,
+        decimal? MinAdminFee,
+        string Currency,
+        decimal MinimumPayoutAmount,
+        bool IsActive);
+
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+}

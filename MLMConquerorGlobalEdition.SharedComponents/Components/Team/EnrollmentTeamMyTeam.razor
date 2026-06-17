@@ -3,11 +3,16 @@
 @inject NavigationManager Nav
 @inject IStringLocalizer<SharedResources> L
 
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.Extensions.Localization
 @using MLMConquerorGlobalEdition.SharedComponents.Resources
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Grid
+@using Syncfusion.Blazor
 @using Syncfusion.Blazor.Grids
 @using Syncfusion.Blazor.Calendars
 @using Syncfusion.Blazor.Inputs
+@using Syncfusion.Blazor.Data
 
 @if (ShowBreadcrumb) { <BreadcrumbNav Items="@_breadcrumb" /> }
 
@@ -21,11 +26,6 @@
                                @bind-Value="_search"
                                CssClass="form-control form-control-sm" />
                 </div>
-                <SfDateRangePicker TValue="DateTime?" Placeholder="@L["Team.JoinDateRange"]"
-                                   CssClass="form-control form-control-sm"
-                                   Style="min-width:220px"
-                                   @bind-StartDate="_from"
-                                   @bind-EndDate="_to" />
                 <button class="btn btn-primary btn-sm" @onclick="SearchAsync">
                     <i class="ri-search-line me-1"></i>@L["Common.Search"]
                 </button>
@@ -33,26 +33,25 @@
                     <i class="ri-refresh-line"></i>
                 </button>
             </div>
-            <small class="text-muted">@_totalCount @L["Common.Members"]</small>
         </div>
 
-        @if (_isLoading)
-        {
-            <LoadingSpinner IsLoading="true" />
-        }
-        else if (_error is not null)
-        {
-            <div class="alert alert-danger m-3">@_error</div>
-        }
-        else
-        {
-            <SfGrid TValue="EnrollmentMyTeamMemberDto" DataSource="@_items"
-                    AllowPaging="true" AllowSorting="true" AllowResizing="true"
-                    AllowFiltering="true" GridLines="GridLine.Horizontal">
-                <GridEvents TValue="EnrollmentMyTeamMemberDto" RowSelected="OnRowSelected" />
-                <GridPageSettings PageSize="20" PageSizes="@(new int[]{20,50,100})" />
-                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
-                <GridColumns>
+        @* Server-side grid: search / column filters / sort / paging ALL travel  *@
+        @* to the server via ServerGridAdaptor, so they span EVERY member — not   *@
+        @* just the current page. Filter by join date via the EnrollDate Excel    *@
+        @* column filter (the previous date-range picker is no longer needed).    *@
+        <SfGrid TValue="EnrollmentMyTeamMemberDto" @ref="_grid"
+                AllowPaging="true" AllowSorting="true" AllowResizing="true"
+                AllowFiltering="true" GridLines="GridLine.Horizontal">
+            <SfDataManager Adaptor="Adaptors.CustomAdaptor">
+                <ServerGridAdaptor TValue="EnrollmentMyTeamMemberDto"
+                                   Http="Http"
+                                   Endpoint="@($"{ApiBaseUrl}/my-team/grid")"
+                                   AccessTokenProvider="GetTokenAsync" />
+            </SfDataManager>
+            <GridEvents TValue="EnrollmentMyTeamMemberDto" RowSelected="OnRowSelected" />
+            <GridPageSettings PageSize="20" PageSizes="@(new int[]{20,50,100})" />
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+            <GridColumns>
 
                     <GridColumn Field="@nameof(EnrollmentMyTeamMemberDto.EnrollDate)"
                                 HeaderText="@L["Reports.JoinDate"]" Width="115" TextAlign="TextAlign.Center"
@@ -259,7 +258,6 @@
 
                 </GridColumns>
             </SfGrid>
-        }
     </div>
 </div>
 
@@ -382,16 +380,22 @@
     [Parameter] public string ApiBaseUrl     { get; set; } = "api/v1/bizcenter/team/enrollment";
     [Parameter] public bool   ShowBreadcrumb { get; set; } = true;
 
-    private bool   _isLoading  = true;
-    private string? _error;
-    private int    _totalCount;
+    private SfGrid<EnrollmentMyTeamMemberDto>? _grid;
     private EnrollmentMyTeamMemberDto? _selected;
-    private int    _page       = 1;
-    private const int PageSize = 20;
     private string? _search;
-    private DateTime? _from;
-    private DateTime? _to;
-    private List<EnrollmentMyTeamMemberDto> _items = new();
+
+    // JWT lives as an "access_token" claim on the ClaimsPrincipal. Resolved from the cascading
+    // AuthenticationState (reliable inside Syncfusion's ReadAsync context) and handed to the
+    // adaptor so it attaches Authorization: Bearer per request — sidestepping the 401 seen when
+    // the host's auth DelegatingHandler provider fallback returns no token in this context.
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private async Task<string?> GetTokenAsync()
+    {
+        if (AuthState is null) return null;
+        var state = await AuthState;
+        return state.User.FindFirstValue("access_token");
+    }
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
@@ -400,47 +404,25 @@
         new(L["Sidebar.MyTeam"])
     };
 
-    protected override async Task OnParametersSetAsync()
-    {
-        if (!string.IsNullOrEmpty(MemberProfileId))
-            await LoadAsync(1);
-    }
-
     private void OnRowSelected(RowSelectEventArgs<EnrollmentMyTeamMemberDto> args)
         => _selected = args.Data;
 
-    private async Task SearchAsync() => await LoadAsync(1);
+    /// <summary>
+    /// "Search" button. Drives Syncfusion's built-in search, which fires a server read
+    /// with the term in <c>dm.Search</c>; the adaptor maps it to <c>GridDataRequest.Search</c>,
+    /// so it spans every member rather than just the current page.
+    /// </summary>
+    private async Task SearchAsync()
+    {
+        if (_grid is not null) await _grid.SearchAsync(_search ?? string.Empty);
+    }
 
+    /// <summary>"Clear" — reset the search box and re-read the grid.</summary>
     private async Task ClearAsync()
     {
-        _search = null; _from = null; _to = null;
-        await LoadAsync(1);
+        _search = null;
+        if (_grid is not null) await _grid.SearchAsync(string.Empty);
     }
-
-    private async Task LoadAsync(int page)
-    {
-        _page = page; _isLoading = true; _error = null; StateHasChanged();
-        try
-        {
-            var url = $"{ApiBaseUrl}/my-team?page={page}&pageSize={PageSize}";
-            if (!string.IsNullOrWhiteSpace(_search)) url += $"&search={Uri.EscapeDataString(_search)}";
-            if (_from.HasValue)  url += $"&from={_from.Value:yyyy-MM-dd}";
-            if (_to.HasValue)    url += $"&to={_to.Value:yyyy-MM-dd}";
-
-            var resp = await Http.GetFromJsonAsync<ApiResp<PagedData<EnrollmentMyTeamMemberDto>>>(url);
-            if (resp?.Success == true && resp.Data is not null)
-            {
-                _items      = resp.Data.Items;
-                _totalCount = resp.Data.TotalCount;
-            }
-            else { _error = resp?.Errors?.FirstOrDefault() ?? L["Team.LoadFailedTeam"]; }
-        }
-        catch (Exception ex) { _error = $"{L["Team.ApiErrorPrefix"]} {ex.Message}"; }
-        finally { _isLoading = false; }
-    }
-
-    private class ApiResp<T>  { public bool Success { get; set; } public T? Data { get; set; } public IEnumerable<string>? Errors { get; set; } }
-    private class PagedData<T>{ public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
 
     public class EnrollmentMyTeamMemberDto
     {

@@ -1487,7 +1487,7 @@
                 {
                     var api  = HttpFactory.CreateClient("SignupsInternal");
                     var resp = await api.PostAsJsonAsync("api/v1/signups/validate-replicate-site",
-                        new { ReplicateSiteSlug = clean });
+                        new { Slug = clean });
                     var b = await resp.Content.ReadFromJsonAsync<ApiWrapper<bool>>();
                     if (b?.Success == true)
                     { _slugStatusMsg = "✓ Available"; _slugStatusClass = "slug-ok"; }
@@ -1625,7 +1625,7 @@
                 WhatsApp             = string.IsNullOrWhiteSpace(_whatsApp) ? null : $"{_waCountryCode}{_whatsApp}",
                 BusinessName         = _showBusiness ? _businessName : null,
                 ShowBusinessName     = _showBusiness && !string.IsNullOrWhiteSpace(_businessName),
-                Country              = _country,
+                Country              = _countryIso2,
                 State                = _province,
                 City                 = _city,
                 Address              = _address,

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.Repository.Services.Teams;
 using MLMConquerorGlobalEdition.SharedKernel;
 
@@ -36,6 +37,18 @@ public class AdminMemberEnrollmentController : ControllerBase
         return Ok(ApiResponse<PagedResult<EnrollmentMyTeamMemberView>>.Ok(result));
     }
 
+    /// <summary>POST .../team/enrollment/my-team/grid — server-side grid read
+    /// (search · filter · sort · page) over the member's whole enrollment downline.</summary>
+    [HttpPost("my-team/grid")]
+    public async Task<IActionResult> GetMyTeamGrid(
+        string memberId,
+        [FromBody] GridDataRequest request,
+        CancellationToken ct = default)
+    {
+        var result = await _service.GetMyTeamGridAsync(memberId, request, ct);
+        return Ok(ApiResponse<PagedResult<EnrollmentMyTeamMemberView>>.Ok(result));
+    }
+
     [HttpGet("branches")]
     public async Task<IActionResult> GetBranches(
         string memberId,
@@ -65,6 +78,18 @@ public class AdminMemberEnrollmentController : ControllerBase
         CancellationToken ct = default)
     {
         var result = await _service.GetCustomersAsync(memberId, page, pageSize, search, ct);
+        return Ok(ApiResponse<PagedResult<EnrollmentCustomerView>>.Ok(result));
+    }
+
+    /// <summary>POST .../team/enrollment/customers/grid — server-side grid read
+    /// over all customers in the member's enrollment downline.</summary>
+    [HttpPost("customers/grid")]
+    public async Task<IActionResult> GetCustomersGrid(
+        string memberId,
+        [FromBody] GridDataRequest request,
+        CancellationToken ct = default)
+    {
+        var result = await _service.GetCustomersGridAsync(memberId, request, ct);
         return Ok(ApiResponse<PagedResult<EnrollmentCustomerView>>.Ok(result));
     }
 

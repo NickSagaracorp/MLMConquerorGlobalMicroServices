@@ -1,0 +1,2 @@
+﻿# Generated 
+# bucket|slug|EP|ETSize|DTL|DTR|DirectSponsored|MemberId|currentRank=0(Lifestyle)

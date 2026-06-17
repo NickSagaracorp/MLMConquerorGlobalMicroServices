@@ -57,7 +57,8 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
         {
             sponsorMemberId = await _db.MemberProfiles
                 .AsNoTracking()
-                .Where(x => x.ReplicateSiteSlug == req.SponsorReplicateSite
+                .Where(x => (x.ReplicateSiteSlug == req.SponsorReplicateSite ||
+                             x.MemberId == req.SponsorReplicateSite)
                          && x.Status == MemberAccountStatus.Active)
                 .Select(x => x.MemberId)
                 .FirstOrDefaultAsync(ct);
@@ -74,7 +75,23 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
             return Result<SignupResponse>.Failure(
                 "MEMBERSHIP_LEVEL_NOT_FOUND", "The selected membership level is invalid or inactive.");
 
-        var memberId = $"MBR-{Random.Shared.Next(1, 999999):D6}";
+        // Build + save inside a retry loop. The old blind Random MBR-###### had no uniqueness
+        // check, so concurrent (or, as the MBR space fills, even single) signups collided on
+        // AK_MemberProfiles_MemberId. GenerateUniqueMemberIdAsync probes for a free id; the
+        // unique index is the backstop for the rare concurrent race, in which case we clear the
+        // rejected batch and rebuild with a fresh id. Single SaveChanges = no orphan rows.
+        string memberId;
+        string orderId;
+        GenealogyEntity? sponsorNode = null;
+        for (var idAttempt = 0; ; idAttempt++)
+        {
+        var candidateId = await GenerateUniqueMemberIdAsync(ct);
+        if (candidateId is null)
+            return Result<SignupResponse>.Failure(
+                "MEMBER_ID_EXHAUSTED", "Could not allocate a unique member id. The MBR-###### space is saturated.");
+        memberId = candidateId;
+        try
+        {
 
         var member = new MemberProfile
         {
@@ -98,7 +115,7 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
             LastUpdateDate  = now
         };
 
-        var orderId = Guid.NewGuid().ToString();
+        orderId = Guid.NewGuid().ToString();
         string orderNo;
         do { orderNo = OrderNumberHelper.Generate(membershipLevel.Name, now); }
         while (await _db.Orders.AnyAsync(o => o.OrderNo == orderNo, ct));
@@ -136,7 +153,7 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
 
         order.MembershipSubscriptionId = subscriptionId;
 
-        GenealogyEntity? sponsorNode = null;
+        sponsorNode = null;
         if (!string.IsNullOrEmpty(sponsorMemberId))
         {
             sponsorNode = await _db.GenealogyTree
@@ -182,7 +199,15 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
             }
         }
 
-        await _db.SaveChangesAsync(ct);
+            await _db.SaveChangesAsync(ct);
+            break; // saved cleanly
+        }
+        catch (DbUpdateException ex) when (IsDuplicateMemberIdViolation(ex) && idAttempt < 5)
+        {
+            // Concurrent MemberId collision — drop the rejected batch and rebuild with a fresh id.
+            _db.ChangeTracker.Clear();
+        }
+        }
 
         // Notify all uplines in the enrollment tree (genealogy)
         if (sponsorNode is not null)
@@ -233,5 +258,25 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
             MemberType = nameof(MemberType.ExternalMember),
             EnrollDate = now
         });
+    }
+
+    /// <summary>True when a save failed specifically because the MemberId unique index rejected
+    /// a concurrent duplicate (so the caller can retry with a fresh id).</summary>
+    private static bool IsDuplicateMemberIdViolation(DbUpdateException ex)
+        => ex.InnerException?.Message is { } m
+           && m.Contains("AK_MemberProfiles_MemberId", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Allocate an MBR-###### id that is not already taken (see the AMB equivalent in
+    /// SignupAmbassadorHandler for the full rationale). Returns null only if the space is full.</summary>
+    private async Task<string?> GenerateUniqueMemberIdAsync(CancellationToken ct)
+    {
+        const int maxAttempts = 100;
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            var candidate = $"MBR-{Random.Shared.Next(1, 1_000_000):D6}";
+            if (!await _db.MemberProfiles.AsNoTracking().AnyAsync(x => x.MemberId == candidate, ct))
+                return candidate;
+        }
+        return null;
     }
 }

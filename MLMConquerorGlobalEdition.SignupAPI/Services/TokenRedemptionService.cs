@@ -23,7 +23,6 @@ public class TokenRedemptionService : ITokenRedemptionService
 
     public async Task<Result<bool>> RedeemForSignupAsync(
         string tokenCode,
-        string sponsorMemberId,
         string newMemberId,
         string orderId,
         IReadOnlyCollection<string> selectedProductIds,
@@ -31,8 +30,6 @@ public class TokenRedemptionService : ITokenRedemptionService
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(tokenCode))
-            return Result<bool>.Failure("TOKEN_NOT_VALID", GenericMessage);
-        if (string.IsNullOrWhiteSpace(sponsorMemberId))
             return Result<bool>.Failure("TOKEN_NOT_VALID", GenericMessage);
 
         var code = tokenCode.Trim().ToUpperInvariant();
@@ -67,7 +64,7 @@ public class TokenRedemptionService : ITokenRedemptionService
         {
             TokenInstanceSignupValidator.Validate(
                 instance, tokenType, grantedLinks,
-                sponsorMemberId, selectedProductIds, now);
+                selectedProductIds, now);
         }
         catch (TokenProductMismatchException)
         {

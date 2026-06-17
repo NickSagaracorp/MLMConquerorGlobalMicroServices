@@ -1,3 +1,4 @@
+using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
@@ -14,6 +15,10 @@ public interface IEnrollmentTeamService
         string? search, DateTime? from, DateTime? to,
         CancellationToken ct = default);
 
+    /// <summary>Server-side grid read over the viewer's whole enrollment downline.</summary>
+    Task<PagedResult<EnrollmentMyTeamMemberView>> GetMyTeamGridAsync(
+        string memberId, GridDataRequest request, CancellationToken ct = default);
+
     Task<EnrollmentBranchesView> GetBranchesAsync(
         string memberId, int page, int pageSize, string? search,
         CancellationToken ct = default);
@@ -24,6 +29,10 @@ public interface IEnrollmentTeamService
     Task<PagedResult<EnrollmentCustomerView>> GetCustomersAsync(
         string memberId, int page, int pageSize, string? search,
         CancellationToken ct = default);
+
+    /// <summary>Server-side grid read over all customers in the viewer's enrollment downline.</summary>
+    Task<PagedResult<EnrollmentCustomerView>> GetCustomersGridAsync(
+        string memberId, GridDataRequest request, CancellationToken ct = default);
 
     Task<EnrollmentVisualizerStatsView> GetVisualizerStatsAsync(
         string memberId, CancellationToken ct = default);

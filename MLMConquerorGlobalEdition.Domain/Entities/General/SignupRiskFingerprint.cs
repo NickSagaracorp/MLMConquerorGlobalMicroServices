@@ -43,4 +43,16 @@ public class SignupRiskFingerprint : AuditChangesLongKey
 
     /// <summary>Reason for flagging, e.g. "DUP_VISITOR_3_IN_24H".</summary>
     public string? FlagReason { get; set; }
+
+    /// <summary>True when admin has manually cleared this row so it no longer counts toward the duplicate threshold.</summary>
+    public bool Cleared { get; set; }
+
+    /// <summary>Timestamp when admin cleared this row.</summary>
+    public DateTime? ClearedAt { get; set; }
+
+    /// <summary>Admin UserId that cleared this row (sourced from ICurrentUserService).</summary>
+    public string? ClearedBy { get; set; }
+
+    /// <summary>Free-text reason given by the admin (e.g. "Confirmed legitimate user — duplicate due to network retries").</summary>
+    public string? ClearReason { get; set; }
 }

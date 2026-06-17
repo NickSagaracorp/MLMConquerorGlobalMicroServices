@@ -40,6 +40,16 @@ public static class CacheKeys
         => $"admin:members:p{page}:s{pageSize}:f{filterFingerprint}";
 
     /// <summary>
+    /// Top-of-page Members stat row (Active / NewSignups24h / Cancellations24h /
+    /// Placements24h). Four COUNT queries against MemberProfile / DualTeamTree /
+    /// MemberStatusHistory — cheap individually but rendered on every page load
+    /// of the admin members grid. ~30s TTL is short enough that a refresh
+    /// button reflects new signups within a heartbeat while still absorbing
+    /// rapid page-back navigation.
+    /// </summary>
+    public const string AdminMemberStats = "admin:member-stats";
+
+    /// <summary>
     /// CEO / executive dashboard snapshot. The dashboard handler runs ~30 DB
     /// queries (counts, sums, group-bys) — perfect cache candidate. TTL is
     /// short so freshly-billed orders still surface within minutes.
@@ -60,6 +70,7 @@ public static class CacheKeys
     public static readonly TimeSpan DualTeamMyTeamTtl      = TimeSpan.FromMinutes(5);
     public static readonly TimeSpan DualTreeStatsTtl       = TimeSpan.FromMinutes(2);
     public static readonly TimeSpan AdminMembersTtl        = TimeSpan.FromMinutes(2);
+    public static readonly TimeSpan AdminMemberStatsTtl    = TimeSpan.FromSeconds(30);
     public static readonly TimeSpan AdminCeoDashboardTtl       = TimeSpan.FromMinutes(3);
     public static readonly TimeSpan AdminFinancialDashboardTtl = TimeSpan.FromMinutes(3);
     public static readonly TimeSpan AdminGrowthDashboardTtl    = TimeSpan.FromMinutes(3);

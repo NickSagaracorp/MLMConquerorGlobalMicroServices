@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Teams;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Jobs;
@@ -48,9 +49,10 @@ public class AutoPlacementJob
     public async Task<int> ExecuteAsync(bool ignoreWindow)
     {
         using var scope = _scopeFactory.CreateScope();
-        var db    = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var clock = scope.ServiceProvider.GetRequiredService<IDateTimeProvider>();
-        var now   = clock.Now;
+        var db        = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var clock     = scope.ServiceProvider.GetRequiredService<IDateTimeProvider>();
+        var placement = scope.ServiceProvider.GetRequiredService<IPlacementService>();
+        var now       = clock.Now;
 
         // Members whose placement window has expired and are still unplaced
         var windowCutoff = now.AddDays(-PlacementWindowDays);
@@ -62,269 +64,32 @@ public class AutoPlacementJob
         if (!ignoreWindow)
             unplacedQuery = unplacedQuery.Where(m => m.EnrollDate <= windowCutoff);
 
-        var unplaced = await unplacedQuery.ToListAsync();
+        // Exclude members already in the dual tree.
+        var unplaced = await unplacedQuery
+            .Where(m => !db.DualTeamTree.Any(d => d.MemberId == m.MemberId))
+            .Select(m => new { m.MemberId, m.SponsorMemberId })
+            .ToListAsync();
 
-        if (!unplaced.Any())
+        if (unplaced.Count == 0)
         {
             _logger.LogInformation("AutoPlacementJob: no unplaced members found at {Now}", now);
             return 0;
         }
 
-        // Exclude members already in the dual tree
-        var alreadyPlaced = await db.DualTeamTree
-            .AsNoTracking()
-            .Select(d => d.MemberId)
-            .ToListAsync();
+        // Single placement authority: deepest-chain spillover, idempotent + concurrency-safe,
+        // O(1) slot finding via the frontier cache, and one deferred incremental leg-point pass.
+        var pairs = unplaced.Select(m => (m.MemberId, m.SponsorMemberId!)).ToList();
+        var result = await placement.PlaceBulkAsync(pairs);
 
-        var alreadyPlacedSet = new HashSet<string>(alreadyPlaced);
-
-        var toAutoPlace = unplaced
-            .Where(m => !alreadyPlacedSet.Contains(m.MemberId))
-            .ToList();
-
-        if (!toAutoPlace.Any())
+        if (!result.IsSuccess)
         {
-            _logger.LogInformation("AutoPlacementJob: all expired-window members are already placed.");
+            _logger.LogError("AutoPlacementJob: bulk placement failed: {Error}", result.Error);
             return 0;
         }
 
-        foreach (var member in toAutoPlace)
-        {
-            try
-            {
-                await AutoPlaceAsync(db, member.MemberId, member.SponsorMemberId!, now);
-                // Save after each placement so subsequent iterations see the
-                // updated tree (avoids 2+ members landing on the same side of a parent).
-                await db.SaveChangesAsync();
-                _logger.LogInformation(
-                    "AutoPlacementJob: auto-placed {MemberId} under sponsor {SponsorId}",
-                    member.MemberId, member.SponsorMemberId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "AutoPlacementJob: failed to auto-place {MemberId}", member.MemberId);
-            }
-        }
-
-        // Recompute leg-point sums and DualTeamPoints across the full tree so any
-        // ancestors of newly placed members reflect their new descendant points.
-        await RecalculateAllLegPointsAsync(db);
-
-        _logger.LogInformation("AutoPlacementJob completed at {Now}. Processed: {Count}",
-            now, toAutoPlace.Count);
-        return toAutoPlace.Count;
-    }
-
-    private static async Task RecalculateAllLegPointsAsync(AppDbContext db)
-    {
-        const string sql = @"
-;WITH leg_sums AS (
-    SELECT
-        leg_root.ParentMemberId AS NodeMemberId,
-        leg_root.Side,
-        SUM(s.PersonalPoints) AS LegSum
-    FROM DualTeamTree leg_root
-    INNER JOIN DualTeamTree subtree
-        ON subtree.HierarchyPath LIKE leg_root.HierarchyPath + N'%'
-    INNER JOIN MemberStatistics s
-        ON s.MemberId = subtree.MemberId
-    WHERE leg_root.ParentMemberId IS NOT NULL
-    GROUP BY leg_root.ParentMemberId, leg_root.Side
-)
-UPDATE d
-SET LeftLegPoints  = COALESCE((SELECT LegSum FROM leg_sums WHERE NodeMemberId = d.MemberId AND Side = 0), 0),
-    RightLegPoints = COALESCE((SELECT LegSum FROM leg_sums WHERE NodeMemberId = d.MemberId AND Side = 1), 0)
-FROM DualTeamTree d;
-
-UPDATE s
-SET DualTeamPoints = CAST(COALESCE(d.LeftLegPoints, 0) + COALESCE(d.RightLegPoints, 0) AS int)
-FROM MemberStatistics s
-INNER JOIN DualTeamTree d ON d.MemberId = s.MemberId;
-";
-        await db.Database.ExecuteSqlRawAsync(sql);
-    }
-
-
-    private async Task AutoPlaceAsync(
-        AppDbContext db, string memberId, string sponsorMemberId, DateTime now)
-    {
-        // Get sponsor's dual-team node (sponsor might not be in the tree yet either)
-        var sponsorNode = await db.DualTeamTree
-            .FirstOrDefaultAsync(d => d.MemberId == sponsorMemberId);
-
-        string targetParentId;
-        TreeSide targetSide;
-
-        if (sponsorNode is null)
-        {
-            // Sponsor has no tree position → create sponsor node at root first,
-            // then place member as left child.
-            // (This is an edge case; in practice sponsor should already be placed.)
-            targetParentId = sponsorMemberId;
-            targetSide     = TreeSide.Left;
-
-            // Ensure sponsor root node exists
-            if (!await db.DualTeamTree.AnyAsync(d => d.MemberId == sponsorMemberId))
-            {
-                db.DualTeamTree.Add(new DualTeamEntity
-                {
-                    MemberId      = sponsorMemberId,
-                    ParentMemberId = null,
-                    Side           = TreeSide.Left,
-                    HierarchyPath  = $"/{sponsorMemberId}/",
-                    CreationDate   = now,
-                    CreatedBy      = "system",
-                    LastUpdateDate = now,
-                    LastUpdateBy   = "system"
-                });
-                await db.SaveChangesAsync();
-            }
-        }
-        else
-        {
-            // Get sponsor's immediate children
-            var children = await db.DualTeamTree
-                .AsNoTracking()
-                .Where(d => d.ParentMemberId == sponsorMemberId)
-                .ToListAsync();
-
-            var hasLeft  = children.Any(c => c.Side == TreeSide.Left);
-            var hasRight = children.Any(c => c.Side == TreeSide.Right);
-
-            if (!hasLeft)
-            {
-                // Rule 5.2.a — Sponsor has no children → place LEFT
-                targetParentId = sponsorMemberId;
-                targetSide     = TreeSide.Left;
-            }
-            else if (!hasRight)
-            {
-                // Rule 5.2.b — Sponsor has only left child → place RIGHT
-                targetParentId = sponsorMemberId;
-                targetSide     = TreeSide.Right;
-            }
-            else
-            {
-                // Rule 5.2.c — Sponsor has both children
-                // Determine which side based on sponsor's position in their upline
-                var preferredSide = DeterminePreferredSide(sponsorNode);
-
-                // Find deepest available node on that side
-                var (deepId, deepSide) = await FindDeepestAvailableNodeAsync(
-                    db, sponsorMemberId, preferredSide);
-
-                targetParentId = deepId;
-                targetSide     = deepSide;
-            }
-        }
-
-        // Get parent node for hierarchy path
-        var parentNode = await db.DualTeamTree
-            .FirstOrDefaultAsync(d => d.MemberId == targetParentId);
-
-        var parentPath = parentNode?.HierarchyPath ?? $"/{targetParentId}/";
-        var newPath    = $"{parentPath}{memberId}/";
-
-        // Create the node
-        db.DualTeamTree.Add(new DualTeamEntity
-        {
-            MemberId       = memberId,
-            ParentMemberId = targetParentId,
-            Side           = targetSide,
-            HierarchyPath  = newPath,
-            CreationDate   = now,
-            CreatedBy      = "system",
-            LastUpdateDate = now,
-            LastUpdateBy   = "system"
-        });
-
-        // Log the auto-placement
-        db.PlacementLogs.Add(new PlacementLog
-        {
-            MemberId            = memberId,
-            PlacedUnderMemberId = targetParentId,
-            Side                = targetSide,
-            Action              = "AutoPlaced",
-            Reason              = "Auto-placement by system (window expired)",
-            UnplacementCount    = 0,
-            FirstPlacementDate  = now,
-            CreationDate        = now,
-            CreatedBy           = "system"
-        });
-    }
-
-    /// <summary>
-    /// Determines the preferred side for auto-placement based on the sponsor's
-    /// own position within their upline's tree (rule 5.2.c).
-    /// </summary>
-    private static TreeSide DeterminePreferredSide(DualTeamEntity sponsorNode)
-    {
-        // If sponsor is on the left side of their parent → prefer LEFT
-        // If sponsor is on the right side of their parent → prefer RIGHT
-        // Default to LEFT if no parent
-        return sponsorNode.ParentMemberId is null
-            ? TreeSide.Left
-            : sponsorNode.Side;
-    }
-
-    /// <summary>
-    /// BFS walk on the given side of the sponsor's subtree to find
-    /// the deepest available (leaf) node with an open slot.
-    /// </summary>
-    private async Task<(string NodeId, TreeSide Side)> FindDeepestAvailableNodeAsync(
-        AppDbContext db, string sponsorMemberId, TreeSide preferredSide)
-    {
-        // Get the child on the preferred side
-        var startChild = await db.DualTeamTree
-            .AsNoTracking()
-            .FirstOrDefaultAsync(d => d.ParentMemberId == sponsorMemberId
-                                   && d.Side == preferredSide);
-
-        if (startChild is null)
-            return (sponsorMemberId, preferredSide);
-
-        // BFS to find deepest available slot
-        var queue   = new Queue<string>();
-        var visited = new HashSet<string>();
-        queue.Enqueue(startChild.MemberId);
-
-        string bestNodeId   = startChild.MemberId;
-        TreeSide bestSide   = TreeSide.Left;
-        int bestDepth       = 0;
-
-        while (queue.Count > 0)
-        {
-            var currentId = queue.Dequeue();
-            if (!visited.Add(currentId)) continue;
-
-            var children = await db.DualTeamTree
-                .AsNoTracking()
-                .Where(d => d.ParentMemberId == currentId)
-                .ToListAsync();
-
-            var hasLeft  = children.Any(c => c.Side == TreeSide.Left);
-            var hasRight = children.Any(c => c.Side == TreeSide.Right);
-
-            if (!hasLeft || !hasRight)
-            {
-                var currentNode = await db.DualTeamTree
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(d => d.MemberId == currentId);
-
-                var depth = currentNode?.HierarchyPath.Count(c => c == '/') ?? 0;
-                if (depth >= bestDepth)
-                {
-                    bestNodeId = currentId;
-                    bestSide   = !hasLeft ? TreeSide.Left : TreeSide.Right;
-                    bestDepth  = depth;
-                }
-            }
-
-            foreach (var child in children)
-                queue.Enqueue(child.MemberId);
-        }
-
-        return (bestNodeId, bestSide);
+        _logger.LogInformation(
+            "AutoPlacementJob completed at {Now}. Placed: {Placed}, Skipped: {Skipped}, Failed: {Failed}",
+            now, result.Value!.Placed, result.Value.Skipped, result.Value.Failed);
+        return result.Value.Placed;
     }
 }

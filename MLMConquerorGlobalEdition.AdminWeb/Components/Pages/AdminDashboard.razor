@@ -2,6 +2,7 @@
 @page "/admin/dashboard"
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using Syncfusion.Blazor.Calendars
 @inject HttpClient Http
 @inject IViewContextService ViewContext
 
@@ -381,6 +382,124 @@ else if (_data is not null)
                         <div class="stat-row">
                             <span class="stat-label">Cancelled MTD</span>
                             <span class="pill pill-red">@_data.CancelledSubscriptionsThisMonth</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ ROW 2.5 — CASH FLOW ANALYSIS (DATE RANGE) ══════════════════════ -->
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <div class="panel-card">
+                <div class="panel-header flex-wrap gap-2">
+                    <div class="kpi-icon green" style="width:28px;height:28px;font-size:.9rem;border-radius:7px;"><i class="ri-funds-line"></i></div>
+                    <h6 class="flex-grow-1 mb-0">Cash Flow Analysis</h6>
+
+                    <!-- Date-range picker -->
+                    <div style="min-width:260px;">
+                        <SfDateRangePicker TValue="DateTime?"
+                                           StartDate="_finFrom"
+                                           EndDate="_finTo"
+                                           Format="MMM dd, yyyy"
+                                           Placeholder="Select date range"
+                                           Width="260px"
+                                           Enabled="@(!_finLoading)">
+                            <DateRangePickerEvents TValue="DateTime?" ValueChange="OnRangeChanged" />
+                        </SfDateRangePicker>
+                    </div>
+                    <button class="btn btn-sm" style="background:#fff;border:1px solid #e2e8f0;color:#374151;border-radius:8px;"
+                            disabled="@_finLoading"
+                            title="Refresh from server (bypass cache)"
+                            @onclick="RefreshFinancialAsync">
+                        <i class="ri-refresh-line me-1"></i>Refresh
+                    </button>
+                </div>
+
+                <div class="panel-body position-relative">
+                    @if (_finError is not null)
+                    {
+                        <div class="alert alert-danger d-flex align-items-center gap-2 mb-0">
+                            <i class="ri-error-warning-line fs-5"></i>
+                            <span>@_finError</span>
+                            <button class="btn btn-sm btn-outline-danger ms-auto" @onclick="@(() => LoadFinancialAsync())">
+                                <i class="ri-refresh-line me-1"></i>Retry
+                            </button>
+                        </div>
+                    }
+                    else if (_fin is not null)
+                    {
+                        <!-- Window caption -->
+                        <div class="mb-3 d-flex align-items-center gap-2 flex-wrap">
+                            <span class="pill pill-gray">
+                                <i class="ri-calendar-line me-1"></i>@_fin.RangeFrom.ToString("MMM dd, yyyy") — @_fin.RangeTo.ToString("MMM dd, yyyy")
+                            </span>
+                            @if (_finLoading)
+                            {
+                                <span class="text-muted small"><span class="spinner-border spinner-border-sm me-1" style="width:.85rem;height:.85rem;color:#00BFA5;"></span>Updating…</span>
+                            }
+                        </div>
+
+                        <div class="row g-3">
+                            <!-- Revenue (range) -->
+                            <div class="col-6 col-md-4 col-xl-2">
+                                <div style="background:#f8fafc;border-radius:12px;padding:16px;text-align:center;border-top:3px solid #16a34a;">
+                                    <div style="font-size:1.5rem;font-weight:700;color:#16a34a;letter-spacing:-.02em;">$@_fin.TotalRevenue.ToString("N2")</div>
+                                    <div class="kpi-label mt-1">Revenue (range)</div>
+                                </div>
+                            </div>
+                            <!-- Commissions Paid (range) -->
+                            <div class="col-6 col-md-4 col-xl-2">
+                                <div style="background:#f8fafc;border-radius:12px;padding:16px;text-align:center;border-top:3px solid #00BFA5;">
+                                    <div style="font-size:1.5rem;font-weight:700;color:#00BFA5;letter-spacing:-.02em;">$@_fin.TotalCommissionsPaid.ToString("N2")</div>
+                                    <div class="kpi-label mt-1">Commissions Paid</div>
+                                </div>
+                            </div>
+                            <!-- Commissions Pending (range) -->
+                            <div class="col-6 col-md-4 col-xl-2">
+                                <div style="background:#f8fafc;border-radius:12px;padding:16px;text-align:center;border-top:3px solid @(_fin.TotalCommissionsPending > 0 ? "#d97706" : "#94a3b8");">
+                                    <div style="font-size:1.5rem;font-weight:700;color:@(_fin.TotalCommissionsPending > 0 ? "#d97706" : "#94a3b8");letter-spacing:-.02em;">$@_fin.TotalCommissionsPending.ToString("N2")</div>
+                                    <div class="kpi-label mt-1">Commissions Pending</div>
+                                </div>
+                            </div>
+                            <!-- Net Cash Flow (range) -->
+                            <div class="col-6 col-md-4 col-xl-2">
+                                <div style="background:#f8fafc;border-radius:12px;padding:16px;text-align:center;border-top:3px solid @NetColor;">
+                                    <div style="font-size:1.5rem;font-weight:700;color:@NetColor;letter-spacing:-.02em;">$@_fin.NetCashFlow.ToString("N2")</div>
+                                    <div class="kpi-label mt-1">Net Cash Flow</div>
+                                </div>
+                            </div>
+                            <!-- Commission / Revenue % (goal ≤ 60%) -->
+                            <div class="col-6 col-md-4 col-xl-2">
+                                <div style="background:#f8fafc;border-radius:12px;padding:16px;text-align:center;border-top:3px solid @RatioColor;">
+                                    <div style="font-size:1.5rem;font-weight:700;color:@RatioColor;letter-spacing:-.02em;">@_fin.CommissionToRevenuePct.ToString("N1")%</div>
+                                    <div class="kpi-label mt-1">Commission / Revenue</div>
+                                    <span class="pill @RatioPill mt-1" style="font-size:10px;">Goal ≤ 60%</span>
+                                </div>
+                            </div>
+                            <!-- New Members (range) -->
+                            <div class="col-6 col-md-4 col-xl-2">
+                                <div style="background:#f8fafc;border-radius:12px;padding:16px;text-align:center;border-top:3px solid #2563eb;">
+                                    <div style="font-size:1.5rem;font-weight:700;color:#2563eb;letter-spacing:-.02em;">@_fin.NewMembersInRange.ToString("N0")</div>
+                                    <div class="kpi-label mt-1">New Members (range)</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Active members snapshot (not range-bound) -->
+                        <div class="d-flex justify-content-between align-items-center mt-3 pt-3" style="border-top:1px solid #f0f2f5;font-size:13px;">
+                            <span class="stat-label">
+                                <i class="ri-group-line me-1"></i>Active Members
+                                <span class="text-muted">(current snapshot — not range-bound)</span>
+                            </span>
+                            <span class="fw-bold" style="color:#1a202c;">@_fin.TotalMembersActive.ToString("N0")</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="d-flex justify-content-center align-items-center py-4">
+                            <div class="spinner-border" style="width:2rem;height:2rem;color:#00BFA5;"></div>
                         </div>
                     }
                 </div>
@@ -999,7 +1118,72 @@ else if (_data is not null)
     private bool _loading = true;
     private string? _error;
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    // ── Cash Flow Analysis (date-range driven, /financial endpoint) ──────────
+    private FinancialDashboardDto? _fin;
+    private bool _finLoading;
+    private string? _finError;
+    // Default window: first of the current month → today (inclusive).
+    private DateTime? _finFrom = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+    private DateTime? _finTo = DateTime.UtcNow.Date;
+
+    // Commission/Revenue health colors — business goal is a ratio ≤ 60%.
+    private string RatioColor => _fin is null ? "#94a3b8"
+        : _fin.CommissionToRevenuePct <= 60m ? "#16a34a"
+        : _fin.CommissionToRevenuePct <= 75m ? "#d97706" : "#dc2626";
+    private string RatioPill => _fin is null ? "pill-gray"
+        : _fin.CommissionToRevenuePct <= 60m ? "pill-green"
+        : _fin.CommissionToRevenuePct <= 75m ? "pill-amber" : "pill-red";
+    private string NetColor => _fin is not null && _fin.NetCashFlow >= 0 ? "#16a34a" : "#dc2626";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        await LoadFinancialAsync();
+    }
+
+    /// <summary>
+    /// Syncfusion range picker change handler. Re-fetches the financial window
+    /// whenever the admin picks a new start/end date.
+    /// </summary>
+    private async Task OnRangeChanged(RangePickerEventArgs<DateTime?> args)
+    {
+        _finFrom = args.StartDate;
+        _finTo = args.EndDate;
+        await LoadFinancialAsync();
+    }
+
+    /// <summary>User-triggered refresh of the financial window, bypassing server cache.</summary>
+    private Task RefreshFinancialAsync() => LoadFinancialAsync(bypassCache: true);
+
+    /// <summary>
+    /// Fetches <c>api/v1/admin/dashboard/financial</c> for the selected range.
+    /// When no range is selected the server falls back to the current month.
+    /// </summary>
+    private async Task LoadFinancialAsync(bool bypassCache = false)
+    {
+        _finLoading = true; _finError = null; StateHasChanged();
+        try
+        {
+            var query = new List<string>();
+            if (_finFrom is { } f) query.Add($"from={f:yyyy-MM-dd}");
+            if (_finTo is { } t) query.Add($"to={t:yyyy-MM-dd}");
+            if (bypassCache) query.Add("bypassCache=true");
+
+            var url = "api/v1/admin/dashboard/financial";
+            if (query.Count > 0) url += "?" + string.Join("&", query);
+
+            var resp = await Http.GetFromJsonAsync<ApiResp<FinancialDashboardDto>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+                _fin = resp.Data;
+            else
+                _finError = resp?.Errors?.FirstOrDefault() ?? "Failed to load financial data.";
+        }
+        catch (Exception ex)
+        {
+            _finError = $"Error: {ex.Message}";
+        }
+        finally { _finLoading = false; StateHasChanged(); }
+    }
 
     /// <summary>
     /// User-triggered "Refresh" action. Re-fetches the dashboard bypassing the
@@ -1087,5 +1271,23 @@ else if (_data is not null)
         public List<BillingRunLevelItem> ByLevel { get; set; } = new();
     }
     private record BillingRunLevelItem(string LevelName, decimal RenewalPrice, int DueCount, int SuccessCount, int FailedCount, int PendingCount, decimal RevenueCollected, decimal RevenueMissed);
+
+    /// <summary>
+    /// Mirror of AdminAPI's FinancialDashboardDto. Property names match the API
+    /// DTO exactly so System.Text.Json camelCase binding resolves each field.
+    /// </summary>
+    private class FinancialDashboardDto
+    {
+        public DateTime RangeFrom { get; set; }
+        public DateTime RangeTo { get; set; }
+        public int TotalMembersActive { get; set; }
+        public int NewMembersInRange { get; set; }
+        public decimal TotalRevenue { get; set; }
+        public decimal TotalCommissionsPaid { get; set; }
+        public decimal TotalCommissionsPending { get; set; }
+        public decimal NetCashFlow { get; set; }
+        public decimal CommissionToRevenuePct { get; set; }
+    }
+
     private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
 }

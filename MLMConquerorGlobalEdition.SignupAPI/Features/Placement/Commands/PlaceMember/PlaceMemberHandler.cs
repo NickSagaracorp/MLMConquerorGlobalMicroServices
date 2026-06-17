@@ -57,6 +57,13 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<boo
         if (parent is null)
             return Result<bool>.Failure("PARENT_MEMBER_NOT_FOUND", $"Member '{command.PlaceUnderMemberId}' not found.");
 
+        // A member occupies at most one dual-tree position. Without this guard two
+        // concurrent placements (or a placement racing the AutoPlacementJob) would
+        // both insert, producing duplicate rows. The DB unique index on MemberId is
+        // the hard backstop; this check returns a clean error instead of a 500.
+        if (await _db.DualTeamTree.AnyAsync(d => d.MemberId == command.MemberId, ct))
+            return Result<bool>.Failure("ALREADY_PLACED", $"Member '{command.MemberId}' is already placed in the dual tree.");
+
         var side = Enum.Parse<TreeSide>(command.Side);
 
         // Sprint-15 Bug B: instead of descending the same side recursively (the
@@ -72,7 +79,11 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<boo
                 $"(all candidates were either occupied or near the 1500-byte HierarchyPath safety cap).");
 
         var (parentMemberId, parentPath) = slot.Value;
-        var newPath = $"{parentPath}{command.MemberId}/";
+        // Sprint-15 Bug 10 — Defensive normalize: legacy parent rows historically
+        // existed where HierarchyPath was missing a trailing slash, which then
+        // glued IDs together in the child (e.g. /AMB-X/AMB-Y AMB-Z/). TrimEnd
+        // guarantees exactly one '/' separator between parent path and new ID.
+        var newPath = $"{parentPath.TrimEnd('/')}/{command.MemberId}/";
 
         var node = new DualTeamEntity
         {

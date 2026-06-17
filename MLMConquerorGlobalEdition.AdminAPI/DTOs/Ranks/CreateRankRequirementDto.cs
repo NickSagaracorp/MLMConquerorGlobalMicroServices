@@ -11,7 +11,7 @@ public class CreateRankRequirementDto
     public int PlacementQualifiedTeamMembers { get; set; }
     public int EnrollmentQualifiedTeamMembers { get; set; }
     public double MaxEnrollmentTeamPointsPerBranch { get; set; } = 0.5;
-    public int ExternalMembers { get; set; } = 1;
+    public int ExternalMembers { get; set; } = 0;
     public int SponsoredMembers { get; set; } = 1;
     public decimal SalesVolume { get; set; }
     public decimal RankBonus { get; set; }

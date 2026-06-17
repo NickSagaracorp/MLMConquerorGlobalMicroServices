@@ -18,6 +18,7 @@ using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SharedKernel.Logging;
 using MLMConquerorGlobalEdition.Repository.Seeders;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
+using MLMConquerorGlobalEdition.Billing.Extensions;
 using MLMConquerorGlobalEdition.Billing.Services.Routing;
 using MLMConquerorGlobalEdition.Billing.Services.Recurring.HighVolume;
 using ICacheService         = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
@@ -66,6 +67,7 @@ builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddRankServices();
+MLMConquerorGlobalEdition.Repository.Services.Teams.PlacementServicesRegistration.AddPlacementServices(builder.Services);
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTreeNodeService,
                             MLMConquerorGlobalEdition.Repository.Services.Teams.DualTreeNodeService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTeamService,
@@ -79,12 +81,23 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Wallets
 builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 builder.Services.AddSingleton<IHtmlSanitizerService, HtmlSanitizerService>();
 
+// Sprint-15 follow-up: shared dual-team leg-points recalculator. AdminAPI's
+// AdminPlaceMember / AdminRemovePlacement handlers previously had local broken
+// implementations (counted nodes instead of summing PersonalPoints). They now
+// delegate to the single source of truth shared with SignupAPI + BizCenter.
+builder.Services.AddScoped<
+    MLMConquerorGlobalEdition.Repository.Services.Trees.IDualTeamPointsRecalculator,
+    MLMConquerorGlobalEdition.Repository.Services.Trees.DualTeamPointsRecalculator>();
+
 // ── Billing routing + high-volume planner (preview endpoint) ─────────────
 // Note: Billing services bind to the sibling `MLMConquerorGlobalEdition.Billing.Services.IDateTimeProvider`
-// (separate type from SharedKernel's — same simple name, different namespace), so both must be registered.
-// Same for ICurrencyConversionService which the GatewayRouter takes transitively.
+// and `MLMConquerorGlobalEdition.Billing.Services.ICurrentUserService` (separate types from SharedKernel's —
+// same simple names, different namespaces), so both must be registered alongside the SharedKernel variants.
+// PayoutOrchestrator (and ChargeHandler) take the Billing-local types; AdminAPI's own handlers take SharedKernel's.
 builder.Services.AddSingleton<MLMConquerorGlobalEdition.Billing.Services.IDateTimeProvider,
                                MLMConquerorGlobalEdition.Billing.Services.DateTimeProvider>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Billing.Services.ICurrentUserService,
+                            MLMConquerorGlobalEdition.Billing.Services.CurrentUserService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Billing.Services.Routing.ICurrencyConversionService,
                             MLMConquerorGlobalEdition.Billing.Services.Routing.CurrencyConversionService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Billing.Services.Routing.ICardBrandDetector,
@@ -94,6 +107,10 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Billing.Services.Routing.IG
 builder.Services.AddScoped<IGatewayRouter,
                             MLMConquerorGlobalEdition.Billing.Services.Routing.GatewayRouter>();
 builder.Services.AddScoped<IRecurringBillingPlanner, RecurringBillingPlanner>();
+
+// ── Payout gateway abstraction + orchestrator ─────────────────────────────
+builder.Services.AddPayoutServices();
+
 builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IS3StorageService, S3StorageService>();

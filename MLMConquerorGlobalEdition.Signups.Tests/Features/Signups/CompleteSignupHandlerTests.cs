@@ -103,14 +103,14 @@ public class CompleteSignupHandlerTests
         if (succeed)
         {
             m.Setup(s => s.RedeemForSignupAsync(
-                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
                 It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync(MLMConquerorGlobalEdition.SharedKernel.Result<bool>.Success(true));
         }
         else
         {
             m.Setup(s => s.RedeemForSignupAsync(
-                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
                 It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync(MLMConquerorGlobalEdition.SharedKernel.Result<bool>.Failure(errorCode ?? "TOKEN_NOT_VALID", error ?? "This token is not valid for this signup."));
         }
@@ -596,20 +596,19 @@ public class CompleteSignupHandlerTests
     }
 
     /// <summary>
-    /// Sprint-15 Bug A — proves IncrementAncestorStatsAsync uses additive
-    /// upsert semantics. Two sequential Complete calls under the same sponsor
-    /// must yield EnrollmentPoints = 2 × delta, EnrollmentTeamSize = 2, and
-    /// QualifiedSponsoredMembers = 2 on the sponsor's MemberStatistics row —
-    /// not 1 (which is what the old read-modify-write produced under any
-    /// re-entrancy because the second read started from the original tracker
-    /// snapshot in some scenarios).
+    /// Sprint-16 — CompleteSignup no longer touches the sponsor's
+    /// <c>MemberStatistics</c> row inline. Instead it enqueues a
+    /// <c>MemberStatisticDelta</c> per upline. The drain job
+    /// (<see cref="ApplyMemberStatisticDeltasJob"/>) rolls those deltas into
+    /// <c>MemberStatistics</c> on its cadence.
     ///
-    /// The InMemory provider serializes all operations so true thread-race
-    /// reproduction needs SQL Server; the additive contract is the part we
-    /// can prove deterministically here.
+    /// Two sequential completions under the same sponsor must therefore
+    /// produce TWO delta rows for the sponsor (each tagged with the right
+    /// payload) — but the sponsor's <c>MemberStatistics</c> row stays
+    /// untouched until the apply job runs (see the separate test below).
     /// </summary>
     [Fact]
-    public async Task Handle_WhenTwoMembersCompleteUnderSameSponsor_StatsAccumulateAdditively()
+    public async Task Handle_WhenTwoMembersCompleteUnderSameSponsor_EnqueuesAdditiveDeltas()
     {
         await using var db = InMemoryDbHelper.Create();
 
@@ -682,17 +681,105 @@ public class CompleteSignupHandlerTests
         r1.IsSuccess.Should().BeTrue();
         r2.IsSuccess.Should().BeTrue();
 
+        // The sponsor's MemberStatistics row should still be UNTOUCHED — the drain
+        // job hasn't run yet, and CompleteSignupHandler no longer updates ancestor
+        // stats inline. Only the leaf's own row exists.
         var sponsorStats = await db.MemberStatistics
             .FirstOrDefaultAsync(s => s.MemberId == sponsorId);
+        sponsorStats.Should().BeNull(
+            "Sprint-16 — ancestor stats are now eventual-consistency via MemberStatisticDeltas; no inline write.");
 
-        sponsorStats.Should().NotBeNull(
-            "the sponsor's ancestor row must exist after the first child completes");
-        sponsorStats!.EnrollmentPoints.Should().Be(20,
-            "both children carry 10 qual points and increments must accumulate, not overwrite");
-        sponsorStats.EnrollmentTeamSize.Should().Be(2,
-            "EnrollmentTeamSize must increment by 1 per descendant");
-        sponsorStats.QualifiedSponsoredMembers.Should().Be(2,
-            "QualifiedSponsoredMembers must increment once per directly-sponsored ambassador");
+        // Two delta rows must have been enqueued for the sponsor — one per signup
+        // — each carrying +10 EnrollmentPoints, +1 EnrollmentTeamSize, +1 QSM.
+        var deltas = await db.MemberStatisticDeltas
+            .Where(d => d.MemberId == sponsorId)
+            .OrderBy(d => d.Id)
+            .ToListAsync();
+
+        deltas.Should().HaveCount(2,
+            "each CompleteSignup enqueues one delta per ancestor — sponsor is the only ancestor here");
+        deltas.Should().AllSatisfy(d =>
+        {
+            d.EnrollmentPointsDelta.Should().Be(10);
+            d.EnrollmentTeamSizeDelta.Should().Be(1);
+            d.QualifiedSponsoredMembersDelta.Should().Be(1);
+            d.IsApplied.Should().BeFalse();
+            d.AppliedAt.Should().BeNull();
+        });
+
+        // Source attribution: deltas point back to the signing-up member so an
+        // auditor can answer "which signup produced this delta?".
+        deltas.Select(d => d.SourceMemberId).Should()
+            .BeEquivalentTo(["AMB-CHILD1", "AMB-CHILD2"]);
+    }
+
+    /// <summary>
+    /// Sprint-16 — verifies the leaf's own MemberStatistics row is still
+    /// written inline (no race against the new member because they don't
+    /// exist anywhere else yet) and that the delta-pipeline does NOT
+    /// double-count the leaf's own points into the leaf's row.
+    /// </summary>
+    [Fact]
+    public async Task Handle_WhenValid_LeafStatisticsRowIsWrittenInlineWithPersonalPoints()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        const string memberId = "AMB-LEAF";
+        const string email    = "leaf@example.com";
+
+        var member       = BuildMember(memberId, email);
+        var order        = BuildPendingOrder("ORD-LEAF", memberId, total: 120);
+        var subscription = BuildPendingSubscription("SUB-LEAF", memberId);
+        var appUser      = BuildInactiveUser(memberId, email);
+
+        await db.Products.AddAsync(new Product
+        {
+            Id                 = "P-LEAF",
+            Name               = "Leaf Pack",
+            Description        = "Leaf product",
+            ImageUrl           = "https://cdn.example.com/leaf.png",
+            MonthlyFee         = 120,
+            SetupFee           = 0,
+            QualificationPoins = 25,
+            IsActive           = true,
+            CreatedBy          = "seed",
+            CreationDate       = FixedNow,
+            LastUpdateDate     = FixedNow
+        });
+        await db.MemberProfiles.AddAsync(member);
+        await db.Orders.AddAsync(order);
+        await db.OrderDetails.AddAsync(BuildOrderDetail("ORD-LEAF", "P-LEAF", 120));
+        await db.MembershipSubscriptions.AddAsync(subscription);
+        await db.SaveChangesAsync();
+
+        var userMgr = UserManagerHelper.Create();
+        userMgr.Setup(u => u.FindByEmailAsync(email)).ReturnsAsync(appUser);
+        userMgr.Setup(u => u.UpdateAsync(It.IsAny<ApplicationUser>()))
+               .ReturnsAsync(IdentityResult.Success);
+
+        var handler = new CompleteSignupHandler(
+            db, BuildDateTimeMock().Object, BuildS3Mock().Object,
+            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object,
+            userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
+            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object);
+
+        var result = await handler.Handle(
+            new CompleteSignupCommand("ORD-LEAF", BuildRequest()), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+
+        // Leaf row written inline with its own qual points.
+        var leafStats = await db.MemberStatistics.FirstOrDefaultAsync(s => s.MemberId == memberId);
+        leafStats.Should().NotBeNull();
+        leafStats!.PersonalPoints.Should().Be(25);
+        leafStats.EnrollmentPoints.Should().Be(25);
+
+        // No delta should be enqueued for the leaf itself — only for ancestors,
+        // and this signup has no sponsor.
+        var leafDeltas = await db.MemberStatisticDeltas
+            .Where(d => d.MemberId == memberId)
+            .ToListAsync();
+        leafDeltas.Should().BeEmpty(
+            "delta queue is for ANCESTOR upserts only; leaf row is written inline.");
     }
 }
 

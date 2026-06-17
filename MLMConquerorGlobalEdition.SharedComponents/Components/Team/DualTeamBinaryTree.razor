@@ -160,6 +160,10 @@
                                 </h3>
                             </div>
                         </div>
+                        @if (!_statsLoading)
+                        {
+                            @RenderLegProgress(_leftLegPoints)
+                        }
                     </div>
                 </div>
             </div>
@@ -184,6 +188,10 @@
                                 </h3>
                             </div>
                         </div>
+                        @if (!_statsLoading)
+                        {
+                            @RenderLegProgress(_rightLegPoints)
+                        }
                     </div>
                 </div>
             </div>
@@ -275,6 +283,20 @@
                             </button>
                         </div>
                         <div class="modal-body" style="max-height:360px;overflow-y:auto;padding:0">
+                            @* Sticky search box — filters candidates server-side by
+                               name or member id (debounced). Mirrors the residual
+                               search input's Bootstrap + icon treatment. *@
+                            <div class="px-3 pt-3 pb-2 bg-white"
+                                 style="position:sticky;top:0;z-index:2;border-bottom:1px solid #f0f0f0">
+                                <div class="position-relative table-src-form me-0">
+                                    <input type="text"
+                                           class="form-control"
+                                           placeholder="@L["Team.SearchCandidatesPlaceholder"]"
+                                           value="@_candidateSearch"
+                                           @oninput="OnCandidateSearchInput" />
+                                    <i class="ri-search-line position-absolute top-50 start-0 translate-middle-y"></i>
+                                </div>
+                            </div>
                             @if (_placementModalError is not null)
                             {
                                 <div class="alert alert-danger m-3 mb-0">@_placementModalError</div>
@@ -471,6 +493,8 @@
     private DualTreeNodeDto?      _rootNode;
     private int                   _leftLegPoints;
     private int                   _rightLegPoints;
+    private int                   _nextRankLegCap;   // 0 ⇒ DT dimension does not apply at next rank
+    private string?               _nextRankName;     // null ⇒ already at top rank
 
     // Navigation breadcrumb stack: list of (memberId, displayName)
     private List<(string Id, string Name)> _navStack = new();
@@ -485,6 +509,8 @@
     private string? _placementModalError;
     private List<PlacementCandidateDto> _placementCandidates = new();
     private PlacementCandidateDto?      _selectedPlacementCandidate;
+    private string?                     _candidateSearch;               // current search term (null/empty ⇒ no filter)
+    private System.Threading.CancellationTokenSource? _candidateSearchCts; // debounce token
 
     // ── Unplacement state ─────────────────────────────────────────────────────
     private string? _unplacingMemberId;        // non-null while the DELETE call is in flight
@@ -522,6 +548,8 @@
 
     public async ValueTask DisposeAsync()
     {
+        _candidateSearchCts?.Cancel();
+        _candidateSearchCts?.Dispose();
         if (_jsModule is not null)
             await _jsModule.DisposeAsync();
     }
@@ -561,6 +589,8 @@
             {
                 _leftLegPoints  = resp.Data.LeftLegPoints;
                 _rightLegPoints = resp.Data.RightLegPoints;
+                _nextRankLegCap = resp.Data.NextRankLegCap;
+                _nextRankName   = resp.Data.NextRankName;
             }
         }
         catch { /* stats are supplemental — degrade silently */ }
@@ -621,14 +651,31 @@
         _placementModalError        = null;
         _placementCandidates        = new();
         _selectedPlacementCandidate = null;
+        _candidateSearch            = null;   // fresh modal ⇒ unfiltered first page
         _placementModalVisible      = true;
-        _placementCandidateLoading  = true;
+        StateHasChanged();
+
+        await LoadPlacementCandidatesAsync();
+    }
+
+    // Loads the placement candidate list, optionally filtered by _candidateSearch.
+    // Shared by the modal-open path and the debounced search handler so both go
+    // through the same loading-spinner + error treatment. When the search term is
+    // empty the search query param is omitted entirely (server returns the first
+    // page alphabetically).
+    private async Task LoadPlacementCandidatesAsync()
+    {
+        _placementCandidateLoading = true;
+        _placementModalError       = null;
         StateHasChanged();
 
         try
         {
-            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<PlacementCandidateDto>>>(
-                $"{ApiBaseUrl}/dual-tree/available-for-placement");
+            var url = $"{ApiBaseUrl}/dual-tree/available-for-placement";
+            if (!string.IsNullOrWhiteSpace(_candidateSearch))
+                url += $"?search={Uri.EscapeDataString(_candidateSearch)}";
+
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<PlacementCandidateDto>>>(url);
             _placementCandidates = resp?.Success == true ? resp.Data ?? new() : new();
             if (!_placementCandidates.Any())
                 _placementModalError = L["Team.NoMembersForPlacement"];
@@ -642,6 +689,24 @@
             _placementCandidateLoading = false;
             StateHasChanged();
         }
+    }
+
+    // Debounced (~350ms) search input handler — mirrors DualTeamResiduals'
+    // OnResidualSearchInput. Cancels any in-flight delay on each keystroke so we
+    // only fire one request once typing settles.
+    private async Task OnCandidateSearchInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _candidateSearch = e.Value?.ToString();
+        _candidateSearchCts?.Cancel();
+        _candidateSearchCts = new System.Threading.CancellationTokenSource();
+        var token = _candidateSearchCts.Token;
+        try
+        {
+            await Task.Delay(350, token);
+            if (!token.IsCancellationRequested)
+                await LoadPlacementCandidatesAsync();
+        }
+        catch (TaskCanceledException) { /* debounced — superseded by a later keystroke */ }
     }
 
     private async Task PlaceSelectedMember(string memberToPlaceId)
@@ -878,6 +943,46 @@
         </div>
     };
 
+    // ── Leg progress bar ──────────────────────────────────────────────────────
+    // Renders below a leg's point count: how close that leg is to the per-leg
+    // cap required for the next rank. The cards have coloured backgrounds with
+    // white text, so the track is translucent white and the fill is solid white
+    // to stay legible. When the next rank has no DT requirement (cap == 0) or
+    // there is no next rank, show a subtle "N/A" caption instead of an empty bar.
+    private RenderFragment RenderLegProgress(int legPoints) => __builder =>
+    {
+        @if (_nextRankLegCap > 0 && _nextRankName is not null)
+        {
+            var pct = LegProgressPct(legPoints, _nextRankLegCap);
+            <div class="mt-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="progress flex-grow-1"
+                         style="height:8px;border-radius:999px;background:rgba(255,255,255,.25);">
+                        <div class="progress-bar"
+                             role="progressbar"
+                             style="width:@(pct)%;border-radius:999px;background:#fff;"
+                             aria-valuenow="@pct"
+                             aria-valuemin="0"
+                             aria-valuemax="100"></div>
+                    </div>
+                    <span class="fs-12 fw-semibold text-white" style="min-width:38px;text-align:right;">@(pct)%</span>
+                </div>
+                <div class="fs-12 text-white opacity-75 mt-2">
+                    @string.Format(L["Team.PointsTowardNext"],
+                                   Math.Min(legPoints, _nextRankLegCap).ToString("N0"),
+                                   _nextRankLegCap.ToString("N0"),
+                                   _nextRankName)
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="fs-12 text-white opacity-75 mt-3">
+                @string.Format(L["Team.DtRequirementNotApplicable"], _nextRankName ?? "—")
+            </div>
+        }
+    };
+
     // ── Helpers ──────────────────────────────────────────────────────────────
     private static string ResolveStatusClass(string statusCode) =>
         statusCode?.ToLower() switch
@@ -893,6 +998,18 @@
             "cancelled"             => "status-cancelled",
             _                       => "status-unqualified"
         };
+
+    // Progress of a leg toward the next-rank per-leg cap, clamped to 0..100 and
+    // rounded to a whole number (smoother CSS width animation on integers).
+    // Mirrors DualTeamResiduals.ProgressPct so both surfaces agree.
+    private static int LegProgressPct(int legPoints, int cap)
+    {
+        if (cap <= 0) return 0;
+        var pct = (int)Math.Round(Math.Min(legPoints, cap) * 100.0 / cap);
+        if (pct < 0)   pct = 0;
+        if (pct > 100) pct = 100;
+        return pct;
+    }
 
     // ── DTOs ─────────────────────────────────────────────────────────────────
     private class ApiWrapper<T> { public bool Success { get; set; } public T? Data { get; set; } }
@@ -958,7 +1075,13 @@
 
     private class DualTreeStatsDto
     {
-        public int LeftLegPoints  { get; set; }
-        public int RightLegPoints { get; set; }
+        public int     LeftLegPoints  { get; set; }
+        public int     RightLegPoints { get; set; }
+        /// <summary>Per-leg points cap to reach the next rank
+        /// (MaxTeamPointsPerBranch × nextRank.TeamPoints). 0 ⇒ the dual-team
+        /// dimension does not apply at the next rank — render the bar as N/A.</summary>
+        public int     NextRankLegCap { get; set; }
+        /// <summary>Name of the next rank the cap targets, or null when already at top rank.</summary>
+        public string? NextRankName   { get; set; }
     }
 }

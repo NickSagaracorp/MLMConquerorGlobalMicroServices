@@ -649,6 +649,7 @@
   <data name="Team.LegLeft" xml:space="preserve"><value>Links</value></data>
   <data name="Team.LegRight" xml:space="preserve"><value>Rechts</value></data>
   <data name="Team.NoCandidatesAvailable" xml:space="preserve"><value>Keine Botschafter für die Platzierung verfügbar.</value></data>
+  <data name="Team.SearchCandidatesPlaceholder" xml:space="preserve"><value>Nach Name oder Mitglieds-ID suchen…</value></data>
   <data name="Team.PlacementConfirmation" xml:space="preserve"><value>Platzierungs-Bestätigung</value></data>
   <data name="Team.AmbassadorLabel" xml:space="preserve"><value>Botschafter:</value></data>
   <data name="Team.UnderLabel" xml:space="preserve"><value>Unter:</value></data>
@@ -690,6 +691,7 @@
   <data name="Team.EligibleNextRank" xml:space="preserve"><value>Berechtigt (Nächster Rang)</value></data>
   <data name="Team.TotalRaw" xml:space="preserve"><value>Gesamt Roh</value></data>
   <data name="Team.PointsTowardNext" xml:space="preserve"><value>{0} / {1} Punkte für {2}</value></data>
+  <data name="Team.LegPointsTowardNext" xml:space="preserve"><value>{0} Pkt. für {1}</value></data>
   <data name="Team.DtRequirementNotApplicable" xml:space="preserve"><value>DT-Anforderung: nicht zutreffend für {0}</value></data>
   <data name="Team.EtRequirementNotApplicable" xml:space="preserve"><value>ET-Anforderung: nicht zutreffend für {0}</value></data>
   <data name="Team.DailyResidualsEarning" xml:space="preserve"><value>Tägliche Residual-Einnahmen</value></data>

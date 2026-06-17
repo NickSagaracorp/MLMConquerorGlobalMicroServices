@@ -20,11 +20,15 @@ public class SignupRiskFingerprintConfiguration : IEntityTypeConfiguration<Signu
         builder.Property(x => x.UserAgent).HasMaxLength(500);
         builder.Property(x => x.CountryIso2).HasMaxLength(2);
         builder.Property(x => x.FlagReason).HasMaxLength(200);
+        builder.Property(x => x.ClearedBy).HasMaxLength(36);
+        builder.Property(x => x.ClearReason).HasMaxLength(500);
         builder.Property(x => x.Flow).HasConversion<int>();
 
         // Most-common queries: "events for this visitor in the last X hours" and
         // "events from this IP in the last X hours". Compound indexes win there.
-        builder.HasIndex(x => new { x.VisitorId, x.CreationDate });
+        // Cleared rows must be excluded from threshold counts — the index includes it
+        // so the predicate is a covered seek instead of a scan.
+        builder.HasIndex(x => new { x.VisitorId, x.CreationDate, x.Cleared });
         builder.HasIndex(x => new { x.IpAddress, x.CreationDate });
         builder.HasIndex(x => x.OrderId);
     }

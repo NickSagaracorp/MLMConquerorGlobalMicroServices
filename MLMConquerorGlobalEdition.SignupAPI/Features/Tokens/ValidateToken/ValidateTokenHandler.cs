@@ -18,8 +18,9 @@ namespace MLMConquerorGlobalEdition.SignupAPI.Features.Tokens.ValidateToken;
 /// whether the token is usable; an exception is only raised on infrastructure faults.
 ///
 /// Generic-message exceptions all collapse to "TOKEN_NOT_VALID" — the caller cannot distinguish
-/// not-found / already-used / wrong-sponsor / expired. The product-mismatch case carries a
-/// specific message since the user already knows their own selection.
+/// not-found / already-used / expired. The product-mismatch case carries a specific message
+/// since the user already knows their own selection. Token ownership is not checked against the
+/// sponsor: a token owner commonly shares the code with someone in their downline.
 /// </summary>
 public class ValidateTokenHandler : IRequestHandler<ValidateTokenQuery, Result<ValidateTokenResponse>>
 {
@@ -92,7 +93,6 @@ public class ValidateTokenHandler : IRequestHandler<ValidateTokenQuery, Result<V
                 instance,
                 tokenType,
                 grantedLinks,
-                sponsor.MemberId,
                 req.SelectedProductIds ?? new List<string>(),
                 now);
         }

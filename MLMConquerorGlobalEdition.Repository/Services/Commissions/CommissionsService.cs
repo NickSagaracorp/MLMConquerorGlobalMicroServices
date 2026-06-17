@@ -58,34 +58,58 @@ public class CommissionsService : ICommissionsService
             statusFilter = parsed;
         }
 
-        var query = _db.CommissionEarnings
+        var baseQuery = _db.CommissionEarnings
             .AsNoTracking()
             .Where(c => c.BeneficiaryMemberId == memberId)
             .Where(c => statusFilter == null || c.Status == statusFilter.Value)
             .Where(c => from == null || c.EarnedDate >= from.Value)
-            .Where(c => to   == null || c.EarnedDate <= to.Value)
-            .Join(
-                _db.CommissionTypes,
-                c   => c.CommissionTypeId,
-                ct2 => ct2.Id,
-                (c, ct2) => new { Earning = c, CommType = ct2 })
-            .Join(
-                _db.CommissionCategories,
-                x   => x.CommType.CommissionCategoryId,
-                cat => cat.Id,
-                (x, cat) => new CommissionEarningView
+            .Where(c => to   == null || c.EarnedDate <= to.Value);
+
+        // Rows are GROUPED, and both the page count and the "Showing X of Y" total are over
+        // GROUPS — never the raw earnings. A single payment run sums thousands of individual
+        // earnings; paginating the raw rows produced thousands of pages all showing the same
+        // group. Pending groups by (EarnedDate, PaymentDate); Paid (and any other status) by
+        // PaymentDate only. The detail popup (GetBreakdownAsync) drills into the individual
+        // earnings for the clicked group on demand.
+        var groupByEarned = string.Equals(status, "Pending", StringComparison.OrdinalIgnoreCase);
+        var statusText    = statusFilter?.ToString() ?? status ?? string.Empty;
+
+        IQueryable<CommissionEarningView> grouped = groupByEarned
+            ? baseQuery
+                .GroupBy(c => new { Earned = c.EarnedDate.Date, Payment = c.PaymentDate.Date })
+                .Select(g => new CommissionEarningView
                 {
-                    Id                 = x.Earning.Id,
-                    CommissionTypeName = x.CommType.Name,
-                    CategoryName       = cat.Name,
-                    Amount             = x.Earning.Amount,
-                    Status             = x.Earning.Status.ToString(),
-                    EarnedDate         = x.Earning.EarnedDate,
-                    PaymentDate        = x.Earning.PaymentDate,
-                    PeriodDate         = x.Earning.PeriodDate
+                    EarnedDate  = g.Key.Earned,
+                    PaymentDate = g.Key.Payment,
+                    Amount      = g.Sum(x => x.Amount),
+                    Status      = statusText
+                })
+            : baseQuery
+                .GroupBy(c => c.PaymentDate.Date)
+                .Select(g => new CommissionEarningView
+                {
+                    EarnedDate  = g.Key, // Paid view ignores earned date (grouped by payment only)
+                    PaymentDate = g.Key,
+                    Amount      = g.Sum(x => x.Amount),
+                    Status      = statusText
                 });
 
-        return await PageEarningsAsync(query, page, pageSize, ct);
+        var totalCount = await grouped.CountAsync(ct);
+
+        var items = await grouped
+            .OrderByDescending(v => v.PaymentDate)
+            .ThenByDescending(v => v.EarnedDate)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        return new PagedResult<CommissionEarningView>
+        {
+            Items      = items,
+            TotalCount = totalCount,
+            Page       = page,
+            PageSize   = pageSize
+        };
     }
 
     // ─── History ───────────────────────────────────────────────────────────
@@ -697,35 +721,27 @@ public class CommissionsService : ICommissionsService
 
         int teamPointsTarget = carBonusType?.TeamPoints ?? 1000;
 
-        // Get all active downline subscription levels (one row per member, latest subscription)
+        // Active downline subscriptions, fetched by JOINING the genealogy subtree to
+        // subscriptions in ONE query — not by loading all ~120k downline ids and re-querying
+        // with Contains(allIds) (which built a huge IN list and scanned twice).
         var hierarchyFilter = $"/{memberId}/";
 
-        var downlineMemberIds = await _db.GenealogyTree
-            .AsNoTracking()
-            .Where(g => g.HierarchyPath.Contains(hierarchyFilter) && g.MemberId != memberId)
-            .Select(g => g.MemberId)
-            .ToListAsync(ct);
+        var activeSubs = await (
+            from g in _db.GenealogyTree.AsNoTracking()
+            where g.HierarchyPath.Contains(hierarchyFilter) && g.MemberId != memberId
+            join s in _db.MembershipSubscriptions.AsNoTracking() on g.MemberId equals s.MemberId
+            where s.SubscriptionStatus == MembershipStatus.Active && !s.IsDeleted
+            select new { s.MemberId, s.MembershipLevelId, s.CreationDate }
+        ).ToListAsync(ct);
 
-        int totalPoints = 0;
-        if (downlineMemberIds.Count > 0)
-        {
-            var activeSubs = await _db.MembershipSubscriptions
-                .AsNoTracking()
-                .Where(s => downlineMemberIds.Contains(s.MemberId)
-                         && s.SubscriptionStatus == MembershipStatus.Active
-                         && !s.IsDeleted)
-                .Select(s => new { s.MemberId, s.MembershipLevelId, s.CreationDate })
-                .ToListAsync(ct);
-
-            // Pick highest-level subscription per member and sum points
-            totalPoints = activeSubs
-                .GroupBy(s => s.MemberId)
-                .Sum(g =>
-                {
-                    var levelId = g.OrderByDescending(s => s.CreationDate).First().MembershipLevelId;
-                    return LevelPoints.TryGetValue(levelId, out var pts) ? pts : 0;
-                });
-        }
+        // Pick highest-priority (latest) subscription per member and sum the level points.
+        var totalPoints = activeSubs
+            .GroupBy(s => s.MemberId)
+            .Sum(g =>
+            {
+                var levelId = g.OrderByDescending(s => s.CreationDate).First().MembershipLevelId;
+                return LevelPoints.TryGetValue(levelId, out var pts) ? pts : 0;
+            });
 
         var eligiblePoints  = totalPoints;
         var progressPercent = teamPointsTarget > 0
@@ -751,47 +767,33 @@ public class CommissionsService : ICommissionsService
 
         var hierarchyFilter = $"/{memberId}/";
 
-        // Get ALL downline member IDs regardless of enrollment date
-        var downlineMemberIds = await _db.GenealogyTree
-            .AsNoTracking()
-            .Where(g => g.HierarchyPath.Contains(hierarchyFilter) && g.MemberId != memberId)
-            .Select(g => g.MemberId)
-            .ToListAsync(ct);
+        // Car-bonus contribution comes only from downline members with an ACTIVE qualifying
+        // subscription — JOIN the genealogy subtree straight to those subscriptions (+ profile)
+        // instead of loading ALL ~120k downline ids and re-querying 3× with Contains(allIds).
+        // Members with no active sub contribute 0, so they are not part of this breakdown.
+        var rows = await (
+            from g in _db.GenealogyTree.AsNoTracking()
+            where g.HierarchyPath.Contains(hierarchyFilter) && g.MemberId != memberId
+            join s in _db.MembershipSubscriptions.AsNoTracking() on g.MemberId equals s.MemberId
+            where s.SubscriptionStatus == MembershipStatus.Active && !s.IsDeleted
+            join mp in _db.MemberProfiles.AsNoTracking() on g.MemberId equals mp.MemberId
+            select new { mp.MemberId, mp.FirstName, mp.LastName, s.MembershipLevelId, s.CreationDate }
+        ).ToListAsync(ct);
 
-        if (downlineMemberIds.Count == 0)
+        if (rows.Count == 0)
             return new List<CarBonusAmbassadorView>();
 
-        // Get member profiles
-        var profiles = await _db.MemberProfiles
-            .AsNoTracking()
-            .Where(mp => downlineMemberIds.Contains(mp.MemberId))
-            .Select(mp => new { mp.MemberId, mp.FirstName, mp.LastName })
-            .ToListAsync(ct);
-
-        // Get active subscriptions
-        var activeSubs = await _db.MembershipSubscriptions
-            .AsNoTracking()
-            .Where(s => downlineMemberIds.Contains(s.MemberId)
-                     && s.SubscriptionStatus == MembershipStatus.Active
-                     && !s.IsDeleted)
-            .Select(s => new { s.MemberId, s.MembershipLevelId, s.CreationDate })
-            .ToListAsync(ct);
-
-        var subsByMember = activeSubs
-            .GroupBy(s => s.MemberId)
-            .ToDictionary(
-                g => g.Key,
-                g => g.OrderByDescending(s => s.CreationDate).First().MembershipLevelId);
-
-        return profiles
-            .Select(mp =>
+        return rows
+            .GroupBy(r => r.MemberId)
+            .Select(g =>
             {
-                var levelId = subsByMember.TryGetValue(mp.MemberId, out var lid) ? lid : 0;
+                var first   = g.First();
+                var levelId = g.OrderByDescending(s => s.CreationDate).First().MembershipLevelId;
                 var pts     = LevelPoints.TryGetValue(levelId, out var p) ? p : 0;
                 return new CarBonusAmbassadorView
                 {
-                    MemberId       = mp.MemberId,
-                    AmbassadorName = $"{mp.FirstName} {mp.LastName}".Trim(),
+                    MemberId       = first.MemberId,
+                    AmbassadorName = $"{first.FirstName} {first.LastName}".Trim(),
                     TotalPoints    = pts,
                     EligiblePoints = pts
                 };
@@ -807,81 +809,51 @@ public class CommissionsService : ICommissionsService
     {
         var hierarchyFilter = $"/{branchMemberId}/";
 
-        // Include the branch ambassador themselves + all their downline
-        var memberIds = await _db.GenealogyTree
-            .AsNoTracking()
-            .Where(g => g.MemberId == branchMemberId
-                     || g.HierarchyPath.Contains(hierarchyFilter))
-            .Select(g => g.MemberId)
-            .ToListAsync(ct);
+        // Contributing members in the branch (the ambassador + downline WITH an active
+        // subscription) via a single JOIN — not "load all subtree ids then Contains(allIds) ×3".
+        // Members without an active sub contribute 0 points and aren't part of the breakdown.
+        var rows = await (
+            from g in _db.GenealogyTree.AsNoTracking()
+            where g.MemberId == branchMemberId || g.HierarchyPath.Contains(hierarchyFilter)
+            join s in _db.MembershipSubscriptions.AsNoTracking() on g.MemberId equals s.MemberId
+            where s.SubscriptionStatus == MembershipStatus.Active && !s.IsDeleted
+            join mp in _db.MemberProfiles.AsNoTracking() on g.MemberId equals mp.MemberId
+            select new { mp.MemberId, mp.FirstName, mp.LastName, s.MembershipLevelId, s.EndDate, s.LastOrderId, s.CreationDate }
+        ).ToListAsync(ct);
 
-        if (memberIds.Count == 0)
+        if (rows.Count == 0)
             return new CarBonusBranchView();
 
-        // Active subscriptions
-        var activeSubs = await _db.MembershipSubscriptions
-            .AsNoTracking()
-            .Where(s => memberIds.Contains(s.MemberId)
-                     && s.SubscriptionStatus == MembershipStatus.Active
-                     && !s.IsDeleted)
-            .Select(s => new
-            {
-                s.MemberId,
-                s.MembershipLevelId,
-                s.EndDate,
-                s.LastOrderId,
-                s.CreationDate
-            })
-            .ToListAsync(ct);
+        // Latest active subscription per member.
+        var byMember = rows
+            .GroupBy(r => r.MemberId)
+            .Select(g => g.OrderByDescending(s => s.CreationDate).First())
+            .ToList();
 
-        var subsByMember = activeSubs
-            .GroupBy(s => s.MemberId)
-            .ToDictionary(g => g.Key, g => g.OrderByDescending(s => s.CreationDate).First());
-
-        // Membership level names
-        var levelIds = subsByMember.Values.Select(s => s.MembershipLevelId).Distinct().ToList();
-        var levels   = await _db.MembershipLevels
-            .AsNoTracking()
+        var levelIds = byMember.Select(s => s.MembershipLevelId).Distinct().ToList();
+        var levels   = await _db.MembershipLevels.AsNoTracking()
             .Where(l => levelIds.Contains(l.Id))
             .Select(l => new { l.Id, l.Name })
             .ToDictionaryAsync(l => l.Id, l => l.Name, ct);
 
-        // Order numbers via LastOrderId
-        var orderIds = subsByMember.Values
-            .Where(s => s.LastOrderId != null)
-            .Select(s => s.LastOrderId!)
-            .Distinct()
-            .ToList();
-
-        var orderNos = await _db.Orders
-            .AsNoTracking()
+        var orderIds = byMember.Where(s => s.LastOrderId != null).Select(s => s.LastOrderId!).Distinct().ToList();
+        var orderNos = await _db.Orders.AsNoTracking()
             .Where(o => orderIds.Contains(o.Id))
             .Select(o => new { o.Id, o.OrderNo })
             .ToDictionaryAsync(o => o.Id, o => o.OrderNo ?? string.Empty, ct);
 
-        // Member profiles
-        var profiles = await _db.MemberProfiles
-            .AsNoTracking()
-            .Where(mp => memberIds.Contains(mp.MemberId))
-            .Select(mp => new { mp.MemberId, mp.FirstName, mp.LastName })
-            .ToListAsync(ct);
-
-        var members = profiles
-            .Select(mp =>
+        var members = byMember
+            .Select(s =>
             {
-                var sub        = subsByMember.TryGetValue(mp.MemberId, out var s) ? s : null;
-                var levelId    = sub?.MembershipLevelId ?? 0;
-                var pts        = LevelPoints.TryGetValue(levelId, out var p) ? p : 0;
-                var levelName  = levelId > 0 && levels.TryGetValue(levelId, out var ln) ? ln : "—";
-                var orderNo    = sub?.LastOrderId != null && orderNos.TryGetValue(sub.LastOrderId, out var on) ? on : "—";
-                var expDate    = sub?.EndDate;
-
+                var pts       = LevelPoints.TryGetValue(s.MembershipLevelId, out var p) ? p : 0;
+                var levelName = levels.TryGetValue(s.MembershipLevelId, out var ln) ? ln : "—";
+                var orderNo   = s.LastOrderId != null && orderNos.TryGetValue(s.LastOrderId, out var on) ? on : "—";
                 return new CarBonusBranchMemberView
                 {
                     OrderNo         = orderNo,
-                    FullName        = $"{mp.FirstName} {mp.LastName}".Trim(),
+                    FullName        = $"{s.FirstName} {s.LastName}".Trim(),
                     MembershipLevel = levelName,
-                    ExpirationDate  = expDate,
+                    ExpirationDate  = s.EndDate,
                     Points          = pts
                 };
             })

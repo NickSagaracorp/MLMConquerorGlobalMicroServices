@@ -63,7 +63,7 @@
                         <div class="pm-mini-number">â€¢â€¢â€¢â€¢ â€¢â€¢â€¢â€¢ â€¢â€¢â€¢â€¢ @card.Last4</div>
                         <div class="pm-mini-bottom">
                             <span class="pm-mini-holder">@L["PaymentMethod.CardHolder"]</span>
-                            <span class="pm-mini-exp">@L["BillingInfo.Exp"] @card.ExpiryMonth.ToString("00")/@card.ExpiryYear.ToString().Substring(2)</span>
+                            <span class="pm-mini-exp">@L["BillingInfo.Exp"] @card.ExpiryMonth.ToString("00")/@(((card.ExpiryYear % 100 + 100) % 100).ToString("00"))</span>
                         </div>
                     </div>
                     <div class="pm-meta">

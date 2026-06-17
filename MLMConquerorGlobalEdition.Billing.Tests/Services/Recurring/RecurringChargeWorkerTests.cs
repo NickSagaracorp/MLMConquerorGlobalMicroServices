@@ -326,7 +326,7 @@ public class RecurringChargeWorkerTests
         db.SubscriptionBillingStates.Add(state2);
 
         // state1 was already processed today
-        db.RecurringBillingAttempts.Add(new RecurringBillingAttempt
+        var processedAttempt = new RecurringBillingAttempt
         {
             SubscriptionBillingStateId = state1.Id,
             MemberId   = "member-1",
@@ -339,10 +339,18 @@ public class RecurringChargeWorkerTests
             OrderId    = "order-old",
             CreatedBy  = "test",
             CreationDate = Now
-        });
+        };
+        db.RecurringBillingAttempts.Add(processedAttempt);
 
         db.MembershipSubscriptions.Add(MakeSubscription(subId1, "member-1"));
         db.MembershipSubscriptions.Add(MakeSubscription(subId2, "member-2"));
+        await db.SaveChangesAsync();
+
+        // The AuditInterceptor stamps CreationDate with the real wall clock on insert,
+        // which would push this attempt out of the worker's mocked "processed today"
+        // window and make the test rot over time. Restore the deterministic timestamp
+        // via a Modified save (the interceptor only sets CreationDate on Added).
+        processedAttempt.CreationDate = Now;
         await db.SaveChangesAsync();
 
         int callCount = 0;

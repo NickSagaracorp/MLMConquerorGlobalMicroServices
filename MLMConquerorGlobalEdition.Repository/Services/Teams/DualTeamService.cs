@@ -3,6 +3,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.SharedKernel;
 
@@ -20,6 +21,35 @@ public class DualTeamService : IDualTeamService
         _ranks = ranks;
     }
 
+    /// <summary>String columns the dual-team grid search box matches against.</summary>
+    private static readonly string[] MyTeamSearchableFields =
+    {
+        nameof(DualTeamMyTeamMemberView.MemberId),
+        nameof(DualTeamMyTeamMemberView.FullName),
+        nameof(DualTeamMyTeamMemberView.Email),
+        nameof(DualTeamMyTeamMemberView.Phone),
+        nameof(DualTeamMyTeamMemberView.Country),
+        nameof(DualTeamMyTeamMemberView.Leg),
+        nameof(DualTeamMyTeamMemberView.SponsorFullName),
+        nameof(DualTeamMyTeamMemberView.DualUplineFullName),
+        nameof(DualTeamMyTeamMemberView.AccountStatus),
+        nameof(DualTeamMyTeamMemberView.MembershipStatus),
+        nameof(DualTeamMyTeamMemberView.MembershipLevelName),
+        nameof(DualTeamMyTeamMemberView.CurrentRankName),
+        nameof(DualTeamMyTeamMemberView.LifetimeRankName),
+    };
+
+    /// <summary>DB columns the dual-team grid can search at the DB (present in the light row).</summary>
+    private static readonly string[] DualRowSearchableFields =
+    {
+        nameof(DualTeamMyTeamMemberView.MemberId),
+        nameof(DualTeamMyTeamMemberView.FullName),
+        nameof(DualTeamMyTeamMemberView.Email),
+        nameof(DualTeamMyTeamMemberView.Phone),
+        nameof(DualTeamMyTeamMemberView.Country),
+        nameof(DualTeamMyTeamMemberView.AccountStatus),
+    };
+
     public async Task<PagedResult<DualTeamMyTeamMemberView>> GetMyTeamAsync(
         string memberId, int page, int pageSize, string? search,
         DateTime? from, DateTime? to,
@@ -29,102 +59,142 @@ public class DualTeamService : IDualTeamService
             .FirstOrDefaultAsync(d => d.MemberId == memberId, ct);
         if (myNode is null) return new PagedResult<DualTeamMyTeamMemberView>();
 
-        var pathPrefix = myNode.HierarchyPath;
-        var rootDepth  = SegmentCount(pathPrefix);
-
-        // Pull every node in the viewer's binary subtree (excluding self).
-        var subtreeNodes = await _db.DualTeamTree.AsNoTracking()
-            .Where(d => d.HierarchyPath.StartsWith(pathPrefix) && d.MemberId != memberId)
-            .Select(d => new { d.MemberId, d.HierarchyPath, d.ParentMemberId, d.LeftLegPoints, d.RightLegPoints })
-            .ToListAsync(ct);
-
-        if (!subtreeNodes.Any()) return new PagedResult<DualTeamMyTeamMemberView>();
-
-        var subtreeIds = subtreeNodes.Select(n => n.MemberId).ToList();
-
-        // Direct binary children of the viewer; their Side determines the leg
-        // any deeper descendant sits on (the first segment after the viewer's
-        // path is the gateway-node, and that node's Side is the leg).
-        var directChildren = await _db.DualTeamTree.AsNoTracking()
-            .Where(d => d.ParentMemberId == memberId)
-            .Select(d => new { d.MemberId, d.Side })
-            .ToListAsync(ct);
-        var legByGatewayId = directChildren.ToDictionary(d => d.MemberId, d => d.Side);
-
-        // Build a fast lookup MemberId -> first-segment-after-prefix.
-        var legMap = new Dictionary<string, string>(subtreeNodes.Count);
-        var levelMap = new Dictionary<string, int>(subtreeNodes.Count);
-        foreach (var n in subtreeNodes)
-        {
-            var rel = n.HierarchyPath.Length > pathPrefix.Length
-                ? n.HierarchyPath[pathPrefix.Length..]
-                : string.Empty;
-            var firstSeg = rel.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
-            var leg = firstSeg is not null && legByGatewayId.TryGetValue(firstSeg, out var side)
-                ? side.ToString()
-                : string.Empty;
-            legMap[n.MemberId]   = leg;
-            levelMap[n.MemberId] = SegmentCount(n.HierarchyPath) - rootDepth;
-        }
-
-        // ─── Profile + filters ───────────────────────────────────────────
-        var profileQuery = _db.MemberProfiles.AsNoTracking()
-            .Where(m => subtreeIds.Contains(m.MemberId));
-
+        var q = BuildMyTeamRowQueryable(myNode.HierarchyPath, memberId);
         if (!string.IsNullOrWhiteSpace(search))
         {
             var s = search.ToLower();
-            profileQuery = profileQuery.Where(m =>
-                m.FirstName.ToLower().Contains(s) ||
-                m.LastName.ToLower().Contains(s)  ||
-                m.MemberId.ToLower().Contains(s)  ||
-                (m.Email != null && m.Email.ToLower().Contains(s)));
+            q = q.Where(r => r.FullName.ToLower().Contains(s)
+                          || r.MemberId.ToLower().Contains(s)
+                          || (r.Email != null && r.Email.ToLower().Contains(s)));
         }
-        if (from.HasValue) profileQuery = profileQuery.Where(m => m.EnrollDate >= from.Value);
-        if (to.HasValue)   profileQuery = profileQuery.Where(m => m.EnrollDate <= to.Value);
+        if (from.HasValue) q = q.Where(r => r.EnrollDate >= from.Value);
+        if (to.HasValue)   q = q.Where(r => r.EnrollDate <= to.Value);
 
-        var totalCount = await profileQuery.CountAsync(ct);
-        var profiles = await profileQuery
-            .OrderByDescending(m => m.EnrollDate)
-            .Skip((page - 1) * pageSize).Take(pageSize)
-            .Select(m => new
+        var total = await q.CountAsync(ct);
+        var rows  = await q.OrderByDescending(r => r.EnrollDate)
+            .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+
+        var items = await BuildDualViewsForPageAsync(rows, myNode.HierarchyPath, memberId, ct);
+        return new PagedResult<DualTeamMyTeamMemberView>
+        {
+            Items = items, TotalCount = total, Page = page, PageSize = pageSize
+        };
+    }
+
+    /// <summary>
+    /// Server-side grid read over the viewer's binary subtree. Search/filter/sort/COUNT/page
+    /// run in SQL against a LIGHT row projection (profile columns + the node's path), so only
+    /// the requested page (≤ pageSize) is materialized — the previous version loaded the whole
+    /// subtree (120k+ rows × 7 tables) and paged in memory. Leg/Level + the enriched columns
+    /// (rank/membership/sponsor/points) are computed for the page only in
+    /// <see cref="BuildDualViewsForPageAsync"/>; grid ops on those non-projected columns are
+    /// ignored by the grid helper (GetProperty returns null) rather than scanning 120k rows.
+    /// </summary>
+    public async Task<PagedResult<DualTeamMyTeamMemberView>> GetMyTeamGridAsync(
+        string memberId, GridDataRequest request, CancellationToken ct = default)
+    {
+        var myNode = await _db.DualTeamTree.AsNoTracking()
+            .FirstOrDefaultAsync(d => d.MemberId == memberId, ct);
+        if (myNode is null) return new PagedResult<DualTeamMyTeamMemberView>();
+
+        // Ensure a deterministic DB sort even if the request only sorts on non-projected columns.
+        if (!request.Sorts.Any(s => DualRowSearchableFields.Contains(s.Field, StringComparer.OrdinalIgnoreCase)
+                                 || string.Equals(s.Field, nameof(DualMyTeamRow.EnrollDate), StringComparison.OrdinalIgnoreCase)))
+            request.Sorts.Add(new GridSort { Field = nameof(DualMyTeamRow.EnrollDate), Direction = "desc" });
+
+        var q     = BuildMyTeamRowQueryable(myNode.HierarchyPath, memberId);
+        var paged = await q.ToGridResultAsync(request, DualRowSearchableFields, ct: ct);
+
+        var items = await BuildDualViewsForPageAsync(paged.Items.ToList(), myNode.HierarchyPath, memberId, ct);
+        return new PagedResult<DualTeamMyTeamMemberView>
+        {
+            Items = items, TotalCount = paged.TotalCount, Page = paged.Page, PageSize = paged.PageSize
+        };
+    }
+
+    /// <summary>Light, fully DB-translatable row: profile columns + the node's binary-tree path
+    /// (needed to derive Leg/Level for the page). Property names that the grid searches/sorts on
+    /// match <see cref="DualTeamMyTeamMemberView"/>; non-projected names are ignored by the grid.</summary>
+    private sealed class DualMyTeamRow
+    {
+        public string    MemberId        { get; set; } = string.Empty;
+        public string    FullName        { get; set; } = string.Empty;
+        public string?   Email           { get; set; }
+        public string?   Phone           { get; set; }
+        public string    Country         { get; set; } = string.Empty;
+        public DateTime  EnrollDate      { get; set; }
+        public string?   SponsorMemberId { get; set; }
+        public string    AccountStatus   { get; set; } = string.Empty;
+        public string    HierarchyPath   { get; set; } = string.Empty;
+        public string?   ParentMemberId  { get; set; }
+        public decimal   LeftLegPoints   { get; set; }
+        public decimal   RightLegPoints  { get; set; }
+    }
+
+    private IQueryable<DualMyTeamRow> BuildMyTeamRowQueryable(string pathPrefix, string memberId)
+    {
+        return
+            from d in _db.DualTeamTree.AsNoTracking()
+            where d.HierarchyPath.StartsWith(pathPrefix) && d.MemberId != memberId
+            join m in _db.MemberProfiles.AsNoTracking() on d.MemberId equals m.MemberId
+            select new DualMyTeamRow
             {
-                m.MemberId, m.FirstName, m.LastName, m.Email, m.Phone,
-                m.Country, m.EnrollDate, m.SponsorMemberId,
-                AccountStatus = m.Status.ToString()
-            })
-            .ToListAsync(ct);
+                MemberId        = m.MemberId,
+                FullName        = m.FirstName + " " + m.LastName,
+                Email           = m.Email,
+                Phone           = m.Phone,
+                Country         = m.Country,
+                EnrollDate      = m.EnrollDate,
+                SponsorMemberId = m.SponsorMemberId,
+                AccountStatus   = m.Status.ToString(),
+                HierarchyPath   = d.HierarchyPath,
+                ParentMemberId  = d.ParentMemberId,
+                LeftLegPoints   = d.LeftLegPoints,
+                RightLegPoints  = d.RightLegPoints
+            };
+    }
 
-        var pageIds = profiles.Select(p => p.MemberId).ToList();
+    /// <summary>Build the full enriched dual-team views for one page of rows (≤ pageSize):
+    /// derive Leg (from the gateway child's Side) + Level (path depth) and pull subscriptions /
+    /// ranks / stats / sponsor+upline names via Contains(~20 ids) — bounded regardless of
+    /// downline size.</summary>
+    private async Task<List<DualTeamMyTeamMemberView>> BuildDualViewsForPageAsync(
+        List<DualMyTeamRow> rows, string pathPrefix, string memberId, CancellationToken ct)
+    {
+        if (rows.Count == 0) return new List<DualTeamMyTeamMemberView>();
 
-        // ─── Sidecar lookups (mirror EnrollmentTeamService.GetMyTeamAsync) ─
+        var rootDepth = SegmentCount(pathPrefix);
+        var ids       = rows.Select(r => r.MemberId).ToList();
+
+        // Gateway children of the viewer (≤2): their Side is the leg of any descendant whose
+        // path passes through them (the first segment after the viewer's path).
+        var legByGatewayId = await _db.DualTeamTree.AsNoTracking()
+            .Where(d => d.ParentMemberId == memberId)
+            .Select(d => new { d.MemberId, d.Side })
+            .ToDictionaryAsync(d => d.MemberId, d => d.Side, ct);
+
         var subscriptions = await _db.MembershipSubscriptions.AsNoTracking()
             .Include(s => s.MembershipLevel)
-            .Where(s => pageIds.Contains(s.MemberId)
-                     && s.SubscriptionStatus != MembershipStatus.Cancelled)
+            .Where(s => ids.Contains(s.MemberId) && s.SubscriptionStatus != MembershipStatus.Cancelled)
             .OrderByDescending(s => s.StartDate)
             .ToListAsync(ct);
         var subMap = subscriptions.GroupBy(s => s.MemberId).ToDictionary(g => g.Key, g => g.First());
 
         var rankHistories = await _db.MemberRankHistories.AsNoTracking()
             .Include(r => r.RankDefinition)
-            .Where(r => pageIds.Contains(r.MemberId))
+            .Where(r => ids.Contains(r.MemberId))
             .ToListAsync(ct);
         var currentRankMap = rankHistories.GroupBy(r => r.MemberId)
             .ToDictionary(g => g.Key, g => g.OrderByDescending(r => r.AchievedAt).First());
         var lifetimeRankMap = rankHistories.GroupBy(r => r.MemberId)
             .ToDictionary(g => g.Key, g => g.OrderByDescending(r => r.RankDefinition?.SortOrder ?? 0).First());
 
-        var pageDualNodes = subtreeNodes.Where(n => pageIds.Contains(n.MemberId))
-            .ToDictionary(n => n.MemberId);
-
         var statsMap = await _db.MemberStatistics.AsNoTracking()
-            .Where(s => pageIds.Contains(s.MemberId))
+            .Where(s => ids.Contains(s.MemberId))
             .ToDictionaryAsync(s => s.MemberId, ct);
 
-        var resolveIds = profiles.Where(p => p.SponsorMemberId != null)
-            .Select(p => p.SponsorMemberId!)
-            .Union(pageDualNodes.Values.Where(d => d.ParentMemberId != null).Select(d => d.ParentMemberId!))
+        var resolveIds = rows.Where(r => r.SponsorMemberId != null).Select(r => r.SponsorMemberId!)
+            .Union(rows.Where(r => r.ParentMemberId != null).Select(r => r.ParentMemberId!))
             .Distinct().ToList();
         var nameMap = await _db.MemberProfiles.AsNoTracking()
             .Where(m => resolveIds.Contains(m.MemberId))
@@ -134,22 +204,26 @@ public class DualTeamService : IDualTeamService
         var allRanks = await _db.RankDefinitions.AsNoTracking()
             .Include(r => r.Requirements).OrderBy(r => r.SortOrder).ToListAsync(ct);
 
-        var items = profiles.Select(p =>
+        return rows.Select(r =>
         {
-            subMap.TryGetValue(p.MemberId, out var sub);
-            currentRankMap.TryGetValue(p.MemberId, out var cr);
-            lifetimeRankMap.TryGetValue(p.MemberId, out var lr);
-            pageDualNodes.TryGetValue(p.MemberId, out var dual);
-            statsMap.TryGetValue(p.MemberId, out var stat);
-            nameMap.TryGetValue(p.SponsorMemberId ?? "", out var sponsorName);
-            nameMap.TryGetValue(dual?.ParentMemberId ?? "", out var uplineName);
+            subMap.TryGetValue(r.MemberId, out var sub);
+            currentRankMap.TryGetValue(r.MemberId, out var cr);
+            lifetimeRankMap.TryGetValue(r.MemberId, out var lr);
+            statsMap.TryGetValue(r.MemberId, out var stat);
+            nameMap.TryGetValue(r.SponsorMemberId ?? "", out var sponsorName);
+            nameMap.TryGetValue(r.ParentMemberId ?? "", out var uplineName);
+
+            var rel = r.HierarchyPath.Length > pathPrefix.Length ? r.HierarchyPath[pathPrefix.Length..] : string.Empty;
+            var firstSeg = rel.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+            var leg = firstSeg is not null && legByGatewayId.TryGetValue(firstSeg, out var side)
+                ? side.ToString() : string.Empty;
 
             var currentSortOrder = cr?.RankDefinition?.SortOrder ?? 0;
-            var nextRank = allRanks.FirstOrDefault(r => r.SortOrder > currentSortOrder);
+            var nextRank = allRanks.FirstOrDefault(rk => rk.SortOrder > currentSortOrder);
             int pct = 0;
             if (nextRank is not null)
             {
-                var req = nextRank.Requirements.OrderBy(r => r.LevelNo).FirstOrDefault();
+                var req = nextRank.Requirements.OrderBy(rk => rk.LevelNo).FirstOrDefault();
                 if (req is not null && req.TeamPoints > 0)
                     pct = Math.Min(100, (int)((stat?.DualTeamPoints ?? 0) * 100.0 / req.TeamPoints));
             }
@@ -157,19 +231,19 @@ public class DualTeamService : IDualTeamService
 
             return new DualTeamMyTeamMemberView
             {
-                MemberId             = p.MemberId,
-                FullName             = $"{p.FirstName} {p.LastName}",
-                Email                = p.Email,
-                Phone                = p.Phone,
-                Country              = p.Country,
-                Level                = levelMap.GetValueOrDefault(p.MemberId),
-                Leg                  = legMap.GetValueOrDefault(p.MemberId, string.Empty),
-                EnrollDate           = p.EnrollDate,
-                SponsorMemberId      = p.SponsorMemberId,
+                MemberId             = r.MemberId,
+                FullName             = r.FullName,
+                Email                = r.Email,
+                Phone                = r.Phone,
+                Country              = r.Country,
+                Level                = SegmentCount(r.HierarchyPath) - rootDepth,
+                Leg                  = leg,
+                EnrollDate           = r.EnrollDate,
+                SponsorMemberId      = r.SponsorMemberId,
                 SponsorFullName      = sponsorName,
-                DualUplineMemberId   = dual?.ParentMemberId,
+                DualUplineMemberId   = r.ParentMemberId,
                 DualUplineFullName   = uplineName,
-                AccountStatus        = p.AccountStatus,
+                AccountStatus        = r.AccountStatus,
                 MembershipStatus     = sub?.SubscriptionStatus.ToString() ?? "None",
                 IsQualified          = sub?.SubscriptionStatus == MembershipStatus.Active,
                 MembershipLevelName  = sub?.MembershipLevel?.Name,
@@ -179,14 +253,141 @@ public class DualTeamService : IDualTeamService
                 NextRankPercent      = pct,
                 QualificationPoints  = stat?.PersonalPoints   ?? 0,
                 EnrollmentTeamPoints = stat?.EnrollmentPoints ?? 0,
-                LeftTeamPoints       = dual?.LeftLegPoints  ?? 0,
-                RightTeamPoints      = dual?.RightLegPoints ?? 0
+                LeftTeamPoints       = r.LeftLegPoints,
+                RightTeamPoints      = r.RightLegPoints
             };
         }).ToList();
+    }
 
-        return new PagedResult<DualTeamMyTeamMemberView>
+    /// <inheritdoc />
+    public async Task<DualTreeStatsView> GetDualTreeStatsAsync(string memberId, CancellationToken ct = default)
+    {
+        // Denormalised leg totals — O(1), maintained by the placement engine and shared with
+        // rank qualification. (Never recompute by scanning the subtree.)
+        var node = await _db.DualTeamTree.AsNoTracking()
+            .Where(d => d.MemberId == memberId)
+            .Select(d => new { d.LeftLegPoints, d.RightLegPoints })
+            .FirstOrDefaultAsync(ct);
+
+        // Per-leg cap toward the NEXT rank — same rule the rank engine applies for qualification:
+        // cap = MaxTeamPointsPerBranch × nextRank.TeamPoints (0 ⇒ DT does not apply at that rank).
+        var summary     = await _ranks.GetSummaryAsync(memberId, ct);
+        var nextRankDef = summary.NextRankSortOrder > 0
+            ? await _db.RankDefinitions.AsNoTracking()
+                .Include(r => r.Requirements)
+                .FirstOrDefaultAsync(r => r.SortOrder == summary.NextRankSortOrder, ct)
+            : null;
+        var req = nextRankDef?.Requirements.OrderBy(r => r.LevelNo).FirstOrDefault();
+        var cap = req is { TeamPoints: > 0, MaxTeamPointsPerBranch: > 0 }
+            ? (int)Math.Round(req.MaxTeamPointsPerBranch * req.TeamPoints)
+            : 0;
+
+        return new DualTreeStatsView
         {
-            Items = items, TotalCount = totalCount, Page = page, PageSize = pageSize
+            LeftLegPoints  = node?.LeftLegPoints  ?? 0,
+            RightLegPoints = node?.RightLegPoints ?? 0,
+            NextRankLegCap = cap,
+            NextRankName   = nextRankDef?.Name
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task<List<DualTreeSearchMatchView>> SearchBinarySubtreeAsync(
+        string rootMemberId, string? term, int take = 25, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(term)) return new();
+        take = Math.Clamp(take, 1, 100);
+
+        var rootPath = await _db.DualTeamTree.AsNoTracking()
+            .Where(d => d.MemberId == rootMemberId).Select(d => d.HierarchyPath).FirstOrDefaultAsync(ct);
+        if (string.IsNullOrEmpty(rootPath)) return new();
+
+        var s = term.Trim().ToLower();
+        var matches = await (
+            from d in _db.DualTeamTree.AsNoTracking()
+            where d.HierarchyPath.StartsWith(rootPath) && d.MemberId != rootMemberId
+            join m in _db.MemberProfiles.AsNoTracking() on d.MemberId equals m.MemberId
+            where m.MemberId.ToLower().Contains(s) || (m.FirstName + " " + m.LastName).ToLower().Contains(s)
+            orderby d.HierarchyPath.Length      // shallowest matches first
+            select new { d.MemberId, d.HierarchyPath, m.FirstName, m.LastName }
+        ).Take(take).ToListAsync(ct);
+
+        if (matches.Count == 0) return new();
+
+        var rootSegLen   = SegmentCount(rootPath);
+        var legByGateway = (await _db.DualTeamTree.AsNoTracking()
+                .Where(d => d.ParentMemberId == rootMemberId)
+                .Select(d => new { d.MemberId, d.Side })
+                .ToListAsync(ct))
+            .ToDictionary(g => g.MemberId, g => g.Side);
+
+        // Resolve names for every id on every match's path-below-root (one batched query).
+        var pathIds = matches
+            .SelectMany(mt => mt.HierarchyPath.Split('/', StringSplitOptions.RemoveEmptyEntries).Skip(rootSegLen))
+            .Distinct().ToList();
+        var names = await _db.MemberProfiles.AsNoTracking()
+            .Where(p => pathIds.Contains(p.MemberId))
+            .Select(p => new { p.MemberId, Name = p.FirstName + " " + p.LastName })
+            .ToDictionaryAsync(x => x.MemberId, x => x.Name.Trim(), ct);
+
+        return matches.Select(mt =>
+        {
+            var afterRoot = mt.HierarchyPath.Split('/', StringSplitOptions.RemoveEmptyEntries).Skip(rootSegLen).ToList();
+            var leg = afterRoot.Count > 0 && legByGateway.TryGetValue(afterRoot[0], out var side) ? side.ToString() : string.Empty;
+            return new DualTreeSearchMatchView
+            {
+                MemberId = mt.MemberId,
+                FullName = $"{mt.FirstName} {mt.LastName}".Trim(),
+                Leg      = leg,
+                Depth    = afterRoot.Count,
+                Path     = afterRoot.Select(id => new DualTreePathNodeView
+                {
+                    MemberId = id,
+                    FullName = names.GetValueOrDefault(id, id)
+                }).ToList()
+            };
+        }).ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task<DualTreeNavTargetView?> GetDeepestNodeAsync(
+        string rootMemberId, TreeSide side, CancellationToken ct = default)
+    {
+        var gateway = await _db.DualTeamTree.AsNoTracking()
+            .Where(d => d.ParentMemberId == rootMemberId && d.Side == side)
+            .Select(d => new { d.MemberId, d.HierarchyPath })
+            .FirstOrDefaultAsync(ct);
+        if (gateway is null) return null;
+
+        // Deepest descendant on this leg — longest path string is the deepest (each level adds a
+        // segment). Approximate but monotonic with depth, which is all a "jump to deepest" needs.
+        var deepest = await _db.DualTeamTree.AsNoTracking()
+            .Where(d => d.HierarchyPath.StartsWith(gateway.HierarchyPath))
+            .OrderByDescending(d => d.HierarchyPath.Length)
+            .Select(d => new { d.MemberId, d.HierarchyPath })
+            .FirstOrDefaultAsync(ct)
+            ?? new { gateway.MemberId, gateway.HierarchyPath };
+
+        var rootPath = await _db.DualTeamTree.AsNoTracking()
+            .Where(d => d.MemberId == rootMemberId).Select(d => d.HierarchyPath).FirstOrDefaultAsync(ct) ?? string.Empty;
+        var rootSegLen = SegmentCount(rootPath);
+
+        var afterRoot = deepest.HierarchyPath.Split('/', StringSplitOptions.RemoveEmptyEntries).Skip(rootSegLen).ToList();
+        var names = await _db.MemberProfiles.AsNoTracking()
+            .Where(p => afterRoot.Contains(p.MemberId))
+            .Select(p => new { p.MemberId, Name = p.FirstName + " " + p.LastName })
+            .ToDictionaryAsync(x => x.MemberId, x => x.Name.Trim(), ct);
+
+        return new DualTreeNavTargetView
+        {
+            MemberId = deepest.MemberId,
+            FullName = names.GetValueOrDefault(deepest.MemberId, deepest.MemberId),
+            Depth    = afterRoot.Count,
+            Path     = afterRoot.Select(id => new DualTreePathNodeView
+            {
+                MemberId = id,
+                FullName = names.GetValueOrDefault(id, id)
+            }).ToList()
         };
     }
 

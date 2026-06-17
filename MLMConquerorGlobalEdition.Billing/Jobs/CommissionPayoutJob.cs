@@ -10,9 +10,10 @@ using MLMConquerorGlobalEdition.Repository.Context;
 namespace MLMConquerorGlobalEdition.Billing.Jobs;
 
 /// <summary>
-/// HangFire recurring job — Weekly Friday 8:00 AM UTC.
+/// HangFire recurring job — Weekly Friday 8:00 AM UTC (currently disabled; invoked on demand).
 /// For each member with Pending commission earnings where PaymentDate &lt;= today,
-/// dispatches a PayoutCommand to mark them paid and credit the eWallet.
+/// dispatches a PayoutCommand which disburses the grouped earnings through the member's
+/// preferred external payout gateway and, on gateway confirmation, marks them Paid.
 /// </summary>
 [Queue("billing")]
 public class CommissionPayoutJob

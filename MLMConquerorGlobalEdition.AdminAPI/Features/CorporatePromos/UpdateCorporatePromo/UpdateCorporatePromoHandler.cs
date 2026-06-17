@@ -35,8 +35,8 @@ public class UpdateCorporatePromoHandler : IRequestHandler<UpdateCorporatePromoC
         entity.EndDate            = req.EndDate;
         entity.BannerUrl          = req.BannerUrl;
         entity.IsActive           = req.IsActive;
-        entity.DoubleSponsorBonus = req.DoubleSponsorBonus;
-        entity.DoubleBuilderBonus = req.DoubleBuilderBonus;
+        entity.SponsorBonusMultiplier = req.SponsorBonusMultiplier;
+        entity.BuilderBonusMultiplier = req.BuilderBonusMultiplier;
         // ResetFsbCountdown is intentionally toggleable — admin can flip it
         // back off after the reset has been executed, and ResetFsbCountdownExecutedAt
         // remains set so the reset cannot accidentally re-fire.

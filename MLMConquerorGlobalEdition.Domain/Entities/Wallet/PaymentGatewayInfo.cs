@@ -34,6 +34,13 @@ public class PaymentGatewayInfo : AuditChangesIntKey
     /// <summary>USD/EUR/etc — only meaningful when <see cref="AdminFeeKind"/> is Fixed.</summary>
     public string Currency { get; set; } = "USD";
 
+    /// <summary>
+    /// Minimum amount (USD) a member must have pending before they become a payout
+    /// candidate for this gateway. The payout dashboard, CSV batch export and the
+    /// orchestrator all gate eligibility on this threshold. Editable by admin.
+    /// </summary>
+    public decimal MinimumPayoutAmount { get; set; }
+
     public bool IsActive { get; set; } = true;
 }
 

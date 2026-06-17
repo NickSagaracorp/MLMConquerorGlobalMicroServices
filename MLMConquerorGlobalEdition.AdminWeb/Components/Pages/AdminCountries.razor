@@ -377,6 +377,91 @@
     </div>
 }
 
+@* ══════════════════════════════════════════════ *@
+@* Retroactive Apply Confirmation Modal           *@
+@* Layered ON TOP of the Default Payout Gateway modal when the admin clicks
+   Update and the WalletType actually changed. Lets the admin choose between
+   "new signups only" (default) and "also migrate existing wallets". Shows a
+   live preview of how many existing wallets would be migrated. Cancel returns
+   to the underlying Save modal so the user can still tweak the form. *@
+@* ══════════════════════════════════════════════ *@
+
+@if (_showRetroactiveConfirm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.55);z-index:1060;">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 rounded-3 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold text-primary">
+                        <i class="ri-swap-line me-1"></i>
+                        Apply gateway change
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CancelRetroactiveConfirm" disabled="@_savingPayoutDefault"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">
+                        You are changing the default payout gateway for
+                        <strong>@_payoutCountry?.NameEn (@_payoutCountry?.Iso2)</strong>
+                        from <code>@_payoutOriginalWalletType</code> to <code>@_payoutForm.WalletType</code>.
+                    </p>
+
+                    @if (_loadingRetroactivePreview)
+                    {
+                        <div class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm text-primary"></div>
+                            <div class="small text-muted mt-2">Checking how many wallets would migrate…</div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="form-check border rounded px-3 py-2 mb-2">
+                            <input class="form-check-input" type="radio" name="retroChoice"
+                                   id="retroChoiceNew"
+                                   checked="@(!_applyRetroactively)"
+                                   @onchange="() => _applyRetroactively = false" />
+                            <label class="form-check-label w-100" for="retroChoiceNew">
+                                <span class="fw-semibold">Apply to new signups only</span>
+                                <span class="d-block text-muted small mt-1">
+                                    Only new ambassadors from this country will get the new gateway.
+                                    Existing members keep their current wallet.
+                                </span>
+                            </label>
+                        </div>
+
+                        <div class="form-check border rounded px-3 py-2">
+                            <input class="form-check-input" type="radio" name="retroChoice"
+                                   id="retroChoiceMigrate"
+                                   checked="@_applyRetroactively"
+                                   @onchange="() => _applyRetroactively = true" />
+                            <label class="form-check-label w-100" for="retroChoiceMigrate">
+                                <span class="fw-semibold">Also migrate existing wallets</span>
+                                <span class="d-block text-muted small mt-1">
+                                    <strong>@_retroactivePreviewCount</strong>
+                                    @(_retroactivePreviewCount == 1 ? "ambassador" : "ambassadors")
+                                    in this country
+                                    @(_retroactivePreviewCount == 1 ? "is" : "are")
+                                    currently on <code>@_payoutOriginalWalletType</code>.
+                                    @(_retroactivePreviewCount == 1 ? "They" : "They")
+                                    will be switched to <code>@_payoutForm.WalletType</code>.
+                                    Members who picked a different gateway manually will NOT be touched.
+                                </span>
+                            </label>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CancelRetroactiveConfirm" disabled="@_savingPayoutDefault">Cancel</button>
+                    <button class="btn btn-primary" @onclick="ConfirmRetroactiveSave"
+                            disabled="@(_savingPayoutDefault || _loadingRetroactivePreview)">
+                        @if (_savingPayoutDefault) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Confirm change
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
 
     // ── State ────────────────────────────────────────────────────────────────
@@ -689,6 +774,16 @@
     private int?                _payoutExistingId;
     private PayoutDefaultForm   _payoutForm = new();
 
+    // Snapshot of the WalletType as opened, used to detect a change at save time.
+    // Null when creating a new row (no existing wallets to migrate either way).
+    private string?             _payoutOriginalWalletType;
+
+    // Retroactive confirmation modal — only shown on edit when the WalletType changed.
+    private bool                _showRetroactiveConfirm;
+    private bool                _loadingRetroactivePreview;
+    private int                 _retroactivePreviewCount;
+    private bool                _applyRetroactively;
+
     private static readonly string[] _walletTypeOptions = new[]
     {
         "Dwolla", "Propay", "WireTransferCanada", "eWallet",
@@ -697,11 +792,12 @@
 
     private async Task OpenPayoutDefault(CountryDto c)
     {
-        _payoutCountry        = c;
-        _showPayoutDefault    = true;
-        _loadingPayoutDefault = true;
-        _payoutExistingId     = null;
-        _payoutForm           = new PayoutDefaultForm();
+        _payoutCountry            = c;
+        _showPayoutDefault        = true;
+        _loadingPayoutDefault     = true;
+        _payoutExistingId         = null;
+        _payoutOriginalWalletType = null;
+        _payoutForm               = new PayoutDefaultForm();
         try
         {
             // Pull the full list once (same endpoint the dedicated payout
@@ -715,7 +811,8 @@
                 : null;
             if (existing is not null)
             {
-                _payoutExistingId = existing.Id;
+                _payoutExistingId         = existing.Id;
+                _payoutOriginalWalletType = existing.WalletType;
                 _payoutForm = new PayoutDefaultForm
                 {
                     WalletType = existing.WalletType,
@@ -730,13 +827,76 @@
 
     private void ClosePayoutDefault()
     {
-        _showPayoutDefault = false;
-        _payoutCountry     = null;
-        _payoutExistingId  = null;
-        _payoutForm        = new();
+        _showPayoutDefault         = false;
+        _payoutCountry             = null;
+        _payoutExistingId          = null;
+        _payoutForm                = new();
+        _payoutOriginalWalletType  = null;
+        _showRetroactiveConfirm    = false;
+        _retroactivePreviewCount   = 0;
+        _applyRetroactively        = false;
     }
 
     private async Task SavePayoutDefault()
+    {
+        if (_payoutCountry is null) return;
+
+        // Edit + WalletType actually changed → fork into the confirmation flow.
+        // The retroactive question is meaningless on create (no existing wallets).
+        var walletTypeChanged =
+            _payoutExistingId.HasValue
+            && _payoutOriginalWalletType is not null
+            && !string.Equals(_payoutForm.WalletType, _payoutOriginalWalletType, StringComparison.OrdinalIgnoreCase);
+
+        if (walletTypeChanged)
+        {
+            await OpenRetroactiveConfirmAsync();
+            return;
+        }
+
+        // Plain path: create OR edit without a wallet-type change.
+        await PerformSavePayoutDefaultAsync(applyRetroactively: false);
+    }
+
+    private async Task OpenRetroactiveConfirmAsync()
+    {
+        // Default to the safer option until the admin opts in.
+        _applyRetroactively        = false;
+        _retroactivePreviewCount   = 0;
+        _showRetroactiveConfirm    = true;
+        _loadingRetroactivePreview = true;
+        StateHasChanged();
+
+        try
+        {
+            var url = $"api/v1/admin/payout-defaults/{_payoutExistingId!.Value}/retroactive-preview" +
+                      $"?newWalletType={Uri.EscapeDataString(_payoutForm.WalletType)}";
+            var resp = await Http.GetFromJsonAsync<ApiResp<RetroactivePreviewDto>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+                _retroactivePreviewCount = resp.Data.AffectedWalletCount;
+        }
+        catch (Exception ex)
+        {
+            // Preview is informational — keep the modal open with count = 0
+            // so the admin can still confirm. Surface the issue in the page alert.
+            ShowAlert($"Could not load retroactive preview: {ex.Message}", isError: true);
+        }
+        finally { _loadingRetroactivePreview = false; }
+    }
+
+    private void CancelRetroactiveConfirm()
+    {
+        // Closes JUST the confirmation modal; the underlying Save modal stays
+        // open so the admin can still tweak the form.
+        _showRetroactiveConfirm  = false;
+        _applyRetroactively      = false;
+        _retroactivePreviewCount = 0;
+    }
+
+    private Task ConfirmRetroactiveSave()
+        => PerformSavePayoutDefaultAsync(applyRetroactively: _applyRetroactively);
+
+    private async Task PerformSavePayoutDefaultAsync(bool applyRetroactively)
     {
         if (_payoutCountry is null) return;
         _savingPayoutDefault = true;
@@ -744,10 +904,11 @@
         {
             var payload = new
             {
-                CountryIso2 = _payoutCountry.Iso2,
-                WalletType  = _payoutForm.WalletType,
-                IsActive    = _payoutForm.IsActive,
-                Notes       = _payoutForm.Notes
+                CountryIso2        = _payoutCountry.Iso2,
+                WalletType         = _payoutForm.WalletType,
+                IsActive           = _payoutForm.IsActive,
+                Notes              = _payoutForm.Notes,
+                ApplyRetroactively = applyRetroactively
             };
 
             HttpResponseMessage resp = _payoutExistingId.HasValue
@@ -756,7 +917,23 @@
 
             if (resp.IsSuccessStatusCode)
             {
-                ShowAlert($"Default gateway saved for {_payoutCountry.NameEn}.", isError: false);
+                // Read the migrated-count from the PUT response so we can show it.
+                var migrated = 0;
+                if (applyRetroactively && _payoutExistingId.HasValue)
+                {
+                    try
+                    {
+                        var body = await resp.Content.ReadFromJsonAsync<ApiResp<UpdateResultDto>>();
+                        migrated = body?.Data?.RetroactiveWalletsUpdated ?? 0;
+                    }
+                    catch { /* shape mismatch is non-fatal — just skip the count */ }
+                }
+
+                var msg = $"Default gateway saved for {_payoutCountry.NameEn}.";
+                if (applyRetroactively && migrated > 0)
+                    msg += $" Migrated {migrated} existing wallet{(migrated == 1 ? "" : "s")}.";
+
+                ShowAlert(msg, isError: false);
                 ClosePayoutDefault();
             }
             else
@@ -805,5 +982,19 @@
         public string  WalletType  { get; set; } = string.Empty;
         public bool    IsActive    { get; set; }
         public string? Notes       { get; set; }
+    }
+
+    private class RetroactivePreviewDto
+    {
+        public string CountryIso2         { get; set; } = string.Empty;
+        public string OldWalletType       { get; set; } = string.Empty;
+        public string NewWalletType       { get; set; } = string.Empty;
+        public int    AffectedWalletCount { get; set; }
+    }
+
+    private class UpdateResultDto
+    {
+        public int Id                          { get; set; }
+        public int RetroactiveWalletsUpdated   { get; set; }
     }
 }

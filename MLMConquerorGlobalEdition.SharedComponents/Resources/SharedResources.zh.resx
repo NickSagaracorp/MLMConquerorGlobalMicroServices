@@ -573,6 +573,7 @@
   <data name="Team.LegLeft" xml:space="preserve"><value>左</value></data>
   <data name="Team.LegRight" xml:space="preserve"><value>右</value></data>
   <data name="Team.NoCandidatesAvailable" xml:space="preserve"><value>没有可放置的大使。</value></data>
+  <data name="Team.SearchCandidatesPlaceholder" xml:space="preserve"><value>按姓名或会员 ID 搜索…</value></data>
   <data name="Team.PlacementConfirmation" xml:space="preserve"><value>放置确认</value></data>
   <data name="Team.AmbassadorLabel" xml:space="preserve"><value>大使：</value></data>
   <data name="Team.UnderLabel" xml:space="preserve"><value>下方：</value></data>
@@ -614,6 +615,7 @@
   <data name="Team.EligibleNextRank" xml:space="preserve"><value>合格（下一等级）</value></data>
   <data name="Team.TotalRaw" xml:space="preserve"><value>原始总数</value></data>
   <data name="Team.PointsTowardNext" xml:space="preserve"><value>{0} / {1} 积分朝向 {2}</value></data>
+  <data name="Team.LegPointsTowardNext" xml:space="preserve"><value>{0} 积分朝向 {1}</value></data>
   <data name="Team.DtRequirementNotApplicable" xml:space="preserve"><value>DT 要求：不适用于 {0}</value></data>
   <data name="Team.EtRequirementNotApplicable" xml:space="preserve"><value>ET 要求：不适用于 {0}</value></data>
   <data name="Team.DailyResidualsEarning" xml:space="preserve"><value>每日残差收益</value></data>

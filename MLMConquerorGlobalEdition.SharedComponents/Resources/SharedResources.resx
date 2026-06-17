@@ -716,6 +716,7 @@
   <data name="Team.LegLeft" xml:space="preserve"><value>Left</value></data>
   <data name="Team.LegRight" xml:space="preserve"><value>Right</value></data>
   <data name="Team.NoCandidatesAvailable" xml:space="preserve"><value>No ambassadors available for placement.</value></data>
+  <data name="Team.SearchCandidatesPlaceholder" xml:space="preserve"><value>Search by name or member id…</value></data>
   <data name="Team.PlacementConfirmation" xml:space="preserve"><value>Placement Confirmation</value></data>
   <data name="Team.AmbassadorLabel" xml:space="preserve"><value>Ambassador:</value></data>
   <data name="Team.UnderLabel" xml:space="preserve"><value>Under:</value></data>
@@ -761,6 +762,7 @@
   <data name="Team.EligibleNextRank" xml:space="preserve"><value>Eligible (Next Rank)</value></data>
   <data name="Team.TotalRaw" xml:space="preserve"><value>Total Raw</value></data>
   <data name="Team.PointsTowardNext" xml:space="preserve"><value>{0} / {1} points toward {2}</value></data>
+  <data name="Team.LegPointsTowardNext" xml:space="preserve"><value>{0} pts toward {1}</value></data>
   <data name="Team.DtRequirementNotApplicable" xml:space="preserve"><value>DT requirement: N/A for {0}</value></data>
   <data name="Team.EtRequirementNotApplicable" xml:space="preserve"><value>ET requirement: N/A for {0}</value></data>
   <data name="Team.DailyResidualsEarning" xml:space="preserve"><value>Daily Residuals Earning</value></data>

@@ -1,0 +1,219 @@
+@page "/admin/ranks/first-achievements"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin")]
+@inject HttpClient Http
+
+<PageTitle>Rank First Achievements — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> { new("Admin Dashboard", "/admin"), new("Rank Reports"), new("First Achievements") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+@* ── Filters ──────────────────────────────────────────────────────────────── *@
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-3">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small mb-1">Rank</label>
+                <select class="form-select form-select-sm" @bind="_rankFilter">
+                    <option value="">All ranks</option>
+                    @foreach (var r in _ranks)
+                    {
+                        <option value="@r.Id">@r.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small mb-1">Year</label>
+                <select class="form-select form-select-sm" @bind="_year">
+                    @foreach (var y in _years)
+                    {
+                        <option value="@y">@y</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small mb-1">Month</label>
+                <select class="form-select form-select-sm" @bind="_month">
+                    @for (int m = 1; m <= 12; m++)
+                    {
+                        <option value="@m">@MonthName(m)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary btn-sm w-100" @onclick="Search" disabled="@_loading">
+                    @if (_loading) { <span class="spinner-border spinner-border-sm me-1"></span> } else { <i class="ri-search-line me-1"></i> }
+                    Search
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ── Achievements table ───────────────────────────────────────────────────── *@
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex align-items-center gap-2 flex-wrap">
+        <h6 class="card-title mb-0 fw-semibold flex-grow-1">
+            <i class="ri-medal-line me-2 text-primary"></i>Rank first achievements
+        </h6>
+        <span class="small text-muted">@_totalCount records</span>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        }
+        else
+        {
+            <SfGrid TValue="FirstAchievementRow" DataSource="@_items"
+                    AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridColumns>
+                    <GridColumn HeaderText="Full name" Width="200">
+                        <Template>
+                            @{ var r = (FirstAchievementRow)context; }
+                            <a href="/admin/members/@r.MemberId" target="_blank" rel="noopener"
+                               class="text-primary text-decoration-none">
+                                <span class="fw-semibold">@r.FullName</span>
+                            </a>
+                            <div><code class="small text-muted">@r.MemberId</code></div>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Rank" Width="150">
+                        <Template>
+                            @{ var r = (FirstAchievementRow)context; }
+                            <span class="badge bg-primary">@r.RankName</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Achieved at (UTC)" Width="160">
+                        <Template>
+                            @{ var r = (FirstAchievementRow)context; }
+                            <span class="small">@r.AchievedAt.ToString("yyyy-MM-dd HH:mm:ss")</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Previous rank" Width="150">
+                        <Template>
+                            @{ var r = (FirstAchievementRow)context; }
+                            <span class="small text-muted">@(string.IsNullOrWhiteSpace(r.PreviousRankName) ? "—" : r.PreviousRankName)</span>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+
+            @if (_items.Count == 0)
+            {
+                <div class="text-center text-muted py-4">No rank achievements for the selected filters.</div>
+            }
+
+            @if (_totalPages > 1)
+            {
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
+                    <small class="text-muted">@_totalCount records — Page @_page of @_totalPages</small>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>
+                            @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
+                            { var pg = i; <li class="page-item @(_page == pg ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(pg)">@pg</button></li> }
+                            <li class="page-item @(_page == _totalPages ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page + 1)">›</button></li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private const int PageSize = 20;
+
+    // Filters
+    private string _rankFilter = string.Empty;
+    private int _year = DateTime.UtcNow.Year;
+    private int _month = DateTime.UtcNow.Month;
+
+    private readonly List<int> _years = new();
+
+    private bool _loading = true;
+    private string? _alertMsg;
+    private bool _alertIsError;
+
+    private List<RankOption> _ranks = new();
+    private List<FirstAchievementRow> _items = new();
+    private int _page = 1;
+    private int _totalCount;
+    private int _totalPages = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Year dropdown: 2026 → current year (always include current year).
+        var current = DateTime.UtcNow.Year;
+        var start = Math.Min(2026, current);
+        for (var y = current; y >= start; y--) _years.Add(y);
+
+        await LoadRanksAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadRanksAsync()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<IEnumerable<RankOption>>>("api/v1/admin/rank-definitions");
+            if (resp?.Success == true && resp.Data is not null)
+                _ranks = resp.Data.OrderBy(r => r.SortOrder).ToList();
+        }
+        catch { /* non-fatal — leave the rank filter on "All ranks" */ }
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true; _alertMsg = null; StateHasChanged();
+        try
+        {
+            var url = $"api/v1/admin/ranks/reports/first-achievements?year={_year}&month={_month}&page={_page}&pageSize={PageSize}";
+            if (!string.IsNullOrWhiteSpace(_rankFilter)) url += $"&rankId={Uri.EscapeDataString(_rankFilter)}";
+
+            var resp = await Http.GetFromJsonAsync<ApiResp<Paged<FirstAchievementRow>>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _items = resp.Data.Items.ToList();
+                _totalCount = resp.Data.TotalCount;
+                _totalPages = resp.Data.TotalPages <= 0 ? 1 : resp.Data.TotalPages;
+            }
+            else
+            {
+                _items = new(); _totalCount = 0; _totalPages = 1;
+                _alertMsg = resp?.Errors?.FirstOrDefault() ?? "Failed to load rank achievements.";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; StateHasChanged(); }
+    }
+
+    private async Task Search() { _page = 1; await LoadAsync(); }
+
+    private async Task ChangePage(int p) { if (p < 1 || p > _totalPages) return; _page = p; await LoadAsync(); }
+
+    private static string MonthName(int m) => new DateTime(2000, m, 1).ToString("MMMM");
+
+    // ── DTO shapes ───────────────────────────────────────────────────────────
+    private record RankOption(int Id, string Name, int SortOrder);
+
+    private record FirstAchievementRow(
+        string MemberId,
+        string FullName,
+        int RankDefinitionId,
+        string RankName,
+        int RankSortOrder,
+        DateTime AchievedAt,
+        string? PreviousRankName);
+
+    private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+}

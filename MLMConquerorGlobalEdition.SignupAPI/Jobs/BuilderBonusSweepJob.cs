@@ -58,19 +58,20 @@ public class BuilderBonusSweepJob
             return;
         }
 
-        // Active promos that double Sponsor / Builder bonuses inside the window.
+        // Active promos that boost Sponsor / Builder bonuses inside the window.
         // Pulled once per sweep — the per-order anchor is the order's creation
-        // date so admins can't change a promo's flags after the fact and back-
-        // fill 2× earnings on orders that originally paid the standard amount.
+        // date so admins can't change a promo's multipliers after the fact and
+        // back-fill boosted earnings on orders that originally paid the
+        // standard amount.
         var promosInWindow = await _db.CorporatePromos.AsNoTracking()
             .Where(p => p.IsActive
-                     && (p.DoubleSponsorBonus || p.DoubleBuilderBonus)
+                     && (p.SponsorBonusMultiplier > 1 || p.BuilderBonusMultiplier > 1)
                      && p.StartDate <= now
                      && p.EndDate   >= since)
             .Select(p => new
             {
                 p.Id, p.Title, p.StartDate, p.EndDate,
-                p.DoubleSponsorBonus, p.DoubleBuilderBonus
+                p.SponsorBonusMultiplier, p.BuilderBonusMultiplier
             })
             .ToListAsync(ct);
 
@@ -196,9 +197,9 @@ public class BuilderBonusSweepJob
                     .OrderByDescending(p => p.StartDate)
                     .FirstOrDefault();
 
-                var doubleSponsor = matchingPromo?.DoubleSponsorBonus ?? false;
-                var doubleBuilder = matchingPromo?.DoubleBuilderBonus ?? false;
-                var promoNote     = matchingPromo is not null
+                var sponsorMultiplier = matchingPromo?.SponsorBonusMultiplier ?? 1;
+                var builderMultiplier = matchingPromo?.BuilderBonusMultiplier ?? 1;
+                var promoNote         = matchingPromo is not null
                     ? $"promo '{matchingPromo.Title}' ({matchingPromo.Id})"
                     : null;
 
@@ -214,8 +215,8 @@ public class BuilderBonusSweepJob
                     allChainRanks,
                     ancestors,
                     existingSet,
-                    doubleSponsor,
-                    doubleBuilder,
+                    sponsorMultiplier,
+                    builderMultiplier,
                     promoNote,
                     now);
 
@@ -248,8 +249,8 @@ public class BuilderBonusSweepJob
         Dictionary<string, int> allChainRanks,
         List<string> sponsorAncestors,
         HashSet<string> existingSet,
-        bool doubleSponsorBonus,
-        bool doubleBuilderBonus,
+        int sponsorMultiplier,
+        int builderMultiplier,
         string? promoNote,
         DateTime now)
     {
@@ -271,8 +272,9 @@ public class BuilderBonusSweepJob
                 ?? Math.Round(orderTotal * memberBonus.Percentage / 100m, 2);
             if (mbBase <= 0) continue;
 
-            // Cat 1 = Sponsor Bonus → DoubleSponsorBonus flag drives 2×.
-            var mbAmount = doubleSponsorBonus ? mbBase * 2m : mbBase;
+            // Cat 1 = Sponsor Bonus → SponsorBonusMultiplier drives the boost.
+            var sponsorBoosted = sponsorMultiplier > 1;
+            var mbAmount       = sponsorBoosted ? mbBase * sponsorMultiplier : mbBase;
 
             var mbKey = EarningKey(orderId, memberBonus.Id, sponsorMemberId);
             if (!existingSet.Contains(mbKey))
@@ -280,13 +282,13 @@ public class BuilderBonusSweepJob
                 _db.CommissionEarnings.Add(MakeEarning(
                     sponsorMemberId, newMemberId, orderId, memberBonus,
                     mbAmount, now, orderNo, memberFullName,
-                    promoNote: doubleSponsorBonus ? promoNote : null));
+                    promoNote: sponsorBoosted ? promoNote : null));
                 existingSet.Add(mbKey);
                 added++;
                 _logger.LogInformation(
                     "Builder Bonus sweep: awarded Cat1 (type {TypeId}) ${Amount}{Promo} to {Sponsor} for order {Order}",
                     memberBonus.Id, mbAmount,
-                    doubleSponsorBonus ? " (2× promo)" : string.Empty,
+                    sponsorBoosted ? $" ({sponsorMultiplier}× promo)" : string.Empty,
                     sponsorMemberId, orderId);
             }
         }
@@ -321,11 +323,12 @@ public class BuilderBonusSweepJob
                         ?? Math.Round(orderTotal * bestType.Percentage / 100m, 2);
                     if (baseAmount <= 0) continue;
 
-                    // Cat 6 + Cat 7 = Builder Bonus → DoubleBuilderBonus flag.
-                    // The differential model still works: we double both the
+                    // Cat 6 + Cat 7 = Builder Bonus → BuilderBonusMultiplier drives the boost.
+                    // The differential model still works: we multiply both the
                     // tier amount AND the running paid-below tracker so each
-                    // upline only gets paid the *delta* of the doubled tier.
-                    var tierAmount = doubleBuilderBonus ? baseAmount * 2m : baseAmount;
+                    // upline only gets paid the *delta* of the boosted tier.
+                    var builderBoosted = builderMultiplier > 1;
+                    var tierAmount     = builderBoosted ? baseAmount * builderMultiplier : baseAmount;
 
                     maxTierPaid.TryGetValue(dictKey, out var paidBelow);
 
@@ -343,7 +346,7 @@ public class BuilderBonusSweepJob
                     _db.CommissionEarnings.Add(MakeEarning(
                         memberId, newMemberId, orderId, bestType,
                         differential, now, orderNo, memberFullName,
-                        promoNote: doubleBuilderBonus ? promoNote : null));
+                        promoNote: builderBoosted ? promoNote : null));
 
                     existingSet.Add(earningKey);
                     maxTierPaid[dictKey] = tierAmount;
@@ -352,7 +355,7 @@ public class BuilderBonusSweepJob
                     _logger.LogInformation(
                         "Builder Bonus sweep: awarded Cat{Cat} (type {TypeId}) ${Amount}{Promo} to {Member} for order {Order}",
                         cat, bestType.Id, differential,
-                        doubleBuilderBonus ? " (2× promo)" : string.Empty,
+                        builderBoosted ? $" ({builderMultiplier}× promo)" : string.Empty,
                         memberId, orderId);
                 }
             }
