@@ -6,46 +6,28 @@ public class CreditCardInfoDtoValidator : AbstractValidator<CreditCardInfoDto>
 {
     public CreditCardInfoDtoValidator()
     {
-        // GatewayToken & CardToken are opaque gateway-issued blobs. Cap to a
-        // generous length and restrict to a safe ASCII charset.
-        RuleFor(x => x.GatewayToken)
+        RuleFor(x => x.CardHolderFirstName)
             .NotEmpty()
-            .MaximumLength(512)
-            .Matches(@"^[A-Za-z0-9_\-\.:]+$")
-                .WithMessage("GatewayToken contains invalid characters.");
+            .MaximumLength(100);
 
-        RuleFor(x => x.CardToken)
+        RuleFor(x => x.CardHolderLastName)
             .NotEmpty()
-            .MaximumLength(512)
-            .Matches(@"^[A-Za-z0-9_\-\.:]+$")
-                .WithMessage("CardToken contains invalid characters.");
+            .MaximumLength(100);
 
-        RuleFor(x => x.Last4)
+        RuleFor(x => x.CardNumber)
             .NotEmpty()
-            .Matches(@"^\d{4}$")
-                .WithMessage("Last4 must be exactly 4 digits.");
+            .Matches(@"^\d{12,19}$")
+                .WithMessage("Card number must be 12-19 digits.");
 
-        RuleFor(x => x.First6)
+        RuleFor(x => x.Cvv)
             .NotEmpty()
-            .Matches(@"^\d{6}$")
-                .WithMessage("First6 must be exactly 6 digits.");
-
-        RuleFor(x => x.CardBrand)
-            .NotEmpty()
-            .MaximumLength(30)
-            .Matches(@"^[A-Za-z ]{1,30}$")
-                .WithMessage("CardBrand contains invalid characters.");
+            .Matches(@"^\d{3,4}$")
+                .WithMessage("CVV must be 3-4 digits.");
 
         RuleFor(x => x.ExpiryMonth)
             .InclusiveBetween(1, 12);
 
         RuleFor(x => x.ExpiryYear)
             .InclusiveBetween(DateTime.UtcNow.Year, DateTime.UtcNow.Year + 30);
-
-        RuleFor(x => x.Gateway)
-            .NotEmpty()
-            .MaximumLength(30)
-            .Matches(@"^[a-z][a-z0-9]{1,29}$")
-                .WithMessage("Gateway must be lowercase alphanumeric (e.g. 'stripe', 'braintree').");
     }
 }

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -21,8 +22,13 @@ using MLMConquerorGlobalEdition.Repository.Interceptors;
 
 namespace MLMConquerorGlobalEdition.Repository.Context;
 
-public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, string>
+public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, string>, IDataProtectionKeyContext
 {
+    // Shared Data Protection key ring — every microservice that needs to encrypt/decrypt the
+    // same secret (e.g. AdminAPI writing an ApiCredential, Billing reading it back) persists
+    // keys here instead of a per-process local key store. See AdminAPI/Billing Program.cs.
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
+
     public DbSet<GeneralAuditTracking> AuditTracking => Set<GeneralAuditTracking>();
     public DbSet<ErrorLog> ErrorLogs => Set<ErrorLog>();
     public DbSet<ErrorMessage> ErrorMessages => Set<ErrorMessage>();

@@ -1,3 +1,4 @@
+using MLMConquerorGlobalEdition.Billing.Services.CardGateway;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.Billing.Services.Routing;
@@ -10,6 +11,12 @@ public class OrchestratorChargeRequest
     public string  Description          { get; init; } = string.Empty;
     public string? OrderId              { get; init; }
     public bool    IsRecurring          { get; init; }
+
+    /// <summary>Raw card details for a first-time charge (e.g. signup) when no vaulted token exists yet.</summary>
+    public RawCardDetails? RawCard { get; init; }
+
+    /// <summary>Whether Spreedly should vault the card on a successful RawCard charge.</summary>
+    public bool RetainOnSuccess { get; init; }
 }
 
 public class OrchestratorChargeResult
@@ -23,6 +30,9 @@ public class OrchestratorChargeResult
     /// <summary>"Success" | "Scheduled" | "Failed"</summary>
     public string  Status                { get; init; } = string.Empty;
     public string? ScheduledJobId        { get; init; }
+
+    /// <summary>Populated on success when the gateway vaulted a new payment method (see GatewayChargeResult).</summary>
+    public string? SpreedlyPaymentMethodToken { get; init; }
 }
 
 public interface IGatewayChargeOrchestrator

@@ -1,7 +1,12 @@
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
 namespace MLMConquerorGlobalEdition.Billing.Services.CardGateway;
 
@@ -16,14 +21,17 @@ namespace MLMConquerorGlobalEdition.Billing.Services.CardGateway;
 ///   - We do NOT use Spreedly's own routing/adaptive-acceptance features.
 ///   - The seven per-processor stub classes are replaced by this single proxy.
 ///
-/// Configuration in ApiCredential:
-///   - "Spreedly" row: ApiKeyEncrypted = Spreedly environment key (the API auth credential).
-///   - One row per CardProcessor (e.g. "NmiSpreedly", "CheckoutEUR", …):
-///       SpreedlyGatewayTokenEncrypted = the Spreedly downstream-gateway-token assigned when
-///       that processor was provisioned inside the Spreedly dashboard.
+/// Configuration precedence for the master Spreedly credential (environment key / access
+/// secret / base URL):
+///   1. ApiCredential row (ServiceKey="Spreedly") — admin-managed, encrypted at rest. Preferred
+///      in production since it can be rotated without a redeploy.
+///   2. The "Spreedly" section in appsettings.json (BaseUrl / EnvironmentKey / AccessSecret) —
+///      convenient for local development. Used only for whichever of the two fields the DB
+///      row didn't provide.
 ///
-/// Real HTTP wiring to Spreedly's purchase endpoint is a functional STUB until credentials
-/// land. The stub logs the full intended request shape for debuggability.
+/// The per-processor downstream-gateway-token (e.g. "NmiSpreedly", "CheckoutEUR") always comes
+/// from its own ApiCredential row's SpreedlyGatewayTokenEncrypted — there's one per processor,
+/// so appsettings isn't a practical place for those.
 /// </summary>
 public class SpreedlyCardGatewayService : ICardGatewayService
 {
@@ -33,16 +41,27 @@ public class SpreedlyCardGatewayService : ICardGatewayService
     public CardProcessor Processor => CardProcessor.NmiSpreedly; // nominal; resolver ignores it
 
     private const string SpreedlyServiceKey = "Spreedly";
+    private const string DefaultBaseUrl     = "https://core.spreedly.com";
+    private const string ConfigPlaceholderPrefix = "REPLACE_WITH_";
 
-    private readonly AppDbContext _db;
+    private readonly AppDbContext          _db;
+    private readonly IHttpClientFactory    _httpClientFactory;
+    private readonly IEncryptionService    _encryption;
+    private readonly IConfiguration        _configuration;
     private readonly ILogger<SpreedlyCardGatewayService> _logger;
 
     public SpreedlyCardGatewayService(
         AppDbContext db,
+        IHttpClientFactory httpClientFactory,
+        IEncryptionService encryption,
+        IConfiguration configuration,
         ILogger<SpreedlyCardGatewayService> logger)
     {
-        _db     = db;
-        _logger = logger;
+        _db                = db;
+        _httpClientFactory = httpClientFactory;
+        _encryption        = encryption;
+        _configuration     = configuration;
+        _logger            = logger;
     }
 
     public async Task<Result<GatewayChargeResult>> ChargeAsync(
@@ -59,83 +78,107 @@ public class SpreedlyCardGatewayService : ICardGatewayService
         CardProcessor processor,
         CancellationToken ct = default)
     {
-        // 1. Validate member's Spreedly payment_method_token
-        if (string.IsNullOrWhiteSpace(req.SpreedlyPaymentMethodToken))
+        if (string.IsNullOrWhiteSpace(req.SpreedlyPaymentMethodToken) && req.RawCard is null)
         {
             _logger.LogWarning(
-                "[Spreedly] Member {MemberId}: SpreedlyPaymentMethodToken is missing. Cannot charge.",
+                "[Spreedly] Member {MemberId}: no SpreedlyPaymentMethodToken and no RawCard. Cannot charge.",
                 req.MemberId);
             return Result<GatewayChargeResult>.Failure(
                 "SPREEDLY_MEMBER_TOKEN_MISSING",
-                $"Member {req.MemberId} has no Spreedly payment_method_token. Vault the card through Spreedly before charging.");
+                $"Member {req.MemberId} has neither a Spreedly payment_method_token nor raw card details to charge.");
         }
 
-        // 2. Resolve the Spreedly environment credential
-        var spreedlyCred = await _db.ApiCredentials
-            .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.ServiceKey == SpreedlyServiceKey && !c.IsDeleted, ct);
+        var authResult = await ResolveAuthAsync(processor, ct);
+        if (!authResult.IsSuccess)
+            return Result<GatewayChargeResult>.Failure(authResult.ErrorCode!, authResult.Error!);
 
-        if (spreedlyCred is null || !spreedlyCred.IsActive)
-            return Result<GatewayChargeResult>.Failure(
-                "SPREEDLY_CREDENTIAL_MISSING",
-                "ApiCredential 'Spreedly' is missing or inactive. Configure it via the admin Credentials page.");
+        var (baseUrl, environmentKey, accessSecret, downstreamGatewayToken) = authResult.Value!;
 
-        if (string.IsNullOrWhiteSpace(spreedlyCred.ApiKeyEncrypted))
-            return Result<GatewayChargeResult>.Failure(
-                "SPREEDLY_CREDENTIAL_INCOMPLETE",
-                "ApiCredential 'Spreedly'.ApiKeyEncrypted is not set.");
-
-        // 3. Resolve downstream-gateway-token for the chosen processor
-        var processorKey = processor.ToString(); // e.g. "NmiSpreedly", "CheckoutEUR"
-        var processorCred = await _db.ApiCredentials
-            .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.ServiceKey == processorKey && !c.IsDeleted, ct);
-
-        if (processorCred is null)
-            return Result<GatewayChargeResult>.Failure(
-                "SPREEDLY_DOWNSTREAM_TOKEN_MISSING",
-                $"ApiCredential '{processorKey}' not found. " +
-                $"Provision the processor in Spreedly and store the resulting gateway token via the admin Credentials page.");
-
-        if (string.IsNullOrWhiteSpace(processorCred.SpreedlyGatewayTokenEncrypted))
-            return Result<GatewayChargeResult>.Failure(
-                "SPREEDLY_DOWNSTREAM_TOKEN_NOT_SET",
-                $"ApiCredential '{processorKey}'.SpreedlyGatewayTokenEncrypted is not set. " +
-                $"After provisioning the gateway in Spreedly, copy the gateway_token into the admin Credentials page.");
-
-        // 4. Log intended request shape (useful before real HTTP wiring lands)
-        _logger.LogInformation(
-            "[Spreedly][STUB] Charge request — " +
-            "Processor: {Processor}, MemberId: {MemberId}, Amount: {Amount} {Currency}, " +
-            "PaymentMethodToken: {PmToken}, DownstreamGatewayToken: {GwToken} (masked), " +
-            "IsRecurring: {IsRecurring}, NetworkTransactionId: {NtxId}.",
-            processor,
-            req.MemberId,
-            req.Amount,
-            req.Currency,
-            req.SpreedlyPaymentMethodToken,
-            processorCred.SpreedlyGatewayTokenEncrypted![..Math.Min(8, processorCred.SpreedlyGatewayTokenEncrypted.Length)] + "…",
-            req.IsRecurring,
-            req.NetworkTransactionId ?? "(none)");
-
-        // 5. Stub response — replace with real Spreedly HTTP call when credentials are wired
-        //    Spreedly endpoint: POST https://core.spreedly.com/v1/gateways/{gateway_token}/purchase.json
-        //    Body: { "transaction": { "payment_method_token": "...", "amount": ..., "currency_code": "...",
-        //                             "retain_on_success": true } }
-        //    Recurring billing: include "stored_credential" { "initiator": "merchant", "reason": "recurring",
-        //                                                       "initial_transaction_id": "<networkTxId>" }
-        var simulatedTxId = $"simulated-spreedly-txn-{Guid.NewGuid():N}";
-
-        _logger.LogInformation(
-            "[Spreedly][STUB] Simulated success — TxId: {TxId}, Processor: {Processor}.",
-            simulatedTxId, processor);
-
-        return Result<GatewayChargeResult>.Success(new GatewayChargeResult
+        var transaction = new Dictionary<string, object?>
         {
-            GatewayTransactionId = simulatedTxId,
-            Status               = "simulated_success",
-            RawResponse          = $"{{\"stub\":true,\"processor\":\"{processor}\",\"transaction_token\":\"{simulatedTxId}\"}}"
-        });
+            ["amount"]        = (int)Math.Round(req.Amount * 100m, MidpointRounding.AwayFromZero),
+            ["currency_code"] = req.Currency,
+            ["description"]   = req.Description
+        };
+
+        if (!string.IsNullOrWhiteSpace(req.SpreedlyPaymentMethodToken))
+        {
+            transaction["payment_method_token"] = req.SpreedlyPaymentMethodToken;
+        }
+        else
+        {
+            var card = req.RawCard!;
+            transaction["credit_card"] = new Dictionary<string, object?>
+            {
+                ["first_name"]         = card.FirstName,
+                ["last_name"]          = card.LastName,
+                ["number"]             = card.Number,
+                ["month"]              = card.Month,
+                ["year"]               = card.Year,
+                ["verification_value"] = card.Cvv
+            };
+            transaction["retain_on_success"] = req.RetainOnSuccess;
+        }
+
+        if (req.IsRecurring && !string.IsNullOrWhiteSpace(req.NetworkTransactionId))
+        {
+            transaction["stored_credential"] = new Dictionary<string, object?>
+            {
+                ["initiator"]              = "merchant",
+                ["reason"]                 = "recurring",
+                ["initial_transaction_id"] = req.NetworkTransactionId
+            };
+        }
+
+        var url  = $"{baseUrl}/v1/gateways/{downstreamGatewayToken}/purchase.json";
+        var body = new Dictionary<string, object?> { ["transaction"] = transaction };
+
+        try
+        {
+            using var response = await SendAsync(HttpMethod.Post, url, body, environmentKey, accessSecret, ct);
+            var json = await response.Content.ReadAsStringAsync(ct);
+
+            using var doc = JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("transaction", out var txEl))
+                return Result<GatewayChargeResult>.Failure(
+                    "SPREEDLY_BAD_RESPONSE", $"Spreedly purchase response missing 'transaction'. HTTP {(int)response.StatusCode}.");
+
+            var succeeded = txEl.TryGetProperty("succeeded", out var succEl) && succEl.GetBoolean();
+            var message   = txEl.TryGetProperty("message", out var msgEl) ? msgEl.GetString() : null;
+            var txToken   = txEl.TryGetProperty("token", out var tokEl) ? tokEl.GetString() ?? string.Empty : string.Empty;
+
+            if (!succeeded)
+            {
+                _logger.LogWarning(
+                    "[Spreedly] Charge declined — Processor: {Processor}, MemberId: {MemberId}, Message: {Message}.",
+                    processor, req.MemberId, message);
+                return Result<GatewayChargeResult>.Failure("SPREEDLY_DECLINED", message ?? "Card was declined.");
+            }
+
+            string? vaultedToken = null;
+            if (txEl.TryGetProperty("payment_method", out var pmEl) &&
+                pmEl.TryGetProperty("token", out var pmTokEl))
+            {
+                vaultedToken = pmTokEl.GetString();
+            }
+
+            _logger.LogInformation(
+                "[Spreedly] Charge succeeded — TxId: {TxId}, Processor: {Processor}, MemberId: {MemberId}.",
+                txToken, processor, req.MemberId);
+
+            return Result<GatewayChargeResult>.Success(new GatewayChargeResult
+            {
+                GatewayTransactionId       = txToken,
+                Status                     = "succeeded",
+                RawResponse                = json,
+                SpreedlyPaymentMethodToken = vaultedToken
+            });
+        }
+        catch (Exception ex) when (ex is HttpRequestException or JsonException or TaskCanceledException)
+        {
+            _logger.LogError(ex, "[Spreedly] Charge request failed for member {MemberId}.", req.MemberId);
+            return Result<GatewayChargeResult>.Failure("SPREEDLY_REQUEST_FAILED", $"Spreedly request failed: {ex.Message}");
+        }
     }
 
     public async Task<Result<bool>> RefundAsync(
@@ -150,32 +193,169 @@ public class SpreedlyCardGatewayService : ICardGatewayService
         CardProcessor processor,
         CancellationToken ct = default)
     {
-        // 1. Resolve Spreedly credential
+        var authResult = await ResolveAuthAsync(processor, ct);
+        if (!authResult.IsSuccess)
+            return Result<bool>.Failure(authResult.ErrorCode!, authResult.Error!);
+
+        var (baseUrl, environmentKey, accessSecret, _) = authResult.Value!;
+
+        var url  = $"{baseUrl}/v1/transactions/{gatewayTransactionId}/credit.json";
+        var body = new Dictionary<string, object?>
+        {
+            ["transaction"] = new Dictionary<string, object?>
+            {
+                ["amount"] = (int)Math.Round(amount * 100m, MidpointRounding.AwayFromZero)
+            }
+        };
+
+        try
+        {
+            using var response = await SendAsync(HttpMethod.Post, url, body, environmentKey, accessSecret, ct);
+            var json = await response.Content.ReadAsStringAsync(ct);
+
+            using var doc = JsonDocument.Parse(json);
+            var succeeded = doc.RootElement.TryGetProperty("transaction", out var txEl) &&
+                            txEl.TryGetProperty("succeeded", out var succEl) && succEl.GetBoolean();
+
+            if (!succeeded)
+            {
+                var message = doc.RootElement.TryGetProperty("transaction", out var t) &&
+                              t.TryGetProperty("message", out var m) ? m.GetString() : null;
+                _logger.LogWarning(
+                    "[Spreedly] Refund failed — GatewayTxId: {TxId}, Processor: {Processor}, Message: {Message}.",
+                    gatewayTransactionId, processor, message);
+                return Result<bool>.Failure("SPREEDLY_REFUND_FAILED", message ?? "Refund was not accepted by Spreedly.");
+            }
+
+            _logger.LogInformation(
+                "[Spreedly] Refund succeeded — GatewayTxId: {TxId}, Amount: {Amount}, Processor: {Processor}.",
+                gatewayTransactionId, amount, processor);
+            return Result<bool>.Success(true);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or JsonException or TaskCanceledException)
+        {
+            _logger.LogError(ex, "[Spreedly] Refund request failed for transaction {TxId}.", gatewayTransactionId);
+            return Result<bool>.Failure("SPREEDLY_REQUEST_FAILED", $"Spreedly request failed: {ex.Message}");
+        }
+    }
+
+    private async Task<HttpResponseMessage> SendAsync(
+        HttpMethod method, string url, Dictionary<string, object?> body,
+        string environmentKey, string accessSecret, CancellationToken ct)
+    {
+        var client  = _httpClientFactory.CreateClient("Spreedly");
+        using var request = new HttpRequestMessage(method, url)
+        {
+            Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json")
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue(
+            "Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{environmentKey}:{accessSecret}")));
+
+        return await client.SendAsync(request, ct);
+    }
+
+    private async Task<Result<(string BaseUrl, string EnvironmentKey, string AccessSecret, string DownstreamGatewayToken)>>
+        ResolveAuthAsync(CardProcessor processor, CancellationToken ct)
+    {
         var spreedlyCred = await _db.ApiCredentials
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.ServiceKey == SpreedlyServiceKey && !c.IsDeleted, ct);
 
-        if (spreedlyCred is null || !spreedlyCred.IsActive || string.IsNullOrWhiteSpace(spreedlyCred.ApiKeyEncrypted))
-            return Result<bool>.Failure(
-                "SPREEDLY_CREDENTIAL_MISSING",
-                "ApiCredential 'Spreedly' is missing, inactive, or has no ApiKeyEncrypted.");
+        string? environmentKey = null;
+        string? accessSecret   = null;
+        string? baseUrl        = null;
 
-        // 2. Resolve downstream token
-        var processorKey  = processor.ToString();
+        if (spreedlyCred is not null && spreedlyCred.IsActive)
+        {
+            baseUrl = spreedlyCred.BaseUrl;
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(spreedlyCred.ApiKeyEncrypted))
+                    environmentKey = _encryption.Decrypt(spreedlyCred.ApiKeyEncrypted);
+                if (!string.IsNullOrWhiteSpace(spreedlyCred.SecretKeyEncrypted))
+                    accessSecret = _encryption.Decrypt(spreedlyCred.SecretKeyEncrypted);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "[Spreedly] Failed to decrypt master credential.");
+                return Result<(string, string, string, string)>.Failure(
+                    "SPREEDLY_CREDENTIAL_DECRYPT_FAILED",
+                    "Could not decrypt Spreedly credentials. They may have been encrypted by a service outside the shared key ring.");
+            }
+        }
+
+        // Fall back to the "Spreedly" section in appsettings.json for whichever field the DB
+        // row didn't provide — convenient for local/dev environments without an admin-configured row.
+        environmentKey ??= ReadConfigValue("Spreedly:EnvironmentKey");
+        accessSecret   ??= ReadConfigValue("Spreedly:AccessSecret");
+        baseUrl        ??= ReadConfigValue("Spreedly:BaseUrl");
+
+        if (string.IsNullOrWhiteSpace(environmentKey) && string.IsNullOrWhiteSpace(accessSecret))
+            return Result<(string, string, string, string)>.Failure(
+                "SPREEDLY_CREDENTIAL_MISSING",
+                "Spreedly environment key and access secret are not configured. Set them via the admin " +
+                "Credentials page (ApiCredential 'Spreedly') or the 'Spreedly' section in appsettings.json.");
+
+        if (string.IsNullOrWhiteSpace(environmentKey) || string.IsNullOrWhiteSpace(accessSecret))
+            return Result<(string, string, string, string)>.Failure(
+                "SPREEDLY_CREDENTIAL_INCOMPLETE",
+                "Spreedly environment key or access secret is missing. Both must be set via the admin " +
+                "Credentials page or the 'Spreedly' section in appsettings.json.");
+
+        var processorKey = processor.ToString(); // e.g. "NmiSpreedly", "CheckoutEUR"
         var processorCred = await _db.ApiCredentials
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.ServiceKey == processorKey && !c.IsDeleted, ct);
 
-        if (processorCred is null || string.IsNullOrWhiteSpace(processorCred.SpreedlyGatewayTokenEncrypted))
-            return Result<bool>.Failure(
+        string? downstreamGatewayToken = null;
+        if (processorCred is not null && !string.IsNullOrWhiteSpace(processorCred.SpreedlyGatewayTokenEncrypted))
+        {
+            try
+            {
+                downstreamGatewayToken = _encryption.Decrypt(processorCred.SpreedlyGatewayTokenEncrypted);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "[Spreedly] Failed to decrypt downstream gateway token for processor {Processor}.", processor);
+                return Result<(string, string, string, string)>.Failure(
+                    "SPREEDLY_CREDENTIAL_DECRYPT_FAILED",
+                    "Could not decrypt the Spreedly downstream gateway token. It may have been encrypted by a service outside the shared key ring.");
+            }
+        }
+
+        // Fall back to a single "Spreedly:DefaultGatewayToken" in appsettings.json — convenient
+        // for local/dev testing against one Spreedly Test Gateway regardless of which processor
+        // the routing engine picked. Production should configure a real token per processor via
+        // the admin Credentials page instead.
+        downstreamGatewayToken ??= ReadConfigValue("Spreedly:DefaultGatewayToken");
+
+        if (string.IsNullOrWhiteSpace(downstreamGatewayToken))
+        {
+            if (processorCred is null)
+                return Result<(string, string, string, string)>.Failure(
+                    "SPREEDLY_DOWNSTREAM_TOKEN_MISSING",
+                    $"ApiCredential '{processorKey}' not found. Provision the processor in Spreedly and store " +
+                    "the resulting gateway token via the admin Credentials page, or set 'Spreedly:DefaultGatewayToken' " +
+                    "in appsettings.json for local testing.");
+
+            return Result<(string, string, string, string)>.Failure(
                 "SPREEDLY_DOWNSTREAM_TOKEN_NOT_SET",
-                $"ApiCredential '{processorKey}'.SpreedlyGatewayTokenEncrypted is not set.");
+                $"ApiCredential '{processorKey}'.SpreedlyGatewayTokenEncrypted is not set. After provisioning the " +
+                "gateway in Spreedly, copy the gateway_token into the admin Credentials page, or set " +
+                "'Spreedly:DefaultGatewayToken' in appsettings.json for local testing.");
+        }
 
-        _logger.LogInformation(
-            "[Spreedly][STUB] Refund — GatewayTxId: {TxId}, Amount: {Amount}, Processor: {Processor}.",
-            gatewayTransactionId, amount, processor);
+        return Result<(string, string, string, string)>.Success(
+            (baseUrl ?? DefaultBaseUrl, environmentKey, accessSecret, downstreamGatewayToken));
+    }
 
-        // Spreedly endpoint: POST https://core.spreedly.com/v1/transactions/{transaction_token}/credit.json
-        return Result<bool>.Success(true);
+    /// <summary>Reads a config value, treating an un-replaced "REPLACE_WITH_..." placeholder as absent.</summary>
+    private string? ReadConfigValue(string key)
+    {
+        var value = _configuration[key];
+        return string.IsNullOrWhiteSpace(value) || value.StartsWith(ConfigPlaceholderPrefix, StringComparison.Ordinal)
+            ? null
+            : value;
     }
 }

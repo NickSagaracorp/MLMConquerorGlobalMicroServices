@@ -10,14 +10,12 @@ public class CompleteSignupRequestValidatorTests
 
     private static CreditCardInfoDto ValidCard() => new()
     {
-        GatewayToken = "nonce_abc123",
-        CardToken    = "tok_def456",
-        Last4        = "4242",
-        First6       = "424242",
-        CardBrand    = "Visa",
-        ExpiryMonth  = 12,
-        ExpiryYear   = DateTime.UtcNow.Year + 2,
-        Gateway      = "stripe",
+        CardHolderFirstName = "Jane",
+        CardHolderLastName  = "Doe",
+        CardNumber          = "4111111111111111",
+        Cvv                 = "123",
+        ExpiryMonth         = 12,
+        ExpiryYear          = DateTime.UtcNow.Year + 2,
     };
 
     [Fact]

@@ -2,6 +2,8 @@ using System.Security.Cryptography;
 using AspNetCoreRateLimit;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -36,6 +38,13 @@ builder.Logging.AddPiiMaskingConsole();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Shared Data Protection key ring — same application name as Billing so a secret entered
+// here (e.g. a Spreedly access_secret via the admin credentials UI) can be decrypted there.
+builder.Services.AddDataProtection()
+    .PersistKeysToDbContext<AppDbContext>()
+    .SetApplicationName("MLMConqueror");
+builder.Services.AddScoped<IEncryptionService, MLMConquerorGlobalEdition.AdminAPI.Services.EncryptionService>();
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
 {

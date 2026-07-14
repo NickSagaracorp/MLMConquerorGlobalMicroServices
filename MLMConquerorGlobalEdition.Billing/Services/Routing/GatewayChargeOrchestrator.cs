@@ -101,13 +101,17 @@ public class GatewayChargeOrchestrator : IGatewayChargeOrchestrator
 
             var req = new GatewayChargeRequest
             {
-                MemberId             = chargeReq.MemberId,
-                Amount               = step.Amount,
-                Currency             = step.PresentmentCurrency,
-                Description          = chargeReq.Description,
-                TokenizedCardRef     = chargeReq.TokenizedCardRef,
-                NetworkTransactionId = chargeReq.NetworkTransactionId,
-                IsRecurring          = chargeReq.IsRecurring
+                MemberId                   = chargeReq.MemberId,
+                Amount                     = step.Amount,
+                Currency                   = step.PresentmentCurrency,
+                Description                = chargeReq.Description,
+                TokenizedCardRef           = chargeReq.TokenizedCardRef,
+                NetworkTransactionId       = chargeReq.NetworkTransactionId,
+                IsRecurring                = chargeReq.IsRecurring,
+                DownstreamProcessor        = step.CardProcessor,
+                SpreedlyPaymentMethodToken = chargeReq.TokenizedCardRef,
+                RawCard                    = chargeReq.RawCard,
+                RetainOnSuccess            = chargeReq.RetainOnSuccess
             };
 
             var chargeResult = await gateway.ChargeAsync(req, ct);
@@ -156,12 +160,13 @@ public class GatewayChargeOrchestrator : IGatewayChargeOrchestrator
 
             return Result<OrchestratorChargeResult>.Success(new OrchestratorChargeResult
             {
-                PaymentHistoryId     = payment.Id,
-                GatewayTransactionId = txId,
-                ProcessorUsed        = step.CardProcessor.ToString(),
-                AmountCharged        = step.Amount,
-                CurrencyCharged      = step.PresentmentCurrency,
-                Status               = "Success"
+                PaymentHistoryId           = payment.Id,
+                GatewayTransactionId       = txId,
+                ProcessorUsed              = step.CardProcessor.ToString(),
+                AmountCharged              = step.Amount,
+                CurrencyCharged            = step.PresentmentCurrency,
+                Status                     = "Success",
+                SpreedlyPaymentMethodToken = chargeResult.Value!.SpreedlyPaymentMethodToken
             });
         }
 

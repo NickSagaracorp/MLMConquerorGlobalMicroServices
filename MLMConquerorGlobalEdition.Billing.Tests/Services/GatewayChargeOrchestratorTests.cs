@@ -209,4 +209,70 @@ public class GatewayChargeOrchestratorTests
         attempt.MemberId.Should().Be("member-1");
         attempt.CardProcessor.Should().Be(CardProcessor.NmiSpreedly);
     }
+
+    // ── Regression: the built GatewayChargeRequest must carry the step's ──
+    // ── processor, the vaulted token, and any raw-card/retain-on-success ──
+    // ── details through to the gateway — previously these were dropped. ──
+
+    [Fact]
+    public async Task ExecuteAsync_PassesDownstreamProcessorAndTokenAndRawCardToGateway()
+    {
+        using var db = TestDbContextFactory.Create();
+        GatewayChargeRequest? captured = null;
+
+        var gwMock = new Mock<ICardGatewayService>();
+        gwMock.Setup(g => g.Processor).Returns(CardProcessor.CheckoutEUR);
+        gwMock.Setup(g => g.ChargeAsync(It.IsAny<GatewayChargeRequest>(), It.IsAny<CancellationToken>()))
+              .Callback<GatewayChargeRequest, CancellationToken>((req, _) => captured = req)
+              .ReturnsAsync(Result<GatewayChargeResult>.Success(new GatewayChargeResult
+              {
+                  GatewayTransactionId = "txn-captured",
+                  Status               = "captured"
+              }));
+
+        var resolver = new Mock<ICardGatewayResolver>();
+        resolver.Setup(r => r.Resolve(CardProcessor.CheckoutEUR)).Returns(gwMock.Object);
+
+        var orchestrator = CreateOrchestrator(db, resolver.Object);
+        var plan = Plan(Step(CardProcessor.CheckoutEUR));
+
+        var chargeReq = new OrchestratorChargeRequest
+        {
+            MemberId         = "member-1",
+            TokenizedCardRef = "spm_existing_token",
+            Description      = "Test charge",
+            OrderId          = "order-1",
+            RawCard          = new RawCardDetails { FirstName = "Jane", LastName = "Doe", Number = "4111111111111111", Month = 12, Year = 2030, Cvv = "123" },
+            RetainOnSuccess  = true
+        };
+
+        await orchestrator.ExecuteAsync(plan, DefaultCtx, chargeReq);
+
+        captured.Should().NotBeNull();
+        captured!.DownstreamProcessor.Should().Be(CardProcessor.CheckoutEUR);
+        captured.SpreedlyPaymentMethodToken.Should().Be("spm_existing_token");
+        captured.RawCard.Should().NotBeNull();
+        captured.RawCard!.Number.Should().Be("4111111111111111");
+        captured.RetainOnSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenGatewayVaultsNewToken_PropagatesTokenToOrchestratorResult()
+    {
+        using var db = TestDbContextFactory.Create();
+        var chargeResult = Result<GatewayChargeResult>.Success(new GatewayChargeResult
+        {
+            GatewayTransactionId       = "txn-vaulted",
+            Status                     = "captured",
+            SpreedlyPaymentMethodToken = "spm_newly_vaulted"
+        });
+        var resolver = GatewayResolverReturning(CardProcessor.NmiSpreedly, chargeResult);
+        var orchestrator = CreateOrchestrator(db, resolver.Object);
+        var plan = Plan(Step(CardProcessor.NmiSpreedly));
+
+        var result = await orchestrator.ExecuteAsync(plan, DefaultCtx, DefaultChargeReq);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.SpreedlyPaymentMethodToken.Should().Be("spm_newly_vaulted");
+    }
 }

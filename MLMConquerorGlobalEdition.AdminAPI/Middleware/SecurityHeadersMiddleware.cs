@@ -20,8 +20,9 @@ public class SecurityHeadersMiddleware
         headers["X-XSS-Protection"]       = "1; mode=block";
         headers["Referrer-Policy"]         = "strict-origin-when-cross-origin";
         headers["Permissions-Policy"]      = "geolocation=(), microphone=(), camera=(), payment=()";
-        headers["Content-Security-Policy"] =
-            "default-src 'none'; frame-ancestors 'none'; form-action 'none'";
+        headers["Content-Security-Policy"] = context.Request.Path.StartsWithSegments("/swagger")
+            ? "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; frame-ancestors 'none'"
+            : "default-src 'none'; frame-ancestors 'none'; form-action 'none'";
 
         if (context.Request.IsHttps)
             headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload";

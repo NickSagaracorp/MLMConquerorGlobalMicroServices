@@ -4,6 +4,8 @@ using Hangfire;
 using Hangfire.SqlServer;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -23,11 +25,21 @@ using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheSe
 using IPushNotificationService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IPushNotificationService;
 using CacheService = MLMConquerorGlobalEdition.SharedKernel.Services.CacheService;
 using IErrorTrackingService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IErrorTrackingService;
+using IEncryptionService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IEncryptionService;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Shared Data Protection key ring, persisted in the same SQL Server database every
+// microservice already points at. AdminAPI uses the same application name so a secret
+// encrypted via the admin credentials UI (e.g. Spreedly access_secret) can be decrypted
+// here at charge time.
+builder.Services.AddDataProtection()
+    .PersistKeysToDbContext<AppDbContext>()
+    .SetApplicationName("MLMConqueror");
+builder.Services.AddScoped<IEncryptionService, MLMConquerorGlobalEdition.Billing.Services.EncryptionService>();
 
 builder.Services.AddMediatR(cfg =>
 {
@@ -62,6 +74,7 @@ builder.Services.AddScoped<IGatewayResolver, GatewayResolver>();
 // single SpreedlyCardGatewayService. The routing engine selects the downstream
 // processor; SpreedlyCardGatewayService looks up the per-processor Spreedly
 // gateway token from ApiCredential and calls Spreedly's purchase endpoint.
+builder.Services.AddHttpClient("Spreedly");
 builder.Services.AddScoped<SpreedlyCardGatewayService>();
 builder.Services.AddScoped<ICardGatewayService>(sp => sp.GetRequiredService<SpreedlyCardGatewayService>());
 builder.Services.AddScoped<ICardGatewayResolver, CardGatewayResolver>();

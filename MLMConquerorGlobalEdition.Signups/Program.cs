@@ -14,7 +14,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddHttpClient("SignupsInternal", client =>
 {
     client.BaseAddress = new Uri(
-        builder.Configuration["SignupApiBaseUrl"] ?? "https://localhost:7148");
+        builder.Configuration["SignupApiBaseUrl"] ?? "https://localhost:7005");
 });
 
 // JWT Authentication — validates tokens issued by SignupAPI

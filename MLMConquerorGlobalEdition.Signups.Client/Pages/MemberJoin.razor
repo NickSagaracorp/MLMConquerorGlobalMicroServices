@@ -1303,6 +1303,11 @@
             { _error = "Passwords do not match."; return; }
         if (IsUnitedStates(_country) && string.IsNullOrWhiteSpace(_ssn))
             { _error = "SSN is required for United States residents."; return; }
+        if (_paymentTab == "card")
+        {
+            if (string.IsNullOrWhiteSpace(_ccNumber) || string.IsNullOrWhiteSpace(_ccCvv) || _ccExpMonth == 0 || _ccExpYear == 0)
+                { _error = "Please complete all credit card fields."; return; }
+        }
 
         _busy = true;
         try
@@ -1363,13 +1368,12 @@
                     PaymentMethod = "CreditCard",
                     CreditCard = new
                     {
-                        GatewayToken = "manual",
-                        Last4   = _ccNumber.Replace(" ","").Length >= 4 ? _ccNumber.Replace(" ","")[^4..] : string.Empty,
-                        First6  = _ccNumber.Replace(" ","").Length >= 6 ? _ccNumber.Replace(" ","")[..6]  : string.Empty,
-                        CardBrand   = DetectCardBrand(),
-                        ExpiryMonth = _ccExpMonth,
-                        ExpiryYear  = _ccExpYear,
-                        Gateway     = "Stripe"
+                        CardHolderFirstName = _ccFirst,
+                        CardHolderLastName  = _ccLast,
+                        CardNumber          = _ccNumber.Replace(" ", ""),
+                        Cvv                 = _ccCvv,
+                        ExpiryMonth         = _ccExpMonth,
+                        ExpiryYear          = _ccExpYear
                     }
                 },
                 "token"  => (object)new { PaymentMethod = "Token",  TokenCode = _payToken },

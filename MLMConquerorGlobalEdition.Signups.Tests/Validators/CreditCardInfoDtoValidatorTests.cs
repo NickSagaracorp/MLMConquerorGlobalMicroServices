@@ -10,14 +10,12 @@ public class CreditCardInfoDtoValidatorTests
 
     private static CreditCardInfoDto Valid() => new()
     {
-        GatewayToken = "nonce_abc123",
-        CardToken    = "tok_def456",
-        Last4        = "4242",
-        First6       = "424242",
-        CardBrand    = "Visa",
-        ExpiryMonth  = 12,
-        ExpiryYear   = DateTime.UtcNow.Year + 2,
-        Gateway      = "stripe",
+        CardHolderFirstName = "Jane",
+        CardHolderLastName  = "Doe",
+        CardNumber          = "4111111111111111",
+        Cvv                 = "123",
+        ExpiryMonth         = 12,
+        ExpiryYear          = DateTime.UtcNow.Year + 2,
     };
 
     [Fact]
@@ -25,24 +23,31 @@ public class CreditCardInfoDtoValidatorTests
         => _validator.TestValidate(Valid()).ShouldNotHaveAnyValidationErrors();
 
     [Fact]
-    public void Validate_WhenGatewayTokenHasSpecialChars_Fails()
+    public void Validate_WhenCardHolderFirstNameEmpty_Fails()
     {
-        var c = Valid(); c.GatewayToken = "<script>";
-        _validator.TestValidate(c).ShouldHaveValidationErrorFor(x => x.GatewayToken);
+        var c = Valid(); c.CardHolderFirstName = "";
+        _validator.TestValidate(c).ShouldHaveValidationErrorFor(x => x.CardHolderFirstName);
     }
 
     [Fact]
-    public void Validate_WhenLast4NotFourDigits_Fails()
+    public void Validate_WhenCardNumberTooShort_Fails()
     {
-        var c = Valid(); c.Last4 = "42";
-        _validator.TestValidate(c).ShouldHaveValidationErrorFor(x => x.Last4);
+        var c = Valid(); c.CardNumber = "12345";
+        _validator.TestValidate(c).ShouldHaveValidationErrorFor(x => x.CardNumber);
     }
 
     [Fact]
-    public void Validate_WhenFirst6NotSixDigits_Fails()
+    public void Validate_WhenCardNumberContainsNonDigits_Fails()
     {
-        var c = Valid(); c.First6 = "abc";
-        _validator.TestValidate(c).ShouldHaveValidationErrorFor(x => x.First6);
+        var c = Valid(); c.CardNumber = "4111-1111-1111-1111";
+        _validator.TestValidate(c).ShouldHaveValidationErrorFor(x => x.CardNumber);
+    }
+
+    [Fact]
+    public void Validate_WhenCvvNotThreeOrFourDigits_Fails()
+    {
+        var c = Valid(); c.Cvv = "12";
+        _validator.TestValidate(c).ShouldHaveValidationErrorFor(x => x.Cvv);
     }
 
     [Fact]
@@ -57,12 +62,5 @@ public class CreditCardInfoDtoValidatorTests
     {
         var c = Valid(); c.ExpiryYear = DateTime.UtcNow.Year + 50;
         _validator.TestValidate(c).ShouldHaveValidationErrorFor(x => x.ExpiryYear);
-    }
-
-    [Fact]
-    public void Validate_WhenGatewayCapitalised_Fails()
-    {
-        var c = Valid(); c.Gateway = "Stripe";
-        _validator.TestValidate(c).ShouldHaveValidationErrorFor(x => x.Gateway);
     }
 }

@@ -264,7 +264,10 @@ public class SignupRankInputsTests
             BuildJwtMock().Object,
             BuildEncryptionMock().Object,
             BuildTokenRedemptionMock().Object,
-            BuildRecurringBillingEnrollmentMock().Object);
+            BuildRecurringBillingEnrollmentMock().Object,
+            Mock.Of<MLMConquerorGlobalEdition.Billing.Services.Routing.IGatewayRouter>(),
+            Mock.Of<MLMConquerorGlobalEdition.Billing.Services.Routing.IGatewayChargeOrchestrator>(),
+            Mock.Of<MLMConquerorGlobalEdition.Billing.Services.Routing.ICardBrandDetector>());
     }
 
     // ── Tests ────────────────────────────────────────────────────────────────

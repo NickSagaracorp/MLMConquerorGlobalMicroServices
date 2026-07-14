@@ -7,6 +7,7 @@ using MLMConquerorGlobalEdition.Domain.Exceptions;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
 using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
+using IEncryptionService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IEncryptionService;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 
@@ -21,11 +22,13 @@ public class AdminBillingGatewayController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ICacheService _cache;
+    private readonly IEncryptionService _encryption;
 
-    public AdminBillingGatewayController(AppDbContext db, ICacheService cache)
+    public AdminBillingGatewayController(AppDbContext db, ICacheService cache, IEncryptionService encryption)
     {
-        _db    = db;
-        _cache = cache;
+        _db         = db;
+        _cache      = cache;
+        _encryption = encryption;
     }
 
     // ── Gateways ───────────────────────────────────────────────────────────
@@ -401,27 +404,18 @@ public class AdminBillingGatewayController : ControllerBase
             entity.ApiKeyEncrypted is not null,
             entity.SecretKeyEncrypted is not null,
             entity.MerchantIdEncrypted is not null,
+            entity.SpreedlyGatewayTokenEncrypted is not null,
             entity.IsActive, entity.CreationDate)));
     }
 
-    /// <summary>PUT upserts credential — secrets must be sent as "ENC:..." encrypted values.</summary>
+    /// <summary>
+    /// PUT upserts credential — secrets are sent as PLAINTEXT and encrypted server-side
+    /// before being persisted (never stored or logged in plain text).
+    /// </summary>
     [HttpPut("credentials/{serviceKey}")]
     public async Task<IActionResult> UpsertCredential(
         string serviceKey, [FromBody] UpsertCredentialRequest request, CancellationToken ct = default)
     {
-        // Validate: if a secret is supplied it must be ENC:-prefixed
-        if (request.ApiKeyEncrypted is not null && !request.ApiKeyEncrypted.StartsWith("ENC:"))
-            return BadRequest(ApiResponse<object>.Fail("SECRET_NOT_ENCRYPTED",
-                "ApiKeyEncrypted must start with 'ENC:'. Store only encrypted values."));
-
-        if (request.SecretKeyEncrypted is not null && !request.SecretKeyEncrypted.StartsWith("ENC:"))
-            return BadRequest(ApiResponse<object>.Fail("SECRET_NOT_ENCRYPTED",
-                "SecretKeyEncrypted must start with 'ENC:'. Store only encrypted values."));
-
-        if (request.MerchantIdEncrypted is not null && !request.MerchantIdEncrypted.StartsWith("ENC:"))
-            return BadRequest(ApiResponse<object>.Fail("SECRET_NOT_ENCRYPTED",
-                "MerchantIdEncrypted must start with 'ENC:'. Store only encrypted values."));
-
         var now   = DateTime.UtcNow;
         var actor = User.Identity?.Name ?? "admin";
 
@@ -441,12 +435,14 @@ public class AdminBillingGatewayController : ControllerBase
                 LastUpdateDate = now
             };
 
-            if (request.ApiKeyEncrypted is not null)
-                entity.ApiKeyEncrypted = request.ApiKeyEncrypted;
-            if (request.SecretKeyEncrypted is not null)
-                entity.SecretKeyEncrypted = request.SecretKeyEncrypted;
-            if (request.MerchantIdEncrypted is not null)
-                entity.MerchantIdEncrypted = request.MerchantIdEncrypted;
+            if (!string.IsNullOrWhiteSpace(request.ApiKey))
+                entity.ApiKeyEncrypted = _encryption.Encrypt(request.ApiKey);
+            if (!string.IsNullOrWhiteSpace(request.SecretKey))
+                entity.SecretKeyEncrypted = _encryption.Encrypt(request.SecretKey);
+            if (!string.IsNullOrWhiteSpace(request.MerchantId))
+                entity.MerchantIdEncrypted = _encryption.Encrypt(request.MerchantId);
+            if (!string.IsNullOrWhiteSpace(request.SpreedlyGatewayToken))
+                entity.SpreedlyGatewayTokenEncrypted = _encryption.Encrypt(request.SpreedlyGatewayToken);
 
             _db.ApiCredentials.Add(entity);
         }
@@ -459,12 +455,14 @@ public class AdminBillingGatewayController : ControllerBase
             entity.LastUpdateBy    = actor;
             entity.LastUpdateDate  = now;
 
-            if (request.ApiKeyEncrypted is not null)
-                entity.ApiKeyEncrypted = request.ApiKeyEncrypted;
-            if (request.SecretKeyEncrypted is not null)
-                entity.SecretKeyEncrypted = request.SecretKeyEncrypted;
-            if (request.MerchantIdEncrypted is not null)
-                entity.MerchantIdEncrypted = request.MerchantIdEncrypted;
+            if (!string.IsNullOrWhiteSpace(request.ApiKey))
+                entity.ApiKeyEncrypted = _encryption.Encrypt(request.ApiKey);
+            if (!string.IsNullOrWhiteSpace(request.SecretKey))
+                entity.SecretKeyEncrypted = _encryption.Encrypt(request.SecretKey);
+            if (!string.IsNullOrWhiteSpace(request.MerchantId))
+                entity.MerchantIdEncrypted = _encryption.Encrypt(request.MerchantId);
+            if (!string.IsNullOrWhiteSpace(request.SpreedlyGatewayToken))
+                entity.SpreedlyGatewayTokenEncrypted = _encryption.Encrypt(request.SpreedlyGatewayToken);
         }
 
         await _db.SaveChangesAsync(ct);
@@ -602,12 +600,16 @@ public class AdminBillingGatewayController : ControllerBase
 
     public record ApiCredentialMetadataDto(
         string Id, string ServiceKey, string Environment, string? BaseUrl,
-        bool HasApiKey, bool HasSecretKey, bool HasMerchantId,
+        bool HasApiKey, bool HasSecretKey, bool HasMerchantId, bool HasSpreedlyGatewayToken,
         bool IsActive, DateTime CreationDate);
 
+    /// <summary>
+    /// Secrets are supplied as PLAINTEXT here — the controller encrypts them server-side
+    /// via IEncryptionService before persisting. Never sent as "ENC:"-prefixed values by the caller.
+    /// </summary>
     public record UpsertCredentialRequest(
         string? Environment, string? BaseUrl, bool? IsActive,
-        string? ApiKeyEncrypted, string? SecretKeyEncrypted, string? MerchantIdEncrypted);
+        string? ApiKey, string? SecretKey, string? MerchantId, string? SpreedlyGatewayToken);
 
     public record RoutingCounterDto(
         string RouteBucketKey, CardProcessor CardProcessor, string ProcessorName, long AttemptCount);

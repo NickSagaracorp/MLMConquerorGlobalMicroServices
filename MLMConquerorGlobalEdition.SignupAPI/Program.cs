@@ -109,6 +109,27 @@ builder.Services.AddSingleton<MLMConquerorGlobalEdition.Billing.Services.IDateTi
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Billing.Services.Recurring.IRecurringBillingEnrollmentService,
                             MLMConquerorGlobalEdition.Billing.Services.Recurring.RecurringBillingEnrollmentService>();
 
+// Card charge routing + Spreedly gateway — CompleteSignupHandler calls these in-process
+// (same reuse pattern as IRecurringBillingEnrollmentService above) to actually charge the
+// member's card during signup, rather than making an HTTP hop to the Billing service.
+builder.Services.AddHttpClient("Spreedly");
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Billing.Services.CardGateway.SpreedlyCardGatewayService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Billing.Services.CardGateway.ICardGatewayService>(
+    sp => sp.GetRequiredService<MLMConquerorGlobalEdition.Billing.Services.CardGateway.SpreedlyCardGatewayService>());
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Billing.Services.CardGateway.ICardGatewayResolver,
+                            MLMConquerorGlobalEdition.Billing.Services.CardGateway.CardGatewayResolver>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Billing.Services.Routing.IGatewaySplitSelector,
+                            MLMConquerorGlobalEdition.Billing.Services.Routing.GatewaySplitSelector>();
+builder.Services.AddHttpClient("CurrencyConverter");
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Billing.Services.Routing.ICurrencyConversionService,
+                            MLMConquerorGlobalEdition.Billing.Services.Routing.CurrencyConversionService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Billing.Services.Routing.IGatewayRouter,
+                            MLMConquerorGlobalEdition.Billing.Services.Routing.GatewayRouter>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Billing.Services.Routing.IGatewayChargeOrchestrator,
+                            MLMConquerorGlobalEdition.Billing.Services.Routing.GatewayChargeOrchestrator>();
+builder.Services.AddSingleton<MLMConquerorGlobalEdition.Billing.Services.Routing.ICardBrandDetector,
+                               MLMConquerorGlobalEdition.Billing.Services.Routing.CardBrandDetector>();
+
 // JWT Service
 builder.Services.AddScoped<IJwtService, JwtService>();
 

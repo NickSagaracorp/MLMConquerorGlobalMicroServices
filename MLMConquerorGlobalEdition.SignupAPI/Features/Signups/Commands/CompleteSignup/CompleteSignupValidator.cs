@@ -17,13 +17,25 @@ public class CompleteSignupValidator : AbstractValidator<CompleteSignupCommand>
             .NotNull().WithMessage("Credit card info is required.")
             .When(x => x.Request.PaymentMethod == PaymentMethodType.CreditCard);
 
-        RuleFor(x => x.Request.CreditCard!.GatewayToken)
-            .NotEmpty().WithMessage("Gateway token is required for credit card payments.")
+        RuleFor(x => x.Request.CreditCard!.CardNumber)
+            .Matches(@"^\d{12,19}$").WithMessage("Card number must be 12-19 digits.")
             .When(x => x.Request.PaymentMethod == PaymentMethodType.CreditCard
                      && x.Request.CreditCard != null);
 
-        RuleFor(x => x.Request.CreditCard!.Last4)
-            .Length(4).WithMessage("Last 4 digits required.")
+        RuleFor(x => x.Request.CreditCard!.Cvv)
+            .Matches(@"^\d{3,4}$").WithMessage("CVV must be 3-4 digits.")
+            .When(x => x.Request.PaymentMethod == PaymentMethodType.CreditCard
+                     && x.Request.CreditCard != null);
+
+        RuleFor(x => x.Request.CreditCard!.ExpiryMonth)
+            .InclusiveBetween(1, 12).WithMessage("Expiry month must be between 1 and 12.")
+            .When(x => x.Request.PaymentMethod == PaymentMethodType.CreditCard
+                     && x.Request.CreditCard != null);
+
+        RuleFor(x => x.Request.CreditCard)
+            .Must(cc => cc!.ExpiryYear > DateTime.UtcNow.Year ||
+                        (cc.ExpiryYear == DateTime.UtcNow.Year && cc.ExpiryMonth >= DateTime.UtcNow.Month))
+            .WithMessage("Card has expired.")
             .When(x => x.Request.PaymentMethod == PaymentMethodType.CreditCard
                      && x.Request.CreditCard != null);
 

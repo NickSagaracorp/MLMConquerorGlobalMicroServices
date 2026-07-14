@@ -1,7 +1,9 @@
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.Billing.Services.CardGateway;
 using MLMConquerorGlobalEdition.Billing.Services.Recurring;
+using MLMConquerorGlobalEdition.Billing.Services.Routing;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
@@ -31,6 +33,9 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
     private readonly IEncryptionService                 _encryption;
     private readonly ITokenRedemptionService            _tokenRedemption;
     private readonly IRecurringBillingEnrollmentService _recurringBillingEnrollment;
+    private readonly IGatewayRouter                     _gatewayRouter;
+    private readonly IGatewayChargeOrchestrator          _chargeOrchestrator;
+    private readonly ICardBrandDetector                 _cardBrandDetector;
 
     public CompleteSignupHandler(
         AppDbContext db,
@@ -42,7 +47,10 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
         IJwtService jwtService,
         IEncryptionService encryption,
         ITokenRedemptionService tokenRedemption,
-        IRecurringBillingEnrollmentService recurringBillingEnrollment)
+        IRecurringBillingEnrollmentService recurringBillingEnrollment,
+        IGatewayRouter gatewayRouter,
+        IGatewayChargeOrchestrator chargeOrchestrator,
+        ICardBrandDetector cardBrandDetector)
     {
         _db                          = db;
         _dateTime                    = dateTime;
@@ -54,6 +62,9 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
         _encryption                  = encryption;
         _tokenRedemption             = tokenRedemption;
         _recurringBillingEnrollment  = recurringBillingEnrollment;
+        _gatewayRouter               = gatewayRouter;
+        _chargeOrchestrator          = chargeOrchestrator;
+        _cardBrandDetector           = cardBrandDetector;
     }
 
     public async Task<Result<SignupResponse>> Handle(CompleteSignupCommand command, CancellationToken ct)
@@ -132,24 +143,66 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
 
         if (req.PaymentMethod == PaymentMethodType.CreditCard && req.CreditCard is not null)
         {
-            var cc = req.CreditCard;
+            var cc     = req.CreditCard;
+            var digits = new string(cc.CardNumber.Where(char.IsDigit).ToArray());
+            var first6 = digits.Length >= 6 ? digits[..6] : digits;
+            var last4  = digits.Length >= 4 ? digits[^4..] : digits;
+            var cardBrand = _cardBrandDetector.Detect(first6);
+
+            var routingCtx = new GatewayRoutingContext
+            {
+                OperationType        = BillingOperationType.Payment,
+                CardBrand            = cardBrand,
+                CardholderCountryIso = member.Country,
+                AmountUsd            = order.TotalAmount,
+                MemberId             = member.MemberId
+            };
+
+            var planResult = await _gatewayRouter.ResolveAsync(routingCtx, ct);
+            if (!planResult.IsSuccess)
+                return Result<SignupResponse>.Failure(planResult.ErrorCode!, planResult.Error!);
+
+            var chargeReq = new OrchestratorChargeRequest
+            {
+                MemberId        = member.MemberId,
+                Description     = "Membership signup",
+                OrderId         = order.Id,
+                IsRecurring     = false,
+                RetainOnSuccess = true,
+                RawCard = new RawCardDetails
+                {
+                    FirstName = cc.CardHolderFirstName,
+                    LastName  = cc.CardHolderLastName,
+                    Number    = digits,
+                    Month     = cc.ExpiryMonth,
+                    Year      = cc.ExpiryYear,
+                    Cvv       = cc.Cvv
+                }
+            };
+
+            var chargeResult = await _chargeOrchestrator.ExecuteAsync(planResult.Value!, routingCtx, chargeReq, ct);
+            if (!chargeResult.IsSuccess)
+                return Result<SignupResponse>.Failure(chargeResult.ErrorCode!, chargeResult.Error!);
+
             await _db.CreditCards.AddAsync(new MemberCreditCard
             {
-                MemberId         = member.MemberId,
-                Last4            = cc.Last4,
-                First6           = cc.First6,
-                MaskedCardNumber = BuildMaskedCardNumber(cc.First6, cc.Last4),
-                CardBrand        = cc.CardBrand,
-                EncryptedExpiry  = _encryption.Encrypt($"{cc.ExpiryMonth:00}/{cc.ExpiryYear:0000}"),
-                EncryptedCvv     = null, // signup flow does not capture CVV — gateway already tokenized
-                Gateway          = cc.Gateway,
-                GatewayToken     = cc.GatewayToken,
-                CardToken        = cc.CardToken,
-                IsDefault        = true,
-                IsExpired        = false,
-                CreatedBy        = member.Email,
-                CreationDate     = now,
-                LastUpdateDate   = now
+                MemberId                   = member.MemberId,
+                Last4                      = last4,
+                First6                     = first6,
+                MaskedCardNumber           = BuildMaskedCardNumber(first6, last4),
+                CardBrand                  = cardBrand.ToString(),
+                EncryptedExpiry            = _encryption.Encrypt($"{cc.ExpiryMonth:00}/{cc.ExpiryYear:0000}"),
+                EncryptedPan               = _encryption.Encrypt(digits.Length >= 12 ? digits[..12] : digits),
+                EncryptedCvv               = null, // Spreedly processes and discards the CVV — never persisted
+                Gateway                    = "spreedly",
+                GatewayToken               = chargeResult.Value!.GatewayTransactionId,
+                CardToken                  = chargeResult.Value!.SpreedlyPaymentMethodToken ?? string.Empty,
+                SpreedlyPaymentMethodToken = chargeResult.Value!.SpreedlyPaymentMethodToken,
+                IsDefault                  = true,
+                IsExpired                  = false,
+                CreatedBy                  = member.Email,
+                CreationDate               = now,
+                LastUpdateDate             = now
             }, ct);
         }
 

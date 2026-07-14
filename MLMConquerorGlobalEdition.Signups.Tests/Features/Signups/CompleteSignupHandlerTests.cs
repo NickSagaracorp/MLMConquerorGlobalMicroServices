@@ -93,6 +93,62 @@ public class CompleteSignupHandlerTests
         return m;
     }
 
+    /// <summary>Default routing mock — resolves to a single-step NmiSpreedly plan.</summary>
+    private static Mock<MLMConquerorGlobalEdition.Billing.Services.Routing.IGatewayRouter> BuildGatewayRouterMock()
+    {
+        var m = new Mock<MLMConquerorGlobalEdition.Billing.Services.Routing.IGatewayRouter>();
+        m.Setup(r => r.ResolveAsync(
+                It.IsAny<MLMConquerorGlobalEdition.Billing.Services.Routing.GatewayRoutingContext>(),
+                It.IsAny<CancellationToken>()))
+         .ReturnsAsync(MLMConquerorGlobalEdition.SharedKernel.Result<MLMConquerorGlobalEdition.Billing.Services.Routing.GatewayRoutingPlan>.Success(
+             new MLMConquerorGlobalEdition.Billing.Services.Routing.GatewayRoutingPlan
+             {
+                 RouteBucketKey = "test-bucket",
+                 Steps = new List<MLMConquerorGlobalEdition.Billing.Services.Routing.GatewayAttemptPlan>
+                 {
+                     new()
+                     {
+                         CardProcessor        = MLMConquerorGlobalEdition.Domain.Enums.CardProcessor.NmiSpreedly,
+                         PresentmentCurrency  = "USD",
+                         Amount               = 80m,
+                         FallbackStepIndex    = 0
+                     }
+                 }
+             }));
+        return m;
+    }
+
+    /// <summary>Default charge orchestrator mock — always succeeds and vaults a new Spreedly token.</summary>
+    private static Mock<MLMConquerorGlobalEdition.Billing.Services.Routing.IGatewayChargeOrchestrator> BuildChargeOrchestratorMock(
+        string gatewayTxId = "txn-test-123", string? vaultedToken = "spm_test_vaulted")
+    {
+        var m = new Mock<MLMConquerorGlobalEdition.Billing.Services.Routing.IGatewayChargeOrchestrator>();
+        m.Setup(o => o.ExecuteAsync(
+                It.IsAny<MLMConquerorGlobalEdition.Billing.Services.Routing.GatewayRoutingPlan>(),
+                It.IsAny<MLMConquerorGlobalEdition.Billing.Services.Routing.GatewayRoutingContext>(),
+                It.IsAny<MLMConquerorGlobalEdition.Billing.Services.Routing.OrchestratorChargeRequest>(),
+                It.IsAny<CancellationToken>()))
+         .ReturnsAsync(MLMConquerorGlobalEdition.SharedKernel.Result<MLMConquerorGlobalEdition.Billing.Services.Routing.OrchestratorChargeResult>.Success(
+             new MLMConquerorGlobalEdition.Billing.Services.Routing.OrchestratorChargeResult
+             {
+                 PaymentHistoryId           = "ph-1",
+                 GatewayTransactionId       = gatewayTxId,
+                 ProcessorUsed              = "NmiSpreedly",
+                 AmountCharged              = 80m,
+                 CurrencyCharged            = "USD",
+                 Status                     = "Success",
+                 SpreedlyPaymentMethodToken = vaultedToken
+             }));
+        return m;
+    }
+
+    private static Mock<MLMConquerorGlobalEdition.Billing.Services.Routing.ICardBrandDetector> BuildCardBrandDetectorMock()
+    {
+        var m = new Mock<MLMConquerorGlobalEdition.Billing.Services.Routing.ICardBrandDetector>();
+        m.Setup(d => d.Detect(It.IsAny<string>())).Returns(MLMConquerorGlobalEdition.Domain.Enums.CardBrand.Visa);
+        return m;
+    }
+
     /// <summary>
     /// Default token redemption mock — fakes a successful consume so existing non-token tests don't change.
     /// Tests for the Token payment path inject their own mock to assert specific behavior.
@@ -201,7 +257,8 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object);
+            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object,
+            BuildGatewayRouterMock().Object, BuildChargeOrchestratorMock().Object, BuildCardBrandDetectorMock().Object);
 
         var result = await handler.Handle(
             new CompleteSignupCommand("NON-EXISTENT", BuildRequest()), CancellationToken.None);
@@ -226,7 +283,8 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object);
+            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object,
+            BuildGatewayRouterMock().Object, BuildChargeOrchestratorMock().Object, BuildCardBrandDetectorMock().Object);
 
         var result = await handler.Handle(
             new CompleteSignupCommand("ORD-001", BuildRequest()), CancellationToken.None);
@@ -264,7 +322,8 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object);
+            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object,
+            BuildGatewayRouterMock().Object, BuildChargeOrchestratorMock().Object, BuildCardBrandDetectorMock().Object);
 
         var result = await handler.Handle(
             new CompleteSignupCommand("ORD-002", BuildRequest()), CancellationToken.None);
@@ -287,7 +346,8 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object);
+            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object,
+            BuildGatewayRouterMock().Object, BuildChargeOrchestratorMock().Object, BuildCardBrandDetectorMock().Object);
 
         var result = await handler.Handle(
             new CompleteSignupCommand("ORD-003", BuildRequest()), CancellationToken.None);
@@ -319,7 +379,8 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object);
+            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object,
+            BuildGatewayRouterMock().Object, BuildChargeOrchestratorMock().Object, BuildCardBrandDetectorMock().Object);
 
         var result = await handler.Handle(
             new CompleteSignupCommand("ORD-004", BuildRequest()), CancellationToken.None);
@@ -355,7 +416,8 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object);
+            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object,
+            BuildGatewayRouterMock().Object, BuildChargeOrchestratorMock().Object, BuildCardBrandDetectorMock().Object);
 
         var result = await handler.Handle(
             new CompleteSignupCommand("ORD-010", BuildRequest()), CancellationToken.None);
@@ -392,7 +454,8 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object);
+            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object,
+            BuildGatewayRouterMock().Object, BuildChargeOrchestratorMock().Object, BuildCardBrandDetectorMock().Object);
 
         await handler.Handle(new CompleteSignupCommand("ORD-011", BuildRequest()), CancellationToken.None);
 
@@ -426,7 +489,8 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object);
+            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object,
+            BuildGatewayRouterMock().Object, BuildChargeOrchestratorMock().Object, BuildCardBrandDetectorMock().Object);
 
         await handler.Handle(new CompleteSignupCommand("ORD-012", BuildRequest()), CancellationToken.None);
 
@@ -460,7 +524,8 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object);
+            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object,
+            BuildGatewayRouterMock().Object, BuildChargeOrchestratorMock().Object, BuildCardBrandDetectorMock().Object);
 
         await handler.Handle(new CompleteSignupCommand("ORD-013", BuildRequest()), CancellationToken.None);
 
@@ -494,7 +559,8 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object);
+            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object,
+            BuildGatewayRouterMock().Object, BuildChargeOrchestratorMock().Object, BuildCardBrandDetectorMock().Object);
 
         var result = await handler.Handle(
             new CompleteSignupCommand("ORD-014", BuildRequest()), CancellationToken.None);
@@ -531,21 +597,20 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object);
+            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object,
+            BuildGatewayRouterMock().Object, BuildChargeOrchestratorMock().Object, BuildCardBrandDetectorMock().Object);
 
         var ccRequest = new CompleteSignupRequest
         {
             PaymentMethod = PaymentMethodType.CreditCard,
             CreditCard    = new CreditCardInfoDto
             {
-                Last4        = "4242",
-                First6       = "411111",
-                CardBrand    = "Visa",
-                ExpiryMonth  = 12,
-                ExpiryYear   = 2028,
-                Gateway      = "Stripe",
-                GatewayToken = "tok_visa",
-                CardToken    = "pm_test123"
+                CardHolderFirstName = "Test",
+                CardHolderLastName  = "User",
+                CardNumber          = "4111111111111111",
+                Cvv                 = "123",
+                ExpiryMonth         = 12,
+                ExpiryYear          = 2028
             }
         };
 
@@ -553,9 +618,79 @@ public class CompleteSignupHandlerTests
 
         var storedCard = await db.CreditCards.FirstOrDefaultAsync(c => c.MemberId == memberId);
         storedCard.Should().NotBeNull();
-        storedCard!.Last4.Should().Be("4242");
-        storedCard.MaskedCardNumber.Should().Be("411111******4242");
+        storedCard!.Last4.Should().Be("1111");
+        storedCard.First6.Should().Be("411111");
+        storedCard.MaskedCardNumber.Should().Be("411111******1111");
         storedCard.IsDefault.Should().BeTrue();
+        storedCard.Gateway.Should().Be("spreedly");
+        storedCard.GatewayToken.Should().Be("txn-test-123");
+        storedCard.SpreedlyPaymentMethodToken.Should().Be("spm_test_vaulted");
+    }
+
+    [Fact]
+    public async Task Handle_WhenCreditCardChargeFails_DoesNotActivateOrderOrMember()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        const string memberId = "AMB-017";
+        const string email    = "amb017@example.com";
+
+        var member       = BuildMember(memberId, email);
+        var order        = BuildPendingOrder("ORD-017", memberId);
+        var subscription = BuildPendingSubscription("SUB-017", memberId);
+        var appUser      = BuildInactiveUser(memberId, email);
+
+        await db.MemberProfiles.AddAsync(member);
+        await db.Orders.AddAsync(order);
+        await db.OrderDetails.AddAsync(BuildOrderDetail("ORD-017", "P-001", 80));
+        await db.MembershipSubscriptions.AddAsync(subscription);
+        await db.SaveChangesAsync();
+
+        var userMgr = UserManagerHelper.Create();
+        userMgr.Setup(u => u.FindByEmailAsync(email)).ReturnsAsync(appUser);
+        userMgr.Setup(u => u.UpdateAsync(It.IsAny<ApplicationUser>()))
+               .ReturnsAsync(IdentityResult.Success);
+
+        var failingOrchestrator = new Mock<MLMConquerorGlobalEdition.Billing.Services.Routing.IGatewayChargeOrchestrator>();
+        failingOrchestrator.Setup(o => o.ExecuteAsync(
+                It.IsAny<MLMConquerorGlobalEdition.Billing.Services.Routing.GatewayRoutingPlan>(),
+                It.IsAny<MLMConquerorGlobalEdition.Billing.Services.Routing.GatewayRoutingContext>(),
+                It.IsAny<MLMConquerorGlobalEdition.Billing.Services.Routing.OrchestratorChargeRequest>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(MLMConquerorGlobalEdition.SharedKernel.Result<MLMConquerorGlobalEdition.Billing.Services.Routing.OrchestratorChargeResult>.Failure(
+                "SPREEDLY_DECLINED", "Card was declined."));
+
+        var handler = new CompleteSignupHandler(
+            db, BuildDateTimeMock().Object, BuildS3Mock().Object,
+            BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
+            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object,
+            BuildGatewayRouterMock().Object, failingOrchestrator.Object, BuildCardBrandDetectorMock().Object);
+
+        var ccRequest = new CompleteSignupRequest
+        {
+            PaymentMethod = PaymentMethodType.CreditCard,
+            CreditCard    = new CreditCardInfoDto
+            {
+                CardHolderFirstName = "Test",
+                CardHolderLastName  = "User",
+                CardNumber          = "4111111111111111",
+                Cvv                 = "123",
+                ExpiryMonth         = 12,
+                ExpiryYear          = 2028
+            }
+        };
+
+        var result = await handler.Handle(new CompleteSignupCommand("ORD-017", ccRequest), CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be("SPREEDLY_DECLINED");
+
+        var untouchedOrder = await db.Orders.FindAsync("ORD-017");
+        untouchedOrder!.Status.Should().Be(OrderStatus.Pending);
+
+        var untouchedMember = await db.MemberProfiles.FirstAsync(m => m.MemberId == memberId);
+        untouchedMember.Status.Should().Be(MemberAccountStatus.Pending);
+
+        (await db.CreditCards.AnyAsync(c => c.MemberId == memberId)).Should().BeFalse();
     }
 
     [Fact]
@@ -584,7 +719,8 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object, userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object);
+            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object,
+            BuildGatewayRouterMock().Object, BuildChargeOrchestratorMock().Object, BuildCardBrandDetectorMock().Object);
 
         var result = await handler.Handle(
             new CompleteSignupCommand("ORD-016", BuildRequest()), CancellationToken.None);
@@ -673,7 +809,8 @@ public class CompleteSignupHandlerTests
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object,
             userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object);
+            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object,
+            BuildGatewayRouterMock().Object, BuildChargeOrchestratorMock().Object, BuildCardBrandDetectorMock().Object);
 
         var r1 = await handler.Handle(new CompleteSignupCommand("ORD-C1", BuildRequest()), CancellationToken.None);
         var r2 = await handler.Handle(new CompleteSignupCommand("ORD-C2", BuildRequest()), CancellationToken.None);
@@ -760,7 +897,8 @@ public class CompleteSignupHandlerTests
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             BuildSponsorBonusMock().Object, BuildFastStartBonusMock().Object,
             userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object);
+            BuildTokenRedemptionMock().Object, BuildRecurringBillingEnrollmentMock().Object,
+            BuildGatewayRouterMock().Object, BuildChargeOrchestratorMock().Object, BuildCardBrandDetectorMock().Object);
 
         var result = await handler.Handle(
             new CompleteSignupCommand("ORD-LEAF", BuildRequest()), CancellationToken.None);
