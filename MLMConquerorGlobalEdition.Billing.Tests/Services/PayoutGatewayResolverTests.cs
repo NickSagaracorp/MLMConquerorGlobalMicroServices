@@ -1,4 +1,6 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using MLMConquerorGlobalEdition.Billing.Services.Payout;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using Xunit;
@@ -10,7 +12,8 @@ public class PayoutGatewayResolverTests
     private static PayoutGatewayResolver CreateResolver() =>
         new(new IPayoutGatewayService[]
         {
-            new EWalletPayoutGatewayService(),
+            new EWalletPayoutGatewayService(
+                new HttpClient(), Options.Create(new IPayoutOptions()), NullLogger<EWalletPayoutGatewayService>.Instance),
             new VoletPayoutGatewayService()
         });
 

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.Billing.Services.Payout;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
@@ -7,6 +8,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Domain.Exceptions;
 using MLMConquerorGlobalEdition.Repository.Identity;
+using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Commands.SignupAmbassador;
@@ -44,6 +46,16 @@ public class SignupAmbassadorHandlerTests
         return m;
     }
 
+    // No gateway configured for eWallet by default — i-payout registration is best-effort and
+    // must never block signup, so most tests don't need a working resolver.
+    private static Mock<IPayoutGatewayResolver> BuildPayoutResolver()
+    {
+        var m = new Mock<IPayoutGatewayResolver>();
+        m.Setup(r => r.Resolve(It.IsAny<WalletType>()))
+            .Returns(Result<IPayoutGatewayService>.Failure("NO_GATEWAY", "No gateway configured."));
+        return m;
+    }
+
     private static Mock<UserManager<ApplicationUser>> BuildUserManager(bool emailTaken = false)
     {
         var mgr = UserManagerHelper.Create();
@@ -60,12 +72,14 @@ public class SignupAmbassadorHandlerTests
         MLMConquerorGlobalEdition.Repository.Context.AppDbContext db,
         Mock<UserManager<ApplicationUser>>? userMgr = null,
         Mock<IPushNotificationService>? push = null,
-        Mock<IEncryptionService>? encryption = null) =>
+        Mock<IEncryptionService>? encryption = null,
+        Mock<IPayoutGatewayResolver>? payoutResolver = null) =>
         new(db,
             BuildClock().Object,
             (userMgr ?? BuildUserManager()).Object,
             (push ?? BuildPush()).Object,
-            (encryption ?? BuildEncryption()).Object);
+            (encryption ?? BuildEncryption()).Object,
+            (payoutResolver ?? BuildPayoutResolver()).Object);
 
     private static AmbassadorSignupRequest BuildRequest(
         string email              = "new.ambassador@example.com",

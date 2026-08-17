@@ -31,6 +31,19 @@ public class PayoutAccountContext
     public WalletType WalletType { get; init; }
     public string AccountIdentifier { get; init; } = string.Empty;
     public string? AccountMeta { get; init; }
+
+    // Optional registration profile fields. Only i-payout's eWallet_RegisterUser needs these
+    // (it 400s without at least FirstName/LastName) — other gateways ignore them entirely.
+    public string? FirstName { get; init; }
+    public string? LastName { get; init; }
+    public string? Email { get; init; }
+    public string? Address1 { get; init; }
+    public string? City { get; init; }
+    public string? State { get; init; }
+    public string? ZipCode { get; init; }
+    public string? CountryIso2 { get; init; }
+    public string? PhoneNumber { get; init; }
+    public DateTime? DateOfBirth { get; init; }
 }
 
 public class PayoutTransferContext

@@ -109,6 +109,14 @@ builder.Services.AddSingleton<MLMConquerorGlobalEdition.Billing.Services.IDateTi
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Billing.Services.Recurring.IRecurringBillingEnrollmentService,
                             MLMConquerorGlobalEdition.Billing.Services.Recurring.RecurringBillingEnrollmentService>();
 
+
+
+// Payout gateways (i-payout / Volet resolver) — ambassador signup registers the new member's
+// i-payout (eWallet) account right after enrollment. Uses the gateway-only registration (not
+// the full AddPayoutServices) since SignupAPI doesn't wire up ICurrentUserService/ReceiptStorage
+// that the orchestrator/batch/reconciliation services need.
+MLMConquerorGlobalEdition.Billing.Extensions.PayoutServiceCollectionExtensions.AddPayoutGatewayServices(builder.Services);
+
 // JWT Service
 builder.Services.AddScoped<IJwtService, JwtService>();
 

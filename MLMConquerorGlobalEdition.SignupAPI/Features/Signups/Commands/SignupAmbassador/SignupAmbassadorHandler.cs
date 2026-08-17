@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.Billing.Services.Payout;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
@@ -31,19 +32,22 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IPushNotificationService     _push;
     private readonly IEncryptionService           _encryption;
+    private readonly IPayoutGatewayResolver       _payoutResolver;
 
     public SignupAmbassadorHandler(
         AppDbContext db,
         IDateTimeProvider dateTime,
         UserManager<ApplicationUser> userManager,
         IPushNotificationService push,
-        IEncryptionService encryption)
+        IEncryptionService encryption,
+        IPayoutGatewayResolver payoutResolver)
     {
-        _db          = db;
-        _dateTime    = dateTime;
-        _userManager = userManager;
-        _push        = push;
-        _encryption  = encryption;
+        _db             = db;
+        _dateTime       = dateTime;
+        _userManager    = userManager;
+        _push           = push;
+        _encryption     = encryption;
+        _payoutResolver = payoutResolver;
     }
 
     public async Task<Result<SignupResponse>> Handle(SignupAmbassadorCommand command, CancellationToken ct)
@@ -101,6 +105,8 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
         string memberId;
         string orderId;
         GenealogyEntity? sponsorNode = null;
+        MemberProfilesWallet? eWalletRow = null;
+        string? countryIso2 = null;
         for (var idAttempt = 0; ; idAttempt++)
         {
         var candidateId = await GenerateUniqueMemberIdAsync(ct);
@@ -126,6 +132,7 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
             .FirstOrDefaultAsync(c => c.NameEn == req.Country || c.Iso2 == req.Country, ct);
         if (country is not null)
         {
+            countryIso2 = country.Iso2;
             var payoutDefault = await _db.CountryPayoutDefaults.AsNoTracking()
                 .FirstOrDefaultAsync(p => p.CountryIso2 == country.Iso2 && p.IsActive, ct);
             defaultWalletType = payoutDefault?.WalletType;
@@ -275,9 +282,10 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
         // fields (Dwolla account, eWallet credentials, etc.) before the
         // commission payout job actually targets it. We do not store any
         // credentials at signup — only the wallet TYPE.
+        MemberProfilesWallet? countryWallet = null;
         if (defaultWalletType.HasValue)
         {
-            var wallet = new MemberProfilesWallet
+            countryWallet = new MemberProfilesWallet
             {
                 Id             = Guid.NewGuid().ToString(),
                 MemberId       = memberId,
@@ -289,8 +297,29 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
                 CreationDate   = now,
                 LastUpdateDate = now
             };
-            await _db.Wallets.AddAsync(wallet, ct);
+            await _db.Wallets.AddAsync(countryWallet, ct);
         }
+
+        // Every ambassador also gets an i-payout (eWallet) account registered right after
+        // enrollment, regardless of the country's default gateway, so commissions always
+        // have a payout rail available. Reuse the country-default row when it's already
+        // eWallet; otherwise add a second wallet, preferred only if no other wallet exists.
+        eWalletRow = countryWallet?.WalletType == WalletType.eWallet
+            ? countryWallet
+            : new MemberProfilesWallet
+            {
+                Id             = Guid.NewGuid().ToString(),
+                MemberId       = memberId,
+                WalletType     = WalletType.eWallet,
+                Status         = WalletStatus.Pending,
+                IsPreferred    = countryWallet is null,
+                Notes          = "Auto-registered with i-payout at signup.",
+                CreatedBy      = req.Email,
+                CreationDate   = now,
+                LastUpdateDate = now
+            };
+        if (!ReferenceEquals(eWalletRow, countryWallet))
+            await _db.Wallets.AddAsync(eWalletRow, ct);
 
         // Queue rank re-evaluation for every genealogy upline of the sponsor
         if (sponsorNode is not null)
@@ -321,6 +350,10 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
             _db.ChangeTracker.Clear();
         }
         }
+
+        await RegisterIPayoutAccountAsync(eWalletRow!, memberId, req, countryIso2, now, ct);
+
+
 
         // Notify all uplines in the enrollment tree (genealogy)
         if (sponsorNode is not null)
@@ -372,6 +405,64 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
             EnrollDate = now
             // AccessToken / RefreshToken are null — populated only after Complete step
         });
+    }
+
+    /// <summary>
+    /// Registers the new ambassador's eWallet with i-payout using their full signup profile —
+    /// i-payout's eWallet_RegisterUser rejects requests missing FirstName/LastName/etc, so we
+    /// pass everything the ambassador signup form already collected. Best-effort: a gateway
+    /// failure here never blocks the signup — the wallet stays Pending and can be retried later
+    /// via the admin ValidateMemberPayoutAccount / subscribe tools.
+    /// </summary>
+    private async Task RegisterIPayoutAccountAsync(
+        MemberProfilesWallet eWalletRow, string memberId, AmbassadorSignupRequest req, string? countryIso2,
+        DateTime now, CancellationToken ct)
+    {
+        var gatewayResult = _payoutResolver.Resolve(WalletType.eWallet);
+        if (!gatewayResult.IsSuccess)
+            return;
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var subscribe = await gatewayResult.Value!.SubscribeAccountAsync(new PayoutAccountContext
+        {
+            MemberId          = memberId,
+            WalletType        = WalletType.eWallet,
+            AccountIdentifier = req.Email,
+            FirstName         = req.FirstName,
+            LastName          = req.LastName,
+            Email             = req.Email,
+            Address1          = req.Address,
+            City              = req.City,
+            State             = req.State,
+            ZipCode           = req.ZipCode,
+            CountryIso2       = countryIso2,
+            PhoneNumber       = req.Phone,
+            DateOfBirth       = req.DateOfBirth
+        }, ct);
+        sw.Stop();
+
+        if (subscribe.IsSuccess)
+        {
+            eWalletRow.AccountIdentifier = req.Email;
+            eWalletRow.Status            = WalletStatus.Approved;
+            eWalletRow.LastUpdateDate    = now;
+            eWalletRow.LastUpdateBy      = req.Email;
+        }
+
+        _db.WalletApiLogs.Add(new MemberWalletApiLog
+        {
+            MemberId       = memberId,
+            WalletType     = WalletType.eWallet,
+            Operation      = "SubscribeAccount",
+            HttpStatusCode = subscribe.IsSuccess ? 200 : 0,
+            Success        = subscribe.IsSuccess,
+            ErrorMessage   = subscribe.IsSuccess ? null : subscribe.Error,
+            DurationMs     = (int)sw.ElapsedMilliseconds,
+            CreationDate   = now,
+            CreatedBy      = req.Email
+        });
+
+        await _db.SaveChangesAsync(ct);
     }
 
     /// <summary>
