@@ -1,24 +1,31 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
+using MLMConquerorGlobalEdition.SharedKernel.Services;
 using MLMConquerorGlobalEdition.Billing.Services.Payout;
 using MLMConquerorGlobalEdition.Billing.Services.Payout.Anchoring;
 using MLMConquerorGlobalEdition.Billing.Services.Payout.Batch;
 using MLMConquerorGlobalEdition.Billing.Services.Payout.Csv;
+using MLMConquerorGlobalEdition.Repository.Services.Payout.EWallet;
+using MLMConquerorGlobalEdition.Repository.Services.Payout.PayQuicker;
 using MLMConquerorGlobalEdition.Billing.Services.Payout.Receipts;
+using MLMConquerorGlobalEdition.Repository.Services.Wallets;
+using MLMConquerorGlobalEdition.Repository.Services.Payout;
 
 namespace MLMConquerorGlobalEdition.Billing.Extensions;
 
 public static class PayoutServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers the outbound payout gateways, resolver, orchestrator and receipt services.
-    /// Called by both the Billing API and the AdminAPI (which references Billing).
+    /// Registra el pipeline COMPLETO de payouts: los gateways (vía AddPayoutGatewayClients)
+    /// más el orquestador, recibos, CSV, lotes y reconciliación.
+    /// Lo llaman Billing y AdminAPI.
     /// </summary>
     public static IServiceCollection AddPayoutServices(this IServiceCollection services)
     {
-        services.AddScoped<IPayoutGatewayService, EWalletPayoutGatewayService>();
-        services.AddScoped<IPayoutGatewayService, VoletPayoutGatewayService>();
-        services.AddScoped<IPayoutGatewayResolver, PayoutGatewayResolver>();
+        services.AddPayoutGatewayClients();
+
         services.AddScoped<IPayoutOrchestrator, PayoutOrchestrator>();
 
         services.AddSingleton<IReceiptPdfRenderer, ITextReceiptPdfRenderer>();

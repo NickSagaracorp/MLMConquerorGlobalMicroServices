@@ -37,7 +37,12 @@ public class PayoutOrchestratorDiTests
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ReceiptStorage:LocalPath"]    = Path.Combine(Path.GetTempPath(), "di-test-receipts"),
-                ["ReceiptStorage:PublicBaseUrl"] = "https://localhost:7001"
+                ["ReceiptStorage:PublicBaseUrl"] = "https://localhost:7001",
+                // El protector de credenciales exige un certificado para envolver el key
+                // ring y falla el arranque si no lo encuentra, igual que Billing/AdminAPI.
+                // En Development el PFX se genera solo si no existe.
+                ["DataProtection:Certificate:Path"] =
+                    Path.Combine(Path.GetTempPath(), "di-test-keyring", "cert.pfx")
             })
             .Build();
         services.AddSingleton<IConfiguration>(config);
@@ -50,6 +55,15 @@ public class PayoutOrchestratorDiTests
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddHttpContextAccessor(); // CurrentUserService requires IHttpContextAccessor
+
+        // El certificado del key ring sólo se autogenera en Development.
+        services.AddSingleton<Microsoft.Extensions.Hosting.IHostEnvironment>(
+            new Microsoft.Extensions.Hosting.Internal.HostingEnvironment
+            {
+                EnvironmentName = Microsoft.Extensions.Hosting.Environments.Development,
+                ApplicationName = "DiTests",
+                ContentRootPath = Path.GetTempPath()
+            });
 
         // ── SharedKernel.IEmailService — the fix under test ───────────────────
         // This is the registration that was missing and caused the runtime gap.
@@ -85,7 +99,9 @@ public class PayoutOrchestratorDiTests
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ReceiptStorage:LocalPath"]    = Path.Combine(Path.GetTempPath(), "di-test-receipts-neg"),
-                ["ReceiptStorage:PublicBaseUrl"] = "https://localhost:7001"
+                ["ReceiptStorage:PublicBaseUrl"] = "https://localhost:7001",
+                ["DataProtection:Certificate:Path"] =
+                    Path.Combine(Path.GetTempPath(), "di-test-keyring", "cert.pfx")
             })
             .Build();
         services.AddSingleton<IConfiguration>(config);
@@ -96,6 +112,14 @@ public class PayoutOrchestratorDiTests
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddHttpContextAccessor();
+
+        services.AddSingleton<Microsoft.Extensions.Hosting.IHostEnvironment>(
+            new Microsoft.Extensions.Hosting.Internal.HostingEnvironment
+            {
+                EnvironmentName = Microsoft.Extensions.Hosting.Environments.Development,
+                ApplicationName = "DiTests",
+                ContentRootPath = Path.GetTempPath()
+            });
 
         // Intentionally omit IEmailService registration.
         // services.AddTransient<SharedKernel.Interfaces.IEmailService, ...>();

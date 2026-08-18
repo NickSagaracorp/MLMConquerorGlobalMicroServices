@@ -397,15 +397,18 @@
 
 @code {
     // WalletType enum NAMES — AdminAPI serializes enums as names (JsonStringEnumConverter).
+    // Dwolla sigue en la lista aunque esté retirado: hay PayoutAttempts históricos con ese
+    // gateway y el filtro tiene que poder alcanzarlos. Advancash ya no existe — se fusionó
+    // en Volet, que es el mismo proveedor renombrado.
     private static readonly string[] WalletTypes =
     {
         "Dwolla", "Propay", "WireTransferCanada", "eWallet",
-        "Paypal", "Volet", "Yestransfer", "Crypto", "Advancash"
+        "Paypal", "Volet", "Yestransfer", "Crypto", "PayQuicker"
     };
 
     private static readonly Dictionary<string, string> GatewayLabels = new()
     {
-        ["Dwolla"]             = "Dwolla",
+        ["Dwolla"]             = "Dwolla (retired)",
         ["Propay"]             = "ProPay",
         ["WireTransferCanada"] = "Wire Transfer (Canada)",
         ["eWallet"]            = "eWallet (I-Payout)",
@@ -413,7 +416,7 @@
         ["Volet"]              = "Volet",
         ["Yestransfer"]        = "Yestransfer",
         ["Crypto"]             = "Crypto",
-        ["Advancash"]          = "AdvCash"
+        ["PayQuicker"]         = "PayQuicker"
     };
 
     private const int PageSize = 20;

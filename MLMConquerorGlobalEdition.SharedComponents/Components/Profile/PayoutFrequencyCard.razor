@@ -25,6 +25,10 @@
                     disabled="@_busy" @onclick='() => SaveAsync("Weekly")'>
                 <i class="ri-calendar-2-line me-1"></i>@L["PayoutFreq.Weekly"]
             </button>
+            <button type="button" class="btn @(_selected == "Monthly" ? "btn-primary" : "btn-outline-primary")"
+                    disabled="@_busy" @onclick='() => SaveAsync("Monthly")'>
+                <i class="ri-calendar-check-line me-1"></i>@L["PayoutFreq.Monthly"]
+            </button>
         </div>
 
         @if (_alert is not null)
@@ -83,7 +87,12 @@
             });
             if (resp.IsSuccessStatusCode)
             {
-                _alert = (value == "Daily" ? L["PayoutFreq.SavedDaily"] : L["PayoutFreq.SavedWeekly"]).Value;
+                _alert = (value switch
+                {
+                    "Daily"   => L["PayoutFreq.SavedDaily"],
+                    "Monthly" => L["PayoutFreq.SavedMonthly"],
+                    _         => L["PayoutFreq.SavedWeekly"]
+                }).Value;
                 _alertOk = true;
                 await OnChanged.InvokeAsync(value);
             }

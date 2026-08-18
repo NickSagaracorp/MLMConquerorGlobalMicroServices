@@ -27,5 +27,25 @@ public class UpdatePayoutGatewaySettingCommandValidator : AbstractValidator<Upda
         RuleFor(x => x.MinAdminFee)
             .GreaterThanOrEqualTo(0).WithMessage("Minimum admin fee cannot be negative.")
             .When(x => x.MinAdminFee.HasValue);
+
+        // Los selectores se validan contra listas cerradas: si acá entra un valor libre,
+        // PayQuickerSettingsProvider no encuentra la ApiCredential y el gateway queda mudo
+        // hasta que alguien revise. Mejor rechazarlo al guardar.
+        RuleFor(x => x.ApiVersion)
+            .Must(v => v is "V1" or "V2")
+            .WithMessage("ApiVersion must be 'V1' or 'V2'.")
+            .When(x => !string.IsNullOrWhiteSpace(x.ApiVersion));
+
+        RuleFor(x => x.Environment)
+            .Must(v => v is "Sandbox" or "Production" or "Test")
+            .WithMessage("Environment must be 'Sandbox', 'Production' or 'Test'.")
+            .When(x => !string.IsNullOrWhiteSpace(x.Environment));
+
+        RuleFor(x => x.AdminPortalUrl)
+            .MaximumLength(500)
+            .Must(url => Uri.TryCreate(url, UriKind.Absolute, out var parsed)
+                         && (parsed.Scheme == Uri.UriSchemeHttp || parsed.Scheme == Uri.UriSchemeHttps))
+            .WithMessage("Admin portal URL must be an absolute http(s) URL.")
+            .When(x => !string.IsNullOrWhiteSpace(x.AdminPortalUrl));
     }
 }

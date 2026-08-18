@@ -17,7 +17,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.5")
+                .HasAnnotation("ProductVersion", "10.0.11")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -72,6 +72,18 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("MerchantIdEncrypted")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("PortalPasswordEncrypted")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("PortalUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("PortalUsernameEncrypted")
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
 
@@ -15462,6 +15474,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("ProviderAccountCreatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<byte[]>("RowVersion")
                         .HasColumnType("varbinary(max)");
 
@@ -15612,6 +15627,14 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<int>("AdminFeeKind")
                         .HasColumnType("int");
 
+                    b.Property<string>("AdminPortalUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ApiVersion")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
                     b.Property<string>("CreatedBy")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -15633,6 +15656,10 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .IsRequired()
                         .HasMaxLength(80)
                         .HasColumnType("nvarchar(80)");
+
+                    b.Property<string>("Environment")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -15665,11 +15692,13 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Id = 1,
                             AdminFee = 1.95m,
                             AdminFeeKind = 1,
+                            AdminPortalUrl = "https://www.i-payout.com/",
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 4, 28, 0, 0, 0, 0, DateTimeKind.Utc),
                             Currency = "USD",
                             Description = "I-Payout maintains your in-account balance. Once you register, I-Payout sends a confirmation email; you must verify before payouts can be sent. Funds typically arrive within 24 hours of approval. International withdrawals from your I-Payout account to a bank may incur additional fees from I-Payout itself. Admin fee: $1.95 USD per transaction.",
                             DisplayName = "eWallet (I-Payout)",
+                            Environment = "Sandbox",
                             IsActive = true,
                             MinimumPayoutAmount = 25m,
                             WalletType = 4
@@ -15682,9 +15711,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 4, 28, 0, 0, 0, 0, DateTimeKind.Utc),
                             Currency = "USD",
-                            Description = "Dwolla pushes commissions directly into your linked US bank account. You must complete Dwolla's identity verification before your account is approved. Standard ACH transfers settle in 3–5 business days. Dwolla is US-only. Admin fee: $1.95 USD per transaction.",
-                            DisplayName = "Dwolla",
-                            IsActive = true,
+                            Description = "Dwolla is no longer offered. Existing accounts were migrated to Volet, which also pays out to your email address. This entry is kept only so historical payout records keep resolving.",
+                            DisplayName = "Dwolla (retired)",
+                            IsActive = false,
                             MinimumPayoutAmount = 25m,
                             WalletType = 1
                         },
@@ -15708,14 +15737,32 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             Id = 4,
                             AdminFee = 1.95m,
                             AdminFeeKind = 1,
+                            AdminPortalUrl = "https://account.volet.com/",
                             CreatedBy = "seed",
                             CreationDate = new DateTime(2026, 4, 28, 0, 0, 0, 0, DateTimeKind.Utc),
                             Currency = "USD",
-                            Description = "AdvCash holds funds in your AdvCash account in the currency of your choice. From there you can withdraw to bank, card, or other gateways. Verification through AdvCash is required to lift withdrawal limits. Available in most regions worldwide. Admin fee: $1.95 USD per transaction.",
-                            DisplayName = "AdvCash",
+                            Description = "Volet (formerly AdvCash) holds funds in your Volet account in the currency of your choice. From there you can withdraw to bank, card, or other gateways. Verification through Volet is required to lift withdrawal limits. Available in most regions worldwide. Admin fee: $1.95 USD per transaction.",
+                            DisplayName = "Volet",
                             IsActive = true,
                             MinimumPayoutAmount = 25m,
-                            WalletType = 10
+                            WalletType = 6
+                        },
+                        new
+                        {
+                            Id = 5,
+                            AdminFee = 1.95m,
+                            AdminFeeKind = 1,
+                            AdminPortalUrl = "https://sandbox.payquicker.io/",
+                            ApiVersion = "V2",
+                            CreatedBy = "seed",
+                            CreationDate = new DateTime(2026, 4, 28, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Currency = "USD",
+                            Description = "PayQuicker delivers your commissions to an insured account linked to a debit card. You receive an invitation email to complete registration; once verified, funds are available instantly and can be spent online, at retail, or moved to your bank. Admin fee: $1.95 USD per transaction.",
+                            DisplayName = "PayQuicker",
+                            Environment = "Sandbox",
+                            IsActive = false,
+                            MinimumPayoutAmount = 25m,
+                            WalletType = 11
                         });
                 });
 
@@ -15804,6 +15851,25 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasFilter("[NormalizedUserName] IS NOT NULL");
 
                     b.ToTable("AspNetUsers", (string)null);
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("FriendlyName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Xml")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DataProtectionKeys");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>

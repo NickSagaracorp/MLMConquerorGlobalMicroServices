@@ -7,6 +7,7 @@ using MLMConquerorGlobalEdition.Domain.Exceptions;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
 using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
+using IEncryptionService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IEncryptionService;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 
@@ -21,9 +22,11 @@ public class AdminBillingGatewayController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ICacheService _cache;
+    private readonly IEncryptionService _crypto;
 
-    public AdminBillingGatewayController(AppDbContext db, ICacheService cache)
+    public AdminBillingGatewayController(AppDbContext db, ICacheService cache, IEncryptionService crypto)
     {
+        _crypto = crypto;
         _db    = db;
         _cache = cache;
     }
@@ -386,54 +389,100 @@ public class AdminBillingGatewayController : ControllerBase
 
     /// <summary>GET returns metadata only — secrets are NEVER returned in plain text.</summary>
     [HttpGet("credentials/{serviceKey}")]
-    public async Task<IActionResult> GetCredential(string serviceKey, CancellationToken ct = default)
+    public async Task<IActionResult> GetCredential(
+        string serviceKey,
+        [FromQuery] string? environment = null,
+        CancellationToken ct = default)
     {
-        var entity = await _db.ApiCredentials
-            .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.ServiceKey == serviceKey && !c.IsDeleted, ct);
+        // La clave real es (ServiceKey, Environment) — hay un índice único sobre ese par.
+        // Gateways como PayQuicker tienen fila de Sandbox Y de Production con la misma
+        // ServiceKey, así que resolver sólo por ServiceKey devolvería una arbitraria.
+        var query = _db.ApiCredentials.AsNoTracking().Where(c => c.ServiceKey == serviceKey && !c.IsDeleted);
 
-        if (entity is null)
+        if (!string.IsNullOrWhiteSpace(environment))
+            query = query.Where(c => c.Environment == environment);
+
+        var matches = await query.OrderBy(c => c.Environment).ToListAsync(ct);
+
+        if (matches.Count == 0)
             return NotFound(ApiResponse<object>.Fail("CREDENTIAL_NOT_FOUND",
-                $"No credential found for service key '{serviceKey}'."));
+                $"No credential found for service key '{serviceKey}'" +
+                (string.IsNullOrWhiteSpace(environment) ? "." : $" in environment '{environment}'.")));
 
+        // Ambiguo y sin desambiguar: se rechaza en vez de adivinar. Devolver la fila
+        // equivocada llevaría a que el admin edite las credenciales del ambiente que no es.
+        if (matches.Count > 1)
+            return BadRequest(ApiResponse<object>.Fail("CREDENTIAL_AMBIGUOUS",
+                $"Service key '{serviceKey}' exists in {matches.Count} environments " +
+                $"({string.Join(", ", matches.Select(m => m.Environment))}). Pass ?environment= to choose one."));
+
+        var entity = matches[0];
         return Ok(ApiResponse<ApiCredentialMetadataDto>.Ok(new ApiCredentialMetadataDto(
             entity.Id, entity.ServiceKey, entity.Environment, entity.BaseUrl,
             entity.ApiKeyEncrypted is not null,
             entity.SecretKeyEncrypted is not null,
             entity.MerchantIdEncrypted is not null,
-            entity.IsActive, entity.CreationDate)));
+            entity.IsActive, entity.CreationDate,
+            entity.PortalUrl,
+            entity.PortalUsernameEncrypted is not null,
+            entity.PortalPasswordEncrypted is not null,
+            entity.AdditionalSecretEncrypted is not null)));
     }
 
-    /// <summary>PUT upserts credential — secrets must be sent as "ENC:..." encrypted values.</summary>
+    /// <summary>
+    /// PUT upserts a credential. Los secretos viajan EN CLARO sobre TLS y los cifra el
+    /// servidor con IEncryptionService antes de persistirlos.
+    ///
+    /// El contrato anterior exigia que el llamador mandara valores con prefijo "ENC:", lo
+    /// que en la practica solo produjo una mascara: la UI concatenaba "ENC:" al texto plano
+    /// y eso quedaba guardado SIN cifrar. El cifrado es responsabilidad del servidor, que es
+    /// el unico con acceso al key ring.
+    /// </summary>
     [HttpPut("credentials/{serviceKey}")]
     public async Task<IActionResult> UpsertCredential(
         string serviceKey, [FromBody] UpsertCredentialRequest request, CancellationToken ct = default)
     {
-        // Validate: if a secret is supplied it must be ENC:-prefixed
-        if (request.ApiKeyEncrypted is not null && !request.ApiKeyEncrypted.StartsWith("ENC:"))
-            return BadRequest(ApiResponse<object>.Fail("SECRET_NOT_ENCRYPTED",
-                "ApiKeyEncrypted must start with 'ENC:'. Store only encrypted values."));
+        // Un secreto legitimo no empieza con "ENC:". Si llega uno asi es un cliente viejo
+        // mandando el prefijo a mano: se rechaza en vez de cifrar la mascara y dejar
+        // guardado un valor que despues nadie va a poder usar.
+        foreach (var (name, value) in new[]
+                 {
+                     (nameof(request.ApiKey),           request.ApiKey),
+                     (nameof(request.SecretKey),        request.SecretKey),
+                     (nameof(request.MerchantId),       request.MerchantId),
+                     (nameof(request.AdditionalSecret), request.AdditionalSecret),
+                     (nameof(request.PortalUsername),   request.PortalUsername),
+                     (nameof(request.PortalPassword),   request.PortalPassword)
+                 })
+        {
+            if (value is not null && value.StartsWith("ENC:", StringComparison.Ordinal))
+                return BadRequest(ApiResponse<object>.Fail("SECRET_ALREADY_PREFIXED",
+                    $"{name} must be sent in plain text over TLS; the server encrypts it. " +
+                    "Remove the 'ENC:' prefix - it is applied during storage, not by the caller."));
+        }
 
-        if (request.SecretKeyEncrypted is not null && !request.SecretKeyEncrypted.StartsWith("ENC:"))
-            return BadRequest(ApiResponse<object>.Fail("SECRET_NOT_ENCRYPTED",
-                "SecretKeyEncrypted must start with 'ENC:'. Store only encrypted values."));
+        // Cifra solo lo que vino. Null o vacio significa "no cambiar este secreto".
+        string? Protect(string? plaintext) =>
+            string.IsNullOrWhiteSpace(plaintext) ? null : _crypto.Encrypt(plaintext);
 
-        if (request.MerchantIdEncrypted is not null && !request.MerchantIdEncrypted.StartsWith("ENC:"))
-            return BadRequest(ApiResponse<object>.Fail("SECRET_NOT_ENCRYPTED",
-                "MerchantIdEncrypted must start with 'ENC:'. Store only encrypted values."));
 
         var now   = DateTime.UtcNow;
         var actor = User.Identity?.Name ?? "admin";
 
+        // El Environment del body es parte de la IDENTIDAD de la credencial, no un atributo
+        // editable: (ServiceKey, Environment) tiene índice único. Buscar sólo por ServiceKey
+        // haría que guardar la credencial de Sandbox pise la de Production.
+        var environment = string.IsNullOrWhiteSpace(request.Environment) ? "Production" : request.Environment!.Trim();
+
         var entity = await _db.ApiCredentials.IgnoreQueryFilters()
-            .FirstOrDefaultAsync(c => c.ServiceKey == serviceKey, ct);
+            .FirstOrDefaultAsync(c => c.ServiceKey == serviceKey && c.Environment == environment, ct);
 
         if (entity is null)
         {
             entity = new ApiCredential
             {
                 ServiceKey   = serviceKey,
-                Environment  = request.Environment ?? "Production",
+                Environment  = environment,
                 BaseUrl      = request.BaseUrl,
                 IsActive     = request.IsActive ?? true,
                 CreatedBy    = actor,
@@ -441,35 +490,40 @@ public class AdminBillingGatewayController : ControllerBase
                 LastUpdateDate = now
             };
 
-            if (request.ApiKeyEncrypted is not null)
-                entity.ApiKeyEncrypted = request.ApiKeyEncrypted;
-            if (request.SecretKeyEncrypted is not null)
-                entity.SecretKeyEncrypted = request.SecretKeyEncrypted;
-            if (request.MerchantIdEncrypted is not null)
-                entity.MerchantIdEncrypted = request.MerchantIdEncrypted;
+            entity.ApiKeyEncrypted           = Protect(request.ApiKey);
+            entity.SecretKeyEncrypted        = Protect(request.SecretKey);
+            entity.MerchantIdEncrypted       = Protect(request.MerchantId);
+            entity.AdditionalSecretEncrypted = Protect(request.AdditionalSecret);
+            entity.PortalUrl                 = request.PortalUrl;
+            entity.PortalUsernameEncrypted   = Protect(request.PortalUsername);
+            entity.PortalPasswordEncrypted   = Protect(request.PortalPassword);
 
             _db.ApiCredentials.Add(entity);
         }
         else
         {
-            entity.Environment     = request.Environment ?? entity.Environment;
+            // Environment NO se reasigna: ya se usó para localizar la fila.
             entity.BaseUrl         = request.BaseUrl     ?? entity.BaseUrl;
             entity.IsActive        = request.IsActive    ?? entity.IsActive;
             entity.IsDeleted       = false;
             entity.LastUpdateBy    = actor;
             entity.LastUpdateDate  = now;
 
-            if (request.ApiKeyEncrypted is not null)
-                entity.ApiKeyEncrypted = request.ApiKeyEncrypted;
-            if (request.SecretKeyEncrypted is not null)
-                entity.SecretKeyEncrypted = request.SecretKeyEncrypted;
-            if (request.MerchantIdEncrypted is not null)
-                entity.MerchantIdEncrypted = request.MerchantIdEncrypted;
+            // Campo vacio = conservar el secreto actual, para que el admin pueda editar la
+            // URL o el flag Active sin re-tipear todos los secretos.
+            if (Protect(request.ApiKey)           is { } apiKey)     entity.ApiKeyEncrypted           = apiKey;
+            if (Protect(request.SecretKey)        is { } secretKey)  entity.SecretKeyEncrypted        = secretKey;
+            if (Protect(request.MerchantId)       is { } merchantId) entity.MerchantIdEncrypted       = merchantId;
+            if (Protect(request.AdditionalSecret) is { } additional) entity.AdditionalSecretEncrypted = additional;
+            if (Protect(request.PortalUsername)   is { } portalUser) entity.PortalUsernameEncrypted   = portalUser;
+            if (Protect(request.PortalPassword)   is { } portalPass) entity.PortalPasswordEncrypted   = portalPass;
+
+            entity.PortalUrl = request.PortalUrl ?? entity.PortalUrl;
         }
 
         await _db.SaveChangesAsync(ct);
 
-        return Ok(ApiResponse<object>.Ok(new { serviceKey, updated = true }));
+        return Ok(ApiResponse<object>.Ok(new { serviceKey, environment, updated = true }));
     }
 
     // ── Routing Counters (observability) ───────────────────────────────────
@@ -603,11 +657,24 @@ public class AdminBillingGatewayController : ControllerBase
     public record ApiCredentialMetadataDto(
         string Id, string ServiceKey, string Environment, string? BaseUrl,
         bool HasApiKey, bool HasSecretKey, bool HasMerchantId,
-        bool IsActive, DateTime CreationDate);
+        bool IsActive, DateTime CreationDate,
+        // Portal administrativo del proveedor. La URL no es secreta y se devuelve tal cual;
+        // usuario y contraseña sólo se reportan como "cargado / no cargado".
+        string? PortalUrl = null,
+        bool HasPortalUsername = false, bool HasPortalPassword = false,
+        bool HasAdditionalSecret = false);
 
+    /// <summary>
+    /// Secretos EN CLARO sobre TLS: el servidor los cifra antes de guardarlos. Los nombres
+    /// NO llevan el sufijo "Encrypted" a proposito, porque describen lo que el cliente
+    /// envia y no como se persiste. Campo nulo o vacio = "no cambiar ese secreto".
+    /// </summary>
     public record UpsertCredentialRequest(
         string? Environment, string? BaseUrl, bool? IsActive,
-        string? ApiKeyEncrypted, string? SecretKeyEncrypted, string? MerchantIdEncrypted);
+        string? ApiKey, string? SecretKey, string? MerchantId,
+        string? AdditionalSecret = null,
+        string? PortalUrl = null,
+        string? PortalUsername = null, string? PortalPassword = null);
 
     public record RoutingCounterDto(
         string RouteBucketKey, CardProcessor CardProcessor, string ProcessorName, long AttemptCount);

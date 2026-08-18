@@ -28,7 +28,7 @@ public static class BizCenterValidationPatterns
     // Language tag (BCP 47, simple two-letter / two-letter-region)
     public const string LanguageTagPattern = @"^[a-z]{2}(?:-[A-Z]{2})?$";
 
-    public const string PayoutFrequencyPattern = @"^(?:Daily|Weekly)$";
+    public const string PayoutFrequencyPattern = @"^(?:Daily|Weekly|Monthly)$";
 
     public const string MemberIdPattern = @"^(?:(?:AMB|MBR)-?\d{3,9}|ROOT\d{3,9})$";
 

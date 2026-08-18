@@ -33,7 +33,10 @@ public class GetPayoutGatewaySettingsHandler
                 MinAdminFee = g.MinAdminFee,
                 Currency = g.Currency,
                 MinimumPayoutAmount = g.MinimumPayoutAmount,
-                IsActive = g.IsActive
+                IsActive = g.IsActive,
+                ApiVersion = g.ApiVersion,
+                Environment = g.Environment,
+                AdminPortalUrl = g.AdminPortalUrl
             })
             .ToListAsync(ct);
 

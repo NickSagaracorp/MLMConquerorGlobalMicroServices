@@ -44,8 +44,18 @@ public class UpdateProfileRequestValidatorTests
 
     [Fact]
     public void Validate_WhenPayoutFrequencyBogus_Fails()
-        => _v.TestValidate(new UpdateProfileRequest { PayoutFrequency = "Monthly" })
+        => _v.TestValidate(new UpdateProfileRequest { PayoutFrequency = "Fortnightly" })
             .ShouldHaveValidationErrorFor(x => x.PayoutFrequency);
+
+    // Monthly se agregó en 2026-08 junto a Daily y Weekly. Antes era el valor que este
+    // archivo usaba como "bogus", así que conviene cubrir explícitamente que ahora pasa.
+    [Theory]
+    [InlineData("Daily")]
+    [InlineData("Weekly")]
+    [InlineData("Monthly")]
+    public void Validate_WhenPayoutFrequencySupported_Passes(string frequency)
+        => _v.TestValidate(new UpdateProfileRequest { PayoutFrequency = frequency })
+            .ShouldNotHaveValidationErrorFor(x => x.PayoutFrequency);
 
     [Fact]
     public void Validate_WhenLanguageMalformed_Fails()

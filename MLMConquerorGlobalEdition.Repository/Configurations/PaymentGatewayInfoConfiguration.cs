@@ -16,6 +16,9 @@ public class PaymentGatewayInfoConfiguration : IEntityTypeConfiguration<PaymentG
         builder.Property(x => x.MinAdminFee).HasColumnType("decimal(10,2)");
         builder.Property(x => x.MinimumPayoutAmount).HasColumnType("decimal(18,2)");
         builder.Property(x => x.Currency).IsRequired().HasMaxLength(3);
+        builder.Property(x => x.ApiVersion).HasMaxLength(10);
+        builder.Property(x => x.Environment).HasMaxLength(50);
+        builder.Property(x => x.AdminPortalUrl).HasMaxLength(500);
 
         builder.HasIndex(x => x.WalletType).IsUnique();
 
@@ -40,24 +43,28 @@ public class PaymentGatewayInfoConfiguration : IEntityTypeConfiguration<PaymentG
                 MinimumPayoutAmount = 25m,
                 IsActive     = true,
                 CreatedBy    = "seed",
-                CreationDate = seedDate
+                CreationDate = seedDate,
+                Environment    = "Sandbox",
+                AdminPortalUrl = "https://www.i-payout.com/"
             },
             new PaymentGatewayInfo
             {
+                // RETIRADO (2026-08). Se conserva la fila para que el historial de payouts
+                // siga resolviendo el nombre del gateway; IsActive = false la saca de la
+                // selección del ambassador y del orquestador. Las wallets vivas se migraron
+                // a Volet, que también es email-based.
                 Id           = 2,
                 WalletType   = WalletType.Dwolla,
-                DisplayName  = "Dwolla",
-                Description  = "Dwolla pushes commissions directly into your linked US bank account. " +
-                               "You must complete Dwolla's identity verification before your account " +
-                               "is approved. Standard ACH transfers settle in 3–5 business days. " +
-                               "Dwolla is US-only. " +
-                               "Admin fee: $1.95 USD per transaction.",
+                DisplayName  = "Dwolla (retired)",
+                Description  = "Dwolla is no longer offered. Existing accounts were migrated to " +
+                               "Volet, which also pays out to your email address. This entry is " +
+                               "kept only so historical payout records keep resolving.",
                 AdminFee     = 1.95m,
                 AdminFeeKind = AdminFeeKind.Fixed,
                 MinAdminFee  = null,
                 Currency     = "USD",
                 MinimumPayoutAmount = 25m,
-                IsActive     = true,
+                IsActive     = false,
                 CreatedBy    = "seed",
                 CreationDate = seedDate
             },
@@ -82,13 +89,15 @@ public class PaymentGatewayInfoConfiguration : IEntityTypeConfiguration<PaymentG
             },
             new PaymentGatewayInfo
             {
+                // AdvCash se renombró a Volet. Es el MISMO proveedor, por eso la fila se
+                // repunta a WalletType.Volet en vez de crear una nueva.
                 Id           = 4,
-                WalletType   = WalletType.Advancash,
-                DisplayName  = "AdvCash",
-                Description  = "AdvCash holds funds in your AdvCash account in the currency of your " +
-                               "choice. From there you can withdraw to bank, card, or other gateways. " +
-                               "Verification through AdvCash is required to lift withdrawal limits. " +
-                               "Available in most regions worldwide. " +
+                WalletType   = WalletType.Volet,
+                DisplayName  = "Volet",
+                Description  = "Volet (formerly AdvCash) holds funds in your Volet account in the " +
+                               "currency of your choice. From there you can withdraw to bank, card, " +
+                               "or other gateways. Verification through Volet is required to lift " +
+                               "withdrawal limits. Available in most regions worldwide. " +
                                "Admin fee: $1.95 USD per transaction.",
                 AdminFee     = 1.95m,
                 AdminFeeKind = AdminFeeKind.Fixed,
@@ -97,7 +106,34 @@ public class PaymentGatewayInfoConfiguration : IEntityTypeConfiguration<PaymentG
                 MinimumPayoutAmount = 25m,
                 IsActive     = true,
                 CreatedBy    = "seed",
-                CreationDate = seedDate
+                CreationDate = seedDate,
+                AdminPortalUrl = "https://account.volet.com/"
+            },
+            new PaymentGatewayInfo
+            {
+                // Reemplaza a Dwolla en la oferta. Arranca INACTIVO: recién se habilita
+                // cuando se carguen las credenciales en /admin/billing/credentials.
+                // ApiVersion + Environment eligen la fila de ApiCredential a usar:
+                //   ServiceKey "PayQuickerV2" + Environment "Sandbox".
+                Id           = 5,
+                WalletType   = WalletType.PayQuicker,
+                DisplayName  = "PayQuicker",
+                Description  = "PayQuicker delivers your commissions to an insured account linked " +
+                               "to a debit card. You receive an invitation email to complete " +
+                               "registration; once verified, funds are available instantly and can " +
+                               "be spent online, at retail, or moved to your bank. " +
+                               "Admin fee: $1.95 USD per transaction.",
+                AdminFee     = 1.95m,
+                AdminFeeKind = AdminFeeKind.Fixed,
+                MinAdminFee  = null,
+                Currency     = "USD",
+                MinimumPayoutAmount = 25m,
+                IsActive     = false,
+                CreatedBy    = "seed",
+                CreationDate = seedDate,
+                ApiVersion     = "V2",
+                Environment    = "Sandbox",
+                AdminPortalUrl = "https://sandbox.payquicker.io/"
             }
         );
     }

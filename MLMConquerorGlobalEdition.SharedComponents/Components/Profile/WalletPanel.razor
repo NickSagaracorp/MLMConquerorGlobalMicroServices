@@ -1,4 +1,4 @@
-﻿@inject HttpClient Http
+@inject HttpClient Http
 @inject IViewContextService ViewContext
 @inject IStringLocalizer<SharedResources> L
 
@@ -315,9 +315,39 @@
                     <div class="modal-body">
                         <div class="mb-3">
                             <label class="form-label small">@_editing.AccountFieldLabel <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" placeholder="@_editing.AccountFieldPlaceholder"
-                                   @bind="_editAccountIdentifier" />
-                            <div class="form-text small">@_editing.HelpText</div>
+                            @if (_editing.Code == 4 && !ProfileIsAdmin)
+                            {
+                                @* eWallet en el BizCenter: el UserID de i-Payout ES el MemberId
+                                   del ambassador, asi que no hay nada que tipear. Se muestra
+                                   para que sepa con que identificador va a operar. *@
+                                <input type="text" class="form-control-plaintext border rounded px-2 bg-light"
+                                       readonly value="@_editAccountIdentifier" />
+                                <div class="form-text small">@L["PaymentMethod.EWalletUserIdIsMemberId"]</div>
+                            }
+                            else
+                            {
+                                <input type="text" class="form-control" placeholder="@_editing.AccountFieldPlaceholder"
+                                       @bind="_editAccountIdentifier" />
+                                @if (_editing.Code == 4 && ProfileIsAdmin)
+                                {
+                                    @* Admin: viene con el MemberId del perfil, pero es editable
+                                       a proposito. Poner el MemberId de OTRO ambassador vincula
+                                       el eWallet de ese otro — se usa cuando alguien mas paga la
+                                       membresia y cobra las comisiones de este miembro. *@
+                                    <div class="form-text small">@L["PaymentMethod.EWalletAdminUserIdHint"]</div>
+                                    @if (!string.Equals(_editAccountIdentifier?.Trim(), MemberProfileId,
+                                                        StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <div class="alert alert-warning small mt-2 mb-0 py-2">
+                                            <i class="ri-alert-line me-1"></i>@L["PaymentMethod.EWalletForeignAccountWarning"]
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <div class="form-text small">@_editing.HelpText</div>
+                                }
+                            }
                         </div>
                         @if (_editing.Code == 4) @* eWallet *@
                         {
@@ -375,14 +405,21 @@
     private List<GatewayDescriptor>? _supportedGatewaysCache;
     private List<GatewayDescriptor> _supportedGateways => _supportedGatewaysCache ??= new()
     {
-        new(4,  L["PaymentMethod.Gateway.EWalletLabel"].Value,  "ri-bank-card-line",  L["PaymentMethod.Gateway.EWalletField"].Value,  L["PaymentMethod.Gateway.EmailPlaceholder"].Value,
+        // eWallet usa UserIdPlaceholder, NO EmailPlaceholder: el identificador es el
+        // UserName/UserID que asigna I-Payout al registrar la cuenta.
+        new(4,  L["PaymentMethod.Gateway.EWalletLabel"].Value,  "ri-bank-card-line",  L["PaymentMethod.Gateway.EWalletField"].Value,  L["PaymentMethod.Gateway.UserIdPlaceholder"].Value,
             L["PaymentMethod.Gateway.EWalletHelp"].Value),
-        new(1,  L["PaymentMethod.Gateway.DwollaLabel"].Value,   "ri-bank-line",       L["PaymentMethod.Gateway.DwollaField"].Value,   L["PaymentMethod.Gateway.EmailPlaceholder"].Value,
-            L["PaymentMethod.Gateway.DwollaHelp"].Value),
         new(9,  L["PaymentMethod.Gateway.CryptoLabel"].Value,   "ri-coin-line",       L["PaymentMethod.Gateway.CryptoField"].Value,   L["PaymentMethod.Gateway.CryptoPlaceholder"].Value,
             L["PaymentMethod.Gateway.CryptoHelp"].Value),
-        new(10, L["PaymentMethod.Gateway.AdvCashLabel"].Value,  "ri-wallet-line",     L["PaymentMethod.Gateway.AdvCashField"].Value,  L["PaymentMethod.Gateway.EmailPlaceholder"].Value,
-            L["PaymentMethod.Gateway.AdvCashHelp"].Value)
+        // Volet (6) reemplaza a AdvCash (10): mismo proveedor renombrado. Dwolla (1) sale
+        // del catálogo por estar retirado — sus wallets se migraron a Volet.
+        new(6,  L["PaymentMethod.Gateway.VoletLabel"].Value,    "ri-wallet-line",     L["PaymentMethod.Gateway.VoletField"].Value,    L["PaymentMethod.Gateway.EmailPlaceholder"].Value,
+            L["PaymentMethod.Gateway.VoletHelp"].Value),
+        // PayQuicker (11) reemplaza a Dwolla en la oferta. El identificador que ve el
+        // ambassador es su email: el programa es "hosted portal" y PayQuicker direcciona
+        // por programUserId (su MemberId) + email.
+        new(11, L["PaymentMethod.Gateway.PayQuickerLabel"].Value, "ri-bank-card-2-line", L["PaymentMethod.Gateway.PayQuickerField"].Value, L["PaymentMethod.Gateway.EmailPlaceholder"].Value,
+            L["PaymentMethod.Gateway.PayQuickerHelp"].Value)
     };
 
     private string BizCenterBaseUrl => "api/v1/bizcenter/wallets";
@@ -459,6 +496,12 @@
         _editing = gw;
         var existing = _wallets.FirstOrDefault(w => w.WalletType == gw.Code);
         _editAccountIdentifier = existing?.AccountIdentifier ?? string.Empty;
+
+        // El UserID de eWallet es el MemberId. Si la wallet nunca se configuro —la sembro el
+        // signup— el campo llega vacio y se precarga, tanto para mostrarlo en el BizCenter
+        // como para que el admin vea de que identificador parte antes de cambiarlo.
+        if (gw.Code == 4 && string.IsNullOrWhiteSpace(_editAccountIdentifier))
+            _editAccountIdentifier = MemberProfileId;
         _editPassword          = null;
         _editNotes             = existing?.Notes;
     }
@@ -527,7 +570,19 @@
                 : L["PaymentMethod.Validation.CryptoInvalid"].Value;
         }
 
-        // Email-based gateways (eWallet 4 / Dwolla 1 / Advancash 10)
+        if (walletTypeCode == 4) // eWallet (I-Payout)
+        {
+            // I-Payout identifica por UserName, y ese UserName es el MemberId que asigna la
+            // compañía — no un email ni un valor que el ambassador tenga que conseguir.
+            if (isEmail)
+                return L["PaymentMethod.Validation.UserIdRequired"];
+
+            return System.Text.RegularExpressions.Regex.IsMatch(value, @"^[A-Za-z0-9._-]{3,64}$")
+                ? null
+                : L["PaymentMethod.Validation.UserIdRequired"].Value;
+        }
+
+        // Gateways que sí van por email (Volet 6, Paypal 5, ...)
         if (!isEmail)
             return L["PaymentMethod.Validation.EmailRequired"];
 

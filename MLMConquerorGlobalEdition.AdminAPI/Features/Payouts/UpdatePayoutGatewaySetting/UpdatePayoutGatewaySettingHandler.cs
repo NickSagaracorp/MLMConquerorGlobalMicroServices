@@ -45,6 +45,11 @@ public class UpdatePayoutGatewaySettingHandler
         gateway.Currency = request.Currency;
         gateway.MinimumPayoutAmount = request.MinimumPayoutAmount;
         gateway.IsActive = request.IsActive;
+        // Normalizados a null cuando vienen vacíos: un string vacío en ApiVersion haría que
+        // PayQuickerSettingsProvider busque la ServiceKey "PayQuicker" y no encuentre nada.
+        gateway.ApiVersion = string.IsNullOrWhiteSpace(request.ApiVersion) ? null : request.ApiVersion!.Trim();
+        gateway.Environment = string.IsNullOrWhiteSpace(request.Environment) ? null : request.Environment!.Trim();
+        gateway.AdminPortalUrl = string.IsNullOrWhiteSpace(request.AdminPortalUrl) ? null : request.AdminPortalUrl!.Trim();
         gateway.LastUpdateDate = _dateTime.Now;
         gateway.LastUpdateBy = _currentUser.UserId;
 
@@ -61,7 +66,10 @@ public class UpdatePayoutGatewaySettingHandler
             MinAdminFee = gateway.MinAdminFee,
             Currency = gateway.Currency,
             MinimumPayoutAmount = gateway.MinimumPayoutAmount,
-            IsActive = gateway.IsActive
+            IsActive = gateway.IsActive,
+            ApiVersion = gateway.ApiVersion,
+            Environment = gateway.Environment,
+            AdminPortalUrl = gateway.AdminPortalUrl
         });
     }
 }

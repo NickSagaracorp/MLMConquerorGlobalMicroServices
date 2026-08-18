@@ -18,5 +18,8 @@ public record UpdatePayoutGatewaySettingCommand(
     decimal? MinAdminFee,
     string Currency,
     decimal MinimumPayoutAmount,
-    bool IsActive)
+    bool IsActive,
+    string? ApiVersion = null,
+    string? Environment = null,
+    string? AdminPortalUrl = null)
     : IRequest<Result<PayoutGatewayDto>>;

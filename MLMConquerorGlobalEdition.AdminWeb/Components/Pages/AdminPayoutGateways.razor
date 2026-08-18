@@ -107,6 +107,57 @@
                                 <label class="form-check-label" for="pgActive">Active (available for payouts)</label>
                             </div>
                         </div>
+
+                        <div class="col-12"><hr class="my-2" /><span class="small text-muted fw-semibold">Integration</span></div>
+
+                        @if (SupportsVersioning(_editItem.WalletType))
+                        {
+                            <div class="col-6">
+                                <label class="form-label fw-semibold">API version</label>
+                                <select class="form-select" @bind="_form.ApiVersion">
+                                    <option value="V2">V2 (current)</option>
+                                    <option value="V1">V1 (legacy)</option>
+                                </select>
+                            </div>
+                        }
+                        <div class="@(SupportsVersioning(_editItem.WalletType) ? "col-6" : "col-12")">
+                            <label class="form-label fw-semibold">Environment</label>
+                            <select class="form-select" @bind="_form.Environment">
+                                <option value="">— not set —</option>
+                                <option value="Sandbox">Sandbox</option>
+                                <option value="Production">Production</option>
+                                <option value="Test">Test</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Admin portal URL</label>
+                            <div class="input-group">
+                                <input class="form-control" @bind="_form.AdminPortalUrl" placeholder="https://portal.provider.com/" />
+                                @if (!string.IsNullOrWhiteSpace(_form.AdminPortalUrl))
+                                {
+                                    <a class="btn btn-outline-secondary" href="@_form.AdminPortalUrl" target="_blank" rel="noopener noreferrer"
+                                       title="Open the provider portal"><i class="ri-external-link-line"></i></a>
+                                }
+                            </div>
+                            <div class="form-text">
+                                Where accounts and transactions are reviewed. The portal sign-in
+                                credentials are stored encrypted under
+                                <a href="/admin/billing/credentials">API Credentials</a> — never here,
+                                because this record is also served to ambassadors.
+                            </div>
+                        </div>
+
+                        @if (SupportsVersioning(_editItem.WalletType))
+                        {
+                            <div class="col-12">
+                                <div class="alert alert-info small mb-0 py-2">
+                                    Version and environment together pick the credential this gateway uses:
+                                    <code>@($"{_editItem.WalletType}{_form.ApiVersion}")</code> +
+                                    <code>@(string.IsNullOrWhiteSpace(_form.Environment) ? "Sandbox" : _form.Environment)</code>.
+                                    Fill that credential in before activating the gateway.
+                                </div>
+                            </div>
+                        }
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -158,7 +209,10 @@
             AdminFeeKind = g.AdminFeeKind,
             MinAdminFee = g.MinAdminFee,
             Currency = g.Currency,
-            IsActive = g.IsActive
+            IsActive = g.IsActive,
+            ApiVersion = string.IsNullOrWhiteSpace(g.ApiVersion) ? "V2" : g.ApiVersion!,
+            Environment = g.Environment ?? string.Empty,
+            AdminPortalUrl = g.AdminPortalUrl ?? string.Empty
         };
         _showForm = true;
     }
@@ -181,7 +235,12 @@
                 _form.MinAdminFee,
                 _form.Currency,
                 _form.MinimumPayoutAmount,
-                _form.IsActive
+                _form.IsActive,
+                // Sólo se manda ApiVersion para gateways versionados: mandarla en los demás
+                // guardaría una versión que su proveedor no tiene.
+                ApiVersion = SupportsVersioning(_editItem.WalletType) ? _form.ApiVersion : null,
+                Environment = string.IsNullOrWhiteSpace(_form.Environment) ? null : _form.Environment,
+                AdminPortalUrl = string.IsNullOrWhiteSpace(_form.AdminPortalUrl) ? null : _form.AdminPortalUrl
             });
             if (response.IsSuccessStatusCode) { _alertMsg = "Payout gateway updated."; _alertIsError = false; CloseForm(); await LoadAsync(); }
             else { _alertMsg = $"Save failed ({response.StatusCode})."; _alertIsError = true; }
@@ -212,7 +271,15 @@
         public decimal? MinAdminFee { get; set; }
         public string Currency { get; set; } = string.Empty;
         public bool IsActive { get; set; }
+        public string ApiVersion { get; set; } = "V2";
+        public string Environment { get; set; } = string.Empty;
+        public string AdminPortalUrl { get; set; } = string.Empty;
     }
+
+    // Hoy sólo PayQuicker ofrece más de una versión de API. Cuando se sume otro proveedor
+    // versionado, se agrega acá y el selector aparece solo.
+    private static bool SupportsVersioning(string walletType) =>
+        string.Equals(walletType, "PayQuicker", StringComparison.OrdinalIgnoreCase);
 
     // WalletType / AdminFeeKind come back as enum NAMES (JsonStringEnumConverter), e.g. "eWallet", "Percentage".
     private record PayoutGatewayDto(
@@ -225,7 +292,10 @@
         decimal? MinAdminFee,
         string Currency,
         decimal MinimumPayoutAmount,
-        bool IsActive);
+        bool IsActive,
+        string? ApiVersion,
+        string? Environment,
+        string? AdminPortalUrl);
 
     private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
 }

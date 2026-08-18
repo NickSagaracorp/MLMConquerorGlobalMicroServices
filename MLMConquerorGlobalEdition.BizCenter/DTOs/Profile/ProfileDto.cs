@@ -34,7 +34,7 @@ public class ProfileDto
 
     // ─── Preferences ───────────────────────────────────────────────────────
     public string  DefaultLanguage  { get; set; } = "en";
-    public string  PayoutFrequency  { get; set; } = "Weekly";        // "Daily" | "Weekly"
+    public string  PayoutFrequency  { get; set; } = "Weekly";        // "Daily" | "Weekly" | "Monthly"
 
     // ─── Public-page visibility flags ──────────────────────────────────────
     public bool ShowBusinessName    { get; set; }

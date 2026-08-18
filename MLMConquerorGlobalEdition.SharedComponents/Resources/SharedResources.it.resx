@@ -424,17 +424,17 @@
   <data name="PaymentMethod.Gateway.EWalletLabel" xml:space="preserve"><value>eWallet (I-Payout)</value></data>
   <data name="PaymentMethod.Gateway.DwollaLabel" xml:space="preserve"><value>Dwolla</value></data>
   <data name="PaymentMethod.Gateway.CryptoLabel" xml:space="preserve"><value>Crypto</value></data>
-  <data name="PaymentMethod.Gateway.AdvCashLabel" xml:space="preserve"><value>Advancash</value></data>
-  <data name="PaymentMethod.Gateway.EWalletField" xml:space="preserve"><value>E-mail I-Payout</value></data>
+  <data name="PaymentMethod.Gateway.VoletLabel" xml:space="preserve"><value>Volet</value></data>
+  <data name="PaymentMethod.Gateway.EWalletField" xml:space="preserve"><value>User ID i-Payout (Member ID)</value></data>
   <data name="PaymentMethod.Gateway.DwollaField" xml:space="preserve"><value>E-mail account Dwolla</value></data>
   <data name="PaymentMethod.Gateway.CryptoField" xml:space="preserve"><value>Indirizzo wallet</value></data>
-  <data name="PaymentMethod.Gateway.AdvCashField" xml:space="preserve"><value>E-mail account Advancash</value></data>
+  <data name="PaymentMethod.Gateway.VoletField" xml:space="preserve"><value>E-mail account Volet</value></data>
   <data name="PaymentMethod.Gateway.EmailPlaceholder" xml:space="preserve"><value>utente@esempio.com</value></data>
   <data name="PaymentMethod.Gateway.CryptoPlaceholder" xml:space="preserve"><value>bc1qxy2k...x9k2</value></data>
-  <data name="PaymentMethod.Gateway.EWalletHelp" xml:space="preserve"><value>I-Payout invierà un'e-mail di conferma per verificare l'account.</value></data>
+  <data name="PaymentMethod.Gateway.EWalletHelp" xml:space="preserve"><value>E il tuo Member ID. i-Payout apre l'account per te - non devi crearlo.</value></data>
   <data name="PaymentMethod.Gateway.DwollaHelp" xml:space="preserve"><value>Usa l'e-mail collegata al tuo account Dwolla.</value></data>
   <data name="PaymentMethod.Gateway.CryptoHelp" xml:space="preserve"><value>Fornisci l'indirizzo del wallet ricevente per l'asset desiderato.</value></data>
-  <data name="PaymentMethod.Gateway.AdvCashHelp" xml:space="preserve"><value>Usa l'e-mail collegata al tuo account AdvCash.</value></data>
+  <data name="PaymentMethod.Gateway.VoletHelp" xml:space="preserve"><value>Usa l'e-mail collegata al tuo account Volet (ex AdvCash).</value></data>
 
   <!-- Dashboard Page -->
   <data name="Dashboard.PageTitle" xml:space="preserve"><value>Pannello di Controllo</value></data>
@@ -1250,4 +1250,37 @@
   <data name="PageTitle.ResetPassword" xml:space="preserve"><value>MLM Conqueror - Reimposta password</value></data>
   <data name="PageTitle.TwoFactor" xml:space="preserve"><value>MLM Conqueror - Verifica in due passaggi</value></data>
 
+  <data name="PaymentMethod.Gateway.UserIdPlaceholder" xml:space="preserve">
+    <value>es. 1234567</value>
+  </data>
+  <data name="PaymentMethod.Validation.UserIdRequired" xml:space="preserve">
+    <value>Questo gateway richiede un Member ID, non un indirizzo e-mail.</value>
+  </data>
+  <data name="PayoutFreq.Monthly" xml:space="preserve">
+    <value>Mensile</value>
+  </data>
+  <data name="PayoutFreq.SavedMonthly" xml:space="preserve">
+    <value>I pagamenti saranno effettuati mensilmente.</value>
+  </data>
+  <data name="Commissions.FrequencyMonthly" xml:space="preserve">
+    <value>Mensile</value>
+  </data>
+  <data name="PaymentMethod.Gateway.PayQuickerLabel" xml:space="preserve">
+    <value>PayQuicker</value>
+  </data>
+  <data name="PaymentMethod.Gateway.PayQuickerField" xml:space="preserve">
+    <value>E-mail account PayQuicker</value>
+  </data>
+  <data name="PaymentMethod.Gateway.PayQuickerHelp" xml:space="preserve">
+    <value>PayQuicker ti inviera un invito via e-mail per completare la registrazione. Usa un indirizzo a cui puoi accedere.</value>
+  </data>
+  <data name="PaymentMethod.EWalletUserIdIsMemberId" xml:space="preserve">
+    <value>Il tuo User ID i-Payout e il tuo Member ID. L'account viene aperto automaticamente.</value>
+  </data>
+  <data name="PaymentMethod.EWalletAdminUserIdHint" xml:space="preserve">
+    <value>Precompilato con l'ID di questo membro. Modificalo solo per collegare l'account i-Payout di un altro ambassador.</value>
+  </data>
+  <data name="PaymentMethod.EWalletForeignAccountWarning" xml:space="preserve">
+    <value>Questo non e l'ID di questo membro. Le commissioni saranno pagate sull'account i-Payout dell'altro ambassador e non verra aperto alcun nuovo account.</value>
+  </data>
 </root>

@@ -58,6 +58,13 @@
                            @onchange='() => _freq = "Weekly"' />
                     <label class="form-check-label fw-semibold" for="freqWeekly">Weekly</label>
                 </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="freq" id="freqMonthly"
+                           value="Monthly"
+                           checked="@(_freq == "Monthly")"
+                           @onchange='() => _freq = "Monthly"' />
+                    <label class="form-check-label fw-semibold" for="freqMonthly">Monthly</label>
+                </div>
                 <button class="btn btn-primary btn-sm ms-3" @onclick="SaveFrequency" disabled="@_savingFreq">
                     @if (_savingFreq) { <span class="spinner-border spinner-border-sm me-1"></span> }
                     Save Frequency

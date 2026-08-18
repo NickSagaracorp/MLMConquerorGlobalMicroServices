@@ -424,17 +424,17 @@
   <data name="PaymentMethod.Gateway.EWalletLabel" xml:space="preserve"><value>eWallet (I-Payout)</value></data>
   <data name="PaymentMethod.Gateway.DwollaLabel" xml:space="preserve"><value>Dwolla</value></data>
   <data name="PaymentMethod.Gateway.CryptoLabel" xml:space="preserve"><value>크립토</value></data>
-  <data name="PaymentMethod.Gateway.AdvCashLabel" xml:space="preserve"><value>Advancash</value></data>
-  <data name="PaymentMethod.Gateway.EWalletField" xml:space="preserve"><value>I-Payout 이메일</value></data>
+  <data name="PaymentMethod.Gateway.VoletLabel" xml:space="preserve"><value>Volet</value></data>
+  <data name="PaymentMethod.Gateway.EWalletField" xml:space="preserve"><value>i-Payout 사용자 ID (Member ID)</value></data>
   <data name="PaymentMethod.Gateway.DwollaField" xml:space="preserve"><value>Dwolla 계정 이메일</value></data>
   <data name="PaymentMethod.Gateway.CryptoField" xml:space="preserve"><value>지갑 주소</value></data>
-  <data name="PaymentMethod.Gateway.AdvCashField" xml:space="preserve"><value>Advancash 계정 이메일</value></data>
+  <data name="PaymentMethod.Gateway.VoletField" xml:space="preserve"><value>Volet 계정 이메일</value></data>
   <data name="PaymentMethod.Gateway.EmailPlaceholder" xml:space="preserve"><value>user@example.com</value></data>
   <data name="PaymentMethod.Gateway.CryptoPlaceholder" xml:space="preserve"><value>bc1qxy2k...x9k2</value></data>
-  <data name="PaymentMethod.Gateway.EWalletHelp" xml:space="preserve"><value>I-Payout에서 계정 확인을 위해 이메일을 보냅니다.</value></data>
+  <data name="PaymentMethod.Gateway.EWalletHelp" xml:space="preserve"><value>귀하의 Member ID입니다. i-Payout이 계정을 대신 개설합니다.</value></data>
   <data name="PaymentMethod.Gateway.DwollaHelp" xml:space="preserve"><value>Dwolla 계정과 연결된 이메일을 사용하세요.</value></data>
   <data name="PaymentMethod.Gateway.CryptoHelp" xml:space="preserve"><value>받고자 하는 자산의 수신 지갑 주소를 입력하세요.</value></data>
-  <data name="PaymentMethod.Gateway.AdvCashHelp" xml:space="preserve"><value>AdvCash 계정과 연결된 이메일을 사용하세요.</value></data>
+  <data name="PaymentMethod.Gateway.VoletHelp" xml:space="preserve"><value>Volet(이전 AdvCash) 계정에 연결된 이메일을 사용하세요.</value></data>
 
   <!-- Dashboard Page -->
   <data name="Dashboard.PageTitle" xml:space="preserve"><value>대시보드</value></data>
@@ -1250,4 +1250,37 @@
   <data name="PageTitle.ResetPassword" xml:space="preserve"><value>MLM Conqueror - 비밀번호 재설정</value></data>
   <data name="PageTitle.TwoFactor" xml:space="preserve"><value>MLM Conqueror - 2단계 인증</value></data>
 
+  <data name="PaymentMethod.Gateway.UserIdPlaceholder" xml:space="preserve">
+    <value>예: 1234567</value>
+  </data>
+  <data name="PaymentMethod.Validation.UserIdRequired" xml:space="preserve">
+    <value>이 게이트웨이는 이메일이 아니라 Member ID를 요구합니다.</value>
+  </data>
+  <data name="PayoutFreq.Monthly" xml:space="preserve">
+    <value>매월</value>
+  </data>
+  <data name="PayoutFreq.SavedMonthly" xml:space="preserve">
+    <value>지급이 매월 실행됩니다.</value>
+  </data>
+  <data name="Commissions.FrequencyMonthly" xml:space="preserve">
+    <value>매월</value>
+  </data>
+  <data name="PaymentMethod.Gateway.PayQuickerLabel" xml:space="preserve">
+    <value>PayQuicker</value>
+  </data>
+  <data name="PaymentMethod.Gateway.PayQuickerField" xml:space="preserve">
+    <value>PayQuicker 계정 이메일</value>
+  </data>
+  <data name="PaymentMethod.Gateway.PayQuickerHelp" xml:space="preserve">
+    <value>PayQuicker가 등록 완료를 위한 초대 이메일을 보냅니다. 접근 가능한 주소를 사용하세요.</value>
+  </data>
+  <data name="PaymentMethod.EWalletUserIdIsMemberId" xml:space="preserve">
+    <value>i-Payout 사용자 ID는 귀하의 Member ID입니다. 계정은 자동으로 개설됩니다.</value>
+  </data>
+  <data name="PaymentMethod.EWalletAdminUserIdHint" xml:space="preserve">
+    <value>이 회원의 ID로 미리 채워져 있습니다. 다른 앱배사더의 i-Payout 계정을 연결할 때만 변경하세요.</value>
+  </data>
+  <data name="PaymentMethod.EWalletForeignAccountWarning" xml:space="preserve">
+    <value>이 회원의 ID가 아닙니다. 수수료는 다른 앱배사더의 i-Payout 계정으로 지급되며 새 계정은 개설되지 않습니다.</value>
+  </data>
 </root>

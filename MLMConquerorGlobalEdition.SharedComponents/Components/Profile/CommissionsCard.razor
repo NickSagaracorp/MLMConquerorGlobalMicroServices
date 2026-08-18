@@ -92,6 +92,13 @@
                                @onchange='() => _editFrequency = "Weekly"' />
                         <label class="form-check-label" for="commFreqWeekly">@L["Commissions.FrequencyWeekly"]</label>
                     </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" id="commFreqMonthly"
+                               name="commissionFrequency"
+                               checked="@(_editFrequency == "Monthly")"
+                               @onchange='() => _editFrequency = "Monthly"' />
+                        <label class="form-check-label" for="commFreqMonthly">@L["Commissions.FrequencyMonthly"]</label>
+                    </div>
                 </div>
             </div>
 
@@ -288,9 +295,11 @@
     private string DisplayFrequency()
     {
         var f = string.IsNullOrEmpty(CurrentFrequency) ? "Weekly" : CurrentFrequency!;
-        return f.Equals("Daily", StringComparison.OrdinalIgnoreCase)
-            ? L["Commissions.FrequencyDaily"].Value
-            : L["Commissions.FrequencyWeekly"].Value;
+        if (f.Equals("Daily", StringComparison.OrdinalIgnoreCase))
+            return L["Commissions.FrequencyDaily"].Value;
+        if (f.Equals("Monthly", StringComparison.OrdinalIgnoreCase))
+            return L["Commissions.FrequencyMonthly"].Value;
+        return L["Commissions.FrequencyWeekly"].Value;
     }
 
     /// <summary>
@@ -300,13 +309,15 @@
     /// </summary>
     private static string? ResolvePortalUrl(int walletType) => walletType switch
     {
-        1  => "https://www.dwolla.com/login",       // Dwolla
+        // Dwolla (1) sigue mapeado aunque esté retirado: hay wallets históricas y el link
+        // le sirve al ambassador para consultar movimientos viejos.
+        1  => "https://www.dwolla.com/login",        // Dwolla (retired)
         2  => "https://www.propay.com/login",        // Propay
         4  => "https://www.i-payout.com/",           // eWallet (I-Payout)
         5  => "https://www.paypal.com/signin",       // PayPal
-        6  => "https://account.volet.com/",          // Volet
+        6  => "https://account.volet.com/",          // Volet (ex AdvCash — el 10 se fusionó acá)
         7  => "https://yestransfer.com/",            // Yestransfer
-        10 => "https://wallet.advcash.com/",         // AdvCash
+        11 => "https://www.payquicker.com/login",    // PayQuicker
         _  => null
     };
 

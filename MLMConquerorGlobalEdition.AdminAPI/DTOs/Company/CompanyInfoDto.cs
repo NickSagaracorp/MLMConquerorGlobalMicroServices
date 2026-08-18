@@ -10,7 +10,7 @@ public record CompanyInfoDto(
     string?  PresidentName,
     string?  WebsiteUrl,
     string?  LogoUrl,
-    /// <summary>Default <c>PayoutFrequency</c> ("Daily" | "Weekly") seeded onto every new ambassador at signup.</summary>
+    /// <summary>Default <c>PayoutFrequency</c> ("Daily" | "Weekly" | "Monthly") seeded onto every new ambassador at signup.</summary>
     string   DefaultPayoutFrequency,
     DateTime CreationDate,
     DateTime? LastUpdateDate);

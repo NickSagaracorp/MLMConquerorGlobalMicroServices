@@ -72,7 +72,10 @@ public class AdminPayoutsController : ControllerBase
         decimal? MinAdminFee,
         string Currency,
         decimal MinimumPayoutAmount,
-        bool IsActive);
+        bool IsActive,
+        string? ApiVersion = null,
+        string? Environment = null,
+        string? AdminPortalUrl = null);
 
     /// <summary>PUT /api/v1/admin/payout-gateways/{walletType} — update fees, threshold and active flag for a gateway.</summary>
     [HttpPut("payout-gateways/{walletType}")]
@@ -83,7 +86,8 @@ public class AdminPayoutsController : ControllerBase
     {
         var result = await _mediator.Send(new UpdatePayoutGatewaySettingCommand(
             walletType, body.DisplayName, body.AdminFee, body.AdminFeeKind,
-            body.MinAdminFee, body.Currency, body.MinimumPayoutAmount, body.IsActive), ct);
+            body.MinAdminFee, body.Currency, body.MinimumPayoutAmount, body.IsActive,
+            body.ApiVersion, body.Environment, body.AdminPortalUrl), ct);
 
         if (!result.IsSuccess)
             return BadRequest(ApiResponse<object>.Fail(result.ErrorCode!, result.Error!));

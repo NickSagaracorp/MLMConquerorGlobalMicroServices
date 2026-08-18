@@ -20,4 +20,16 @@ public class PayoutGatewayDto
     public string Currency { get; set; } = "USD";
     public decimal MinimumPayoutAmount { get; set; }
     public bool IsActive { get; set; }
+
+    // ── Selectores de integración ──────────────────────────────────────────
+    // Sólo viajan por la AdminAPI. El DTO que ve el ambassador es otro y no los incluye.
+
+    /// <summary>"V1" | "V2" para gateways versionados (PayQuicker). Null si el proveedor no versiona.</summary>
+    public string? ApiVersion { get; set; }
+
+    /// <summary>"Sandbox" | "Production" | "Test". Junto con ApiVersion elige la ApiCredential.</summary>
+    public string? Environment { get; set; }
+
+    /// <summary>Portal administrativo del proveedor, para el link directo desde el admin.</summary>
+    public string? AdminPortalUrl { get; set; }
 }

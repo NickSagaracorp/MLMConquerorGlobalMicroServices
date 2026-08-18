@@ -26,6 +26,8 @@ using IPushNotificationService  = MLMConquerorGlobalEdition.SharedKernel.Interfa
 using CacheService              = MLMConquerorGlobalEdition.SharedKernel.Services.CacheService;
 using IErrorTrackingService     = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IErrorTrackingService;
 
+using MLMConquerorGlobalEdition.Repository.Services.Payout;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Logging.AddPiiMaskingConsole();
@@ -87,6 +89,11 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Commiss
                             MLMConquerorGlobalEdition.Repository.Services.Commissions.CommissionsService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Wallets.IMemberWalletService,
                             MLMConquerorGlobalEdition.Repository.Services.Wallets.MemberWalletService>();
+
+// MemberWalletService da de alta la cuenta en el proveedor cuando el miembro elige o cambia
+// su método de cobro, así que necesita los clientes de gateway. Se registran los clientes
+// SOLOS (no el pipeline completo de payouts): BizCenter no orquesta pagos ni emite recibos.
+builder.Services.AddPayoutGatewayClients();
 builder.Services.AddScoped<IS3PresignedUrlService, S3PresignedUrlService>();
 
 // Profile photo upload uses the same S3 bucket the Signup wizard uses for

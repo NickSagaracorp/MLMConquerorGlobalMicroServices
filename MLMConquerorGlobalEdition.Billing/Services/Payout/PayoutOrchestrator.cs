@@ -8,6 +8,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Wallet;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.Repository.Services.Payout;
 
 namespace MLMConquerorGlobalEdition.Billing.Services.Payout;
 

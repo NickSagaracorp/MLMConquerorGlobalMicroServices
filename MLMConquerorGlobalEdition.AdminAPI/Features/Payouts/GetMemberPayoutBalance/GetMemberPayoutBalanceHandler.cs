@@ -4,6 +4,7 @@ using MLMConquerorGlobalEdition.Billing.Services.Payout;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.Repository.Services.Payout;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Features.Payouts.GetMemberPayoutBalance;
 

@@ -18,6 +18,9 @@ public class ApiCredentialConfiguration : IEntityTypeConfiguration<ApiCredential
         builder.Property(x => x.MerchantIdEncrypted).HasMaxLength(2000);
         builder.Property(x => x.AdditionalSecretEncrypted).HasMaxLength(2000);
         builder.Property(x => x.SpreedlyGatewayTokenEncrypted).HasMaxLength(2000);
+        builder.Property(x => x.PortalUrl).HasMaxLength(500);
+        builder.Property(x => x.PortalUsernameEncrypted).HasMaxLength(2000);
+        builder.Property(x => x.PortalPasswordEncrypted).HasMaxLength(2000);
         builder.Property(x => x.CreatedBy).IsRequired().HasMaxLength(100);
         builder.Property(x => x.LastUpdateBy).HasMaxLength(100);
 

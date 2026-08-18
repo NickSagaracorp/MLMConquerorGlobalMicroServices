@@ -348,17 +348,17 @@
   <data name="PaymentMethod.Gateway.EWalletLabel" xml:space="preserve"><value>eWallet (I-Payout)</value></data>
   <data name="PaymentMethod.Gateway.DwollaLabel" xml:space="preserve"><value>Dwolla</value></data>
   <data name="PaymentMethod.Gateway.CryptoLabel" xml:space="preserve"><value>加密货币</value></data>
-  <data name="PaymentMethod.Gateway.AdvCashLabel" xml:space="preserve"><value>Advancash</value></data>
-  <data name="PaymentMethod.Gateway.EWalletField" xml:space="preserve"><value>I-Payout 邮箱</value></data>
+  <data name="PaymentMethod.Gateway.VoletLabel" xml:space="preserve"><value>Volet</value></data>
+  <data name="PaymentMethod.Gateway.EWalletField" xml:space="preserve"><value>i-Payout 用户 ID（Member ID）</value></data>
   <data name="PaymentMethod.Gateway.DwollaField" xml:space="preserve"><value>Dwolla 账户邮箱</value></data>
   <data name="PaymentMethod.Gateway.CryptoField" xml:space="preserve"><value>钱包地址</value></data>
-  <data name="PaymentMethod.Gateway.AdvCashField" xml:space="preserve"><value>Advancash 账户邮箱</value></data>
+  <data name="PaymentMethod.Gateway.VoletField" xml:space="preserve"><value>Volet 账户邮箱</value></data>
   <data name="PaymentMethod.Gateway.EmailPlaceholder" xml:space="preserve"><value>user@example.com</value></data>
   <data name="PaymentMethod.Gateway.CryptoPlaceholder" xml:space="preserve"><value>bc1qxy2k...x9k2</value></data>
-  <data name="PaymentMethod.Gateway.EWalletHelp" xml:space="preserve"><value>I-Payout 将发送确认邮件以验证账户。</value></data>
+  <data name="PaymentMethod.Gateway.EWalletHelp" xml:space="preserve"><value>这就是您的 Member ID。i-Payout 会为您开通账户，无需自行创建。</value></data>
   <data name="PaymentMethod.Gateway.DwollaHelp" xml:space="preserve"><value>请使用与您 Dwolla 账户绑定的邮箱。</value></data>
   <data name="PaymentMethod.Gateway.CryptoHelp" xml:space="preserve"><value>请提供您希望接收支付的资产的钱包接收地址。</value></data>
-  <data name="PaymentMethod.Gateway.AdvCashHelp" xml:space="preserve"><value>请使用与您 AdvCash 账户绑定的邮箱。</value></data>
+  <data name="PaymentMethod.Gateway.VoletHelp" xml:space="preserve"><value>请使用与您的 Volet（原 AdvCash）账户关联的邮箱。</value></data>
 
   <!-- Dashboard Page -->
   <data name="Dashboard.PageTitle" xml:space="preserve"><value>仪表板</value></data>
@@ -1181,4 +1181,37 @@
   <data name="PageTitle.ResetPassword" xml:space="preserve"><value>MLM Conqueror - 重置密码</value></data>
   <data name="PageTitle.TwoFactor" xml:space="preserve"><value>MLM Conqueror - 两步验证</value></data>
 
+  <data name="PaymentMethod.Gateway.UserIdPlaceholder" xml:space="preserve">
+    <value>例如 1234567</value>
+  </data>
+  <data name="PaymentMethod.Validation.UserIdRequired" xml:space="preserve">
+    <value>此网关需要 Member ID，而不是电子邮件地址。</value>
+  </data>
+  <data name="PayoutFreq.Monthly" xml:space="preserve">
+    <value>每月</value>
+  </data>
+  <data name="PayoutFreq.SavedMonthly" xml:space="preserve">
+    <value>支付将每月执行。</value>
+  </data>
+  <data name="Commissions.FrequencyMonthly" xml:space="preserve">
+    <value>每月</value>
+  </data>
+  <data name="PaymentMethod.Gateway.PayQuickerLabel" xml:space="preserve">
+    <value>PayQuicker</value>
+  </data>
+  <data name="PaymentMethod.Gateway.PayQuickerField" xml:space="preserve">
+    <value>PayQuicker 账户邮箱</value>
+  </data>
+  <data name="PaymentMethod.Gateway.PayQuickerHelp" xml:space="preserve">
+    <value>PayQuicker 将向您发送邀请邮件以完成注册。请使用您能访问的邮箱。</value>
+  </data>
+  <data name="PaymentMethod.EWalletUserIdIsMemberId" xml:space="preserve">
+    <value>您的 i-Payout 用户 ID 就是您的 Member ID。账户会自动开通。</value>
+  </data>
+  <data name="PaymentMethod.EWalletAdminUserIdHint" xml:space="preserve">
+    <value>已预填该会员的 ID。仅在需要关联其他大使的 i-Payout 账户时才修改。</value>
+  </data>
+  <data name="PaymentMethod.EWalletForeignAccountWarning" xml:space="preserve">
+    <value>这不是该会员的 ID。佣金将支付到其他大使的 i-Payout 账户，并且不会开通新账户。</value>
+  </data>
 </root>

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -21,8 +22,19 @@ using MLMConquerorGlobalEdition.Repository.Interceptors;
 
 namespace MLMConquerorGlobalEdition.Repository.Context;
 
-public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, string>
+public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, string>, IDataProtectionKeyContext
 {
+    /// <summary>
+    /// Key ring de Data Protection. Vive en la BASE y no en disco porque AdminAPI cifra las
+    /// credenciales de gateway y Billing las descifra: al compartir ya esta base, comparten
+    /// el key ring sin infraestructura extra, y entra en el backup de RDS que ya existe.
+    ///
+    /// Las llaves de esta tabla están a su vez ENVUELTAS con un certificado X.509, así que
+    /// un backup de la base por sí solo NO alcanza para descifrar nada — hace falta también
+    /// la clave privada del certificado. Ver el artículo de KB "gateway-credential-encryption".
+    /// </summary>
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
+
     public DbSet<GeneralAuditTracking> AuditTracking => Set<GeneralAuditTracking>();
     public DbSet<ErrorLog> ErrorLogs => Set<ErrorLog>();
     public DbSet<ErrorMessage> ErrorMessages => Set<ErrorMessage>();

@@ -54,7 +54,7 @@ public class UpdateProfileRequestValidator : AbstractValidator<UpdateProfileRequ
 
         RuleFor(x => x.PayoutFrequency)
             .Matches(BizCenterValidationPatterns.PayoutFrequencyPattern)
-                .WithMessage("PayoutFrequency must be 'Daily' or 'Weekly'.")
+                .WithMessage("PayoutFrequency must be 'Daily', 'Weekly' or 'Monthly'.")
             .When(x => !string.IsNullOrEmpty(x.PayoutFrequency));
     }
 }

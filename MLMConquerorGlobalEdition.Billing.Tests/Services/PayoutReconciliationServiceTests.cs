@@ -12,6 +12,7 @@ using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
 using Xunit;
+using MLMConquerorGlobalEdition.Repository.Services.Payout;
 
 namespace MLMConquerorGlobalEdition.Billing.Tests.Services;
 

@@ -784,10 +784,13 @@
     private int                 _retroactivePreviewCount;
     private bool                _applyRetroactively;
 
+    // Esto elige el gateway por defecto de un país, así que sólo lista gateways que se
+    // pueden dar de alta HOY. Dwolla está retirado y no aparece a propósito; Advancash
+    // se fusionó en Volet.
     private static readonly string[] _walletTypeOptions = new[]
     {
-        "Dwolla", "Propay", "WireTransferCanada", "eWallet",
-        "Paypal",  "Volet",  "Yestransfer",        "Crypto"
+        "Propay",  "WireTransferCanada", "eWallet",   "Paypal",
+        "Volet",   "Yestransfer",        "Crypto",    "PayQuicker"
     };
 
     private async Task OpenPayoutDefault(CountryDto c)

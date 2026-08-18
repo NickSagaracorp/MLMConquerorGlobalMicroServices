@@ -23,7 +23,7 @@ public class UpdateProfileRequest
 
     // Preferences
     public string? DefaultLanguage  { get; set; }                   // "en" / "es" / "pt"…
-    public string? PayoutFrequency  { get; set; }                   // "Daily" | "Weekly"
+    public string? PayoutFrequency  { get; set; }                   // "Daily" | "Weekly" | "Monthly"
 
     // Public-page visibility
     public bool ShowBusinessName  { get; set; }

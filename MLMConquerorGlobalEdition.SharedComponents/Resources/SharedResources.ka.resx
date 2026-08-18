@@ -348,17 +348,17 @@
   <data name="PaymentMethod.Gateway.EWalletLabel" xml:space="preserve"><value>eWallet (I-Payout)</value></data>
   <data name="PaymentMethod.Gateway.DwollaLabel" xml:space="preserve"><value>Dwolla</value></data>
   <data name="PaymentMethod.Gateway.CryptoLabel" xml:space="preserve"><value>კრიპტო</value></data>
-  <data name="PaymentMethod.Gateway.AdvCashLabel" xml:space="preserve"><value>Advancash</value></data>
-  <data name="PaymentMethod.Gateway.EWalletField" xml:space="preserve"><value>I-Payout ელფოსტა</value></data>
+  <data name="PaymentMethod.Gateway.VoletLabel" xml:space="preserve"><value>Volet</value></data>
+  <data name="PaymentMethod.Gateway.EWalletField" xml:space="preserve"><value>i-Payout User ID (Member ID)</value></data>
   <data name="PaymentMethod.Gateway.DwollaField" xml:space="preserve"><value>Dwolla ანგარიშის ელფოსტა</value></data>
   <data name="PaymentMethod.Gateway.CryptoField" xml:space="preserve"><value>საფულის მისამართი</value></data>
-  <data name="PaymentMethod.Gateway.AdvCashField" xml:space="preserve"><value>Advancash ანგარიშის ელფოსტა</value></data>
+  <data name="PaymentMethod.Gateway.VoletField" xml:space="preserve"><value>Volet ანგარიშის ელ.ფოსტა</value></data>
   <data name="PaymentMethod.Gateway.EmailPlaceholder" xml:space="preserve"><value>user@example.com</value></data>
   <data name="PaymentMethod.Gateway.CryptoPlaceholder" xml:space="preserve"><value>bc1qxy2k...x9k2</value></data>
-  <data name="PaymentMethod.Gateway.EWalletHelp" xml:space="preserve"><value>I-Payout გამოგიგზავნით დადასტურების ელფოსტას ანგარიშის ვერიფიცირებისთვის.</value></data>
+  <data name="PaymentMethod.Gateway.EWalletHelp" xml:space="preserve"><value>ეს არის თქვენი Member ID. i-Payout თვით ხსნის ანგარიშს.</value></data>
   <data name="PaymentMethod.Gateway.DwollaHelp" xml:space="preserve"><value>გამოიყენეთ ელფოსტა, რომელიც დაკავშირებულია თქვენს Dwolla ანგარიშთან.</value></data>
   <data name="PaymentMethod.Gateway.CryptoHelp" xml:space="preserve"><value>მიუთითეთ მიმღები საფულის მისამართი იმ აქტივისთვის, რომლითაც გსურთ გადახდის მიღება.</value></data>
-  <data name="PaymentMethod.Gateway.AdvCashHelp" xml:space="preserve"><value>გამოიყენეთ ელფოსტა, რომელიც დაკავშირებულია თქვენს AdvCash ანგარიშთან.</value></data>
+  <data name="PaymentMethod.Gateway.VoletHelp" xml:space="preserve"><value>გამოიყენეთ Volet-ის (ყოფილი AdvCash) ანგარიშთან დაკავშირებული ელ.ფოსტა.</value></data>
 
   <!-- Dashboard Page -->
   <data name="Dashboard.PageTitle" xml:space="preserve"><value>დაფა</value></data>
@@ -1181,4 +1181,37 @@
   <data name="PageTitle.ResetPassword" xml:space="preserve"><value>MLM Conqueror - პაროლის აღდგენა</value></data>
   <data name="PageTitle.TwoFactor" xml:space="preserve"><value>MLM Conqueror - ორფაქტორიანი ვერიფიკაცია</value></data>
 
+  <data name="PaymentMethod.Gateway.UserIdPlaceholder" xml:space="preserve">
+    <value>მაგ. 1234567</value>
+  </data>
+  <data name="PaymentMethod.Validation.UserIdRequired" xml:space="preserve">
+    <value>ეს შლიუზი ითხოვს Member ID-ს, არა ელ.ფოსტას.</value>
+  </data>
+  <data name="PayoutFreq.Monthly" xml:space="preserve">
+    <value>ყოველთვიური</value>
+  </data>
+  <data name="PayoutFreq.SavedMonthly" xml:space="preserve">
+    <value>გადახდები შესრულდება ყოველთვიურად.</value>
+  </data>
+  <data name="Commissions.FrequencyMonthly" xml:space="preserve">
+    <value>ყოველთვიური</value>
+  </data>
+  <data name="PaymentMethod.Gateway.PayQuickerLabel" xml:space="preserve">
+    <value>PayQuicker</value>
+  </data>
+  <data name="PaymentMethod.Gateway.PayQuickerField" xml:space="preserve">
+    <value>PayQuicker ანგარიშის ელ.ფოსტა</value>
+  </data>
+  <data name="PaymentMethod.Gateway.PayQuickerHelp" xml:space="preserve">
+    <value>PayQuicker გამოგზავნის მოწვევას რეგისტრაციის დასასრულებლად.</value>
+  </data>
+  <data name="PaymentMethod.EWalletUserIdIsMemberId" xml:space="preserve">
+    <value>თქვენი i-Payout-ის User ID არის თქვენი Member ID. ანგარიში იხსნება ავტომატურად.</value>
+  </data>
+  <data name="PaymentMethod.EWalletAdminUserIdHint" xml:space="preserve">
+    <value>წინასწარ შევსებულია ამ წევრის ID. შეცვალეთ მხოლოდ სხვა ამბასადორის i-Payout ანგარიშის დასაკავშირებლად.</value>
+  </data>
+  <data name="PaymentMethod.EWalletForeignAccountWarning" xml:space="preserve">
+    <value>ეს არ არის ამ წევრის ID. საკომისიო გადაიხდება სხვა ამბასადორის i-Payout ანგარიშზე და ახალი ანგარიში არ იხსნება.</value>
+  </data>
 </root>

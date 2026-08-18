@@ -1,7 +1,7 @@
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.SharedKernel;
 
-namespace MLMConquerorGlobalEdition.Billing.Services.Payout;
+namespace MLMConquerorGlobalEdition.Repository.Services.Payout;
 
 /// <summary>
 /// Outbound payout gateway (pays ambassadors). Separate from IGatewayService (which charges

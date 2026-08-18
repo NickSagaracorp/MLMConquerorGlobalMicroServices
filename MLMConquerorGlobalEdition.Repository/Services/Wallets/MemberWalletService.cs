@@ -12,9 +12,14 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Wallets;
 /// <inheritdoc />
 public class MemberWalletService : IMemberWalletService
 {
-    private readonly AppDbContext _db;
+    private readonly AppDbContext            _db;
+    private readonly IPayoutAccountRegistrar _registrar;
 
-    public MemberWalletService(AppDbContext db) => _db = db;
+    public MemberWalletService(AppDbContext db, IPayoutAccountRegistrar registrar)
+    {
+        _db        = db;
+        _registrar = registrar;
+    }
 
     public async Task<List<WalletAccountView>> GetAccountsAsync(string memberId, CancellationToken ct = default)
     {
@@ -37,6 +42,14 @@ public class MemberWalletService : IMemberWalletService
         string memberId, SaveWalletRequest request, string actorIdentifier,
         CancellationToken ct = default)
     {
+        // En eWallet el UserID de i-Payout ES el MemberId: la compañía lo asigna, no el
+        // proveedor. Desde el BizCenter el ambassador no tipea nada — sale del usuario
+        // logueado. Desde el perfil de admin el campo viene precargado con el MemberId y es
+        // editable a propósito (ver más abajo).
+        if (request.WalletType == WalletType.eWallet
+            && string.IsNullOrWhiteSpace(request.AccountIdentifier))
+            request.AccountIdentifier = memberId;
+
         if (string.IsNullOrWhiteSpace(request.AccountIdentifier))
             return Result<WalletAccountView>.Failure(
                 "ACCOUNT_IDENTIFIER_REQUIRED",
@@ -54,8 +67,29 @@ public class MemberWalletService : IMemberWalletService
                                    && !w.IsDeleted, ct);
 
         var now = DateTime.UtcNow;
-        var apiResult = await CallGatewayRegisterAsync(memberId, request, ct);
+
+        // Si el admin asignó un UserID de eWallet DISTINTO al MemberId del perfil, significa
+        // que otro ambassador paga esa membresía y le está apuntando el eWallet de ese otro.
+        // Esa cuenta ya existe y es ajena: se registra el vínculo en la base y NO se llama a
+        // crear nada — crear una cuenta de más le cuesta dinero a la compañía y además
+        // pisaría una cuenta que no es de este miembro.
+        var assignedToAnotherMember =
+            request.WalletType == WalletType.eWallet
+            && !string.Equals(request.AccountIdentifier, memberId, StringComparison.OrdinalIgnoreCase);
+
+        var apiResult = assignedToAnotherMember
+            ? SkipRegistration(memberId, request,
+                "eWallet User ID differs from this member's id: the account belongs to another " +
+                "ambassador who pays for this membership. Linked without contacting the provider.")
+            : await RegisterWithGatewayAsync(memberId, request, ct);
+
         await _db.WalletApiLogs.AddAsync(apiResult.Log, ct);
+
+        // Si el proveedor asignó su propio identificador (el UserName de i-Payout), ese es
+        // el que vale: toda la operatoria posterior va contra él y no contra lo que tipeó
+        // el miembro.
+        if (!string.IsNullOrWhiteSpace(apiResult.AssignedAccountIdentifier))
+            request.AccountIdentifier = apiResult.AssignedAccountIdentifier!;
 
         if (existing is null)
         {
@@ -66,6 +100,7 @@ public class MemberWalletService : IMemberWalletService
                 WalletType        = request.WalletType,
                 Status            = apiResult.NewStatus,
                 AccountIdentifier = request.AccountIdentifier,
+                ProviderAccountCreatedAt = apiResult.ProviderAccountCreatedAt,
                 Notes             = request.Notes,
                 IsPreferred       = false,
                 CreationDate      = now,
@@ -96,6 +131,9 @@ public class MemberWalletService : IMemberWalletService
         existing.AccountIdentifier = request.AccountIdentifier;
         existing.Notes             = request.Notes;
         existing.Status            = apiResult.NewStatus;
+        // Sólo se marca hacia adelante: si la cuenta ya existía, una edición posterior del
+        // alias o las notas no debe borrar la fecha en que se creó.
+        existing.ProviderAccountCreatedAt ??= apiResult.ProviderAccountCreatedAt;
         existing.LastUpdateDate    = now;
         existing.LastUpdateBy      = actorIdentifier;
         if (request.WalletType == WalletType.eWallet
@@ -339,6 +377,12 @@ public class MemberWalletService : IMemberWalletService
     private static readonly Regex TronAddressPattern =
         new(@"^T[1-9A-HJ-NP-Za-km-z]{33}$", RegexOptions.Compiled);
 
+    /// <summary>
+    /// UserName/UserID que asigna I-Payout al registrar la cuenta. NO es un email.
+    /// </summary>
+    private static readonly Regex EWalletUserIdPattern =
+        new(@"^[A-Za-z0-9._-]{3,64}$", RegexOptions.Compiled);
+
     private static string? ValidateAccountIdentifier(WalletType type, string value)
     {
         if (type == WalletType.Crypto)
@@ -360,7 +404,22 @@ public class MemberWalletService : IMemberWalletService
             return null;
         }
 
-        // All other gateways (eWallet/I-Payout, Dwolla, Advancash) are email-based.
+        if (type == WalletType.eWallet)
+        {
+            // I-Payout NO opera por email: opera por UserName, y ese UserName es el MemberId
+            // que asigna la compañía (mismo criterio que MWRLife, donde eWalletUserID = el id
+            // del usuario). Todas las operaciones posteriores —eWallet_GetCurrencyBalance,
+            // eWallet_Load— van contra ese valor.
+            if (EmailPattern.IsMatch(value))
+                return "eWallet (I-Payout) is identified by the Member ID, not by an email address.";
+
+            if (!EWalletUserIdPattern.IsMatch(value))
+                return "eWallet (I-Payout) User ID must be a Member ID (3-64 characters: letters, digits, dot, dash or underscore).";
+
+            return null;
+        }
+
+        // El resto de los gateways sí van por email (Volet, PayPal, ...).
         if (!EmailPattern.IsMatch(value))
             return $"{type} expects an email address as the account identifier.";
 
@@ -368,59 +427,98 @@ public class MemberWalletService : IMemberWalletService
     }
 
     /// <summary>
-    /// Stub implementation for the gateway-registration HTTP call. Real integrations
-    /// (I-Payout, Dwolla, Crypto, Advancash) will replace the body of this method
-    /// with HttpClient calls to the gateway endpoints. Today it ALWAYS records a
-    /// realistic-looking request/response in MemberWalletApiLog and returns "Approved"
-    /// for known-good fixtures so the audit-trail pipeline is exercised end-to-end.
+    /// Da de alta la cuenta en el proveedor y deja el rastro en MemberWalletApiLog.
+    ///
+    /// Esto ANTES era un simulador: un Task.Delay y "Approved" sin hablar con nadie. La
+    /// cuenta recién se creaba de verdad en el primer pago, cuando el orquestador hacía
+    /// ValidateAccount → SubscribeAccount. Ahora el alta ocurre cuando el miembro elige su
+    /// método de cobro, que es cuando él está mirando y puede corregir si falla.
+    ///
+    /// El estado de la wallet sigue al resultado: Approved si el proveedor aceptó,
+    /// Pending si no. Nunca se marca Approved una cuenta que el proveedor no reconoce.
     /// </summary>
-    private static async Task<(MemberWalletApiLog Log, WalletStatus NewStatus)> CallGatewayRegisterAsync(
+    private async Task<GatewayRegistrationOutcome> RegisterWithGatewayAsync(
         string memberId, SaveWalletRequest req, CancellationToken ct)
     {
-        var sw = Stopwatch.StartNew();
-        var endpoint = req.WalletType switch
+        // PayQuicker direcciona por programUserId + email, e i-Payout necesita el email para
+        // crear la cuenta. Sale del perfil del miembro, no de lo que se tipeó en la wallet.
+        var profile = await _db.MemberProfiles.AsNoTracking()
+            .Where(m => m.MemberId == memberId)
+            .Select(m => new { m.Email, m.FirstName, m.LastName })
+            .FirstOrDefaultAsync(ct);
+
+        var result = await _registrar.RegisterAsync(new PayoutAccountRegistrationRequest
         {
-            WalletType.eWallet   => "https://api.i-payout.com/v1/accounts/register",
-            WalletType.Dwolla    => "https://api.dwolla.com/customers",
-            WalletType.Crypto    => "https://api.coinbase.com/v2/accounts",
-            WalletType.Advancash => "https://api.advcash.com/v1/wallets/register",
-            _                    => $"https://api.{req.WalletType.ToString().ToLowerInvariant()}.example/register"
-        };
-
-        var requestBody = JsonSerializer.Serialize(new
-        {
-            memberId,
-            walletType = req.WalletType.ToString(),
-            accountIdentifier = req.AccountIdentifier
-        });
-
-        // Simulate a gateway round-trip until real integrations are wired in.
-        await Task.Delay(20, ct);
-
-        var success = !string.IsNullOrWhiteSpace(req.AccountIdentifier);
-        var responseBody = success
-            ? JsonSerializer.Serialize(new { status = "approved", accountReference = Guid.NewGuid().ToString() })
-            : JsonSerializer.Serialize(new { status = "rejected", reason = "Missing account identifier" });
-
-        sw.Stop();
+            MemberId          = memberId,
+            WalletType        = req.WalletType,
+            AccountIdentifier = req.AccountIdentifier,
+            Email             = profile?.Email,
+            FirstName         = profile?.FirstName,
+            LastName          = profile?.LastName
+        }, ct);
 
         var log = new MemberWalletApiLog
         {
             MemberId       = memberId,
             WalletType     = req.WalletType,
-            Operation      = "RegisterAccount",
-            Endpoint       = endpoint,
+            Operation      = result.Skipped ? "RegisterAccount (not required)" : "RegisterAccount",
+            Endpoint       = result.Endpoint,
             HttpMethod     = "POST",
-            RequestBody    = requestBody,
-            HttpStatusCode = success ? 200 : 400,
-            ResponseBody   = responseBody,
-            Success        = success,
-            ErrorMessage   = success ? null : "Missing account identifier",
-            DurationMs     = (int)sw.ElapsedMilliseconds,
+            RequestBody    = result.RequestBody,
+            HttpStatusCode = result.Success ? 200 : 400,
+            ResponseBody   = result.ResponseBody,
+            Success        = result.Success,
+            ErrorMessage   = result.Success ? null : result.GatewayMessage,
+            DurationMs     = (int)result.DurationMs,
             CreationDate   = DateTime.UtcNow,
             CreatedBy      = "system"
         };
 
-        return (log, success ? WalletStatus.Approved : WalletStatus.Pending);
+        return new GatewayRegistrationOutcome(
+            log,
+            result.Success ? WalletStatus.Approved : WalletStatus.Pending,
+            result.AssignedAccountIdentifier,
+            // Sólo se considera creada si el proveedor efectivamente respondió que sí.
+            // Crypto no abre cuenta, así que no marca fecha.
+            result.Success && !result.Skipped ? DateTime.UtcNow : null);
     }
+
+    /// <summary>
+    /// Deja constancia de un alta que se omitió a propósito, sin llamar al proveedor.
+    /// El rastro queda igual en MemberWalletApiLog: que no haya habido llamada es
+    /// justamente lo que hay que poder auditar después.
+    /// </summary>
+    private static GatewayRegistrationOutcome SkipRegistration(
+        string memberId, SaveWalletRequest req, string reason) =>
+        new(new MemberWalletApiLog
+            {
+                MemberId       = memberId,
+                WalletType     = req.WalletType,
+                Operation      = "RegisterAccount (skipped)",
+                Endpoint       = "(none)",
+                HttpMethod     = "POST",
+                RequestBody    = JsonSerializer.Serialize(new
+                {
+                    memberId,
+                    walletType        = req.WalletType.ToString(),
+                    accountIdentifier = req.AccountIdentifier
+                }),
+                HttpStatusCode = 200,
+                ResponseBody   = JsonSerializer.Serialize(new { skipped = true, reason }),
+                Success        = true,
+                ErrorMessage   = null,
+                DurationMs     = 0,
+                CreationDate   = DateTime.UtcNow,
+                CreatedBy      = "system"
+            },
+            WalletStatus.Approved,
+            AssignedAccountIdentifier: null,
+            // La cuenta existe, pero la abrió otro miembro: no se marca como creada por este.
+            ProviderAccountCreatedAt: null);
+
+    private sealed record GatewayRegistrationOutcome(
+        MemberWalletApiLog Log,
+        WalletStatus       NewStatus,
+        string?            AssignedAccountIdentifier,
+        DateTime?          ProviderAccountCreatedAt);
 }

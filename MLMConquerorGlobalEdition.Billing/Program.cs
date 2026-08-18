@@ -113,6 +113,7 @@ builder.Services.AddScoped<UplineAggregatorJob>();
 builder.Services.AddScoped<DownstreamTriggersJob>();
 builder.Services.AddScoped<ReceiptAnchorJob>();
 builder.Services.AddScoped<PayoutReconciliationJob>();
+builder.Services.AddScoped<DeferredPayoutAccountJob>();
 
 var hangfireConnStr = builder.Configuration.GetConnectionString("HangFire")
     ?? builder.Configuration.GetConnectionString("DefaultConnection")!;
@@ -276,6 +277,15 @@ RecurringJob.AddOrUpdate<PayoutReconciliationJob>(
     "payout-reconciliation",
     job => job.ExecuteAsync(CancellationToken.None),
     "*/30 * * * *",                 // Every 30 minutes — recover crash-stuck Pending payouts
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+// Abre la cuenta del proveedor para quien ya gano su primera comision y todavia no tiene una.
+// Cada 15 minutos: la cuenta debe quedar lista con dias de margen antes de la corrida de
+// payouts, porque i-Payout exige que el ambassador verifique su mail.
+RecurringJob.AddOrUpdate<DeferredPayoutAccountJob>(
+    "deferred-payout-accounts",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "*/15 * * * *",
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
 // Auto-payout disabled by business decision: PaymentDate on a CommissionEarning

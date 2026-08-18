@@ -370,6 +370,33 @@ public static class GatewayRoutingSeeder
 
             // ── Currency converter ─────────────────────────────────────────────
             new ApiCredential { ServiceKey = "CurrencyConverterApi", Environment = "Production", BaseUrl = "https://api.currconv.com",             IsActive = false, CreatedBy = Actor, CreationDate = now, LastUpdateDate = now },
+
+            // ── Payout gateways ────────────────────────────────────────────────
+            // PayQuicker tiene credenciales SEPARADAS por versión de API: los scopes de v1
+            // (useraccount_*) devuelven invalid_scope con credenciales v2. Por eso hay una
+            // fila por versión y por ambiente; el selector ApiVersion + Environment de
+            // PaymentGatewayInfo elige cuál se usa.
+            //   ApiKeyEncrypted          → client id
+            //   SecretKeyEncrypted       → client secret
+            //   MerchantIdEncrypted      → cuenta de fondeo (acct-… en v2, fundingAccountPublicId en v1)
+            //   AdditionalSecretEncrypted→ program token (prog-…), sólo v2
+            new ApiCredential { ServiceKey = "PayQuickerV2", Environment = "Sandbox",    BaseUrl = "https://api.sandbox.payquicker.io/api/v2", PortalUrl = "https://sandbox.payquicker.io/", IsActive = false, CreatedBy = Actor, CreationDate = now, LastUpdateDate = now },
+            new ApiCredential { ServiceKey = "PayQuickerV2", Environment = "Production", BaseUrl = "https://api.payquicker.io/api/v2",         PortalUrl = "https://portal.payquicker.io/", IsActive = false, CreatedBy = Actor, CreationDate = now, LastUpdateDate = now },
+            new ApiCredential { ServiceKey = "PayQuickerV1", Environment = "Sandbox",    BaseUrl = "https://platform.mypayquicker.build",      PortalUrl = "https://mypayquicker.build/",   IsActive = false, CreatedBy = Actor, CreationDate = now, LastUpdateDate = now },
+            new ApiCredential { ServiceKey = "PayQuickerV1", Environment = "Production", BaseUrl = "https://platform.mypayquicker.com",        PortalUrl = "https://mypayquicker.com/",     IsActive = false, CreatedBy = Actor, CreationDate = now, LastUpdateDate = now },
+
+            // i-Payout expone UN endpoint RPC; la operación se elige con el campo "fn".
+            //   ApiKeyEncrypted    → MerchantGUID
+            //   SecretKeyEncrypted → MerchantPassword
+            new ApiCredential { ServiceKey = "EWallet",      Environment = "Sandbox",    BaseUrl = "https://sandbox.i-payout.com/eWalletAPI",  PortalUrl = "https://sandbox.i-payout.com/", IsActive = false, CreatedBy = Actor, CreationDate = now, LastUpdateDate = now },
+            new ApiCredential { ServiceKey = "EWallet",      Environment = "Production", BaseUrl = "https://api.i-payout.com/eWalletAPI",      PortalUrl = "https://www.i-payout.com/",     IsActive = false, CreatedBy = Actor, CreationDate = now, LastUpdateDate = now },
+
+            // Volet (ex AdvCash) es SOAP. Sus tres secretos no siguen el patron habitual:
+            //   ApiKeyEncrypted     -> apiName
+            //   SecretKeyEncrypted  -> plantilla del auth token (lleva ##datetime##)
+            //   MerchantIdEncrypted -> email de la cuenta merchant
+            new ApiCredential { ServiceKey = "Volet",        Environment = "Production", BaseUrl = "https://wallet.advcash.com/wsm/merchantWebService", PortalUrl = "https://account.volet.com/", IsActive = false, CreatedBy = Actor, CreationDate = now, LastUpdateDate = now },
+            new ApiCredential { ServiceKey = "Volet",        Environment = "Sandbox",    BaseUrl = "https://wallet.advcash.com/wsm/merchantWebService", PortalUrl = "https://account.volet.com/", IsActive = false, CreatedBy = Actor, CreationDate = now, LastUpdateDate = now },
         };
 
         db.ApiCredentials.AddRange(placeholders);

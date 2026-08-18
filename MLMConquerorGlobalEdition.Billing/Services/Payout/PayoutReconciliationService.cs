@@ -4,6 +4,7 @@ using MLMConquerorGlobalEdition.Domain.Constants;
 using MLMConquerorGlobalEdition.Domain.Entities.Billing;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Payout;
 
 namespace MLMConquerorGlobalEdition.Billing.Services.Payout;
 

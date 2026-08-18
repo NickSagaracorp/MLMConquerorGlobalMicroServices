@@ -42,6 +42,30 @@ public class PaymentGatewayInfo : AuditChangesIntKey
     public decimal MinimumPayoutAmount { get; set; }
 
     public bool IsActive { get; set; } = true;
+
+    // ── Selectores de integración (admin) ──────────────────────────────────
+    // Juntos eligen la fila de ApiCredential que usa el gateway en runtime:
+    //   ServiceKey = "{gateway}{ApiVersion}"  +  Environment
+    // Son admin-only: NO se exponen en el DTO que ve el ambassador.
+
+    /// <summary>
+    /// Versión de la API del proveedor a usar. Sólo aplica a gateways que ofrecen más de
+    /// una (hoy PayQuicker: "V1" | "V2"). Null = el proveedor no versiona.
+    /// </summary>
+    public string? ApiVersion { get; set; }
+
+    /// <summary>
+    /// Ambiente contra el que opera este gateway: "Sandbox" | "Production" | "Test".
+    /// Debe coincidir con ApiCredential.Environment. Null = hereda el default del servicio.
+    /// </summary>
+    public string? Environment { get; set; }
+
+    /// <summary>
+    /// URL del portal administrativo del proveedor, para el link directo desde el admin.
+    /// Las credenciales de ese portal viven cifradas en ApiCredential — nunca acá, porque
+    /// esta entidad se serializa hacia el ambassador.
+    /// </summary>
+    public string? AdminPortalUrl { get; set; }
 }
 
 public enum AdminFeeKind
