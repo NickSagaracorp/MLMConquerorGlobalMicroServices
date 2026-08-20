@@ -43,7 +43,7 @@ public class PayQuickerPayoutGatewayService : IPayoutGatewayService
 
         var (client, settings) = resolved.Value!;
 
-        var email = ExtractEmail(ctx.AccountMeta);
+        var email = ResolveEmail(ctx.AccountIdentifier, ctx.AccountMeta);
         if (string.IsNullOrWhiteSpace(email))
             return Result<PayoutAccountResult>.Failure(
                 "PAYQUICKER_EMAIL_REQUIRED",
@@ -74,11 +74,14 @@ public class PayQuickerPayoutGatewayService : IPayoutGatewayService
 
         var (client, settings) = resolved.Value!;
 
+        // programUserId es SIEMPRE el MemberId. Nunca el AccountIdentifier: en una wallet de
+        // PayQuicker ese campo guarda el EMAIL, y mandarlo como programUserId hace que el
+        // proveedor no encuentre al usuario.
         var result = await client.GetAccountAsync(
             new PayQuickerAccountRequest
             {
-                ProgramUserId = string.IsNullOrWhiteSpace(ctx.AccountIdentifier) ? ctx.MemberId : ctx.AccountIdentifier,
-                Email         = ExtractEmail(ctx.AccountMeta) ?? string.Empty
+                ProgramUserId = ctx.MemberId,
+                Email         = ResolveEmail(ctx.AccountIdentifier, ctx.AccountMeta) ?? string.Empty
             }, settings, ct);
 
         if (!result.IsSuccess)
@@ -100,9 +103,10 @@ public class PayQuickerPayoutGatewayService : IPayoutGatewayService
             return Result<PayoutBalanceResult>.Failure(resolved.ErrorCode!, resolved.Error!);
 
         var (client, settings) = resolved.Value!;
-        var programUserId = string.IsNullOrWhiteSpace(accountIdentifier) ? memberId : accountIdentifier;
 
-        var result = await client.GetBalanceAsync(programUserId, "USD", settings, ct);
+        // Idem: el saldo se consulta por PROGRAM_USER_ID, que es el MemberId. El
+        // accountIdentifier de la wallet es el email y no sirve para este scope.
+        var result = await client.GetBalanceAsync(memberId, "USD", settings, ct);
         if (!result.IsSuccess)
             return Result<PayoutBalanceResult>.Failure(result.ErrorCode!, result.Error!);
 
@@ -128,7 +132,7 @@ public class PayQuickerPayoutGatewayService : IPayoutGatewayService
         // en vez de pagar dos veces. El límite del contrato es 50 caracteres.
         var clientRef = ctx.Reference.Length <= 50 ? ctx.Reference : ctx.Reference[..50];
 
-        var email = ExtractEmail(ctx.AccountIdentifier);
+        var email = ResolveEmail(ctx.AccountIdentifier, null);
         if (string.IsNullOrWhiteSpace(email))
             return Result<PayoutTransferResult>.Failure(
                 "PAYQUICKER_EMAIL_REQUIRED",
@@ -211,10 +215,16 @@ public class PayQuickerPayoutGatewayService : IPayoutGatewayService
     }
 
     /// <summary>
-    /// La wallet de PayQuicker guarda el MemberId como AccountIdentifier, pero el email hace
-    /// falta igual para direccionar. Puede venir en AccountMeta o en el propio identificador
-    /// si el admin cargó ahí el correo.
+    /// PayQuicker direcciona al destinatario con DOS datos, no con uno: el programUserId
+    /// —que es nuestro MemberId— Y el email. Ambos son obligatorios en el contrato: el
+    /// schema PortalPaymentQuote del OpenAPI los lista como required junto con sourceToken,
+    /// amount, clientPaymentRef y acceptanceMode. Es la forma de direccionar de los programas
+    /// "hosted portal"; mandar un destinationToken en su lugar responde
+    /// "Use ProgramUserId and Email instead".
+    ///
+    /// El MemberId lo pone siempre el contexto. El email sale de la wallet —donde se guarda
+    /// como AccountIdentifier— y, si ahí no está, del perfil del miembro vía AccountMeta.
     /// </summary>
-    private static string? ExtractEmail(string? candidate) =>
-        !string.IsNullOrWhiteSpace(candidate) && candidate.Contains('@') ? candidate.Trim() : null;
+    private static string? ResolveEmail(params string?[] candidates) =>
+        candidates.FirstOrDefault(c => !string.IsNullOrWhiteSpace(c) && c.Contains('@'))?.Trim();
 }

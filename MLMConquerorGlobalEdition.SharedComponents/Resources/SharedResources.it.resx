@@ -1283,4 +1283,16 @@
   <data name="PaymentMethod.EWalletForeignAccountWarning" xml:space="preserve">
     <value>Questo non e l'ID di questo membro. Le commissioni saranno pagate sull'account i-Payout dell'altro ambassador e non verra aperto alcun nuovo account.</value>
   </data>
+  <data name="PaymentMethod.SetAsDefaultOpensAccountTooltip" xml:space="preserve">
+    <value>Imposta come predefinito e apri l'account presso il fornitore.</value>
+  </data>
+  <data name="PaymentMethod.SetAsDefaultOpensAccountHint" xml:space="preserve">
+    <value>Impostandolo come predefinito verra aperto il tuo account presso il fornitore.</value>
+  </data>
+  <data name="PaymentMethod.AddAccountFirst" xml:space="preserve">
+    <value>Aggiungi prima l'account</value>
+  </data>
+  <data name="PaymentMethod.AddAccountFirstTooltip" xml:space="preserve">
+    <value>Questo metodo richiede dati che solo tu puoi fornire. Usa prima Aggiungi account.</value>
+  </data>
 </root>

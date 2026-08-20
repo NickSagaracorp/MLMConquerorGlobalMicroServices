@@ -168,15 +168,106 @@ public class MemberWalletService : IMemberWalletService
             .FirstOrDefaultAsync(w => w.MemberId == memberId
                                    && w.WalletType == walletType
                                    && !w.IsDeleted, ct);
+
+        // Elegir donde cobrar es una senal de intencion tan fuerte como cargar la cuenta, asi
+        // que esta accion ASEGURA la cuenta en vez de exigir que ya exista:
+        //   · si el miembro no tiene wallet de ese tipo, se crea;
+        //   · si la tiene pero sin cuenta abierta en el proveedor, se abre ahora.
+        //
+        // Antes esto era un callejon sin salida: no se podia marcar default una wallet
+        // Pending, y estaba Pending justamente porque nadie habia abierto la cuenta.
         if (target is null)
-            return Result<WalletAccountView>.Failure(
-                "WALLET_NOT_FOUND",
-                "No wallet of that type exists for this member yet.");
+        {
+            var identifier = await DeriveAccountIdentifierAsync(memberId, walletType, ct);
+            if (identifier is null)
+                return Result<WalletAccountView>.Failure(
+                    "WALLET_IDENTIFIER_REQUIRED",
+                    $"{walletType} needs an account identifier that only the member can supply " +
+                    "(a crypto address, for example). Add the account first, then set it as default.");
+
+            // Se delega en SaveAccountAsync para no duplicar el alta: validacion, llamada al
+            // proveedor, historial y log de API quedan exactamente iguales por los dos caminos.
+            var created = await SaveAccountAsync(
+                memberId,
+                new SaveWalletRequest
+                {
+                    WalletType        = walletType,
+                    AccountIdentifier = identifier,
+                    Notes             = "Created automatically when set as the default payout method."
+                },
+                actorIdentifier, ct);
+
+            if (!created.IsSuccess)
+                return created;
+
+            target = await _db.Wallets
+                .FirstOrDefaultAsync(w => w.MemberId == memberId
+                                       && w.WalletType == walletType
+                                       && !w.IsDeleted, ct);
+
+            if (target is null)
+                return Result<WalletAccountView>.Failure(
+                    "WALLET_NOT_FOUND", "The wallet could not be created for this member.");
+        }
+        else if (target.ProviderAccountCreatedAt is null && walletType != WalletType.Crypto)
+        {
+            // La wallet existe pero nunca se abrio la cuenta — tipicamente la sembro el signup
+            // con el gateway por defecto del pais. Se abre ahora.
+            //
+            // Si el identificador guardado no pasa la validacion del gateway, se reemplaza por
+            // el derivado en vez de fallar: son datos viejos de cuando el modelo era otro, y no
+            // tiene sentido bloquearle al miembro su eleccion por eso. Si el guardado es
+            // valido se respeta — puede ser un admin apuntando a la cuenta de otro ambassador.
+            var stored  = target.AccountIdentifier;
+            var usable  = !string.IsNullOrWhiteSpace(stored)
+                          && ValidateAccountIdentifier(walletType, stored!.Trim()) is null;
+
+            var identifierToUse = usable
+                ? stored!.Trim()
+                : await DeriveAccountIdentifierAsync(memberId, walletType, ct);
+
+            if (string.IsNullOrWhiteSpace(identifierToUse))
+                return Result<WalletAccountView>.Failure(
+                    "WALLET_IDENTIFIER_REQUIRED",
+                    $"{walletType} needs an account identifier that only the member can supply. " +
+                    "Edit the account first, then set it as default.");
+
+            var ensured = await SaveAccountAsync(
+                memberId,
+                new SaveWalletRequest
+                {
+                    WalletType        = walletType,
+                    AccountIdentifier = identifierToUse!,
+                    Notes             = target.Notes
+                },
+                actorIdentifier, ct);
+
+            if (!ensured.IsSuccess)
+                return ensured;
+
+            await _db.Entry(target).ReloadAsync(ct);
+        }
 
         if (target.Status != WalletStatus.Approved)
+        {
+            // El motivo real lo tiene el ultimo log de API — SaveAccountAsync devuelve exito
+            // aunque el proveedor rechace, porque la wallet SI queda guardada en Pending.
+            // Se trae aca para no obligar a nadie a ir a buscarlo: el que hace click necesita
+            // saber que falta la credencial, no que "revise el log".
+            var lastFailure = await _db.WalletApiLogs.AsNoTracking()
+                .Where(l => l.MemberId == memberId && l.WalletType == walletType && !l.Success)
+                .OrderByDescending(l => l.CreationDate)
+                .Select(l => l.ErrorMessage)
+                .FirstOrDefaultAsync(ct);
+
             return Result<WalletAccountView>.Failure(
                 "WALLET_NOT_APPROVED",
-                "Only approved wallets can be set as default.");
+                string.IsNullOrWhiteSpace(lastFailure)
+                    ? $"The {walletType} payout account could not be opened with the provider, so this " +
+                      "method cannot be made the default yet."
+                    : $"The {walletType} payout account could not be opened with the provider, so this " +
+                      $"method cannot be made the default yet. The provider reported: {lastFailure}");
+        }
 
         var now    = DateTime.UtcNow;
         var others = await _db.Wallets
@@ -437,6 +528,33 @@ public class MemberWalletService : IMemberWalletService
     /// El estado de la wallet sigue al resultado: Approved si el proveedor aceptó,
     /// Pending si no. Nunca se marca Approved una cuenta que el proveedor no reconoce.
     /// </summary>
+    /// <summary>
+    /// Identificador con el que se puede dar de alta una wallet SIN pedirle nada al miembro.
+    /// Devuelve null cuando el gateway necesita un dato que solo el puede aportar.
+    ///
+    /// Cada proveedor identifica distinto:
+    ///   eWallet    -> el MemberId (i-Payout opera contra ese UserName)
+    ///   Volet      -> el email del miembro
+    ///   PayQuicker -> el email (el programa es "hosted portal": programUserId + email)
+    ///   Crypto     -> NADA que se pueda derivar: la direccion la provee el miembro
+    /// </summary>
+    private async Task<string?> DeriveAccountIdentifierAsync(
+        string memberId, WalletType walletType, CancellationToken ct)
+    {
+        if (walletType == WalletType.eWallet)
+            return memberId;
+
+        if (walletType == WalletType.Crypto)
+            return null;
+
+        var email = await _db.MemberProfiles.AsNoTracking()
+            .Where(m => m.MemberId == memberId)
+            .Select(m => m.Email)
+            .FirstOrDefaultAsync(ct);
+
+        return string.IsNullOrWhiteSpace(email) ? null : email;
+    }
+
     private async Task<GatewayRegistrationOutcome> RegisterWithGatewayAsync(
         string memberId, SaveWalletRequest req, CancellationToken ct)
     {

@@ -1283,4 +1283,16 @@
   <data name="PaymentMethod.EWalletForeignAccountWarning" xml:space="preserve">
     <value>Dies ist nicht die ID dieses Mitglieds. Provisionen werden auf das i-Payout-Konto des anderen Ambassadors gezahlt, und es wird kein neues Konto eroeffnet.</value>
   </data>
+  <data name="PaymentMethod.SetAsDefaultOpensAccountTooltip" xml:space="preserve">
+    <value>Als Standard festlegen und das Konto beim Anbieter eroeffnen.</value>
+  </data>
+  <data name="PaymentMethod.SetAsDefaultOpensAccountHint" xml:space="preserve">
+    <value>Wenn Sie dies als Standard festlegen, wird Ihr Konto beim Anbieter eroeffnet.</value>
+  </data>
+  <data name="PaymentMethod.AddAccountFirst" xml:space="preserve">
+    <value>Konto zuerst hinzufuegen</value>
+  </data>
+  <data name="PaymentMethod.AddAccountFirstTooltip" xml:space="preserve">
+    <value>Diese Methode benoetigt Angaben, die nur Sie machen koennen. Nutzen Sie zuerst Konto hinzufuegen.</value>
+  </data>
 </root>

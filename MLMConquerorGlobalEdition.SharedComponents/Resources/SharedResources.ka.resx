@@ -1214,4 +1214,16 @@
   <data name="PaymentMethod.EWalletForeignAccountWarning" xml:space="preserve">
     <value>ეს არ არის ამ წევრის ID. საკომისიო გადაიხდება სხვა ამბასადორის i-Payout ანგარიშზე და ახალი ანგარიში არ იხსნება.</value>
   </data>
+  <data name="PaymentMethod.SetAsDefaultOpensAccountTooltip" xml:space="preserve">
+    <value>დააყენეთ ნაგულისხმებად და გახსნათ ანგარიში პროვაიდერთან.</value>
+  </data>
+  <data name="PaymentMethod.SetAsDefaultOpensAccountHint" xml:space="preserve">
+    <value>ნაგულისხმებად დაყენებისას გაიხსნება თქვენი ანგარიში.</value>
+  </data>
+  <data name="PaymentMethod.AddAccountFirst" xml:space="preserve">
+    <value>ჯერ დაამატეთ ანგარიში</value>
+  </data>
+  <data name="PaymentMethod.AddAccountFirstTooltip" xml:space="preserve">
+    <value>ეს მეთოდი ითხოვს მონაცემებს, რომელსაც მხოლოდ თქვენ იქნებით.</value>
+  </data>
 </root>

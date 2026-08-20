@@ -55,7 +55,15 @@
                             var existing = _wallets.FirstOrDefault(w => w.WalletType == gw.Code);
                             var info     = _gatewayInfos.FirstOrDefault(i => i.WalletType == gw.Code);
                             var isPreferred = existing?.IsPreferred == true;
-                            var canBeDefault = existing is not null && !isPreferred && existing.StatusName == "Approved";
+                            // Marcar como default ahora ASEGURA la cuenta: crea la wallet si
+                            // no existe y abre la cuenta en el proveedor si falta. Por eso el
+                            // boton ya no exige Approved — solo se descarta lo que no se puede
+                            // resolver solo: una wallet rechazada, o Crypto sin direccion,
+                            // que necesita un dato que unicamente el miembro puede dar.
+                            var needsMemberInput = existing is null && gw.Code == 9; // Crypto
+                            var canBeDefault = !isPreferred
+                                               && !needsMemberInput
+                                               && existing?.StatusName != "Rejected";
                             <div class="col-12 col-md-6 col-xl-4">
                                 <div class="card h-100 @(isPreferred ? "border-success border-2 shadow-sm" : "")">
                                     @if (isPreferred)
@@ -119,18 +127,23 @@
                                             }
                                             else if (canBeDefault)
                                             {
+                                                var opensAccount = existing is null || existing.StatusName != "Approved";
                                                 <button class="btn btn-sm btn-outline-success"
                                                         disabled="@_busy"
-                                                        title="@L["PaymentMethod.SetAsDefaultTooltip"]"
-                                                        @onclick="() => SetDefaultAsync(existing!.WalletType)">
+                                                        title="@(opensAccount ? L["PaymentMethod.SetAsDefaultOpensAccountTooltip"].Value : L["PaymentMethod.SetAsDefaultTooltip"].Value)"
+                                                        @onclick="() => SetDefaultAsync(gw.Code)">
                                                     <i class="ri-star-line me-1"></i>@L["PaymentMethod.SetAsDefault"]
                                                 </button>
+                                                @if (opensAccount)
+                                                {
+                                                    <div class="form-text small mb-0">@L["PaymentMethod.SetAsDefaultOpensAccountHint"]</div>
+                                                }
                                             }
-                                            else if (existing is not null && existing.StatusName != "Approved")
+                                            else if (needsMemberInput)
                                             {
                                                 <button class="btn btn-sm btn-outline-secondary" disabled
-                                                        title="@L["PaymentMethod.PendingApprovalTooltip"]">
-                                                    <i class="ri-lock-line me-1"></i>@L["PaymentMethod.PendingApproval"]
+                                                        title="@L["PaymentMethod.AddAccountFirstTooltip"]">
+                                                    <i class="ri-lock-line me-1"></i>@L["PaymentMethod.AddAccountFirst"]
                                                 </button>
                                             }
                                         </div>

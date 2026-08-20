@@ -41,10 +41,19 @@ public sealed class V1Monetary
 
 // ── Responses ──────────────────────────────────────────────────────────────
 
+/// <summary>
+/// Fila de invitacion de v1. OJO: tanto el POST como el GET devuelven un ARRAY de estas,
+/// incluso cuando se crea una sola invitacion.
+/// </summary>
 public sealed class V1InvitationResponse
 {
-    [JsonPropertyName("invitationKey")] public string? InvitationKey { get; set; }
-    [JsonPropertyName("status")]        public string? Status        { get; set; }
+    [JsonPropertyName("invitationKey")]      public string? InvitationKey      { get; set; }
+    [JsonPropertyName("dateInvited")]        public string? DateInvited        { get; set; }
+    /// <summary>Ej. "InvitationStatusType_Pending".</summary>
+    [JsonPropertyName("invitationStatus")]   public string? InvitationStatus   { get; set; }
+    /// <summary>Ej. "NotStarted".</summary>
+    [JsonPropertyName("registrationStatus")] public string? RegistrationStatus { get; set; }
+    [JsonPropertyName("status")]             public string? Status             { get; set; }
 }
 
 public sealed class V1PaymentResponse

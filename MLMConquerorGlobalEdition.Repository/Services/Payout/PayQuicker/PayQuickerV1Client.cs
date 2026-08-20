@@ -46,13 +46,18 @@ public class PayQuickerV1Client : IPayQuickerClient
             UserNotificationEmailAddress = request.Email
         };
 
-        var result = await SendAsync<V1InvitationResponse>(
+        // v1 devuelve un ARRAY de invitaciones, incluso al crear una sola:
+        //   [{"dateInvited":"…","invitationKey":"…","invitationStatus":"InvitationStatusType_Pending",
+        //     "registrationStatus":"NotStarted","registrationDetails":{…}}]
+        var result = await SendAsync<List<V1InvitationResponse>>(
             HttpMethod.Post, "api/v1/companies/users/invitations", payload, settings, "create invitation", ct);
 
         if (!result.IsSuccess)
             return Result<PayQuickerAccountResult>.Failure(result.ErrorCode!, result.Error!);
 
-        var key = result.Value!.InvitationKey;
+        var created = result.Value is { Count: > 0 } ? result.Value[0] : null;
+        var key = created?.InvitationKey;
+
         if (string.IsNullOrWhiteSpace(key))
             return Result<PayQuickerAccountResult>.Failure(
                 "PAYQUICKER_NO_INVITATION_KEY",
@@ -62,7 +67,7 @@ public class PayQuickerV1Client : IPayQuickerClient
         {
             Exists         = true,
             InvitationKey  = key,
-            Status         = result.Value!.Status,
+            Status         = created!.InvitationStatus ?? created.Status,
             GatewayCode    = "OK"
         });
     }
@@ -77,6 +82,17 @@ public class PayQuickerV1Client : IPayQuickerClient
         var result = await SendAsync<List<V1InvitationResponse>>(
             HttpMethod.Get, query, null, settings, "look up account", ct);
 
+        // "No existe" NO es un fallo: es la respuesta legitima para alguien que todavia no
+        // fue invitado, y es justo el caso en el que hay que seguir y crear la invitacion.
+        // v1 lo comunica con un 400 + NoResultFound, no con un 404 ni con una lista vacia.
+        if (!result.IsSuccess && result.ErrorCode == PayQuickerHttp.NotFoundErrorCode)
+            return Result<PayQuickerAccountResult>.Success(new PayQuickerAccountResult
+            {
+                Exists         = false,
+                GatewayCode    = "NOT_FOUND",
+                GatewayMessage = "No PayQuicker invitation for this member yet."
+            });
+
         if (!result.IsSuccess)
             return Result<PayQuickerAccountResult>.Failure(result.ErrorCode!, result.Error!);
 
@@ -85,7 +101,9 @@ public class PayQuickerV1Client : IPayQuickerClient
         {
             Exists         = found is not null,
             InvitationKey  = found?.InvitationKey,
-            Status         = found?.Status,
+            // v1 nombra el campo "invitationStatus"; "status" queda como respaldo por si
+            // alguna variante del endpoint lo devuelve con el nombre corto.
+            Status         = found?.InvitationStatus ?? found?.Status,
             GatewayCode    = found is not null ? "OK" : "NOT_FOUND",
             GatewayMessage = found is not null ? "Invitation found" : "No PayQuicker invitation for this member"
         });

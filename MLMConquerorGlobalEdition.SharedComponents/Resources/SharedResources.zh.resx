@@ -1214,4 +1214,16 @@
   <data name="PaymentMethod.EWalletForeignAccountWarning" xml:space="preserve">
     <value>这不是该会员的 ID。佣金将支付到其他大使的 i-Payout 账户，并且不会开通新账户。</value>
   </data>
+  <data name="PaymentMethod.SetAsDefaultOpensAccountTooltip" xml:space="preserve">
+    <value>设为默认并在服务商处开通账户。</value>
+  </data>
+  <data name="PaymentMethod.SetAsDefaultOpensAccountHint" xml:space="preserve">
+    <value>设为默认后，将在服务商处为您开通账户。</value>
+  </data>
+  <data name="PaymentMethod.AddAccountFirst" xml:space="preserve">
+    <value>请先添加账户</value>
+  </data>
+  <data name="PaymentMethod.AddAccountFirstTooltip" xml:space="preserve">
+    <value>此方式需要只有您能提供的信息。请先使用“添加账户”。</value>
+  </data>
 </root>

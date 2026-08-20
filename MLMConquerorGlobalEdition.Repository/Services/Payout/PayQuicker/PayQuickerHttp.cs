@@ -57,8 +57,16 @@ public static class PayQuickerHttp
     }
 
     /// <summary>
+    /// Código que devuelve ReadAsync cuando el proveedor dice explícitamente que el recurso
+    /// NO existe. Es distinto de un fallo: significa "no está", no "no se pudo averiguar",
+    /// y quien llama debe poder seguir adelante y crearlo.
+    /// </summary>
+    public const string NotFoundErrorCode = "PAYQUICKER_NOT_FOUND";
+
+    /// <summary>
     /// Deserializa una respuesta exitosa a <typeparamref name="T"/>, o devuelve un Result
-    /// de error con el código y el cuerpo crudo recortado para diagnóstico.
+    /// de error. Si el proveedor respondió que el recurso no existe, el código es
+    /// <see cref="NotFoundErrorCode"/>.
     /// </summary>
     public static async Task<Result<T>> ReadAsync<T>(
         HttpResponseMessage response,
@@ -68,9 +76,24 @@ public static class PayQuickerHttp
         var body = await response.Content.ReadAsStringAsync(ct);
 
         if (!response.IsSuccessStatusCode)
+        {
+            // PayQuicker NO usa 404 para "no encontrado": responde 400 con un cuerpo
+            // {"severity":"Critical","error":"NoResultFound",...}. Tratarlo como fallo duro
+            // haría que un miembro que todavía no tiene cuenta nunca llegue a que se la creen.
+            var detail = TryReadError(body);
+
+            if (string.Equals(detail?.Error, "NoResultFound", StringComparison.OrdinalIgnoreCase))
+                return Result<T>.Failure(
+                    NotFoundErrorCode,
+                    detail!.Message ?? $"PayQuicker {operation}: the resource does not exist yet.");
+
+            // Para el resto se prefiere el mensaje del proveedor al volcado crudo del cuerpo.
             return Result<T>.Failure(
                 $"PAYQUICKER_HTTP_{(int)response.StatusCode}",
-                $"PayQuicker {operation} failed ({(int)response.StatusCode}): {Truncate(body)}");
+                detail?.Message is { Length: > 0 } m
+                    ? $"PayQuicker {operation} failed ({(int)response.StatusCode}): {m}"
+                    : $"PayQuicker {operation} failed ({(int)response.StatusCode}): {Truncate(body)}");
+        }
 
         if (string.IsNullOrWhiteSpace(body))
             return Result<T>.Failure(
@@ -100,6 +123,23 @@ public static class PayQuickerHttp
     /// </summary>
     public static string FormatAmount(decimal amount) =>
         amount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>Forma del cuerpo de error de PayQuicker. Null si no se pudo parsear.</summary>
+    private static PayQuickerErrorBody? TryReadError(string body)
+    {
+        if (string.IsNullOrWhiteSpace(body)) return null;
+        try { return JsonSerializer.Deserialize<PayQuickerErrorBody>(body, Json); }
+        catch (JsonException) { return null; }
+    }
+
+    private sealed class PayQuickerErrorBody
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("severity")]    public string? Severity    { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("error")]       public string? Error       { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("code")]        public int     Code        { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("message")]     public string? Message     { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("referenceId")] public string? ReferenceId { get; set; }
+    }
 
     private static string Truncate(string s, int max = 500) =>
         string.IsNullOrEmpty(s) ? string.Empty : (s.Length <= max ? s : s[..max] + "…");

@@ -90,7 +90,7 @@ public class PayQuickerSettingsProvider : IPayQuickerSettingsProvider
                 BaseUrl             = baseUrl,
                 ClientId            = _crypto.Decrypt(cred.ApiKeyEncrypted!),
                 ClientSecret        = _crypto.Decrypt(cred.SecretKeyEncrypted!),
-                FundingAccountToken = Decrypt(cred.MerchantIdEncrypted),
+                FundingAccountToken = NormalizeFundingAccount(Decrypt(cred.MerchantIdEncrypted), version),
                 ProgramToken        = Decrypt(cred.AdditionalSecretEncrypted),
                 TokenUrl            = tokenUrl,
                 Scopes              = scopes
@@ -108,6 +108,35 @@ public class PayQuickerSettingsProvider : IPayQuickerSettingsProvider
                 "Re-enter it in Admin → Billing → API Credentials. If it was saved by another service, " +
                 "confirm both hosts share the Data Protection key ring.");
         }
+    }
+
+    /// <summary>
+    /// La MISMA cuenta de fondeo se escribe distinto en cada version de la API:
+    ///
+    ///   v1  d2ffd5ee9d3945d7936a9648e706ccc6           (GUID pelado, sin guiones)
+    ///   v2  acct-d2ffd5ee-9d39-45d7-936a-9648e706ccc6  (prefijo acct- y con guiones)
+    ///
+    /// Cargar la forma equivocada no da un error entendible: el GET de invitaciones no valida
+    /// el formato y simplemente no encuentra nada, y el POST responde 500 con "An error
+    /// occurred while processing your request". Se normaliza a la forma que espera la version
+    /// seleccionada en vez de hacer que alguien pierda una tarde con ese 500.
+    /// </summary>
+    public static string? NormalizeFundingAccount(string? token, string version)
+    {
+        if (string.IsNullOrWhiteSpace(token)) return token;
+
+        var trimmed = token.Trim();
+        var bare    = trimmed.StartsWith("acct-", StringComparison.OrdinalIgnoreCase)
+            ? trimmed["acct-".Length..]
+            : trimmed;
+
+        // Si no es un GUID reconocible se devuelve tal cual: puede ser un identificador con
+        // otra forma y no corresponde adivinar.
+        if (!Guid.TryParse(bare, out var parsed)) return trimmed;
+
+        return version == "V2"
+            ? $"acct-{parsed:D}"   // con guiones
+            : parsed.ToString("N"); // pelado
     }
 
     private string? Decrypt(string? value) =>

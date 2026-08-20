@@ -87,6 +87,16 @@ public class PayQuickerV2Client : IPayQuickerClient
         var result = await SendAsync<V2BalanceSearchResponse>(
             HttpMethod.Post, "balances/search", payload, settings, "look up account", ct);
 
+        // Igual que en v1: que el proveedor diga "no existe" significa que hay que crearlo,
+        // no que la consulta haya fallado.
+        if (!result.IsSuccess && result.ErrorCode == PayQuickerHttp.NotFoundErrorCode)
+            return Result<PayQuickerAccountResult>.Success(new PayQuickerAccountResult
+            {
+                Exists         = false,
+                GatewayCode    = "NOT_FOUND",
+                GatewayMessage = "No PayQuicker account for this program user id yet."
+            });
+
         if (!result.IsSuccess)
             return Result<PayQuickerAccountResult>.Failure(result.ErrorCode!, result.Error!);
 
