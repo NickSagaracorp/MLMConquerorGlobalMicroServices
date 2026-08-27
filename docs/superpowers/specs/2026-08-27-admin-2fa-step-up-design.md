@@ -38,6 +38,7 @@ Hallazgos de la exploración previa que condicionan el diseño:
 | `PhoneNumber` / `PhoneNumberConfirmed` de Identity sin usar en todo el repo | — | Libres, pero se dejan intactos (ver §5) |
 | `IEncryptionService` disponible, con precedente `SsnEncrypted` | `SharedKernel/Interfaces/IEncryptionService.cs` | Se usa para el teléfono |
 | La llave privada RSA del JWT está commiteada en texto plano | `AdminAPI/appsettings.json:26`, `SignupAPI/appsettings.json:21` | **Bypass total de autenticación.** Ver §10 |
+| `Billing` y `CommissionEngine` validan con `SymmetricSecurityKey` sobre `Jwt:Key`, no con la pública RSA; y su `Audience` es `MLMConquerorGlobalEditionClients`, sin el punto | `Billing/Program.cs:156,170`, `CommissionEngine/Program.cs:89,101` | **Su autenticación está rota hoy.** Ver §10.6 |
 
 ---
 
@@ -236,11 +237,17 @@ public async Task<IActionResult> Release(...)
    consumido y lo marca.
 5. Registra el `AuthSecurityEvent` correspondiente.
 
-**Por qué token firmado y no estado en servidor.** AdminAPI, Billing, RankEngine y
-TicketManagementSystem cuelgan del mismo AdminWeb y los cuatro ya validan JWT RSA con la
-misma llave. Un token firmado funciona en todos sin estado compartido. Con estado en Redis
+**Por qué token firmado y no estado en servidor.** Las cuatro categorías de operaciones
+protegidas (§6.4) viven todas en AdminAPI, que valida RSA correctamente. Pero AdminWeb
+también consume RankEngine y TicketManagementSystem, que igualmente validan RSA con la
+misma llave pública: un token firmado funciona en los tres sin estado compartido, y sirve
+para extender el step-up a esos servicios sin trabajo adicional. Con estado en Redis
 dependeríamos de `Cache:Mode`, que en desarrollo cae a memoria en proceso y se rompe con
 más de una instancia.
+
+`Billing` y `CommissionEngine` quedan explícitamente fuera del alcance del step-up hasta
+que se repare su validación (§10.6). Ninguna operación del §6.4 vive en ellos, así que no
+bloquea este trabajo.
 
 El precio es que dentro de la ventana de frescura el token no se puede revocar. Por eso las
 operaciones más graves se configuran con ventana `0`: un token, un uso.
@@ -400,6 +407,26 @@ para bajas de personal.
 Identity guarda la clave del autenticador en `AspNetUserTokens` sin cifrar. Cifrarla obliga
 a renunciar a los helpers de Identity (`GetAuthenticatorKeyAsync` y compañía). Se acepta el
 comportamiento por defecto y se documenta.
+
+### 10.6 Autenticación rota en Billing y CommissionEngine
+
+Hallazgo lateral, anterior a este trabajo y no causado por él.
+
+`Billing/Program.cs:156,170` y `CommissionEngine/Program.cs:89,101` construyen la llave de
+validación como `SymmetricSecurityKey` sobre `Jwt:Key` (HMAC), mientras que los tokens los
+firman `SignupAPI` y `AdminAPI` con RSA/RS256. Además, la audiencia configurada en ambos es
+`MLMConquerorGlobalEditionClients` —sin punto— contra el `MLMConquerorGlobalEdition.Clients`
+que llevan los tokens emitidos.
+
+Algoritmo equivocado y audiencia equivocada: `api/v1/billing/charge`, `api/v1/billing/refund`
+y `api/v1/commissions/*` responden 401 a cualquier token legítimo. `SharedAPICenter` usa la
+misma configuración simétrica pero su único controlador es de webhooks y es público a
+propósito, así que no se ve afectado.
+
+La reparación es un cambio pequeño —copiar el bloque de validación RSA que ya usan AdminAPI,
+SignupAPI, BizCenter, RankEngine y TicketManagementSystem— pero **no entra en este alcance**
+porque afecta a servicios de cobro y hay que verificar qué depende del comportamiento actual.
+Requiere su propio ticket.
 
 ---
 
