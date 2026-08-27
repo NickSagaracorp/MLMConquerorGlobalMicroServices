@@ -1,9 +1,10 @@
 # ── Claude memory & config ─────────────────────────────────────────────────────
 .claude/
 
-# ── Markdown — exclude all .md except README.md ────────────────────────────────
+# ── Markdown — exclude all .md except README.md y los specs de diseño ─────────
 *.md
 !README.md
+!docs/superpowers/specs/*.md
 
 # ── Visual Studio ─────────────────────────────────────────────────────────────
 .vs/
