@@ -6,6 +6,9 @@
 !README.md
 !docs/superpowers/specs/*.md
 
+# ── Specs de diseño — el .md es la fuente; el .pdf se genera a partir de él ────
+docs/superpowers/specs/*.pdf
+
 # ── Visual Studio ─────────────────────────────────────────────────────────────
 .vs/
 *.suo
