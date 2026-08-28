@@ -14,8 +14,13 @@ using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Phone;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.RefreshToken;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.ResendTwoFactor;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.ResetPassword;
+using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.SetPassword;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.VerifyTwoFactor;
+using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Queries.AccountStatus;
+using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Queries.PersonalData;
 using System.Security.Claims;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Controllers;
 
@@ -298,6 +303,112 @@ public class AuthController : ControllerBase
             : BadRequest(ApiResponse<bool>.Fail(result.ErrorCode!, result.Error!));
     }
 
+
+    /// <summary>
+    /// Estado de la cuenta del usuario autenticado: correo, teléfono enmascarado, 2FA, canal
+    /// preferido, canales disponibles y si la cuenta tiene contraseña.
+    /// </summary>
+    /// <remarks>
+    /// El usuario sale de las claims, nunca de la query: si el identificador viniera de quien
+    /// llama, cualquiera podría leer el estado de la cuenta de otro con solo cambiarlo.
+    ///
+    /// El teléfono se devuelve solo enmascarado. El número entero vive cifrado porque es a la vez
+    /// PII y factor de autenticación; descifrarlo para la interfaz lo pondría en el tráfico y en
+    /// los registros a cambio de nada, porque la pantalla solo enseña cuatro dígitos.
+    /// </remarks>
+    [HttpGet("account-status")]
+    [Authorize]
+    public async Task<IActionResult> AccountStatus(CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                  ?? User.FindFirstValue("sub")
+                  ?? string.Empty;
+        var result = await _mediator.Send(new GetAccountStatusQuery(userId), ct);
+        return result.IsSuccess
+            ? Ok(ApiResponse<AccountStatusResponse>.Ok(result.Value!))
+            : BadRequest(ApiResponse<AccountStatusResponse>.Fail(result.ErrorCode!, result.Error!));
+    }
+
+    /// <summary>Los datos que el sistema guarda de la cuenta del usuario autenticado.</summary>
+    /// <remarks>
+    /// El usuario sale de las claims. Aquí importa más que en ningún otro endpoint: con el
+    /// identificador en la query, esto descargaría los datos personales de cualquier cuenta.
+    ///
+    /// La respuesta se construye con una lista explícita de campos en el handler — nunca
+    /// serializando la entidad y quitando lo que sobra. Fuera quedan el hash de la contraseña, el
+    /// token de refresco, la clave del autenticador, el teléfono cifrado, el SecurityStamp y el
+    /// ConcurrencyStamp: son material con el que se suplanta la cuenta, no datos del usuario.
+    /// </remarks>
+    [HttpGet("personal-data")]
+    [Authorize]
+    public async Task<IActionResult> PersonalData(CancellationToken ct)
+    {
+        var result = await LoadPersonalDataAsync(ct);
+        return result.IsSuccess
+            ? Ok(ApiResponse<PersonalDataResponse>.Ok(result.Value!))
+            : BadRequest(ApiResponse<PersonalDataResponse>.Fail(result.ErrorCode!, result.Error!));
+    }
+
+    /// <summary>Los mismos datos que <see cref="PersonalData"/>, como archivo descargable.</summary>
+    /// <remarks>
+    /// El cuerpo va sin el sobre <c>ApiResponse</c>: lo que se guarda en disco es el archivo de
+    /// datos del usuario, y meterle dentro los campos de transporte de la API lo ensuciaría sin
+    /// aportar nada a quien lo abra.
+    /// </remarks>
+    [HttpGet("personal-data/download")]
+    [Authorize]
+    public async Task<IActionResult> DownloadPersonalData(CancellationToken ct)
+    {
+        var result = await LoadPersonalDataAsync(ct);
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<PersonalDataResponse>.Fail(result.ErrorCode!, result.Error!));
+
+        var json = JsonSerializer.SerializeToUtf8Bytes(result.Value!, PersonalDataFileOptions);
+        var fileName = $"personal-data-{DateTime.UtcNow:yyyy-MM-dd}.json";
+
+        // File() pone Content-Disposition: attachment con este nombre.
+        return File(json, "application/json", fileName);
+    }
+
+    /// <summary>
+    /// Fija la primera contraseña de una cuenta que no tiene ninguna.
+    /// </summary>
+    /// <remarks>
+    /// Hoy no hay logins externos, así que ninguna cuenta llega aquí sin contraseña y toda llamada
+    /// termina en <c>PASSWORD_ALREADY_SET</c>. El endpoint existe porque estaba en el inventario
+    /// acordado y porque un inicio de sesión con Google o Microsoft lo necesitaría: esas cuentas
+    /// nacen sin contraseña local. No es código muerto por descuido.
+    /// </remarks>
+    [HttpPost("set-password")]
+    [Authorize]
+    public async Task<IActionResult> SetPassword(
+        [FromBody] SetPasswordRequest request,
+        CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                  ?? User.FindFirstValue("sub")
+                  ?? string.Empty;
+        var result = await _mediator.Send(new SetPasswordCommand(userId, request), ct);
+        return result.IsSuccess
+            ? Ok(ApiResponse<bool>.Ok(true, "Password set successfully."))
+            : BadRequest(ApiResponse<bool>.Fail(result.ErrorCode!, result.Error!));
+    }
+
+
+    /// <summary>Enums como texto y con sangría: el archivo lo abre una persona, no solo un cliente.</summary>
+    private static readonly JsonSerializerOptions PersonalDataFileOptions = new()
+    {
+        WriteIndented = true,
+        Converters    = { new JsonStringEnumConverter() }
+    };
+
+    private Task<Result<PersonalDataResponse>> LoadPersonalDataAsync(CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                  ?? User.FindFirstValue("sub")
+                  ?? string.Empty;
+        return _mediator.Send(new GetPersonalDataQuery(userId), ct);
+    }
 
     private void SetRefreshTokenCookie(string rawToken)
     {
