@@ -27,6 +27,7 @@
     <ProjectReference Include="..\MLMConquerorGlobalEdition.Authn\MLMConquerorGlobalEdition.Authn.csproj" />
     <ProjectReference Include="..\MLMConquerorGlobalEdition.Domain\MLMConquerorGlobalEdition.Domain.csproj" />
     <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel\MLMConquerorGlobalEdition.SharedKernel.csproj" />
+    <ProjectReference Include="..\MLMConquerorGlobalEdition.Repository\MLMConquerorGlobalEdition.Repository.csproj" />
   </ItemGroup>
 
 </Project>

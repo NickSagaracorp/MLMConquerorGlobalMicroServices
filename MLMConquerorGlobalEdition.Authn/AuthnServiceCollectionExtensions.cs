@@ -15,4 +15,14 @@ public static class AuthnServiceCollectionExtensions
         services.AddScoped<IChallengeTokenService, ChallengeTokenService>();
         return services;
     }
+
+    /// <summary>
+    /// Registra el enrolamiento TOTP. Depende de <c>UserManager&lt;ApplicationUser&gt;</c>,
+    /// <c>IConfiguration</c> y <c>IDateTimeProvider</c>, que cada host ya registra por su cuenta.
+    /// </summary>
+    public static IServiceCollection AddAuthnTotpEnrollment(this IServiceCollection services)
+    {
+        services.AddScoped<ITotpEnrollmentService, TotpEnrollmentService>();
+        return services;
+    }
 }
