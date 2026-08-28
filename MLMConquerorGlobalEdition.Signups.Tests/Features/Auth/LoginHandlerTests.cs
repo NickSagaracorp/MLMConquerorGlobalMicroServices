@@ -259,4 +259,81 @@ public class LoginHandlerTests
             It.Is<Dictionary<string, string>>(d => d.ContainsKey("Code") && d["Code"] == "123456"),
             It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task Handle_WhenUserLockedOut_ReturnsAccountLocked()
+    {
+        var user = new ApplicationUser
+        {
+            Id = "u1", Email = "locked@test.com", UserName = "locked@test.com", IsActive = true
+        };
+
+        var userManager = UserManagerHelper.Create();
+        userManager.Setup(m => m.FindByEmailAsync("locked@test.com")).ReturnsAsync(user);
+        userManager.Setup(m => m.IsLockedOutAsync(user)).ReturnsAsync(true);
+
+        var handler = BuildHandler(userManager);
+
+        var result = await handler.Handle(
+            new LoginCommand(new LoginRequest { Email = "locked@test.com", Password = "pass" }),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be("ACCOUNT_LOCKED");
+
+        // No debe llegar a comprobar la contraseña de una cuenta bloqueada.
+        userManager.Verify(m => m.CheckPasswordAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()),
+                           Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenPasswordInvalid_IncrementsAccessFailedCount()
+    {
+        var user = new ApplicationUser
+        {
+            Id = "u1", Email = "user@test.com", UserName = "user@test.com", IsActive = true
+        };
+
+        var userManager = UserManagerHelper.Create();
+        userManager.Setup(m => m.FindByEmailAsync("user@test.com")).ReturnsAsync(user);
+        userManager.Setup(m => m.IsLockedOutAsync(user)).ReturnsAsync(false);
+        userManager.Setup(m => m.CheckPasswordAsync(user, "wrong")).ReturnsAsync(false);
+        userManager.Setup(m => m.AccessFailedAsync(user)).ReturnsAsync(IdentityResult.Success);
+
+        var handler = BuildHandler(userManager);
+
+        var result = await handler.Handle(
+            new LoginCommand(new LoginRequest { Email = "user@test.com", Password = "wrong" }),
+            CancellationToken.None);
+
+        result.ErrorCode.Should().Be("INVALID_CREDENTIALS");
+        userManager.Verify(m => m.AccessFailedAsync(user), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenPasswordValid_ResetsAccessFailedCount()
+    {
+        var user = new ApplicationUser
+        {
+            Id = "u1", Email = "user@test.com", UserName = "user@test.com",
+            IsActive = true, TwoFactorEnabled = false
+        };
+
+        var userManager = UserManagerHelper.Create();
+        userManager.Setup(m => m.FindByEmailAsync("user@test.com")).ReturnsAsync(user);
+        userManager.Setup(m => m.IsLockedOutAsync(user)).ReturnsAsync(false);
+        userManager.Setup(m => m.CheckPasswordAsync(user, "correct")).ReturnsAsync(true);
+        userManager.Setup(m => m.ResetAccessFailedCountAsync(user)).ReturnsAsync(IdentityResult.Success);
+        userManager.Setup(m => m.GetRolesAsync(user)).ReturnsAsync(new List<string> { "Member" });
+        userManager.Setup(m => m.UpdateAsync(user)).ReturnsAsync(IdentityResult.Success);
+
+        var handler = BuildHandler(userManager);
+
+        var result = await handler.Handle(
+            new LoginCommand(new LoginRequest { Email = "user@test.com", Password = "correct" }),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        userManager.Verify(m => m.ResetAccessFailedCountAsync(user), Times.Once);
+    }
 }

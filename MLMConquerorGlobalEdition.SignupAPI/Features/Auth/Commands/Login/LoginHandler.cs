@@ -43,9 +43,20 @@ public class LoginHandler : IRequestHandler<LoginCommand, Result<AuthResponse>>
         if (user is null || !user.IsActive)
             return Result<AuthResponse>.Failure("INVALID_CREDENTIALS", "Invalid email or password.");
 
+        // Lockout de Identity: configurado en Program.cs (5 intentos / 15 min) pero hasta
+        // ahora nunca invocado desde aquí, así que el contador no subía y el bloqueo no
+        // ocurría. Este es el camino de login de AdminWeb y BizCenterWeb.
+        if (await _userManager.IsLockedOutAsync(user))
+            return Result<AuthResponse>.Failure("ACCOUNT_LOCKED", "Account is temporarily locked.");
+
         var passwordValid = await _userManager.CheckPasswordAsync(user, req.Password);
         if (!passwordValid)
+        {
+            await _userManager.AccessFailedAsync(user);
             return Result<AuthResponse>.Failure("INVALID_CREDENTIALS", "Invalid email or password.");
+        }
+
+        await _userManager.ResetAccessFailedCountAsync(user);
 
         // Read MemberProfile.DefaultLanguage once — used either to localize the
         // 2FA code email below or to embed in the access-token claims.
