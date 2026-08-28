@@ -1,6 +1,8 @@
 <Solution>
   <Project Path="MLMConquerorGlobalEdition.AdminAPI.Tests/MLMConquerorGlobalEdition.AdminAPI.Tests.csproj" />
   <Project Path="MLMConquerorGlobalEdition.AdminAPI/MLMConquerorGlobalEdition.AdminAPI.csproj" />
+  <Project Path="MLMConquerorGlobalEdition.Authn/MLMConquerorGlobalEdition.Authn.csproj" />
+  <Project Path="MLMConquerorGlobalEdition.Authn.Tests/MLMConquerorGlobalEdition.Authn.Tests.csproj" />
   <Project Path="MLMConquerorGlobalEdition.Billing.Tests/MLMConquerorGlobalEdition.Billing.Tests.csproj" />
   <Project Path="MLMConquerorGlobalEdition.Billing/MLMConquerorGlobalEdition.Billing.csproj" />
   <Project Path="MLMConquerorGlobalEdition.BizCenter/MLMConquerorGlobalEdition.BizCenter.csproj" />
