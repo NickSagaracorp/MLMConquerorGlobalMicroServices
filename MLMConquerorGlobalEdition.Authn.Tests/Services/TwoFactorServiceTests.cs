@@ -303,6 +303,40 @@ public class TwoFactorServiceTests
             It.IsAny<TwoFactorChannel>(), It.IsAny<string?>(), It.IsAny<string?>()), Times.Never);
     }
 
+    [Fact]
+    public async Task IssueAsync_WhenTransportThrows_RefundsIssueQuota()
+    {
+        var user    = BuildUser(preferred: TwoFactorChannel.Email);
+        var service = BuildService();
+
+        _email.Setup(e => e.SendAsync(
+                  It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                  It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()))
+              .ThrowsAsync(new InvalidOperationException("SMTP down"));
+
+        await service.IssueAsync(user, TwoFactorPurpose.Login);
+
+        // El cupo se apunta antes de despachar, porque si no el tope no sería real. Como
+        // aquí no salió ningún mensaje, hay que devolverlo: sin esto una caída de SES
+        // consumiría las tres emisiones del usuario y lo dejaría fuera quince minutos,
+        // sin poder probar siquiera otro canal.
+        _cache.Verify(c => c.DecrementAsync(
+            CacheKeys.TwoFactorIssueWindow(user.Id), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task IssueAsync_WhenDispatchSucceeds_DoesNotRefundQuota()
+    {
+        var user    = BuildUser(preferred: TwoFactorChannel.Email);
+        var service = BuildService();
+
+        var result = await service.IssueAsync(user, TwoFactorPurpose.Login);
+
+        result.IsSuccess.Should().BeTrue(because: result.Error);
+        _cache.Verify(c => c.DecrementAsync(
+            It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     // ── 9-10. enmascarado ────────────────────────────────────────────────────
 
     [Fact]

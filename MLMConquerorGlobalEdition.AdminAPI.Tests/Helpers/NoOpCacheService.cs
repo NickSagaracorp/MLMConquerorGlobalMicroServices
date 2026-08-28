@@ -20,4 +20,7 @@ public sealed class NoOpCacheService : ICacheService
     /// <summary>Cada llamada es la primera: nada de estado entre pruebas.</summary>
     public Task<long> IncrementAsync(string key, TimeSpan expiry, CancellationToken ct = default)
         => Task.FromResult(1L);
+
+    public Task<long> DecrementAsync(string key, CancellationToken ct = default)
+        => Task.FromResult(0L);
 }

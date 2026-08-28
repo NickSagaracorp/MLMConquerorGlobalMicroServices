@@ -143,10 +143,25 @@ builder.Services.AddScoped<IS3StorageService, S3StorageService>();
     MLMConquerorGlobalEdition.SharedKernel.Services.CacheBackendInfo info;
     if (redisReachable)
     {
-        // La conexión del sondeo se conserva en lugar de desecharse: CacheService.IncrementAsync
-        // la necesita para INCR, y sin un contador atómico los topes de 2FA (5 intentos por
-        // challenge, 3 emisiones por ventana) dejan de ser topes en cuanto hay concurrencia.
-        builder.Services.AddSingleton(multiplexer!);
+        // CacheService.IncrementAsync necesita una conexión para INCR: sin contador atómico
+        // los topes de 2FA (5 intentos por challenge, 3 emisiones por ventana) dejan de ser
+        // topes en cuanto hay concurrencia.
+        //
+        // Se abre una conexión propia en vez de reutilizar la del sondeo. Aquella lleva
+        // ConnectTimeout=250 para no retrasar el arranque cuando Redis no está, y ese valor
+        // es demasiado agresivo para una conexión de larga vida: bajo carga o con latencia
+        // de red, una reconexión se quedaría corta y los contadores caerían al respaldo por
+        // proceso más a menudo de lo debido, justo cuando más tráfico hay.
+        multiplexer!.Dispose();
+        builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(_ =>
+            StackExchange.Redis.ConnectionMultiplexer.Connect(
+                new StackExchange.Redis.ConfigurationOptions
+                {
+                    EndPoints          = { redisConn },
+                    ConnectTimeout     = 5000,
+                    ConnectRetry       = 3,
+                    AbortOnConnectFail = false
+                }));
         builder.Services.AddStackExchangeRedisCache(o => o.Configuration = redisConn);
         info = new MLMConquerorGlobalEdition.SharedKernel.Services.CacheBackendInfo
         {

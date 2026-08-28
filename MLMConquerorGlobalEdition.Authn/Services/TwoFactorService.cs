@@ -107,6 +107,17 @@ public sealed class TwoFactorService : ITwoFactorService
         }
         catch (Exception)
         {
+            // El cupo se apunta antes de despachar —tiene que ser así para que el tope sea
+            // real— pero aquí no se envió nada, así que se devuelve. Sin esto, una caída de
+            // SES o Twilio consumiría las tres emisiones del usuario y lo dejaría fuera
+            // quince minutos, sin poder siquiera probar otro canal: con 2FA obligatorio, la
+            // caída de un proveedor externo se convertiría en un bloqueo de acceso.
+            //
+            // Devolverlo no reabre el hueco que cerró el contador atómico: solo ocurre
+            // cuando el mensaje no llegó a salir, y quien ataca no controla que el proveedor
+            // se caiga.
+            await _cache.DecrementAsync(CacheKeys.TwoFactorIssueWindow(user.Id), ct);
+
             // Sin despacho no hay challenge. Devolver uno dejaría al usuario esperando un
             // código que nunca va a llegar, sin manera de saber que el problema es el
             // transporte; con CHANNEL_UNAVAILABLE la interfaz puede ofrecerle otro canal.

@@ -133,6 +133,95 @@ public class CacheService : ICacheService
         return await IncrementInProcessAsync(key, expiry, ct);
     }
 
+    /// <inheritdoc/>
+    public async Task<long> DecrementAsync(string key, CancellationToken ct = default)
+    {
+        if (_multiplexer is not null)
+        {
+            try
+            {
+                // Sin KeyExpire: devolver un cupo no debe alargar ni reiniciar la ventana.
+                // Si la clave ya expiró, DECR la crearía en -1; se limpia para no dejar un
+                // contador negativo que luego permitiría más emisiones de la cuenta.
+                var db    = _multiplexer.GetDatabase();
+                var value = await db.StringDecrementAsync(key);
+
+                if (value <= 0)
+                    await db.KeyDeleteAsync(key);
+
+                return value;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(
+                    ex, "Cache DecrementAsync via Redis failed for key {Key}; falling back to in-process counter.", key);
+            }
+        }
+
+        return await DecrementInProcessAsync(key, ct);
+    }
+
+    /// <summary>
+    /// Respaldo sin Redis para <see cref="DecrementAsync"/>. Conserva el vencimiento que ya
+    /// tenía el contador, por la misma razón que el incremento: recalcularlo desde ahora
+    /// estiraría la ventana.
+    /// </summary>
+    private async Task<long> DecrementInProcessAsync(string key, CancellationToken ct)
+    {
+        var gate = _stripes[(uint)StringComparer.Ordinal.GetHashCode(key) % _stripes.Length];
+
+        await gate.WaitAsync(ct);
+        try
+        {
+            var now = DateTimeOffset.UtcNow;
+
+            byte[]? bytes;
+            try
+            {
+                bytes = await _cache.GetAsync(key, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Cache DecrementAsync read failed for key {Key}; ignoring.", key);
+                return 0;
+            }
+
+            if (bytes is null || !TryParseCounter(bytes, out var count, out var expiresAt) || expiresAt <= now)
+                return 0;
+
+            var next = count - 1;
+
+            try
+            {
+                if (next <= 0)
+                {
+                    await _cache.RemoveAsync(key, ct);
+                    return 0;
+                }
+
+                var remaining = expiresAt - now;
+                if (remaining < TimeSpan.FromSeconds(1))
+                    remaining = TimeSpan.FromSeconds(1);
+
+                await _cache.SetAsync(
+                    key,
+                    FormatCounter(next, expiresAt),
+                    new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = remaining },
+                    ct);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Cache DecrementAsync write failed for key {Key}; ignoring.", key);
+            }
+
+            return next;
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
     /// <summary>
     /// Respaldo sin Redis: el mismo leer-modificar-escribir de siempre, pero bajo un cerrojo,
     /// de modo que dentro del proceso sí es un incremento.
