@@ -713,6 +713,7 @@ QRCoder: una API externa de QR recibiria el secreto TOTP del usuario."
 ## Task 4: Orquestación, límites y antirreplay
 
 **Files:**
+- Create: `MLMConquerorGlobalEdition.SharedKernel/Interfaces/ISmsService.cs` (ver nota de orden)
 - Create: `MLMConquerorGlobalEdition.Authn/Abstractions/ITwoFactorService.cs`
 - Create: `MLMConquerorGlobalEdition.Authn/Models/ChallengeIssued.cs`
 - Create: `MLMConquerorGlobalEdition.Authn/Services/TwoFactorService.cs`
@@ -720,6 +721,12 @@ QRCoder: una API externa de QR recibiria el secreto TOTP del usuario."
 - Create: `MLMConquerorGlobalEdition.Authn.Tests/Services/TwoFactorServiceTests.cs`
 
 Esta es la pieza con más lógica del plan. Léela entera antes de empezar.
+
+> **Corrección de orden respecto a la versión original del plan.** La Task 5 creaba
+> `ISmsService`, pero las pruebas de esta tarea lo mockean: tal como estaba escrito, esta
+> tarea no compilaba. La **interfaz** se crea aquí, en `SharedKernel`, junto a
+> `IEmailService`. La Task 5 se queda solo con las implementaciones y el proyecto
+> `Notifications`.
 
 - [ ] **Step 1: El contrato**
 
@@ -868,6 +875,9 @@ por mensaje."
 - Create: `MLMConquerorGlobalEdition.Notifications/Sms/TwilioSmsService.cs`
 - Create: `MLMConquerorGlobalEdition.Notifications.Tests/...`
 - Modify: `MLMConquerorGlobalEdition.slnx`
+
+> **La interfaz `ISmsService` ya se creó en la Task 4** (ver la corrección de orden allí).
+> Este paso queda como referencia de su contrato; si ya existe, no la dupliques.
 
 - [ ] **Step 1: La interfaz, junto a `IEmailService`**
 
