@@ -1,20 +1,21 @@
 @page "/admin/enroll-authenticator"
 @layout MLMConquerorGlobalEdition.SharedComponents.Components.Layout.BlankLayout
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
 @inject TwoFactorPageData PageData
 @inject NavigationManager Navigation
+@inject IStringLocalizer<SharedResources> L
 
 @* Alta de la aplicación autenticadora en el portal de administración.
 
-   Sin @@rendermode, igual que Login.razor: SSR estático. Importa más aquí que en las demás
-   páginas — abrir el enrolamiento REGENERA la clave del usuario en la API, así que cada render
-   que llamase a la API invalidaría el QR anterior. En SSR estático OnInitializedAsync se
-   ejecuta una vez por petición; con render interactivo se ejecutaría dos y el usuario acabaría
-   escaneando un QR ya muerto.
+   Sin @@rendermode, igual que Login.razor: SSR estático. El formulario postea a un endpoint
+   mínimo y el token del enrolamiento vive en una cookie HttpOnly, así que no hay nada que
+   necesite un circuito interactivo.
 
    El componente compartido se referencia con su nombre completo a propósito: se llama igual que
    esta página, y un @@using de su espacio de nombres dejaría la etiqueta ambigua. *@
 
-<PageTitle>Configurar la verificación en dos pasos</PageTitle>
+<PageTitle>@L["Enroll.Title"]</PageTitle>
 
 <div class="login-wrapper-admin">
     <div class="login-card-admin">
@@ -30,7 +31,6 @@
                 QrCodePngDataUri="@_material.QrCodePngDataUri"
                 SharedKey="@_material.SharedKey"
                 ErrorCode="@Error"
-                KeyChangedOnError="true"
                 CancelUrl="/admin/login" />
         }
     </div>
@@ -47,6 +47,10 @@
         // El QR y la clave son material de página, no de formulario: se piden aquí, durante el
         // render, y no en AuthEndpoints. La llamada sale del servidor porque la cookie del
         // enrolamiento es HttpOnly y el navegador no puede leerla.
+        //
+        // Repetir esta llamada es inofensivo: BeginAsync reutiliza la clave mientras el
+        // enrolamiento sigue abierto, así que volver aquí tras un código fallido devuelve el
+        // mismo QR que el usuario ya escaneó.
         _material = await PageData.BeginEnrollmentAsync();
 
         // Sin material no hay pantalla: o no hay cookie, o la API rechazó el token, o no

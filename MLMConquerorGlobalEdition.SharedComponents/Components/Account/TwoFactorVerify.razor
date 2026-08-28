@@ -7,42 +7,45 @@
    El reto (ChallengeToken) no aparece por ninguna parte: viaja en una cookie HttpOnly que
    pone el manejador del POST. Este componente nunca lo ve ni lo necesita. *@
 
+@inject IStringLocalizer<SharedResources> L
+
 <div class="two-factor-verify">
 
-    <p class="mb-1">Introduce el código de 6 dígitos para terminar de entrar.</p>
+    <h5 class="mb-1">@L["TwoFactor.Title"]</h5>
+    <p class="mb-1">@L["TwoFactor.Subtitle"]</p>
 
     @* Con el autenticador no hay destino que enseñar: el código no se envía a ningún sitio,
        lo genera la aplicación del propio teléfono. *@
     @if (IsAuthenticator)
     {
-        <p class="text-muted small mb-3">
-            Abre tu aplicación de autenticación e introduce el código que muestra.
-        </p>
+        <p class="text-muted small mb-3">@L["TwoFactor.UseAuthenticator"]</p>
     }
     else if (!string.IsNullOrWhiteSpace(MaskedTarget))
     {
-        <p class="text-muted small mb-3">Te enviamos un código a @MaskedTarget.</p>
+        <p class="text-muted small mb-3">@string.Format((string)L["TwoFactor.SentTo"], MaskedTarget)</p>
     }
-    else
+    else if (IsSms)
     {
-        @* Sin destino conocido, la frase se queda en el canal: es lo único que se puede
-           afirmar con certeza y sigue siendo útil para saber dónde mirar. *@
-        <p class="text-muted small mb-3">Te enviamos un código a @ChannelNoun.</p>
+        @* Sin destino conocido y con SMS, la frase se queda en el canal: es lo único que se
+           puede afirmar con certeza y sigue siendo útil para saber dónde mirar. Con correo sin
+           destino no se dice nada: la línea de arriba ya explica qué hay que hacer, y nombrar
+           un buzón que no se sabe cuál es no ayuda a encontrarlo. *@
+        <p class="text-muted small mb-3">@L["TwoFactor.SentToPhone"]</p>
     }
 
     @if (Resent)
     {
-        <div class="alert alert-info" role="status">@TwoFactorMessages.ResentNotice</div>
+        <div class="alert alert-info" role="status">@L["TwoFactor.Resent"]</div>
     }
 
     @if (!string.IsNullOrWhiteSpace(ErrorCode))
     {
-        <div class="alert alert-danger" role="alert">@TwoFactorMessages.ForErrorCode(ErrorCode)</div>
+        <div class="alert alert-danger" role="alert">@L[TwoFactorMessages.ErrorKeyFor(ErrorCode)]</div>
     }
 
     <form method="post" action="@FormAction">
         <div class="mb-3">
-            <label class="form-label" for="two-factor-code">Código de verificación</label>
+            <label class="form-label" for="two-factor-code">@L["TwoFactor.CodeLabel"]</label>
             @* inputmode="numeric" saca el teclado numérico en el móvil en lugar del alfabético.
                autocomplete="one-time-code" es lo que hace que el sistema operativo ofrezca
                rellenar el código que acaba de llegar por SMS sin copiarlo a mano. Los dos
@@ -55,12 +58,12 @@
                    autocomplete="one-time-code"
                    maxlength="6"
                    pattern="[0-9]{6}"
-                   placeholder="123456"
+                   placeholder="@L["TwoFactor.CodePlaceholder"]"
                    required
                    autofocus />
-            <small class="text-muted">6 dígitos, solo números.</small>
+            <small class="text-muted">@L["TwoFactor.CodeHint"]</small>
         </div>
-        <button type="submit" class="btn btn-warning w-100 fw-semibold">Verificar</button>
+        <button type="submit" class="btn btn-warning w-100 fw-semibold">@L["TwoFactor.Submit"]</button>
     </form>
 
     @* El botón de reenviar no existe para el autenticador: no hay nada que reenviar y pulsarlo
@@ -69,9 +72,9 @@
     {
         <form method="post" action="@ResendAction" class="mt-3 mb-0">
             <p class="mb-0 small">
-                ¿No te llegó el código?
+                @L["TwoFactor.NoCodeQuestion"]
                 <button type="submit" class="btn btn-link p-0 align-baseline text-decoration-none">
-                    Enviar otro
+                    @L["TwoFactor.Resend"]
                 </button>
             </p>
         </form>
@@ -80,7 +83,7 @@
     @if (!string.IsNullOrWhiteSpace(CancelUrl))
     {
         <p class="mt-3 mb-0 small">
-            <a href="@CancelUrl" class="text-decoration-none">Cancelar y volver a iniciar sesión</a>
+            <a href="@CancelUrl" class="text-decoration-none">@L["TwoFactor.Cancel"]</a>
         </p>
     }
 </div>
@@ -118,10 +121,7 @@
 
     private bool IsAuthenticator => TwoFactorMessages.IsAuthenticator(Channel);
 
-    private bool ShowResend => !IsAuthenticator && !string.IsNullOrWhiteSpace(ResendAction);
+    private bool IsSms => TwoFactorMessages.IsSms(Channel);
 
-    private string ChannelNoun =>
-        string.Equals(Channel?.Trim(), "Sms", StringComparison.OrdinalIgnoreCase)
-            ? "tu teléfono"
-            : "tu correo";
+    private bool ShowResend => !IsAuthenticator && !string.IsNullOrWhiteSpace(ResendAction);
 }

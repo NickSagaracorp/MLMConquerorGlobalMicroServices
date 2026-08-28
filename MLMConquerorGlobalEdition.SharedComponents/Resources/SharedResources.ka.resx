@@ -1170,6 +1170,27 @@
   <data name="TwoFactor.ErrorNotImplemented" xml:space="preserve"><value>ორფაქტორიანი ვერიფიკაცია ჯერ არ არის ხელმისაწვდომი. გააგრძელეთ შესვლის გვერდიდან.</value></data>
   <data name="TwoFactor.ServerError" xml:space="preserve"><value>სერვერთან კავშირი ვერ ხერხდება. სცადეთ მოგვიანებით.</value></data>
 
+  <!-- TwoFactor / Enroll — pantallas de segundo factor de SharedComponents.Components.Account -->
+  <data name="TwoFactor.SentToPhone" xml:space="preserve"><value>კოდი გავგზავნეთ თქვენს ტელეფონზე</value></data>
+  <data name="TwoFactor.UseAuthenticator" xml:space="preserve"><value>გახსენით ავთენტიფიკატორის აპლიკაცია და შეიყვანეთ მასში ნაჩვენები კოდი.</value></data>
+  <data name="TwoFactor.Submit" xml:space="preserve"><value>დადასტურება</value></data>
+  <data name="TwoFactor.Resend" xml:space="preserve"><value>ახალი კოდის გაგზავნა</value></data>
+  <data name="TwoFactor.Resent" xml:space="preserve"><value>ახალი კოდი გამოგიგზავნეთ.</value></data>
+  <data name="TwoFactor.Cancel" xml:space="preserve"><value>შესვლის გვერდზე დაბრუნება</value></data>
+  <data name="TwoFactor.Error.CodeInvalid" xml:space="preserve"><value>ეს კოდი არასწორია. შეამოწმეთ და სცადეთ თავიდან.</value></data>
+  <data name="TwoFactor.Error.CodeExpired" xml:space="preserve"><value>კოდს ვადა გაუვიდა. მოითხოვეთ ახალი.</value></data>
+  <data name="TwoFactor.Error.InvalidChallenge" xml:space="preserve"><value>ვერიფიკაციის ეს სესია აღარ არის მოქმედი. გთხოვთ, თავიდან შეხვიდეთ.</value></data>
+  <data name="TwoFactor.Error.TooManyAttempts" xml:space="preserve"><value>ძალიან ბევრი მცდელობა. მოითხოვეთ ახალი კოდი.</value></data>
+  <data name="TwoFactor.Error.TooManyRequests" xml:space="preserve"><value>ძალიან ბევრი კოდი მოითხოვეთ. დაელოდეთ რამდენიმე წუთს.</value></data>
+  <data name="TwoFactor.Error.ChannelUnavailable" xml:space="preserve"><value>კოდის გაგზავნა ვერ მოხერხდა. სცადეთ რამდენიმე წუთში.</value></data>
+  <data name="TwoFactor.Error.Generic" xml:space="preserve"><value>კოდის დადასტურება ვერ მოხერხდა. სცადეთ თავიდან.</value></data>
+  <data name="Enroll.Title" xml:space="preserve"><value>ორფაქტორიანი ვერიფიკაციის დაყენება</value></data>
+  <data name="Enroll.Intro" xml:space="preserve"><value>დააინსტალირეთ ავთენტიფიკატორის აპლიკაცია — Google Authenticator, Microsoft Authenticator ან 1Password —, დაასკანერეთ მისით ეს კოდი და შეიყვანეთ ექვსციფრიანი რიცხვი, რომელსაც ის აჩვენებს.</value></data>
+  <data name="Enroll.ManualKey" xml:space="preserve"><value>ვერ ასკანერებთ კოდს? ამის ნაცვლად შეიყვანეთ ეს გასაღები თქვენს აპლიკაციაში:</value></data>
+  <data name="Enroll.QrAlt" xml:space="preserve"><value>QR კოდი თქვენი ავთენტიფიკატორის აპლიკაციისთვის</value></data>
+  <data name="Enroll.Notice" xml:space="preserve"><value>ამიერიდან შესასვლელად დაგჭირდებათ ეს აპლიკაცია.</value></data>
+  <data name="Enroll.Submit" xml:space="preserve"><value>დადასტურება და გაგრძელება</value></data>
+
   <!-- PageTitle — F5 -->
   <data name="PageTitle.Tickets" xml:space="preserve"><value>მხარდაჭერის ბილეთები</value></data>
   <data name="PageTitle.TicketDetail" xml:space="preserve"><value>ბილეთის დეტალი</value></data>

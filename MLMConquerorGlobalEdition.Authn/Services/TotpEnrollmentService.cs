@@ -32,8 +32,25 @@ public sealed class TotpEnrollmentService : ITotpEnrollmentService
 
     public async Task<Result<TotpEnrollment>> BeginAsync(ApplicationUser user, CancellationToken ct = default)
     {
-        await _userManager.ResetAuthenticatorKeyAsync(user);
         var key = await _userManager.GetAuthenticatorKeyAsync(user);
+
+        // Idempotente mientras el enrolamiento sigue abierto: si se regenerase en cada llamada,
+        // el QR que el usuario acaba de escanear moriría al recargar la página tras un código
+        // erróneo, y volvería a teclear el número de una entrada ya inválida —fallando una y otra
+        // vez sin entender por qué—.
+        //
+        // TwoFactorEnrolledAt es lo que separa los dos casos: lo pone ConfirmAsync al terminar el
+        // alta y lo borra ResetAsync. Nulo significa enrolamiento en curso —la clave que hay es la
+        // que el usuario está escaneando ahora mismo, hay que conservarla—; no nulo significa que
+        // ya hay un autenticador funcionando, y volver por aquí es un re-enrolamiento: ahí la
+        // clave tiene que ser nueva, porque devolver la que ya usa dejaría la vieja entrada de la
+        // aplicación viva y no habría cambiado nada.
+        if (user.TwoFactorEnrolledAt is not null || string.IsNullOrEmpty(key))
+        {
+            await _userManager.ResetAuthenticatorKeyAsync(user);
+            key = await _userManager.GetAuthenticatorKeyAsync(user);
+        }
+
         if (string.IsNullOrEmpty(key))
             return Result<TotpEnrollment>.Failure(EnrollmentFailed, "No se pudo generar la clave del autenticador.");
 

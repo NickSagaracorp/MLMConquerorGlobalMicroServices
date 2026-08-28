@@ -1170,6 +1170,27 @@
   <data name="TwoFactor.ErrorNotImplemented" xml:space="preserve"><value>两步验证暂未启用。请从登录页面继续。</value></data>
   <data name="TwoFactor.ServerError" xml:space="preserve"><value>无法连接到服务器。请稍后再试。</value></data>
 
+  <!-- TwoFactor / Enroll — pantallas de segundo factor de SharedComponents.Components.Account -->
+  <data name="TwoFactor.SentToPhone" xml:space="preserve"><value>我们已向您的手机发送了验证码</value></data>
+  <data name="TwoFactor.UseAuthenticator" xml:space="preserve"><value>请打开身份验证器应用并输入其中显示的验证码。</value></data>
+  <data name="TwoFactor.Submit" xml:space="preserve"><value>验证</value></data>
+  <data name="TwoFactor.Resend" xml:space="preserve"><value>发送新验证码</value></data>
+  <data name="TwoFactor.Resent" xml:space="preserve"><value>我们已向您发送新的验证码。</value></data>
+  <data name="TwoFactor.Cancel" xml:space="preserve"><value>返回登录</value></data>
+  <data name="TwoFactor.Error.CodeInvalid" xml:space="preserve"><value>该验证码不正确。请核对后重试。</value></data>
+  <data name="TwoFactor.Error.CodeExpired" xml:space="preserve"><value>验证码已过期。请重新获取。</value></data>
+  <data name="TwoFactor.Error.InvalidChallenge" xml:space="preserve"><value>此验证会话已失效。请重新登录。</value></data>
+  <data name="TwoFactor.Error.TooManyAttempts" xml:space="preserve"><value>尝试次数过多。请重新获取验证码。</value></data>
+  <data name="TwoFactor.Error.TooManyRequests" xml:space="preserve"><value>您获取的验证码过多。请稍等几分钟。</value></data>
+  <data name="TwoFactor.Error.ChannelUnavailable" xml:space="preserve"><value>无法发送验证码。请几分钟后重试。</value></data>
+  <data name="TwoFactor.Error.Generic" xml:space="preserve"><value>无法验证该验证码。请重试。</value></data>
+  <data name="Enroll.Title" xml:space="preserve"><value>设置两步验证</value></data>
+  <data name="Enroll.Intro" xml:space="preserve"><value>请安装身份验证器应用 — Google Authenticator、Microsoft Authenticator 或 1Password —，用它扫描此二维码，然后输入应用中显示的六位数字。</value></data>
+  <data name="Enroll.ManualKey" xml:space="preserve"><value>无法扫描二维码？请在应用中改为输入此密钥：</value></data>
+  <data name="Enroll.QrAlt" xml:space="preserve"><value>身份验证器应用的二维码</value></data>
+  <data name="Enroll.Notice" xml:space="preserve"><value>从现在起，您需要使用此应用登录。</value></data>
+  <data name="Enroll.Submit" xml:space="preserve"><value>确认并继续</value></data>
+
   <!-- PageTitle — F5 -->
   <data name="PageTitle.Tickets" xml:space="preserve"><value>支持工单</value></data>
   <data name="PageTitle.TicketDetail" xml:space="preserve"><value>工单详情</value></data>

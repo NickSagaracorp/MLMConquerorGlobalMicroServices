@@ -1,8 +1,11 @@
 @page "/admin/login-2fa"
 @layout MLMConquerorGlobalEdition.SharedComponents.Components.Layout.BlankLayout
 @using MLMConquerorGlobalEdition.SharedComponents.Components.Account
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
 @inject TwoFactorPageData PageData
 @inject NavigationManager Navigation
+@inject IStringLocalizer<SharedResources> L
 
 @* Segundo paso del login del portal de administración.
 
@@ -11,7 +14,7 @@
    circuito interactivo — y en SSR el HttpContext está disponible, que es lo que hace falta
    para leer esa cookie. *@
 
-<PageTitle>Verificación en dos pasos</PageTitle>
+<PageTitle>@L["PageTitle.TwoFactor"]</PageTitle>
 
 <div class="login-wrapper-admin">
     <div class="login-card-admin">

@@ -1257,6 +1257,27 @@
   <data name="TwoFactor.ErrorNotImplemented" xml:space="preserve"><value>A verificação em duas etapas ainda não está disponível. Continue pela página de login.</value></data>
   <data name="TwoFactor.ServerError" xml:space="preserve"><value>Não foi possível conectar ao servidor. Tente novamente mais tarde.</value></data>
 
+  <!-- TwoFactor / Enroll — pantallas de segundo factor de SharedComponents.Components.Account -->
+  <data name="TwoFactor.SentToPhone" xml:space="preserve"><value>Enviamos um código para o seu telefone</value></data>
+  <data name="TwoFactor.UseAuthenticator" xml:space="preserve"><value>Abra o seu aplicativo de autenticação e digite o código exibido.</value></data>
+  <data name="TwoFactor.Submit" xml:space="preserve"><value>Verificar</value></data>
+  <data name="TwoFactor.Resend" xml:space="preserve"><value>Enviar um novo código</value></data>
+  <data name="TwoFactor.Resent" xml:space="preserve"><value>Enviamos um novo código para você.</value></data>
+  <data name="TwoFactor.Cancel" xml:space="preserve"><value>Voltar ao login</value></data>
+  <data name="TwoFactor.Error.CodeInvalid" xml:space="preserve"><value>Esse código não está correto. Verifique e tente novamente.</value></data>
+  <data name="TwoFactor.Error.CodeExpired" xml:space="preserve"><value>O código expirou. Solicite um novo.</value></data>
+  <data name="TwoFactor.Error.InvalidChallenge" xml:space="preserve"><value>Esta sessão de verificação não é mais válida. Faça login novamente.</value></data>
+  <data name="TwoFactor.Error.TooManyAttempts" xml:space="preserve"><value>Muitas tentativas. Solicite um novo código.</value></data>
+  <data name="TwoFactor.Error.TooManyRequests" xml:space="preserve"><value>Você solicitou códigos demais. Aguarde alguns minutos.</value></data>
+  <data name="TwoFactor.Error.ChannelUnavailable" xml:space="preserve"><value>Não foi possível enviar o seu código. Tente novamente em alguns minutos.</value></data>
+  <data name="TwoFactor.Error.Generic" xml:space="preserve"><value>Não foi possível verificar o código. Tente novamente.</value></data>
+  <data name="Enroll.Title" xml:space="preserve"><value>Configurar a verificação em duas etapas</value></data>
+  <data name="Enroll.Intro" xml:space="preserve"><value>Instale um aplicativo de autenticação — Google Authenticator, Microsoft Authenticator ou 1Password —, escaneie este código com ele e digite o número de seis dígitos que aparecer.</value></data>
+  <data name="Enroll.ManualKey" xml:space="preserve"><value>Não consegue escanear o código? Digite esta chave no seu aplicativo:</value></data>
+  <data name="Enroll.QrAlt" xml:space="preserve"><value>Código QR para o seu aplicativo de autenticação</value></data>
+  <data name="Enroll.Notice" xml:space="preserve"><value>A partir de agora você precisará deste aplicativo para fazer login.</value></data>
+  <data name="Enroll.Submit" xml:space="preserve"><value>Confirmar e continuar</value></data>
+
   <!-- PageTitle — F5 -->
   <data name="PageTitle.Tickets" xml:space="preserve"><value>Tickets de suporte</value></data>
   <data name="PageTitle.TicketDetail" xml:space="preserve"><value>Detalhes do ticket</value></data>

@@ -57,17 +57,43 @@ public class TotpEnrollmentServiceTests
         return new TotpEnrollmentService(userManager.Object, clock.Object, BuildConfig(issuer));
     }
 
+    /// <summary>
+    /// Imita el almacén de claves de Identity: <c>GetAuthenticatorKeyAsync</c> devuelve lo que haya
+    /// en ese momento y <c>ResetAuthenticatorKeyAsync</c> lo sustituye. Con un Setup fijo no se
+    /// podría distinguir "reutilizó la clave" de "generó otra igual", que es justo lo que estas
+    /// pruebas tienen que separar.
+    /// </summary>
+    private static void WireKeyStore(
+        Mock<UserManager<ApplicationUser>> userManager,
+        ApplicationUser                    user,
+        string?                            initialKey,
+        params string[]                    keysAfterReset)
+    {
+        var current = initialKey;
+        var next    = 0;
+
+        userManager.Setup(m => m.GetAuthenticatorKeyAsync(user)).ReturnsAsync(() => current);
+        userManager
+            .Setup(m => m.ResetAuthenticatorKeyAsync(user))
+            .Callback(() =>
+            {
+                current = keysAfterReset.Length == 0
+                    ? null
+                    : keysAfterReset[Math.Min(next++, keysAfterReset.Length - 1)];
+            })
+            .ReturnsAsync(IdentityResult.Success);
+    }
+
     // ── 1 y 2. BeginAsync ─────────────────────────────────────────────────────
 
     [Fact]
-    public async Task BeginAsync_ResetsKeyAndReturnsUri()
+    public async Task BeginAsync_ReturnsAuthenticatorUri()
     {
         var userManager = UserManagerHelper.Create();
         var user        = BuildUser();
         const string key = "JBSWY3DPEHPK3PXP";
 
-        userManager.Setup(m => m.ResetAuthenticatorKeyAsync(user)).ReturnsAsync(IdentityResult.Success);
-        userManager.Setup(m => m.GetAuthenticatorKeyAsync(user)).ReturnsAsync(key);
+        WireKeyStore(userManager, user, initialKey: key);
 
         var service = BuildService(userManager, out _);
 
@@ -78,6 +104,77 @@ public class TotpEnrollmentServiceTests
         result.Value!.AuthenticatorUri.Should().StartWith("otpauth://totp/");
         result.Value!.AuthenticatorUri.Should().Contain(key);
         result.Value!.AuthenticatorUri.Should().Contain(Uri.EscapeDataString(Issuer));
+    }
+
+    [Fact]
+    public async Task BeginAsync_WhenNoKeyExists_GeneratesOne()
+    {
+        var userManager = UserManagerHelper.Create();
+        var user        = BuildUser();
+        const string key = "JBSWY3DPEHPK3PXP";
+
+        WireKeyStore(userManager, user, initialKey: null, keysAfterReset: key);
+
+        var service = BuildService(userManager, out _);
+
+        var result = await service.BeginAsync(user);
+
+        result.IsSuccess.Should().BeTrue(because: result.Error);
+        result.Value!.SharedKey.Should().Be(key);
+
+        userManager.Verify(m => m.ResetAuthenticatorKeyAsync(user), Times.Once);
+    }
+
+    /// <summary>
+    /// La prueba que cierra la trampa de bloqueo: recargar el enrolamiento tras un código erróneo
+    /// tiene que devolver la MISMA clave. Si se regenerase, el usuario teclearía el número de una
+    /// entrada ya muerta de su aplicación y fallaría una y otra vez sin saber que hay que volver a
+    /// escanear.
+    /// </summary>
+    [Fact]
+    public async Task BeginAsync_WhenEnrollmentInProgress_ReusesSameKey()
+    {
+        var userManager = UserManagerHelper.Create();
+        var user        = BuildUser();
+
+        // Enrolamiento en curso: nunca llegó a confirmarse.
+        user.TwoFactorEnrolledAt.Should().BeNull();
+
+        WireKeyStore(userManager, user, initialKey: null, keysAfterReset: ["FIRSTKEY0000000A", "SECONDKEY000000B"]);
+
+        var service = BuildService(userManager, out _);
+
+        var first  = await service.BeginAsync(user);
+        var second = await service.BeginAsync(user);
+
+        first.IsSuccess.Should().BeTrue(because: first.Error);
+        second.IsSuccess.Should().BeTrue(because: second.Error);
+
+        second.Value!.SharedKey.Should().Be(first.Value!.SharedKey);
+        second.Value!.AuthenticatorUri.Should().Be(first.Value!.AuthenticatorUri);
+
+        userManager.Verify(m => m.ResetAuthenticatorKeyAsync(user), Times.Once);
+    }
+
+    [Fact]
+    public async Task BeginAsync_WhenAlreadyEnrolled_GeneratesNewKey()
+    {
+        var userManager = UserManagerHelper.Create();
+        var user        = BuildUser();
+
+        // Ya tiene un autenticador funcionando: volver por aquí es un re-enrolamiento.
+        user.TwoFactorEnrolledAt       = FixedNow.AddDays(-30);
+        user.PreferredTwoFactorChannel = TwoFactorChannel.Authenticator;
+
+        WireKeyStore(userManager, user, initialKey: "OLDKEY0000000000", keysAfterReset: "NEWKEY0000000000");
+
+        var service = BuildService(userManager, out _);
+
+        var result = await service.BeginAsync(user);
+
+        result.IsSuccess.Should().BeTrue(because: result.Error);
+        result.Value!.SharedKey.Should().Be("NEWKEY0000000000");
+        result.Value!.SharedKey.Should().NotBe("OLDKEY0000000000");
 
         userManager.Verify(m => m.ResetAuthenticatorKeyAsync(user), Times.Once);
     }

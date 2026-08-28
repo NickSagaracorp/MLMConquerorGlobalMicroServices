@@ -1338,6 +1338,27 @@
   <data name="TwoFactor.ErrorNotImplemented" xml:space="preserve"><value>Two-factor verification is not available yet. Please continue from the login page.</value></data>
   <data name="TwoFactor.ServerError" xml:space="preserve"><value>Could not reach the server. Please try again later.</value></data>
 
+  <!-- TwoFactor / Enroll — pantallas de segundo factor de SharedComponents.Components.Account -->
+  <data name="TwoFactor.SentToPhone" xml:space="preserve"><value>We sent a code to your phone</value></data>
+  <data name="TwoFactor.UseAuthenticator" xml:space="preserve"><value>Open your authenticator app and enter the code it shows.</value></data>
+  <data name="TwoFactor.Submit" xml:space="preserve"><value>Verify</value></data>
+  <data name="TwoFactor.Resend" xml:space="preserve"><value>Send a new code</value></data>
+  <data name="TwoFactor.Resent" xml:space="preserve"><value>We sent you a new code.</value></data>
+  <data name="TwoFactor.Cancel" xml:space="preserve"><value>Back to sign in</value></data>
+  <data name="TwoFactor.Error.CodeInvalid" xml:space="preserve"><value>That code is not correct. Check it and try again.</value></data>
+  <data name="TwoFactor.Error.CodeExpired" xml:space="preserve"><value>The code expired. Request a new one.</value></data>
+  <data name="TwoFactor.Error.InvalidChallenge" xml:space="preserve"><value>This verification session is no longer valid. Please sign in again.</value></data>
+  <data name="TwoFactor.Error.TooManyAttempts" xml:space="preserve"><value>Too many attempts. Request a new code.</value></data>
+  <data name="TwoFactor.Error.TooManyRequests" xml:space="preserve"><value>You have requested too many codes. Wait a few minutes.</value></data>
+  <data name="TwoFactor.Error.ChannelUnavailable" xml:space="preserve"><value>We could not send your code. Try again in a few minutes.</value></data>
+  <data name="TwoFactor.Error.Generic" xml:space="preserve"><value>We could not verify the code. Please try again.</value></data>
+  <data name="Enroll.Title" xml:space="preserve"><value>Set up two-factor authentication</value></data>
+  <data name="Enroll.Intro" xml:space="preserve"><value>Install an authenticator app — Google Authenticator, Microsoft Authenticator or 1Password — scan this code with it, and enter the six-digit number it shows.</value></data>
+  <data name="Enroll.ManualKey" xml:space="preserve"><value>Can't scan the code? Enter this key in your app instead:</value></data>
+  <data name="Enroll.QrAlt" xml:space="preserve"><value>QR code for your authenticator app</value></data>
+  <data name="Enroll.Notice" xml:space="preserve"><value>From now on you will need this app to sign in.</value></data>
+  <data name="Enroll.Submit" xml:space="preserve"><value>Confirm and continue</value></data>
+
   <!-- PageTitle — F5 -->
   <data name="PageTitle.Tickets" xml:space="preserve"><value>Support Tickets</value></data>
   <data name="PageTitle.TicketDetail" xml:space="preserve"><value>Ticket Detail</value></data>

@@ -1239,6 +1239,27 @@
   <data name="TwoFactor.ErrorNotImplemented" xml:space="preserve"><value>La verifica in due passaggi non è ancora disponibile. Continua dalla pagina di accesso.</value></data>
   <data name="TwoFactor.ServerError" xml:space="preserve"><value>Impossibile contattare il server. Riprova più tardi.</value></data>
 
+  <!-- TwoFactor / Enroll — pantallas de segundo factor de SharedComponents.Components.Account -->
+  <data name="TwoFactor.SentToPhone" xml:space="preserve"><value>Abbiamo inviato un codice al tuo telefono</value></data>
+  <data name="TwoFactor.UseAuthenticator" xml:space="preserve"><value>Apri la tua app di autenticazione e inserisci il codice che mostra.</value></data>
+  <data name="TwoFactor.Submit" xml:space="preserve"><value>Verifica</value></data>
+  <data name="TwoFactor.Resend" xml:space="preserve"><value>Invia un nuovo codice</value></data>
+  <data name="TwoFactor.Resent" xml:space="preserve"><value>Ti abbiamo inviato un nuovo codice.</value></data>
+  <data name="TwoFactor.Cancel" xml:space="preserve"><value>Torna all'accesso</value></data>
+  <data name="TwoFactor.Error.CodeInvalid" xml:space="preserve"><value>Questo codice non è corretto. Controllalo e riprova.</value></data>
+  <data name="TwoFactor.Error.CodeExpired" xml:space="preserve"><value>Il codice è scaduto. Richiedine uno nuovo.</value></data>
+  <data name="TwoFactor.Error.InvalidChallenge" xml:space="preserve"><value>Questa sessione di verifica non è più valida. Accedi di nuovo.</value></data>
+  <data name="TwoFactor.Error.TooManyAttempts" xml:space="preserve"><value>Troppi tentativi. Richiedi un nuovo codice.</value></data>
+  <data name="TwoFactor.Error.TooManyRequests" xml:space="preserve"><value>Hai richiesto troppi codici. Attendi qualche minuto.</value></data>
+  <data name="TwoFactor.Error.ChannelUnavailable" xml:space="preserve"><value>Non siamo riusciti a inviarti il codice. Riprova tra qualche minuto.</value></data>
+  <data name="TwoFactor.Error.Generic" xml:space="preserve"><value>Non siamo riusciti a verificare il codice. Riprova.</value></data>
+  <data name="Enroll.Title" xml:space="preserve"><value>Configura la verifica in due passaggi</value></data>
+  <data name="Enroll.Intro" xml:space="preserve"><value>Installa un'app di autenticazione — Google Authenticator, Microsoft Authenticator o 1Password —, scansiona questo codice con essa e inserisci il numero di sei cifre che mostra.</value></data>
+  <data name="Enroll.ManualKey" xml:space="preserve"><value>Non riesci a scansionare il codice? Inserisci invece questa chiave nella tua app:</value></data>
+  <data name="Enroll.QrAlt" xml:space="preserve"><value>Codice QR per la tua app di autenticazione</value></data>
+  <data name="Enroll.Notice" xml:space="preserve"><value>D'ora in poi ti servirà questa app per accedere.</value></data>
+  <data name="Enroll.Submit" xml:space="preserve"><value>Conferma e continua</value></data>
+
   <!-- PageTitle — F5 -->
   <data name="PageTitle.Tickets" xml:space="preserve"><value>Ticket di supporto</value></data>
   <data name="PageTitle.TicketDetail" xml:space="preserve"><value>Dettaglio ticket</value></data>

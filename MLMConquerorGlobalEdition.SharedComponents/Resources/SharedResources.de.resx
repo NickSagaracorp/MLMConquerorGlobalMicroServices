@@ -1239,6 +1239,27 @@
   <data name="TwoFactor.ErrorNotImplemented" xml:space="preserve"><value>Die Zwei-Faktor-Verifizierung ist noch nicht verfügbar. Bitte fahre auf der Anmeldeseite fort.</value></data>
   <data name="TwoFactor.ServerError" xml:space="preserve"><value>Der Server ist nicht erreichbar. Bitte später erneut versuchen.</value></data>
 
+  <!-- TwoFactor / Enroll — pantallas de segundo factor de SharedComponents.Components.Account -->
+  <data name="TwoFactor.SentToPhone" xml:space="preserve"><value>Wir haben einen Code an dein Telefon gesendet</value></data>
+  <data name="TwoFactor.UseAuthenticator" xml:space="preserve"><value>Öffne deine Authenticator-App und gib den dort angezeigten Code ein.</value></data>
+  <data name="TwoFactor.Submit" xml:space="preserve"><value>Verifizieren</value></data>
+  <data name="TwoFactor.Resend" xml:space="preserve"><value>Neuen Code senden</value></data>
+  <data name="TwoFactor.Resent" xml:space="preserve"><value>Wir haben dir einen neuen Code gesendet.</value></data>
+  <data name="TwoFactor.Cancel" xml:space="preserve"><value>Zurück zur Anmeldung</value></data>
+  <data name="TwoFactor.Error.CodeInvalid" xml:space="preserve"><value>Dieser Code ist nicht korrekt. Überprüfe ihn und versuche es erneut.</value></data>
+  <data name="TwoFactor.Error.CodeExpired" xml:space="preserve"><value>Der Code ist abgelaufen. Fordere einen neuen an.</value></data>
+  <data name="TwoFactor.Error.InvalidChallenge" xml:space="preserve"><value>Diese Verifizierungssitzung ist nicht mehr gültig. Bitte melde dich erneut an.</value></data>
+  <data name="TwoFactor.Error.TooManyAttempts" xml:space="preserve"><value>Zu viele Versuche. Fordere einen neuen Code an.</value></data>
+  <data name="TwoFactor.Error.TooManyRequests" xml:space="preserve"><value>Du hast zu viele Codes angefordert. Warte einige Minuten.</value></data>
+  <data name="TwoFactor.Error.ChannelUnavailable" xml:space="preserve"><value>Wir konnten deinen Code nicht senden. Versuche es in einigen Minuten erneut.</value></data>
+  <data name="TwoFactor.Error.Generic" xml:space="preserve"><value>Wir konnten den Code nicht verifizieren. Bitte versuche es erneut.</value></data>
+  <data name="Enroll.Title" xml:space="preserve"><value>Zwei-Faktor-Verifizierung einrichten</value></data>
+  <data name="Enroll.Intro" xml:space="preserve"><value>Installiere eine Authenticator-App — Google Authenticator, Microsoft Authenticator oder 1Password —, scanne diesen Code damit und gib die angezeigte sechsstellige Zahl ein.</value></data>
+  <data name="Enroll.ManualKey" xml:space="preserve"><value>Kannst du den Code nicht scannen? Gib stattdessen diesen Schlüssel in deiner App ein:</value></data>
+  <data name="Enroll.QrAlt" xml:space="preserve"><value>QR-Code für deine Authenticator-App</value></data>
+  <data name="Enroll.Notice" xml:space="preserve"><value>Ab jetzt benötigst du diese App, um dich anzumelden.</value></data>
+  <data name="Enroll.Submit" xml:space="preserve"><value>Bestätigen und fortfahren</value></data>
+
   <!-- PageTitle — F5 -->
   <data name="PageTitle.Tickets" xml:space="preserve"><value>Support-Tickets</value></data>
   <data name="PageTitle.TicketDetail" xml:space="preserve"><value>Ticket-Details</value></data>
