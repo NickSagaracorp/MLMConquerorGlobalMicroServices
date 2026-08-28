@@ -95,10 +95,15 @@ app.MapRazorComponents<App>()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(MLMConquerorGlobalEdition.AdminWeb.Client._Imports).Assembly);
 
-// Auth endpoints — antiforgery disabled on both (login = unauthenticated, logout = trivial)
+// Auth endpoints — antiforgery disabled on all (unauthenticated by definition, o logout trivial)
 app.MapPost("/account/login",  (Delegate)AuthEndpoints.LoginAsync).DisableAntiforgery();
 app.MapPost("/account/logout", (Delegate)AuthEndpoints.LogoutAsync).DisableAntiforgery();
 app.MapGet("/account/logout",  (Delegate)AuthEndpoints.LogoutAsync);
+
+// Segundo factor y enrolamiento — el reto viaja en cookie HttpOnly, nunca en la URL ni en el formulario
+app.MapPost("/account/login-2fa",           (Delegate)AuthEndpoints.LoginTwoFactorAsync).DisableAntiforgery();
+app.MapPost("/account/login-2fa/resend",    (Delegate)AuthEndpoints.ResendTwoFactorAsync).DisableAntiforgery();
+app.MapPost("/account/enroll-authenticator",(Delegate)AuthEndpoints.EnrollAuthenticatorAsync).DisableAntiforgery();
 
 // Culture selection endpoint — sets cookie and redirects back
 app.MapGet("/culture", (HttpContext ctx, string culture, string redirectUri) =>
