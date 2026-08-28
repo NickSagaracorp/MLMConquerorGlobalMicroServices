@@ -16,13 +16,18 @@ public static class AuthEndpoints
     /// en los registros del proxy y en la cabecera Referer de cualquier recurso externo que
     /// cargue la página.
     /// </summary>
-    private const string ChallengeCookie = "mlm_admin_2fa_challenge";
+    /// <remarks>
+    /// <c>internal</c> y no <c>private</c> porque <see cref="TwoFactorPageData"/> lee estas dos
+    /// cookies para pintar las páginas. Un segundo literal con el mismo nombre en otro archivo
+    /// es la clase de duplicado que se desincroniza en silencio.
+    /// </remarks>
+    internal const string ChallengeCookie = "mlm_admin_2fa_challenge";
 
     /// <summary>
     /// Cookie del EnrollmentToken. Deliberadamente distinta de <see cref="ChallengeCookie"/>:
     /// son propósitos distintos y compartir nombre invita a redimir uno donde va el otro.
     /// </summary>
-    private const string EnrollmentCookie = "mlm_admin_2fa_enrollment";
+    internal const string EnrollmentCookie = "mlm_admin_2fa_enrollment";
 
     /// <summary>Ventana de vida de ambas cookies. El reto de la API dura menos; esto es el techo.</summary>
     private static readonly TimeSpan ChallengeLifetime = TimeSpan.FromMinutes(10);
@@ -74,7 +79,7 @@ public static class AuthEndpoints
                 return Results.Redirect("/admin/login?error=invalid");
 
             SetChallengeCookie(httpContext, ChallengeCookie, apiResponse.Data.ChallengeToken!);
-            return Results.Redirect("/admin/login-2fa");
+            return Results.Redirect($"/admin/login-2fa{TargetQuery(apiResponse.Data.MaskedTarget, '?')}");
         }
 
         return await CompleteSignInAsync(httpContext, apiResponse.Data.AccessToken, "/admin/login");
@@ -145,7 +150,8 @@ public static class AuthEndpoints
         if (!string.IsNullOrWhiteSpace(apiResponse.Data.ChallengeToken))
             SetChallengeCookie(httpContext, ChallengeCookie, apiResponse.Data.ChallengeToken!);
 
-        return Results.Redirect("/admin/login-2fa?resent=1");
+        return Results.Redirect(
+            $"/admin/login-2fa?resent=1{TargetQuery(apiResponse.Data.MaskedTarget, '&')}");
     }
 
     /// <summary>
@@ -230,6 +236,21 @@ public static class AuthEndpoints
 
         return Results.Redirect("/admin");
     }
+
+    /// <summary>
+    /// Fragmento <c>target=…</c> para la pantalla del segundo factor, o cadena vacía si la API no
+    /// devolvió destino (el autenticador no envía nada a ninguna parte).
+    /// </summary>
+    /// <remarks>
+    /// Aquí sí va en la URL, al revés que el ChallengeToken: lo que se pasa ya viene enmascarado
+    /// por la API (<c>n****@@dominio.com</c>, <c>***4321</c>) y no es una credencial. Sin esto, un
+    /// usuario de SMS no tendría manera de ver a qué número se envió el código: el teléfono no
+    /// viaja en el reto y la página no tiene otra fuente.
+    /// </remarks>
+    private static string TargetQuery(string? maskedTarget, char separator) =>
+        string.IsNullOrWhiteSpace(maskedTarget)
+            ? string.Empty
+            : $"{separator}target={Uri.EscapeDataString(maskedTarget)}";
 
     /// <summary>Mismas opciones que la cookie de sesión (<c>mlm_admin_cookie</c>), con vida corta.</summary>
     private static void SetChallengeCookie(HttpContext httpContext, string name, string value) =>

@@ -37,11 +37,8 @@
     </div>
 </div>
 
-<style>
-.login-wrapper-admin { display:flex; justify-content:center; align-items:center; min-height:100vh; background:#1a1d2e; }
-.login-card-admin { background:#252838; padding:2rem; border-radius:12px; box-shadow:0 4px 32px rgba(0,0,0,.4); width:100%; max-width:420px; border:1px solid #3a3d52; }
-.login-logo { text-align:center; margin-bottom:1.5rem; }
-</style>
+@* Las clases .login-wrapper-admin / .login-card-admin / .login-logo viven en wwwroot/app.css:
+   las comparten esta página, /admin/login-2fa y /admin/enroll-authenticator. *@
 
 @code {
     [SupplyParameterFromQuery]

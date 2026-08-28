@@ -1,0 +1,123 @@
+@* Alta de la aplicación autenticadora: QR, clave en claro y el primer código.
+
+   Igual que TwoFactorVerify, no trae tarjeta ni fondo: la maquetación la pone la página.
+   El EnrollmentToken vive en una cookie HttpOnly y no aparece aquí. *@
+
+<div class="enroll-authenticator">
+
+    <p class="mb-2">Configura tu aplicación de autenticación</p>
+
+    @* Quien nunca ha usado una aplicación de estas no sabe qué es el cuadrado que tiene
+       delante. Los tres pasos van antes del QR, no después. *@
+    <p class="text-muted small mb-3">
+        Instala una aplicación de autenticación —Google Authenticator, Microsoft Authenticator,
+        1Password—, escanea este código con ella y escribe abajo el número de seis dígitos
+        que te muestre.
+    </p>
+
+    @if (!string.IsNullOrWhiteSpace(ErrorCode))
+    {
+        <div class="alert alert-danger" role="alert">@TwoFactorMessages.ForErrorCode(ErrorCode)</div>
+
+        @* La API genera una clave nueva cada vez que se abre el enrolamiento, así que tras un
+           código fallido el QR de esta pantalla ya no es el que el usuario escaneó. Sin avisar,
+           volvería a teclear el número de una entrada obsoleta y fallaría otra vez. *@
+        @if (KeyChangedOnError)
+        {
+            <div class="alert alert-warning" role="alert">
+                Hemos generado una clave nueva. Vuelve a escanear el código QR —o a introducir la
+                clave— antes de escribir el número.
+            </div>
+        }
+    }
+
+    @if (!string.IsNullOrWhiteSpace(QrCodePngDataUri))
+    {
+        <div class="text-center mb-3">
+            <img src="@QrCodePngDataUri"
+                 class="img-fluid bg-white p-2 rounded"
+                 style="max-width:220px"
+                 alt="Código QR para dar de alta esta cuenta en tu aplicación de autenticación" />
+        </div>
+    }
+
+    @* La clave va en claro y sin nada que pulsar. Quien no puede escanear —cámara rota,
+       aplicación en otro dispositivo, lector de pantalla— la necesita para escribirla a mano,
+       y esconderla tras un "mostrar clave" convierte el camino alternativo en un obstáculo. *@
+    @if (!string.IsNullOrWhiteSpace(SharedKey))
+    {
+        <div class="mb-3">
+            <label class="form-label" for="enroll-shared-key">
+                ¿No puedes escanear? Introduce esta clave a mano:
+            </label>
+            <code id="enroll-shared-key" class="d-block user-select-all text-break p-2 rounded bg-dark-subtle">
+                @SharedKey
+            </code>
+        </div>
+    }
+
+    <form method="post" action="@FormAction">
+        <div class="mb-3">
+            <label class="form-label" for="enroll-code">Código de la aplicación</label>
+            @* Mismos atributos que en la verificación: teclado numérico en el móvil y
+               autorrelleno del código de un solo uso. *@
+            <input id="enroll-code"
+                   name="Code"
+                   type="text"
+                   class="form-control"
+                   inputmode="numeric"
+                   autocomplete="one-time-code"
+                   maxlength="6"
+                   pattern="[0-9]{6}"
+                   placeholder="123456"
+                   required
+                   autofocus />
+            <small class="text-muted">6 dígitos, solo números.</small>
+        </div>
+        <button type="submit" class="btn btn-warning w-100 fw-semibold">Activar y entrar</button>
+    </form>
+
+    @* Cambia cómo entra a su cuenta a partir de ahora. Avisarlo después de activarlo llega
+       tarde: el momento de decidir si tiene el teléfono a mano es este. *@
+    <p class="text-muted small mt-3 mb-0">
+        A partir de ahora necesitarás esta aplicación cada vez que inicies sesión. Guarda la
+        cuenta en una aplicación que no vayas a perder.
+    </p>
+
+    @if (!string.IsNullOrWhiteSpace(CancelUrl))
+    {
+        <p class="mt-2 mb-0 small">
+            <a href="@CancelUrl" class="text-decoration-none">Cancelar y volver a iniciar sesión</a>
+        </p>
+    }
+</div>
+
+@code {
+    /// <summary>Ruta a la que postea el primer código de la aplicación.</summary>
+    [Parameter, EditorRequired]
+    public string FormAction { get; set; } = string.Empty;
+
+    /// <summary>PNG del QR en data-URI, tal cual lo devuelve la API.</summary>
+    [Parameter]
+    public string? QrCodePngDataUri { get; set; }
+
+    /// <summary>Secreto en base32, para entrada manual.</summary>
+    [Parameter]
+    public string? SharedKey { get; set; }
+
+    /// <summary>Código de error de la API, tal cual llega por query string.</summary>
+    [Parameter]
+    public string? ErrorCode { get; set; }
+
+    /// <summary>
+    /// Si al volver con un error la clave mostrada es distinta de la que el usuario escaneó.
+    /// Depende de cómo emita el backend del portal: es un parámetro y no una constante para no
+    /// dar por hecho el comportamiento de una API concreta.
+    /// </summary>
+    [Parameter]
+    public bool KeyChangedOnError { get; set; }
+
+    /// <summary>Enlace de salida hacia el login. Si viene vacío no se pinta.</summary>
+    [Parameter]
+    public string? CancelUrl { get; set; }
+}

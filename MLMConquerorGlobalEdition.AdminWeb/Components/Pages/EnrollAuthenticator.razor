@@ -1,0 +1,58 @@
+@page "/admin/enroll-authenticator"
+@layout MLMConquerorGlobalEdition.SharedComponents.Components.Layout.BlankLayout
+@inject TwoFactorPageData PageData
+@inject NavigationManager Navigation
+
+@* Alta de la aplicación autenticadora en el portal de administración.
+
+   Sin @@rendermode, igual que Login.razor: SSR estático. Importa más aquí que en las demás
+   páginas — abrir el enrolamiento REGENERA la clave del usuario en la API, así que cada render
+   que llamase a la API invalidaría el QR anterior. En SSR estático OnInitializedAsync se
+   ejecuta una vez por petición; con render interactivo se ejecutaría dos y el usuario acabaría
+   escaneando un QR ya muerto.
+
+   El componente compartido se referencia con su nombre completo a propósito: se llama igual que
+   esta página, y un @@using de su espacio de nombres dejaría la etiqueta ambigua. *@
+
+<PageTitle>Configurar la verificación en dos pasos</PageTitle>
+
+<div class="login-wrapper-admin">
+    <div class="login-card-admin">
+        <div class="login-logo">
+            <h2 class="text-white">MLM Conqueror</h2>
+            <p class="text-muted">Administration Portal</p>
+        </div>
+
+        @if (_material is not null)
+        {
+            <MLMConquerorGlobalEdition.SharedComponents.Components.Account.EnrollAuthenticator
+                FormAction="/account/enroll-authenticator"
+                QrCodePngDataUri="@_material.QrCodePngDataUri"
+                SharedKey="@_material.SharedKey"
+                ErrorCode="@Error"
+                KeyChangedOnError="true"
+                CancelUrl="/admin/login" />
+        }
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
+    private TwoFactorPageData.EnrollmentMaterial? _material;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // El QR y la clave son material de página, no de formulario: se piden aquí, durante el
+        // render, y no en AuthEndpoints. La llamada sale del servidor porque la cookie del
+        // enrolamiento es HttpOnly y el navegador no puede leerla.
+        _material = await PageData.BeginEnrollmentAsync();
+
+        // Sin material no hay pantalla: o no hay cookie, o la API rechazó el token, o no
+        // respondió. Los tres acaban igual para el usuario, así que vuelta al login en vez de
+        // una tarjeta vacía con un formulario que fallaría al enviarse.
+        if (_material is null)
+            Navigation.NavigateTo("/admin/login?error=session_expired", forceLoad: false);
+    }
+}

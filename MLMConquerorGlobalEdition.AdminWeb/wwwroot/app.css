@@ -578,3 +578,51 @@ h1:focus {
     .fsb-footerline.locked {
         color: #000;
     }
+/* ── Pantallas de acceso al portal de administración ─────────────────────────
+   Fondo oscuro y tarjeta centrada, compartidos por /admin/login, /admin/login-2fa
+   y /admin/enroll-authenticator. Están aquí y no en un <style> dentro de cada
+   página para que las tres se vean igual: tres copias del mismo bloque se
+   desincronizan en cuanto alguien retoca una. */
+.login-wrapper-admin {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: #1a1d2e;
+    padding: 2rem 1rem;
+}
+
+.login-card-admin {
+    background: #252838;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 32px rgba(0,0,0,.4);
+    width: 100%;
+    max-width: 420px;
+    border: 1px solid #3a3d52;
+    color: #e6e8f0;
+}
+
+.login-logo {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+/* Bootstrap pinta estas dos para fondo claro; sobre la tarjeta oscura quedan ilegibles. */
+.login-card-admin .form-label {
+    color: #e6e8f0;
+}
+
+.login-card-admin .text-muted {
+    color: #9aa0b5 !important;
+}
+
+/* La clave compartida del enrolamiento: monoespaciada, seleccionable de una pasada
+   y con salto de línea, que en móvil no cabe en el ancho de la tarjeta. */
+.login-card-admin code {
+    color: #ffd479;
+    background: #1a1d2e;
+    border: 1px solid #3a3d52;
+    font-size: .95rem;
+    letter-spacing: .08em;
+}

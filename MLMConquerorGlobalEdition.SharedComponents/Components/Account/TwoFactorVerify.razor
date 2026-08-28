@@ -1,0 +1,127 @@
+@* Formulario del segundo factor: pide el código de 6 dígitos y lo postea.
+
+   No trae tarjeta ni fondo: eso lo pone la página que lo monta, que es la que conoce el
+   aspecto de su portal. Aquí solo va el bloque del formulario, para que BizCenter y
+   Administración compartan comportamiento sin compartir maquetación.
+
+   El reto (ChallengeToken) no aparece por ninguna parte: viaja en una cookie HttpOnly que
+   pone el manejador del POST. Este componente nunca lo ve ni lo necesita. *@
+
+<div class="two-factor-verify">
+
+    <p class="mb-1">Introduce el código de 6 dígitos para terminar de entrar.</p>
+
+    @* Con el autenticador no hay destino que enseñar: el código no se envía a ningún sitio,
+       lo genera la aplicación del propio teléfono. *@
+    @if (IsAuthenticator)
+    {
+        <p class="text-muted small mb-3">
+            Abre tu aplicación de autenticación e introduce el código que muestra.
+        </p>
+    }
+    else if (!string.IsNullOrWhiteSpace(MaskedTarget))
+    {
+        <p class="text-muted small mb-3">Te enviamos un código a @MaskedTarget.</p>
+    }
+    else
+    {
+        @* Sin destino conocido, la frase se queda en el canal: es lo único que se puede
+           afirmar con certeza y sigue siendo útil para saber dónde mirar. *@
+        <p class="text-muted small mb-3">Te enviamos un código a @ChannelNoun.</p>
+    }
+
+    @if (Resent)
+    {
+        <div class="alert alert-info" role="status">@TwoFactorMessages.ResentNotice</div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(ErrorCode))
+    {
+        <div class="alert alert-danger" role="alert">@TwoFactorMessages.ForErrorCode(ErrorCode)</div>
+    }
+
+    <form method="post" action="@FormAction">
+        <div class="mb-3">
+            <label class="form-label" for="two-factor-code">Código de verificación</label>
+            @* inputmode="numeric" saca el teclado numérico en el móvil en lugar del alfabético.
+               autocomplete="one-time-code" es lo que hace que el sistema operativo ofrezca
+               rellenar el código que acaba de llegar por SMS sin copiarlo a mano. Los dos
+               juntos se llevan casi toda la fricción de esta pantalla. *@
+            <input id="two-factor-code"
+                   name="Code"
+                   type="text"
+                   class="form-control"
+                   inputmode="numeric"
+                   autocomplete="one-time-code"
+                   maxlength="6"
+                   pattern="[0-9]{6}"
+                   placeholder="123456"
+                   required
+                   autofocus />
+            <small class="text-muted">6 dígitos, solo números.</small>
+        </div>
+        <button type="submit" class="btn btn-warning w-100 fw-semibold">Verificar</button>
+    </form>
+
+    @* El botón de reenviar no existe para el autenticador: no hay nada que reenviar y pulsarlo
+       gastaría cupo de emisiones sin llegar a enviar nada. *@
+    @if (ShowResend)
+    {
+        <form method="post" action="@ResendAction" class="mt-3 mb-0">
+            <p class="mb-0 small">
+                ¿No te llegó el código?
+                <button type="submit" class="btn btn-link p-0 align-baseline text-decoration-none">
+                    Enviar otro
+                </button>
+            </p>
+        </form>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(CancelUrl))
+    {
+        <p class="mt-3 mb-0 small">
+            <a href="@CancelUrl" class="text-decoration-none">Cancelar y volver a iniciar sesión</a>
+        </p>
+    }
+</div>
+
+@code {
+    /// <summary>Ruta a la que postea el código. La pone el portal: cada uno tiene la suya.</summary>
+    [Parameter, EditorRequired]
+    public string FormAction { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Ruta del reenvío. Si viene vacía no se ofrece reenviar, igual que con el autenticador.
+    /// </summary>
+    [Parameter]
+    public string? ResendAction { get; set; }
+
+    /// <summary>Canal del reto: <c>Email</c>, <c>Sms</c> o <c>Authenticator</c>.</summary>
+    [Parameter]
+    public string? Channel { get; set; }
+
+    /// <summary>A dónde fue el código, ya enmascarado por la API. Vacío con el autenticador.</summary>
+    [Parameter]
+    public string? MaskedTarget { get; set; }
+
+    /// <summary>Código de error de la API, tal cual llega por query string.</summary>
+    [Parameter]
+    public string? ErrorCode { get; set; }
+
+    /// <summary>Se acaba de reenviar un código.</summary>
+    [Parameter]
+    public bool Resent { get; set; }
+
+    /// <summary>Enlace de salida hacia el login. Si viene vacío no se pinta.</summary>
+    [Parameter]
+    public string? CancelUrl { get; set; }
+
+    private bool IsAuthenticator => TwoFactorMessages.IsAuthenticator(Channel);
+
+    private bool ShowResend => !IsAuthenticator && !string.IsNullOrWhiteSpace(ResendAction);
+
+    private string ChannelNoun =>
+        string.Equals(Channel?.Trim(), "Sms", StringComparison.OrdinalIgnoreCase)
+            ? "tu teléfono"
+            : "tu correo";
+}

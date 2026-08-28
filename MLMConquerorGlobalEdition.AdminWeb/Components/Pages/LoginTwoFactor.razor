@@ -1,0 +1,72 @@
+@page "/admin/login-2fa"
+@layout MLMConquerorGlobalEdition.SharedComponents.Components.Layout.BlankLayout
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Account
+@inject TwoFactorPageData PageData
+@inject NavigationManager Navigation
+
+@* Segundo paso del login del portal de administración.
+
+   Sin @@rendermode a propósito: es SSR estático, como Login.razor. El formulario postea a un
+   endpoint mínimo y el reto vive en una cookie HttpOnly, así que no hay nada que necesite un
+   circuito interactivo — y en SSR el HttpContext está disponible, que es lo que hace falta
+   para leer esa cookie. *@
+
+<PageTitle>Verificación en dos pasos</PageTitle>
+
+<div class="login-wrapper-admin">
+    <div class="login-card-admin">
+        <div class="login-logo">
+            <h2 class="text-white">MLM Conqueror</h2>
+            <p class="text-muted">Administration Portal</p>
+        </div>
+
+        <TwoFactorVerify FormAction="/account/login-2fa"
+                         ResendAction="/account/login-2fa/resend"
+                         Channel="@_channel"
+                         MaskedTarget="@_maskedTarget"
+                         ErrorCode="@Error"
+                         Resent="@(Resent == "1")"
+                         CancelUrl="/admin/login" />
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Resent { get; set; }
+
+    /// <summary>Destino enmascarado que puso el manejador del POST al redirigir hasta aquí.</summary>
+    [SupplyParameterFromQuery]
+    public string? Target { get; set; }
+
+    private string? _channel;
+    private string? _maskedTarget;
+
+    protected override void OnInitialized()
+    {
+        // Sin reto no hay nada que verificar: o caducó, o alguien tecleó la URL a mano. En vez
+        // de pintar un formulario que fallaría al enviarse, vuelta al login — que es lo mismo
+        // que hace el manejador del POST cuando se encuentra sin cookie.
+        var challenge = PageData.ReadChallenge();
+        if (challenge is null)
+        {
+            Navigation.NavigateTo("/admin/login?error=session_expired", forceLoad: false);
+            return;
+        }
+
+        _channel = challenge.Channel;
+
+        // El destino de la query solo llega en la primera carga y tras un reenvío; al volver de
+        // un error se ha perdido. El correo del propio reto lo reconstruye, pero SOLO si el
+        // canal es el correo: en SMS el código fue al teléfono, y enseñar ahí la dirección de
+        // correo sería decirle al usuario que mire donde no hay nada. Sin destino fiable, el
+        // componente se queda con la frase genérica del canal.
+        _maskedTarget = !string.IsNullOrWhiteSpace(Target)
+            ? Target
+            : string.Equals(_channel?.Trim(), "Email", StringComparison.OrdinalIgnoreCase)
+                ? challenge.MaskedEmail
+                : null;
+    }
+}

@@ -40,6 +40,11 @@ builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<AdminApiAuthHandler>();
 
+// Datos que las páginas del segundo factor piden durante el render (canal del reto, QR y clave
+// del enrolamiento). Scoped: depende del HttpContext de la petición, que es de donde salen las
+// cookies HttpOnly del reto.
+builder.Services.AddScoped<TwoFactorPageData>();
+
 // Server-side auth state provider (persists to WASM client)
 builder.Services.AddScoped<AuthenticationStateProvider, PersistingServerAuthStateProvider>();
 
