@@ -100,13 +100,13 @@ public static class JwtKeyGuard
             if (rsa.KeySize < MinimumKeySizeBits)
                 throw new InvalidOperationException(
                     $"{configKey} tiene {rsa.KeySize} bits; el mínimo es {MinimumKeySizeBits}. " +
-                    "Genera un par nuevo: ver " + TemplateHint);
+                    "Genera un par nuevo. " + TemplateHint);
 
             if (Fingerprint(rsa) == RevokedKeyFingerprint)
                 throw new InvalidOperationException(
                     $"{configKey} contiene la llave revocada que sigue commiteada en el repositorio. " +
                     "Ese par es público de forma permanente porque sigue en el historial de git. " +
-                    "Genera un par nuevo: ver " + TemplateHint);
+                    "Genera un par nuevo. " + TemplateHint);
 
             return Convert.ToBase64String(der);
         }

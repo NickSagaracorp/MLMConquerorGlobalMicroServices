@@ -193,6 +193,12 @@ builder.Services.AddCors(options =>
     });
 });
 
+// La privada se valida aquí, al arrancar, aunque quien la use sea JwtService.
+// Ese servicio es Scoped, así que su constructor —y con él el guarda— no correría
+// hasta la primera petición que firme un token: el servicio arrancaría con una llave
+// revocada o ausente y solo fallaría cuando alguien intentara iniciar sesión.
+JwtKeyGuard.ValidatePrivateKey(builder.Configuration["Jwt:PrivateKeyBase64"]);
+
 var publicKeyBase64 = JwtKeyGuard.ValidatePublicKey(builder.Configuration["Jwt:PublicKeyBase64"]);
 
 var rsaValidation = RSA.Create();
