@@ -1191,6 +1191,29 @@
   <data name="Enroll.Notice" xml:space="preserve"><value>ამიერიდან შესასვლელად დაგჭირდებათ ეს აპლიკაცია.</value></data>
   <data name="Enroll.Submit" xml:space="preserve"><value>დადასტურება და გაგრძელება</value></data>
 
+  <!-- Account — forgot password, reset password, email confirmation, lockout (SharedComponents.Components.Account) -->
+  <data name="Account.Error.InvalidToken" xml:space="preserve"><value>ეს ბმული არასწორია ან უკვე გამოყენებულია.</value></data>
+  <data name="Account.Error.TokenExpired" xml:space="preserve"><value>ამ ბმულს ვადა გაუვიდა.</value></data>
+  <data name="Account.Error.PasswordResetFailed" xml:space="preserve"><value>თქვენი ახალი პაროლი არ აკმაყოფილებს ქვემოთ მოცემულ მოთხოვნებს. გადაამოწმეთ ისინი და სცადეთ ხელახლა.</value></data>
+  <data name="Account.Error.UserNotFound" xml:space="preserve"><value>ეს ანგარიში ვერ მოიძებნა.</value></data>
+  <data name="Account.Error.Generic" xml:space="preserve"><value>დაფიქსირდა შეცდომა. გთხოვთ, სცადოთ ხელახლა.</value></data>
+  <data name="ResetPassword.RequirementsIntro" xml:space="preserve"><value>თქვენი ახალი პაროლი უნდა:</value></data>
+  <data name="ResetPassword.RequirementLength" xml:space="preserve"><value>შეიცავდეს მინიმუმ 8 სიმბოლოს</value></data>
+  <data name="ResetPassword.RequirementUppercase" xml:space="preserve"><value>შეიცავდეს მინიმუმ ერთ დიდ ასოს</value></data>
+  <data name="ResetPassword.RequirementLowercase" xml:space="preserve"><value>შეიცავდეს მინიმუმ ერთ პატარა ასოს</value></data>
+  <data name="ResetPassword.RequirementDigit" xml:space="preserve"><value>შეიცავდეს მინიმუმ ერთ ციფრს</value></data>
+  <data name="ForgotPasswordConfirmation.Title" xml:space="preserve"><value>შეამოწმეთ თქვენი ელფოსტა</value></data>
+  <data name="ResetPasswordConfirmation.Title" xml:space="preserve"><value>პაროლი განახლდა</value></data>
+  <data name="Lockout.Title" xml:space="preserve"><value>ანგარიში დროებით დაბლოკილია</value></data>
+  <data name="Lockout.Message" xml:space="preserve"><value>თქვენი ანგარიში დროებით დაიბლოკა შესვლის რამდენიმე წარუმატებელი მცდელობის შემდეგ. ის ავტომატურად განიბლოკება მოკლე ხნის შემდეგ — თქვენგან არაფერია საჭირო.</value></data>
+  <data name="ConfirmEmail.SuccessTitle" xml:space="preserve"><value>ელფოსტა დადასტურდა</value></data>
+  <data name="ConfirmEmail.SuccessMessage" xml:space="preserve"><value>თქვენი ელფოსტის მისამართი დადასტურდა. ახლა შეგიძლიათ შეხვიდეთ სისტემაში.</value></data>
+  <data name="ConfirmEmail.ExpiredTitle" xml:space="preserve"><value>დადასტურების ბმულს ვადა გაუვიდა</value></data>
+  <data name="ConfirmEmail.ExpiredMessage" xml:space="preserve"><value>დადასტურების ბმულს ვადა გაუვიდა. მოითხოვეთ ახალი ქვემოთ.</value></data>
+  <data name="ConfirmEmail.InvalidTitle" xml:space="preserve"><value>დადასტურების ბმული არასწორია</value></data>
+  <data name="ConfirmEmail.InvalidMessage" xml:space="preserve"><value>დადასტურების ეს ბმული არასწორია ან უკვე გამოყენებულია. მოითხოვეთ ახალი ქვემოთ.</value></data>
+  <data name="ConfirmEmail.ResendButton" xml:space="preserve"><value>დადასტურების ელფოსტის ხელახლა გაგზავნა</value></data>
+
   <!-- PageTitle — F5 -->
   <data name="PageTitle.Tickets" xml:space="preserve"><value>მხარდაჭერის ბილეთები</value></data>
   <data name="PageTitle.TicketDetail" xml:space="preserve"><value>ბილეთის დეტალი</value></data>

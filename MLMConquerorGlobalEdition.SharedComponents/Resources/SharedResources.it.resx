@@ -1260,6 +1260,29 @@
   <data name="Enroll.Notice" xml:space="preserve"><value>D'ora in poi ti servirà questa app per accedere.</value></data>
   <data name="Enroll.Submit" xml:space="preserve"><value>Conferma e continua</value></data>
 
+  <!-- Account — forgot password, reset password, email confirmation, lockout (SharedComponents.Components.Account) -->
+  <data name="Account.Error.InvalidToken" xml:space="preserve"><value>Questo link non è valido o è già stato utilizzato.</value></data>
+  <data name="Account.Error.TokenExpired" xml:space="preserve"><value>Questo link è scaduto.</value></data>
+  <data name="Account.Error.PasswordResetFailed" xml:space="preserve"><value>La nuova password non soddisfa i requisiti indicati di seguito. Controllali e riprova.</value></data>
+  <data name="Account.Error.UserNotFound" xml:space="preserve"><value>Non abbiamo trovato questo account.</value></data>
+  <data name="Account.Error.Generic" xml:space="preserve"><value>Qualcosa è andato storto. Riprova.</value></data>
+  <data name="ResetPassword.RequirementsIntro" xml:space="preserve"><value>La nuova password deve:</value></data>
+  <data name="ResetPassword.RequirementLength" xml:space="preserve"><value>Contenere almeno 8 caratteri</value></data>
+  <data name="ResetPassword.RequirementUppercase" xml:space="preserve"><value>Contenere almeno una lettera maiuscola</value></data>
+  <data name="ResetPassword.RequirementLowercase" xml:space="preserve"><value>Contenere almeno una lettera minuscola</value></data>
+  <data name="ResetPassword.RequirementDigit" xml:space="preserve"><value>Contenere almeno un numero</value></data>
+  <data name="ForgotPasswordConfirmation.Title" xml:space="preserve"><value>Controlla la tua email</value></data>
+  <data name="ResetPasswordConfirmation.Title" xml:space="preserve"><value>Password aggiornata</value></data>
+  <data name="Lockout.Title" xml:space="preserve"><value>Account temporaneamente bloccato</value></data>
+  <data name="Lockout.Message" xml:space="preserve"><value>Il tuo account è stato temporaneamente bloccato dopo diversi tentativi di accesso non riusciti. Si sbloccherà automaticamente dopo una breve attesa: non è richiesta alcuna azione da parte tua.</value></data>
+  <data name="ConfirmEmail.SuccessTitle" xml:space="preserve"><value>Email confermata</value></data>
+  <data name="ConfirmEmail.SuccessMessage" xml:space="preserve"><value>Il tuo indirizzo email è stato confermato. Ora puoi accedere.</value></data>
+  <data name="ConfirmEmail.ExpiredTitle" xml:space="preserve"><value>Link di conferma scaduto</value></data>
+  <data name="ConfirmEmail.ExpiredMessage" xml:space="preserve"><value>Questo link di conferma è scaduto. Richiedine uno nuovo qui sotto.</value></data>
+  <data name="ConfirmEmail.InvalidTitle" xml:space="preserve"><value>Link di conferma non valido</value></data>
+  <data name="ConfirmEmail.InvalidMessage" xml:space="preserve"><value>Questo link di conferma non è valido o è già stato utilizzato. Richiedine uno nuovo qui sotto.</value></data>
+  <data name="ConfirmEmail.ResendButton" xml:space="preserve"><value>Invia di nuovo l'email di conferma</value></data>
+
   <!-- PageTitle — F5 -->
   <data name="PageTitle.Tickets" xml:space="preserve"><value>Ticket di supporto</value></data>
   <data name="PageTitle.TicketDetail" xml:space="preserve"><value>Dettaglio ticket</value></data>

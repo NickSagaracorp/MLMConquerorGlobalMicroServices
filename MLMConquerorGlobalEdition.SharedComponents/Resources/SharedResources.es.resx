@@ -1294,6 +1294,29 @@
   <data name="Enroll.Notice" xml:space="preserve"><value>A partir de ahora necesitarás esta aplicación para iniciar sesión.</value></data>
   <data name="Enroll.Submit" xml:space="preserve"><value>Confirmar y continuar</value></data>
 
+  <!-- Account — forgot password, reset password, email confirmation, lockout (SharedComponents.Components.Account) -->
+  <data name="Account.Error.InvalidToken" xml:space="preserve"><value>Este enlace no es válido o ya se ha usado.</value></data>
+  <data name="Account.Error.TokenExpired" xml:space="preserve"><value>Este enlace ha caducado.</value></data>
+  <data name="Account.Error.PasswordResetFailed" xml:space="preserve"><value>Tu nueva contraseña no cumple los requisitos indicados abajo. Revísalos e inténtalo de nuevo.</value></data>
+  <data name="Account.Error.UserNotFound" xml:space="preserve"><value>No hemos encontrado esa cuenta.</value></data>
+  <data name="Account.Error.Generic" xml:space="preserve"><value>Algo salió mal. Inténtalo de nuevo.</value></data>
+  <data name="ResetPassword.RequirementsIntro" xml:space="preserve"><value>Tu nueva contraseña debe:</value></data>
+  <data name="ResetPassword.RequirementLength" xml:space="preserve"><value>Tener al menos 8 caracteres</value></data>
+  <data name="ResetPassword.RequirementUppercase" xml:space="preserve"><value>Incluir al menos una letra mayúscula</value></data>
+  <data name="ResetPassword.RequirementLowercase" xml:space="preserve"><value>Incluir al menos una letra minúscula</value></data>
+  <data name="ResetPassword.RequirementDigit" xml:space="preserve"><value>Incluir al menos un número</value></data>
+  <data name="ForgotPasswordConfirmation.Title" xml:space="preserve"><value>Revisa tu correo</value></data>
+  <data name="ResetPasswordConfirmation.Title" xml:space="preserve"><value>Contraseña actualizada</value></data>
+  <data name="Lockout.Title" xml:space="preserve"><value>Cuenta bloqueada temporalmente</value></data>
+  <data name="Lockout.Message" xml:space="preserve"><value>Tu cuenta se ha bloqueado temporalmente tras varios intentos de inicio de sesión fallidos. Se desbloqueará automáticamente pasado un rato; no tienes que hacer nada.</value></data>
+  <data name="ConfirmEmail.SuccessTitle" xml:space="preserve"><value>Correo confirmado</value></data>
+  <data name="ConfirmEmail.SuccessMessage" xml:space="preserve"><value>Tu dirección de correo ha sido confirmada. Ya puedes iniciar sesión.</value></data>
+  <data name="ConfirmEmail.ExpiredTitle" xml:space="preserve"><value>Enlace de confirmación caducado</value></data>
+  <data name="ConfirmEmail.ExpiredMessage" xml:space="preserve"><value>Este enlace de confirmación ha caducado. Pide uno nuevo abajo.</value></data>
+  <data name="ConfirmEmail.InvalidTitle" xml:space="preserve"><value>Enlace de confirmación no válido</value></data>
+  <data name="ConfirmEmail.InvalidMessage" xml:space="preserve"><value>Este enlace de confirmación no es válido o ya se ha usado. Pide uno nuevo abajo.</value></data>
+  <data name="ConfirmEmail.ResendButton" xml:space="preserve"><value>Reenviar correo de confirmación</value></data>
+
   <!-- PageTitle — F5 -->
   <data name="PageTitle.Tickets" xml:space="preserve"><value>Tickets de soporte</value></data>
   <data name="PageTitle.TicketDetail" xml:space="preserve"><value>Detalle del ticket</value></data>

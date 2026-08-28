@@ -1191,6 +1191,29 @@
   <data name="Enroll.Notice" xml:space="preserve"><value>从现在起，您需要使用此应用登录。</value></data>
   <data name="Enroll.Submit" xml:space="preserve"><value>确认并继续</value></data>
 
+  <!-- Account — forgot password, reset password, email confirmation, lockout (SharedComponents.Components.Account) -->
+  <data name="Account.Error.InvalidToken" xml:space="preserve"><value>此链接无效或已被使用。</value></data>
+  <data name="Account.Error.TokenExpired" xml:space="preserve"><value>此链接已过期。</value></data>
+  <data name="Account.Error.PasswordResetFailed" xml:space="preserve"><value>您的新密码不符合下方要求，请检查后重试。</value></data>
+  <data name="Account.Error.UserNotFound" xml:space="preserve"><value>未找到该账户。</value></data>
+  <data name="Account.Error.Generic" xml:space="preserve"><value>出现问题，请重试。</value></data>
+  <data name="ResetPassword.RequirementsIntro" xml:space="preserve"><value>您的新密码必须：</value></data>
+  <data name="ResetPassword.RequirementLength" xml:space="preserve"><value>至少包含8个字符</value></data>
+  <data name="ResetPassword.RequirementUppercase" xml:space="preserve"><value>至少包含一个大写字母</value></data>
+  <data name="ResetPassword.RequirementLowercase" xml:space="preserve"><value>至少包含一个小写字母</value></data>
+  <data name="ResetPassword.RequirementDigit" xml:space="preserve"><value>至少包含一个数字</value></data>
+  <data name="ForgotPasswordConfirmation.Title" xml:space="preserve"><value>请查收邮件</value></data>
+  <data name="ResetPasswordConfirmation.Title" xml:space="preserve"><value>密码已更新</value></data>
+  <data name="Lockout.Title" xml:space="preserve"><value>账户已被暂时锁定</value></data>
+  <data name="Lockout.Message" xml:space="preserve"><value>由于多次登录失败，您的账户已被暂时锁定。稍等片刻后将自动解锁，您无需采取任何操作。</value></data>
+  <data name="ConfirmEmail.SuccessTitle" xml:space="preserve"><value>邮箱已确认</value></data>
+  <data name="ConfirmEmail.SuccessMessage" xml:space="preserve"><value>您的邮箱地址已确认，现在可以登录了。</value></data>
+  <data name="ConfirmEmail.ExpiredTitle" xml:space="preserve"><value>确认链接已过期</value></data>
+  <data name="ConfirmEmail.ExpiredMessage" xml:space="preserve"><value>此确认链接已过期，请在下方重新申请。</value></data>
+  <data name="ConfirmEmail.InvalidTitle" xml:space="preserve"><value>确认链接无效</value></data>
+  <data name="ConfirmEmail.InvalidMessage" xml:space="preserve"><value>此确认链接无效或已被使用，请在下方重新申请。</value></data>
+  <data name="ConfirmEmail.ResendButton" xml:space="preserve"><value>重新发送确认邮件</value></data>
+
   <!-- PageTitle — F5 -->
   <data name="PageTitle.Tickets" xml:space="preserve"><value>支持工单</value></data>
   <data name="PageTitle.TicketDetail" xml:space="preserve"><value>工单详情</value></data>

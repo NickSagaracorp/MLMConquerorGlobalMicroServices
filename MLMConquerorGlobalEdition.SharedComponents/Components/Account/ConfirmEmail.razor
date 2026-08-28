@@ -1,0 +1,63 @@
+@* Resultado de confirmar el correo: éxito, enlace caducado o enlace inválido.
+
+   La llamada que confirma el correo ya se hizo antes de llegar aquí —la página que monta
+   este componente es quien lee userId y token de la query string, con la forma que fijó la
+   Tarea 1 ({base}/auth/confirm-email?userId=…&token=…), y quien decide el resultado. Este
+   componente solo lo enseña. En los dos casos de fallo ofrece reenviar la confirmación, sin
+   distinguir mucho entre "caducado" e "inválido" en el texto: para quien lo lee, en ambos
+   casos el siguiente paso es el mismo, pedir uno nuevo. *@
+
+@inject IStringLocalizer<SharedResources> L
+
+<div class="confirm-email">
+
+    @if (AccountMessages.IsConfirmEmailSuccess(Status))
+    {
+        <h5 class="mb-1">@L["ConfirmEmail.SuccessTitle"]</h5>
+        <div class="alert alert-success" role="status">@L["ConfirmEmail.SuccessMessage"]</div>
+
+        @if (!string.IsNullOrWhiteSpace(LoginUrl))
+        {
+            <a href="@LoginUrl" class="btn btn-primary w-100 fw-semibold">@L["ResetPassword.GoToLogin"]</a>
+        }
+    }
+    else
+    {
+        @if (AccountMessages.IsConfirmEmailExpired(Status))
+        {
+            <h5 class="mb-1">@L["ConfirmEmail.ExpiredTitle"]</h5>
+            <div class="alert alert-danger" role="alert">@L["ConfirmEmail.ExpiredMessage"]</div>
+        }
+        else
+        {
+            <h5 class="mb-1">@L["ConfirmEmail.InvalidTitle"]</h5>
+            <div class="alert alert-danger" role="alert">@L["ConfirmEmail.InvalidMessage"]</div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(ResendUrl))
+        {
+            <a href="@ResendUrl" class="btn btn-primary w-100 fw-semibold mb-2">@L["ConfirmEmail.ResendButton"]</a>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(LoginUrl))
+        {
+            <p class="mt-2 mb-0 small">
+                <a href="@LoginUrl" class="text-decoration-none">@L["ForgotPassword.BackToLogin"]</a>
+            </p>
+        }
+    }
+</div>
+
+@code {
+    /// <summary>Resultado de la confirmación: <c>Success</c>, <c>Expired</c> o <c>Invalid</c>.</summary>
+    [Parameter, EditorRequired]
+    public string Status { get; set; } = string.Empty;
+
+    /// <summary>Ruta al formulario de reenvío. Si viene vacía no se ofrece reenviar.</summary>
+    [Parameter]
+    public string? ResendUrl { get; set; }
+
+    /// <summary>Enlace al login.</summary>
+    [Parameter]
+    public string? LoginUrl { get; set; }
+}

@@ -1359,6 +1359,29 @@
   <data name="Enroll.Notice" xml:space="preserve"><value>From now on you will need this app to sign in.</value></data>
   <data name="Enroll.Submit" xml:space="preserve"><value>Confirm and continue</value></data>
 
+  <!-- Account — forgot password, reset password, email confirmation, lockout (SharedComponents.Components.Account) -->
+  <data name="Account.Error.InvalidToken" xml:space="preserve"><value>This link isn't valid or has already been used.</value></data>
+  <data name="Account.Error.TokenExpired" xml:space="preserve"><value>This link has expired.</value></data>
+  <data name="Account.Error.PasswordResetFailed" xml:space="preserve"><value>Your new password doesn't meet the requirements below. Please check them and try again.</value></data>
+  <data name="Account.Error.UserNotFound" xml:space="preserve"><value>We couldn't find that account.</value></data>
+  <data name="Account.Error.Generic" xml:space="preserve"><value>Something went wrong. Please try again.</value></data>
+  <data name="ResetPassword.RequirementsIntro" xml:space="preserve"><value>Your new password must:</value></data>
+  <data name="ResetPassword.RequirementLength" xml:space="preserve"><value>Be at least 8 characters long</value></data>
+  <data name="ResetPassword.RequirementUppercase" xml:space="preserve"><value>Include at least one uppercase letter</value></data>
+  <data name="ResetPassword.RequirementLowercase" xml:space="preserve"><value>Include at least one lowercase letter</value></data>
+  <data name="ResetPassword.RequirementDigit" xml:space="preserve"><value>Include at least one number</value></data>
+  <data name="ForgotPasswordConfirmation.Title" xml:space="preserve"><value>Check Your Email</value></data>
+  <data name="ResetPasswordConfirmation.Title" xml:space="preserve"><value>Password Updated</value></data>
+  <data name="Lockout.Title" xml:space="preserve"><value>Account Temporarily Locked</value></data>
+  <data name="Lockout.Message" xml:space="preserve"><value>Your account has been temporarily locked after several unsuccessful sign-in attempts. It will unlock automatically after a short wait — no action is needed on your part.</value></data>
+  <data name="ConfirmEmail.SuccessTitle" xml:space="preserve"><value>Email Confirmed</value></data>
+  <data name="ConfirmEmail.SuccessMessage" xml:space="preserve"><value>Your email address has been confirmed. You can now sign in.</value></data>
+  <data name="ConfirmEmail.ExpiredTitle" xml:space="preserve"><value>Confirmation Link Expired</value></data>
+  <data name="ConfirmEmail.ExpiredMessage" xml:space="preserve"><value>This confirmation link has expired. Request a new one below.</value></data>
+  <data name="ConfirmEmail.InvalidTitle" xml:space="preserve"><value>Confirmation Link Invalid</value></data>
+  <data name="ConfirmEmail.InvalidMessage" xml:space="preserve"><value>This confirmation link is invalid or has already been used. Request a new one below.</value></data>
+  <data name="ConfirmEmail.ResendButton" xml:space="preserve"><value>Resend Confirmation Email</value></data>
+
   <!-- PageTitle — F5 -->
   <data name="PageTitle.Tickets" xml:space="preserve"><value>Support Tickets</value></data>
   <data name="PageTitle.TicketDetail" xml:space="preserve"><value>Ticket Detail</value></data>

@@ -1260,6 +1260,29 @@
   <data name="Enroll.Notice" xml:space="preserve"><value>Ab jetzt benötigst du diese App, um dich anzumelden.</value></data>
   <data name="Enroll.Submit" xml:space="preserve"><value>Bestätigen und fortfahren</value></data>
 
+  <!-- Account — forgot password, reset password, email confirmation, lockout (SharedComponents.Components.Account) -->
+  <data name="Account.Error.InvalidToken" xml:space="preserve"><value>Dieser Link ist ungültig oder wurde bereits verwendet.</value></data>
+  <data name="Account.Error.TokenExpired" xml:space="preserve"><value>Dieser Link ist abgelaufen.</value></data>
+  <data name="Account.Error.PasswordResetFailed" xml:space="preserve"><value>Ihr neues Passwort erfüllt nicht die unten aufgeführten Anforderungen. Bitte überprüfen Sie sie und versuchen Sie es erneut.</value></data>
+  <data name="Account.Error.UserNotFound" xml:space="preserve"><value>Wir konnten dieses Konto nicht finden.</value></data>
+  <data name="Account.Error.Generic" xml:space="preserve"><value>Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.</value></data>
+  <data name="ResetPassword.RequirementsIntro" xml:space="preserve"><value>Ihr neues Passwort muss:</value></data>
+  <data name="ResetPassword.RequirementLength" xml:space="preserve"><value>Mindestens 8 Zeichen lang sein</value></data>
+  <data name="ResetPassword.RequirementUppercase" xml:space="preserve"><value>Mindestens einen Großbuchstaben enthalten</value></data>
+  <data name="ResetPassword.RequirementLowercase" xml:space="preserve"><value>Mindestens einen Kleinbuchstaben enthalten</value></data>
+  <data name="ResetPassword.RequirementDigit" xml:space="preserve"><value>Mindestens eine Zahl enthalten</value></data>
+  <data name="ForgotPasswordConfirmation.Title" xml:space="preserve"><value>Überprüfen Sie Ihre E-Mail</value></data>
+  <data name="ResetPasswordConfirmation.Title" xml:space="preserve"><value>Passwort aktualisiert</value></data>
+  <data name="Lockout.Title" xml:space="preserve"><value>Konto vorübergehend gesperrt</value></data>
+  <data name="Lockout.Message" xml:space="preserve"><value>Ihr Konto wurde nach mehreren erfolglosen Anmeldeversuchen vorübergehend gesperrt. Es wird nach einer kurzen Wartezeit automatisch entsperrt — Sie müssen nichts weiter unternehmen.</value></data>
+  <data name="ConfirmEmail.SuccessTitle" xml:space="preserve"><value>E-Mail bestätigt</value></data>
+  <data name="ConfirmEmail.SuccessMessage" xml:space="preserve"><value>Ihre E-Mail-Adresse wurde bestätigt. Sie können sich jetzt anmelden.</value></data>
+  <data name="ConfirmEmail.ExpiredTitle" xml:space="preserve"><value>Bestätigungslink abgelaufen</value></data>
+  <data name="ConfirmEmail.ExpiredMessage" xml:space="preserve"><value>Dieser Bestätigungslink ist abgelaufen. Fordern Sie unten einen neuen an.</value></data>
+  <data name="ConfirmEmail.InvalidTitle" xml:space="preserve"><value>Bestätigungslink ungültig</value></data>
+  <data name="ConfirmEmail.InvalidMessage" xml:space="preserve"><value>Dieser Bestätigungslink ist ungültig oder wurde bereits verwendet. Fordern Sie unten einen neuen an.</value></data>
+  <data name="ConfirmEmail.ResendButton" xml:space="preserve"><value>Bestätigungs-E-Mail erneut senden</value></data>
+
   <!-- PageTitle — F5 -->
   <data name="PageTitle.Tickets" xml:space="preserve"><value>Support-Tickets</value></data>
   <data name="PageTitle.TicketDetail" xml:space="preserve"><value>Ticket-Details</value></data>

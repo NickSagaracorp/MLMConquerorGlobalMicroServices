@@ -1,0 +1,27 @@
+@* Página de cuenta bloqueada temporalmente por intentos fallidos de inicio de sesión.
+
+   Estática y deliberadamente vaga en dos datos: cuánto falta para desbloquear y cuántos
+   intentos se permiten por tanda. Decir cualquiera de los dos es decirle a quien está
+   probando contraseñas cuánto tiene que esperar para seguir probando, y con qué frecuencia
+   puede volver a intentarlo. El backend ya sabe cuándo desbloquear la cuenta por su cuenta;
+   esta pantalla solo tiene que explicar que va a pasar sin dar pistas de sincronización. *@
+
+@inject IStringLocalizer<SharedResources> L
+
+<div class="account-lockout">
+
+    <h5 class="mb-1">@L["Lockout.Title"]</h5>
+
+    <div class="alert alert-warning" role="alert">@L["Lockout.Message"]</div>
+
+    @if (!string.IsNullOrWhiteSpace(LoginUrl))
+    {
+        <a href="@LoginUrl" class="btn btn-outline-primary w-100 fw-semibold">@L["ForgotPassword.BackToLogin"]</a>
+    }
+</div>
+
+@code {
+    /// <summary>Enlace de vuelta al login. Si viene vacío no se pinta el botón.</summary>
+    [Parameter]
+    public string? LoginUrl { get; set; }
+}
