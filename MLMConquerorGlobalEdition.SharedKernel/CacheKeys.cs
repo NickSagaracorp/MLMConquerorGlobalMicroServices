@@ -59,6 +59,40 @@ public static class CacheKeys
     public const string AdminGrowthDashboard    = "admin:dashboard:growth";
     public const string AdminHealthDashboard    = "admin:dashboard:health";
 
+    /// <summary>
+    /// Marca de challenge de 2FA ya redimido, por <c>jti</c>. Sin ella el mismo token
+    /// serviría dos veces dentro de su ventana de vida: el challenge es stateless y su
+    /// firma sigue siendo válida después de haberlo usado. Se escribe también cuando se
+    /// agotan los intentos, para que el challenge quemado no admita ni uno más.
+    /// TTL: lo que le quede de vida al challenge, así que no hay constante aquí.
+    /// </summary>
+    public static string TwoFactorChallengeConsumed(string jti) => $"2fa:challenge:{jti}:consumed";
+
+    /// <summary>
+    /// Contador de intentos fallidos de un challenge, por <c>jti</c>. Al superar el máximo
+    /// el challenge se quema: hay que pedir otro. Sin este límite, quien tenga un challenge
+    /// válido puede recorrer el millón de códigos de seis dígitos hasta acertar.
+    /// TTL: lo que le quede de vida al challenge.
+    /// </summary>
+    public static string TwoFactorAttempts(string jti) => $"2fa:challenge:{jti}:attempts";
+
+    /// <summary>
+    /// Ventana de emisiones por usuario. Limita cuántos códigos se generan y despachan en
+    /// un intervalo: cada SMS se paga al proveedor, así que sin este contador quien conozca
+    /// un correo puede bombardear a un usuario a costa de la empresa.
+    /// TTL: lo que le quede a la ventana configurada.
+    /// </summary>
+    public static string TwoFactorIssueWindow(string userId) => $"2fa:user:{userId}:issues";
+
+    /// <summary>
+    /// Marca de código TOTP ya usado, por usuario y hash del código. Identity acepta el
+    /// mismo código durante la tolerancia de reloj (~90 s); en una operación de dinero eso
+    /// significaría autorizar dos veces con el mismo código.
+    /// TTL: la ventana de tolerancia configurada.
+    /// </summary>
+    public static string TwoFactorTotpUsed(string userId, string codeHash) =>
+        $"2fa:user:{userId}:totp:{codeHash}";
+
     public const string RankDefinitions  = "rank:definitions";
     public const string MembershipLevels = "membership:levels";
     public const string CommissionTypes  = "commission:types";

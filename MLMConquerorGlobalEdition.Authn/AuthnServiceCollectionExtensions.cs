@@ -25,4 +25,17 @@ public static class AuthnServiceCollectionExtensions
         services.AddScoped<ITotpEnrollmentService, TotpEnrollmentService>();
         return services;
     }
+
+    /// <summary>
+    /// Registra la orquestación de los tres canales. Depende de <c>IChallengeTokenService</c>
+    /// —registrado por <see cref="AddAuthnChallengeTokens"/>— y de
+    /// <c>UserManager&lt;ApplicationUser&gt;</c>, <c>IEmailService</c>, <c>ISmsService</c>,
+    /// <c>IEncryptionService</c>, <c>ICacheService</c>, <c>IDateTimeProvider</c> e
+    /// <c>IConfiguration</c>, que cada host registra por su cuenta.
+    /// </summary>
+    public static IServiceCollection AddAuthnTwoFactor(this IServiceCollection services)
+    {
+        services.AddScoped<ITwoFactorService, TwoFactorService>();
+        return services;
+    }
 }
