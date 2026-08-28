@@ -52,11 +52,12 @@ equivocada (spec §10.6). No se toca aquí.
 
 | Archivo | Responsabilidad |
 |---|---|
-| `SharedKernel/Configuration/JwtKeyGuard.cs` (nuevo) | Validar llave presente y no revocada; huella SHA-256 |
+| `SharedKernel/Configuration/JwtKeyGuard.cs` (nuevo) | `ValidatePrivateKey` y `ValidatePublicKey`: rechazan llave ausente, no parseable, por debajo de 2048 bits, y el par revocado por huella SHA-256 del SPKI |
 | `Signups.Tests/Configuration/JwtKeyGuardTests.cs` (nuevo) | Pruebas del guarda |
-| `SignupAPI/Services/JwtService.cs` (modificar) | Usar el guarda |
-| `SignupAPI/Services/TwoFactorChallengeService.cs` (modificar) | Usar el guarda |
-| `AdminAPI/Services/JwtService.cs` (modificar) | Usar el guarda |
+| `SignupAPI/Services/JwtService.cs` (modificar) | `ValidatePrivateKey` |
+| `SignupAPI/Services/TwoFactorChallengeService.cs` (modificar) | `ValidatePrivateKey` |
+| `AdminAPI/Services/JwtService.cs` (modificar) | `ValidatePrivateKey` |
+| `Program.cs` de AdminAPI, SignupAPI, BizCenter, RankEngine y TicketManagementSystem (modificar) | `ValidatePublicKey`; sustituye el `?? throw` y el chequeo ad-hoc de placeholder `REPLACE_WITH_` |
 | `SignupAPI/appsettings.json` (modificar) | Vaciar `PrivateKeyBase64`, poner la pública nueva |
 | `AdminAPI/appsettings.json` (modificar) | Igual |
 | `SignupAPI/appsettings.Development.json` (nuevo, ignorado) | Llave privada de desarrollo |
@@ -68,6 +69,24 @@ equivocada (spec §10.6). No se toca aquí.
 ---
 
 ## Task 1: Guarda de configuración de llaves JWT
+
+> **⚠️ El código de esta tarea quedó obsoleto en la implementación. No lo copies.**
+>
+> La versión que aparece abajo calcula la huella sobre el **string** base64 de configuración.
+> Eso resultó ser vulnerable: `Convert.FromBase64String` ignora los espacios internos, así que
+> la misma llave revocada envuelta a 64 columnas —como sale de un `.pem`, un vault, un backup o
+> un secreto de Kubernetes con bloque `|`— produce otra huella, pasa el guarda, y carga byte por
+> byte idéntica.
+>
+> La implementación real (commits `ee441aa` → `c3405b6`) importa la llave y huellea su
+> **SubjectPublicKeyInfo**, invariante a la codificación y al formato. Como el SPKI del par es
+> el mismo para la privada y la pública, una sola constante valida ambas, y por eso el guarda
+> expone también `ValidatePublicKey`.
+>
+> Constante vigente: `1ae56a7f1c5062a8045b6986c60048e54438dabfa8f21f78bae7de3fa33f9068`
+>
+> Fuente de verdad: `MLMConquerorGlobalEdition.SharedKernel/Configuration/JwtKeyGuard.cs`.
+> Lo de abajo se conserva solo como registro de lo que se planeó.
 
 **Files:**
 - Create: `MLMConquerorGlobalEdition.SharedKernel/Configuration/JwtKeyGuard.cs`
@@ -232,12 +251,19 @@ el rechazo por huella impide restaurarla desde un commit viejo."
 
 ---
 
-## Task 2: Cablear el guarda en los tres servicios que firman
+## Task 2: Cablear el guarda
 
-**Files:**
+**Files — firman con la privada:**
 - Modify: `MLMConquerorGlobalEdition.SignupAPI/Services/JwtService.cs:23-24`
 - Modify: `MLMConquerorGlobalEdition.SignupAPI/Services/TwoFactorChallengeService.cs:29-30`
 - Modify: `MLMConquerorGlobalEdition.AdminAPI/Services/JwtService.cs:23-24`
+
+**Files — validan con la pública:**
+- Modify: `MLMConquerorGlobalEdition.AdminAPI/Program.cs:195-201`
+- Modify: `MLMConquerorGlobalEdition.SignupAPI/Program.cs:241-247`
+- Modify: `MLMConquerorGlobalEdition.BizCenter/Program.cs:241-247`
+- Modify: `MLMConquerorGlobalEdition.RankEngine/Program.cs:134-140`
+- Modify: `MLMConquerorGlobalEdition.TicketManagementSystem/Program.cs:81-82`
 
 - [ ] **Step 1: Modificar `SignupAPI/Services/JwtService.cs`**
 
@@ -289,6 +315,42 @@ por:
 ```csharp
         var privateKeyBase64 = JwtKeyGuard.ValidatePrivateKey(config["Jwt:PrivateKeyBase64"]);
 ```
+
+- [ ] **Step 3b: Cablear `ValidatePublicKey` en los cinco servicios que validan**
+
+Sin este paso, rotar la llave privada deja a cinco servicios confiando todavía en la
+**pública** del par comprometido, y por tanto aceptando tokens forjados con la llave vieja.
+Ese es el vector real: construir `ValidatePublicKey` y no llamarlo es peor que no tenerlo,
+porque parece cubierto.
+
+`ValidatePublicKey` subsume los tres chequeos que hay hoy en cada sitio: el `?? throw` de
+ausencia, el `StartsWith("REPLACE_WITH_")` de placeholder, y el parseo que hoy revienta
+como excepción cruda unas líneas más abajo. Además añade el rechazo de la llave revocada
+y el de llaves por debajo de 2048 bits.
+
+En cada archivo, agregar `using MLMConquerorGlobalEdition.SharedKernel.Configuration;` y
+reemplazar el bloque de lectura por:
+
+```csharp
+var publicKeyBase64 = JwtKeyGuard.ValidatePublicKey(builder.Configuration["Jwt:PublicKeyBase64"]);
+```
+
+| Archivo | Líneas a reemplazar |
+|---|---|
+| `MLMConquerorGlobalEdition.AdminAPI/Program.cs` | 195-201 (lectura + bloque `REPLACE_WITH_`) |
+| `MLMConquerorGlobalEdition.SignupAPI/Program.cs` | 241-247 (ídem) |
+| `MLMConquerorGlobalEdition.BizCenter/Program.cs` | 241-247 (ídem) |
+| `MLMConquerorGlobalEdition.RankEngine/Program.cs` | 134-140 (ídem) |
+| `MLMConquerorGlobalEdition.TicketManagementSystem/Program.cs` | 81-82 (solo la lectura; aquí no hay bloque `REPLACE_WITH_`) |
+
+Verificar el rango exacto antes de borrar: el bloque `if (publicKeyBase64.StartsWith(...))`
+termina en la línea del `throw`, y su cuerpo ocupa dos o tres líneas según el archivo. Borrar
+el `if` completo, no solo su primera línea.
+
+Nota sobre el cambio de comportamiento: el chequeo actual de placeholder solo lanza cuando
+**no** es Development. El guarda lanza siempre. No es una regresión — un placeholder en
+Development ya reventaba igual en el `ImportSubjectPublicKeyInfo` siguiente, solo que con un
+mensaje peor y unas líneas más tarde.
 
 - [ ] **Step 4: Verificar que la prueba existente de llave ausente sigue pasando**
 
