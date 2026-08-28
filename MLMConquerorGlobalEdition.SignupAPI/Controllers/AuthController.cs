@@ -10,6 +10,7 @@ using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Enrollment;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.ForgotPassword;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Login;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Logout;
+using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Phone;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.RefreshToken;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.ResendTwoFactor;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.ResetPassword;
@@ -231,6 +232,69 @@ public class AuthController : ControllerBase
         var result = await _mediator.Send(new ChangePasswordCommand(userId, request), ct);
         return result.IsSuccess
             ? Ok(ApiResponse<bool>.Ok(true, "Password changed successfully."))
+            : BadRequest(ApiResponse<bool>.Fail(result.ErrorCode!, result.Error!));
+    }
+
+
+    /// <summary>
+    /// Da de alta el teléfono del canal SMS y le manda el código que lo confirmará. El número
+    /// queda guardado sin confirmar hasta que se redima ese código.
+    /// </summary>
+    /// <remarks>
+    /// Autenticado: es gestión de la propia cuenta, el usuario ya entró. El teléfono se guarda
+    /// contra el usuario de las claims, no contra ningún identificador del cuerpo — así nadie
+    /// puede dar de alta un teléfono en la cuenta de otro y desviar ahí sus códigos.
+    ///
+    /// El SMS lo despacha <c>ITwoFactorService</c>, que aplica el tope de emisiones por usuario:
+    /// aquí el número lo elige quien llama, así que sin ese tope el endpoint sería una forma de
+    /// mandar SMS ilimitados a cualquier teléfono a costa de la empresa.
+    /// </remarks>
+    [HttpPost("phone")]
+    [Authorize]
+    public async Task<IActionResult> AddPhone(
+        [FromBody] AddPhoneRequest request,
+        CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                  ?? User.FindFirstValue("sub")
+                  ?? string.Empty;
+        var result = await _mediator.Send(new AddPhoneCommand(userId, request), ct);
+        return result.IsSuccess
+            ? Ok(ApiResponse<PhoneChallengeResponse>.Ok(result.Value!))
+            : BadRequest(ApiResponse<PhoneChallengeResponse>.Fail(result.ErrorCode!, result.Error!));
+    }
+
+    /// <summary>Confirma el teléfono con el código recibido por SMS.</summary>
+    /// <remarks>Autenticado por el mismo motivo que <see cref="AddPhone"/>.</remarks>
+    [HttpPost("phone/verify")]
+    [Authorize]
+    public async Task<IActionResult> VerifyPhone(
+        [FromBody] VerifyPhoneRequest request,
+        CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                  ?? User.FindFirstValue("sub")
+                  ?? string.Empty;
+        var result = await _mediator.Send(new VerifyPhoneCommand(userId, request), ct);
+        return result.IsSuccess
+            ? Ok(ApiResponse<bool>.Ok(true, "Phone verified successfully."))
+            : BadRequest(ApiResponse<bool>.Fail(result.ErrorCode!, result.Error!));
+    }
+
+    /// <summary>
+    /// Da de baja el teléfono del 2FA. Si el canal preferido era SMS, vuelve a correo: si no, la
+    /// cuenta quedaría pidiendo códigos por un canal que ya no tiene destino.
+    /// </summary>
+    [HttpDelete("phone")]
+    [Authorize]
+    public async Task<IActionResult> RemovePhone(CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                  ?? User.FindFirstValue("sub")
+                  ?? string.Empty;
+        var result = await _mediator.Send(new RemovePhoneCommand(userId), ct);
+        return result.IsSuccess
+            ? Ok(ApiResponse<bool>.Ok(true, "Phone removed successfully."))
             : BadRequest(ApiResponse<bool>.Fail(result.ErrorCode!, result.Error!));
     }
 

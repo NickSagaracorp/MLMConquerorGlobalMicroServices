@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using MLMConquerorGlobalEdition.Domain.Entities.Sms;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
 namespace MLMConquerorGlobalEdition.Notifications.Sms;
@@ -27,10 +28,6 @@ public partial class TwilioSmsService : ISmsService
     /// </summary>
     [GeneratedRegex(@"\{\{(\w+)\}\}")]
     private static partial Regex VariablePattern();
-
-    /// <summary>E.164: '+' followed by 8 to 15 digits, no separators.</summary>
-    [GeneratedRegex(@"^\+\d{8,15}$")]
-    private static partial Regex E164Pattern();
 
     private readonly AppDbContext _db;
     private readonly ITwilioMessageSender _sender;
@@ -62,9 +59,13 @@ public partial class TwilioSmsService : ISmsService
         await _sender.SendAsync(_fromNumber, toPhoneE164, rendered, ct);
     }
 
+    /// <summary>
+    /// La regla vive en <see cref="PhoneNumberFormat"/>, no aquí: quien da de alta un teléfono
+    /// valida con la misma, y si divergieran aceptaríamos allí números que fallarían aquí.
+    /// </summary>
     private static void ValidatePhone(string toPhoneE164)
     {
-        if (string.IsNullOrWhiteSpace(toPhoneE164) || !E164Pattern().IsMatch(toPhoneE164))
+        if (!PhoneNumberFormat.IsE164(toPhoneE164))
             throw new ArgumentException(
                 $"'{toPhoneE164}' is not a valid E.164 phone number.", nameof(toPhoneE164));
     }

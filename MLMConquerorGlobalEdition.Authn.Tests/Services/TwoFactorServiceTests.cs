@@ -225,6 +225,78 @@ public class TwoFactorServiceTests
         result.ErrorCode.Should().Be("CHANNEL_UNAVAILABLE");
     }
 
+    /// <summary>
+    /// Teléfono guardado pero todavía sin confirmar: es el estado en el que queda una cuenta
+    /// justo después de dar de alta el número, y es el único momento en el que hace falta
+    /// mandarle un SMS para poder confirmarlo. Sin esta excepción por propósito, dar de alta un
+    /// teléfono sería imposible sin saltarse la librería —y con ella, el tope de emisiones.
+    /// </summary>
+    [Fact]
+    public async Task IssueAsync_WhenSmsUnconfirmed_AndPurposeIsEnrollment_SendsTheCode()
+    {
+        var user    = BuildUserWithUnconfirmedPhone();
+        var service = BuildService();
+
+        var result = await service.IssueAsync(
+            user, TwoFactorPurpose.Enrollment, forcedChannel: TwoFactorChannel.Sms);
+
+        result.IsSuccess.Should().BeTrue(because: result.Error);
+        result.Value!.Channel.Should().Be(TwoFactorChannel.Sms);
+
+        _sms.Verify(s => s.SendAsync(
+            Phone, It.IsAny<string>(), NotificationEvents.TwoFactorCode,
+            It.Is<Dictionary<string, string>>(v => v["Code"] == Code),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    /// <summary>
+    /// La excepción anterior vale solo para el enrolamiento. Un teléfono sin confirmar no es un
+    /// segundo factor: nadie ha demostrado tenerlo, así que no puede abrir una sesión. Si el
+    /// login lo aceptara, bastaría con dar de alta cualquier número para desviar ahí los códigos.
+    /// </summary>
+    [Fact]
+    public async Task IssueAsync_WhenSmsUnconfirmed_AndPurposeIsLogin_ReturnsChannelUnavailable()
+    {
+        var user    = BuildUserWithUnconfirmedPhone();
+        var service = BuildService();
+
+        var result = await service.IssueAsync(
+            user, TwoFactorPurpose.Login, forcedChannel: TwoFactorChannel.Sms);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be("CHANNEL_UNAVAILABLE");
+        VerifyNothingDispatched();
+    }
+
+    /// <summary>
+    /// Ni siquiera el enrolamiento resuelve un canal sin destino: sin número guardado no hay a
+    /// dónde mandar nada.
+    /// </summary>
+    [Fact]
+    public async Task IssueAsync_WhenNoPhoneStored_AndPurposeIsEnrollment_ReturnsChannelUnavailable()
+    {
+        var user    = BuildUser(phoneConfirmed: false);
+        var service = BuildService();
+
+        var result = await service.IssueAsync(
+            user, TwoFactorPurpose.Enrollment, forcedChannel: TwoFactorChannel.Sms);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be("CHANNEL_UNAVAILABLE");
+        VerifyNothingDispatched();
+    }
+
+    /// <summary>Teléfono guardado, pendiente de confirmar: el estado intermedio del alta.</summary>
+    private static ApplicationUser BuildUserWithUnconfirmedPhone() => new()
+    {
+        Id                        = UserId,
+        Email                     = Email,
+        PreferredTwoFactorChannel = TwoFactorChannel.Email,
+        TwoFactorPhoneEncrypted   = EncryptedPhone,
+        TwoFactorPhoneLast4       = "2671",
+        TwoFactorPhoneConfirmed   = false
+    };
+
     // ── 5-8. despacho ────────────────────────────────────────────────────────
 
     [Fact]

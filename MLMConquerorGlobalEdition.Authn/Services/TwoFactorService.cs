@@ -76,7 +76,7 @@ public sealed class TwoFactorService : ITwoFactorService
         // Comprobar disponibilidad antes que nada: pedir un SMS a quien no ha confirmado su
         // teléfono es un error de configuración, no un intento de abuso, y no debe gastar
         // cupo de emisiones ni generar un código que no va a ninguna parte.
-        var target = ResolveTarget(user, channel);
+        var target = ResolveTarget(user, channel, purpose);
         if (target is null)
             return Result<ChallengeIssued>.Failure(
                 ChannelUnavailable, $"El canal {channel} no está disponible para este usuario.");
@@ -140,15 +140,29 @@ public sealed class TwoFactorService : ITwoFactorService
     /// Para SMS devuelve el teléfono ya descifrado: se guarda cifrado porque es a la vez PII
     /// y factor de autenticación.
     /// </summary>
-    private string? ResolveTarget(ApplicationUser user, TwoFactorChannel channel) => channel switch
+    /// <param name="purpose">
+    /// Entra en la decisión solo por el SMS sin confirmar, y solo para el enrolamiento: ver el
+    /// comentario del caso <see cref="TwoFactorChannel.Sms"/>.
+    /// </param>
+    private string? ResolveTarget(
+        ApplicationUser user, TwoFactorChannel channel, TwoFactorPurpose purpose) => channel switch
     {
         TwoFactorChannel.Email =>
             string.IsNullOrWhiteSpace(user.Email) ? null : user.Email,
 
+        // El teléfono todavía sin confirmar solo vale para el enrolamiento, que es justo el
+        // trámite que lo confirma: para verificar un número hay que mandarle un SMS, y exigir
+        // que ya estuviera confirmado haría imposible darlo de alta nunca.
+        //
+        // Para cualquier otro propósito sigue sin existir: un número que nadie ha demostrado
+        // tener no es un segundo factor. Si el login lo aceptara, bastaría con dar de alta un
+        // teléfono cualquiera para desviar ahí los códigos de acceso sin verificar nada.
         TwoFactorChannel.Sms =>
-            user.TwoFactorPhoneConfirmed && !string.IsNullOrWhiteSpace(user.TwoFactorPhoneEncrypted)
-                ? _encryption.Decrypt(user.TwoFactorPhoneEncrypted)
-                : null,
+            string.IsNullOrWhiteSpace(user.TwoFactorPhoneEncrypted)
+                ? null
+                : user.TwoFactorPhoneConfirmed || purpose == TwoFactorPurpose.Enrollment
+                    ? _encryption.Decrypt(user.TwoFactorPhoneEncrypted)
+                    : null,
 
         // Sin enrolamiento confirmado no hay clave que Identity pueda verificar: emitir el
         // challenge dejaría al usuario ante una pantalla de código que nunca va a aceptar nada.
