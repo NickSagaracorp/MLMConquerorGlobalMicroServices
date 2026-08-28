@@ -81,8 +81,15 @@ public sealed class TwoFactorService : ITwoFactorService
             return Result<ChallengeIssued>.Failure(
                 ChannelUnavailable, $"El canal {channel} no está disponible para este usuario.");
 
-        var window = await ReadIssueWindowAsync(user.Id, ct);
-        if (window.Count >= _maxIssuesPerWindow)
+        // El cupo se reserva antes de emitir, no se anota después. Un contador atómico solo
+        // sirve como tope si el incremento y la comprobación son el mismo paso: leer primero y
+        // escribir después deja el hueco por el que N peticiones simultáneas leen el mismo
+        // valor y pasan todas. El precio es que un despacho fallido gasta cupo, lo que es
+        // preferible a que una ráfaga concurrente lo salte entero.
+        var issues = await _cache.IncrementAsync(
+            CacheKeys.TwoFactorIssueWindow(user.Id), _issueWindow, ct);
+
+        if (issues > _maxIssuesPerWindow)
             return Result<ChallengeIssued>.Failure(
                 TooManyRequests,
                 "Se han pedido demasiados códigos; espere unos minutos antes de volver a intentarlo.");
@@ -109,8 +116,6 @@ public sealed class TwoFactorService : ITwoFactorService
 
         var challengeToken = _challenges.Issue(
             user.Id, user.Email!, purpose, channel, codeHash, operationKey);
-
-        await SaveIssueWindowAsync(user.Id, window, ct);
 
         return Result<ChallengeIssued>.Success(new ChallengeIssued(
             ChallengeToken: challengeToken,
@@ -193,8 +198,15 @@ public sealed class TwoFactorService : ITwoFactorService
         // se quema, y quien insista tiene que enterarse de que el motivo es el límite y no
         // un token cualquiera inválido. Además así el sexto intento falla aunque el código
         // sea el correcto, que es justo lo que impide probar indefinidamente.
-        var attempts = await ReadAttemptsAsync(claims.Jti, ct);
-        if (attempts >= _maxAttemptsPerChallenge)
+        //
+        // El intento se apunta al entrar, no al fallar: comprobar sobre un valor leído y
+        // escribirlo después no es un tope, porque entre la lectura y la escritura caben
+        // todas las peticiones que quepan. Con el incremento atómico, el que recibe el
+        // número 6 es el sexto de verdad, aunque los seis lleguen a la vez.
+        var attempts = await _cache.IncrementAsync(
+            CacheKeys.TwoFactorAttempts(claims.Jti), RemainingLifetime(claims), ct);
+
+        if (attempts > _maxAttemptsPerChallenge)
         {
             await BurnAsync(claims, ct);
             return Result<ChallengeClaims>.Failure(
@@ -213,7 +225,12 @@ public sealed class TwoFactorService : ITwoFactorService
 
         if (!verified)
         {
-            await RegisterFailedAttemptAsync(claims, attempts, ct);
+            // Este intento ya está contado. Si era el último permitido, el challenge se quema
+            // aquí y no en la llamada siguiente: así el atacante no conserva una redención
+            // válida guardada para más tarde.
+            if (attempts >= _maxAttemptsPerChallenge)
+                await BurnAsync(claims, ct);
+
             return Result<ChallengeClaims>.Failure(CodeInvalid, "El código introducido no es válido.");
         }
 
@@ -270,21 +287,6 @@ public sealed class TwoFactorService : ITwoFactorService
 
     // ── límites y antirreplay ────────────────────────────────────────────────
 
-    private async Task RegisterFailedAttemptAsync(
-        ChallengeClaims claims, int previousAttempts, CancellationToken ct)
-    {
-        var attempts = previousAttempts + 1;
-
-        await _cache.SetAsync(
-            CacheKeys.TwoFactorAttempts(claims.Jti),
-            attempts.ToString(),
-            RemainingLifetime(claims),
-            ct);
-
-        if (attempts >= _maxAttemptsPerChallenge)
-            await BurnAsync(claims, ct);
-    }
-
     /// <summary>Quema el challenge: agotados los intentos, hay que pedir uno nuevo.</summary>
     private Task BurnAsync(ChallengeClaims claims, CancellationToken ct) => MarkConsumedAsync(claims, ct);
 
@@ -294,56 +296,6 @@ public sealed class TwoFactorService : ITwoFactorService
 
     private async Task<bool> IsConsumedAsync(string jti, CancellationToken ct) =>
         await _cache.GetAsync<string>(CacheKeys.TwoFactorChallengeConsumed(jti), ct) is not null;
-
-    /// <summary>
-    /// Intentos fallidos ya registrados para este challenge.
-    ///
-    /// OJO: <c>ICacheService</c> solo ofrece Get/Set/Remove, así que esto es un
-    /// leer-modificar-escribir y no un incremento atómico. Bajo peticiones concurrentes dos
-    /// intentos pueden leer el mismo valor y escribir el mismo incremento, de modo que el
-    /// límite se estira. Cerrar el hueco de verdad exige un contador atómico en el backend
-    /// (Redis INCR + EXPIRE), que hoy la abstracción no expone.
-    /// </summary>
-    private async Task<int> ReadAttemptsAsync(string jti, CancellationToken ct)
-    {
-        var raw = await _cache.GetAsync<string>(CacheKeys.TwoFactorAttempts(jti), ct);
-        return int.TryParse(raw, out var attempts) ? attempts : 0;
-    }
-
-    /// <summary>
-    /// Ventana de emisiones vigente del usuario, o una nueva si la anterior ya venció.
-    /// Mismo aviso que <see cref="ReadAttemptsAsync"/>: sin incremento atómico, un ráfaga
-    /// concurrente puede colar alguna emisión de más.
-    /// </summary>
-    private async Task<TwoFactorIssueWindow> ReadIssueWindowAsync(string userId, CancellationToken ct)
-    {
-        var now      = _dateTime.Now;
-        var existing = await _cache.GetAsync<TwoFactorIssueWindow>(CacheKeys.TwoFactorIssueWindow(userId), ct);
-
-        return existing is null || now - existing.WindowStart >= _issueWindow
-            ? new TwoFactorIssueWindow(0, now)
-            : existing;
-    }
-
-    /// <summary>
-    /// Anota una emisión más. Solo se llama tras un despacho con éxito: lo que se limita es
-    /// el gasto y el ruido que llega al usuario, y un transporte caído no produce ninguno de
-    /// los dos. El TTL se calcula contra el inicio de la ventana, no contra el momento
-    /// actual, para que emitir no la estire.
-    /// </summary>
-    private Task SaveIssueWindowAsync(string userId, TwoFactorIssueWindow window, CancellationToken ct)
-    {
-        var elapsed   = _dateTime.Now - window.WindowStart;
-        var remaining = _issueWindow - elapsed;
-        if (remaining < TimeSpan.FromSeconds(1))
-            remaining = TimeSpan.FromSeconds(1);
-
-        return _cache.SetAsync(
-            CacheKeys.TwoFactorIssueWindow(userId),
-            window with { Count = window.Count + 1 },
-            remaining,
-            ct);
-    }
 
     /// <summary>
     /// Lo que le queda de vida al challenge. Se mide con UtcNow, no con Now: <c>exp</c> viene

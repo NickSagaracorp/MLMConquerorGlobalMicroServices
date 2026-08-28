@@ -36,6 +36,14 @@ public class TwoFactorServiceTests
     /// sentido si lo escrito en una llamada se lee en la siguiente.</summary>
     private readonly Dictionary<string, object> _store = new();
 
+    /// <summary>Contadores de <c>IncrementAsync</c>, aparte del almacén de valores: en la
+    /// caché real viven en otro espacio (INCR sobre un string, no una entrada JSON).</summary>
+    private readonly Dictionary<string, long> _counters = new();
+
+    /// <summary>Expiración con la que se creó cada contador, para poder afirmar que no se
+    /// reescribe en los incrementos siguientes.</summary>
+    private readonly Dictionary<string, TimeSpan> _counterExpiries = new();
+
     public TwoFactorServiceTests()
     {
         MoveClockTo(FixedNow);
@@ -51,8 +59,25 @@ public class TwoFactorServiceTests
         _encryption.Setup(e => e.Decrypt(It.IsAny<string>())).Returns(Phone);
 
         WireCache<string>();
-        WireCache<TwoFactorIssueWindow>();
+        WireCounters();
     }
+
+    /// <summary>
+    /// Simula INCR + EXPIRE: devuelve el valor nuevo y solo se queda con la expiración de la
+    /// primera llamada, que es lo que hace Redis cuando el TTL se fija al crear el contador.
+    /// </summary>
+    private void WireCounters() =>
+        _cache.Setup(c => c.IncrementAsync(
+                  It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync((string key, TimeSpan expiry, CancellationToken _) =>
+              {
+                  if (!_counters.ContainsKey(key))
+                      _counterExpiries[key] = expiry;
+
+                  var next = _counters.TryGetValue(key, out var current) ? current + 1 : 1;
+                  _counters[key] = next;
+                  return next;
+              });
 
     // ── andamiaje ────────────────────────────────────────────────────────────
 
@@ -438,5 +463,104 @@ public class TwoFactorServiceTests
         _sms.Verify(s => s.SendAsync(
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
             It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
+    }
+
+    // ── 18-22. los contadores son incrementos atómicos ───────────────────────
+    //
+    // Lo que se puede afirmar sin un Redis de verdad es que el servicio pide un incremento en
+    // vez de un leer-modificar-escribir, y que la expiración se manda solo al crear. La
+    // atomicidad la aporta el backend; probarla con hilos contra un diccionario no demostraría
+    // nada y sería intermitente.
+
+    [Fact]
+    public async Task IssueAsync_CountsIssues_WithAtomicIncrement_NotReadModifyWrite()
+    {
+        var user    = BuildUser(preferred: TwoFactorChannel.Email);
+        var service = BuildService();
+        var key     = CacheKeys.TwoFactorIssueWindow(UserId);
+
+        var result = await service.IssueAsync(user, TwoFactorPurpose.Login);
+
+        result.IsSuccess.Should().BeTrue(because: result.Error);
+
+        _cache.Verify(c => c.IncrementAsync(key, It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()),
+                      Times.Once);
+
+        // Ni lectura previa ni escritura posterior: entre las dos cabía la ráfaga concurrente.
+        _cache.Verify(c => c.GetAsync<string>(key, It.IsAny<CancellationToken>()), Times.Never);
+        _cache.Verify(c => c.SetAsync(key, It.IsAny<string>(), It.IsAny<TimeSpan>(),
+                                      It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task VerifyAsync_CountsAttempts_WithAtomicIncrement_NotReadModifyWrite()
+    {
+        SetupValidate(Token, Claims());
+        var service = BuildService();
+        var key     = CacheKeys.TwoFactorAttempts("jti-1");
+
+        var result = await service.VerifyAsync(Token, "654321", TwoFactorPurpose.Login);
+
+        result.ErrorCode.Should().Be("CODE_INVALID");
+
+        _cache.Verify(c => c.IncrementAsync(key, It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()),
+                      Times.Once);
+        _cache.Verify(c => c.GetAsync<string>(key, It.IsAny<CancellationToken>()), Times.Never);
+        _cache.Verify(c => c.SetAsync(key, It.IsAny<string>(), It.IsAny<TimeSpan>(),
+                                      It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task IssueAsync_SendsIssueWindowAsExpiry_SoTheWindowDoesNotStretch()
+    {
+        var user    = BuildUser(preferred: TwoFactorChannel.Email);
+        var service = BuildService(BuildConfig(maxIssues: 3, windowMinutes: 15));
+        var key     = CacheKeys.TwoFactorIssueWindow(UserId);
+
+        // Tres emisiones separadas en el tiempo: si el TTL se renovara en cada una, la ventana
+        // se estiraría sola y "3 cada 15 minutos" pasaría a ser "3 y luego silencio".
+        for (var i = 0; i < 3; i++)
+        {
+            MoveClockTo(FixedNow.AddMinutes(i * 5));
+            var issued = await service.IssueAsync(user, TwoFactorPurpose.Login);
+            issued.IsSuccess.Should().BeTrue(because: issued.Error);
+        }
+
+        // La expiración que llega al contador es siempre la ventana completa; el backend la
+        // aplica solo al crearlo, y el falso INCR de estas pruebas conserva la primera.
+        _counterExpiries[key].Should().Be(TimeSpan.FromMinutes(15));
+        _counters[key].Should().Be(3);
+    }
+
+    [Fact]
+    public async Task VerifyAsync_AttemptCounterExpiry_IsTheChallengeRemainingLife()
+    {
+        SetupValidate(Token, Claims());
+        var service = BuildService();
+        var key     = CacheKeys.TwoFactorAttempts("jti-1");
+
+        await service.VerifyAsync(Token, "000000", TwoFactorPurpose.Login);
+
+        // El challenge nace en FixedNow y vive 5 minutos; el reloj no se ha movido.
+        _counterExpiries[key].Should().Be(TimeSpan.FromMinutes(5));
+    }
+
+    [Fact]
+    public async Task VerifyAsync_SixthAttempt_IsRejectedByTheIncrementedCounter()
+    {
+        SetupValidate(Token, Claims());
+        var service = BuildService();
+        var key     = CacheKeys.TwoFactorAttempts("jti-1");
+
+        for (var i = 0; i < 5; i++)
+            await service.VerifyAsync(Token, "000000", TwoFactorPurpose.Login);
+
+        var result = await service.VerifyAsync(Token, Code, TwoFactorPurpose.Login);
+
+        result.ErrorCode.Should().Be("TOO_MANY_ATTEMPTS");
+
+        // Seis intentos, seis incrementos: el tope se decide sobre el número que devuelve el
+        // contador, no sobre un valor leído antes de escribirlo.
+        _counters[key].Should().Be(6);
     }
 }

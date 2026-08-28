@@ -16,4 +16,8 @@ public sealed class NoOpCacheService : ICacheService
 
     public Task RemoveAsync(string key, CancellationToken ct = default)
         => Task.CompletedTask;
+
+    /// <summary>Cada llamada es la primera: nada de estado entre pruebas.</summary>
+    public Task<long> IncrementAsync(string key, TimeSpan expiry, CancellationToken ct = default)
+        => Task.FromResult(1L);
 }

@@ -126,22 +126,27 @@ builder.Services.AddScoped<IS3StorageService, S3StorageService>();
     var required  = mode.Equals("Required", StringComparison.OrdinalIgnoreCase);
 
     var redisReachable = false;
+    StackExchange.Redis.IConnectionMultiplexer? multiplexer = null;
     try
     {
-        using var probe = StackExchange.Redis.ConnectionMultiplexer.Connect(
+        multiplexer = StackExchange.Redis.ConnectionMultiplexer.Connect(
             new StackExchange.Redis.ConfigurationOptions
             {
                 EndPoints          = { redisConn },
                 ConnectTimeout     = 250,
                 AbortOnConnectFail = false
             });
-        redisReachable = probe.IsConnected;
+        redisReachable = multiplexer.IsConnected;
     }
     catch { redisReachable = false; }
 
     MLMConquerorGlobalEdition.SharedKernel.Services.CacheBackendInfo info;
     if (redisReachable)
     {
+        // La conexión del sondeo se conserva en lugar de desecharse: CacheService.IncrementAsync
+        // la necesita para INCR, y sin un contador atómico los topes de 2FA (5 intentos por
+        // challenge, 3 emisiones por ventana) dejan de ser topes en cuanto hay concurrencia.
+        builder.Services.AddSingleton(multiplexer!);
         builder.Services.AddStackExchangeRedisCache(o => o.Configuration = redisConn);
         info = new MLMConquerorGlobalEdition.SharedKernel.Services.CacheBackendInfo
         {
@@ -152,12 +157,14 @@ builder.Services.AddScoped<IS3StorageService, S3StorageService>();
     }
     else if (required)
     {
+        multiplexer?.Dispose();
         throw new InvalidOperationException(
             $"[Cache] Cache:Mode is 'Required' but Redis at '{redisConn}' is unreachable. " +
             "Refusing to start with in-process memory cache.");
     }
     else
     {
+        multiplexer?.Dispose();
         builder.Services.AddDistributedMemoryCache();
         info = new MLMConquerorGlobalEdition.SharedKernel.Services.CacheBackendInfo
         {
