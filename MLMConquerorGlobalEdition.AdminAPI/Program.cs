@@ -23,13 +23,12 @@ using MLMConquerorGlobalEdition.Billing.Extensions;
 using MLMConquerorGlobalEdition.Billing.Services.Routing;
 using MLMConquerorGlobalEdition.Billing.Services.Recurring.HighVolume;
 using ICacheService         = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
-using IEmailService         = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IEmailService;
 using IErrorTrackingService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IErrorTrackingService;
 using ICurrentUserService   = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICurrentUserService;
 using IDateTimeProvider     = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IDateTimeProvider;
 using CacheService          = MLMConquerorGlobalEdition.SharedKernel.Services.CacheService;
-using NullEmailService      = MLMConquerorGlobalEdition.SharedKernel.Services.NullEmailService;
 using JwtService            = MLMConquerorGlobalEdition.AdminAPI.Services.JwtService;
+using MLMConquerorGlobalEdition.Notifications;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -190,7 +189,10 @@ builder.Services.AddScoped<IS3StorageService, S3StorageService>();
     builder.Services.AddSingleton(info);
 }
 builder.Services.AddSingleton<ICacheService, CacheService>();
-builder.Services.AddTransient<IEmailService, NullEmailService>();
+
+// Email/SMS transport — provider selected by Notifications:Email:Provider /
+// Notifications:Sms:Provider config. Defaults to Null (log-only) when unset.
+builder.Services.AddNotifications(builder.Configuration);
 
 builder.Services.AddControllers()
     .AddJsonOptions(o =>

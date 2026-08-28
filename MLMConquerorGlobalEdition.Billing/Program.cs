@@ -17,6 +17,7 @@ using MLMConquerorGlobalEdition.Billing.Services.Recurring.HighVolume;
 using MLMConquerorGlobalEdition.Billing.Services;
 using MLMConquerorGlobalEdition.Billing.Services.CardGateway;
 using MLMConquerorGlobalEdition.Billing.Services.Routing;
+using MLMConquerorGlobalEdition.Notifications;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Seeders;
 using MLMConquerorGlobalEdition.Repository.Services;
@@ -94,11 +95,11 @@ builder.Services.AddScoped<IDownstreamTriggers, DownstreamTriggers>();
 // (line ~40) satisfies the IDateTimeProvider constructor parameter because
 // PayoutReceiptService lives inside the Billing.Services.* namespace hierarchy
 // and the compiler resolves the unqualified name to the Billing-local type.
-// IEmailService has no Billing-local equivalent, so we register the SharedKernel
-// NullEmailService here — the same concrete type AdminAPI uses at its line 170.
-builder.Services.AddTransient<
-    MLMConquerorGlobalEdition.SharedKernel.Interfaces.IEmailService,
-    MLMConquerorGlobalEdition.SharedKernel.Services.NullEmailService>();
+// IEmailService has no Billing-local equivalent, so it resolves to the
+// SharedKernel interface. AddNotifications (below) registers the concrete
+// implementation — SesEmailService or NullEmailService — by Notifications:Email:Provider.
+// Same pattern for ISmsService / Notifications:Sms:Provider.
+builder.Services.AddNotifications(builder.Configuration);
 
 // ── Payout gateway abstraction + orchestrator ─────────────────────────────
 builder.Services.AddPayoutServices();

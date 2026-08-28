@@ -5,6 +5,7 @@
     <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel\MLMConquerorGlobalEdition.SharedKernel.csproj" />
     <ProjectReference Include="..\MLMConquerorGlobalEdition.Repository\MLMConquerorGlobalEdition.Repository.csproj" />
     <ProjectReference Include="..\MLMConquerorGlobalEdition.Billing\MLMConquerorGlobalEdition.Billing.csproj" />
+    <ProjectReference Include="..\MLMConquerorGlobalEdition.Notifications\MLMConquerorGlobalEdition.Notifications.csproj" />
   </ItemGroup>
 
   <ItemGroup>

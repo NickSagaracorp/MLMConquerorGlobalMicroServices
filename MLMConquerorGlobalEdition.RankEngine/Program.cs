@@ -22,8 +22,7 @@ using MLMConquerorGlobalEdition.RankEngine.Middleware;
 using MLMConquerorGlobalEdition.RankEngine.Services;
 using MLMConquerorGlobalEdition.Repository.Seeders;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
-using IEmailService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IEmailService;
-using NullEmailService = MLMConquerorGlobalEdition.SharedKernel.Services.NullEmailService;
+using MLMConquerorGlobalEdition.Notifications;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -60,7 +59,10 @@ builder.Services.AddStackExchangeRedisCache(options =>
 builder.Services.AddSingleton<ICacheService, CacheService>();
 
 builder.Services.AddSingleton<IPushNotificationService, FirebasePushNotificationService>();
-builder.Services.AddTransient<IEmailService, NullEmailService>();
+
+// Email/SMS transport — provider selected by Notifications:Email:Provider /
+// Notifications:Sms:Provider config. Defaults to Null (log-only) when unset.
+builder.Services.AddNotifications(builder.Configuration);
 
 builder.Services.AddScoped<RankEvaluationSweepJob>();
 builder.Services.AddScoped<ProcessRankQueueJob>();

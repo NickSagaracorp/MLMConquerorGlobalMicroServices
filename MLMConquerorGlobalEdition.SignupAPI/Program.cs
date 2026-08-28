@@ -24,6 +24,7 @@ using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheSe
 using IPushNotificationService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IPushNotificationService;
 using CacheService = MLMConquerorGlobalEdition.SharedKernel.Services.CacheService;
 using MLMConquerorGlobalEdition.SharedKernel.Logging;
+using MLMConquerorGlobalEdition.Notifications;
 using MLMConquerorGlobalEdition.SignupAPI.Jobs;
 using MLMConquerorGlobalEdition.Repository.Jobs;
 using MLMConquerorGlobalEdition.SignupAPI.Middleware;
@@ -118,11 +119,11 @@ builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.SignupAPI.Services.ITwoFactorChallengeService,
                             MLMConquerorGlobalEdition.SignupAPI.Services.TwoFactorChallengeService>();
 
-// Email service — NullEmailService logs the intent until SES/SMTP transport
-// is wired in Iteration 5 (Billing). The 2FA login flow needs this registered
-// so the LoginHandler can request a "TWO_FACTOR_CODE" email.
-builder.Services.AddSingleton<IEmailService,
-                              MLMConquerorGlobalEdition.SharedKernel.Services.NullEmailService>();
+// Email/SMS transport — provider selected by Notifications:Email:Provider /
+// Notifications:Sms:Provider config. Defaults to Null (log-only) when unset.
+// The 2FA login flow needs IEmailService registered so the LoginHandler can
+// request a "TWO_FACTOR_CODE" email.
+builder.Services.AddNotifications(builder.Configuration);
 
 // Error Tracking
 builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
