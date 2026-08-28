@@ -102,7 +102,16 @@ public sealed class TwoFactorChallengeService : ITwoFactorChallengeService
         if (string.IsNullOrWhiteSpace(challengeToken))
             return Result<TwoFactorChallengeClaims>.Failure("INVALID_CHALLENGE", "Challenge token missing.");
 
-        var handler = new JwtSecurityTokenHandler();
+        // MapInboundClaims = false: sin esto el handler renombra "sub" y "email" a los URIs
+        // de WS-Federation segun su mapa estatico global, y las lecturas de mas abajo
+        // -FindFirst(JwtRegisteredClaimNames.Sub) y .Email- devuelven null. El servicio
+        // rechazaba entonces, con "Challenge token is malformed", el challenge que el mismo
+        // habia emitido: ningun codigo de 2FA por correo podia validarse.
+        //
+        // No se habia detectado porque IEmailService esta registrado como NullEmailService
+        // en los cuatro hosts, asi que el codigo nunca llegaba al usuario y nadie tenia uno
+        // que probar. Los dos fallos se tapaban mutuamente.
+        var handler = new JwtSecurityTokenHandler { MapInboundClaims = false };
         var parameters = new TokenValidationParameters
         {
             ValidateIssuer           = true,
