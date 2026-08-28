@@ -5,6 +5,7 @@ using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs.Auth;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.ChangePassword;
+using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.EmailConfirmation;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Enrollment;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.ForgotPassword;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Login;
@@ -177,6 +178,43 @@ public class AuthController : ControllerBase
         var result = await _mediator.Send(new ResetPasswordCommand(request), ct);
         return result.IsSuccess
             ? Ok(ApiResponse<bool>.Ok(true, "Password reset successfully."))
+            : BadRequest(ApiResponse<bool>.Fail(result.ErrorCode!, result.Error!));
+    }
+
+    /// <summary>
+    /// Envía el correo de confirmación de dirección. Devuelve siempre 200, exista o no la
+    /// cuenta y esté o no ya confirmada.
+    /// </summary>
+    /// <remarks>
+    /// Anónimo a propósito: quien todavía no ha confirmado su correo no tiene por qué haber
+    /// iniciado sesión. La respuesta es idéntica en todos los casos porque distinguirlos
+    /// convertiría el endpoint en un oráculo para enumerar usuarios registrados — el mismo
+    /// motivo por el que <see cref="ForgotPassword"/> responde así.
+    /// </remarks>
+    [HttpPost("email/send-confirmation")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SendEmailConfirmation(
+        [FromBody] SendEmailConfirmationRequest request,
+        CancellationToken ct)
+    {
+        await _mediator.Send(new SendEmailConfirmationCommand(request.Email), ct);
+        return Ok(ApiResponse<bool>.Ok(true, "If an account needs confirmation for this email, a confirmation link has been sent."));
+    }
+
+    /// <summary>Confirma la dirección de correo con el userId y el token del enlace recibido.</summary>
+    /// <remarks>
+    /// Anónimo porque el enlace del correo es la credencial. Aquí sí se falla explícitamente:
+    /// quien llega con un enlace no está sondeando qué correos existen.
+    /// </remarks>
+    [HttpPost("email/confirm")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ConfirmEmail(
+        [FromBody] ConfirmEmailRequest request,
+        CancellationToken ct)
+    {
+        var result = await _mediator.Send(new ConfirmEmailCommand(request), ct);
+        return result.IsSuccess
+            ? Ok(ApiResponse<bool>.Ok(true, "Email confirmed successfully."))
             : BadRequest(ApiResponse<bool>.Fail(result.ErrorCode!, result.Error!));
     }
 

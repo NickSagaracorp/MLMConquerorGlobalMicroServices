@@ -26,4 +26,7 @@ public static class NotificationEvents
 
     /// <summary>Sent to an ambassador when a payout receipt is issued. Variables: { FullName, AmountUsd, Gateway, ProcessDate, ReceiptUrl }.</summary>
     public const string PayoutReceiptIssued  = "PAYOUT_RECEIPT_ISSUED";
+
+    /// <summary>Sent so the user can confirm the email address they signed up with. Variables: { ConfirmationUrl, ExpiresInHours }.</summary>
+    public const string EmailConfirmation    = "EMAIL_CONFIRMATION";
 }
