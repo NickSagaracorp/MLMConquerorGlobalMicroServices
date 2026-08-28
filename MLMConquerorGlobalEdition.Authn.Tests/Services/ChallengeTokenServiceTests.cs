@@ -41,8 +41,21 @@ public class ChallengeTokenServiceTests
     private static Mock<IDateTimeProvider> ClockAt(DateTime now)
     {
         var clock = new Mock<IDateTimeProvider>();
-        clock.Setup(c => c.Now).Returns(now);
+        MoveClockTo(clock, now);
         return clock;
+    }
+
+    /// <summary>
+    /// Fija el reloj de prueba. Toca Now y UtcNow a la vez: el servicio lee UtcNow —los
+    /// tiempos de un JWT son epoch UTC por especificación— y mover solo Now dejaría el
+    /// token sin envejecer, haciendo que una prueba de expiración pasara por la razón
+    /// equivocada. Now se fija al mismo valor para que leer el miembro equivocado se note
+    /// como una fecha absurda y no como un desfase silencioso.
+    /// </summary>
+    private static void MoveClockTo(Mock<IDateTimeProvider> clock, DateTime now)
+    {
+        clock.Setup(c => c.Now).Returns(now);
+        clock.Setup(c => c.UtcNow).Returns(now);
     }
 
     private static ChallengeTokenService BuildService(
@@ -193,7 +206,7 @@ public class ChallengeTokenServiceTests
             TwoFactorPurpose.Login, TwoFactorChannel.Email,
             service.HashCode("123456"));
 
-        clock.Setup(c => c.Now).Returns(FixedNow.AddMinutes(6));
+        MoveClockTo(clock, FixedNow.AddMinutes(6));
 
         var result = service.Validate(token, TwoFactorPurpose.Login);
 
@@ -273,7 +286,7 @@ public class ChallengeTokenServiceTests
             service.HashCode("123456"));
 
         // Vencido como código, pero todavía reenviable.
-        clock.Setup(c => c.Now).Returns(FixedNow.AddMinutes(20));
+        MoveClockTo(clock, FixedNow.AddMinutes(20));
 
         var result = service.Validate(token, TwoFactorPurpose.Login, allowExpired: true);
 
@@ -292,7 +305,7 @@ public class ChallengeTokenServiceTests
             TwoFactorPurpose.Login, TwoFactorChannel.Email,
             service.HashCode("123456"));
 
-        clock.Setup(c => c.Now).Returns(FixedNow.AddMinutes(31));
+        MoveClockTo(clock, FixedNow.AddMinutes(31));
 
         var result = service.Validate(token, TwoFactorPurpose.Login, allowExpired: true);
 
@@ -310,7 +323,7 @@ public class ChallengeTokenServiceTests
             TwoFactorPurpose.Login, TwoFactorChannel.Email,
             service.HashCode("123456"));
 
-        clock.Setup(c => c.Now).Returns(FixedNow.AddMinutes(6));
+        MoveClockTo(clock, FixedNow.AddMinutes(6));
 
         var result = service.Validate(
             token, TwoFactorPurpose.StepUp, "PAYOUT_BATCH_RELEASE", allowExpired: true);

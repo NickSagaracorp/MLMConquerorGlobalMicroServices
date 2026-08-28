@@ -49,6 +49,7 @@ public class TwoFactorChallengeServiceTests
     {
         var dateTime = new Mock<IDateTimeProvider>();
         dateTime.Setup(d => d.Now).Returns(Now);
+        dateTime.Setup(d => d.UtcNow).Returns(Now);
         return new TwoFactorChallengeService(config ?? BuildConfig(), dateTime.Object);
     }
 

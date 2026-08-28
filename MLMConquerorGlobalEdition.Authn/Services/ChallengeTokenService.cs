@@ -93,7 +93,7 @@ public sealed class ChallengeTokenService : IChallengeTokenService
             throw new ArgumentException(
                 $"El canal {channel} exige el hash del código enviado.", nameof(codeHash));
 
-        var now    = UtcNow;
+        var now    = _dateTime.UtcNow;
         var expiry = now.Add(ChallengeLifetime);
 
         var claims = new List<Claim>
@@ -185,7 +185,7 @@ public sealed class ChallengeTokenService : IChallengeTokenService
         var iat = jwt.ValidFrom;
         var exp = jwt.ValidTo;
 
-        if (allowExpired && UtcNow - iat > ResendGraceWindow)
+        if (allowExpired && _dateTime.UtcNow - iat > ResendGraceWindow)
             return Result<ChallengeClaims>.Failure(
                 CodeExpired, "Challenge is too old to resend; please log in again.");
 
@@ -241,18 +241,6 @@ public sealed class ChallengeTokenService : IChallengeTokenService
         _ => throw new ArgumentOutOfRangeException(nameof(purpose), purpose, "Propósito de 2FA desconocido.")
     };
 
-    /// <summary>
-    /// El reloj inyectado, normalizado a UTC. Los hosts no coinciden en si su
-    /// <c>IDateTimeProvider</c> devuelve hora local o UTC, y las marcas del JWT siempre son UTC.
-    /// </summary>
-    private DateTime UtcNow
-    {
-        get
-        {
-            var now = _dateTime.Now;
-            return now.Kind == DateTimeKind.Local ? now.ToUniversalTime() : now;
-        }
-    }
 
     /// <summary>
     /// Reemplaza la validación de vigencia del handler para medirla contra el reloj inyectado.
@@ -262,7 +250,7 @@ public sealed class ChallengeTokenService : IChallengeTokenService
     private bool ValidateLifetimeAgainstInjectedClock(
         DateTime? notBefore, DateTime? expires, SecurityToken token, TokenValidationParameters parameters)
     {
-        var now = UtcNow;
+        var now = _dateTime.UtcNow;
 
         if (expires is null)
             return false;

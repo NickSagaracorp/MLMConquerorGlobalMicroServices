@@ -73,7 +73,10 @@ public sealed class TwoFactorChallengeService : ITwoFactorChallengeService
 
     public string IssueChallenge(string userId, string email, string codeHash)
     {
-        var now    = _dateTime.Now;
+        // UtcNow y no Now: notBefore/expires de un JWT son epoch UTC por especificacion.
+        // Con hora de servidor el token se sellaria con el desfase del huso y, en un
+        // servidor UTC-4, un challenge de cinco minutos naceria expirado.
+        var now    = _dateTime.UtcNow;
         var expiry = now.Add(ChallengeLifetime);
 
         var claims = new[]
@@ -147,7 +150,8 @@ public sealed class TwoFactorChallengeService : ITwoFactorChallengeService
         var iat = jwt.ValidFrom;
         var exp = jwt.ValidTo;
 
-        if (allowExpired && _dateTime.Now - iat > ResendGraceWindow)
+        // iat viene del JWT, siempre en UTC: la resta tiene que hacerse en UTC.
+        if (allowExpired && _dateTime.UtcNow - iat > ResendGraceWindow)
             return Result<TwoFactorChallengeClaims>.Failure("CODE_EXPIRED", "Challenge is too old to resend; please log in again.");
 
         var userId   = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
