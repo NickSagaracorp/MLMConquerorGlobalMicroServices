@@ -29,7 +29,18 @@ public static class RootAmbassadorSeeder
         }
 
         var cfg = configuration.GetSection("RootAmbassador");
-        var email     = cfg["Email"]     ?? "root@mlmconqueror.com";
+
+        // El appsettings rastreado trae "REPLACE_WITH_ENV_VAR_..." como marcador para que el
+        // valor real llegue por entorno. Al no ser nulo, el ?? de abajo nunca se aplicaba y el
+        // embajador raiz se habria sembrado con esa cadena literal como correo. Tratar el
+        // marcador como "sin configurar" hace que el valor por defecto sirva de verdad.
+        var configuredEmail = cfg["Email"];
+        if (string.IsNullOrWhiteSpace(configuredEmail) || configuredEmail.StartsWith("REPLACE_WITH_"))
+            configuredEmail = null;
+
+        // yopmail.com: buzon desechable y de lectura publica, para poder recoger los codigos
+        // de verificacion al probar el 2FA en desarrollo sin depender de un correo real.
+        var email     = configuredEmail ?? "root@yopmail.com";
         var firstName = cfg["FirstName"] ?? "Corporate";
         var lastName  = cfg["LastName"]  ?? "Root";
         var password  = cfg["Password"]  ?? throw new InvalidOperationException(
