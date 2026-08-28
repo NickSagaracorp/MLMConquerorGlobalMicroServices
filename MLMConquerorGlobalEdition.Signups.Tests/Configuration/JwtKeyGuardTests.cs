@@ -89,24 +89,62 @@ public class JwtKeyGuardTests
             .WithMessage("*llave revocada*");
     }
 
+    /// <summary>
+    /// M-2: el caso feliz debe probar la normalización, no solo el "no lanza". Se pasa la
+    /// llave envuelta a 64 columnas y con espacios alrededor, y se compara contra el base64
+    /// canónico de una sola línea que sale de re-codificar el DER (M-1). Con un input ya
+    /// sin espacios, esta prueba pasaría igual sin que el guarda normalizara nada.
+    /// </summary>
     [Fact]
-    public void ValidatePrivateKey_WhenValidKey_ReturnsIt()
+    public void ValidatePrivateKey_WhenValidKeyHasWhitespace_ReturnsCanonicalBase64()
     {
         using var rsa = RSA.Create(2048);
-        var validKey = Convert.ToBase64String(rsa.ExportPkcs8PrivateKey());
+        var der = rsa.ExportPkcs8PrivateKey();
+        var canonical = Convert.ToBase64String(der);
+        var wrapped = "  \n" + WrapAt64Columns(canonical) + "\n  ";
 
-        var result = JwtKeyGuard.ValidatePrivateKey(validKey);
+        var result = JwtKeyGuard.ValidatePrivateKey(wrapped);
 
-        result.Should().Be(validKey);
+        result.Should().Be(canonical);
     }
 
     [Fact]
     public void ValidatePrivateKey_WhenNotAValidRsaKey_ThrowsNamingConfigKey()
     {
-        Action act = () => JwtKeyGuard.ValidatePrivateKey("hola-mundo", configKey: "Jwt:PrivateKeyBase64");
+        Action act = () => JwtKeyGuard.ValidatePrivateKey("hola-mundo", configKey: "Jwt:OtraLlave");
 
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Jwt:PrivateKeyBase64*no es una llave RSA válida*");
+            .WithMessage("*Jwt:OtraLlave*no es una llave RSA válida*");
+    }
+
+    /// <summary>I-B: una RSA por debajo de 2048 bits es factorizable, tan inutilizable como la revocada.</summary>
+    [Fact]
+    public void ValidatePrivateKey_WhenKeyTooWeak_ThrowsMentioningMinimum()
+    {
+        using var rsa = RSA.Create(1024);
+        var weakKey = Convert.ToBase64String(rsa.ExportPkcs8PrivateKey());
+
+        Action act = () => JwtKeyGuard.ValidatePrivateKey(weakKey);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*1024*2048*");
+    }
+
+    /// <summary>
+    /// I-C: openssl genrsa produce PKCS#1 por defecto. El guarda no lo acepta, pero el mensaje
+    /// debe nombrar el caso y decir cómo convertirlo, en vez de un "no es una llave RSA válida"
+    /// genérico y confuso para una llave que en realidad sí es válida, solo en otro formato.
+    /// </summary>
+    [Fact]
+    public void ValidatePrivateKey_WhenPkcs1_ThrowsWithConversionHint()
+    {
+        using var rsa = RSA.Create(2048);
+        var pkcs1Key = Convert.ToBase64String(rsa.ExportRSAPrivateKey());
+
+        Action act = () => JwtKeyGuard.ValidatePrivateKey(pkcs1Key);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*PKCS#1*openssl pkcs8 -topk8*");
     }
 
     [Theory]
@@ -138,14 +176,17 @@ public class JwtKeyGuardTests
             .WithMessage("*llave revocada*");
     }
 
+    /// <summary>M-2/M-3 aplicado también al lado público: prueba la normalización, no solo el "no lanza".</summary>
     [Fact]
-    public void ValidatePublicKey_WhenValidKey_ReturnsIt()
+    public void ValidatePublicKey_WhenValidKeyHasWhitespace_ReturnsCanonicalBase64()
     {
         using var rsa = RSA.Create(2048);
-        var validPublicKey = Convert.ToBase64String(rsa.ExportSubjectPublicKeyInfo());
+        var der = rsa.ExportSubjectPublicKeyInfo();
+        var canonical = Convert.ToBase64String(der);
+        var wrapped = "  \n" + WrapAt64Columns(canonical) + "\n  ";
 
-        var result = JwtKeyGuard.ValidatePublicKey(validPublicKey);
+        var result = JwtKeyGuard.ValidatePublicKey(wrapped);
 
-        result.Should().Be(validPublicKey);
+        result.Should().Be(canonical);
     }
 }
