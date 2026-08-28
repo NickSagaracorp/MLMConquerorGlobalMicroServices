@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using MLMConquerorGlobalEdition.Domain.Entities.Security;
 
 namespace MLMConquerorGlobalEdition.Repository.Identity;
 
@@ -27,4 +28,20 @@ public class ApplicationUser : IdentityUser
     public DateTime CreationDate { get; set; }
 
     public string CreatedBy { get; set; } = string.Empty;
+
+    /// <summary>Canal preferido para los códigos de verificación. Email por defecto:
+    /// preserva el comportamiento de los miembros del BizCenter que ya tienen 2FA.</summary>
+    public TwoFactorChannel PreferredTwoFactorChannel { get; set; } = TwoFactorChannel.Email;
+
+    public DateTime? TwoFactorEnrolledAt { get; set; }
+
+    /// <summary>Teléfono para SMS, cifrado con IEncryptionService. No se reutiliza
+    /// IdentityUser.PhoneNumber porque está en texto plano y aquí es a la vez PII y
+    /// factor de autenticación.</summary>
+    public string? TwoFactorPhoneEncrypted { get; set; }
+
+    /// <summary>Últimos 4 dígitos, para enmascarar en la interfaz sin desencriptar.</summary>
+    public string? TwoFactorPhoneLast4 { get; set; }
+
+    public bool TwoFactorPhoneConfirmed { get; set; }
 }

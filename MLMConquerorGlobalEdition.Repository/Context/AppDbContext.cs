@@ -12,6 +12,8 @@ using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
+using MLMConquerorGlobalEdition.Domain.Entities.Security;
+using MLMConquerorGlobalEdition.Domain.Entities.Sms;
 using MLMConquerorGlobalEdition.Domain.Entities.Support;
 using MLMConquerorGlobalEdition.Domain.Entities.Tokens;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
@@ -165,6 +167,12 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     public DbSet<ExchangeRateSnapshot>   ExchangeRateSnapshots => Set<ExchangeRateSnapshot>();
     public DbSet<GatewayRoutingCounter>  GatewayRoutingCounters => Set<GatewayRoutingCounter>();
     public DbSet<GatewayChargeAttempt>   GatewayChargeAttempts => Set<GatewayChargeAttempt>();
+
+    // ── 2FA, Step-Up y Plantillas de SMS ──────────────────────────────────
+    public DbSet<StepUpPolicy> StepUpPolicies => Set<StepUpPolicy>();
+    public DbSet<AuthSecurityEvent> AuthSecurityEvents => Set<AuthSecurityEvent>();
+    public DbSet<SmsTemplate> SmsTemplates => Set<SmsTemplate>();
+    public DbSet<SmsTemplateLocalization> SmsTemplateLocalizations => Set<SmsTemplateLocalization>();
 
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 

@@ -358,6 +358,29 @@ rastro de auditoría—; `UserEmail` `HasMaxLength(256)`; `FailureReason` `HasMa
 `SmsTemplateLocalizationConfiguration`: índice único en `(SmsTemplateId, LanguageCode)`,
 `Body` con `HasMaxLength(480)`, relación con `SmsTemplate` en cascada.
 
+- [ ] **Step 6b: Configuración EF de `ApplicationUser`**
+
+Sin esto, EF genera las dos columnas de teléfono como `nvarchar(max)`: almacenamiento
+potencialmente fuera de fila, imposible de indexar, y absurdo para un campo de 4 caracteres.
+
+Crea `Repository/Configurations/Identity/ApplicationUserConfiguration.cs` como
+`IEntityTypeConfiguration<ApplicationUser>`, restringiendo **solo** las columnas nuevas:
+
+- `TwoFactorPhoneEncrypted` → `HasMaxLength(256)`
+- `TwoFactorPhoneLast4` → `HasMaxLength(4)`
+
+No toques las columnas que Identity ya define. Verifica que `ApplyConfigurationsFromAssembly`
+la recoge; si `IdentityDbContext` la ignora, asegúrate de que se aplica **después** de
+`base.OnModelCreating`.
+
+**No uses `HasDefaultValue(TwoFactorChannel.Email)`.** Es la solución que parece obvia y
+tiene una trampa: EF decide si incluye una columna en el INSERT comparándola con un valor
+centinela, que por defecto es el valor CLR por defecto — `0` para un enum. Con
+`HasDefaultValue(1)`, un usuario cuyo canal sea legítimamente `Authenticator` (`0`) haría
+que EF omitiera la columna y la base de datos aplicara `1` = `Email`: se guardaría un canal
+distinto del que el usuario eligió, en silencio. El default de C# en la propiedad ya cubre a
+los usuarios nuevos.
+
 - [ ] **Step 7: Registrar los `DbSet`**
 
 En `AppDbContext.cs`, junto a los demás:
@@ -384,6 +407,24 @@ dotnet ef migrations add Add2faStepUpAndSmsTemplates \
 nuevas en `AspNetUsers` y cuatro tablas nuevas. Si aparece cualquier otro cambio —columnas
 renombradas, tablas alteradas que no tocaste— **para y reporta**: significa que el snapshot
 del modelo estaba desincronizado y ese cambio ajeno se colaría en esta migración.
+
+Comprueba que `TwoFactorPhoneEncrypted` salió como `nvarchar(256)` y `TwoFactorPhoneLast4`
+como `nvarchar(4)`. Si salieron `nvarchar(max)`, falta el Step 6b.
+
+**Añade a mano el backfill**, justo después del `AddColumn` de `PreferredTwoFactorChannel`
+(EF no lo genera solo):
+
+```csharp
+// Las filas existentes quedan en Email, que es el canal que ya usan hoy los miembros
+// con 2FA activo. Sin esto heredarian Authenticator (valor 0 del enum) y se les
+// pediria un codigo TOTP que nunca enrolaron.
+migrationBuilder.Sql("UPDATE AspNetUsers SET PreferredTwoFactorChannel = 1;");
+```
+
+Sin este `UPDATE`, la columna se crea con `defaultValue: 0` y **todos los usuarios que hoy
+tienen 2FA por correo quedarían apuntando a la aplicación de autenticación**, un canal en el
+que nunca se enrolaron. Al cablearse la selección de canal en el Plan C se les pediría un
+código TOTP que no pueden generar. El fallo aparecería semanas después y lejos de su causa.
 
 - [ ] **Step 9: Verificar que compila**
 
