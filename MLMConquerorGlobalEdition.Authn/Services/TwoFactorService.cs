@@ -190,6 +190,25 @@ public sealed class TwoFactorService : ITwoFactorService
             ct:           ct);
     }
 
+    // ── enrolamiento ─────────────────────────────────────────────────────────
+
+    /// <inheritdoc/>
+    public string IssueEnrollmentToken(ApplicationUser user) =>
+        // Sin código ni hash: aquí no se despacha nada porque el usuario todavía no tiene
+        // dónde recibirlo — es justo lo que va a configurar. El canal es Authenticator
+        // precisamente porque es el único que el challenge admite sin hash.
+        //
+        // No gasta cupo de emisiones ni toca la caché: no hay nada que limitar cuando no sale
+        // ningún mensaje, y quien se queda atrapado en el enrolamiento no debe poder quedarse
+        // además sin poder reintentarlo.
+        _challenges.Issue(
+            userId:       user.Id,
+            email:        user.Email!,
+            purpose:      TwoFactorPurpose.Enrollment,
+            channel:      TwoFactorChannel.Authenticator,
+            codeHash:     null,
+            operationKey: null);
+
     // ── verificación ─────────────────────────────────────────────────────────
 
     public async Task<Result<ChallengeClaims>> VerifyAsync(

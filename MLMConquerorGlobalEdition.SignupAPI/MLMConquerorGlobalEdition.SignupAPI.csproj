@@ -14,6 +14,7 @@
     <ProjectReference Include="..\MLMConquerorGlobalEdition.Repository\MLMConquerorGlobalEdition.Repository.csproj" />
     <ProjectReference Include="..\MLMConquerorGlobalEdition.Billing\MLMConquerorGlobalEdition.Billing.csproj" />
     <ProjectReference Include="..\MLMConquerorGlobalEdition.Notifications\MLMConquerorGlobalEdition.Notifications.csproj" />
+    <ProjectReference Include="..\MLMConquerorGlobalEdition.Authn\MLMConquerorGlobalEdition.Authn.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,12 +1,13 @@
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.Authn.Abstractions;
+using MLMConquerorGlobalEdition.Domain.Entities.Security;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Identity;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs.Auth;
-using MLMConquerorGlobalEdition.SignupAPI.Services;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Login;
 
@@ -16,23 +17,23 @@ public class LoginHandler : IRequestHandler<LoginCommand, Result<AuthResponse>>
     private readonly IJwtService                    _jwt;
     private readonly IDateTimeProvider              _dateTime;
     private readonly AppDbContext                   _db;
-    private readonly ITwoFactorChallengeService     _twoFactor;
-    private readonly IEmailService                  _email;
+    private readonly ITwoFactorService              _twoFactor;
+    private readonly IConfiguration                 _config;
 
     public LoginHandler(
         UserManager<ApplicationUser> userManager,
         IJwtService                  jwt,
         IDateTimeProvider            dateTime,
         AppDbContext                 db,
-        ITwoFactorChallengeService   twoFactor,
-        IEmailService                email)
+        ITwoFactorService            twoFactor,
+        IConfiguration               config)
     {
         _userManager = userManager;
         _jwt         = jwt;
         _dateTime    = dateTime;
         _db          = db;
         _twoFactor   = twoFactor;
-        _email       = email;
+        _config      = config;
     }
 
     public async Task<Result<AuthResponse>> Handle(LoginCommand command, CancellationToken ct)
@@ -59,7 +60,8 @@ public class LoginHandler : IRequestHandler<LoginCommand, Result<AuthResponse>>
         await _userManager.ResetAccessFailedCountAsync(user);
 
         // Read MemberProfile.DefaultLanguage once — used either to localize the
-        // 2FA code email below or to embed in the access-token claims.
+        // 2FA code email below or to embed in the access-token claims. Es null para el
+        // personal, que no tiene MemberProfile; IssueAsync acepta null y cae a "en".
         var memberId = user.MemberProfileId ?? string.Empty;
         var defaultLanguage = string.IsNullOrEmpty(memberId)
             ? null
@@ -68,39 +70,55 @@ public class LoginHandler : IRequestHandler<LoginCommand, Result<AuthResponse>>
                 .Select(m => m.DefaultLanguage)
                 .FirstOrDefaultAsync(ct);
 
-        // Two-factor branch — when TFA is enabled, do NOT issue access/refresh
-        // tokens. Issue a 5-minute JWT challenge that carries the SHA-256 of
-        // a freshly generated 6-digit code, send the code by email, and let
-        // the client redeem it via /api/v1/auth/two-factor/verify.
+        // Los roles se resuelven aquí, antes de las dos ramas de dos factores: la de
+        // enrolamiento obligatorio decide justo sobre ellos.
+        var roles = await _userManager.GetRolesAsync(user);
+
+        var mandatoryRoles = _config.GetSection("Auth:TwoFactor:MandatoryRoles").Get<string[]>() ?? [];
+        var requiresTwoFactor = roles.Any(r => mandatoryRoles.Contains(r, StringComparer.OrdinalIgnoreCase));
+
+        // Rol que exige 2FA pero sin configurar: no hay tokens de acceso hasta enrolarse.
+        // El token de enrolamiento no abre ningún endpoint de negocio, asi que el usuario
+        // queda atrapado en esa pantalla en vez de poder navegar el portal a medias.
+        if (requiresTwoFactor && !user.TwoFactorEnabled)
+        {
+            return Result<AuthResponse>.Success(new AuthResponse
+            {
+                UserId             = user.Id,
+                Email              = user.Email!,
+                RequiresEnrollment = true,
+                EnrollmentToken    = _twoFactor.IssueEnrollmentToken(user)
+            });
+        }
+
+        // Two-factor branch — when TFA is enabled, do NOT issue access/refresh tokens.
+        // La emisión y el despacho del código son de la librería Authn: elige el canal
+        // preferido del usuario, envía por él y solo devuelve el challenge si el envío salió.
         if (user.TwoFactorEnabled)
         {
-            var code      = _twoFactor.GenerateCode();
-            var codeHash  = _twoFactor.HashCode(code);
-            var challenge = _twoFactor.IssueChallenge(user.Id, user.Email!, codeHash);
+            var issued = await _twoFactor.IssueAsync(
+                user, TwoFactorPurpose.Login, languageCode: defaultLanguage, ct: ct);
 
-            await _email.SendAsync(
-                toEmail:      user.Email!,
-                toName:       user.Email!,
-                languageCode: string.IsNullOrEmpty(defaultLanguage) ? "en" : defaultLanguage,
-                eventType:    NotificationEvents.TwoFactorCode,
-                variables:    new Dictionary<string, string>
-                {
-                    ["Code"]             = code,
-                    ["ExpiresInMinutes"] = ((int)_twoFactor.ChallengeLifetime.TotalMinutes).ToString()
-                },
-                ct: ct);
+            // Un código que no llegó no puede convertirse en una sesión abierta: el error del
+            // transporte se propaga para que la interfaz pueda ofrecer otro canal.
+            if (!issued.IsSuccess)
+                return Result<AuthResponse>.Failure(issued.ErrorCode!, issued.Error!);
 
+#pragma warning disable CS0618 // MaskedEmail sigue rellenándose: es el contrato de los clientes de hoy.
             return Result<AuthResponse>.Success(new AuthResponse
             {
                 UserId            = user.Id,
                 Email             = user.Email!,
                 RequiresTwoFactor = true,
-                ChallengeToken    = challenge,
-                MaskedEmail       = _twoFactor.MaskEmail(user.Email!)
+                ChallengeToken    = issued.Value!.ChallengeToken,
+                Channel           = issued.Value.Channel,
+                MaskedTarget      = issued.Value.MaskedTarget,
+                MaskedEmail       = issued.Value.Channel == TwoFactorChannel.Email
+                                        ? issued.Value.MaskedTarget : null
             });
+#pragma warning restore CS0618
         }
 
-        var roles      = await _userManager.GetRolesAsync(user);
         var memberType = roles.Contains("Ambassador") ? "Ambassador"
                        : roles.Contains("Member")     ? "Member"
                        : "Staff";

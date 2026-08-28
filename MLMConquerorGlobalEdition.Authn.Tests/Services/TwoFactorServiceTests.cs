@@ -597,4 +597,68 @@ public class TwoFactorServiceTests
         // contador, no sobre un valor leído antes de escribirlo.
         _counters[key].Should().Be(6);
     }
+
+    // ── token de enrolamiento ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Con un <see cref="ChallengeTokenService"/> de verdad, no con el doble: lo que hay que
+    /// comprobar es que el propósito grabado en el token separa de verdad el enrolamiento del
+    /// login, y eso vive en el emisor. Un mock devolvería la cadena que le pidiéramos y la
+    /// prueba pasaría aunque el propósito fuera el equivocado.
+    /// </summary>
+    private static (ChallengeTokenService Service, IConfiguration Config) RealChallengeService(
+        IDateTimeProvider clock)
+    {
+        using var rsa = RSA.Create(2048);
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Jwt:PrivateKeyBase64"] = Convert.ToBase64String(rsa.ExportPkcs8PrivateKey()),
+            ["Jwt:PublicKeyBase64"]  = Convert.ToBase64String(rsa.ExportSubjectPublicKeyInfo()),
+            ["Jwt:Issuer"]           = "MLMConqueror",
+            ["Jwt:Audience"]         = "MLMConquerorUsers"
+        }).Build();
+
+        return (new ChallengeTokenService(config, clock), config);
+    }
+
+    [Fact]
+    public void IssueEnrollmentToken_ValidatesAsEnrollment_AndNotAsLogin()
+    {
+        var (challenges, config) = RealChallengeService(_clock.Object);
+        var service = new TwoFactorService(
+            challenges, _userManager.Object, _email.Object, _sms.Object,
+            _encryption.Object, _cache.Object, _clock.Object, config);
+
+        var token = service.IssueEnrollmentToken(BuildUser());
+
+        token.Should().NotBeNullOrWhiteSpace();
+
+        var asEnrollment = challenges.Validate(token, TwoFactorPurpose.Enrollment);
+        asEnrollment.IsSuccess.Should().BeTrue();
+        asEnrollment.Value!.UserId.Should().Be(UserId);
+        asEnrollment.Value.Channel.Should().Be(TwoFactorChannel.Authenticator);
+
+        // Sin código enviado no hay hash contra el que comparar: el token autoriza a
+        // enrolarse, no a redimir un código.
+        asEnrollment.Value.CodeHash.Should().BeNull();
+
+        // Lo que de verdad protege: presentado a un endpoint de login, muere. Si valiera para
+        // login, el "token de enrolamiento" sería un pase de acceso encubierto para quien
+        // todavía no ha configurado su segundo factor.
+        challenges.Validate(token, TwoFactorPurpose.Login).IsSuccess.Should().BeFalse();
+    }
+
+    [Fact]
+    public void IssueEnrollmentToken_DispatchesNothing_AndSpendsNoIssueQuota()
+    {
+        var (challenges, config) = RealChallengeService(_clock.Object);
+        var service = new TwoFactorService(
+            challenges, _userManager.Object, _email.Object, _sms.Object,
+            _encryption.Object, _cache.Object, _clock.Object, config);
+
+        service.IssueEnrollmentToken(BuildUser());
+
+        VerifyNothingDispatched();
+        _counters.Should().BeEmpty();
+    }
 }

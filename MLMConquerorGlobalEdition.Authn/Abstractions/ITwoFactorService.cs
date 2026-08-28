@@ -42,6 +42,13 @@ public interface ITwoFactorService
         CancellationToken ct = default);
 
     /// <summary>
+    /// Emite el token que autoriza a enrolarse, y nada más. No es un token de acceso: no abre
+    /// ningún endpoint de negocio, de modo que quien tiene 2FA obligatorio pendiente queda
+    /// atrapado en el enrolamiento en vez de poder navegar el portal a medias.
+    /// </summary>
+    string IssueEnrollmentToken(ApplicationUser user);
+
+    /// <summary>
     /// Comprueba el código contra el challenge. Con éxito, marca el challenge como consumido
     /// para que no pueda redimirse otra vez dentro de su ventana de vida.
     /// </summary>

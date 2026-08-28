@@ -25,6 +25,7 @@ using IPushNotificationService = MLMConquerorGlobalEdition.SharedKernel.Interfac
 using CacheService = MLMConquerorGlobalEdition.SharedKernel.Services.CacheService;
 using MLMConquerorGlobalEdition.SharedKernel.Logging;
 using MLMConquerorGlobalEdition.Notifications;
+using MLMConquerorGlobalEdition.Authn;
 using MLMConquerorGlobalEdition.SignupAPI.Jobs;
 using MLMConquerorGlobalEdition.Repository.Jobs;
 using MLMConquerorGlobalEdition.SignupAPI.Middleware;
@@ -114,8 +115,16 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Billing.Services.Recurring.
 // JWT Service
 builder.Services.AddScoped<IJwtService, JwtService>();
 
+// Librería Authn: challenge firmado, enrolamiento TOTP y la orquestación de los tres
+// canales de 2FA. LoginHandler ya emite por aquí.
+builder.Services.AddAuthnChallengeTokens();
+builder.Services.AddAuthnTotpEnrollment();
+builder.Services.AddAuthnTwoFactor();
+
 // Two-factor challenge service — issues short-lived JWT challenge tokens
 // carrying the SHA-256 of a 6-digit code, validated on /two-factor/verify.
+// Convive con la librería mientras VerifyTwoFactorHandler y ResendTwoFactorHandler
+// sigan usándolo; se retira cuando migren.
 builder.Services.AddScoped<MLMConquerorGlobalEdition.SignupAPI.Services.ITwoFactorChallengeService,
                             MLMConquerorGlobalEdition.SignupAPI.Services.TwoFactorChallengeService>();
 
