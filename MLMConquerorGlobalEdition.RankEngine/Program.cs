@@ -10,6 +10,7 @@ using Microsoft.OpenApi.Models;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Services;
 using MLMConquerorGlobalEdition.SharedKernel.Behaviors;
+using MLMConquerorGlobalEdition.SharedKernel.Configuration;
 using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
 using IPushNotificationService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IPushNotificationService;
 using CacheService = MLMConquerorGlobalEdition.SharedKernel.Services.CacheService;
@@ -131,20 +132,11 @@ builder.Services.AddControllers();
 
 // JWT Authentication — matches AdminAPI/SignupAPI (RSA, asymmetric). Tokens are signed
 // by AuthController with the PrivateKey; every API validates them with the PublicKey.
-var publicKeyBase64 = builder.Configuration["Jwt:PublicKeyBase64"]
-    ?? throw new InvalidOperationException("Jwt:PublicKeyBase64 not configured.");
+var publicKeyBase64 = JwtKeyGuard.ValidatePublicKey(builder.Configuration["Jwt:PublicKeyBase64"]);
 
-if (publicKeyBase64.StartsWith("REPLACE_WITH_") && !builder.Environment.IsDevelopment())
-    throw new InvalidOperationException(
-        "JWT RSA public key must be set before running in non-Development mode.");
-
-RsaSecurityKey? jwtValidationKey = null;
-if (!publicKeyBase64.StartsWith("REPLACE_WITH_"))
-{
-    var rsa = System.Security.Cryptography.RSA.Create();
-    rsa.ImportSubjectPublicKeyInfo(Convert.FromBase64String(publicKeyBase64), out _);
-    jwtValidationKey = new RsaSecurityKey(rsa);
-}
+var rsa = System.Security.Cryptography.RSA.Create();
+rsa.ImportSubjectPublicKeyInfo(Convert.FromBase64String(publicKeyBase64), out _);
+var jwtValidationKey = new RsaSecurityKey(rsa);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -155,7 +147,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuer           = true,
             ValidateAudience         = true,
             ValidateLifetime         = true,
-            ValidateIssuerSigningKey = jwtValidationKey is not null,
+            ValidateIssuerSigningKey = true,
             ValidIssuer              = builder.Configuration["Jwt:Issuer"],
             ValidAudience            = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey         = jwtValidationKey,

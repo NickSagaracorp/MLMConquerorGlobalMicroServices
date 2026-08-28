@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
+using MLMConquerorGlobalEdition.SharedKernel.Configuration;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Services;
@@ -20,8 +21,7 @@ public class JwtService : IJwtService
         _issuer   = config["Jwt:Issuer"]   ?? throw new InvalidOperationException("Jwt:Issuer not configured.");
         _audience = config["Jwt:Audience"] ?? throw new InvalidOperationException("Jwt:Audience not configured.");
 
-        var privateKeyBase64 = config["Jwt:PrivateKeyBase64"]
-            ?? throw new InvalidOperationException("Jwt:PrivateKeyBase64 not configured.");
+        var privateKeyBase64 = JwtKeyGuard.ValidatePrivateKey(config["Jwt:PrivateKeyBase64"]);
 
         var rsa = RSA.Create();
         rsa.ImportPkcs8PrivateKey(Convert.FromBase64String(privateKeyBase64), out _);

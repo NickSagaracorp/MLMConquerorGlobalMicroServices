@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Configuration;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Services;
@@ -26,14 +27,12 @@ public sealed class TwoFactorChallengeService : ITwoFactorChallengeService
         _issuer   = config["Jwt:Issuer"]   ?? throw new InvalidOperationException("Jwt:Issuer not configured.");
         _audience = config["Jwt:Audience"] ?? throw new InvalidOperationException("Jwt:Audience not configured.");
 
-        var privateKeyBase64 = config["Jwt:PrivateKeyBase64"]
-            ?? throw new InvalidOperationException("Jwt:PrivateKeyBase64 not configured.");
+        var privateKeyBase64 = JwtKeyGuard.ValidatePrivateKey(config["Jwt:PrivateKeyBase64"]);
         var rsaPrivate = RSA.Create();
         rsaPrivate.ImportPkcs8PrivateKey(Convert.FromBase64String(privateKeyBase64), out _);
         _signingKey = new RsaSecurityKey(rsaPrivate);
 
-        var publicKeyBase64 = config["Jwt:PublicKeyBase64"]
-            ?? throw new InvalidOperationException("Jwt:PublicKeyBase64 not configured.");
+        var publicKeyBase64 = JwtKeyGuard.ValidatePublicKey(config["Jwt:PublicKeyBase64"]);
         var rsaPublic = RSA.Create();
         rsaPublic.ImportSubjectPublicKeyInfo(Convert.FromBase64String(publicKeyBase64), out _);
         _validationKey = new RsaSecurityKey(rsaPublic);

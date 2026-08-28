@@ -20,6 +20,7 @@ using MLMConquerorGlobalEdition.Repository.Seeders;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using MLMConquerorGlobalEdition.SharedKernel.Behaviors;
+using MLMConquerorGlobalEdition.SharedKernel.Configuration;
 using MLMConquerorGlobalEdition.SharedKernel.Logging;
 using ICacheService             = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
 using IPushNotificationService  = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IPushNotificationService;
@@ -238,20 +239,11 @@ builder.Services.AddCors(options =>
     });
 });
 
-var publicKeyBase64 = builder.Configuration["Jwt:PublicKeyBase64"]
-    ?? throw new InvalidOperationException("Jwt:PublicKeyBase64 not configured.");
+var publicKeyBase64 = JwtKeyGuard.ValidatePublicKey(builder.Configuration["Jwt:PublicKeyBase64"]);
 
-if (publicKeyBase64.StartsWith("REPLACE_WITH_") && !builder.Environment.IsDevelopment())
-    throw new InvalidOperationException(
-        "JWT RSA public key must be set before running in non-Development mode.");
-
-RsaSecurityKey? jwtValidationKey = null;
-if (!publicKeyBase64.StartsWith("REPLACE_WITH_"))
-{
-    var rsaValidation = RSA.Create();
-    rsaValidation.ImportSubjectPublicKeyInfo(Convert.FromBase64String(publicKeyBase64), out _);
-    jwtValidationKey = new RsaSecurityKey(rsaValidation);
-}
+var rsaValidation = RSA.Create();
+rsaValidation.ImportSubjectPublicKeyInfo(Convert.FromBase64String(publicKeyBase64), out _);
+var jwtValidationKey = new RsaSecurityKey(rsaValidation);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -261,7 +253,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuer           = true,
             ValidateAudience         = true,
             ValidateLifetime         = true,
-            ValidateIssuerSigningKey = jwtValidationKey is not null,
+            ValidateIssuerSigningKey = true,
             ValidIssuer              = builder.Configuration["Jwt:Issuer"],
             ValidAudience            = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey         = jwtValidationKey,

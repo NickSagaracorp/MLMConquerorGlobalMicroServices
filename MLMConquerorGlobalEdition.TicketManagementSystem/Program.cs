@@ -10,6 +10,7 @@ using Microsoft.OpenApi.Models;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Services;
 using MLMConquerorGlobalEdition.SharedKernel.Behaviors;
+using MLMConquerorGlobalEdition.SharedKernel.Configuration;
 using MLMConquerorGlobalEdition.TicketManagementSystem.Jobs;
 using MLMConquerorGlobalEdition.TicketManagementSystem.Middleware;
 using MLMConquerorGlobalEdition.TicketManagementSystem.Services;
@@ -78,8 +79,7 @@ builder.Services.AddHangfireServer(options =>
 
 builder.Services.AddControllers();
 
-var publicKeyBase64 = builder.Configuration["Jwt:PublicKeyBase64"]
-    ?? throw new InvalidOperationException("Jwt:PublicKeyBase64 not configured.");
+var publicKeyBase64 = JwtKeyGuard.ValidatePublicKey(builder.Configuration["Jwt:PublicKeyBase64"]);
 var rsa = RSA.Create();
 rsa.ImportSubjectPublicKeyInfo(Convert.FromBase64String(publicKeyBase64), out _);
 var rsaSecurityKey = new RsaSecurityKey(rsa);
