@@ -1,5 +1,9 @@
 {
   "_comment": [
+    "GUIA COMPLETA DE DESPLIEGUE: docs/deployment/rotacion-llaves-jwt.md",
+    "Este archivo es solo la plantilla de valores; la guia explica el paso a paso,",
+    "el orden de arranque, la verificacion y los mensajes de error.",
+    "",
     "Plantilla de las llaves JWT. Copiar el bloque Jwt a appsettings.Production.json de",
     "MLMConquerorGlobalEdition.SignupAPI y MLMConquerorGlobalEdition.AdminAPI.",
     "appsettings.*.json esta ignorado por .gitignore: nunca se commitea con valores reales.",
