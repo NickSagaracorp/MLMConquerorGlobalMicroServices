@@ -5,6 +5,7 @@ using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs.Auth;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.ChangePassword;
+using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Enrollment;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.ForgotPassword;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Login;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Logout;
@@ -80,6 +81,47 @@ public class AuthController : ControllerBase
         return result.IsSuccess
             ? Ok(ApiResponse<AuthResponse>.Ok(result.Value!))
             : BadRequest(ApiResponse<AuthResponse>.Fail(result.ErrorCode!, result.Error!));
+    }
+
+    /// <summary>
+    /// Abre el enrolamiento TOTP: devuelve la clave compartida, el URI otpauth:// y su QR.
+    /// </summary>
+    /// <remarks>
+    /// Anónimo a propósito: el EnrollmentToken es la credencial. Quien llega aquí acaba de
+    /// autenticarse con contraseña pero todavía no tiene tokens de acceso — precisamente porque
+    /// le falta configurar el segundo factor que este endpoint da de alta.
+    /// </remarks>
+    [HttpPost("two-factor/enroll/begin")]
+    [AllowAnonymous]
+    public async Task<IActionResult> BeginEnrollment(
+        [FromBody] BeginEnrollmentRequest request,
+        CancellationToken ct)
+    {
+        var result = await _mediator.Send(new BeginEnrollmentCommand(request), ct);
+        return result.IsSuccess
+            ? Ok(ApiResponse<EnrollmentResponse>.Ok(result.Value!))
+            : Unauthorized(ApiResponse<EnrollmentResponse>.Fail(result.ErrorCode!, result.Error!));
+    }
+
+    /// <summary>
+    /// Confirma el enrolamiento con el primer código de la aplicación del usuario y emite los
+    /// tokens de acceso: queda dentro sin volver a iniciar sesión.
+    /// </summary>
+    /// <remarks>Anónimo por el mismo motivo que <see cref="BeginEnrollment"/>.</remarks>
+    [HttpPost("two-factor/enroll/confirm")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ConfirmEnrollment(
+        [FromBody] ConfirmEnrollmentRequest request,
+        CancellationToken ct)
+    {
+        var result = await _mediator.Send(new ConfirmEnrollmentCommand(request), ct);
+        if (!result.IsSuccess)
+            return Unauthorized(ApiResponse<AuthResponse>.Fail(result.ErrorCode!, result.Error!));
+
+        var response = result.Value!;
+        SetRefreshTokenCookie(response.RefreshToken);
+        response.RefreshToken = string.Empty; // do not expose in response body
+        return Ok(ApiResponse<AuthResponse>.Ok(response));
     }
 
     /// <summary>Issues new access token using the HttpOnly refresh cookie.</summary>

@@ -347,9 +347,9 @@ public sealed class TwoFactorService : ITwoFactorService
     };
 
     /// <summary>
-    /// Primera letra, asteriscos y el dominio intacto. Copiada de
-    /// <c>SignupAPI/Services/TwoFactorChallengeService</c> para no cambiar lo que ve el
-    /// usuario cuando el login pase por aquí.
+    /// Primera letra, asteriscos y el dominio intacto. Heredada tal cual del servicio de
+    /// challenge que vivía dentro de SignupAPI, para no cambiar lo que ve el usuario ahora que
+    /// el login pasa por aquí.
     /// </summary>
     public static string MaskEmail(string email)
     {

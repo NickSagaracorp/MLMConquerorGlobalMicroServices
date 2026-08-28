@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Identity;
+using MLMConquerorGlobalEdition.Authn.Abstractions;
+using MLMConquerorGlobalEdition.Authn.Models;
+using MLMConquerorGlobalEdition.Domain.Entities.Security;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Identity;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs.Auth;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.VerifyTwoFactor;
-using MLMConquerorGlobalEdition.SignupAPI.Services;
 using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Features.Auth;
@@ -14,8 +16,7 @@ public class VerifyTwoFactorHandlerTests
 {
     private static readonly DateTime FixedNow = new(2026, 5, 1, 12, 0, 0, DateTimeKind.Utc);
 
-    private const string ValidCode    = "654321";
-    private const string ValidCodeHash = "valid-hash";
+    private const string ValidCode = "654321";
 
     private static Mock<IDateTimeProvider> DateTimeProvider()
     {
@@ -37,20 +38,40 @@ public class VerifyTwoFactorHandlerTests
         return jwt;
     }
 
-    private static Mock<ITwoFactorChallengeService> CreateChallengeService(
-        Result<TwoFactorChallengeClaims>? validationResult = null)
+    private static ChallengeClaims LoginClaims() => new(
+        Jti:          "jti-1",
+        UserId:       "user-2fa",
+        Email:        "tfa@test.com",
+        Purpose:      TwoFactorPurpose.Login,
+        OperationKey: null,
+        Channel:      TwoFactorChannel.Email,
+        CodeHash:     "valid-hash",
+        IssuedAt:     FixedNow,
+        ExpiresAt:    FixedNow.AddMinutes(5));
+
+    /// <summary>
+    /// El doble de la librería <c>Authn</c>. El handler ya no hashea el código ni lo compara: le
+    /// pasa el challenge y el código a <c>VerifyAsync</c> y devuelve lo que le den. Por defecto
+    /// solo <see cref="ValidCode"/> verifica; cualquier otro código da <c>CODE_INVALID</c>, que
+    /// es lo que devuelve la librería de verdad.
+    /// </summary>
+    private static Mock<ITwoFactorService> CreateTwoFactorService(
+        Result<ChallengeClaims>? verifyResult = null)
     {
-        var m = new Mock<ITwoFactorChallengeService>();
+        var m = new Mock<ITwoFactorService>();
 
-        // Default: succeed for "valid-jwt" carrying ValidCodeHash for user-2fa
-        var defaultClaims = new TwoFactorChallengeClaims(
-            "user-2fa", "tfa@test.com", ValidCodeHash, FixedNow, FixedNow.AddMinutes(5));
-        m.Setup(s => s.ValidateChallenge("valid-jwt", false))
-            .Returns(validationResult ?? Result<TwoFactorChallengeClaims>.Success(defaultClaims));
+        m.Setup(s => s.VerifyAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TwoFactorPurpose>(),
+                It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(verifyResult ?? Result<ChallengeClaims>.Failure(
+                "CODE_INVALID", "El código introducido no es válido."));
 
-        // Hash returns the input as-is mapped: only the valid code maps to valid hash
-        m.Setup(s => s.HashCode(ValidCode)).Returns(ValidCodeHash);
-        m.Setup(s => s.HashCode(It.Is<string>(c => c != ValidCode))).Returns("other-hash");
+        if (verifyResult is null)
+            m.Setup(s => s.VerifyAsync(
+                    It.IsAny<string>(), ValidCode, It.IsAny<TwoFactorPurpose>(),
+                    It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Result<ChallengeClaims>.Success(LoginClaims()));
+
         return m;
     }
 
@@ -59,20 +80,60 @@ public class VerifyTwoFactorHandlerTests
         AppDbContext? db = null,
         Mock<IJwtService>? jwt = null,
         Mock<IDateTimeProvider>? dateTime = null,
-        Mock<ITwoFactorChallengeService>? twoFactor = null)
+        Mock<ITwoFactorService>? twoFactor = null)
         => new(
             userManager.Object,
             (jwt       ?? CreateJwtService()).Object,
             (dateTime  ?? DateTimeProvider()).Object,
             db        ?? InMemoryDbHelper.Create(),
-            (twoFactor ?? CreateChallengeService()).Object);
+            (twoFactor ?? CreateTwoFactorService()).Object);
+
+    private static Mock<UserManager<ApplicationUser>> UserManagerWithActiveUser(out ApplicationUser user)
+    {
+        user = new ApplicationUser
+        {
+            Id              = "user-2fa",
+            Email           = "tfa@test.com",
+            IsActive        = true,
+            MemberProfileId = "AMB-000007"
+        };
+        var captured = user;
+
+        var userManager = UserManagerHelper.Create();
+        userManager.Setup(m => m.FindByIdAsync("user-2fa")).ReturnsAsync(captured);
+        userManager.Setup(m => m.GetRolesAsync(captured)).ReturnsAsync(new List<string> { "Ambassador" });
+        userManager.Setup(m => m.UpdateAsync(captured)).ReturnsAsync(IdentityResult.Success);
+        return userManager;
+    }
+
+    /// <summary>
+    /// El punto de toda la migración: el challenge que emite <c>LoginHandler</c> lleva el
+    /// propósito <c>Login</c>, así que aquí hay que redimirlo con ese mismo propósito. Con
+    /// cualquier otro, la librería rechazaría un código recién emitido por el inicio de sesión.
+    /// </summary>
+    [Fact]
+    public async Task Handle_VerifiesTheChallengeWithLoginPurpose()
+    {
+        var userManager = UserManagerWithActiveUser(out _);
+        var twoFactor   = CreateTwoFactorService();
+        var handler     = BuildHandler(userManager, twoFactor: twoFactor);
+
+        await handler.Handle(
+            new VerifyTwoFactorCommand(new VerifyTwoFactorRequest { ChallengeToken = "valid-jwt", Code = ValidCode }),
+            CancellationToken.None);
+
+        twoFactor.Verify(s => s.VerifyAsync(
+            "valid-jwt", ValidCode, TwoFactorPurpose.Login, null, It.IsAny<CancellationToken>()),
+            Times.Once);
+        twoFactor.VerifyNoOtherCalls();
+    }
 
     [Theory]
     [InlineData("")]
     [InlineData("12345")]
     [InlineData("1234567")]
     [InlineData("12345a")]
-    public async Task Handle_WhenCodeIsMalformed_ReturnsInvalidCode(string code)
+    public async Task Handle_WhenCodeIsMalformed_ReturnsCodeInvalid(string code)
     {
         var userManager = UserManagerHelper.Create();
         var handler = BuildHandler(userManager);
@@ -82,15 +143,15 @@ public class VerifyTwoFactorHandlerTests
             CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
-        result.ErrorCode.Should().Be("INVALID_CODE");
+        result.ErrorCode.Should().Be("CODE_INVALID");
     }
 
     [Fact]
     public async Task Handle_WhenChallengeExpired_ReturnsCodeExpired()
     {
         var userManager = UserManagerHelper.Create();
-        var twoFactor = CreateChallengeService(
-            Result<TwoFactorChallengeClaims>.Failure("CODE_EXPIRED", "expired"));
+        var twoFactor = CreateTwoFactorService(
+            Result<ChallengeClaims>.Failure("CODE_EXPIRED", "The verification code has expired."));
         var handler = BuildHandler(userManager, twoFactor: twoFactor);
 
         var result = await handler.Handle(
@@ -99,14 +160,15 @@ public class VerifyTwoFactorHandlerTests
 
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be("CODE_EXPIRED");
+        result.Error.Should().Be("The verification code has expired.");
     }
 
     [Fact]
     public async Task Handle_WhenChallengeSignatureInvalid_ReturnsInvalidChallenge()
     {
         var userManager = UserManagerHelper.Create();
-        var twoFactor = CreateChallengeService(
-            Result<TwoFactorChallengeClaims>.Failure("INVALID_CHALLENGE", "bad sig"));
+        var twoFactor = CreateTwoFactorService(
+            Result<ChallengeClaims>.Failure("INVALID_CHALLENGE", "Challenge token is invalid."));
         var handler = BuildHandler(userManager, twoFactor: twoFactor);
 
         var result = await handler.Handle(
@@ -117,8 +179,31 @@ public class VerifyTwoFactorHandlerTests
         result.ErrorCode.Should().Be("INVALID_CHALLENGE");
     }
 
+    /// <summary>
+    /// "Demasiados intentos" no es "código incorrecto": el primero se arregla pidiendo un código
+    /// nuevo y el segundo escribiéndolo mejor. Si el handler los colapsara, la interfaz no
+    /// podría decirle al usuario cuál de las dos cosas le pasa.
+    /// </summary>
     [Fact]
-    public async Task Handle_WhenCodeDoesNotMatch_ReturnsInvalidCode()
+    public async Task Handle_WhenAttemptsExhausted_PropagatesTooManyAttempts()
+    {
+        var userManager = UserManagerHelper.Create();
+        var twoFactor = CreateTwoFactorService(
+            Result<ChallengeClaims>.Failure(
+                "TOO_MANY_ATTEMPTS", "Demasiados intentos fallidos; solicite un código nuevo."));
+        var handler = BuildHandler(userManager, twoFactor: twoFactor);
+
+        var result = await handler.Handle(
+            new VerifyTwoFactorCommand(new VerifyTwoFactorRequest { ChallengeToken = "valid-jwt", Code = ValidCode }),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be("TOO_MANY_ATTEMPTS");
+        result.Error.Should().Be("Demasiados intentos fallidos; solicite un código nuevo.");
+    }
+
+    [Fact]
+    public async Task Handle_WhenCodeDoesNotMatch_ReturnsCodeInvalid()
     {
         var userManager = UserManagerHelper.Create();
         var handler = BuildHandler(userManager);
@@ -128,7 +213,24 @@ public class VerifyTwoFactorHandlerTests
             CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
-        result.ErrorCode.Should().Be("INVALID_CODE");
+        result.ErrorCode.Should().Be("CODE_INVALID");
+    }
+
+    [Fact]
+    public async Task Handle_WhenVerificationFails_DoesNotIssueTokens()
+    {
+        var userManager = UserManagerWithActiveUser(out var user);
+        var jwt         = CreateJwtService();
+        var handler     = BuildHandler(userManager, jwt: jwt);
+
+        var result = await handler.Handle(
+            new VerifyTwoFactorCommand(new VerifyTwoFactorRequest { ChallengeToken = "valid-jwt", Code = "999999" }),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        jwt.Verify(j => j.GenerateRefreshToken(), Times.Never);
+        userManager.Verify(m => m.UpdateAsync(It.IsAny<ApplicationUser>()), Times.Never);
+        user.RefreshToken.Should().BeNull();
     }
 
     [Fact]
@@ -151,18 +253,7 @@ public class VerifyTwoFactorHandlerTests
     [Fact]
     public async Task Handle_WhenCodeMatches_IssuesTokensAndPersistsRefreshToken()
     {
-        var userManager = UserManagerHelper.Create();
-        var user = new ApplicationUser
-        {
-            Id              = "user-2fa",
-            Email           = "tfa@test.com",
-            IsActive        = true,
-            MemberProfileId = "AMB-000007"
-        };
-        userManager.Setup(m => m.FindByIdAsync("user-2fa")).ReturnsAsync(user);
-        userManager.Setup(m => m.GetRolesAsync(user)).ReturnsAsync(new List<string> { "Ambassador" });
-        userManager.Setup(m => m.UpdateAsync(user)).ReturnsAsync(IdentityResult.Success);
-
+        var userManager = UserManagerWithActiveUser(out var user);
         var handler = BuildHandler(userManager);
 
         var result = await handler.Handle(
@@ -176,6 +267,9 @@ public class VerifyTwoFactorHandlerTests
         result.Value.MemberType.Should().Be("Ambassador");
         result.Value.MemberId.Should().Be("AMB-000007");
         result.Value.TokenExpiry.Should().Be(FixedNow.AddMinutes(15));
+
+        // El UserId sale de los claims del challenge, no del cuerpo de la petición.
+        result.Value.UserId.Should().Be("user-2fa");
 
         // Refresh token stored hashed (not the raw value).
         user.RefreshToken.Should().NotBeNullOrEmpty();

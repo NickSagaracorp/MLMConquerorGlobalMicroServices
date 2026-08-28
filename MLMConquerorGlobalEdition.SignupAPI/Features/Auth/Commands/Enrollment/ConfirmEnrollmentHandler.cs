@@ -9,55 +9,59 @@ using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs.Auth;
 
-namespace MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.VerifyTwoFactor;
+namespace MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Enrollment;
 
-public class VerifyTwoFactorHandler : IRequestHandler<VerifyTwoFactorCommand, Result<AuthResponse>>
+/// <summary>
+/// Cierra el enrolamiento con el primer código de la aplicación del usuario y, si cuadra, emite
+/// los tokens de acceso. El usuario acaba de demostrar los dos factores en la misma sesión
+/// —contraseña en el login que dio el token de enrolamiento, TOTP aquí—, así que mandarlo de
+/// vuelta a iniciar sesión solo añadiría una pantalla sin añadir ninguna garantía.
+/// </summary>
+public class ConfirmEnrollmentHandler : IRequestHandler<ConfirmEnrollmentCommand, Result<AuthResponse>>
 {
     private readonly UserManager<ApplicationUser>   _userManager;
     private readonly IJwtService                    _jwt;
     private readonly IDateTimeProvider              _dateTime;
     private readonly AppDbContext                   _db;
-    private readonly ITwoFactorService              _twoFactor;
+    private readonly IChallengeTokenService         _challenges;
+    private readonly ITotpEnrollmentService         _enrollment;
 
-    public VerifyTwoFactorHandler(
+    public ConfirmEnrollmentHandler(
         UserManager<ApplicationUser> userManager,
         IJwtService                  jwt,
         IDateTimeProvider            dateTime,
         AppDbContext                 db,
-        ITwoFactorService            twoFactor)
+        IChallengeTokenService       challenges,
+        ITotpEnrollmentService       enrollment)
     {
         _userManager = userManager;
         _jwt         = jwt;
         _dateTime    = dateTime;
         _db          = db;
-        _twoFactor   = twoFactor;
+        _challenges  = challenges;
+        _enrollment  = enrollment;
     }
 
-    public async Task<Result<AuthResponse>> Handle(VerifyTwoFactorCommand command, CancellationToken ct)
+    public async Task<Result<AuthResponse>> Handle(ConfirmEnrollmentCommand command, CancellationToken ct)
     {
         var req = command.Request;
 
-        // El propósito tiene que ser el mismo con el que LoginHandler emitió el challenge:
-        // Login. La librería lo comprueba contra el claim firmado, así que un challenge pedido
-        // para otra cosa —enrolarse, autorizar un pago— muere aquí aunque la firma sea buena.
-        //
-        // La comparación del código, el antirreplay y el conteo de intentos son suyos; aquí no
-        // se vuelve a hashear nada.
-        var verified = await _twoFactor.VerifyAsync(
-            req.ChallengeToken, req.Code, TwoFactorPurpose.Login, ct: ct);
+        // Mismo propósito que en Begin: un token de login no puede terminar un enrolamiento, y
+        // aquí importa aún más porque el final de este camino son tokens de acceso.
+        var validation = _challenges.Validate(req.EnrollmentToken, TwoFactorPurpose.Enrollment);
+        if (!validation.IsSuccess)
+            return Result<AuthResponse>.Failure(validation.ErrorCode!, validation.Error!);
 
-        // Los códigos de error se propagan tal cual. CODE_INVALID y TOO_MANY_ATTEMPTS no
-        // significan lo mismo para el usuario —uno se arregla escribiendo mejor y el otro
-        // pidiendo un código nuevo—, así que colapsarlos en uno solo dejaría a la interfaz sin
-        // poder decirle qué hacer.
-        if (!verified.IsSuccess)
-            return Result<AuthResponse>.Failure(verified.ErrorCode!, verified.Error!);
-
-        var claims = verified.Value!;
-
-        var user = await _userManager.FindByIdAsync(claims.UserId);
+        var user = await _userManager.FindByIdAsync(validation.Value!.UserId);
         if (user is null || !user.IsActive)
             return Result<AuthResponse>.Failure("INVALID_CREDENTIALS", "Account is no longer active.");
+
+        // La librería activa el 2FA y fija el canal preferido solo si el código es válido. Si
+        // no lo es, no toca nada y este handler se va sin emitir ni un token: no hay camino por
+        // el que un enrolamiento fallido termine en una sesión abierta.
+        var confirmed = await _enrollment.ConfirmAsync(user, req.Code, ct);
+        if (!confirmed.IsSuccess)
+            return Result<AuthResponse>.Failure(confirmed.ErrorCode!, confirmed.Error!);
 
         var roles      = await _userManager.GetRolesAsync(user);
         var memberId   = user.MemberProfileId ?? string.Empty;

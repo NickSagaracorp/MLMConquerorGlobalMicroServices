@@ -400,8 +400,7 @@ public class LoginHandlerTests
         // meter IEmailService en el constructor, esta prueba lo dice.
         typeof(LoginHandler).GetConstructors().Single()
             .GetParameters().Select(p => p.ParameterType)
-            .Should().NotContain(typeof(IEmailService))
-            .And.NotContain(typeof(MLMConquerorGlobalEdition.SignupAPI.Services.ITwoFactorChallengeService));
+            .Should().NotContain(typeof(IEmailService));
     }
 
     /// <summary>2. El canal y el destino enmascarado llegan tal cual a la respuesta.</summary>

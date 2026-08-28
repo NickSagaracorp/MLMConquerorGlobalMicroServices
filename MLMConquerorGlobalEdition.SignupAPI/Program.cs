@@ -116,17 +116,11 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Billing.Services.Recurring.
 builder.Services.AddScoped<IJwtService, JwtService>();
 
 // Librería Authn: challenge firmado, enrolamiento TOTP y la orquestación de los tres
-// canales de 2FA. LoginHandler ya emite por aquí.
+// canales de 2FA. Todo el camino de dos factores —login, verificación, reenvío y
+// enrolamiento— pasa por aquí; el servicio local que hacía esto ya no existe.
 builder.Services.AddAuthnChallengeTokens();
 builder.Services.AddAuthnTotpEnrollment();
 builder.Services.AddAuthnTwoFactor();
-
-// Two-factor challenge service — issues short-lived JWT challenge tokens
-// carrying the SHA-256 of a 6-digit code, validated on /two-factor/verify.
-// Convive con la librería mientras VerifyTwoFactorHandler y ResendTwoFactorHandler
-// sigan usándolo; se retira cuando migren.
-builder.Services.AddScoped<MLMConquerorGlobalEdition.SignupAPI.Services.ITwoFactorChallengeService,
-                            MLMConquerorGlobalEdition.SignupAPI.Services.TwoFactorChallengeService>();
 
 // Email/SMS transport — provider selected by Notifications:Email:Provider /
 // Notifications:Sms:Provider config. Defaults to Null (log-only) when unset.
