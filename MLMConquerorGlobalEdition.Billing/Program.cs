@@ -6,6 +6,8 @@ using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Cryptography;
+using MLMConquerorGlobalEdition.SharedKernel.Configuration;
 using Microsoft.OpenApi.Models;
 using MLMConquerorGlobalEdition.Billing.Extensions;
 using MLMConquerorGlobalEdition.Billing.Jobs;
@@ -153,8 +155,20 @@ builder.Services.AddHangfireServer(options =>
 
 builder.Services.AddControllers();
 
-var jwtKey = builder.Configuration["Jwt:Key"]
-    ?? throw new InvalidOperationException("JWT Key is not configured.");
+// Los tokens los firman SignupAPI y AdminAPI con RSA/RS256. Este servicio solo los
+// valida, con la llave pública del mismo par — igual que AdminAPI, SignupAPI, BizCenter,
+// RankEngine y TicketManagementSystem.
+//
+// Hasta 2026-08-28 aquí se construía una SymmetricSecurityKey (HMAC) sobre "Jwt:Key", que
+// además nunca se configuró: su valor seguía siendo el placeholder del andamiaje. Una
+// llave HMAC no puede verificar una firma RSA, así que todo endpoint [Authorize] de este
+// servicio rechazaba cualquier token legítimo con IDX10517. La audiencia también estaba
+// mal escrita ("MLMConquerorGlobalEditionClients", sin el punto).
+var publicKeyBase64 = JwtKeyGuard.ValidatePublicKey(builder.Configuration["Jwt:PublicKeyBase64"]);
+
+var rsaValidation = RSA.Create();
+rsaValidation.ImportSubjectPublicKeyInfo(Convert.FromBase64String(publicKeyBase64), out _);
+var jwtValidationKey = new RsaSecurityKey(rsaValidation);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -167,7 +181,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+            IssuerSigningKey = jwtValidationKey,
+            ClockSkew = TimeSpan.Zero
         };
     });
 
