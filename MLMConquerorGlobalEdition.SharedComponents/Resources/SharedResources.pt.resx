@@ -1236,7 +1236,7 @@
   <data name="ResetPassword.InvalidLink" xml:space="preserve"><value>Este link de redefinição é inválido ou expirou.</value></data>
   <data name="ResetPassword.RequestNew" xml:space="preserve"><value>SOLICITAR NOVO LINK</value></data>
   <data name="ResetPassword.ErrorRequired" xml:space="preserve"><value>Os dois campos de senha são obrigatórios.</value></data>
-  <data name="ResetPassword.ErrorWeak" xml:space="preserve"><value>A senha deve ter pelo menos 8 caracteres, com uma letra maiúscula e um número.</value></data>
+  <data name="ResetPassword.ErrorWeak" xml:space="preserve"><value>A senha deve ter pelo menos 8 caracteres e incluir uma letra maiúscula, uma minúscula e um número.</value></data>
   <data name="ResetPassword.ErrorMismatch" xml:space="preserve"><value>As senhas não coincidem.</value></data>
   <data name="ResetPassword.ErrorGeneric" xml:space="preserve"><value>Não foi possível redefinir sua senha. O link pode ser inválido ou ter expirado.</value></data>
   <data name="ResetPassword.ServerError" xml:space="preserve"><value>Não foi possível conectar ao servidor. Tente novamente mais tarde.</value></data>

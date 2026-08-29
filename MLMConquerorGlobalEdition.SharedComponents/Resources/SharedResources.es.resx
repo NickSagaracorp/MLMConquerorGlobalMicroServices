@@ -1252,7 +1252,7 @@
   <data name="ResetPassword.InvalidLink" xml:space="preserve"><value>Este enlace de restablecimiento es inválido o ha expirado.</value></data>
   <data name="ResetPassword.RequestNew" xml:space="preserve"><value>SOLICITAR UN NUEVO ENLACE</value></data>
   <data name="ResetPassword.ErrorRequired" xml:space="preserve"><value>Ambos campos de contraseña son obligatorios.</value></data>
-  <data name="ResetPassword.ErrorWeak" xml:space="preserve"><value>La contraseña debe tener al menos 8 caracteres, una mayúscula y un número.</value></data>
+  <data name="ResetPassword.ErrorWeak" xml:space="preserve"><value>La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.</value></data>
   <data name="ResetPassword.ErrorMismatch" xml:space="preserve"><value>Las contraseñas no coinciden.</value></data>
   <data name="ResetPassword.ErrorGeneric" xml:space="preserve"><value>No se pudo restablecer la contraseña. El enlace puede ser inválido o haber expirado.</value></data>
   <data name="ResetPassword.ServerError" xml:space="preserve"><value>No se pudo conectar con el servidor. Inténtalo más tarde.</value></data>

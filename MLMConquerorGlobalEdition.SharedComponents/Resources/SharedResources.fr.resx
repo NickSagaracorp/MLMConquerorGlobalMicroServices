@@ -1218,7 +1218,7 @@
   <data name="ResetPassword.InvalidLink" xml:space="preserve"><value>Ce lien de réinitialisation est invalide ou a expiré.</value></data>
   <data name="ResetPassword.RequestNew" xml:space="preserve"><value>DEMANDER UN NOUVEAU LIEN</value></data>
   <data name="ResetPassword.ErrorRequired" xml:space="preserve"><value>Les deux champs de mot de passe sont obligatoires.</value></data>
-  <data name="ResetPassword.ErrorWeak" xml:space="preserve"><value>Le mot de passe doit contenir au moins 8 caractères, une majuscule et un chiffre.</value></data>
+  <data name="ResetPassword.ErrorWeak" xml:space="preserve"><value>Le mot de passe doit comporter au moins 8 caractères et inclure une majuscule, une minuscule et un chiffre.</value></data>
   <data name="ResetPassword.ErrorMismatch" xml:space="preserve"><value>Les mots de passe ne correspondent pas.</value></data>
   <data name="ResetPassword.ErrorGeneric" xml:space="preserve"><value>Impossible de réinitialiser votre mot de passe. Le lien est peut-être invalide ou expiré.</value></data>
   <data name="ResetPassword.ServerError" xml:space="preserve"><value>Impossible de joindre le serveur. Veuillez réessayer plus tard.</value></data>

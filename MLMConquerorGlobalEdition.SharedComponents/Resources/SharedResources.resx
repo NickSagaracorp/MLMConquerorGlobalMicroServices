@@ -1317,7 +1317,7 @@
   <data name="ResetPassword.InvalidLink" xml:space="preserve"><value>This reset link is invalid or has expired.</value></data>
   <data name="ResetPassword.RequestNew" xml:space="preserve"><value>REQUEST A NEW LINK</value></data>
   <data name="ResetPassword.ErrorRequired" xml:space="preserve"><value>Both password fields are required.</value></data>
-  <data name="ResetPassword.ErrorWeak" xml:space="preserve"><value>Password must be at least 8 characters and include an uppercase letter and a number.</value></data>
+  <data name="ResetPassword.ErrorWeak" xml:space="preserve"><value>Password must be at least 8 characters and include an uppercase letter, a lowercase letter and a number.</value></data>
   <data name="ResetPassword.ErrorMismatch" xml:space="preserve"><value>The passwords don't match.</value></data>
   <data name="ResetPassword.ErrorGeneric" xml:space="preserve"><value>We couldn't reset your password. The link may be invalid or expired.</value></data>
   <data name="ResetPassword.ServerError" xml:space="preserve"><value>Could not reach the server. Please try again later.</value></data>

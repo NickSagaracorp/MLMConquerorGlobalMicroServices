@@ -1149,7 +1149,7 @@
   <data name="ResetPassword.InvalidLink" xml:space="preserve"><value>ეს აღდგენის ბმული არასწორია ან ვადაგასულია.</value></data>
   <data name="ResetPassword.RequestNew" xml:space="preserve"><value>ახალი ბმულის მოთხოვნა</value></data>
   <data name="ResetPassword.ErrorRequired" xml:space="preserve"><value>პაროლის ორივე ველი აუცილებელია.</value></data>
-  <data name="ResetPassword.ErrorWeak" xml:space="preserve"><value>პაროლი უნდა შეიცავდეს მინიმუმ 8 სიმბოლოს, ერთ დიდ ასოს და ერთ ციფრს.</value></data>
+  <data name="ResetPassword.ErrorWeak" xml:space="preserve"><value>პაროლი უნდა შედგებოდეს მინიმუმ 8 სიმბოლოსგან და შეიცავდეს დიდ ასოს, პატარა ასოს და ციფრს.</value></data>
   <data name="ResetPassword.ErrorMismatch" xml:space="preserve"><value>პაროლები არ ემთხვევა.</value></data>
   <data name="ResetPassword.ErrorGeneric" xml:space="preserve"><value>პაროლის აღდგენა ვერ მოხერხდა. ბმული შესაძლოა არასწორი ან ვადაგასული იყოს.</value></data>
   <data name="ResetPassword.ServerError" xml:space="preserve"><value>სერვერთან კავშირი ვერ ხერხდება. სცადეთ მოგვიანებით.</value></data>
