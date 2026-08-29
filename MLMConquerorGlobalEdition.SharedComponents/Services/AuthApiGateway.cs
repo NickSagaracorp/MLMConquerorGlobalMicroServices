@@ -2,15 +2,17 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.SharedKernel;
 
-namespace MLMConquerorGlobalEdition.AdminWeb.Services;
+namespace MLMConquerorGlobalEdition.SharedComponents.Services;
 
 /// <summary>
-/// La única forma de hablar con SignupAPI desde el portal de administración: monta la petición,
-/// le pone el Bearer del usuario cuando hace falta, desenvuelve el <see cref="ApiResponse{T}"/> y
-/// convierte cualquier final infeliz —error de la API, 401, 429, red caída, cuerpo que no es
-/// JSON— en un código de error que las pantallas ya saben traducir.
+/// La única forma de hablar con SignupAPI desde un portal web: monta la petición, le pone el Bearer
+/// del usuario cuando hace falta, desenvuelve el <see cref="ApiResponse{T}"/> y convierte cualquier
+/// final infeliz —error de la API, 401, 429, red caída, cuerpo que no es JSON— en un código de
+/// error que las pantallas ya saben traducir.
 ///
 /// Existe porque diez manejadores de formulario hacían exactamente estas cinco cosas. Copiadas
 /// diez veces son diez sitios donde arreglar el mismo fallo, y —lo que es peor— diez sitios donde
@@ -18,10 +20,13 @@ namespace MLMConquerorGlobalEdition.AdminWeb.Services;
 /// usuario en vez de en un mensaje.
 ///
 /// El token de acceso sale del claim <c>access_token</c> de la cookie de sesión, que es donde lo
-/// dejó <c>AuthEndpoints.CompleteSignInAsync</c> — el mismo sitio del que lo saca
-/// <see cref="AdminApiAuthHandler"/> para AdminAPI. Aquí no se usa aquel manejador porque el
-/// cliente "AuthApi" es deliberadamente anónimo: por él pasan el login y la recuperación de
+/// dejó <c>AuthEndpoints.CompleteSignInAsync</c> — el mismo sitio del que lo saca el manejador de
+/// mensajes que autentica las llamadas a la API del portal. Aquí no se usa aquel manejador porque
+/// el cliente "AuthApi" es deliberadamente anónimo: por él pasan el login y la recuperación de
 /// contraseña, que ocurren cuando todavía no hay sesión ninguna.
+///
+/// Nada de esto depende del portal: el nombre del cliente HTTP, el claim y las rutas de la API son
+/// los mismos en administración y en el centro de negocios, así que no recibe parámetros de sitio.
 /// </summary>
 public sealed class AuthApiGateway
 {

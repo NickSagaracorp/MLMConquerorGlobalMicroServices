@@ -4,6 +4,7 @@ using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using MLMConquerorGlobalEdition.SharedComponents.Services;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.AdminWeb.Services;
@@ -14,11 +15,16 @@ namespace MLMConquerorGlobalEdition.AdminWeb.Services;
 /// </summary>
 /// <remarks>
 /// Lo de GESTIONAR la cuenta ya con sesión —contraseña, teléfono, datos personales— vive en
-/// <see cref="AccountEndpoints"/>. Son dos momentos distintos y con los diez manejadores de
-/// aquello aquí dentro este archivo pasaba de trescientas líneas a más de seiscientas.
+/// <c>AccountEndpoints</c>, ya en SharedComponents. Son dos momentos distintos y con los diez
+/// manejadores de aquello aquí dentro este archivo pasaba de trescientas líneas a más de
+/// seiscientas.
 ///
-/// Las cookies de los retos y sus opciones están en <see cref="ChallengeCookies"/>, que también
-/// usa el alta de teléfono.
+/// Esto se queda en el portal —no se compartió con aquello— porque decide quién puede ENTRAR: la
+/// lista <see cref="AdminRoles"/> y los destinos <c>/admin/…</c> son de administración, y el centro
+/// de negocios admite a otra gente y la manda a otro sitio.
+///
+/// Las cookies de los retos y sus opciones están en <see cref="ChallengeCookies"/>, ya compartida,
+/// que también usa el alta de teléfono.
 /// </remarks>
 public static class AuthEndpoints
 {

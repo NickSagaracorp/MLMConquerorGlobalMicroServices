@@ -5,7 +5,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
+    <!-- Los tipos de hosting (IResult, HttpContext, Results, IEndpointRouteBuilder) que necesita el
+         cableado del área de cuenta en Services/. Un Sdk.Razor no los trae; los dos consumidores de
+         esta biblioteca son aplicaciones ASP.NET Core, así que la referencia al framework compartido
+         es la forma correcta de tenerlos sin arrastrar paquetes sueltos. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.2" />
+    <!-- TwoFactorPageData lee el ChallengeToken con JwtSecurityTokenHandler. -->
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.9.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authorization" Version="10.0.2" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.2" />
     <PackageReference Include="Syncfusion.Blazor.Grid" Version="33.1.44" />

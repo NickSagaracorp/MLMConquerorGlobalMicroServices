@@ -1,17 +1,19 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Json;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.SharedKernel;
 
-namespace MLMConquerorGlobalEdition.AdminWeb.Services;
+namespace MLMConquerorGlobalEdition.SharedComponents.Services;
 
 /// <summary>
 /// Lo que las páginas del segundo factor necesitan para pintarse y que no cabe en un formulario:
 /// el canal del reto en curso y el material de enrolamiento (QR y clave compartida).
 ///
-/// Vive fuera de <see cref="AuthEndpoints"/> a propósito. Aquello son manejadores de POST —una
-/// acción del usuario que acaba en redirección—; esto se ejecuta durante el render de una
-/// página, que es un GET. Meterlo allí habría obligado a inventar un endpoint intermedio cuyo
-/// único trabajo sería devolverle a la página datos que la página puede pedir directamente.
+/// Vive fuera de <c>AuthEndpoints</c> a propósito. Aquello son manejadores de POST —una acción del
+/// usuario que acaba en redirección—; esto se ejecuta durante el render de una página, que es un
+/// GET. Meterlo allí habría obligado a inventar un endpoint intermedio cuyo único trabajo sería
+/// devolverle a la página datos que la página puede pedir directamente.
 ///
 /// Todo esto corre en el servidor: las cookies del reto son <c>HttpOnly</c>, así que el código
 /// que se ejecuta en el navegador no puede leerlas. Las páginas que lo usan se renderizan en

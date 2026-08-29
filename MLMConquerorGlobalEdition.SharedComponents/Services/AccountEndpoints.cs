@@ -1,40 +1,33 @@
 using System.Net.Http.Headers;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
-namespace MLMConquerorGlobalEdition.AdminWeb.Services;
+namespace MLMConquerorGlobalEdition.SharedComponents.Services;
 
 /// <summary>
 /// Los manejadores de los formularios del área de cuenta: recuperar la contraseña, confirmar el
 /// correo y todo lo que un usuario ya identificado hace sobre su propia cuenta.
 ///
-/// Aparte de <see cref="AuthEndpoints"/> porque son dos momentos distintos. Allí vive lo de
-/// ENTRAR —login, segundo factor, enrolamiento y salida—, que ocurre cuando todavía no hay
-/// sesión y termina firmando una; aquí vive lo de GESTIONAR la cuenta, que ocurre después y da
-/// por supuesta esa sesión. Con los diez manejadores de aquí metidos allí, aquel archivo pasaba
-/// de trescientas líneas a más de seiscientas y dejaba de poder leerse de una sentada.
+/// Aparte de <c>AuthEndpoints</c> porque son dos momentos distintos. Allí vive lo de ENTRAR
+/// —login, segundo factor, enrolamiento y salida—, que ocurre cuando todavía no hay sesión y
+/// termina firmando una; aquí vive lo de GESTIONAR la cuenta, que ocurre después y da por supuesta
+/// esa sesión. Con los diez manejadores de aquí metidos allí, aquel archivo pasaba de trescientas
+/// líneas a más de seiscientas y dejaba de poder leerse de una sentada.
 ///
 /// Lo que se repetía —montar la llamada, ponerle el Bearer, desenvolver el sobre y traducir el
 /// fallo a un código— no está copiado en cada manejador: vive en <see cref="AuthApiGateway"/>, y
 /// lo de redirigir con ese código, en <see cref="Failure"/>. Cada manejador de aquí se queda con
 /// lo único que es suyo: qué lee del formulario, a qué ruta de la API llama y a dónde va después.
+///
+/// Los manejadores siguen siendo estáticos y reciben sus dependencias por parámetro, que es como
+/// las inyectan las minimal API. <see cref="AccountPageRoutes"/> entra por ahí como una más: lo
+/// único que cambia de un portal a otro son las rutas de sus pantallas, y con eso el archivo entero
+/// sirve igual para administración que para el centro de negocios.
 /// </summary>
 public static class AccountEndpoints
 {
-    // ---------------------------------------------------------------------------------------
-    //  Rutas de las pantallas. Escritas una vez: son a la vez el destino del éxito y el del
-    //  error, y una de las dos escrita a mano en otro sitio es una redirección que se queda atrás
-    //  el día que la ruta cambie.
-    // ---------------------------------------------------------------------------------------
-    private const string ForgotPasswordPage     = "/admin/forgot-password";
-    private const string ForgotPasswordSentPage = "/admin/forgot-password/sent";
-    private const string ResetPasswordPage      = "/admin/reset-password";
-    private const string ResetPasswordDonePage  = "/admin/reset-password/done";
-    private const string ProfilePage            = "/admin/account";
-    private const string PasswordPage           = "/admin/account/password";
-    private const string PhonePage              = "/admin/account/phone";
-    private const string PhoneVerifyPage        = "/admin/account/phone/verify";
-
     // ---------------------------------------------------------------------------------------
     //  Anónimos — el usuario todavía no tiene sesión.
     // ---------------------------------------------------------------------------------------
@@ -45,9 +38,10 @@ public static class AccountEndpoints
     /// respeta esa cautela: siempre acaba en la misma pantalla, que dice lo mismo en los dos casos.
     /// </summary>
     public static async Task<IResult> ForgotPasswordAsync(
-        [FromForm] EmailForm? form,
-        AuthApiGateway       api,
-        CancellationToken    ct)
+        [FromForm] EmailForm?         form,
+        AuthApiGateway                api,
+        [FromServices] AccountPageRoutes routes,
+        CancellationToken             ct)
     {
         form ??= new();
 
@@ -58,8 +52,8 @@ public static class AccountEndpoints
         // Solo se rompe la ambigüedad cuando el fallo NO habla de la cuenta: si la API no
         // respondió, callarlo dejaría al usuario esperando un correo que nadie llegó a pedir.
         return outcome.Success
-            ? Results.Redirect(ForgotPasswordSentPage)
-            : Failure(ForgotPasswordPage, outcome.ErrorCodeOr("PASSWORD_RESET_FAILED"));
+            ? Results.Redirect(routes.ForgotPasswordSentPage)
+            : Failure(routes.ForgotPasswordPage, outcome.ErrorCodeOr("PASSWORD_RESET_FAILED"));
     }
 
     /// <summary>
@@ -79,6 +73,7 @@ public static class AccountEndpoints
     public static async Task<IResult> ResetPasswordAsync(
         [FromForm] ResetPasswordForm? form,
         AuthApiGateway                api,
+        [FromServices] AccountPageRoutes routes,
         CancellationToken             ct)
     {
         form ??= new();
@@ -86,7 +81,7 @@ public static class AccountEndpoints
         // El enlace se conserva en la vuelta: sin userId y token el formulario no se vuelve a
         // pintar, y el usuario tendría que ir a buscar el correo otra vez por haberse equivocado
         // al teclear la contraseña.
-        var returnUrl = $"{ResetPasswordPage}?userId={Uri.EscapeDataString(form.UserId ?? string.Empty)}" +
+        var returnUrl = $"{routes.ResetPasswordPage}?userId={Uri.EscapeDataString(form.UserId ?? string.Empty)}" +
                         $"&token={Uri.EscapeDataString(form.Token ?? string.Empty)}";
 
         if (!PasswordsMatch(form.NewPassword, form.ConfirmPassword))
@@ -103,7 +98,7 @@ public static class AccountEndpoints
             authenticated: false, ct);
 
         return outcome.Success
-            ? Results.Redirect(ResetPasswordDonePage)
+            ? Results.Redirect(routes.ResetPasswordDonePage)
             : Failure(returnUrl, outcome.ErrorCodeOr("PASSWORD_RESET_FAILED"));
     }
 
@@ -122,33 +117,35 @@ public static class AccountEndpoints
     /// lo que exige sesión aquí es de dónde se saca el correo.
     /// </remarks>
     public static async Task<IResult> ResendConfirmationAsync(
-        HttpContext       httpContext,
-        AuthApiGateway    api,
-        CancellationToken ct)
+        HttpContext                   httpContext,
+        AuthApiGateway                api,
+        [FromServices] AccountPageRoutes routes,
+        CancellationToken             ct)
     {
         var email = EmailOfSession(httpContext);
         if (string.IsNullOrWhiteSpace(email))
-            return Failure(ProfilePage, AuthApiGateway.SessionExpired);
+            return Failure(routes.ProfilePage, AuthApiGateway.SessionExpired);
 
         var outcome = await api.CallAsync(
             HttpMethod.Post, "api/v1/auth/email/send-confirmation",
             new { Email = email }, authenticated: false, ct);
 
         return outcome.Success
-            ? Results.Redirect($"{ProfilePage}?resent=1")
-            : Failure(ProfilePage, outcome.ErrorCodeOr("SEND_CONFIRMATION_FAILED"));
+            ? Results.Redirect($"{routes.ProfilePage}?resent=1")
+            : Failure(routes.ProfilePage, outcome.ErrorCodeOr("SEND_CONFIRMATION_FAILED"));
     }
 
     /// <summary>Cambia la contraseña de una cuenta que ya tiene una.</summary>
     public static async Task<IResult> ChangePasswordAsync(
         [FromForm] ChangePasswordForm? form,
         AuthApiGateway                 api,
+        [FromServices] AccountPageRoutes routes,
         CancellationToken              ct)
     {
         form ??= new();
 
         if (!PasswordsMatch(form.NewPassword, form.ConfirmPassword))
-            return Failure(PasswordPage, "PASSWORD_CHANGE_FAILED");
+            return Failure(routes.PasswordPage, "PASSWORD_CHANGE_FAILED");
 
         var outcome = await api.CallAsync(
             HttpMethod.Put, "api/v1/auth/change-password",
@@ -160,28 +157,29 @@ public static class AccountEndpoints
             authenticated: true, ct);
 
         return outcome.Success
-            ? Results.Redirect(ProfilePage)
-            : Failure(PasswordPage, outcome.ErrorCodeOr("PASSWORD_CHANGE_FAILED"));
+            ? Results.Redirect(routes.ProfilePage)
+            : Failure(routes.PasswordPage, outcome.ErrorCodeOr("PASSWORD_CHANGE_FAILED"));
     }
 
     /// <summary>Fija la primera contraseña de una cuenta que no tiene ninguna.</summary>
     public static async Task<IResult> SetPasswordAsync(
-        [FromForm] SetPasswordForm? form,
-        AuthApiGateway              api,
-        CancellationToken           ct)
+        [FromForm] SetPasswordForm?   form,
+        AuthApiGateway                api,
+        [FromServices] AccountPageRoutes routes,
+        CancellationToken             ct)
     {
         form ??= new();
 
         if (!PasswordsMatch(form.NewPassword, form.ConfirmPassword))
-            return Failure(PasswordPage, "PASSWORD_SET_FAILED");
+            return Failure(routes.PasswordPage, "PASSWORD_SET_FAILED");
 
         var outcome = await api.CallAsync(
             HttpMethod.Post, "api/v1/auth/set-password",
             new { NewPassword = form.NewPassword ?? string.Empty }, authenticated: true, ct);
 
         return outcome.Success
-            ? Results.Redirect(ProfilePage)
-            : Failure(PasswordPage, outcome.ErrorCodeOr("PASSWORD_SET_FAILED"));
+            ? Results.Redirect(routes.ProfilePage)
+            : Failure(routes.PasswordPage, outcome.ErrorCodeOr("PASSWORD_SET_FAILED"));
     }
 
     /// <summary>
@@ -189,10 +187,11 @@ public static class AccountEndpoints
     /// en la URL, por lo mismo que el del segundo factor del login.
     /// </summary>
     public static async Task<IResult> AddPhoneAsync(
-        [FromForm] PhoneForm? form,
-        AuthApiGateway        api,
-        HttpContext           httpContext,
-        CancellationToken     ct)
+        [FromForm] PhoneForm?         form,
+        AuthApiGateway                api,
+        HttpContext                   httpContext,
+        [FromServices] AccountPageRoutes routes,
+        CancellationToken             ct)
     {
         form ??= new();
 
@@ -203,7 +202,7 @@ public static class AccountEndpoints
         if (!outcome.Success || outcome.Data is null ||
             string.IsNullOrWhiteSpace(outcome.Data.ChallengeToken))
         {
-            return Failure(PhonePage, outcome.ErrorCodeOr("INVALID_PHONE"));
+            return Failure(routes.PhonePage, outcome.ErrorCodeOr("INVALID_PHONE"));
         }
 
         ChallengeCookies.Set(httpContext, ChallengeCookies.Phone, outcome.Data.ChallengeToken);
@@ -215,15 +214,16 @@ public static class AccountEndpoints
             ? string.Empty
             : $"?target={Uri.EscapeDataString(outcome.Data.MaskedTarget)}";
 
-        return Results.Redirect($"{PhoneVerifyPage}{target}");
+        return Results.Redirect($"{routes.PhoneVerifyPage}{target}");
     }
 
     /// <summary>Confirma el teléfono con el código del SMS y el reto que viaja en cookie.</summary>
     public static async Task<IResult> VerifyPhoneAsync(
-        [FromForm] CodeForm? form,
-        AuthApiGateway       api,
-        HttpContext          httpContext,
-        CancellationToken    ct)
+        [FromForm] CodeForm?          form,
+        AuthApiGateway                api,
+        HttpContext                   httpContext,
+        [FromServices] AccountPageRoutes routes,
+        CancellationToken             ct)
     {
         form ??= new();
 
@@ -232,7 +232,7 @@ public static class AccountEndpoints
         {
             // Sin reto no hay nada que canjear: caducó o alguien entró directo a la URL. La
             // salida no es el login —el usuario sigue dentro— sino volver a empezar el alta.
-            return Failure(PhonePage, "INVALID_CHALLENGE");
+            return Failure(routes.PhonePage, "INVALID_CHALLENGE");
         }
 
         var outcome = await api.CallAsync(
@@ -243,7 +243,7 @@ public static class AccountEndpoints
         if (outcome.Success)
         {
             ChallengeCookies.Delete(httpContext, ChallengeCookies.Phone);
-            return Results.Redirect(ProfilePage);
+            return Results.Redirect(routes.ProfilePage);
         }
 
         // Un reto inválido o agotado ya no sirve para nada: fuera la cookie, y de vuelta al alta.
@@ -251,10 +251,10 @@ public static class AccountEndpoints
         if (code is "INVALID_CHALLENGE" or "CODE_EXPIRED" or "TOO_MANY_ATTEMPTS")
         {
             ChallengeCookies.Delete(httpContext, ChallengeCookies.Phone);
-            return Failure(PhonePage, code);
+            return Failure(routes.PhonePage, code);
         }
 
-        return Failure(PhoneVerifyPage, code);
+        return Failure(routes.PhoneVerifyPage, code);
     }
 
     /// <summary>
@@ -262,9 +262,10 @@ public static class AccountEndpoints
     /// postea nada, solo repinta la pantalla con el aviso y es ese aviso el que trae este botón.
     /// </summary>
     public static async Task<IResult> RemovePhoneAsync(
-        AuthApiGateway    api,
-        HttpContext       httpContext,
-        CancellationToken ct)
+        AuthApiGateway                api,
+        HttpContext                   httpContext,
+        [FromServices] AccountPageRoutes routes,
+        CancellationToken             ct)
     {
         var outcome = await api.CallAsync(
             HttpMethod.Delete, "api/v1/auth/phone", body: null, authenticated: true, ct);
@@ -274,8 +275,8 @@ public static class AccountEndpoints
         ChallengeCookies.Delete(httpContext, ChallengeCookies.Phone);
 
         return outcome.Success
-            ? Results.Redirect(ProfilePage)
-            : Failure(ProfilePage, outcome.ErrorCodeOr("PHONE_NOT_FOUND"));
+            ? Results.Redirect(routes.ProfilePage)
+            : Failure(routes.ProfilePage, outcome.ErrorCodeOr("PHONE_NOT_FOUND"));
     }
 
     /// <summary>
@@ -288,14 +289,15 @@ public static class AccountEndpoints
     /// sesión, y devuelve el archivo tal cual llega, con su nombre.
     /// </remarks>
     public static async Task<IResult> DownloadPersonalDataAsync(
-        AuthApiGateway     api,
-        IHttpClientFactory httpClientFactory,
-        ILoggerFactory     loggerFactory,
-        CancellationToken  ct)
+        AuthApiGateway                api,
+        IHttpClientFactory            httpClientFactory,
+        ILoggerFactory                loggerFactory,
+        [FromServices] AccountPageRoutes routes,
+        CancellationToken             ct)
     {
         var token = api.AccessToken;
         if (string.IsNullOrWhiteSpace(token))
-            return Failure(ProfilePage, AuthApiGateway.SessionExpired);
+            return Failure(routes.ProfilePage, AuthApiGateway.SessionExpired);
 
         try
         {
@@ -306,7 +308,7 @@ public static class AccountEndpoints
 
             using var response = await httpClient.SendAsync(request, ct);
             if (!response.IsSuccessStatusCode)
-                return Failure("/admin/account/personal-data", "DOWNLOAD_FAILED");
+                return Failure(routes.PersonalDataPage, "DOWNLOAD_FAILED");
 
             // Se materializa en memoria a propósito: el archivo son unos pocos kilobytes y así el
             // HttpResponseMessage puede cerrarse aquí en vez de vivir hasta que termine el
@@ -323,7 +325,7 @@ public static class AccountEndpoints
         {
             loggerFactory.CreateLogger(typeof(AccountEndpoints))
                 .LogError(ex, "No se pudo descargar el archivo de datos personales.");
-            return Failure("/admin/account/personal-data", AuthApiGateway.Unreachable);
+            return Failure(routes.PersonalDataPage, AuthApiGateway.Unreachable);
         }
     }
 
@@ -356,7 +358,7 @@ public static class AccountEndpoints
     /// <summary>
     /// El correo de la sesión. Sale del claim del token —donde lo dejó <c>CompleteSignInAsync</c>
     /// al copiar las claims del JWT— y se acepta tanto el nombre corto de JWT como el largo de
-    /// .NET, igual que hace <see cref="AuthEndpoints"/> con los roles.
+    /// .NET, igual que hace <c>AuthEndpoints</c> con los roles.
     /// </summary>
     private static string? EmailOfSession(HttpContext httpContext) =>
         httpContext.User.FindFirstValue("email")

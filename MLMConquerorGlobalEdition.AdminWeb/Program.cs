@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Localization;
 using MLMConquerorGlobalEdition.AdminWeb.Components;
 using MLMConquerorGlobalEdition.AdminWeb.Services;
 using MLMConquerorGlobalEdition.SharedComponents.Extensions;
+using MLMConquerorGlobalEdition.SharedComponents.Services;
 using MLMConquerorGlobalEdition.SharedKernel;
 using Syncfusion.Blazor;
 
@@ -40,19 +41,21 @@ builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<AdminApiAuthHandler>();
 
-// Datos que las páginas del segundo factor piden durante el render (canal del reto, QR y clave
-// del enrolamiento). Scoped: depende del HttpContext de la petición, que es de donde salen las
-// cookies HttpOnly del reto.
-builder.Services.AddScoped<TwoFactorPageData>();
-
-// La única puerta a SignupAPI desde este portal: monta la llamada, le pone el Bearer del claim
-// access_token cuando hace falta, desenvuelve el ApiResponse y traduce el fallo a un código.
-// Scoped porque el token sale del HttpContext de la petición.
-builder.Services.AddScoped<AuthApiGateway>();
-
-// Datos que las páginas del área de cuenta piden durante el render. Scoped y con el resultado
-// memorizado: account-status se pide UNA vez por página aunque la pinten tres componentes.
-builder.Services.AddScoped<AccountPageData>();
+// Área de cuenta — el cableado (gateway a SignupAPI, carga de datos de página y manejadores de
+// formulario) vive en SharedComponents y lo montan también otros portales. Lo único que cambia de
+// uno a otro es dónde están sus pantallas, y eso es exactamente lo que se pasa aquí.
+builder.Services.AddAccountSurface(new AccountPageRoutes
+{
+    ForgotPasswordPage     = "/admin/forgot-password",
+    ForgotPasswordSentPage = "/admin/forgot-password/sent",
+    ResetPasswordPage      = "/admin/reset-password",
+    ResetPasswordDonePage  = "/admin/reset-password/done",
+    ProfilePage            = "/admin/account",
+    PasswordPage           = "/admin/account/password",
+    PhonePage              = "/admin/account/phone",
+    PhoneVerifyPage        = "/admin/account/phone/verify",
+    PersonalDataPage       = "/admin/account/personal-data"
+});
 
 // Server-side auth state provider (persists to WASM client)
 builder.Services.AddScoped<AuthenticationStateProvider, PersistingServerAuthStateProvider>();
@@ -120,27 +123,10 @@ app.MapPost("/account/login-2fa/resend",    (Delegate)AuthEndpoints.ResendTwoFac
 app.MapPost("/account/enroll-authenticator",(Delegate)AuthEndpoints.EnrollAuthenticatorAsync).DisableAntiforgery();
 
 // ── Área de cuenta ──────────────────────────────────────────────────────────────────────────
-// Antiforgery desactivado como en los de arriba: son formularios HTML posteados desde páginas en
-// SSR estático, sin circuito interactivo que pueda llevar el token.
-//
-// Anónimos — el usuario todavía no tiene sesión.
-app.MapPost("/account/forgot-password",     (Delegate)AccountEndpoints.ForgotPasswordAsync).DisableAntiforgery();
-app.MapPost("/account/reset-password",      (Delegate)AccountEndpoints.ResetPasswordAsync).DisableAntiforgery();
-
-// De gestión — el Bearer sale del claim access_token de la cookie, que AuthApiGateway lee del
-// HttpContext. RequireAuthorization() los cierra antes de que el manejador llegue a correr: sin
-// él, una llamada sin sesión acabaría en el manejador y volvería con SESSION_EXPIRED en la URL en
-// vez de mandar al login, que es lo que el usuario necesita.
-app.MapPost("/account/resend-confirmation", (Delegate)AccountEndpoints.ResendConfirmationAsync).DisableAntiforgery().RequireAuthorization();
-app.MapPost("/account/change-password",     (Delegate)AccountEndpoints.ChangePasswordAsync).DisableAntiforgery().RequireAuthorization();
-app.MapPost("/account/set-password",        (Delegate)AccountEndpoints.SetPasswordAsync).DisableAntiforgery().RequireAuthorization();
-app.MapPost("/account/phone/add",           (Delegate)AccountEndpoints.AddPhoneAsync).DisableAntiforgery().RequireAuthorization();
-app.MapPost("/account/phone/verify",        (Delegate)AccountEndpoints.VerifyPhoneAsync).DisableAntiforgery().RequireAuthorization();
-app.MapPost("/account/phone/remove",        (Delegate)AccountEndpoints.RemovePhoneAsync).DisableAntiforgery().RequireAuthorization();
-
-// GET y no POST: lo pide un <a href> de PersonalData.razor. Hace de intermediaria porque el
-// endpoint de la API exige Bearer y el navegador no lo lleva en un enlace normal.
-app.MapGet("/account/personal-data/download", (Delegate)AccountEndpoints.DownloadPersonalDataAsync).RequireAuthorization();
+// Las mismas rutas de siempre, montadas desde SharedComponents. Cuál lleva RequireAuthorization()
+// y cuál no vive allí junto a los manejadores: es una decisión de seguridad que no se ve desde la
+// pantalla, y copiarla en cada portal es pedir que a uno se le olvide.
+app.MapAccountEndpoints();
 
 // Culture selection endpoint — sets cookie and redirects back
 app.MapGet("/culture", (HttpContext ctx, string culture, string redirectUri) =>

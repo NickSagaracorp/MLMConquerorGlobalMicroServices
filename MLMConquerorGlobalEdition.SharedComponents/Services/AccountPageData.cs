@@ -1,16 +1,19 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.SharedComponents.Components.Account;
 
-namespace MLMConquerorGlobalEdition.AdminWeb.Services;
+namespace MLMConquerorGlobalEdition.SharedComponents.Services;
 
 /// <summary>
 /// Lo que las páginas del área de cuenta necesitan para pintarse y que no cabe en un formulario:
 /// el estado de la cuenta y el resultado de redimir el enlace de confirmación de correo.
 ///
-/// Mismo reparto que <see cref="TwoFactorPageData"/> frente a <see cref="AuthEndpoints"/>:
-/// aquello son manejadores de POST —una acción que acaba en redirección—; esto se ejecuta
-/// durante el render de una página, que es un GET. Un endpoint intermedio cuyo único trabajo
-/// fuera devolverle a la página datos que la página puede pedir directamente no aportaría nada.
+/// Mismo reparto que <see cref="TwoFactorPageData"/> frente a <c>AuthEndpoints</c>: aquello son
+/// manejadores de POST —una acción que acaba en redirección—; esto se ejecuta durante el render de
+/// una página, que es un GET. Un endpoint intermedio cuyo único trabajo fuera devolverle a la
+/// página datos que la página puede pedir directamente no aportaría nada.
 ///
 /// Con ámbito de petición y con el resultado memorizado: <c>account-status</c> se pide UNA vez
 /// por página aunque la pinten tres componentes. La llamada sale del servidor porque el token de
@@ -130,6 +133,10 @@ public sealed class AccountPageData
     /// enrolamiento. Las dos listas tienen que ser la misma: si el portal dijera que el rol no lo
     /// exige y el servidor sí, el usuario apagaría el segundo factor y se quedaría fuera en su
     /// siguiente inicio de sesión, cuando el login le exigiera enrolarse otra vez.
+    ///
+    /// La clave de configuración es la misma en los dos portales a propósito: es la lista del
+    /// servidor la que manda, y un portal que leyera otra sección volvería a abrir justo esa
+    /// discrepancia.
     /// </remarks>
     public bool TwoFactorRequiredByRole()
     {
