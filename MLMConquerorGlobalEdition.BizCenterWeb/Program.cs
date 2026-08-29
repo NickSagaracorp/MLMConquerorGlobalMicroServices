@@ -38,8 +38,9 @@ builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddHttpContextAccessor();
 
 // El manejador que lleva el JWT del usuario a las APIs de este portal. Es el mismo de los dos
-// portales; lo único de aquí es a qué pantalla de login se manda al usuario cuando su sesión
-// caduca, en vez de dejarle en la cara el 401 crudo de la llamada que estaba en vuelo.
+// portales; lo único de aquí es a dónde se manda al usuario cuando su sesión caduca —a la salida,
+// que limpia la cookie y redirige a esta pantalla de login con el aviso— en vez de dejarle en la
+// cara el 401 crudo de la llamada que estaba en vuelo.
 builder.Services.AddPortalApiAuthHandler("/login");
 
 // Nombres de las cookies de reto de ESTE portal. Siguen la convención de su cookie de sesión
@@ -134,6 +135,11 @@ app.UseRequestLocalization(new RequestLocalizationOptions()
     .AddSupportedUICultures(supportedCultures));
 app.UseAntiforgery();
 app.UseAuthentication();
+// Justo después de la autenticación, que es cuando ya hay ClaimsPrincipal y todavía no ha empezado
+// la respuesta: una navegación de un usuario cuyo JWT ya caducó se corta aquí, se le limpia la
+// cookie y se le manda al login con el aviso. Dentro del circuito ese trabajo lo hace ApiAuthHandler;
+// esto cubre lo que aquello no puede ver: recargas, marcadores y el primer render de un circuito.
+app.UseSessionExpiry();
 app.UseAuthorization();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()

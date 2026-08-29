@@ -3,8 +3,6 @@
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @inject HttpClient Http
 @inject NavigationManager Navigation
-@using System.Security.Claims
-@using Microsoft.AspNetCore.Components.Authorization
 @using MLMConquerorGlobalEdition.SharedComponents.Components.Grid
 @using Syncfusion.Blazor.Data
 
@@ -113,11 +111,14 @@
                 AllowPaging="true" AllowSorting="true" AllowFiltering="true"
                 AllowResizing="true" GridLines="GridLine.Horizontal">
             <SfDataManager Adaptor="Adaptors.CustomAdaptor">
+                @* Sin AccessTokenProvider: el Bearer lo pone ApiAuthHandler. Llevaba uno para
+                   esquivar el 401 de estas lecturas, en las que el manejador se quedaba sin token
+                   porque preguntaba a un AuthenticationStateProvider que no era el del circuito.
+                   Ahora pide el del circuito y aquí no hay nada que esquivar. *@
                 <ServerGridAdaptor TValue="AdminMemberDto"
                                    Http="Http"
                                    Endpoint="api/v1/admin/members/grid"
-                                   QueryStringProvider="BuildQueryString"
-                                   AccessTokenProvider="GetTokenAsync" />
+                                   QueryStringProvider="BuildQueryString" />
             </SfDataManager>
             <GridPageSettings PageSize="50" PageSizes="@(new[] { "25", "50", "100" })" />
             <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
@@ -252,19 +253,6 @@
 
 @code {
     private SfGrid<AdminMemberDto>? _grid;
-
-    // The JWT lives as an "access_token" claim on the ClaimsPrincipal. Resolved here from the
-    // cascading AuthenticationState (reliable even inside Syncfusion's ReadAsync context) and
-    // handed to the adaptor so it attaches Authorization: Bearer per request — sidestepping the
-    // 401 seen when AdminApiAuthHandler's own provider fallback returns no token.
-    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
-
-    private async Task<string?> GetTokenAsync()
-    {
-        if (AuthState is null) return null;
-        var state = await AuthState;
-        return state.User.FindFirstValue("access_token");
-    }
 
     private string  _search            = string.Empty;
     private string  _statusFilter      = string.Empty;

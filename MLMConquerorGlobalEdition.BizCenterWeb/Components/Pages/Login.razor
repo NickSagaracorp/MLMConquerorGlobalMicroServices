@@ -1,5 +1,6 @@
 @page "/login"
 @layout MLMConquerorGlobalEdition.SharedComponents.Components.Layout.BlankLayout
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
 @inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
 
 @* Matches UI-Templates/login.html structure EXACTLY:
@@ -35,20 +36,14 @@
                         <h3 class="fs-28 mb-2">@L["Login.WelcomeBack"]</h3>
                         <p class="fw-medium fs-16 mb-4">@L["Login.PleaseSignIn"]</p>
 
-                        @if (Error == "invalid")
+                        @* Qué códigos entiende esta pantalla y con qué aviso lo dice cada uno vive
+                           en LoginErrorMessages, compartido con el login de administración. Estaba
+                           escrito aquí como una cadena de @if, y así fue como SERVICE_UNAVAILABLE
+                           —que la puerta ya emitía— se quedó sin traducir en los dos portales. *@
+                        @if (LoginErrorMessages.For(Error) is { } loginError)
                         {
-                            <div class="alert alert-danger mb-3">@L["Login.ErrorInvalid"]</div>
-                        }
-                        else if (Error == "inactive")
-                        {
-                            <div class="alert alert-warning mb-3">
-                                @L["Login.ErrorInactive"]
-                            </div>
-                        }
-                        else if (Error == "session_expired")
-                        {
-                            <div class="alert alert-info mb-3">
-                                @L["Login.ErrorSessionExpired"]
+                            <div class="alert @loginError.AlertClass mb-3">
+                                @L[loginError.ResourceKey]
                             </div>
                         }
 

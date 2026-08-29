@@ -1,5 +1,7 @@
 @page "/admin/login"
 @layout MLMConquerorGlobalEdition.SharedComponents.Components.Layout.BlankLayout
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
+@inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
 
 <div class="login-wrapper-admin">
     <div class="login-card-admin">
@@ -8,17 +10,14 @@
             <p class="text-muted">Administration Portal</p>
         </div>
 
-        @if (Error == "invalid")
+        @* Qué códigos entiende esta pantalla y con qué aviso lo dice cada uno vive en
+           LoginErrorMessages, compartido con el login del centro de negocios. Estaba escrito aquí
+           como una cadena de @if con los textos en inglés a fuego, y así fue como
+           SERVICE_UNAVAILABLE —que la puerta ya emitía cuando SignupAPI no responde— se quedó sin
+           traducir en los dos portales: el usuario veía el formulario otra vez, sin un solo aviso. *@
+        @if (LoginErrorMessages.For(Error) is { } loginError)
         {
-            <div class="alert alert-danger">Invalid credentials or insufficient permissions.</div>
-        }
-        else if (Error == "access_denied")
-        {
-            <div class="alert alert-warning">Access denied. Admin privileges required.</div>
-        }
-        else if (Error == "session_expired")
-        {
-            <div class="alert alert-info">Your session has expired. Please sign in again.</div>
+            <div class="alert @loginError.AlertClass">@L[loginError.ResourceKey]</div>
         }
 
         <form method="post" action="/account/login">

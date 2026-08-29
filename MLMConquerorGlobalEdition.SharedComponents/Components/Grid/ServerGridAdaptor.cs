@@ -71,16 +71,20 @@ public class ServerGridAdaptor<TValue> : DataAdaptor
 
     /// <summary>
     /// Optional provider that resolves the JWT access token to attach as
-    /// <c>Authorization: Bearer {token}</c> on each request. Supplied by the host
-    /// component, which resolves the token from <c>[CascadingParameter] Task&lt;AuthenticationState&gt;</c>
-    /// where it is reliably available — even inside Syncfusion's <see cref="ReadAsync"/> call
-    /// context, where the DelegatingHandler's AuthenticationStateProvider fallback can come back
-    /// empty and produce a 401.
+    /// <c>Authorization: Bearer {token}</c> on each request. Supplied by the host component, which
+    /// resolves it from <c>[CascadingParameter] Task&lt;AuthenticationState&gt;</c>.
     /// <para>
     /// A <c>Func&lt;Task&lt;string?&gt;&gt;</c> (rather than a static string) so the token is
-    /// re-resolved on every read and reflects expiry/refresh. If null or it returns
-    /// null/empty, the adaptor falls back to the existing behavior and lets the
-    /// configured DelegatingHandler attempt to attach the token.
+    /// re-resolved on every read and reflects expiry/refresh. If null or it returns null/empty, the
+    /// adaptor lets the configured DelegatingHandler attach the token.
+    /// </para>
+    /// <para>
+    /// EN LOS DOS PORTALES WEB YA NO HACE FALTA. Existía para esquivar un 401: dentro del contexto
+    /// de llamada de <see cref="ReadAsync"/> no siempre hay <c>HttpContext</c>, y el manejador
+    /// preguntaba entonces a un <c>AuthenticationStateProvider</c> que no era el del circuito y
+    /// volvía vacío. Desde que el manejador pide el del circuito, la lectura llega con su Bearer
+    /// sola; <c>Members.razor</c> ya no lo pasa. Se queda porque en una MAUI no hay manejador de
+    /// portal y el token sale del dispositivo, así que allí sigue siendo la vía.
     /// </para>
     /// </summary>
     [Parameter] public Func<Task<string?>>? AccessTokenProvider { get; set; }

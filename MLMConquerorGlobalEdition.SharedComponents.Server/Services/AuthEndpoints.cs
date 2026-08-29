@@ -50,7 +50,7 @@ public static class AuthEndpoints
     // que ve el usuario lo decide la pantalla, que es la que puede traducirlo.
     private const string InvalidCredentials = "invalid";
     private const string AccessDenied       = "access_denied";
-    private const string SessionExpiredCode = "session_expired";
+    private const string SessionExpiredCode = SessionExpiry.ErrorCode;
     private const string CodeInvalid        = "CODE_INVALID";
     private const string ChannelUnavailable = "CHANNEL_UNAVAILABLE";
 
@@ -236,15 +236,31 @@ public static class AuthEndpoints
     }
 
     /// <summary>Cierra la sesión y se lleva por delante cualquier reto a medias.</summary>
+    /// <param name="reason">
+    /// Por qué se está saliendo, cuando no lo pidió el usuario. Hoy solo hay uno:
+    /// <c>session_expired</c>, con el que llama <see cref="ApiAuthHandler"/> desde dentro del
+    /// circuito. Es el único camino por el que una sesión caducada puede limpiar de verdad la cookie:
+    /// allí la respuesta HTTP a mano es la del WebSocket y ya empezó, aquí hay una petición nueva.
+    /// </param>
+    /// <remarks>
+    /// El motivo se compara contra el único valor conocido y NO se propaga tal cual a la URL. Es
+    /// deliberado: esto lo llama el navegador, así que el valor viene del usuario, y reflejarlo en la
+    /// redirección convertiría la salida en un altavoz para meter texto ajeno en la pantalla de
+    /// login.
+    /// </remarks>
     public static async Task<IResult> LogoutAsync(
         HttpContext                         httpContext,
         [FromServices] AuthPortalOptions    portal,
-        [FromServices] ChallengeCookieNames challengeCookies)
+        [FromServices] ChallengeCookieNames challengeCookies,
+        [FromQuery] string?                 reason = null)
     {
         ChallengeCookies.Delete(httpContext, challengeCookies.Login);
         ChallengeCookies.Delete(httpContext, challengeCookies.Enrollment);
         await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        return Results.Redirect(portal.LoginPage);
+
+        return reason == SessionExpiredCode
+            ? Failure(portal.LoginPage, SessionExpiredCode)
+            : Results.Redirect(portal.LoginPage);
     }
 
     // ===========================================================================================
