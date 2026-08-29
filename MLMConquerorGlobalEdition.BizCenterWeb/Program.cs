@@ -5,6 +5,7 @@ using MLMConquerorGlobalEdition.BizCenterWeb.Components;
 using MLMConquerorGlobalEdition.BizCenterWeb.Middleware;
 using MLMConquerorGlobalEdition.BizCenterWeb.Services;
 using MLMConquerorGlobalEdition.SharedComponents.Extensions;
+using MLMConquerorGlobalEdition.SharedComponents.Services;
 using MLMConquerorGlobalEdition.SharedKernel;
 using Syncfusion.Blazor;
 
@@ -36,6 +37,18 @@ builder.Services.AddSyncfusionBlazor();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<BizCenterApiAuthHandler>();
+
+// Nombres de las cookies de reto de ESTE portal. Siguen la convención de su cookie de sesión
+// (mlm_bizcenter_cookie) y son distintos de los de administración a propósito: con Path = "/" y un
+// mismo dominio para los dos portales, unos nombres compartidos harían que el reto de uno pisara el
+// del otro. Se declaran aquí, en un solo sitio, porque el mismo juego lo usan los manejadores de
+// login de este portal y —cuando se monte— el área de cuenta compartida.
+builder.Services.AddChallengeCookieNames(new ChallengeCookieNames
+{
+    Login      = "mlm_bizcenter_2fa_challenge",
+    Enrollment = "mlm_bizcenter_2fa_enrollment",
+    Phone      = "mlm_bizcenter_phone_challenge"
+});
 
 // Server-side auth state provider (persists to WASM client)
 builder.Services.AddScoped<AuthenticationStateProvider, PersistingServerAuthStateProvider>();

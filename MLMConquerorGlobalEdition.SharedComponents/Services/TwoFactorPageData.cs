@@ -26,15 +26,18 @@ public sealed class TwoFactorPageData
 
     private readonly IHttpClientFactory   _httpClientFactory;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ChallengeCookieNames _challengeCookies;
     private readonly ILogger<TwoFactorPageData> _logger;
 
     public TwoFactorPageData(
         IHttpClientFactory   httpClientFactory,
         IHttpContextAccessor httpContextAccessor,
+        ChallengeCookieNames challengeCookies,
         ILogger<TwoFactorPageData> logger)
     {
         _httpClientFactory   = httpClientFactory;
         _httpContextAccessor = httpContextAccessor;
+        _challengeCookies    = challengeCookies;
         _logger              = logger;
     }
 
@@ -53,7 +56,7 @@ public sealed class TwoFactorPageData
     /// </remarks>
     public ChallengeDisplay? ReadChallenge()
     {
-        var token = ChallengeCookies.Read(_httpContextAccessor.HttpContext, ChallengeCookies.Login);
+        var token = ChallengeCookies.Read(_httpContextAccessor.HttpContext, _challengeCookies.Login);
         if (string.IsNullOrWhiteSpace(token))
             return null;
 
@@ -87,7 +90,7 @@ public sealed class TwoFactorPageData
     public async Task<EnrollmentMaterial?> BeginEnrollmentAsync(CancellationToken ct = default)
     {
         var enrollmentToken = ChallengeCookies.Read(
-            _httpContextAccessor.HttpContext, ChallengeCookies.Enrollment);
+            _httpContextAccessor.HttpContext, _challengeCookies.Enrollment);
 
         if (string.IsNullOrWhiteSpace(enrollmentToken))
             return null;

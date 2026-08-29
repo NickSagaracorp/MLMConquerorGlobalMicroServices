@@ -4,18 +4,29 @@ using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Localization;
+using MLMConquerorGlobalEdition.SharedComponents.Services;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.BizCenterWeb.Services;
 
+/// <summary>
+/// Lo de ENTRAR al centro de negocios: login, segundo factor y salida.
+/// </summary>
+/// <remarks>
+/// La cookie del reto se escribe y se lee con <see cref="ChallengeCookies"/>, la misma clase que
+/// usa el área de cuenta compartida, y su nombre llega inyectado en
+/// <see cref="ChallengeCookieNames"/> desde <c>Program.cs</c>. Antes esto tenía su propia constante
+/// <c>2fa_challenge</c> y su propio juego de <c>CookieOptions</c>: el día que este portal montase la
+/// superficie de cuenta compartida habría escrito el reto con un nombre y la pantalla de
+/// verificación lo habría buscado con otro, sin que fallase ni el compilador ni las pruebas.
+/// </remarks>
 public static class AuthEndpoints
 {
-    private const string TwoFactorCookieName = "2fa_challenge";
-
     public static async Task<IResult> LoginAsync(
         [Microsoft.AspNetCore.Mvc.FromForm] LoginRequest request,
         IHttpClientFactory httpClientFactory,
         HttpContext httpContext,
+        [Microsoft.AspNetCore.Mvc.FromServices] ChallengeCookieNames challengeCookies,
         CancellationToken ct)
     {
         var httpClient = httpClientFactory.CreateClient("AuthApi");
@@ -35,7 +46,7 @@ public static class AuthEndpoints
         // page can show "code sent to j***@example.com".
         if (apiResponse.Data.RequiresTwoFactor && !string.IsNullOrEmpty(apiResponse.Data.ChallengeToken))
         {
-            httpContext.Response.Cookies.Append(TwoFactorCookieName, apiResponse.Data.ChallengeToken, BuildChallengeCookieOptions());
+            ChallengeCookies.Set(httpContext, challengeCookies.Login, apiResponse.Data.ChallengeToken);
             var emailParam = Uri.EscapeDataString(apiResponse.Data.Email ?? string.Empty);
             return Results.Redirect($"/two-factor?email={emailParam}");
         }
@@ -47,9 +58,10 @@ public static class AuthEndpoints
         [Microsoft.AspNetCore.Mvc.FromForm] VerifyTwoFactorForm form,
         IHttpClientFactory httpClientFactory,
         HttpContext httpContext,
+        [Microsoft.AspNetCore.Mvc.FromServices] ChallengeCookieNames challengeCookies,
         CancellationToken ct)
     {
-        var challengeToken = httpContext.Request.Cookies[TwoFactorCookieName];
+        var challengeToken = ChallengeCookies.Read(httpContext, challengeCookies.Login);
         if (string.IsNullOrEmpty(challengeToken))
             return Results.Redirect("/login?error=session_expired");
 
@@ -67,7 +79,7 @@ public static class AuthEndpoints
             // Expired or invalid challenge → bounce back to login (cookie cleared).
             if (code is "INVALID_CHALLENGE" or "CODE_EXPIRED")
             {
-                ClearChallengeCookie(httpContext);
+                ChallengeCookies.Delete(httpContext, challengeCookies.Login);
                 return Results.Redirect("/login?error=session_expired");
             }
             return Results.Redirect("/two-factor?error=invalid_code");
@@ -77,16 +89,17 @@ public static class AuthEndpoints
         if (apiResponse?.Success != true || apiResponse.Data is null)
             return Results.Redirect("/two-factor?error=invalid_code");
 
-        ClearChallengeCookie(httpContext);
+        ChallengeCookies.Delete(httpContext, challengeCookies.Login);
         return await CompleteSignInAsync(httpContext, apiResponse.Data);
     }
 
     public static async Task<IResult> ResendTwoFactorAsync(
         IHttpClientFactory httpClientFactory,
         HttpContext httpContext,
+        [Microsoft.AspNetCore.Mvc.FromServices] ChallengeCookieNames challengeCookies,
         CancellationToken ct)
     {
-        var challengeToken = httpContext.Request.Cookies[TwoFactorCookieName];
+        var challengeToken = ChallengeCookies.Read(httpContext, challengeCookies.Login);
         if (string.IsNullOrEmpty(challengeToken))
             return Results.Redirect("/login?error=session_expired");
 
@@ -96,7 +109,7 @@ public static class AuthEndpoints
 
         if (!response.IsSuccessStatusCode)
         {
-            ClearChallengeCookie(httpContext);
+            ChallengeCookies.Delete(httpContext, challengeCookies.Login);
             return Results.Redirect("/login?error=session_expired");
         }
 
@@ -104,19 +117,21 @@ public static class AuthEndpoints
         if (apiResponse?.Success != true || apiResponse.Data is null
             || string.IsNullOrEmpty(apiResponse.Data.ChallengeToken))
         {
-            ClearChallengeCookie(httpContext);
+            ChallengeCookies.Delete(httpContext, challengeCookies.Login);
             return Results.Redirect("/login?error=session_expired");
         }
 
-        httpContext.Response.Cookies.Append(TwoFactorCookieName, apiResponse.Data.ChallengeToken, BuildChallengeCookieOptions());
+        ChallengeCookies.Set(httpContext, challengeCookies.Login, apiResponse.Data.ChallengeToken);
         var emailParam = Uri.EscapeDataString(apiResponse.Data.Email ?? string.Empty);
         return Results.Redirect($"/two-factor?email={emailParam}&resent=1");
     }
 
-    public static async Task<IResult> LogoutAsync(HttpContext httpContext)
+    public static async Task<IResult> LogoutAsync(
+        HttpContext httpContext,
+        [Microsoft.AspNetCore.Mvc.FromServices] ChallengeCookieNames challengeCookies)
     {
         await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        ClearChallengeCookie(httpContext);
+        ChallengeCookies.Delete(httpContext, challengeCookies.Login);
         return Results.Redirect("/login");
     }
 
@@ -156,18 +171,6 @@ public static class AuthEndpoints
 
         return Results.Redirect("/");
     }
-
-    private static CookieOptions BuildChallengeCookieOptions() => new()
-    {
-        HttpOnly = true,
-        Secure   = true,
-        SameSite = SameSiteMode.Lax,
-        Path     = "/",
-        Expires  = DateTimeOffset.UtcNow.AddMinutes(10)
-    };
-
-    private static void ClearChallengeCookie(HttpContext httpContext)
-        => httpContext.Response.Cookies.Delete(TwoFactorCookieName, new CookieOptions { Path = "/" });
 
     private static async Task<ApiResponse<AuthTokens>?> TryReadApi(HttpResponseMessage response, CancellationToken ct)
     {

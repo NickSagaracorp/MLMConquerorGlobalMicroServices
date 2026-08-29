@@ -26,6 +26,7 @@ public sealed class AccountPageData
     private readonly AuthApiGateway            _api;
     private readonly IHttpContextAccessor      _httpContextAccessor;
     private readonly IConfiguration            _configuration;
+    private readonly ChallengeCookieNames      _challengeCookies;
     private readonly ILogger<AccountPageData>  _logger;
 
     /// <summary>
@@ -42,11 +43,13 @@ public sealed class AccountPageData
         AuthApiGateway           api,
         IHttpContextAccessor     httpContextAccessor,
         IConfiguration           configuration,
+        ChallengeCookieNames     challengeCookies,
         ILogger<AccountPageData> logger)
     {
         _api                 = api;
         _httpContextAccessor = httpContextAccessor;
         _configuration       = configuration;
+        _challengeCookies    = challengeCookies;
         _logger              = logger;
     }
 
@@ -122,7 +125,7 @@ public sealed class AccountPageData
     /// </remarks>
     public bool HasPhoneChallenge() =>
         !string.IsNullOrWhiteSpace(
-            ChallengeCookies.Read(_httpContextAccessor.HttpContext, ChallengeCookies.Phone));
+            ChallengeCookies.Read(_httpContextAccessor.HttpContext, _challengeCookies.Phone));
 
     /// <summary>
     /// ¿El rol del usuario le obliga a tener segundo factor? Si sí, el panel no ofrece apagarlo.

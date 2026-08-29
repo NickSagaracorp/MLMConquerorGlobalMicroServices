@@ -24,7 +24,10 @@ namespace MLMConquerorGlobalEdition.AdminWeb.Services;
 /// de negocios admite a otra gente y la manda a otro sitio.
 ///
 /// Las cookies de los retos y sus opciones están en <see cref="ChallengeCookies"/>, ya compartida,
-/// que también usa el alta de teléfono.
+/// que también usa el alta de teléfono. Sus NOMBRES llegan inyectados en
+/// <see cref="ChallengeCookieNames"/>: los pone <c>Program.cs</c> de este portal y son los mismos
+/// que lee la superficie de cuenta compartida, que es justo lo que impide escribir un reto con un
+/// nombre y buscarlo con otro.
 /// </remarks>
 public static class AuthEndpoints
 {
@@ -44,6 +47,7 @@ public static class AuthEndpoints
         [Microsoft.AspNetCore.Mvc.FromForm] LoginRequest request,
         IHttpClientFactory httpClientFactory,
         HttpContext httpContext,
+        [Microsoft.AspNetCore.Mvc.FromServices] ChallengeCookieNames challengeCookies,
         CancellationToken ct)
     {
         // Auth lives in the SignupAPI — runs server-side so cookie goes to the real browser request
@@ -65,7 +69,7 @@ public static class AuthEndpoints
             if (string.IsNullOrWhiteSpace(apiResponse.Data.EnrollmentToken))
                 return Results.Redirect("/admin/login?error=invalid");
 
-            ChallengeCookies.Set(httpContext, ChallengeCookies.Enrollment, apiResponse.Data.EnrollmentToken!);
+            ChallengeCookies.Set(httpContext, challengeCookies.Enrollment, apiResponse.Data.EnrollmentToken!);
             return Results.Redirect("/admin/enroll-authenticator");
         }
 
@@ -74,7 +78,7 @@ public static class AuthEndpoints
             if (string.IsNullOrWhiteSpace(apiResponse.Data.ChallengeToken))
                 return Results.Redirect("/admin/login?error=invalid");
 
-            ChallengeCookies.Set(httpContext, ChallengeCookies.Login, apiResponse.Data.ChallengeToken!);
+            ChallengeCookies.Set(httpContext, challengeCookies.Login, apiResponse.Data.ChallengeToken!);
             return Results.Redirect($"/admin/login-2fa{TargetQuery(apiResponse.Data.MaskedTarget, '?')}");
         }
 
@@ -89,11 +93,12 @@ public static class AuthEndpoints
         [Microsoft.AspNetCore.Mvc.FromForm] TwoFactorCodeRequest request,
         IHttpClientFactory httpClientFactory,
         HttpContext httpContext,
+        [Microsoft.AspNetCore.Mvc.FromServices] ChallengeCookieNames challengeCookies,
         CancellationToken ct)
     {
-        var challengeToken = ChallengeCookies.Read(httpContext, ChallengeCookies.Login);
+        var challengeToken = ChallengeCookies.Read(httpContext, challengeCookies.Login);
         if (string.IsNullOrWhiteSpace(challengeToken))
-            return SessionExpired(httpContext);
+            return SessionExpired(httpContext, challengeCookies);
 
         var httpClient = httpClientFactory.CreateClient("AuthApi");
         var response = await httpClient.PostAsJsonAsync("api/v1/auth/two-factor/verify",
@@ -106,12 +111,12 @@ public static class AuthEndpoints
             // Un reto inválido o caducado ya no sirve para nada: fuera la cookie.
             var code = ErrorCodeOf(response, apiResponse, "CODE_INVALID");
             if (code is "INVALID_CHALLENGE" or "CODE_EXPIRED" or "TOO_MANY_ATTEMPTS")
-                ChallengeCookies.Delete(httpContext, ChallengeCookies.Login);
+                ChallengeCookies.Delete(httpContext, challengeCookies.Login);
 
             return Results.Redirect($"/admin/login-2fa?error={Uri.EscapeDataString(code)}");
         }
 
-        ChallengeCookies.Delete(httpContext, ChallengeCookies.Login);
+        ChallengeCookies.Delete(httpContext, challengeCookies.Login);
         return await CompleteSignInAsync(httpContext, apiResponse.Data.AccessToken, "/admin/login");
     }
 
@@ -122,11 +127,12 @@ public static class AuthEndpoints
     public static async Task<IResult> ResendTwoFactorAsync(
         IHttpClientFactory httpClientFactory,
         HttpContext httpContext,
+        [Microsoft.AspNetCore.Mvc.FromServices] ChallengeCookieNames challengeCookies,
         CancellationToken ct)
     {
-        var challengeToken = ChallengeCookies.Read(httpContext, ChallengeCookies.Login);
+        var challengeToken = ChallengeCookies.Read(httpContext, challengeCookies.Login);
         if (string.IsNullOrWhiteSpace(challengeToken))
-            return SessionExpired(httpContext);
+            return SessionExpired(httpContext, challengeCookies);
 
         var httpClient = httpClientFactory.CreateClient("AuthApi");
         var response = await httpClient.PostAsJsonAsync("api/v1/auth/two-factor/resend",
@@ -138,13 +144,13 @@ public static class AuthEndpoints
         {
             var code = ErrorCodeOf(response, apiResponse, "CHANNEL_UNAVAILABLE");
             if (code == "INVALID_CHALLENGE")
-                ChallengeCookies.Delete(httpContext, ChallengeCookies.Login);
+                ChallengeCookies.Delete(httpContext, challengeCookies.Login);
 
             return Results.Redirect($"/admin/login-2fa?error={Uri.EscapeDataString(code)}");
         }
 
         if (!string.IsNullOrWhiteSpace(apiResponse.Data.ChallengeToken))
-            ChallengeCookies.Set(httpContext, ChallengeCookies.Login, apiResponse.Data.ChallengeToken!);
+            ChallengeCookies.Set(httpContext, challengeCookies.Login, apiResponse.Data.ChallengeToken!);
 
         return Results.Redirect(
             $"/admin/login-2fa?resent=1{TargetQuery(apiResponse.Data.MaskedTarget, '&')}");
@@ -158,11 +164,12 @@ public static class AuthEndpoints
         [Microsoft.AspNetCore.Mvc.FromForm] TwoFactorCodeRequest request,
         IHttpClientFactory httpClientFactory,
         HttpContext httpContext,
+        [Microsoft.AspNetCore.Mvc.FromServices] ChallengeCookieNames challengeCookies,
         CancellationToken ct)
     {
-        var enrollmentToken = ChallengeCookies.Read(httpContext, ChallengeCookies.Enrollment);
+        var enrollmentToken = ChallengeCookies.Read(httpContext, challengeCookies.Enrollment);
         if (string.IsNullOrWhiteSpace(enrollmentToken))
-            return SessionExpired(httpContext);
+            return SessionExpired(httpContext, challengeCookies);
 
         var httpClient = httpClientFactory.CreateClient("AuthApi");
         var response = await httpClient.PostAsJsonAsync("api/v1/auth/two-factor/enroll/confirm",
@@ -174,19 +181,21 @@ public static class AuthEndpoints
         {
             var code = ErrorCodeOf(response, apiResponse, "CODE_INVALID");
             if (code is "INVALID_CHALLENGE" or "CODE_EXPIRED" or "TOO_MANY_ATTEMPTS")
-                ChallengeCookies.Delete(httpContext, ChallengeCookies.Enrollment);
+                ChallengeCookies.Delete(httpContext, challengeCookies.Enrollment);
 
             return Results.Redirect($"/admin/enroll-authenticator?error={Uri.EscapeDataString(code)}");
         }
 
-        ChallengeCookies.Delete(httpContext, ChallengeCookies.Enrollment);
+        ChallengeCookies.Delete(httpContext, challengeCookies.Enrollment);
         return await CompleteSignInAsync(httpContext, apiResponse.Data.AccessToken, "/admin/login");
     }
 
-    public static async Task<IResult> LogoutAsync(HttpContext httpContext)
+    public static async Task<IResult> LogoutAsync(
+        HttpContext httpContext,
+        [Microsoft.AspNetCore.Mvc.FromServices] ChallengeCookieNames challengeCookies)
     {
-        ChallengeCookies.Delete(httpContext, ChallengeCookies.Login);
-        ChallengeCookies.Delete(httpContext, ChallengeCookies.Enrollment);
+        ChallengeCookies.Delete(httpContext, challengeCookies.Login);
+        ChallengeCookies.Delete(httpContext, challengeCookies.Enrollment);
         await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return Results.Redirect("/admin/login");
     }
@@ -252,10 +261,11 @@ public static class AuthEndpoints
     /// Sin cookie no hay nada que canjear: caducó o alguien entró directo a la URL. Vuelta al
     /// login con un código que esa página ya sabe mostrar.
     /// </summary>
-    private static IResult SessionExpired(HttpContext httpContext)
+    private static IResult SessionExpired(
+        HttpContext httpContext, ChallengeCookieNames challengeCookies)
     {
-        ChallengeCookies.Delete(httpContext, ChallengeCookies.Login);
-        ChallengeCookies.Delete(httpContext, ChallengeCookies.Enrollment);
+        ChallengeCookies.Delete(httpContext, challengeCookies.Login);
+        ChallengeCookies.Delete(httpContext, challengeCookies.Enrollment);
         return Results.Redirect("/admin/login?error=session_expired");
     }
 

@@ -17,32 +17,14 @@ namespace MLMConquerorGlobalEdition.SharedComponents.Services;
 /// que nada falle a la vista.
 /// </summary>
 /// <remarks>
-/// PENDIENTE: los nombres siguen siendo literales <c>mlm_admin_*</c> aunque la clase ya sea
-/// compartida. No se parametrizaron aquí porque el otro usuario de estas constantes es
-/// <c>AuthEndpoints</c>, que se quedó en AdminWeb y las consume desde manejadores estáticos; hacerlo
-/// bien exige tocar aquel archivo, que no entraba en este movimiento de código. Mientras los dos
-/// portales no compartan dominio no hay choque —cada uno sirve sus cookies desde su propio host—,
-/// pero con <c>Path = "/"</c> y un mismo dominio para <c>/admin</c> y el centro de negocios, un alta
-/// de teléfono a medias en un portal pisaría la del otro.
+/// Los NOMBRES no están aquí: son de cada portal y viajan en <see cref="ChallengeCookieNames"/>,
+/// que se inyecta. Con <c>Path = "/"</c> y un mismo dominio para <c>/admin</c> y el centro de
+/// negocios, dos portales con los mismos nombres se pisarían los retos; y dos portales con nombres
+/// distintos escritos a fuego en sitios distintos —que es lo que había— escriben con un nombre y
+/// leen con otro sin que nada falle a la vista.
 /// </remarks>
 public static class ChallengeCookies
 {
-    /// <summary>ChallengeToken del segundo factor del login.</summary>
-    public const string Login = "mlm_admin_2fa_challenge";
-
-    /// <summary>
-    /// EnrollmentToken. Deliberadamente distinta de <see cref="Login"/>: son propósitos distintos
-    /// y compartir nombre invita a redimir uno donde va el otro.
-    /// </summary>
-    public const string Enrollment = "mlm_admin_2fa_enrollment";
-
-    /// <summary>
-    /// ChallengeToken del alta de teléfono, que se canjea en <c>/account/phone/verify</c>. Tampoco
-    /// comparte nombre con las otras dos: un usuario puede tener un alta de teléfono a medias y
-    /// abrir el login en otra pestaña, y ahí las dos cookies conviven.
-    /// </summary>
-    public const string Phone = "mlm_admin_phone_challenge";
-
     /// <summary>Ventana de vida. El reto de la API dura menos; esto es el techo.</summary>
     private static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(10);
 

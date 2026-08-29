@@ -55,6 +55,15 @@ builder.Services.AddAccountSurface(new AccountPageRoutes
     PhonePage              = "/admin/account/phone",
     PhoneVerifyPage        = "/admin/account/phone/verify",
     PersonalDataPage       = "/admin/account/personal-data"
+},
+// Los nombres de las cookies de reto de ESTE portal. Los usan tanto los manejadores compartidos
+// del área de cuenta como AuthEndpoints de aquí, y por eso se declaran en un solo sitio: el que
+// escribe el reto y el que lo lee tienen que estar mirando el mismo nombre.
+new ChallengeCookieNames
+{
+    Login      = "mlm_admin_2fa_challenge",
+    Enrollment = "mlm_admin_2fa_enrollment",
+    Phone      = "mlm_admin_phone_challenge"
 });
 
 // Server-side auth state provider (persists to WASM client)

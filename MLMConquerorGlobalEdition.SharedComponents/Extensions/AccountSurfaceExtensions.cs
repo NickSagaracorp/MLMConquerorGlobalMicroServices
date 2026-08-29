@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using MLMConquerorGlobalEdition.SharedComponents.Services;
 
 namespace MLMConquerorGlobalEdition.SharedComponents.Extensions;
@@ -18,7 +19,24 @@ namespace MLMConquerorGlobalEdition.SharedComponents.Extensions;
 public static class AccountSurfaceExtensions
 {
     /// <summary>
-    /// Registra el cableado del área de cuenta con las rutas de pantalla de este portal.
+    /// Registra los nombres de las cookies de reto de este portal.
+    /// </summary>
+    /// <remarks>
+    /// Va aparte de <see cref="AddAccountSurface"/> porque un portal puede necesitar los nombres
+    /// sin montar todavía el área de cuenta: el centro de negocios ya emite el reto del segundo
+    /// factor desde sus propios manejadores de login, y ahí es donde estaba el desajuste que esto
+    /// cierra. <c>TryAdd</c> para que llamarlo y además montar el área no registre dos juegos.
+    /// </remarks>
+    public static IServiceCollection AddChallengeCookieNames(
+        this IServiceCollection services, ChallengeCookieNames names)
+    {
+        services.TryAddSingleton(names);
+        return services;
+    }
+
+    /// <summary>
+    /// Registra el cableado del área de cuenta con las rutas de pantalla y los nombres de cookie
+    /// de este portal.
     /// </summary>
     /// <remarks>
     /// Lo que NO registra, porque es de cada portal y no de esta biblioteca: el cliente HTTP
@@ -27,10 +45,13 @@ public static class AccountSurfaceExtensions
     /// <c>HttpContext</c>: de ahí salen el token de la sesión y las cookies de los retos.
     /// </remarks>
     public static IServiceCollection AddAccountSurface(
-        this IServiceCollection services, AccountPageRoutes routes)
+        this IServiceCollection services, AccountPageRoutes routes, ChallengeCookieNames challengeCookies)
     {
         // Las rutas de pantalla son inmutables y valen para toda la aplicación.
         services.AddSingleton(routes);
+
+        // Los nombres de las cookies de reto, igual: inmutables y de toda la aplicación.
+        services.AddChallengeCookieNames(challengeCookies);
 
         // Dependencia dura del gateway y de las dos clases de datos de página. Es TryAdd por
         // dentro, así que no estorba al portal que ya lo llame por su cuenta.

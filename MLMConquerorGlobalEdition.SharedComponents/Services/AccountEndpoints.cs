@@ -22,9 +22,10 @@ namespace MLMConquerorGlobalEdition.SharedComponents.Services;
 /// lo único que es suyo: qué lee del formulario, a qué ruta de la API llama y a dónde va después.
 ///
 /// Los manejadores siguen siendo estáticos y reciben sus dependencias por parámetro, que es como
-/// las inyectan las minimal API. <see cref="AccountPageRoutes"/> entra por ahí como una más: lo
-/// único que cambia de un portal a otro son las rutas de sus pantallas, y con eso el archivo entero
-/// sirve igual para administración que para el centro de negocios.
+/// las inyectan las minimal API. <see cref="AccountPageRoutes"/> y <see cref="ChallengeCookieNames"/>
+/// entran por ahí como dos más: lo único que cambia de un portal a otro son las rutas de sus
+/// pantallas y cómo llama a sus cookies de reto, y con eso el archivo entero sirve igual para
+/// administración que para el centro de negocios.
 /// </summary>
 public static class AccountEndpoints
 {
@@ -191,6 +192,7 @@ public static class AccountEndpoints
         AuthApiGateway                api,
         HttpContext                   httpContext,
         [FromServices] AccountPageRoutes routes,
+        [FromServices] ChallengeCookieNames challengeCookies,
         CancellationToken             ct)
     {
         form ??= new();
@@ -205,7 +207,7 @@ public static class AccountEndpoints
             return Failure(routes.PhonePage, outcome.ErrorCodeOr("INVALID_PHONE"));
         }
 
-        ChallengeCookies.Set(httpContext, ChallengeCookies.Phone, outcome.Data.ChallengeToken);
+        ChallengeCookies.Set(httpContext, challengeCookies.Phone, outcome.Data.ChallengeToken);
 
         // El destino sí va en la URL: llega ya enmascarado por la API (***4321) y no es una
         // credencial. Sin él, la pantalla de verificación no podría decir a qué número fue el
@@ -223,11 +225,12 @@ public static class AccountEndpoints
         AuthApiGateway                api,
         HttpContext                   httpContext,
         [FromServices] AccountPageRoutes routes,
+        [FromServices] ChallengeCookieNames challengeCookies,
         CancellationToken             ct)
     {
         form ??= new();
 
-        var challengeToken = ChallengeCookies.Read(httpContext, ChallengeCookies.Phone);
+        var challengeToken = ChallengeCookies.Read(httpContext, challengeCookies.Phone);
         if (string.IsNullOrWhiteSpace(challengeToken))
         {
             // Sin reto no hay nada que canjear: caducó o alguien entró directo a la URL. La
@@ -242,7 +245,7 @@ public static class AccountEndpoints
 
         if (outcome.Success)
         {
-            ChallengeCookies.Delete(httpContext, ChallengeCookies.Phone);
+            ChallengeCookies.Delete(httpContext, challengeCookies.Phone);
             return Results.Redirect(routes.ProfilePage);
         }
 
@@ -250,7 +253,7 @@ public static class AccountEndpoints
         var code = outcome.ErrorCodeOr("CODE_INVALID");
         if (code is "INVALID_CHALLENGE" or "CODE_EXPIRED" or "TOO_MANY_ATTEMPTS")
         {
-            ChallengeCookies.Delete(httpContext, ChallengeCookies.Phone);
+            ChallengeCookies.Delete(httpContext, challengeCookies.Phone);
             return Failure(routes.PhonePage, code);
         }
 
@@ -265,6 +268,7 @@ public static class AccountEndpoints
         AuthApiGateway                api,
         HttpContext                   httpContext,
         [FromServices] AccountPageRoutes routes,
+        [FromServices] ChallengeCookieNames challengeCookies,
         CancellationToken             ct)
     {
         var outcome = await api.CallAsync(
@@ -272,7 +276,7 @@ public static class AccountEndpoints
 
         // Un alta a medias con el teléfono ya borrado es un reto que apunta a un número que ya no
         // está en la cuenta.
-        ChallengeCookies.Delete(httpContext, ChallengeCookies.Phone);
+        ChallengeCookies.Delete(httpContext, challengeCookies.Phone);
 
         return outcome.Success
             ? Results.Redirect(routes.ProfilePage)
