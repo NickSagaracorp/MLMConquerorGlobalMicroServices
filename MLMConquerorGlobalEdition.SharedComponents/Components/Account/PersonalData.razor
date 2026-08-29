@@ -1,0 +1,89 @@
+@* Qué guarda el sistema de la cuenta, y cómo descargarlo. Cierra el área de gestión de cuenta
+   junto a ManageIndex, ChangePassword y TwoFactorPanel, en la sección "PersonalData" de
+   AccountLayout.
+
+   Sin dependencia de SignupAPI: los parámetros son primitivos, por el mismo motivo que en
+   ManageIndex y TwoFactorPanel — SharedComponents no referencia SignupAPI y no debe empezar a
+   hacerlo aquí. No pinta el JSON de GET /api/v1/auth/personal-data (PersonalDataResponse); eso
+   lo trae el archivo que devuelve GET .../personal-data/download. Esta pantalla describe por
+   categoría qué hay en ese archivo, no lo vuelca campo a campo — quien quiere el detalle exacto
+   lo descarga.
+
+   HasMemberProfile oculta la categoría de perfil de miembro para el personal interno, que no
+   tiene uno: PersonalDataResponse.MemberProfile es null en su caso (ver el DTO), y listar una
+   categoría vacía confundiría más de lo que informa.
+
+   No hay borrado. La cuenta queda referenciada por auditoría, comisiones aprobadas e
+   impersonaciones, y borrarla rompería esa trazabilidad — la baja es una desactivación que hace
+   un administrador, no una operación de autoservicio. Quien llega aquí buscando borrar sus datos
+   tiene que salir sabiendo a quién pedírselo, así que el aviso lo dice explícitamente en vez de
+   callarlo u ofrecer un botón que no existe. *@
+
+@inject IStringLocalizer<SharedResources> L
+
+<div class="personal-data">
+
+    <h5 class="mb-3">@L["PersonalData.PageTitle"]</h5>
+
+    @if (!string.IsNullOrWhiteSpace(ErrorCode))
+    {
+        <div class="alert alert-danger" role="alert">@L[AccountMessages.ErrorKeyFor(ErrorCode)]</div>
+    }
+
+    <p class="text-muted">@L["PersonalData.Intro"]</p>
+
+    @* ---- Qué guarda el sistema ---- *@
+    <div class="personal-data-categories mb-4">
+        <h6 class="mb-2">@L["PersonalData.CategoriesTitle"]</h6>
+        <dl class="row mb-0">
+            <dt class="col-sm-3">@L["PersonalData.Category.Identity.Title"]</dt>
+            <dd class="col-sm-9">@L["PersonalData.Category.Identity.Description"]</dd>
+
+            <dt class="col-sm-3">@L["PersonalData.Category.Contact.Title"]</dt>
+            <dd class="col-sm-9">@L["PersonalData.Category.Contact.Description"]</dd>
+
+            @if (HasMemberProfile)
+            {
+                <dt class="col-sm-3">@L["PersonalData.Category.MemberProfile.Title"]</dt>
+                <dd class="col-sm-9">@L["PersonalData.Category.MemberProfile.Description"]</dd>
+            }
+
+            <dt class="col-sm-3">@L["PersonalData.Category.Security.Title"]</dt>
+            <dd class="col-sm-9">@L["PersonalData.Category.Security.Description"]</dd>
+        </dl>
+    </div>
+
+    @* ---- Descargar ---- *@
+    <div class="personal-data-download mb-4">
+        <h6 class="mb-2">@L["PersonalData.DownloadTitle"]</h6>
+        <p class="text-muted small">@L["PersonalData.DownloadDescription"]</p>
+        @if (!string.IsNullOrWhiteSpace(DownloadUrl))
+        {
+            <a href="@DownloadUrl" class="btn btn-outline-primary btn-sm">@L["Common.Download"]</a>
+        }
+    </div>
+
+    @* ---- Borrado: no hay botón, pero sí a dónde ir ---- *@
+    <div class="personal-data-deletion">
+        <h6 class="mb-2">@L["PersonalData.DeletionTitle"]</h6>
+        <p class="text-muted small mb-0">@L["PersonalData.DeletionText"]</p>
+    </div>
+</div>
+
+@code {
+    /// <summary>Ruta de GET .../personal-data/download. Sin ella no se ofrece el enlace.</summary>
+    [Parameter]
+    public string? DownloadUrl { get; set; }
+
+    /// <summary>
+    /// ¿La cuenta tiene perfil de miembro? En false para el personal interno, que no tiene uno
+    /// (<c>PersonalDataResponse.MemberProfile</c> es null en ese caso) — oculta esa categoría en
+    /// vez de listarla vacía.
+    /// </summary>
+    [Parameter]
+    public bool HasMemberProfile { get; set; }
+
+    /// <summary>Código de error de la API, tal cual llega por query string.</summary>
+    [Parameter]
+    public string? ErrorCode { get; set; }
+}

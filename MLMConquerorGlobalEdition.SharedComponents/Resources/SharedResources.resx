@@ -1416,6 +1416,21 @@
   <data name="TwoFactorPanel.Disable" xml:space="preserve"><value>Turn off two-factor authentication</value></data>
   <data name="TwoFactorPanel.DisableWarning" xml:space="preserve"><value>Without two-factor authentication, your password alone will be enough to get into your account. Anyone who learns it can sign in as you.</value></data>
   <data name="TwoFactorPanel.RequiredByRole" xml:space="preserve"><value>Your role requires two-factor authentication, so it can't be turned off here. This is a policy set by your organization, not a problem with this page.</value></data>
+  <data name="PersonalData.PageTitle" xml:space="preserve"><value>Your Personal Data</value></data>
+  <data name="PersonalData.Intro" xml:space="preserve"><value>This is what we store about your account, in plain terms. For the exact detail, download the file below.</value></data>
+  <data name="PersonalData.CategoriesTitle" xml:space="preserve"><value>What we store</value></data>
+  <data name="PersonalData.Category.Identity.Title" xml:space="preserve"><value>Identity and access</value></data>
+  <data name="PersonalData.Category.Identity.Description" xml:space="preserve"><value>Your user ID, username, email address, assigned roles, account status, and the dates your account was created and last signed in.</value></data>
+  <data name="PersonalData.Category.Contact.Title" xml:space="preserve"><value>Contact</value></data>
+  <data name="PersonalData.Category.Contact.Description" xml:space="preserve"><value>Your email address and, if you've set one up, the phone number used for two-factor verification (shown masked).</value></data>
+  <data name="PersonalData.Category.MemberProfile.Title" xml:space="preserve"><value>Member profile</value></data>
+  <data name="PersonalData.Category.MemberProfile.Description" xml:space="preserve"><value>Your name, date of birth, contact address, and your details in the network: sponsor, enrollment date, member type, and payout frequency.</value></data>
+  <data name="PersonalData.Category.Security.Title" xml:space="preserve"><value>Security settings</value></data>
+  <data name="PersonalData.Category.Security.Description" xml:space="preserve"><value>Whether two-factor authentication is on, which method you've chosen, and since when it's been set up.</value></data>
+  <data name="PersonalData.DownloadTitle" xml:space="preserve"><value>Download your data</value></data>
+  <data name="PersonalData.DownloadDescription" xml:space="preserve"><value>Get everything we store about your account as a JSON file, with the full detail behind each category above.</value></data>
+  <data name="PersonalData.DeletionTitle" xml:space="preserve"><value>Deleting your data</value></data>
+  <data name="PersonalData.DeletionText" xml:space="preserve"><value>We can't delete your account: it's referenced by audit records, approved commissions, and impersonation logs, and removing it would break that trail. If you want your account deactivated, contact your administrator and ask for it.</value></data>
   <data name="AddPhone.Title" xml:space="preserve"><value>Add a phone number</value></data>
   <data name="AddPhone.Intro" xml:space="preserve"><value>We'll text your sign-in codes to this number.</value></data>
   <data name="AddPhone.Placeholder" xml:space="preserve"><value>+14155552671</value></data>

@@ -1333,6 +1333,21 @@
   <data name="TwoFactorPanel.Disable" xml:space="preserve"><value>Desativar a verificação em duas etapas</value></data>
   <data name="TwoFactorPanel.DisableWarning" xml:space="preserve"><value>Sem a verificação em duas etapas, a sua senha sozinha bastará para acessar a sua conta. Qualquer pessoa que a descubra poderá entrar no seu lugar.</value></data>
   <data name="TwoFactorPanel.RequiredByRole" xml:space="preserve"><value>A sua função exige a verificação em duas etapas, por isso ela não pode ser desativada aqui. É uma política da sua organização, não uma falha desta tela.</value></data>
+  <data name="PersonalData.PageTitle" xml:space="preserve"><value>Seus dados pessoais</value></data>
+  <data name="PersonalData.Intro" xml:space="preserve"><value>Isto é o que guardamos sobre a sua conta, em termos simples. Para o detalhe exato, baixe o arquivo abaixo.</value></data>
+  <data name="PersonalData.CategoriesTitle" xml:space="preserve"><value>O que guardamos</value></data>
+  <data name="PersonalData.Category.Identity.Title" xml:space="preserve"><value>Identificação e acesso</value></data>
+  <data name="PersonalData.Category.Identity.Description" xml:space="preserve"><value>Seu identificador de usuário, nome de usuário, e-mail, funções atribuídas, status da conta, e as datas de criação e do seu último login.</value></data>
+  <data name="PersonalData.Category.Contact.Title" xml:space="preserve"><value>Contato</value></data>
+  <data name="PersonalData.Category.Contact.Description" xml:space="preserve"><value>Seu e-mail e, se configurado, o telefone usado para a verificação em duas etapas (exibido mascarado).</value></data>
+  <data name="PersonalData.Category.MemberProfile.Title" xml:space="preserve"><value>Perfil de membro</value></data>
+  <data name="PersonalData.Category.MemberProfile.Description" xml:space="preserve"><value>Seu nome, data de nascimento, endereço de contato, e seus dados na rede: patrocinador, data de inscrição, tipo de membro e frequência de pagamento.</value></data>
+  <data name="PersonalData.Category.Security.Title" xml:space="preserve"><value>Configurações de segurança</value></data>
+  <data name="PersonalData.Category.Security.Description" xml:space="preserve"><value>Se a verificação em duas etapas está ativada, qual método você escolheu, e desde quando está configurada.</value></data>
+  <data name="PersonalData.DownloadTitle" xml:space="preserve"><value>Baixe seus dados</value></data>
+  <data name="PersonalData.DownloadDescription" xml:space="preserve"><value>Obtenha tudo o que guardamos sobre a sua conta em um arquivo JSON, com o detalhe completo de cada categoria acima.</value></data>
+  <data name="PersonalData.DeletionTitle" xml:space="preserve"><value>Sobre excluir seus dados</value></data>
+  <data name="PersonalData.DeletionText" xml:space="preserve"><value>Não podemos excluir a sua conta: ela é referenciada por registros de auditoria, comissões aprovadas e registros de personificação, e removê-la quebraria essa rastreabilidade. Se quiser que a sua conta seja desativada, entre em contato com o seu administrador e solicite.</value></data>
   <data name="AddPhone.Title" xml:space="preserve"><value>Adicionar um telefone</value></data>
   <data name="AddPhone.Intro" xml:space="preserve"><value>Enviaremos por SMS os códigos de acesso para este número.</value></data>
   <data name="AddPhone.Placeholder" xml:space="preserve"><value>+14155552671</value></data>

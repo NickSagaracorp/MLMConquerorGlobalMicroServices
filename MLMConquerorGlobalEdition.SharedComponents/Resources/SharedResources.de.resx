@@ -1315,6 +1315,21 @@
   <data name="TwoFactorPanel.Disable" xml:space="preserve"><value>Zwei-Faktor-Authentifizierung deaktivieren</value></data>
   <data name="TwoFactorPanel.DisableWarning" xml:space="preserve"><value>Ohne Zwei-Faktor-Authentifizierung genügt Ihr Passwort allein, um in Ihr Konto zu gelangen. Wer es erfährt, kann sich als Sie anmelden.</value></data>
   <data name="TwoFactorPanel.RequiredByRole" xml:space="preserve"><value>Ihre Rolle setzt die Zwei-Faktor-Authentifizierung voraus, daher lässt sie sich hier nicht deaktivieren. Das ist eine Vorgabe Ihrer Organisation und kein Fehler dieser Seite.</value></data>
+  <data name="PersonalData.PageTitle" xml:space="preserve"><value>Ihre persönlichen Daten</value></data>
+  <data name="PersonalData.Intro" xml:space="preserve"><value>Das speichern wir zu Ihrem Konto, einfach erklärt. Für die genauen Details laden Sie die Datei unten herunter.</value></data>
+  <data name="PersonalData.CategoriesTitle" xml:space="preserve"><value>Was wir speichern</value></data>
+  <data name="PersonalData.Category.Identity.Title" xml:space="preserve"><value>Identität und Zugang</value></data>
+  <data name="PersonalData.Category.Identity.Description" xml:space="preserve"><value>Ihre Benutzer-ID, Ihren Benutzernamen, Ihre E-Mail-Adresse, zugewiesene Rollen, den Kontostatus sowie das Datum der Kontoerstellung und Ihrer letzten Anmeldung.</value></data>
+  <data name="PersonalData.Category.Contact.Title" xml:space="preserve"><value>Kontakt</value></data>
+  <data name="PersonalData.Category.Contact.Description" xml:space="preserve"><value>Ihre E-Mail-Adresse und, falls eingerichtet, die für die Zwei-Faktor-Verifizierung verwendete Telefonnummer (maskiert angezeigt).</value></data>
+  <data name="PersonalData.Category.MemberProfile.Title" xml:space="preserve"><value>Mitgliedsprofil</value></data>
+  <data name="PersonalData.Category.MemberProfile.Description" xml:space="preserve"><value>Ihren Namen, Geburtsdatum, Kontaktadresse sowie Ihre Angaben im Netzwerk: Sponsor, Anmeldedatum, Mitgliedstyp und Auszahlungshäufigkeit.</value></data>
+  <data name="PersonalData.Category.Security.Title" xml:space="preserve"><value>Sicherheitseinstellungen</value></data>
+  <data name="PersonalData.Category.Security.Description" xml:space="preserve"><value>Ob die Zwei-Faktor-Authentifizierung aktiviert ist, welche Methode Sie gewählt haben und seit wann sie eingerichtet ist.</value></data>
+  <data name="PersonalData.DownloadTitle" xml:space="preserve"><value>Ihre Daten herunterladen</value></data>
+  <data name="PersonalData.DownloadDescription" xml:space="preserve"><value>Laden Sie alles, was wir zu Ihrem Konto speichern, als JSON-Datei herunter, mit allen Details zu jeder oben genannten Kategorie.</value></data>
+  <data name="PersonalData.DeletionTitle" xml:space="preserve"><value>Zum Löschen Ihrer Daten</value></data>
+  <data name="PersonalData.DeletionText" xml:space="preserve"><value>Wir können Ihr Konto nicht löschen: Es wird von Prüfprotokollen, genehmigten Provisionen und Impersonation-Protokollen referenziert, und eine Löschung würde diese Nachverfolgbarkeit zerstören. Wenn Sie möchten, dass Ihr Konto deaktiviert wird, wenden Sie sich an Ihren Administrator und bitten Sie darum.</value></data>
   <data name="AddPhone.Title" xml:space="preserve"><value>Telefonnummer hinzufügen</value></data>
   <data name="AddPhone.Intro" xml:space="preserve"><value>Wir senden Ihre Anmeldecodes per SMS an diese Nummer.</value></data>
   <data name="AddPhone.Placeholder" xml:space="preserve"><value>+14155552671</value></data>

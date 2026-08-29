@@ -1246,6 +1246,21 @@
   <data name="TwoFactorPanel.Disable" xml:space="preserve"><value>ორფაქტორიანი ავთენტიფიკაციის გამორთვა</value></data>
   <data name="TwoFactorPanel.DisableWarning" xml:space="preserve"><value>ორფაქტორიანი ავთენტიფიკაციის გარეშე მხოლოდ პაროლი საკმარისი იქნება თქვენს ანგარიშში შესასვლელად. ვინც მას გაიგებს, თქვენი სახელით შევა.</value></data>
   <data name="TwoFactorPanel.RequiredByRole" xml:space="preserve"><value>თქვენი როლი მოითხოვს ორფაქტორიან ავთენტიფიკაციას, ამიტომ აქედან მისი გამორთვა შეუძლებელია. ეს თქვენი ორგანიზაციის წესია და არა ამ გვერდის ხარვეზი.</value></data>
+  <data name="PersonalData.PageTitle" xml:space="preserve"><value>თქვენი პირადი მონაცემები</value></data>
+  <data name="PersonalData.Intro" xml:space="preserve"><value>აი, რას ვინახავთ თქვენი ანგარიშის შესახებ, მარტივად ახსნილი. ზუსტი დეტალებისთვის ჩამოტვირთეთ ქვემოთ მოცემული ფაილი.</value></data>
+  <data name="PersonalData.CategoriesTitle" xml:space="preserve"><value>რას ვინახავთ</value></data>
+  <data name="PersonalData.Category.Identity.Title" xml:space="preserve"><value>იდენტიფიკაცია და წვდომა</value></data>
+  <data name="PersonalData.Category.Identity.Description" xml:space="preserve"><value>თქვენი მომხმარებლის ID, მომხმარებლის სახელი, ელფოსტის მისამართი, მინიჭებული როლები, ანგარიშის სტატუსი და ანგარიშის შექმნისა და ბოლო შესვლის თარიღები.</value></data>
+  <data name="PersonalData.Category.Contact.Title" xml:space="preserve"><value>კონტაქტი</value></data>
+  <data name="PersonalData.Category.Contact.Description" xml:space="preserve"><value>თქვენი ელფოსტის მისამართი და, თუ დაყენებულია, ორფაქტორიანი ავთენტიფიკაციისთვის გამოყენებული ტელეფონის ნომერი (ნაწილობრივ დამალული).</value></data>
+  <data name="PersonalData.Category.MemberProfile.Title" xml:space="preserve"><value>წევრის პროფილი</value></data>
+  <data name="PersonalData.Category.MemberProfile.Description" xml:space="preserve"><value>თქვენი სახელი, დაბადების თარიღი, საკონტაქტო მისამართი და თქვენი მონაცემები ქსელში: სპონსორი, რეგისტრაციის თარიღი, წევრის ტიპი და გადახდის სიხშირე.</value></data>
+  <data name="PersonalData.Category.Security.Title" xml:space="preserve"><value>უსაფრთხოების პარამეტრები</value></data>
+  <data name="PersonalData.Category.Security.Description" xml:space="preserve"><value>ჩართულია თუ არა ორფაქტორიანი ავთენტიფიკაცია, რომელი მეთოდი გაქვთ არჩეული და როდიდან არის დაყენებული.</value></data>
+  <data name="PersonalData.DownloadTitle" xml:space="preserve"><value>თქვენი მონაცემების ჩამოტვირთვა</value></data>
+  <data name="PersonalData.DownloadDescription" xml:space="preserve"><value>მიიღეთ ყველაფერი, რასაც ვინახავთ თქვენი ანგარიშის შესახებ, JSON ფაილის სახით, ზემოთ მოცემული თითოეული კატეგორიის სრული დეტალებით.</value></data>
+  <data name="PersonalData.DeletionTitle" xml:space="preserve"><value>მონაცემების წაშლის შესახებ</value></data>
+  <data name="PersonalData.DeletionText" xml:space="preserve"><value>ჩვენ ვერ წავშლით თქვენს ანგარიშს: მასზე მითითებულია აუდიტის ჩანაწერები, დამტკიცებული საკომისიოები და პერსონაციის ჟურნალები, და მისი წაშლა დაარღვევდა ამ კვალს. თუ გსურთ ანგარიშის დეაქტივაცია, დაუკავშირდით თქვენს ადმინისტრატორს და მოითხოვეთ ეს.</value></data>
   <data name="AddPhone.Title" xml:space="preserve"><value>ტელეფონის ნომრის დამატება</value></data>
   <data name="AddPhone.Intro" xml:space="preserve"><value>შესვლის კოდებს ამ ნომერზე გამოგიგზავნით SMS-ით.</value></data>
   <data name="AddPhone.Placeholder" xml:space="preserve"><value>+14155552671</value></data>

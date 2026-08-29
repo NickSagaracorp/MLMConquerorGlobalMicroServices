@@ -1246,6 +1246,21 @@
   <data name="TwoFactorPanel.Disable" xml:space="preserve"><value>关闭双重验证</value></data>
   <data name="TwoFactorPanel.DisableWarning" xml:space="preserve"><value>关闭双重验证后，仅凭密码就能进入您的账户。任何知道密码的人都可以冒用您的身份登录。</value></data>
   <data name="TwoFactorPanel.RequiredByRole" xml:space="preserve"><value>您的角色要求启用双重验证，因此无法在此关闭。这是贵组织的政策，并非本页面出错。</value></data>
+  <data name="PersonalData.PageTitle" xml:space="preserve"><value>您的个人数据</value></data>
+  <data name="PersonalData.Intro" xml:space="preserve"><value>这里简明列出了我们保存的与您账户相关的信息。如需确切细节，请下载下方的文件。</value></data>
+  <data name="PersonalData.CategoriesTitle" xml:space="preserve"><value>我们保存的内容</value></data>
+  <data name="PersonalData.Category.Identity.Title" xml:space="preserve"><value>身份与访问</value></data>
+  <data name="PersonalData.Category.Identity.Description" xml:space="preserve"><value>您的用户 ID、用户名、电子邮箱、已分配的角色、账户状态，以及账户创建日期和最近一次登录日期。</value></data>
+  <data name="PersonalData.Category.Contact.Title" xml:space="preserve"><value>联系方式</value></data>
+  <data name="PersonalData.Category.Contact.Description" xml:space="preserve"><value>您的电子邮箱，以及（如已设置）用于双重验证的电话号码（以掩码形式显示）。</value></data>
+  <data name="PersonalData.Category.MemberProfile.Title" xml:space="preserve"><value>会员资料</value></data>
+  <data name="PersonalData.Category.MemberProfile.Description" xml:space="preserve"><value>您的姓名、出生日期、联系地址，以及您在网络中的信息：推荐人、注册日期、会员类型和付款频率。</value></data>
+  <data name="PersonalData.Category.Security.Title" xml:space="preserve"><value>安全设置</value></data>
+  <data name="PersonalData.Category.Security.Description" xml:space="preserve"><value>是否已启用双重验证、您选择的验证方式，以及设置的时间。</value></data>
+  <data name="PersonalData.DownloadTitle" xml:space="preserve"><value>下载您的数据</value></data>
+  <data name="PersonalData.DownloadDescription" xml:space="preserve"><value>以 JSON 文件形式获取我们保存的与您账户相关的全部信息，包含上述每个分类的完整细节。</value></data>
+  <data name="PersonalData.DeletionTitle" xml:space="preserve"><value>关于删除您的数据</value></data>
+  <data name="PersonalData.DeletionText" xml:space="preserve"><value>我们无法删除您的账户：审计记录、已批准的佣金和代登录日志都引用了该账户，删除会破坏这些追溯记录。如果您希望停用账户，请联系管理员并提出申请。</value></data>
   <data name="AddPhone.Title" xml:space="preserve"><value>添加电话号码</value></data>
   <data name="AddPhone.Intro" xml:space="preserve"><value>我们会将登录验证码以短信发送到此号码。</value></data>
   <data name="AddPhone.Placeholder" xml:space="preserve"><value>+14155552671</value></data>

@@ -1315,6 +1315,21 @@
   <data name="TwoFactorPanel.Disable" xml:space="preserve"><value>Disattiva la verifica in due passaggi</value></data>
   <data name="TwoFactorPanel.DisableWarning" xml:space="preserve"><value>Senza la verifica in due passaggi, la tua password da sola basterà per entrare nel tuo account. Chiunque la scopra potrà accedere al posto tuo.</value></data>
   <data name="TwoFactorPanel.RequiredByRole" xml:space="preserve"><value>Il tuo ruolo richiede la verifica in due passaggi, quindi non può essere disattivata da qui. È una politica della tua organizzazione, non un problema di questa schermata.</value></data>
+  <data name="PersonalData.PageTitle" xml:space="preserve"><value>I tuoi dati personali</value></data>
+  <data name="PersonalData.Intro" xml:space="preserve"><value>Ecco cosa conserviamo del tuo account, spiegato in termini semplici. Per il dettaglio esatto, scarica il file qui sotto.</value></data>
+  <data name="PersonalData.CategoriesTitle" xml:space="preserve"><value>Cosa conserviamo</value></data>
+  <data name="PersonalData.Category.Identity.Title" xml:space="preserve"><value>Identità e accesso</value></data>
+  <data name="PersonalData.Category.Identity.Description" xml:space="preserve"><value>Il tuo ID utente, nome utente, indirizzo email, i ruoli assegnati, lo stato dell'account e le date di creazione e dell'ultimo accesso.</value></data>
+  <data name="PersonalData.Category.Contact.Title" xml:space="preserve"><value>Contatto</value></data>
+  <data name="PersonalData.Category.Contact.Description" xml:space="preserve"><value>Il tuo indirizzo email e, se configurato, il numero di telefono usato per la verifica in due passaggi (mostrato mascherato).</value></data>
+  <data name="PersonalData.Category.MemberProfile.Title" xml:space="preserve"><value>Profilo membro</value></data>
+  <data name="PersonalData.Category.MemberProfile.Description" xml:space="preserve"><value>Il tuo nome, data di nascita, indirizzo di contatto e i tuoi dati nella rete: sponsor, data di iscrizione, tipo di membro e frequenza dei pagamenti.</value></data>
+  <data name="PersonalData.Category.Security.Title" xml:space="preserve"><value>Impostazioni di sicurezza</value></data>
+  <data name="PersonalData.Category.Security.Description" xml:space="preserve"><value>Se la verifica in due passaggi è attiva, quale metodo hai scelto e da quando è configurata.</value></data>
+  <data name="PersonalData.DownloadTitle" xml:space="preserve"><value>Scarica i tuoi dati</value></data>
+  <data name="PersonalData.DownloadDescription" xml:space="preserve"><value>Ottieni tutto ciò che conserviamo del tuo account in un file JSON, con il dettaglio completo di ogni categoria sopra indicata.</value></data>
+  <data name="PersonalData.DeletionTitle" xml:space="preserve"><value>Sulla cancellazione dei tuoi dati</value></data>
+  <data name="PersonalData.DeletionText" xml:space="preserve"><value>Non possiamo cancellare il tuo account: è referenziato da registri di controllo, commissioni approvate e registri di impersonificazione, e rimuoverlo interromperebbe questa tracciabilità. Se desideri che il tuo account venga disattivato, contatta il tuo amministratore e richiedilo.</value></data>
   <data name="AddPhone.Title" xml:space="preserve"><value>Aggiungi un numero di telefono</value></data>
   <data name="AddPhone.Intro" xml:space="preserve"><value>Invieremo i codici di accesso via SMS a questo numero.</value></data>
   <data name="AddPhone.Placeholder" xml:space="preserve"><value>+14155552671</value></data>
