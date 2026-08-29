@@ -150,3 +150,88 @@ public class ResendTwoFactorRequestValidatorTests
         => _validator.TestValidate(new ResendTwoFactorRequest { ChallengeToken = "" })
             .ShouldHaveValidationErrorFor(x => x.ChallengeToken);
 }
+
+/// <summary>
+/// El DTO de recuperación acepta dos identificadores porque hay dos clientes con dos contratos:
+/// el componente de SharedComponents postea UserId y la pantalla de BizCenterWeb postea Email.
+/// El validador tiene que dejar pasar cualquiera de los dos y cortar si no viene ninguno.
+/// </summary>
+public class ResetPasswordRequestIdentifierValidatorTests
+{
+    private readonly ResetPasswordRequestValidator _validator = new();
+
+    [Fact]
+    public void Validate_WhenOnlyUserIdIsPresent_Passes()
+        => _validator.TestValidate(new ResetPasswordRequest
+        {
+            UserId = "8f14e45f-ceea-467a-9575-28bd3f1b1234",
+            Token = "abc.def_ghi",
+            NewPassword = "P@ssw0rd!"
+        }).ShouldNotHaveAnyValidationErrors();
+
+    [Fact]
+    public void Validate_WhenBothIdentifiersArePresent_Passes()
+        => _validator.TestValidate(new ResetPasswordRequest
+        {
+            UserId = "8f14e45f-ceea-467a-9575-28bd3f1b1234",
+            Email = "a@b.com",
+            Token = "abc.def_ghi",
+            NewPassword = "P@ssw0rd!"
+        }).ShouldNotHaveAnyValidationErrors();
+
+    [Fact]
+    public void Validate_WhenNeitherIdentifierIsPresent_Fails()
+        => _validator.TestValidate(new ResetPasswordRequest
+        {
+            Token = "abc.def_ghi",
+            NewPassword = "P@ssw0rd!"
+        }).ShouldHaveValidationErrorFor("UserId");
+
+    [Fact]
+    public void Validate_WhenUserIdContainsAngleBrackets_Fails()
+        => _validator.TestValidate(new ResetPasswordRequest
+        {
+            UserId = "<script>",
+            Token = "abc.def_ghi",
+            NewPassword = "P@ssw0rd!"
+        }).ShouldHaveValidationErrorFor(x => x.UserId);
+}
+
+public class SetTwoFactorChannelRequestValidatorTests
+{
+    private readonly SetTwoFactorChannelRequestValidator _validator = new();
+
+    [Fact]
+    public void Validate_WhenChannelIsKnown_Passes()
+        => _validator.TestValidate(new SetTwoFactorChannelRequest
+        {
+            Channel = MLMConquerorGlobalEdition.Domain.Entities.Security.TwoFactorChannel.Sms
+        }).ShouldNotHaveAnyValidationErrors();
+
+    /// <summary>
+    /// El cuerpo es JSON: nadie obliga a quien llama a mandar uno de los tres valores. Que el
+    /// canal tenga destino para esta cuenta lo decide el handler; aquí solo se corta el entero
+    /// que no es ningún canal.
+    /// </summary>
+    [Fact]
+    public void Validate_WhenChannelIsNotAValidEnumValue_Fails()
+        => _validator.TestValidate(new SetTwoFactorChannelRequest
+        {
+            Channel = (MLMConquerorGlobalEdition.Domain.Entities.Security.TwoFactorChannel)99
+        }).ShouldHaveValidationErrorFor(x => x.Channel);
+}
+
+public class ConfirmAccountEnrollmentRequestValidatorTests
+{
+    private readonly ConfirmAccountEnrollmentRequestValidator _validator = new();
+
+    [Fact]
+    public void Validate_WhenValid_Passes()
+        => _validator.TestValidate(new ConfirmAccountEnrollmentRequest { Code = "123456" })
+            .ShouldNotHaveAnyValidationErrors();
+
+    [Fact]
+    public void Validate_WhenCodeWrongLength_Fails()
+        => _validator.TestValidate(new ConfirmAccountEnrollmentRequest { Code = "12" })
+            .ShouldHaveValidationErrorFor(x => x.Code);
+}

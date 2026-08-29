@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs.Auth;
+using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.AccountEnrollment;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.ChangePassword;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.EmailConfirmation;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Enrollment;
@@ -15,6 +16,7 @@ using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.RefreshToken;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.ResendTwoFactor;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.ResetPassword;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.SetPassword;
+using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.TwoFactorSettings;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.VerifyTwoFactor;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Queries.AccountStatus;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Queries.PersonalData;
@@ -129,6 +131,99 @@ public class AuthController : ControllerBase
         SetRefreshTokenCookie(response.RefreshToken);
         response.RefreshToken = string.Empty; // do not expose in response body
         return Ok(ApiResponse<AuthResponse>.Ok(response));
+    }
+
+    /// <summary>
+    /// Abre el enrolamiento TOTP para el usuario <b>ya autenticado</b>: devuelve la clave
+    /// compartida, el URI <c>otpauth://</c> y su QR.
+    /// </summary>
+    /// <remarks>
+    /// Ruta aparte de <see cref="BeginEnrollment"/> y no un endpoint híbrido. Aquel exige un
+    /// <c>EnrollmentToken</c> que solo emite el login cuando fuerza el enrolamiento; este exige
+    /// sesión. Son dos modelos de autenticación distintos, y juntarlos en una sola ruta obligaría
+    /// a quien la lea a sostener los dos a la vez para saber quién puede llegar hasta ahí.
+    ///
+    /// Es lo que le faltaba a la pantalla de seguridad: un usuario que ya entró no tiene ningún
+    /// token de enrolamiento, así que no podía activar ni volver a enrolar su autenticador.
+    /// Volver a llamar estando ya enrolado devuelve una clave nueva — eso es re-enrolar.
+    /// </remarks>
+    [HttpPost("account/two-factor/enroll/begin")]
+    [Authorize]
+    public async Task<IActionResult> BeginAccountEnrollment(CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                  ?? User.FindFirstValue("sub")
+                  ?? string.Empty;
+        var result = await _mediator.Send(new BeginAccountEnrollmentCommand(userId), ct);
+        return result.IsSuccess
+            ? Ok(ApiResponse<EnrollmentResponse>.Ok(result.Value!))
+            : BadRequest(ApiResponse<EnrollmentResponse>.Fail(result.ErrorCode!, result.Error!));
+    }
+
+    /// <summary>
+    /// Cierra el enrolamiento del usuario autenticado con el primer código de su aplicación.
+    /// </summary>
+    /// <remarks>
+    /// A diferencia de <see cref="ConfirmEnrollment"/>, <b>no emite tokens de acceso ni toca la
+    /// cookie de refresco</b>: quien llega aquí ya tiene sesión, así que un juego de tokens nuevo
+    /// solo serviría para rotarle la sesión por haber cambiado un ajuste de su cuenta.
+    /// </remarks>
+    [HttpPost("account/two-factor/enroll/confirm")]
+    [Authorize]
+    public async Task<IActionResult> ConfirmAccountEnrollment(
+        [FromBody] ConfirmAccountEnrollmentRequest request,
+        CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                  ?? User.FindFirstValue("sub")
+                  ?? string.Empty;
+        var result = await _mediator.Send(new ConfirmAccountEnrollmentCommand(userId, request), ct);
+        return result.IsSuccess
+            ? Ok(ApiResponse<bool>.Ok(true, "Two-factor authentication enabled."))
+            : BadRequest(ApiResponse<bool>.Fail(result.ErrorCode!, result.Error!));
+    }
+
+    /// <summary>Fija el canal por el que el usuario autenticado recibirá su código de 2FA.</summary>
+    /// <remarks>
+    /// El servidor comprueba que el canal tenga destino para esta cuenta y responde
+    /// <c>CHANNEL_UNAVAILABLE</c> si no lo tiene, aunque la pantalla ya solo ofrezca los canales
+    /// de <c>AvailableChannels</c>. Ese filtro es de presentación: quien llame a la API
+    /// directamente podría fijarse SMS sin teléfono confirmado y quedarse sin poder entrar en su
+    /// siguiente inicio de sesión, porque el código iría a un canal que no existe.
+    /// </remarks>
+    [HttpPost("two-factor/channel")]
+    [Authorize]
+    public async Task<IActionResult> SetTwoFactorChannel(
+        [FromBody] SetTwoFactorChannelRequest request,
+        CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                  ?? User.FindFirstValue("sub")
+                  ?? string.Empty;
+        var result = await _mediator.Send(new SetTwoFactorChannelCommand(userId, request), ct);
+        return result.IsSuccess
+            ? Ok(ApiResponse<bool>.Ok(true, "Preferred two-factor channel updated."))
+            : BadRequest(ApiResponse<bool>.Fail(result.ErrorCode!, result.Error!));
+    }
+
+    /// <summary>Desactiva el 2FA del usuario autenticado y reinicia su clave del autenticador.</summary>
+    /// <remarks>
+    /// El servidor rechaza con <c>TWO_FACTOR_REQUIRED</c> si el rol del usuario está en
+    /// <c>Auth:TwoFactor:MandatoryRoles</c>, aunque la pantalla ya esconda el botón: esconder un
+    /// botón no cierra la ruta, y lo que hay al otro lado es la política que obliga al personal
+    /// con acceso al panel a llevar segundo factor.
+    /// </remarks>
+    [HttpPost("two-factor/disable")]
+    [Authorize]
+    public async Task<IActionResult> DisableTwoFactor(CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                  ?? User.FindFirstValue("sub")
+                  ?? string.Empty;
+        var result = await _mediator.Send(new DisableTwoFactorCommand(userId), ct);
+        return result.IsSuccess
+            ? Ok(ApiResponse<bool>.Ok(true, "Two-factor authentication disabled."))
+            : BadRequest(ApiResponse<bool>.Fail(result.ErrorCode!, result.Error!));
     }
 
     /// <summary>Issues new access token using the HttpOnly refresh cookie.</summary>

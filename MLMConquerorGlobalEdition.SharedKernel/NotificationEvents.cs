@@ -29,4 +29,7 @@ public static class NotificationEvents
 
     /// <summary>Sent so the user can confirm the email address they signed up with. Variables: { ConfirmationUrl, ExpiresInHours }.</summary>
     public const string EmailConfirmation    = "EMAIL_CONFIRMATION";
+
+    /// <summary>Sent by the forgot-password flow so the user can set a new password. Variables: { ResetUrl, ExpiresInHours }.</summary>
+    public const string PasswordReset        = "PASSWORD_RESET";
 }

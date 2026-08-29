@@ -1,6 +1,5 @@
 using MediatR;
 using Microsoft.AspNetCore.Identity;
-using MLMConquerorGlobalEdition.Domain.Entities.Security;
 using MLMConquerorGlobalEdition.Repository.Identity;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs.Auth;
@@ -48,32 +47,12 @@ public class GetAccountStatusHandler : IRequestHandler<GetAccountStatusQuery, Re
             TwoFactorEnrolledAt       = user.TwoFactorEnrolledAt,
 
             HasPassword       = hasPassword,
-            AvailableChannels = ResolveAvailableChannels(user, hasPhone)
+
+            // La regla vive en TwoFactorChannelAvailability y no aquí: el comando que fija el
+            // canal preferido tiene que rechazar exactamente lo que esta lista no ofrece, y con
+            // dos copias de la misma condición basta con que una se quede atrás para que el
+            // servidor acepte un canal sin destino.
+            AvailableChannels = TwoFactorChannelAvailability.Resolve(user)
         });
-    }
-
-    /// <summary>
-    /// Canales que tienen destino real para este usuario. Mismas condiciones que aplica
-    /// <c>ResolveTarget</c> de la librería de 2FA al emitir el código: la pantalla no puede
-    /// ofrecer un canal que luego devolvería CHANNEL_UNAVAILABLE, porque el usuario elegiría ese
-    /// canal, no recibiría nada y se quedaría fuera en su siguiente inicio de sesión.
-    /// </summary>
-    private static IReadOnlyList<TwoFactorChannel> ResolveAvailableChannels(
-        ApplicationUser user, bool hasPhone)
-    {
-        // Correo siempre: es lo que identifica la cuenta, así que su destino existe por definición.
-        var channels = new List<TwoFactorChannel> { TwoFactorChannel.Email };
-
-        // SMS solo con el teléfono confirmado. Un número que nadie ha demostrado tener no es un
-        // segundo factor, y la librería lo rechaza fuera del enrolamiento.
-        if (hasPhone && user.TwoFactorPhoneConfirmed)
-            channels.Add(TwoFactorChannel.Sms);
-
-        // Authenticator solo con el enrolamiento confirmado: sin clave dada de alta no hay nada
-        // que Identity pueda verificar y la pantalla del código no aceptaría ninguno.
-        if (user.TwoFactorEnrolledAt is not null)
-            channels.Add(TwoFactorChannel.Authenticator);
-
-        return channels;
     }
 }
