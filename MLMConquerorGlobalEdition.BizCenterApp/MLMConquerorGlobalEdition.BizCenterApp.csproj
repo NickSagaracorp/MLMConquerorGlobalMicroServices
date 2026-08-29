@@ -74,7 +74,7 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
         <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
-        <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.0" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.2" />
         <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
         <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.2" />
         <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.9.0" />
@@ -85,15 +85,5 @@
         <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel\MLMConquerorGlobalEdition.SharedKernel.csproj" />
     </ItemGroup>
 
-    <!-- Blazor Hybrid on Android runs through MAUI WebView — Microsoft.AspNetCore.App has no Android runtime packs.
-         Remove the transitive FrameworkReference (propagated from SharedComponents → Microsoft.AspNetCore.Components.Web)
-         AFTER CollectFrameworkReferences so the check in ResolveFrameworkReferences never fires. -->
-    <Target Name="RemoveAspNetCoreAppRuntimePackForAndroid"
-            BeforeTargets="ResolveRuntimePackAssets"
-            Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
-        <ItemGroup>
-            <FrameworkReference Remove="Microsoft.AspNetCore.App" />
-        </ItemGroup>
-    </Target>
 
 </Project>

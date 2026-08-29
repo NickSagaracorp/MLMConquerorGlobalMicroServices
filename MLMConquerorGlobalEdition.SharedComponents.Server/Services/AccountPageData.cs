@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.ClientCore;
 using MLMConquerorGlobalEdition.SharedComponents.Components.Account;
 
-namespace MLMConquerorGlobalEdition.SharedComponents.Services;
+namespace MLMConquerorGlobalEdition.SharedComponents.Server.Services;
 
 /// <summary>
 /// Lo que las páginas del área de cuenta necesitan para pintarse y que no cabe en un formulario:

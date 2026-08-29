@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.ClientCore;
 
-namespace MLMConquerorGlobalEdition.SharedComponents.Services;
+namespace MLMConquerorGlobalEdition.SharedComponents.Server.Services;
 
 /// <summary>
 /// Los manejadores de los formularios del área de cuenta: recuperar la contraseña, confirmar el

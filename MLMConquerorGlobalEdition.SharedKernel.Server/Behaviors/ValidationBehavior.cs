@@ -1,7 +1,7 @@
 using FluentValidation;
 using MediatR;
 
-namespace MLMConquerorGlobalEdition.SharedKernel.Behaviors;
+namespace MLMConquerorGlobalEdition.SharedKernel.Server.Behaviors;
 
 /// <summary>
 /// MediatR pipeline behavior that runs all registered FluentValidation validators

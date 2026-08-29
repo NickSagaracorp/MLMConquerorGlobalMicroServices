@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>MLMConquerorGlobalEdition.SharedComponents.Server</RootNamespace>
+  </PropertyGroup>
+
+  <!--
+    PROPÓSITO DE ESTE PROYECTO: es la mitad de servidor de SharedComponents.
+
+    SharedComponents es una biblioteca de componentes Razor y la comparten cuatro anfitriones:
+    AdminWeb y BizCenterWeb, que son ASP.NET Core, y AdminApp y BizCenterApp, que son MAUI Blazor
+    Hybrid. Los componentes .razor, los layouts y los recursos sirven a los cuatro. El CABLEADO del
+    área de cuenta no: son manejadores de minimal API, cookies de reto y lectura del HttpContext,
+    y en un teléfono no hay nada de eso.
+
+    Mientras ese cableado vivía en SharedComponents, la biblioteca necesitaba
+    <FrameworkReference Include="Microsoft.AspNetCore.App" /> para compilar, y un FrameworkReference
+    es transitivo: las dos MAUI lo heredaban. Compilaban solo porque cada una lo borraba a mano
+    después de la recolección, lo que dejaba las referencias de COMPILACIÓN puestas y quitaba
+    únicamente el paquete de tiempo de EJECUCIÓN. Es decir: AccountEndpoints y ChallengeCookies se
+    empaquetaban en el APK compilados contra ensamblados que el dispositivo no iba a tener. No
+    fallaba al construir; fallaba al ejecutarse, que es la peor forma de fallar.
+
+    Lo que entra aquí: lo que necesita un anfitrión web para funcionar (HttpContext, IResult,
+    IEndpointRouteBuilder, cookies) y lo que solo tiene sentido junto a ello.
+    Lo que NO entra aquí: componentes, layouts, recursos y servicios agnósticos — esos son de
+    SharedComponents, porque móvil también los necesita. Antes de añadir un archivo a este
+    proyecto, comprobar que de verdad depende del alojamiento web; si no depende, su sitio es
+    SharedComponents.
+
+    La prueba SharedComponentsNoServerHostingTests (en BizCenter.Tests) vigila que esa frontera no
+    se cruce de vuelta.
+  -->
+
+  <!-- HttpContext, IHttpContextAccessor, IResult, Results, IEndpointRouteBuilder, CookieOptions:
+       todo lo que el cableado del área de cuenta necesita del alojamiento web. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- TwoFactorPageData lee el ChallengeToken con JwtSecurityTokenHandler. -->
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.9.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- AccountMessages y los componentes del área de cuenta a los que estos datos alimentan. -->
+    <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedComponents\MLMConquerorGlobalEdition.SharedComponents.csproj" />
+    <!-- AuthApiGateway y su IAccessTokenProvider. Viven en un proyecto sin ASP.NET Core para que
+         las aplicaciones MAUI puedan usarlos; la implementación web del proveedor de token
+         (HttpContextAccessTokenProvider) está de este lado, que es donde hay HttpContext. -->
+    <ProjectReference Include="..\MLMConquerorGlobalEdition.ClientCore\MLMConquerorGlobalEdition.ClientCore.csproj" />
+    <!-- ApiResponse<T> y demás contratos que desenvuelve TwoFactorPageData. -->
+    <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel\MLMConquerorGlobalEdition.SharedKernel.csproj" />
+  </ItemGroup>
+
+</Project>

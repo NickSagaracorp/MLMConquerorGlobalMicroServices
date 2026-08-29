@@ -8,6 +8,9 @@ using Microsoft.Extensions.Hosting;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SharedKernel.Services;
+// GatewayCredentialProtector: necesita el proveedor de DataProtection del anfitrión, así que vive
+// en la mitad de servidor del SharedKernel. El `using` lo dice.
+using MLMConquerorGlobalEdition.SharedKernel.Server.Services;
 
 namespace MLMConquerorGlobalEdition.Repository.Services.Payout;
 

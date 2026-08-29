@@ -1,13 +1,17 @@
-using Microsoft.AspNetCore.Http;
-using MLMConquerorGlobalEdition.SharedComponents.Constants;
+﻿using MLMConquerorGlobalEdition.SharedComponents.Constants;
 using MLMConquerorGlobalEdition.SharedComponents.Services;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Tests;
 
 public class ViewContextServiceTests
 {
+    /// <summary>
+    /// Con la semilla vacia: estas pruebas ejercen SetContext y HasPermission, no la
+    /// auto-inicializacion. Antes se le pasaba un HttpContextAccessor real por lo mismo —no
+    /// habia HttpContext detras—, solo que aquello ataba la prueba a ASP.NET Core sin necesidad.
+    /// </summary>
     private static ViewContextService CreateService() =>
-        new(new HttpContextAccessor());
+        new(new NullViewContextSeed());
 
 
     [Fact]

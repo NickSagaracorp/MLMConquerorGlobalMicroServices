@@ -242,7 +242,7 @@
     {
         if (AuthState is null) return null;
         var state = await AuthState;
-        return state.User.FindFirstValue("access_token");
+        return state.User.FindFirst("access_token")?.Value;
     }
 
     // When true, the NEXT ServerGridAdaptor read appends bypassCache=true so the

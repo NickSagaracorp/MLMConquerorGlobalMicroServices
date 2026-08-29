@@ -2,7 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using MLMConquerorGlobalEdition.ClientCore;
 
-namespace MLMConquerorGlobalEdition.SharedComponents.Services;
+namespace MLMConquerorGlobalEdition.SharedComponents.Server.Services;
 
 /// <summary>
 /// El lado web de <see cref="IAccessTokenProvider"/>: saca el token del claim

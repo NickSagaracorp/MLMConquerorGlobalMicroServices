@@ -27,6 +27,7 @@
   <Project Path="MLMConquerorGlobalEdition.TicketManagementSystem/MLMConquerorGlobalEdition.TicketManagementSystem.csproj" />
   <Project Path="MLMConquerorGlobalEdition.TicketManagementSystem.Tests/MLMConquerorGlobalEdition.TicketManagementSystem.Tests.csproj" />
   <Project Path="MLMConquerorGlobalEdition.SharedComponents/MLMConquerorGlobalEdition.SharedComponents.csproj" />
+  <Project Path="MLMConquerorGlobalEdition.SharedComponents.Server/MLMConquerorGlobalEdition.SharedComponents.Server.csproj" />
   <Project Path="MLMConquerorGlobalEdition.BizCenterApp/MLMConquerorGlobalEdition.BizCenterApp.csproj" />
   <Project Path="MLMConquerorGlobalEdition.AdminApp/MLMConquerorGlobalEdition.AdminApp.csproj" />
   <Project Path="MLMConquerorGlobalEdition.BizCenterWeb/MLMConquerorGlobalEdition.BizCenterWeb.csproj" />

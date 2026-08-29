@@ -1,4 +1,4 @@
-namespace MLMConquerorGlobalEdition.SharedComponents.Services;
+namespace MLMConquerorGlobalEdition.SharedComponents.Server.Services;
 
 /// <summary>
 /// Dónde vive cada pantalla del área de cuenta en el portal que monta esta superficie.

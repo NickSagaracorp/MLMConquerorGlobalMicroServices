@@ -1,6 +1,6 @@
 using FluentAssertions;
 using Microsoft.AspNetCore.DataProtection;
-using MLMConquerorGlobalEdition.SharedKernel.Services;
+using MLMConquerorGlobalEdition.SharedKernel.Server.Services;
 using Xunit;
 using MLMConquerorGlobalEdition.Repository.Services.Payout;
 

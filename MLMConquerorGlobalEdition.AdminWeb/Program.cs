@@ -1,11 +1,12 @@
-using Microsoft.AspNetCore.Authentication.Cookies;
+﻿using Microsoft.AspNetCore.Authentication.Cookies;
 using MLMConquerorGlobalEdition.AdminWeb.Middleware;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Localization;
 using MLMConquerorGlobalEdition.AdminWeb.Components;
 using MLMConquerorGlobalEdition.AdminWeb.Services;
 using MLMConquerorGlobalEdition.SharedComponents.Extensions;
-using MLMConquerorGlobalEdition.SharedComponents.Services;
+using MLMConquerorGlobalEdition.SharedComponents.Server.Extensions;
+using MLMConquerorGlobalEdition.SharedComponents.Server.Services;
 using MLMConquerorGlobalEdition.SharedKernel;
 using Syncfusion.Blazor;
 
@@ -71,6 +72,10 @@ builder.Services.AddScoped<AuthenticationStateProvider, PersistingServerAuthStat
 
 // Shared components
 builder.Services.AddSharedComponents();
+// La mitad web del contexto de vista: ViewContextService se auto-inicializa desde el usuario y
+// la ruta de la peticion. En una MAUI no hay peticion y esa semilla se queda vacia, que es
+// justo por lo que la lectura del HttpContext ya no vive dentro de ViewContextService.
+builder.Services.AddHttpContextViewContextSeed();
 builder.Services.AddScoped<ServerViewContextInitializer>();
 
 // HTTP client to SignupAPI — auth only, no auth handler (login is unauthenticated)

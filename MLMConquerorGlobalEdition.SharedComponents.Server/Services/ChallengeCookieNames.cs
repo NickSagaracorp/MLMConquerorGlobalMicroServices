@@ -1,4 +1,4 @@
-namespace MLMConquerorGlobalEdition.SharedComponents.Services;
+namespace MLMConquerorGlobalEdition.SharedComponents.Server.Services;
 
 /// <summary>
 /// Cómo se llaman en ESTE portal las tres cookies de reto que emite y canjea el área de cuenta.

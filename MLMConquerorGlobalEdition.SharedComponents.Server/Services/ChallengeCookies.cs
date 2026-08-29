@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Http;
 
-namespace MLMConquerorGlobalEdition.SharedComponents.Services;
+namespace MLMConquerorGlobalEdition.SharedComponents.Server.Services;
 
 /// <summary>
 /// Las cookies de corta vida que guardan un reto entre el POST que lo emite y el POST que lo

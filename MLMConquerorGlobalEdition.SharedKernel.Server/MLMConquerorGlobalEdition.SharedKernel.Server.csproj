@@ -21,10 +21,11 @@
     móvil también los necesita. Antes de añadir un archivo a este proyecto, comprobar que de
     verdad depende del alojamiento; si no depende, su sitio es SharedKernel.
 
-    Los espacios de nombres se mantienen deliberadamente en MLMConquerorGlobalEdition.SharedKernel.*
-    (Behaviors, Services) aunque el ensamblado se llame .Server: los tipos no se movieron de
-    lugar conceptual, solo de ensamblado, y así el traslado no obligó a tocar ni un solo
-    `using` de los consumidores. El corte es de empaquetado, no de diseño.
+    Los espacios de nombres son MLMConquerorGlobalEdition.SharedKernel.Server.* (Behaviors,
+    Services), a juego con el ensamblado. El traslado original los dejó en .SharedKernel.* para no
+    tocar ningún `using`, pero eso escondía justo lo que hay que ver: desde el `using` no había
+    forma de saber si un tipo servía a móvil o exigía un servidor debajo, que es la única frontera
+    que este proyecto existe para marcar. Ahora se lee en la primera línea del archivo.
   -->
 
   <!-- IHttpContextAccessor, IHostEnvironment e IDistributedCache, sin añadir un NuGet. -->

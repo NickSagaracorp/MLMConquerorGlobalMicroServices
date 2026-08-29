@@ -394,7 +394,7 @@
     {
         if (AuthState is null) return null;
         var state = await AuthState;
-        return state.User.FindFirstValue("access_token");
+        return state.User.FindFirst("access_token")?.Value;
     }
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()

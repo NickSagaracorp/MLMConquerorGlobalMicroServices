@@ -13,7 +13,7 @@ using MLMConquerorGlobalEdition.Repository.Identity;
 using MLMConquerorGlobalEdition.Repository.Services;
 using FluentValidation;
 using FluentValidation.AspNetCore;
-using MLMConquerorGlobalEdition.SharedKernel.Behaviors;
+using MLMConquerorGlobalEdition.SharedKernel.Server.Behaviors;
 using MLMConquerorGlobalEdition.SharedKernel.Configuration;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SharedKernel.Logging;
@@ -26,7 +26,7 @@ using ICacheService         = MLMConquerorGlobalEdition.SharedKernel.Interfaces.
 using IErrorTrackingService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IErrorTrackingService;
 using ICurrentUserService   = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICurrentUserService;
 using IDateTimeProvider     = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IDateTimeProvider;
-using CacheService          = MLMConquerorGlobalEdition.SharedKernel.Services.CacheService;
+using CacheService          = MLMConquerorGlobalEdition.SharedKernel.Server.Services.CacheService;
 using JwtService            = MLMConquerorGlobalEdition.AdminAPI.Services.JwtService;
 using MLMConquerorGlobalEdition.Notifications;
 

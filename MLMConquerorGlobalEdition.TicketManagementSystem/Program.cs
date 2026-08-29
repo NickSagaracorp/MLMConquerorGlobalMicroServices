@@ -9,14 +9,14 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Services;
-using MLMConquerorGlobalEdition.SharedKernel.Behaviors;
+using MLMConquerorGlobalEdition.SharedKernel.Server.Behaviors;
 using MLMConquerorGlobalEdition.SharedKernel.Configuration;
 using MLMConquerorGlobalEdition.TicketManagementSystem.Jobs;
 using MLMConquerorGlobalEdition.TicketManagementSystem.Middleware;
 using MLMConquerorGlobalEdition.TicketManagementSystem.Services;
 using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
 using IPushNotificationService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IPushNotificationService;
-using CacheService = MLMConquerorGlobalEdition.SharedKernel.Services.CacheService;
+using CacheService = MLMConquerorGlobalEdition.SharedKernel.Server.Services.CacheService;
 using IErrorTrackingService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IErrorTrackingService;
 
 var builder = WebApplication.CreateBuilder(args);

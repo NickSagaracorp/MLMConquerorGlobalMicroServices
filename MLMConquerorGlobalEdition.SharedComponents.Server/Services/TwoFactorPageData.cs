@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.SharedKernel;
 
-namespace MLMConquerorGlobalEdition.SharedComponents.Services;
+namespace MLMConquerorGlobalEdition.SharedComponents.Server.Services;
 
 /// <summary>
 /// Lo que las páginas del segundo factor necesitan para pintarse y que no cabe en un formulario:

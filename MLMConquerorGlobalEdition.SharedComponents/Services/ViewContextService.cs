@@ -1,18 +1,22 @@
 using System.Security.Claims;
-using Microsoft.AspNetCore.Http;
 using MLMConquerorGlobalEdition.SharedComponents.Constants;
 
 namespace MLMConquerorGlobalEdition.SharedComponents.Services;
 
 /// <summary>
 /// In-memory implementation of IViewContextService.
-/// Auto-initialises from IHttpContextAccessor on first access if not yet set.
+/// Auto-initialises from <see cref="IViewContextSeed"/> on first access if not yet set.
 /// BizCenter sets ViewingMemberId = current user's own MemberId.
 /// AdminApp sets ViewingMemberId = the selected/impersonated member's MemberId.
 /// </summary>
+/// <remarks>
+/// La semilla entra por una interfaz y no como <c>IHttpContextAccessor</c> porque esta clase la
+/// usan los cuatro anfitriones: los dos portales web y las dos MAUI. Ver <see cref="IViewContextSeed"/>
+/// para por qué el acoplamiento anterior no solo estorbaba a móvil, sino que lo rompía.
+/// </remarks>
 public class ViewContextService : IViewContextService
 {
-    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IViewContextSeed _seed;
 
     private string _viewingMemberId = string.Empty;
     private string _viewerUserId    = string.Empty;
@@ -24,9 +28,9 @@ public class ViewContextService : IViewContextService
     private string _memberRankLabel = string.Empty;
     private bool _initialized;
 
-    public ViewContextService(IHttpContextAccessor httpContextAccessor)
+    public ViewContextService(IViewContextSeed seed)
     {
-        _httpContextAccessor = httpContextAccessor;
+        _seed = seed;
     }
 
     private void EnsureInitialized()
@@ -38,24 +42,24 @@ public class ViewContextService : IViewContextService
         // resolved this scoped service. AdminWeb pages live under /admin/...; everything
         // else (BizCenterWeb, the join page) is treated as member context. This avoids
         // relying on an explicit initializer call that historically wasn't wired up.
-        var path = _httpContextAccessor.HttpContext?.Request.Path.Value;
+        var path = _seed.GetPath();
         if (!string.IsNullOrEmpty(path) &&
             path.StartsWith("/admin/", StringComparison.OrdinalIgnoreCase))
         {
             _isAdminContext = true;
         }
 
-        var user = _httpContextAccessor.HttpContext?.User;
+        var user = _seed.GetUser();
         if (user?.Identity?.IsAuthenticated != true) return;
 
-        _viewerUserId    = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
-        _viewingMemberId = user.FindFirstValue("memberId") ?? user.FindFirstValue("member_id") ?? string.Empty;
+        _viewerUserId    = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+        _viewingMemberId = user.FindFirst("memberId")?.Value ?? user.FindFirst("member_id")?.Value ?? string.Empty;
 
-        _memberEmail = user.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
+        _memberEmail = user.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
 
-        var given  = user.FindFirstValue(ClaimTypes.GivenName) ?? user.FindFirstValue("given_name") ?? string.Empty;
-        var family = user.FindFirstValue(ClaimTypes.Surname)   ?? user.FindFirstValue("family_name") ?? string.Empty;
-        var full   = user.FindFirstValue(ClaimTypes.Name)      ?? user.FindFirstValue("name")        ?? string.Empty;
+        var given  = user.FindFirst(ClaimTypes.GivenName)?.Value ?? user.FindFirst("given_name")?.Value ?? string.Empty;
+        var family = user.FindFirst(ClaimTypes.Surname)?.Value   ?? user.FindFirst("family_name")?.Value ?? string.Empty;
+        var full   = user.FindFirst(ClaimTypes.Name)?.Value      ?? user.FindFirst("name")?.Value        ?? string.Empty;
 
         if (!string.IsNullOrWhiteSpace(given) || !string.IsNullOrWhiteSpace(family))
             _memberFullName = $"{given} {family}".Trim();
@@ -66,9 +70,9 @@ public class ViewContextService : IViewContextService
         else
             _memberFullName = string.Empty;
 
-        _memberRankLabel = user.FindFirstValue("membership_level")
-                        ?? user.FindFirstValue("membershipLevel")
-                        ?? user.FindFirstValue("rank")
+        _memberRankLabel = user.FindFirst("membership_level")?.Value
+                        ?? user.FindFirst("membershipLevel")?.Value
+                        ?? user.FindFirst("rank")?.Value
                         ?? string.Empty;
 
         // JWT role claim can arrive as the full URI or as the short name

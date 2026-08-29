@@ -19,12 +19,12 @@ using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.Repository.Seeders;
 using FluentValidation;
 using FluentValidation.AspNetCore;
-using MLMConquerorGlobalEdition.SharedKernel.Behaviors;
+using MLMConquerorGlobalEdition.SharedKernel.Server.Behaviors;
 using MLMConquerorGlobalEdition.SharedKernel.Configuration;
 using MLMConquerorGlobalEdition.SharedKernel.Logging;
 using ICacheService             = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
 using IPushNotificationService  = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IPushNotificationService;
-using CacheService              = MLMConquerorGlobalEdition.SharedKernel.Services.CacheService;
+using CacheService              = MLMConquerorGlobalEdition.SharedKernel.Server.Services.CacheService;
 using IErrorTrackingService     = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IErrorTrackingService;
 
 using MLMConquerorGlobalEdition.Repository.Services.Payout;

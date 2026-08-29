@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.DataProtection;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
-namespace MLMConquerorGlobalEdition.SharedKernel.Services;
+namespace MLMConquerorGlobalEdition.SharedKernel.Server.Services;
 
 /// <summary>
 /// Cifra y descifra las credenciales de gateway (AES-256-CBC + HMAC-SHA256, vía ASP.NET

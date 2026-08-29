@@ -6,7 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
-namespace MLMConquerorGlobalEdition.SharedKernel.Behaviors;
+namespace MLMConquerorGlobalEdition.SharedKernel.Server.Behaviors;
 
 /// <summary>
 /// MediatR pipeline behavior that wraps every handler in a try/catch.

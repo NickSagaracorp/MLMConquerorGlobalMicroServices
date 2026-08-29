@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using StackExchange.Redis;
 
-namespace MLMConquerorGlobalEdition.SharedKernel.Services;
+namespace MLMConquerorGlobalEdition.SharedKernel.Server.Services;
 
 /// <summary>
 /// IDistributedCache wrapper with JSON serialisation. Resilient to backend

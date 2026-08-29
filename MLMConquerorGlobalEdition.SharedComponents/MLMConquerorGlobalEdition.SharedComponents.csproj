@@ -1,21 +1,40 @@
-<Project Sdk="Microsoft.NET.Sdk.Razor">
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
+  <!--
+    AQUÍ NO VA <FrameworkReference Include="Microsoft.AspNetCore.App" />.
+
+    Esta biblioteca la comparten cuatro anfitriones: AdminWeb y BizCenterWeb, que son ASP.NET Core,
+    y AdminApp y BizCenterApp, que son MAUI Blazor Hybrid. Una MAUI no puede referenciar el
+    framework compartido de ASP.NET Core —no existe paquete de tiempo de ejecución para Android ni
+    para iOS— y un FrameworkReference es transitivo. Lo que necesite alojamiento web va en
+    MLMConquerorGlobalEdition.SharedComponents.Server.
+
+    Los paquetes de Blazor de abajo SÍ son legítimos aquí: Components, Components.Web,
+    Components.Forms, Components.Authorization y Authorization son los que una MAUI Blazor Hybrid
+    carga por su cuenta a través de Microsoft.AspNetCore.Components.WebView.Maui. La frontera no
+    está en el prefijo del nombre, está en si el ensamblado necesita un servidor web debajo.
+
+    La prueba SharedComponentsNoServerHostingTests (en BizCenter.Tests) vigila esa frontera.
+  -->
   <ItemGroup>
-    <!-- Los tipos de hosting (IResult, HttpContext, Results, IEndpointRouteBuilder) que necesita el
-         cableado del área de cuenta en Services/. Un Sdk.Razor no los trae; los dos consumidores de
-         esta biblioteca son aplicaciones ASP.NET Core, así que la referencia al framework compartido
-         es la forma correcta de tenerlos sin arrastrar paquetes sueltos. -->
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
-  </ItemGroup>
-  <ItemGroup>
+    <!-- RenderTreeBuilder, EventCallback, ComponentBase: el motor de componentes. -->
+    <PackageReference Include="Microsoft.AspNetCore.Components" Version="10.0.2" />
+    <!-- @onclick, InputText y demás: el enlace de los componentes con el DOM. -->
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.2" />
-    <!-- TwoFactorPageData lee el ChallengeToken con JwtSecurityTokenHandler. -->
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.9.0" />
+    <!-- EditForm, DataAnnotationsValidator, ValidationMessage. -->
+    <PackageReference Include="Microsoft.AspNetCore.Components.Forms" Version="10.0.2" />
+    <!-- AuthorizeView y CascadingAuthenticationState, que usan los layouts. -->
+    <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.2" />
+    <!-- [Authorize] y las políticas que evalúa AuthorizeView. -->
     <PackageReference Include="Microsoft.AspNetCore.Authorization" Version="10.0.2" />
+    <!-- IStringLocalizer<SharedResources>, que inyectan casi todos los componentes, y el
+         AddLocalization() de AddSharedComponents. Antes llegaba por el framework compartido. -->
+    <PackageReference Include="Microsoft.Extensions.Localization" Version="10.0.2" />
+    <!-- IHttpClientFactory. -->
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.2" />
     <PackageReference Include="Syncfusion.Blazor.Grid" Version="33.1.44" />
     <PackageReference Include="Syncfusion.Blazor.Navigations" Version="33.1.44" />
@@ -29,8 +48,7 @@
   <ItemGroup>
     <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel\MLMConquerorGlobalEdition.SharedKernel.csproj" />
     <!-- AuthApiGateway y su IAccessTokenProvider. Viven en un proyecto sin ASP.NET Core para que
-         las aplicaciones MAUI puedan usarlos; la implementación web del proveedor de token
-         (HttpContextAccessTokenProvider) se queda de este lado, que es donde hay HttpContext. -->
+         las aplicaciones MAUI puedan usarlos. -->
     <ProjectReference Include="..\MLMConquerorGlobalEdition.ClientCore\MLMConquerorGlobalEdition.ClientCore.csproj" />
   </ItemGroup>
 </Project>

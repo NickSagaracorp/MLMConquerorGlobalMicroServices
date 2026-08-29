@@ -3,9 +3,9 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using MLMConquerorGlobalEdition.ClientCore;
-using MLMConquerorGlobalEdition.SharedComponents.Services;
+using MLMConquerorGlobalEdition.SharedComponents.Server.Services;
 
-namespace MLMConquerorGlobalEdition.SharedComponents.Extensions;
+namespace MLMConquerorGlobalEdition.SharedComponents.Server.Extensions;
 
 /// <summary>
 /// El alta completa del área de cuenta en un portal: los servicios por un lado y las rutas por
