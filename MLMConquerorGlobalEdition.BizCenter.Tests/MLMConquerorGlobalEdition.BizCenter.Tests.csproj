@@ -36,6 +36,14 @@
   <ItemGroup>
     <ProjectReference Include="..\MLMConquerorGlobalEdition.BizCenter\MLMConquerorGlobalEdition.BizCenter.csproj" />
     <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedComponents\MLMConquerorGlobalEdition.SharedComponents.csproj" />
+    <!-- La mitad de servidor de SharedComponents: AuthEndpoints, AccountEndpoints y las cookies de
+         reto. Entra aquí porque este es el proyecto donde ya viven las pruebas de esa biblioteca, y
+         porque el arreglo del 500 del login se comprueba llamando al manejador de verdad.
+
+         Arrastra <FrameworkReference Include="Microsoft.AspNetCore.App" />, y eso NO afecta a
+         SharedComponentsNoServerHostingTests ni a ClientCoreNoAspNetCoreTests: las dos recorren el
+         cierre transitivo del ensamblado que vigilan, no el de este proyecto de pruebas. -->
+    <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedComponents.Server\MLMConquerorGlobalEdition.SharedComponents.Server.csproj" />
     <!-- Explícita, aunque llegue transitivamente por SharedComponents: ClientCoreNoAspNetCoreTests
          vigila este ensamblado en concreto y la referencia no puede depender de que un tercero
          siga apuntándole. -->

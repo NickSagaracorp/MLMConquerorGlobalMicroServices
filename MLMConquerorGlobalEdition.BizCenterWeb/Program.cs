@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Localization;
 using MLMConquerorGlobalEdition.BizCenterWeb.Components;
 using MLMConquerorGlobalEdition.BizCenterWeb.Middleware;
-using MLMConquerorGlobalEdition.BizCenterWeb.Services;
 using MLMConquerorGlobalEdition.SharedComponents.Extensions;
 using MLMConquerorGlobalEdition.SharedComponents.Server.Extensions;
 using MLMConquerorGlobalEdition.SharedComponents.Server.Services;
@@ -48,12 +47,43 @@ builder.Services.AddPortalApiAuthHandler("/login");
 // mismo dominio para los dos portales, unos nombres compartidos harían que el reto de uno pisara el
 // del otro. Se declaran aquí, en un solo sitio, porque el mismo juego lo usan los manejadores de
 // login de este portal y —cuando se monte— el área de cuenta compartida.
-builder.Services.AddChallengeCookieNames(new ChallengeCookieNames
+var challengeCookieNames = new ChallengeCookieNames
 {
     Login      = "mlm_bizcenter_2fa_challenge",
     Enrollment = "mlm_bizcenter_2fa_enrollment",
     Phone      = "mlm_bizcenter_phone_challenge"
-});
+};
+
+// La puerta — login, segundo factor, enrolamiento forzado y salida. Los manejadores son los mismos
+// que los de administración y viven en SharedComponents.Server; de este portal son solo los
+// destinos y las dos rarezas que todavía tiene su pantalla de segundo factor.
+builder.Services.AddAuthSurface(new AuthPortalOptions
+{
+    LoginPage     = "/login",
+    TwoFactorPage = "/two-factor",
+
+    // Todavía no existe esta pantalla; la monta la tarea siguiente. La ruta se declara ya porque el
+    // manejador tiene que tener a dónde mandar al usuario el día que un rol de miembro entre en
+    // Auth:TwoFactor:MandatoryRoles: hasta ahora este portal no sabía leer RequiresEnrollment y
+    // mandaba a /login?error=invalid, que para el usuario es "tus credenciales están mal" cuando lo
+    // que pasa es que le falta configurar el segundo factor. Va en la raíz, como /two-factor.
+    EnrollAuthenticatorPage = "/enroll-authenticator",
+
+    HomePage = "/",
+
+    // Sin lista de roles: el centro de negocios admite a cualquier cuenta válida.
+
+    // El idioma preferido del miembro viaja en el claim default_language del token; fijarlo aquí
+    // hace que un primer inicio de sesión en un dispositivo nuevo ya aterrice en su idioma.
+    FollowsMemberLanguage = true,
+
+    // Las dos rarezas de /two-factor, que es anterior al componente compartido TwoFactorVerify:
+    // lee el destino enmascarado de `email` en vez de `target`, y solo sabe traducir el literal
+    // `invalid_code`. Las dos líneas se borran en cuanto esa pantalla monte el componente.
+    TwoFactorTargetQueryParam = "email",
+    TwoFactorErrorCode        = "invalid_code"
+},
+challengeCookieNames);
 
 // Server-side auth state provider (persists to WASM client)
 builder.Services.AddScoped<AuthenticationStateProvider, PersistingServerAuthStateProvider>();
@@ -111,15 +141,20 @@ app.MapRazorComponents<App>()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(MLMConquerorGlobalEdition.BizCenterWeb.Client._Imports).Assembly);
 
-// Auth endpoints — antiforgery disabled (login = unauthenticated form POST)
+// ── La puerta ───────────────────────────────────────────────────────────────────────────────
+// Los manejadores viven en SharedComponents.Server; las RUTAS se quedan aquí porque tienen que
+// coincidir letra a letra con el action= del formulario de cada pantalla de este portal.
+// Antiforgery desactivado en todos: son anónimos por definición, o un logout trivial.
 app.MapPost("/account/login",  (Delegate)AuthEndpoints.LoginAsync).DisableAntiforgery();
 app.MapPost("/account/logout", (Delegate)AuthEndpoints.LogoutAsync).DisableAntiforgery();
 app.MapGet("/account/logout",  (Delegate)AuthEndpoints.LogoutAsync);
 
-// 2FA challenge endpoints — antiforgery disabled (form posts on
-// unauthenticated /two-factor page, identity carried in HttpOnly cookie).
-app.MapPost("/account/two-factor/verify", (Delegate)AuthEndpoints.VerifyTwoFactorAsync).DisableAntiforgery();
-app.MapPost("/account/two-factor/resend", (Delegate)AuthEndpoints.ResendTwoFactorAsync).DisableAntiforgery();
+// Segundo factor y enrolamiento — el reto viaja en cookie HttpOnly, nunca en la URL ni en el
+// formulario. El del enrolamiento es nuevo aquí: su pantalla la monta la tarea siguiente, pero el
+// endpoint ya existe para que el camino esté entero desde el manejador de login.
+app.MapPost("/account/two-factor/verify",   (Delegate)AuthEndpoints.LoginTwoFactorAsync).DisableAntiforgery();
+app.MapPost("/account/two-factor/resend",   (Delegate)AuthEndpoints.ResendTwoFactorAsync).DisableAntiforgery();
+app.MapPost("/account/enroll-authenticator",(Delegate)AuthEndpoints.EnrollAuthenticatorAsync).DisableAntiforgery();
 
 // Culture selection endpoint — sets cookie and redirects back
 app.MapGet("/culture", (HttpContext ctx, string culture, string redirectUri) =>

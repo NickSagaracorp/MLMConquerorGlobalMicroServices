@@ -3,7 +3,6 @@ using MLMConquerorGlobalEdition.AdminWeb.Middleware;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Localization;
 using MLMConquerorGlobalEdition.AdminWeb.Components;
-using MLMConquerorGlobalEdition.AdminWeb.Services;
 using MLMConquerorGlobalEdition.SharedComponents.Extensions;
 using MLMConquerorGlobalEdition.SharedComponents.Server.Extensions;
 using MLMConquerorGlobalEdition.SharedComponents.Server.Services;
@@ -46,6 +45,16 @@ builder.Services.AddHttpContextAccessor();
 // caduca, en vez de dejarle en la cara el 401 crudo de la llamada que estaba en vuelo.
 builder.Services.AddPortalApiAuthHandler("/admin/login");
 
+// Los nombres de las cookies de reto de ESTE portal. Los usan tanto los manejadores compartidos del
+// área de cuenta como los de la puerta (login y segundo factor), y por eso se declaran en un solo
+// sitio: el que escribe el reto y el que lo lee tienen que estar mirando el mismo nombre.
+var challengeCookieNames = new ChallengeCookieNames
+{
+    Login      = "mlm_admin_2fa_challenge",
+    Enrollment = "mlm_admin_2fa_enrollment",
+    Phone      = "mlm_admin_phone_challenge"
+};
+
 // Área de cuenta — el cableado (gateway a SignupAPI, carga de datos de página y manejadores de
 // formulario) vive en SharedComponents y lo montan también otros portales. Lo único que cambia de
 // uno a otro es dónde están sus pantallas, y eso es exactamente lo que se pasa aquí.
@@ -61,15 +70,32 @@ builder.Services.AddAccountSurface(new AccountPageRoutes
     PhoneVerifyPage        = "/admin/account/phone/verify",
     PersonalDataPage       = "/admin/account/personal-data"
 },
-// Los nombres de las cookies de reto de ESTE portal. Los usan tanto los manejadores compartidos
-// del área de cuenta como AuthEndpoints de aquí, y por eso se declaran en un solo sitio: el que
-// escribe el reto y el que lo lee tienen que estar mirando el mismo nombre.
-new ChallengeCookieNames
+challengeCookieNames);
+
+// La puerta — login, segundo factor, enrolamiento forzado y salida. Los manejadores también son
+// compartidos; de este portal son solo los destinos y quién tiene permitido entrar.
+builder.Services.AddAuthSurface(new AuthPortalOptions
 {
-    Login      = "mlm_admin_2fa_challenge",
-    Enrollment = "mlm_admin_2fa_enrollment",
-    Phone      = "mlm_admin_phone_challenge"
-});
+    LoginPage               = "/admin/login",
+    TwoFactorPage           = "/admin/login-2fa",
+    EnrollAuthenticatorPage = "/admin/enroll-authenticator",
+    HomePage                = "/admin",
+
+    // Administración es un portal de personal: la comprobación se hace sobre el token final, en el
+    // único sitio donde se firma la sesión, así que da igual si el usuario llegó por el login
+    // directo, por el segundo factor o por el enrolamiento.
+    AllowedRoles =
+    [
+        "SuperAdmin", "Admin", "CommissionManager",
+        "BillingManager", "SupportManager",
+        "SupportLevel1", "SupportLevel2", "SupportLevel3", "IT"
+    ]
+
+    // FollowsMemberLanguage se queda apagado: el claim default_language solo lo emite SignupAPI
+    // para cuentas con MemberProfile, y voltear el idioma del portal de administración a un
+    // administrador que además sea miembro no es lo que este portal hacía.
+},
+challengeCookieNames);
 
 // Server-side auth state provider (persists to WASM client)
 builder.Services.AddScoped<AuthenticationStateProvider, PersistingServerAuthStateProvider>();
@@ -132,7 +158,10 @@ app.MapRazorComponents<App>()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(MLMConquerorGlobalEdition.AdminWeb.Client._Imports).Assembly);
 
-// Auth endpoints — antiforgery disabled on all (unauthenticated by definition, o logout trivial)
+// ── La puerta ───────────────────────────────────────────────────────────────────────────────
+// Los manejadores viven en SharedComponents.Server; las RUTAS se quedan aquí porque tienen que
+// coincidir letra a letra con el action= del formulario de cada pantalla de este portal.
+// Antiforgery desactivado en todos: son anónimos por definición, o un logout trivial.
 app.MapPost("/account/login",  (Delegate)AuthEndpoints.LoginAsync).DisableAntiforgery();
 app.MapPost("/account/logout", (Delegate)AuthEndpoints.LogoutAsync).DisableAntiforgery();
 app.MapGet("/account/logout",  (Delegate)AuthEndpoints.LogoutAsync);
