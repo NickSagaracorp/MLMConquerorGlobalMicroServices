@@ -40,7 +40,11 @@ builder.Services.AddAuthorization();
 builder.Services.AddSyncfusionBlazor();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddTransient<AdminApiAuthHandler>();
+
+// El manejador que lleva el JWT del usuario a las APIs de este portal. Es el mismo de los dos
+// portales; lo único de aquí es a qué pantalla de login se manda al usuario cuando su sesión
+// caduca, en vez de dejarle en la cara el 401 crudo de la llamada que estaba en vuelo.
+builder.Services.AddPortalApiAuthHandler("/admin/login");
 
 // Área de cuenta — el cableado (gateway a SignupAPI, carga de datos de página y manejadores de
 // formulario) vive en SharedComponents y lo montan también otros portales. Lo único que cambia de
@@ -76,7 +80,9 @@ builder.Services.AddSharedComponents();
 // la ruta de la peticion. En una MAUI no hay peticion y esa semilla se queda vacia, que es
 // justo por lo que la lectura del HttpContext ya no vive dentro de ViewContextService.
 builder.Services.AddHttpContextViewContextSeed();
-builder.Services.AddScoped<ServerViewContextInitializer>();
+// Administración mira siempre en contexto de administrador; ese booleano es lo único que separa
+// este inicializador del del centro de negocios.
+builder.Services.AddServerViewContextInitializer(isAdminContext: true);
 
 // HTTP client to SignupAPI — auth only, no auth handler (login is unauthenticated)
 builder.Services.AddHttpClient("AuthApi", client =>
@@ -88,20 +94,20 @@ builder.Services.AddHttpClient("AuthApi", client =>
 builder.Services.AddHttpClient("AdminApi", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7002");
-}).AddHttpMessageHandler<AdminApiAuthHandler>();
+}).AddHttpMessageHandler<ApiAuthHandler>();
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("AdminApi"));
 
 // HTTP client to TicketManagementSystem — attaches JWT Bearer token automatically
 builder.Services.AddHttpClient("HelpdeskApi", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["HelpdeskApiUrl"] ?? "http://localhost:5045");
-}).AddHttpMessageHandler<AdminApiAuthHandler>();
+}).AddHttpMessageHandler<ApiAuthHandler>();
 
 // HTTP client to RankEngine — attaches JWT Bearer token automatically
 builder.Services.AddHttpClient("RankEngineApi", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["RankEngineApiBaseUrl"] ?? "https://localhost:7009");
-}).AddHttpMessageHandler<AdminApiAuthHandler>();
+}).AddHttpMessageHandler<ApiAuthHandler>();
 
 var app = builder.Build();
 

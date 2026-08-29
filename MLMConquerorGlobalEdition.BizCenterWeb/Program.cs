@@ -37,7 +37,11 @@ builder.Services.AddAuthorization();
 builder.Services.AddSyncfusionBlazor();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddTransient<BizCenterApiAuthHandler>();
+
+// El manejador que lleva el JWT del usuario a las APIs de este portal. Es el mismo de los dos
+// portales; lo único de aquí es a qué pantalla de login se manda al usuario cuando su sesión
+// caduca, en vez de dejarle en la cara el 401 crudo de la llamada que estaba en vuelo.
+builder.Services.AddPortalApiAuthHandler("/login");
 
 // Nombres de las cookies de reto de ESTE portal. Siguen la convención de su cookie de sesión
 // (mlm_bizcenter_cookie) y son distintos de los de administración a propósito: con Path = "/" y un
@@ -60,14 +64,16 @@ builder.Services.AddSharedComponents();
 // la ruta de la peticion. En una MAUI no hay peticion y esa semilla se queda vacia, que es
 // justo por lo que la lectura del HttpContext ya no vive dentro de ViewContextService.
 builder.Services.AddHttpContextViewContextSeed();
-builder.Services.AddScoped<ServerViewContextInitializer>();
+// El centro de negocios nunca mira en contexto de administrador; ese booleano es lo único que
+// separa este inicializador del de administración.
+builder.Services.AddServerViewContextInitializer(isAdminContext: false);
 
 // HTTP client — BizCenter authenticated API.
-// BizCenterApiAuthHandler forwards the JWT from the HttpOnly cookie claim to the API.
+// ApiAuthHandler forwards the JWT from the HttpOnly cookie claim to the API.
 builder.Services.AddHttpClient("BizCenterApi", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7003");
-}).AddHttpMessageHandler<BizCenterApiAuthHandler>();
+}).AddHttpMessageHandler<ApiAuthHandler>();
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("BizCenterApi"));
 
 // HTTP client — Auth (SignupAPI handles auth for all apps)
