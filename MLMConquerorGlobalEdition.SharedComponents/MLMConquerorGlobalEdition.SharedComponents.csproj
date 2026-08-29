@@ -28,5 +28,9 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel\MLMConquerorGlobalEdition.SharedKernel.csproj" />
+    <!-- AuthApiGateway y su IAccessTokenProvider. Viven en un proyecto sin ASP.NET Core para que
+         las aplicaciones MAUI puedan usarlos; la implementación web del proveedor de token
+         (HttpContextAccessTokenProvider) se queda de este lado, que es donde hay HttpContext. -->
+    <ProjectReference Include="..\MLMConquerorGlobalEdition.ClientCore\MLMConquerorGlobalEdition.ClientCore.csproj" />
   </ItemGroup>
 </Project>

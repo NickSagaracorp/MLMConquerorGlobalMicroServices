@@ -28,6 +28,10 @@
   <ItemGroup>
     <ProjectReference Include="..\MLMConquerorGlobalEdition.BizCenter\MLMConquerorGlobalEdition.BizCenter.csproj" />
     <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedComponents\MLMConquerorGlobalEdition.SharedComponents.csproj" />
+    <!-- Explícita, aunque llegue transitivamente por SharedComponents: ClientCoreNoAspNetCoreTests
+         vigila este ensamblado en concreto y la referencia no puede depender de que un tercero
+         siga apuntándole. -->
+    <ProjectReference Include="..\MLMConquerorGlobalEdition.ClientCore\MLMConquerorGlobalEdition.ClientCore.csproj" />
     <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel\MLMConquerorGlobalEdition.SharedKernel.csproj" />
     <ProjectReference Include="..\MLMConquerorGlobalEdition.Repository\MLMConquerorGlobalEdition.Repository.csproj" />
   </ItemGroup>

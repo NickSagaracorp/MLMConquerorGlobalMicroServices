@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <!--
+    INVARIANTE DE ESTE PROYECTO: aquí NO entra ASP.NET Core.
+
+    Ni <FrameworkReference Include="Microsoft.AspNetCore.App" /> ni ningún paquete
+    Microsoft.AspNetCore.*. La razón no es de estilo: lo que vive aquí tiene que poder
+    compilarse dentro de una aplicación MAUI, y una MAUI no puede referenciar el framework
+    compartido de ASP.NET Core. En el momento en que alguien meta aquí un HttpContext, esta
+    biblioteca deja de servir a móvil y el trabajo de separarla se pierde.
+
+    Hay una prueba que lo vigila: ClientCoreNoAspNetCoreTests, en BizCenter.Tests. Si se rompe,
+    lo que hay que quitar es la dependencia, no la prueba.
+
+    Lo que SÍ vale: el framework base (System.Net.Http, System.Net.Http.Json, System.Text.Json),
+    las abstracciones de Microsoft.Extensions.* y el SharedKernel.
+  -->
+  <ItemGroup>
+    <!-- IHttpClientFactory y el cliente con nombre. Corre igual en un portal web y en MAUI. -->
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.2" />
+    <!-- ILogger<T>. Solo las abstracciones: quién escribe el registro lo decide el anfitrión. -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- ApiResponse<T> y los DTO del sobre de la API. SharedKernel es común a todo. -->
+    <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel\MLMConquerorGlobalEdition.SharedKernel.csproj" />
+  </ItemGroup>
+
+</Project>

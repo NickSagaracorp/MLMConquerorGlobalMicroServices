@@ -17,6 +17,7 @@
   <Project Path="MLMConquerorGlobalEdition.RankEngine.Tests/MLMConquerorGlobalEdition.RankEngine.Tests.csproj" />
   <Project Path="MLMConquerorGlobalEdition.Repository/MLMConquerorGlobalEdition.Repository.csproj" />
   <Project Path="MLMConquerorGlobalEdition.SharedAPICenter/MLMConquerorGlobalEdition.SharedAPICenter.csproj" />
+  <Project Path="MLMConquerorGlobalEdition.ClientCore/MLMConquerorGlobalEdition.ClientCore.csproj" />
   <Project Path="MLMConquerorGlobalEdition.SharedKernel/MLMConquerorGlobalEdition.SharedKernel.csproj" />
   <Project Path="MLMConquerorGlobalEdition.Signups.Tests/MLMConquerorGlobalEdition.Signups.Tests.csproj" />
   <Project Path="MLMConquerorGlobalEdition.SignupAPI/MLMConquerorGlobalEdition.SignupAPI.csproj" />

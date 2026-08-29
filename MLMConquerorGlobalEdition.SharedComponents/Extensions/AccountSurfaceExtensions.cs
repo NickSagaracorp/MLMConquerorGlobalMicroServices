@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using MLMConquerorGlobalEdition.ClientCore;
 using MLMConquerorGlobalEdition.SharedComponents.Services;
 
 namespace MLMConquerorGlobalEdition.SharedComponents.Extensions;
@@ -57,9 +58,17 @@ public static class AccountSurfaceExtensions
         // dentro, así que no estorba al portal que ya lo llame por su cuenta.
         services.AddHttpContextAccessor();
 
+        // De dónde saca el gateway el token del usuario. En un portal, del claim access_token de
+        // la cookie de sesión; en una aplicación MAUI será otra implementación, y por eso el
+        // gateway pide la interfaz y no el HttpContext. Registrarlo aquí y no en cada Program.cs
+        // es lo mismo que se hace con el resto de esta superficie: quien monta el área de cuenta
+        // se lleva el cableado entero y no puede olvidarse de una pieza sin la que el gateway ni
+        // siquiera se construye. Scoped porque lee del HttpContext de la petición.
+        services.AddScoped<IAccessTokenProvider, HttpContextAccessTokenProvider>();
+
         // La única puerta a SignupAPI desde el portal: monta la llamada, le pone el Bearer del
-        // claim access_token cuando hace falta, desenvuelve el ApiResponse y traduce el fallo a un
-        // código. Scoped porque el token sale del HttpContext de la petición.
+        // token del usuario cuando hace falta, desenvuelve el ApiResponse y traduce el fallo a un
+        // código. Scoped porque su proveedor de token lo es.
         services.AddScoped<AuthApiGateway>();
 
         // Datos que las páginas del área de cuenta piden durante el render. Scoped y con el

@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using MLMConquerorGlobalEdition.ClientCore;
 
 namespace MLMConquerorGlobalEdition.SharedComponents.Services;
 
@@ -299,13 +300,13 @@ public static class AccountEndpoints
         [FromServices] AccountPageRoutes routes,
         CancellationToken             ct)
     {
-        var token = api.AccessToken;
+        var token = await api.GetAccessTokenAsync(ct);
         if (string.IsNullOrWhiteSpace(token))
             return Failure(routes.ProfilePage, AuthApiGateway.SessionExpired);
 
         try
         {
-            var httpClient = httpClientFactory.CreateClient("AuthApi");
+            var httpClient = httpClientFactory.CreateClient(AuthApiGateway.HttpClientName);
             using var request = new HttpRequestMessage(
                 HttpMethod.Get, "api/v1/auth/personal-data/download");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);

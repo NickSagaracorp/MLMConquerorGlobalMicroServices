@@ -1,15 +1,13 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.SharedKernel;
 
-namespace MLMConquerorGlobalEdition.SharedComponents.Services;
+namespace MLMConquerorGlobalEdition.ClientCore;
 
 /// <summary>
-/// La única forma de hablar con SignupAPI desde un portal web: monta la petición, le pone el Bearer
+/// La única forma de hablar con SignupAPI desde un cliente: monta la petición, le pone el Bearer
 /// del usuario cuando hace falta, desenvuelve el <see cref="ApiResponse{T}"/> y convierte cualquier
 /// final infeliz —error de la API, 401, 429, red caída, cuerpo que no es JSON— en un código de
 /// error que las pantallas ya saben traducir.
@@ -19,21 +17,32 @@ namespace MLMConquerorGlobalEdition.SharedComponents.Services;
 /// uno puede olvidarse del <c>try</c> y convertir un microservicio caído en un 500 en la cara del
 /// usuario en vez de en un mensaje.
 ///
-/// El token de acceso sale del claim <c>access_token</c> de la cookie de sesión, que es donde lo
-/// dejó <c>AuthEndpoints.CompleteSignInAsync</c> — el mismo sitio del que lo saca el manejador de
-/// mensajes que autentica las llamadas a la API del portal. Aquí no se usa aquel manejador porque
-/// el cliente "AuthApi" es deliberadamente anónimo: por él pasan el login y la recuperación de
-/// contraseña, que ocurren cuando todavía no hay sesión ninguna.
+/// Vive en ClientCore y no en SharedComponents porque nada de esto es de un portal web: el nombre
+/// del cliente HTTP, las rutas de la API y los códigos de error son los mismos en administración,
+/// en el centro de negocios y en la aplicación móvil que vendrá. De dónde sale el token era lo
+/// único que sí cambiaba, y por eso entra por <see cref="IAccessTokenProvider"/> en vez de leerse
+/// del <c>HttpContext</c>: web lo saca del claim <c>access_token</c> de la cookie de sesión —donde
+/// lo dejó <c>AuthEndpoints.CompleteSignInAsync</c>—; móvil, del almacenamiento seguro del
+/// dispositivo.
 ///
-/// Nada de esto depende del portal: el nombre del cliente HTTP, el claim y las rutas de la API son
-/// los mismos en administración y en el centro de negocios, así que no recibe parámetros de sitio.
+/// El cliente "AuthApi" es deliberadamente anónimo —sin manejador de mensajes que autentique—
+/// porque por él pasan el login y la recuperación de contraseña, que ocurren cuando todavía no hay
+/// sesión ninguna. El Bearer lo pone este gateway, llamada a llamada, solo cuando se le pide.
 /// </summary>
 public sealed class AuthApiGateway
 {
     /// <summary>
-    /// Sin token en la cookie no hay nada que mandar. Se devuelve como código de error y no como
-    /// excepción porque para el usuario es lo mismo que una sesión caducada, y la salida —volver
-    /// al login— también.
+    /// Nombre del cliente HTTP con nombre que resuelve a SignupAPI. Su dirección base la configura
+    /// cada anfitrión —cambia entre portales y entornos—, pero el nombre no: es el contrato entre
+    /// quien registra el cliente y quien lo pide, y por eso está aquí y no repetido en cadenas
+    /// sueltas.
+    /// </summary>
+    public const string HttpClientName = "AuthApi";
+
+    /// <summary>
+    /// Sin token no hay nada que mandar. Se devuelve como código de error y no como excepción
+    /// porque para el usuario es lo mismo que una sesión caducada, y la salida —volver al login—
+    /// también.
     /// </summary>
     public const string SessionExpired = "SESSION_EXPIRED";
 
@@ -41,22 +50,27 @@ public sealed class AuthApiGateway
     public const string Unreachable = "SERVICE_UNAVAILABLE";
 
     private readonly IHttpClientFactory        _httpClientFactory;
-    private readonly IHttpContextAccessor      _httpContextAccessor;
+    private readonly IAccessTokenProvider      _accessTokens;
     private readonly ILogger<AuthApiGateway>   _logger;
 
     public AuthApiGateway(
         IHttpClientFactory      httpClientFactory,
-        IHttpContextAccessor    httpContextAccessor,
+        IAccessTokenProvider    accessTokens,
         ILogger<AuthApiGateway> logger)
     {
-        _httpClientFactory   = httpClientFactory;
-        _httpContextAccessor = httpContextAccessor;
-        _logger              = logger;
+        _httpClientFactory = httpClientFactory;
+        _accessTokens      = accessTokens;
+        _logger            = logger;
     }
 
     /// <summary>El token de acceso de la sesión, o null si no hay sesión.</summary>
-    public string? AccessToken =>
-        _httpContextAccessor.HttpContext?.User.FindFirstValue("access_token");
+    /// <remarks>
+    /// Público porque hay una llamada que este gateway no puede envolver: la descarga de datos
+    /// personales devuelve un archivo, no un <see cref="ApiResponse{T}"/>, así que quien la sirve
+    /// necesita el token en crudo para montarse su propia petición.
+    /// </remarks>
+    public ValueTask<string?> GetAccessTokenAsync(CancellationToken ct = default) =>
+        _accessTokens.GetAccessTokenAsync(ct);
 
     /// <summary>
     /// Llama a la API y devuelve el <c>Data</c> del sobre, o el código del error.
@@ -79,7 +93,7 @@ public sealed class AuthApiGateway
 
         if (authenticated)
         {
-            var token = AccessToken;
+            var token = await _accessTokens.GetAccessTokenAsync(ct);
             if (string.IsNullOrWhiteSpace(token))
                 return ApiOutcome<T>.Failed(SessionExpired);
 
@@ -88,7 +102,7 @@ public sealed class AuthApiGateway
 
         try
         {
-            var httpClient = _httpClientFactory.CreateClient("AuthApi");
+            var httpClient = _httpClientFactory.CreateClient(HttpClientName);
             using var response = await httpClient.SendAsync(request, ct);
 
             var apiResponse = await ReadEnvelopeAsync<T>(response, ct);
@@ -100,7 +114,7 @@ public sealed class AuthApiGateway
         }
         catch (Exception ex)
         {
-            // Que el servicio de autenticación esté caído no puede tumbar el portal entero: la
+            // Que el servicio de autenticación esté caído no puede tumbar la aplicación entera: la
             // pantalla que llamó tiene que poder enseñar un mensaje y dejar reintentar.
             _logger.LogError(ex, "La llamada {Method} {Path} a la API de autenticación falló.",
                 method.Method, path);
