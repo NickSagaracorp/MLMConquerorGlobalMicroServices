@@ -66,14 +66,15 @@ public static class AccountEndpoints
     /// Fija la contraseña nueva con el token del correo.
     /// </summary>
     /// <remarks>
-    /// OJO CON EL IDENTIFICADOR. <c>ResetPassword.razor</c> postea <c>UserId</c>, pero
-    /// <c>ResetPasswordRequest</c> de SignupAPI espera <c>Email</c> y su handler resuelve al
-    /// usuario con <c>FindByEmailAsync</c>. Los dos contratos no coinciden y ninguno de los dos
-    /// se toca en esta tarea, así que aquí se reenvía tal cual lo que trajo el enlace: es lo
-    /// único que puede funcionar contra la API de hoy, cuyo propio <c>ForgotPasswordHandler</c>
-    /// documenta el enlace como <c>?email=…&amp;token=…</c>. La página acepta las dos formas de
-    /// la query por el mismo motivo. Está reportado: o la API pasa a aceptar userId, o el
-    /// parámetro del componente pasa a llamarse Email.
+    /// El identificador va en <c>UserId</c>, que es lo que trae el enlace del correo y lo que
+    /// <c>ResetPassword.razor</c> postea. Antes se metía ese userId en el campo <c>Email</c>
+    /// porque el DTO de SignupAPI no tenía otro sitio donde ponerlo; ahora acepta ambos y
+    /// prefiere <c>UserId</c>, así que el valor viaja en su propio campo.
+    ///
+    /// El enlace lleva userId y no el correo a propósito: la dirección en la URL acabaría en el
+    /// historial del navegador, en los registros del proxy y en la cabecera <c>Referer</c> hacia
+    /// cualquier recurso externo que cargue la página. <c>Email</c> sigue en el DTO porque
+    /// BizCenterWeb manda su enlace viejo con el correo.
     /// </remarks>
     public static async Task<IResult> ResetPasswordAsync(
         [FromForm] ResetPasswordForm? form,
@@ -95,7 +96,7 @@ public static class AccountEndpoints
             HttpMethod.Post, "api/v1/auth/reset-password",
             new
             {
-                Email       = form.UserId ?? string.Empty,
+                UserId      = form.UserId ?? string.Empty,
                 Token       = form.Token ?? string.Empty,
                 NewPassword = form.NewPassword ?? string.Empty
             },

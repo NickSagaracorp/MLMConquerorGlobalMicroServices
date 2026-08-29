@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 using MLMConquerorGlobalEdition.Authn.Abstractions;
+using MLMConquerorGlobalEdition.Domain.Entities.Security;
 using MLMConquerorGlobalEdition.Repository.Identity;
 using MLMConquerorGlobalEdition.SharedKernel;
 
@@ -63,6 +64,18 @@ public class DisableTwoFactorHandler : IRequestHandler<DisableTwoFactorCommand, 
         var reset = await _enrollment.ResetAsync(user, ct);
         if (!reset.IsSuccess)
             return Result<bool>.Failure(reset.ErrorCode!, reset.Error!);
+
+        // ResetAsync acaba de borrar la clave del autenticador, así que Authenticator ya no está
+        // entre los canales disponibles. Dejarlo como preferido es la misma incoherencia que
+        // RemovePhoneHandler evita al quitar el teléfono: AccountStatus mostraría un canal
+        // preferido que no aparece en su propia lista de disponibles, y quien volviera a activar
+        // el 2FA sin re-enrolar arrancaría apuntando a un factor que no existe. El correo siempre
+        // está —es el que identifica la cuenta—, así que ahí vuelve.
+        if (user.PreferredTwoFactorChannel == TwoFactorChannel.Authenticator)
+        {
+            user.PreferredTwoFactorChannel = TwoFactorChannel.Email;
+            await _userManager.UpdateAsync(user);
+        }
 
         return Result<bool>.Success(true);
     }

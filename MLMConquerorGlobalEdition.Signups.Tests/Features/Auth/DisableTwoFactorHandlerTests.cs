@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using MLMConquerorGlobalEdition.Authn.Abstractions;
 using MLMConquerorGlobalEdition.Authn.Services;
+using MLMConquerorGlobalEdition.Domain.Entities.Security;
 using MLMConquerorGlobalEdition.Repository.Identity;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
@@ -177,6 +178,42 @@ public class DisableTwoFactorHandlerTests
 
         user.TwoFactorEnabled.Should().BeFalse();
         user.TwoFactorEnrolledAt.Should().BeNull();
+    }
+
+    /// <summary>
+    /// Al borrarse la clave, Authenticator deja de estar entre los canales disponibles. Si siguiera
+    /// siendo el preferido, <c>AccountStatus</c> mostraría un canal que no aparece en su propia
+    /// lista, y quien reactivara el 2FA sin re-enrolar arrancaría apuntando a un factor inexistente.
+    /// </summary>
+    [Fact]
+    public async Task Handle_WhenPreferredChannelWasAuthenticator_FallsBackToEmail()
+    {
+        var user = User();
+        user.PreferredTwoFactorChannel = TwoFactorChannel.Authenticator;
+
+        var userManager = ManagerFor(user, "Ambassador");
+
+        var result = await Run(userManager, EnrollmentService(), Config("Admin"));
+
+        result.IsSuccess.Should().BeTrue(because: result.Error);
+        user.PreferredTwoFactorChannel.Should().Be(TwoFactorChannel.Email);
+        userManager.Verify(m => m.UpdateAsync(user), Times.Once);
+    }
+
+    /// <summary>
+    /// SMS no se toca: el teléfono confirmado sobrevive a la desactivación, así que sigue siendo un
+    /// destino válido. Sólo se corrige el canal que la desactivación acaba de dejar sin respaldo.
+    /// </summary>
+    [Fact]
+    public async Task Handle_WhenPreferredChannelWasSms_LeavesItAlone()
+    {
+        var user = User();
+        user.PreferredTwoFactorChannel = TwoFactorChannel.Sms;
+
+        var result = await Run(ManagerFor(user, "Ambassador"), EnrollmentService(), Config("Admin"));
+
+        result.IsSuccess.Should().BeTrue(because: result.Error);
+        user.PreferredTwoFactorChannel.Should().Be(TwoFactorChannel.Sms);
     }
 
     [Fact]
