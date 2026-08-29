@@ -5,8 +5,15 @@
    Administración compartan comportamiento sin compartir maquetación.
 
    El reto (ChallengeToken) no aparece por ninguna parte: viaja en una cookie HttpOnly que
-   pone el manejador del POST. Este componente nunca lo ve ni lo necesita. *@
+   pone el manejador del POST. Este componente nunca lo ve ni lo necesita — tampoco en modo
+   interactivo, donde no hay cookie y el reto se lo queda la página que hizo el login.
 
+   DOS MODOS DE ENVÍO, UN SOLO CUERPO: sin OnSubmit postea a FormAction como siempre; con OnSubmit
+   entrega el código sin recargar. Ver AccountForm.razor. El reenvío es un formulario aparte y
+   tiene su propia devolución, OnResend, por la misma razón: son dos acciones distintas y cada una
+   cambia de modo por su cuenta. *@
+
+@inherits AccountFormComponentBase
 @inject IStringLocalizer<SharedResources> L
 
 <div class="two-factor-verify">
@@ -38,19 +45,21 @@
         <div class="alert alert-info" role="status">@L["TwoFactor.Resent"]</div>
     }
 
-    @if (!string.IsNullOrWhiteSpace(ErrorCode))
+    @if (!string.IsNullOrWhiteSpace(ShownErrorCode))
     {
-        <div class="alert alert-danger" role="alert">@L[TwoFactorMessages.ErrorKeyFor(ErrorCode)]</div>
+        <div class="alert alert-danger" role="alert">@L[TwoFactorMessages.ErrorKeyFor(ShownErrorCode)]</div>
     }
 
-    <form method="post" action="@FormAction">
+    <AccountForm Action="@FormAction" OnSubmit="@Submit">
         <div class="mb-3">
             <label class="form-label" for="two-factor-code">@L["TwoFactor.CodeLabel"]</label>
             @* inputmode="numeric" saca el teclado numérico en el móvil en lugar del alfabético.
                autocomplete="one-time-code" es lo que hace que el sistema operativo ofrezca
                rellenar el código que acaba de llegar por SMS sin copiarlo a mano. Los dos
                juntos se llevan casi toda la fricción de esta pantalla. *@
-            <input id="two-factor-code"
+            <input @bind="Model.Code"
+                   @bind:event="oninput"
+                   id="two-factor-code"
                    name="Code"
                    type="text"
                    class="form-control"
@@ -63,21 +72,21 @@
                    autofocus />
             <small class="text-muted">@L["TwoFactor.CodeHint"]</small>
         </div>
-        <button type="submit" class="btn btn-warning w-100 fw-semibold">@L["TwoFactor.Submit"]</button>
-    </form>
+        <button type="submit" class="btn btn-warning w-100 fw-semibold" disabled="@Submitting">@L["TwoFactor.Submit"]</button>
+    </AccountForm>
 
     @* El botón de reenviar no existe para el autenticador: no hay nada que reenviar y pulsarlo
        gastaría cupo de emisiones sin llegar a enviar nada. *@
     @if (ShowResend)
     {
-        <form method="post" action="@ResendAction" class="mt-3 mb-0">
+        <AccountForm Action="@ResendAction" OnSubmit="@Resend" class="mt-3 mb-0">
             <p class="mb-0 small">
                 @L["TwoFactor.NoCodeQuestion"]
-                <button type="submit" class="btn btn-link p-0 align-baseline text-decoration-none">
+                <button type="submit" class="btn btn-link p-0 align-baseline text-decoration-none" disabled="@Submitting">
                     @L["TwoFactor.Resend"]
                 </button>
             </p>
-        </form>
+        </AccountForm>
     }
 
     @if (!string.IsNullOrWhiteSpace(CancelUrl))
@@ -89,15 +98,29 @@
 </div>
 
 @code {
-    /// <summary>Ruta a la que postea el código. La pone el portal: cada uno tiene la suya.</summary>
-    [Parameter, EditorRequired]
-    public string FormAction { get; set; } = string.Empty;
+    /// <summary>Ruta a la que postea el código. La pone el portal: cada uno tiene la suya.
+    /// No hace falta con OnSubmit.</summary>
+    [Parameter]
+    public string? FormAction { get; set; }
+
+    /// <summary>
+    /// Envío interactivo del código. Sin asignar, el formulario postea a <see cref="FormAction"/>.
+    /// </summary>
+    [Parameter]
+    public EventCallback<CodeFormModel> OnSubmit { get; set; }
 
     /// <summary>
     /// Ruta del reenvío. Si viene vacía no se ofrece reenviar, igual que con el autenticador.
     /// </summary>
     [Parameter]
     public string? ResendAction { get; set; }
+
+    /// <summary>
+    /// Reenvío interactivo. Asignarla también ofrece el botón de reenviar, igual que hace
+    /// <see cref="ResendAction"/> en modo formulario: sin una de las dos no hay nada que pulsar.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnResend { get; set; }
 
     /// <summary>Canal del reto: <c>Email</c>, <c>Sms</c> o <c>Authenticator</c>.</summary>
     [Parameter]
@@ -107,10 +130,6 @@
     [Parameter]
     public string? MaskedTarget { get; set; }
 
-    /// <summary>Código de error de la API, tal cual llega por query string.</summary>
-    [Parameter]
-    public string? ErrorCode { get; set; }
-
     /// <summary>Se acaba de reenviar un código.</summary>
     [Parameter]
     public bool Resent { get; set; }
@@ -119,9 +138,26 @@
     [Parameter]
     public string? CancelUrl { get; set; }
 
+    /// <summary>Lo que hay escrito ahora mismo en el campo. Solo se usa en modo interactivo.</summary>
+    private CodeFormModel Model { get; } = new();
+
+    /// <summary>
+    /// Se entrega una COPIA y no <see cref="Model"/>: la página se queda con lo que había cuando
+    /// se pulsó el botón, y no con una referencia viva que siga cambiando mientras espera a la API.
+    /// </summary>
+    private EventCallback Submit => SubmitFor(
+        OnSubmit, () => new CodeFormModel { Code = Model.Code });
+
+    private EventCallback Resend => SubmitFor(OnResend);
+
     private bool IsAuthenticator => TwoFactorMessages.IsAuthenticator(Channel);
 
     private bool IsSms => TwoFactorMessages.IsSms(Channel);
 
-    private bool ShowResend => !IsAuthenticator && !string.IsNullOrWhiteSpace(ResendAction);
+    /// <summary>
+    /// Se ofrece reenviar si hay por dónde hacerlo, sea la ruta del POST o la devolución
+    /// interactiva. Con el autenticador nunca.
+    /// </summary>
+    private bool ShowResend =>
+        !IsAuthenticator && (!string.IsNullOrWhiteSpace(ResendAction) || OnResend.HasDelegate);
 }

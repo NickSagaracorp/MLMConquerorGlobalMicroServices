@@ -8,6 +8,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- bUnit: renderiza de verdad los componentes de Account para comprobar sus DOS modos de
+         envío. No estaba en el repo; entra por este proyecto porque es el que ya referencia
+         SharedComponents y donde viven las pruebas de invariante de esa biblioteca.
+
+         Que arrastre Microsoft.AspNetCore.Components.WebAssembly no afecta a
+         SharedComponentsNoServerHostingTests: aquella prueba recorre el cierre transitivo del
+         ensamblado de SharedComponents, no el de este proyecto de pruebas. -->
+    <PackageReference Include="bunit" Version="2.9.0" />
     <PackageReference Include="coverlet.collector" Version="6.0.2" />
     <PackageReference Include="FluentAssertions" Version="6.12.0" />
     <PackageReference Include="FluentValidation" Version="11.11.0" />

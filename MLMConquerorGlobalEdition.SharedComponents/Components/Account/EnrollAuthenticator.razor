@@ -1,8 +1,14 @@
 @* Alta de la aplicación autenticadora: QR, clave en claro y el primer código.
 
    Igual que TwoFactorVerify, no trae tarjeta ni fondo: la maquetación la pone la página.
-   El EnrollmentToken vive en una cookie HttpOnly y no aparece aquí. *@
+   El EnrollmentToken vive en una cookie HttpOnly y no aparece aquí. En modo interactivo no hay
+   cookie: el token se lo queda la página desde que abrió el enrolamiento, y este componente sigue
+   sin verlo.
 
+   DOS MODOS DE ENVÍO, UN SOLO CUERPO: sin OnSubmit postea a FormAction como siempre; con OnSubmit
+   entrega el primer código sin recargar. Ver AccountForm.razor. *@
+
+@inherits AccountFormComponentBase
 @inject IStringLocalizer<SharedResources> L
 
 <div class="enroll-authenticator">
@@ -13,12 +19,12 @@
        delante. Los tres pasos van antes del QR, no después. *@
     <p class="text-muted small mb-3">@L["Enroll.Intro"]</p>
 
-    @if (!string.IsNullOrWhiteSpace(ErrorCode))
+    @if (!string.IsNullOrWhiteSpace(ShownErrorCode))
     {
         @* Sin aviso de "clave nueva": BeginAsync es idempotente mientras el enrolamiento sigue
            abierto, así que al volver de un código fallido el QR es el mismo que el usuario ya
            escaneó y no hay nada que rehacer. *@
-        <div class="alert alert-danger" role="alert">@L[TwoFactorMessages.ErrorKeyFor(ErrorCode)]</div>
+        <div class="alert alert-danger" role="alert">@L[TwoFactorMessages.ErrorKeyFor(ShownErrorCode)]</div>
     }
 
     @if (!string.IsNullOrWhiteSpace(QrCodePngDataUri))
@@ -44,12 +50,14 @@
         </div>
     }
 
-    <form method="post" action="@FormAction">
+    <AccountForm Action="@FormAction" OnSubmit="@Submit">
         <div class="mb-3">
             <label class="form-label" for="enroll-code">@L["TwoFactor.CodeLabel"]</label>
             @* Mismos atributos que en la verificación: teclado numérico en el móvil y
                autorrelleno del código de un solo uso. *@
-            <input id="enroll-code"
+            <input @bind="Model.Code"
+                   @bind:event="oninput"
+                   id="enroll-code"
                    name="Code"
                    type="text"
                    class="form-control"
@@ -62,8 +70,8 @@
                    autofocus />
             <small class="text-muted">@L["TwoFactor.CodeHint"]</small>
         </div>
-        <button type="submit" class="btn btn-warning w-100 fw-semibold">@L["Enroll.Submit"]</button>
-    </form>
+        <button type="submit" class="btn btn-warning w-100 fw-semibold" disabled="@Submitting">@L["Enroll.Submit"]</button>
+    </AccountForm>
 
     @* Cambia cómo entra a su cuenta a partir de ahora. Avisarlo después de activarlo llega
        tarde: el momento de decidir si tiene el teléfono a mano es este. *@
@@ -78,9 +86,16 @@
 </div>
 
 @code {
-    /// <summary>Ruta a la que postea el primer código de la aplicación.</summary>
-    [Parameter, EditorRequired]
-    public string FormAction { get; set; } = string.Empty;
+    /// <summary>Ruta a la que postea el primer código de la aplicación. No hace falta con OnSubmit.</summary>
+    [Parameter]
+    public string? FormAction { get; set; }
+
+    /// <summary>
+    /// Envío interactivo: recibe los seis dígitos. Sin asignar, el formulario postea a
+    /// <see cref="FormAction"/>.
+    /// </summary>
+    [Parameter]
+    public EventCallback<CodeFormModel> OnSubmit { get; set; }
 
     /// <summary>PNG del QR en data-URI, tal cual lo devuelve la API.</summary>
     [Parameter]
@@ -90,11 +105,17 @@
     [Parameter]
     public string? SharedKey { get; set; }
 
-    /// <summary>Código de error de la API, tal cual llega por query string.</summary>
-    [Parameter]
-    public string? ErrorCode { get; set; }
-
     /// <summary>Enlace de salida hacia el login. Si viene vacío no se pinta.</summary>
     [Parameter]
     public string? CancelUrl { get; set; }
+
+    /// <summary>Lo que hay escrito ahora mismo en el campo. Solo se usa en modo interactivo.</summary>
+    private CodeFormModel Model { get; } = new();
+
+    /// <summary>
+    /// Se entrega una COPIA y no <see cref="Model"/>: la página se queda con lo que había cuando
+    /// se pulsó el botón, y no con una referencia viva que siga cambiando mientras espera a la API.
+    /// </summary>
+    private EventCallback Submit => SubmitFor(
+        OnSubmit, () => new CodeFormModel { Code = Model.Code });
 }

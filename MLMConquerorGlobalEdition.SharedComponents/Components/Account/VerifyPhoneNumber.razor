@@ -6,14 +6,20 @@
    la pantalla se comporte distinto según por dónde se haya entrado no ayuda a nadie.
 
    El ChallengeToken no aparece aquí: viaja en una cookie HttpOnly que pone el manejador del POST,
-   igual que en TwoFactorVerify.
+   igual que en TwoFactorVerify. En modo interactivo no hay cookie ni manejador, así que el reto
+   se lo queda la página desde que AddPhoneNumber lo recibió; este componente sigue sin verlo, que
+   es como tiene que ser.
 
    La salida hacia AddPhoneNumber no es un adorno. El fallo más común en esta pantalla no es
    teclear mal el código: es haber tecleado mal el número en la anterior, y entonces el código no
    llega y no va a llegar por mucho que se espere. Sin esa salida, la única forma de arreglarlo es
    adivinar que hay que volver atrás; por eso el número enmascarado se enseña justo al lado, que
-   es lo que permite darse cuenta. *@
+   es lo que permite darse cuenta.
 
+   DOS MODOS DE ENVÍO, UN SOLO CUERPO: sin OnSubmit postea a FormAction como siempre; con OnSubmit
+   entrega el código sin recargar. Ver AccountForm.razor. *@
+
+@inherits AccountFormComponentBase
 @inject IStringLocalizer<SharedResources> L
 
 <div class="verify-phone-number">
@@ -29,18 +35,20 @@
         <p class="text-muted small mb-3">@L["TwoFactor.SentToPhone"]</p>
     }
 
-    @if (!string.IsNullOrWhiteSpace(ErrorCode))
+    @if (!string.IsNullOrWhiteSpace(ShownErrorCode))
     {
-        <div class="alert alert-danger" role="alert">@L[AccountMessages.ErrorKeyFor(ErrorCode)]</div>
+        <div class="alert alert-danger" role="alert">@L[AccountMessages.ErrorKeyFor(ShownErrorCode)]</div>
     }
 
-    <form method="post" action="@FormAction">
+    <AccountForm Action="@FormAction" OnSubmit="@Submit">
         <div class="mb-3">
             <label class="form-label" for="verify-phone-code">@L["TwoFactor.CodeLabel"]</label>
             @* Mismos atributos que en la verificación del login: teclado numérico en el móvil y
                autorrelleno del código de un solo uso, que es lo que evita copiarlo a mano desde
                la notificación del SMS. *@
-            <input id="verify-phone-code"
+            <input @bind="Model.Code"
+                   @bind:event="oninput"
+                   id="verify-phone-code"
                    name="Code"
                    type="text"
                    class="form-control"
@@ -53,8 +61,8 @@
                    autofocus />
             <small class="text-muted">@L["TwoFactor.CodeHint"]</small>
         </div>
-        <button type="submit" class="btn btn-warning w-100 fw-semibold">@L["TwoFactor.Submit"]</button>
-    </form>
+        <button type="submit" class="btn btn-warning w-100 fw-semibold" disabled="@Submitting">@L["TwoFactor.Submit"]</button>
+    </AccountForm>
 
     @if (!string.IsNullOrWhiteSpace(ChangePhoneUrl))
     {
@@ -72,9 +80,17 @@
 </div>
 
 @code {
-    /// <summary>Ruta a la que postea el código. La pone el portal: cada uno tiene la suya.</summary>
-    [Parameter, EditorRequired]
-    public string FormAction { get; set; } = string.Empty;
+    /// <summary>Ruta a la que postea el código. La pone el portal: cada uno tiene la suya.
+    /// No hace falta con OnSubmit.</summary>
+    [Parameter]
+    public string? FormAction { get; set; }
+
+    /// <summary>
+    /// Envío interactivo: recibe los seis dígitos. Sin asignar, el formulario postea a
+    /// <see cref="FormAction"/>.
+    /// </summary>
+    [Parameter]
+    public EventCallback<CodeFormModel> OnSubmit { get; set; }
 
     /// <summary>A dónde fue el código, ya enmascarado por la API (<c>MaskedTarget</c>).</summary>
     [Parameter]
@@ -84,11 +100,17 @@
     [Parameter]
     public string? ChangePhoneUrl { get; set; }
 
-    /// <summary>Código de error de la API, tal cual llega por query string.</summary>
-    [Parameter]
-    public string? ErrorCode { get; set; }
-
     /// <summary>Enlace de salida hacia la gestión de la cuenta. Si viene vacío no se pinta.</summary>
     [Parameter]
     public string? CancelUrl { get; set; }
+
+    /// <summary>Lo que hay escrito ahora mismo en el campo. Solo se usa en modo interactivo.</summary>
+    private CodeFormModel Model { get; } = new();
+
+    /// <summary>
+    /// Se entrega una COPIA y no <see cref="Model"/>: la página se queda con lo que había cuando
+    /// se pulsó el botón, y no con una referencia viva que siga cambiando mientras espera a la API.
+    /// </summary>
+    private EventCallback Submit => SubmitFor(
+        OnSubmit, () => new CodeFormModel { Code = Model.Code });
 }

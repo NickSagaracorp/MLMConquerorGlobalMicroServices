@@ -13,8 +13,14 @@
 
    El aviso del SMS va ANTES del botón. Al pulsar sale un mensaje de verdad al número tecleado
    —con su coste para quien lo recibe y consumo del cupo de emisiones—, y eso se decide sabiéndolo,
-   no descubriéndolo cuando llega. *@
+   no descubriéndolo cuando llega.
 
+   DOS MODOS DE ENVÍO, UN SOLO CUERPO: sin OnSubmit postea a FormAction como siempre; con OnSubmit
+   entrega el número sin recargar. Ver AccountForm.razor. En modo interactivo el reto que devuelve
+   la API no puede guardarse en la cookie HttpOnly que pone el manejador del POST, así que se lo
+   queda la página y se lo pasa después a VerifyPhoneNumber. *@
+
+@inherits AccountFormComponentBase
 @inject IStringLocalizer<SharedResources> L
 
 <div class="add-phone-number">
@@ -22,25 +28,26 @@
     <h5 class="mb-1">@L["AddPhone.Title"]</h5>
     <p class="mb-3">@L["AddPhone.Intro"]</p>
 
-    @if (!string.IsNullOrWhiteSpace(ErrorCode))
+    @if (!string.IsNullOrWhiteSpace(ShownErrorCode))
     {
-        <div class="alert alert-danger" role="alert">@L[AccountMessages.ErrorKeyFor(ErrorCode)]</div>
+        <div class="alert alert-danger" role="alert">@L[AccountMessages.ErrorKeyFor(ShownErrorCode)]</div>
     }
 
-    <form method="post" action="@FormAction">
+    <AccountForm Action="@FormAction" OnSubmit="@Submit">
         <div class="mb-3">
             <label class="form-label" for="add-phone-number">@L["Common.Phone"]</label>
             @* type="tel" e inputmode="tel" sacan el teclado telefónico en el móvil —con el '+'
                a mano, que en el alfabético está escondido tras dos pulsaciones—. autocomplete
                deja que el navegador ofrezca el número ya guardado. *@
-            <input id="add-phone-number"
+            <input @bind="Model.PhoneE164"
+                   @bind:event="oninput"
+                   id="add-phone-number"
                    name="PhoneE164"
                    type="tel"
                    class="form-control"
                    inputmode="tel"
                    autocomplete="tel"
                    placeholder="@L["AddPhone.Placeholder"]"
-                   value="@PhoneE164"
                    required
                    autofocus />
             <small class="d-block text-muted">@L["AddPhone.FormatExample"]</small>
@@ -49,8 +56,8 @@
 
         <p class="text-muted small">@L["AddPhone.SmsNotice"]</p>
 
-        <button type="submit" class="btn btn-warning w-100 fw-semibold">@L["AddPhone.Submit"]</button>
-    </form>
+        <button type="submit" class="btn btn-warning w-100 fw-semibold" disabled="@Submitting">@L["AddPhone.Submit"]</button>
+    </AccountForm>
 
     @if (!string.IsNullOrWhiteSpace(CancelUrl))
     {
@@ -61,9 +68,24 @@
 </div>
 
 @code {
-    /// <summary>Ruta a la que postea el número. La pone el portal: cada uno tiene la suya.</summary>
-    [Parameter, EditorRequired]
-    public string FormAction { get; set; } = string.Empty;
+    /// <summary>
+    /// Último valor visto de <see cref="PhoneE164"/>. Sirve para no pisar lo que el usuario está
+    /// tecleando cada vez que la página repinta por otro motivo —poner un ErrorCode, por ejemplo—:
+    /// el campo solo se rellena de nuevo cuando el parámetro cambia de verdad.
+    /// </summary>
+    private string? _seededPhone;
+
+    /// <summary>Ruta a la que postea el número. La pone el portal: cada uno tiene la suya.
+    /// No hace falta con OnSubmit.</summary>
+    [Parameter]
+    public string? FormAction { get; set; }
+
+    /// <summary>
+    /// Envío interactivo: recibe el número tecleado. Sin asignar, el formulario postea a
+    /// <see cref="FormAction"/>.
+    /// </summary>
+    [Parameter]
+    public EventCallback<PhoneFormModel> OnSubmit { get; set; }
 
     /// <summary>
     /// Número con el que llega el campo relleno. Sirve para volver aquí desde VerifyPhoneNumber
@@ -72,11 +94,25 @@
     [Parameter]
     public string? PhoneE164 { get; set; }
 
-    /// <summary>Código de error de la API, tal cual llega por query string.</summary>
-    [Parameter]
-    public string? ErrorCode { get; set; }
-
     /// <summary>Enlace de salida hacia la gestión de la cuenta. Si viene vacío no se pinta.</summary>
     [Parameter]
     public string? CancelUrl { get; set; }
+
+    /// <summary>Lo que hay escrito ahora mismo en el campo. Solo se usa en modo interactivo.</summary>
+    private PhoneFormModel Model { get; } = new();
+
+    /// <summary>
+    /// Se entrega una COPIA y no <see cref="Model"/>: la página se queda con lo que había cuando
+    /// se pulsó el botón, y no con una referencia viva que siga cambiando mientras espera a la API.
+    /// </summary>
+    private EventCallback Submit => SubmitFor(
+        OnSubmit, () => new PhoneFormModel { PhoneE164 = Model.PhoneE164 });
+
+    protected override void OnParametersSet()
+    {
+        if (_seededPhone == PhoneE164) return;
+
+        _seededPhone     = PhoneE164;
+        Model.PhoneE164  = PhoneE164 ?? string.Empty;
+    }
 }

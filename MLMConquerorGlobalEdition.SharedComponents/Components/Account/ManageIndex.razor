@@ -18,17 +18,27 @@
    tanto como la propia confirmación: si el canal preferido del 2FA es SMS, el backend lo pasa
    a correo en el mismo momento en que borra el teléfono (ver RemovePhoneHandler), y quien pulsa
    "quitar" tiene que saberlo antes de pulsar el botón, no descubrirlo en el siguiente inicio de
-   sesión cuando el código ya no le llega por SMS. *@
+   sesión cuando el código ya no le llega por SMS.
 
+   DOS MODOS DE ENVÍO, UN SOLO CUERPO, y aquí para las DOS acciones por separado: reenviar la
+   confirmación de correo y quitar el teléfono tienen cada una su ruta de POST y su devolución
+   interactiva. Ver AccountForm.razor.
+
+   La confirmación de quitar el teléfono sigue siendo de la página también en modo interactivo:
+   ConfirmRemovePhone y CancelRemovePhoneUrl no cambian. En web es un viaje por query string; en
+   móvil la página puede limitarse a poner el bool a true sin navegar a ningún sitio. Lo que este
+   componente promete —que el primer clic nunca borra— vale igual en los dos. *@
+
+@inherits AccountFormComponentBase
 @inject IStringLocalizer<SharedResources> L
 
 <div class="manage-index">
 
     <h5 class="mb-3">@L["Profile.PageTitle"]</h5>
 
-    @if (!string.IsNullOrWhiteSpace(ErrorCode))
+    @if (!string.IsNullOrWhiteSpace(ShownErrorCode))
     {
-        <div class="alert alert-danger" role="alert">@L[AccountMessages.ErrorKeyFor(ErrorCode)]</div>
+        <div class="alert alert-danger" role="alert">@L[AccountMessages.ErrorKeyFor(ShownErrorCode)]</div>
     }
 
     @* ---- Correo ---- *@
@@ -47,11 +57,11 @@
             {
                 <div class="alert alert-info mt-2 mb-0" role="status">@L["ManageIndex.ResendConfirmationSent"]</div>
             }
-            else if (!string.IsNullOrWhiteSpace(ResendConfirmationAction))
+            else if (CanResendConfirmation)
             {
-                <form method="post" action="@ResendConfirmationAction" class="mt-2">
-                    <button type="submit" class="btn btn-outline-primary btn-sm">@L["ConfirmEmail.ResendButton"]</button>
-                </form>
+                <AccountForm Action="@ResendConfirmationAction" OnSubmit="@ResendConfirmation" class="mt-2">
+                    <button type="submit" class="btn btn-outline-primary btn-sm" disabled="@Submitting">@L["ConfirmEmail.ResendButton"]</button>
+                </AccountForm>
             }
         }
     </div>
@@ -73,13 +83,13 @@
         else if (ConfirmRemovePhone)
         {
             <div class="alert alert-warning" role="alert">@L["ManageIndex.RemovePhoneWarning"]</div>
-            <form method="post" action="@RemovePhoneAction" class="d-flex flex-wrap gap-2">
-                <button type="submit" class="btn btn-danger btn-sm">@L["Common.Confirm"]</button>
+            <AccountForm Action="@RemovePhoneAction" OnSubmit="@RemovePhone" class="d-flex flex-wrap gap-2">
+                <button type="submit" class="btn btn-danger btn-sm" disabled="@Submitting">@L["Common.Confirm"]</button>
                 @if (!string.IsNullOrWhiteSpace(CancelRemovePhoneUrl))
                 {
                     <a href="@CancelRemovePhoneUrl" class="btn btn-outline-secondary btn-sm">@L["Common.Cancel"]</a>
                 }
-            </form>
+            </AccountForm>
         }
         else
         {
@@ -120,6 +130,13 @@
     /// <summary>Ruta a la que postea el reenvío de confirmación. Sin ella no se ofrece el botón.</summary>
     [Parameter]
     public string? ResendConfirmationAction { get; set; }
+
+    /// <summary>
+    /// Reenvío interactivo de la confirmación de correo. Asignarla también ofrece el botón, igual
+    /// que hace <see cref="ResendConfirmationAction"/> en modo formulario.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnResendConfirmation { get; set; }
 
     /// <summary>Se acaba de reenviar la confirmación. Igual que <c>Resent</c> en TwoFactorVerify.</summary>
     [Parameter]
@@ -164,11 +181,19 @@
     [Parameter]
     public string? RemovePhoneAction { get; set; }
 
+    /// <summary>Baja interactiva del teléfono, una vez confirmada.</summary>
+    [Parameter]
+    public EventCallback OnRemovePhone { get; set; }
+
     /// <summary>Enlace de vuelta a la vista normal desde el panel de confirmación.</summary>
     [Parameter]
     public string? CancelRemovePhoneUrl { get; set; }
 
-    /// <summary>Código de error de la API, tal cual llega por query string.</summary>
-    [Parameter]
-    public string? ErrorCode { get; set; }
+    /// <summary>Hay por dónde reenviar la confirmación: la ruta del POST o la devolución.</summary>
+    private bool CanResendConfirmation =>
+        !string.IsNullOrWhiteSpace(ResendConfirmationAction) || OnResendConfirmation.HasDelegate;
+
+    private EventCallback ResendConfirmation => SubmitFor(OnResendConfirmation);
+
+    private EventCallback RemovePhone => SubmitFor(OnRemovePhone);
 }

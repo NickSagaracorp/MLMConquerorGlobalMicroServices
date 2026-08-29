@@ -1,0 +1,69 @@
+@* El <form> del área de cuenta, con sus DOS modos de envío metidos en un solo sitio.
+
+   Estos componentes los montan cuatro anfitriones y solo dos tienen un servidor debajo:
+   AdminWeb y BizCenterWeb son ASP.NET Core, pero AdminApp y BizCenterApp son MAUI Blazor Hybrid
+   y ahí el BlazorWebView renderiza dentro del teléfono — no hay SSR estático ni endpoint al que
+   postear, así que un <form method="post" action="..."> no lleva a ninguna parte.
+
+     OnSubmit SIN asignar -> <form method="post" action="@Action">, recarga completa de página.
+                             Es lo que hace AdminWeb hoy y lo que sigue haciendo sin tocar nada.
+     OnSubmit ASIGNADO    -> se cancela el envío nativo y se llama a la devolución. Sin recarga,
+                             sin endpoint y sin nada que dependa de alojamiento web.
+
+   ESTO ESTÁ EN UN COMPONENTE PROPIO, Y NO COPIADO EN CADA FORMULARIO, PORQUE ES LA ÚNICA
+   DIFERENCIA ENTRE LOS DOS MODOS. El cuerpo del formulario —los campos, sus etiquetas, los
+   required/minlength/pattern, los autocomplete y los mensajes de error— es exactamente el mismo
+   marcado en los dos: partirlo en dos ramas @if habría significado escribir dos veces cada
+   pantalla y mantenerlas iguales a mano para siempre, que es justo lo contrario del principio de
+   "un componente se programa una sola vez".
+
+   LA VALIDACIÓN DE CLIENTE DEL NAVEGADOR SIGUE FUNCIONANDO EN LOS DOS MODOS, y por eso no hace
+   falta duplicarla en C#: el evento 'submit' no se dispara hasta que required, minlength y
+   pattern han pasado, así que cancelarlo aquí ocurre siempre DESPUÉS de esa comprobación y no se
+   salta ninguna. Lo único que el navegador no puede comprobar —que las dos casillas de contraseña
+   coincidan— lo hace AccountFormComponentBase, con el mismo código de error que usa el manejador
+   del POST para que el usuario lea el mismo mensaje por los dos caminos.
+
+   action="@Action" se pinta también en modo interactivo si el anfitrión lo pasa: no estorba,
+   porque preventDefault cancela el envío antes de que el navegador lo mire. Con Action nulo —lo
+   normal en móvil— el atributo no se pinta. *@
+
+<form method="post"
+      action="@Action"
+      @attributes="AdditionalAttributes"
+      @onsubmit="SubmitAsync"
+      @onsubmit:preventDefault="Interactive">
+    @ChildContent
+</form>
+
+@code {
+    /// <summary>
+    /// Ruta a la que postea el formulario cuando no hay envío interactivo. La pone el portal.
+    /// </summary>
+    [Parameter]
+    public string? Action { get; set; }
+
+    /// <summary>
+    /// Qué hacer al enviar sin recargar. Asignarla es lo que cambia de modo: sin ella el
+    /// formulario postea como siempre.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnSubmit { get; set; }
+
+    /// <summary>El cuerpo del formulario, que es el mismo en los dos modos.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Clases y demás atributos sueltos del <c>&lt;form&gt;</c> que ponga quien lo use.</summary>
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    /// <summary>
+    /// ¿Hay envío interactivo? Lo decide únicamente que alguien haya asignado
+    /// <see cref="OnSubmit"/>: no se consulta el modo de render ni nada del anfitrión, porque
+    /// esto tiene que valer igual dentro de un WebView de MAUI que en un circuito de servidor.
+    /// </summary>
+    private bool Interactive => OnSubmit.HasDelegate;
+
+    private Task SubmitAsync() => Interactive ? OnSubmit.InvokeAsync() : Task.CompletedTask;
+}

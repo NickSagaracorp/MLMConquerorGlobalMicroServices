@@ -21,17 +21,23 @@
 
    Las confirmaciones van por query string y sin JavaScript, igual que "quitar teléfono" en
    ManageIndex: el enlace lleva a una ruta que vuelve a montar este componente con la marca
-   puesta, y solo entonces se pinta el aviso y el botón que sí actúa. *@
+   puesta, y solo entonces se pinta el aviso y el botón que sí actúa. En modo interactivo la
+   página puede limitarse a poner ConfirmReEnroll o ConfirmDisable a true sin navegar a ningún
+   sitio; lo que este componente promete —que el primer clic no desactiva nada— vale igual.
 
+   DOS MODOS DE ENVÍO, UN SOLO CUERPO, y aquí para las DOS acciones que postean: cambiar el canal
+   preferido y apagar el segundo factor. Ver AccountForm.razor. *@
+
+@inherits AccountFormComponentBase
 @inject IStringLocalizer<SharedResources> L
 
 <div class="two-factor-panel">
 
     <h5 class="mb-3">@L["TwoFactorPanel.Title"]</h5>
 
-    @if (!string.IsNullOrWhiteSpace(ErrorCode))
+    @if (!string.IsNullOrWhiteSpace(ShownErrorCode))
     {
-        <div class="alert alert-danger" role="alert">@L[AccountMessages.ErrorKeyFor(ErrorCode)]</div>
+        <div class="alert alert-danger" role="alert">@L[AccountMessages.ErrorKeyFor(ShownErrorCode)]</div>
     }
 
     @* ---- Estado ---- *@
@@ -79,7 +85,7 @@
         <div class="two-factor-panel-channels mb-4">
             <h6 class="mb-1">@L["TwoFactorPanel.ChannelSectionTitle"]</h6>
 
-            <form method="post" action="@ChangeChannelAction">
+            <AccountForm Action="@ChangeChannelAction" OnSubmit="@ChangeChannel">
                 @foreach (var channel in AllChannels)
                 {
                     var available = IsAvailable(channel);
@@ -88,13 +94,17 @@
                     <div class="form-check mt-2">
                         @* Un canal sin destino se pinta deshabilitado, nunca oculto: el usuario
                            tiene que poder ver que existe para querer habilitarlo. *@
+                        @* @@onchange en vez de @@bind porque son tres radios sobre un mismo valor:
+                           lo que hace falta es apuntar cuál se acaba de marcar, y en SSR estático
+                           el manejador se descarta y manda el navegador con el name/value. *@
                         <input class="form-check-input"
                                type="radio"
                                name="Channel"
                                id="@inputId"
                                value="@channel"
-                               checked="@IsPreferred(channel)"
-                               disabled="@(!available)" />
+                               checked="@IsSelected(channel)"
+                               disabled="@(!available)"
+                               @onchange="@(() => Model.Channel = channel)" />
                         <label class="form-check-label @(available ? null : "text-muted")" for="@inputId">
                             @ChannelName(channel)
                         </label>
@@ -115,11 +125,11 @@
                     </div>
                 }
 
-                @if (!string.IsNullOrWhiteSpace(ChangeChannelAction))
+                @if (CanChangeChannel)
                 {
-                    <button type="submit" class="btn btn-outline-primary btn-sm mt-3">@L["Common.Save"]</button>
+                    <button type="submit" class="btn btn-outline-primary btn-sm mt-3" disabled="@Submitting">@L["Common.Save"]</button>
                 }
-            </form>
+            </AccountForm>
         </div>
     }
 
@@ -164,13 +174,13 @@
             else if (ConfirmDisable)
             {
                 <div class="alert alert-warning" role="alert">@L["TwoFactorPanel.DisableWarning"]</div>
-                <form method="post" action="@DisableAction" class="d-flex flex-wrap gap-2">
-                    <button type="submit" class="btn btn-danger btn-sm">@L["Common.Confirm"]</button>
+                <AccountForm Action="@DisableAction" OnSubmit="@Disable" class="d-flex flex-wrap gap-2">
+                    <button type="submit" class="btn btn-danger btn-sm" disabled="@Submitting">@L["Common.Confirm"]</button>
                     @if (!string.IsNullOrWhiteSpace(CancelDisableUrl))
                     {
                         <a href="@CancelDisableUrl" class="btn btn-outline-secondary btn-sm">@L["Common.Cancel"]</a>
                     }
-                </form>
+                </AccountForm>
             }
             else if (!string.IsNullOrWhiteSpace(DisableConfirmUrl))
             {
@@ -242,6 +252,13 @@
     public string? ChangeChannelAction { get; set; }
 
     /// <summary>
+    /// Cambio interactivo del canal preferido. Asignarla también ofrece el botón de guardar, igual
+    /// que hace <see cref="ChangeChannelAction"/> en modo formulario.
+    /// </summary>
+    [Parameter]
+    public EventCallback<TwoFactorChannelFormModel> OnChangeChannel { get; set; }
+
+    /// <summary>
     /// Ruta del enlace "volver a enrolar": no enrola nada por sí sola, solo hace que la página
     /// vuelva a montar este componente con <see cref="ConfirmReEnroll"/> a true.
     /// </summary>
@@ -271,13 +288,42 @@
     [Parameter]
     public string? DisableAction { get; set; }
 
+    /// <summary>Baja interactiva del segundo factor, una vez confirmada.</summary>
+    [Parameter]
+    public EventCallback OnDisable { get; set; }
+
     /// <summary>Enlace de vuelta a la vista normal desde el panel de confirmación.</summary>
     [Parameter]
     public string? CancelDisableUrl { get; set; }
 
-    /// <summary>Código de error de la API, tal cual llega por query string.</summary>
-    [Parameter]
-    public string? ErrorCode { get; set; }
+    /// <summary>
+    /// Canal marcado ahora mismo en los radios. Solo se usa en modo interactivo: en SSR estático
+    /// el navegador manda el que esté marcado por su <c>name</c> y su <c>value</c>.
+    /// </summary>
+    private TwoFactorChannelFormModel Model { get; } = new();
+
+    /// <summary>
+    /// Último <see cref="PreferredChannel"/> visto. Evita que un repintado por otro motivo —poner
+    /// un ErrorCode, por ejemplo— deshaga la elección que el usuario todavía no ha guardado.
+    /// </summary>
+    private string? _seededChannel;
+
+    protected override void OnParametersSet()
+    {
+        if (_seededChannel == PreferredChannel) return;
+
+        _seededChannel = PreferredChannel;
+        Model.Channel  = PreferredChannel ?? string.Empty;
+    }
+
+    /// <summary>Hay por dónde guardar el canal: la ruta del POST o la devolución.</summary>
+    private bool CanChangeChannel =>
+        !string.IsNullOrWhiteSpace(ChangeChannelAction) || OnChangeChannel.HasDelegate;
+
+    private EventCallback ChangeChannel => SubmitFor(
+        OnChangeChannel, () => new TwoFactorChannelFormModel { Channel = Model.Channel });
+
+    private EventCallback Disable => SubmitFor(OnDisable);
 
     /// <summary>
     /// ¿El servidor declaró este canal utilizable? Lo único que decide si se puede elegir.
@@ -285,8 +331,14 @@
     private bool IsAvailable(string channel) =>
         AvailableChannels?.Any(c => string.Equals(c?.Trim(), channel, StringComparison.OrdinalIgnoreCase)) == true;
 
-    private bool IsPreferred(string channel) =>
-        string.Equals(PreferredChannel?.Trim(), channel, StringComparison.OrdinalIgnoreCase);
+    /// <summary>
+    /// ¿Es el canal que está marcado? Sale de <see cref="Model"/> y no de
+    /// <see cref="PreferredChannel"/> para que en modo interactivo el radio siga la elección del
+    /// usuario. Antes de tocar nada los dos valen lo mismo, así que en SSR estático se pinta
+    /// exactamente lo mismo que antes.
+    /// </summary>
+    private bool IsSelected(string channel) =>
+        string.Equals(Model.Channel.Trim(), channel, StringComparison.OrdinalIgnoreCase);
 
     private string ChannelName(string? channel) =>
         TwoFactorMessages.IsAuthenticator(channel) ? L["TwoFactorPanel.ChannelAuthenticator"]
