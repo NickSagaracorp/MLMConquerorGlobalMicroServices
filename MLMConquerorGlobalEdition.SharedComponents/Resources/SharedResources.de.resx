@@ -1266,6 +1266,9 @@
   <data name="Account.Error.PasswordResetFailed" xml:space="preserve"><value>Ihr neues Passwort erfüllt nicht die unten aufgeführten Anforderungen. Bitte überprüfen Sie sie und versuchen Sie es erneut.</value></data>
   <data name="Account.Error.UserNotFound" xml:space="preserve"><value>Wir konnten dieses Konto nicht finden.</value></data>
   <data name="Account.Error.Generic" xml:space="preserve"><value>Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.</value></data>
+  <data name="Account.Error.PasswordChangeFailed" xml:space="preserve"><value>Wir konnten Ihr Passwort nicht ändern. Überprüfen Sie Ihr aktuelles Passwort und stellen Sie sicher, dass das neue die unten stehenden Anforderungen erfüllt.</value></data>
+  <data name="Account.Error.PasswordAlreadySet" xml:space="preserve"><value>Dieses Konto hat bereits ein Passwort. Verwenden Sie stattdessen „Passwort ändern“.</value></data>
+  <data name="Account.Error.InvalidPhone" xml:space="preserve"><value>Geben Sie eine gültige Telefonnummer im internationalen Format ein, z. B. +15551234567.</value></data>
   <data name="ResetPassword.RequirementsIntro" xml:space="preserve"><value>Ihr neues Passwort muss:</value></data>
   <data name="ResetPassword.RequirementLength" xml:space="preserve"><value>Mindestens 8 Zeichen lang sein</value></data>
   <data name="ResetPassword.RequirementUppercase" xml:space="preserve"><value>Mindestens einen Großbuchstaben enthalten</value></data>
@@ -1282,6 +1285,15 @@
   <data name="ConfirmEmail.InvalidTitle" xml:space="preserve"><value>Bestätigungslink ungültig</value></data>
   <data name="ConfirmEmail.InvalidMessage" xml:space="preserve"><value>Dieser Bestätigungslink ist ungültig oder wurde bereits verwendet. Fordern Sie unten einen neuen an.</value></data>
   <data name="ConfirmEmail.ResendButton" xml:space="preserve"><value>Bestätigungs-E-Mail erneut senden</value></data>
+  <data name="AccountLayout.PersonalData" xml:space="preserve"><value>Persönliche Daten</value></data>
+  <data name="ManageIndex.Confirmed" xml:space="preserve"><value>Bestätigt</value></data>
+  <data name="ManageIndex.Unconfirmed" xml:space="preserve"><value>Nicht bestätigt</value></data>
+  <data name="ManageIndex.ResendConfirmationSent" xml:space="preserve"><value>Wir haben eine neue Bestätigungs-E-Mail gesendet.</value></data>
+  <data name="ManageIndex.ChangePhone" xml:space="preserve"><value>Ändern</value></data>
+  <data name="ManageIndex.RemovePhoneWarning" xml:space="preserve"><value>Wenn Sie Ihr Telefon entfernen, wird die SMS-Verifizierung für dieses Konto deaktiviert. Falls SMS Ihre bevorzugte Zwei-Faktor-Methode war, wechselt sie zu E-Mail, bis Sie eine neue Nummer hinzufügen.</value></data>
+  <data name="SetPassword.Title" xml:space="preserve"><value>Passwort festlegen</value></data>
+  <data name="SetPassword.Subtitle" xml:space="preserve"><value>Dieses Konto hat noch kein Passwort. Wählen Sie unten eines aus.</value></data>
+  <data name="SetPassword.SubmitButton" xml:space="preserve"><value>PASSWORT FESTLEGEN</value></data>
 
   <!-- PageTitle — F5 -->
   <data name="PageTitle.Tickets" xml:space="preserve"><value>Support-Tickets</value></data>

@@ -1197,6 +1197,9 @@
   <data name="Account.Error.PasswordResetFailed" xml:space="preserve"><value>您的新密码不符合下方要求，请检查后重试。</value></data>
   <data name="Account.Error.UserNotFound" xml:space="preserve"><value>未找到该账户。</value></data>
   <data name="Account.Error.Generic" xml:space="preserve"><value>出现问题，请重试。</value></data>
+  <data name="Account.Error.PasswordChangeFailed" xml:space="preserve"><value>我们无法更改您的密码。请检查您的当前密码，并确保新密码符合下面的要求。</value></data>
+  <data name="Account.Error.PasswordAlreadySet" xml:space="preserve"><value>此账户已设置密码。请改用"修改密码"。</value></data>
+  <data name="Account.Error.InvalidPhone" xml:space="preserve"><value>请输入符合国际格式的有效电话号码，例如 +15551234567。</value></data>
   <data name="ResetPassword.RequirementsIntro" xml:space="preserve"><value>您的新密码必须：</value></data>
   <data name="ResetPassword.RequirementLength" xml:space="preserve"><value>至少包含8个字符</value></data>
   <data name="ResetPassword.RequirementUppercase" xml:space="preserve"><value>至少包含一个大写字母</value></data>
@@ -1213,6 +1216,15 @@
   <data name="ConfirmEmail.InvalidTitle" xml:space="preserve"><value>确认链接无效</value></data>
   <data name="ConfirmEmail.InvalidMessage" xml:space="preserve"><value>此确认链接无效或已被使用，请在下方重新申请。</value></data>
   <data name="ConfirmEmail.ResendButton" xml:space="preserve"><value>重新发送确认邮件</value></data>
+  <data name="AccountLayout.PersonalData" xml:space="preserve"><value>个人数据</value></data>
+  <data name="ManageIndex.Confirmed" xml:space="preserve"><value>已确认</value></data>
+  <data name="ManageIndex.Unconfirmed" xml:space="preserve"><value>未确认</value></data>
+  <data name="ManageIndex.ResendConfirmationSent" xml:space="preserve"><value>我们已发送新的确认邮件。</value></data>
+  <data name="ManageIndex.ChangePhone" xml:space="preserve"><value>更改</value></data>
+  <data name="ManageIndex.RemovePhoneWarning" xml:space="preserve"><value>移除电话号码将停用此账户的短信验证。如果短信是您首选的双重验证方式，它将切换为邮件，直到您添加新号码。</value></data>
+  <data name="SetPassword.Title" xml:space="preserve"><value>设置您的密码</value></data>
+  <data name="SetPassword.Subtitle" xml:space="preserve"><value>此账户尚未设置密码，请在下面选择一个。</value></data>
+  <data name="SetPassword.SubmitButton" xml:space="preserve"><value>设置密码</value></data>
 
   <!-- PageTitle — F5 -->
   <data name="PageTitle.Tickets" xml:space="preserve"><value>支持工单</value></data>

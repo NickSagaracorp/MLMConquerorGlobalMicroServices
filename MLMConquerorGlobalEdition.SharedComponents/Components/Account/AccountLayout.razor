@@ -1,0 +1,94 @@
+@* Navegación lateral entre las cuatro secciones de la gestión de cuenta: perfil, contraseña,
+   seguridad y datos personales.
+
+   Igual que el resto de Account, sin tarjeta ni fondo propios: la maquetación general la pone
+   el portal que lo monta, y administración cuelga de /admin/account/... mientras que el
+   portal de miembros usa otra raíz. Por eso ninguna ruta va escrita aquí — las cuatro llegan
+   como parámetro, y una sección sin ruta simplemente no aparece en el menú. Así un portal que
+   todavía no monta "Datos personales" (Tareas 8 y 9) no ofrece un enlace que lleva a un 404.
+
+   Marca la sección activa porque sin eso el usuario no sabe dónde está: son cuatro pantallas
+   parecidas, y perderse entre ellas es fácil si nada distingue en cuál se encuentra. *@
+
+@inject IStringLocalizer<SharedResources> L
+
+<div class="account-layout">
+    <nav class="account-layout-nav mb-4">
+        <ul class="nav nav-pills flex-column flex-sm-row">
+            @if (!string.IsNullOrWhiteSpace(ProfileUrl))
+            {
+                <li class="nav-item">
+                    <a class="nav-link @ActiveClass(ProfileSection)" href="@ProfileUrl" aria-current="@AriaCurrent(ProfileSection)">@L["Header.Profile"]</a>
+                </li>
+            }
+            @if (!string.IsNullOrWhiteSpace(PasswordUrl))
+            {
+                <li class="nav-item">
+                    <a class="nav-link @ActiveClass(PasswordSection)" href="@PasswordUrl" aria-current="@AriaCurrent(PasswordSection)">@L["Account.Password"]</a>
+                </li>
+            }
+            @if (!string.IsNullOrWhiteSpace(SecurityUrl))
+            {
+                <li class="nav-item">
+                    <a class="nav-link @ActiveClass(SecuritySection)" href="@SecurityUrl" aria-current="@AriaCurrent(SecuritySection)">@L["Nav.Security"]</a>
+                </li>
+            }
+            @if (!string.IsNullOrWhiteSpace(PersonalDataUrl))
+            {
+                <li class="nav-item">
+                    <a class="nav-link @ActiveClass(PersonalDataSection)" href="@PersonalDataUrl" aria-current="@AriaCurrent(PersonalDataSection)">@L["AccountLayout.PersonalData"]</a>
+                </li>
+            }
+        </ul>
+    </nav>
+
+    <div class="account-layout-content">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    /// <summary>Valores válidos de <see cref="ActiveSection"/>. Compáralos con estas constantes,
+    /// no con literales, para que un error de tecleo no deje el menú sin marcar nada.</summary>
+    public const string ProfileSection = "Profile";
+
+    /// <inheritdoc cref="ProfileSection"/>
+    public const string PasswordSection = "Password";
+
+    /// <inheritdoc cref="ProfileSection"/>
+    public const string SecuritySection = "Security";
+
+    /// <inheritdoc cref="ProfileSection"/>
+    public const string PersonalDataSection = "PersonalData";
+
+    /// <summary>Qué sección está viendo el usuario ahora mismo.</summary>
+    [Parameter, EditorRequired]
+    public string ActiveSection { get; set; } = string.Empty;
+
+    /// <summary>Ruta del perfil. La pone el portal; sin ella, esa entrada no se enseña.</summary>
+    [Parameter]
+    public string? ProfileUrl { get; set; }
+
+    /// <inheritdoc cref="ProfileUrl"/>
+    [Parameter]
+    public string? PasswordUrl { get; set; }
+
+    /// <inheritdoc cref="ProfileUrl"/>
+    [Parameter]
+    public string? SecurityUrl { get; set; }
+
+    /// <inheritdoc cref="ProfileUrl"/>
+    [Parameter]
+    public string? PersonalDataUrl { get; set; }
+
+    /// <summary>La página de la sección activa, envuelta por esta navegación.</summary>
+    [Parameter, EditorRequired]
+    public RenderFragment? ChildContent { get; set; }
+
+    private bool IsActive(string section) =>
+        string.Equals(ActiveSection?.Trim(), section, StringComparison.OrdinalIgnoreCase);
+
+    private string ActiveClass(string section) => IsActive(section) ? "active" : string.Empty;
+
+    private string? AriaCurrent(string section) => IsActive(section) ? "page" : null;
+}

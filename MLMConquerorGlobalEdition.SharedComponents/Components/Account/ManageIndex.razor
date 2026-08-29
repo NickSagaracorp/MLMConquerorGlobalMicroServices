@@ -1,0 +1,174 @@
+@* Perfil de la cuenta: correo con su estado de confirmación, y teléfono enmascarado con el
+   suyo. Pinta lo que devuelve GET /api/v1/auth/account-status, tal cual llega en los
+   parámetros — este componente no lo consulta, eso lo hace la página que lo monta.
+
+   Sin dependencia de SignupAPI: los parámetros son primitivos (string, bool), no el DTO
+   AccountStatusResponse, por la misma razón que TwoFactorVerify recibe Channel como texto y no
+   como el enum — SharedComponents no referencia SignupAPI y no debe empezar a hacerlo aquí.
+
+   Las acciones sobre el teléfono cambian según su estado, y cada una lleva a una ruta propia
+   que pone el portal:
+     - sin teléfono            -> "añadir"
+     - con teléfono sin confirmar -> "verificar" y "quitar"
+     - con teléfono confirmado    -> "cambiar" y "quitar"
+
+   "Quitar" nunca se ejecuta desde el primer clic. ConfirmRemovePhone lo activa la página al
+   recibir la marca en la query string de RemovePhoneConfirmUrl, y solo entonces se pinta el
+   formulario que sí postea a RemovePhoneAction. El aviso de esa pantalla intermedia importa
+   tanto como la propia confirmación: si el canal preferido del 2FA es SMS, el backend lo pasa
+   a correo en el mismo momento en que borra el teléfono (ver RemovePhoneHandler), y quien pulsa
+   "quitar" tiene que saberlo antes de pulsar el botón, no descubrirlo en el siguiente inicio de
+   sesión cuando el código ya no le llega por SMS. *@
+
+@inject IStringLocalizer<SharedResources> L
+
+<div class="manage-index">
+
+    <h5 class="mb-3">@L["Profile.PageTitle"]</h5>
+
+    @if (!string.IsNullOrWhiteSpace(ErrorCode))
+    {
+        <div class="alert alert-danger" role="alert">@L[AccountMessages.ErrorKeyFor(ErrorCode)]</div>
+    }
+
+    @* ---- Correo ---- *@
+    <div class="manage-index-email mb-4">
+        <label class="form-label d-block">@L["Account.Email"]</label>
+        <div class="d-flex align-items-center flex-wrap gap-2">
+            <span>@Email</span>
+            <span class="badge @(EmailConfirmed ? "bg-success" : "bg-warning text-dark")">
+                @(EmailConfirmed ? L["ManageIndex.Confirmed"] : L["ManageIndex.Unconfirmed"])
+            </span>
+        </div>
+
+        @if (!EmailConfirmed)
+        {
+            @if (EmailConfirmationResent)
+            {
+                <div class="alert alert-info mt-2 mb-0" role="status">@L["ManageIndex.ResendConfirmationSent"]</div>
+            }
+            else if (!string.IsNullOrWhiteSpace(ResendConfirmationAction))
+            {
+                <form method="post" action="@ResendConfirmationAction" class="mt-2">
+                    <button type="submit" class="btn btn-outline-primary btn-sm">@L["ConfirmEmail.ResendButton"]</button>
+                </form>
+            }
+        }
+    </div>
+
+    @* ---- Teléfono ---- *@
+    <div class="manage-index-phone">
+        <label class="form-label d-block">@L["Common.Phone"]</label>
+
+        @if (!HasPhone)
+        {
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                <span class="text-muted">@L["Profile.NotOnFile"]</span>
+                @if (!string.IsNullOrWhiteSpace(AddPhoneUrl))
+                {
+                    <a href="@AddPhoneUrl" class="btn btn-outline-primary btn-sm">@L["Common.Add"]</a>
+                }
+            </div>
+        }
+        else if (ConfirmRemovePhone)
+        {
+            <div class="alert alert-warning" role="alert">@L["ManageIndex.RemovePhoneWarning"]</div>
+            <form method="post" action="@RemovePhoneAction" class="d-flex flex-wrap gap-2">
+                <button type="submit" class="btn btn-danger btn-sm">@L["Common.Confirm"]</button>
+                @if (!string.IsNullOrWhiteSpace(CancelRemovePhoneUrl))
+                {
+                    <a href="@CancelRemovePhoneUrl" class="btn btn-outline-secondary btn-sm">@L["Common.Cancel"]</a>
+                }
+            </form>
+        }
+        else
+        {
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                <span>@MaskedPhone</span>
+                <span class="badge @(PhoneConfirmed ? "bg-success" : "bg-warning text-dark")">
+                    @(PhoneConfirmed ? L["ManageIndex.Confirmed"] : L["ManageIndex.Unconfirmed"])
+                </span>
+                @if (PhoneConfirmed)
+                {
+                    @if (!string.IsNullOrWhiteSpace(ChangePhoneUrl))
+                    {
+                        <a href="@ChangePhoneUrl" class="btn btn-outline-secondary btn-sm">@L["ManageIndex.ChangePhone"]</a>
+                    }
+                }
+                else if (!string.IsNullOrWhiteSpace(VerifyPhoneUrl))
+                {
+                    <a href="@VerifyPhoneUrl" class="btn btn-outline-secondary btn-sm">@L["TwoFactor.Submit"]</a>
+                }
+                @if (!string.IsNullOrWhiteSpace(RemovePhoneConfirmUrl))
+                {
+                    <a href="@RemovePhoneConfirmUrl" class="btn btn-outline-danger btn-sm">@L["Placement.RemoveAction"]</a>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>Correo de la cuenta.</summary>
+    [Parameter, EditorRequired]
+    public string Email { get; set; } = string.Empty;
+
+    /// <summary>¿Está confirmado?</summary>
+    [Parameter]
+    public bool EmailConfirmed { get; set; }
+
+    /// <summary>Ruta a la que postea el reenvío de confirmación. Sin ella no se ofrece el botón.</summary>
+    [Parameter]
+    public string? ResendConfirmationAction { get; set; }
+
+    /// <summary>Se acaba de reenviar la confirmación. Igual que <c>Resent</c> en TwoFactorVerify.</summary>
+    [Parameter]
+    public bool EmailConfirmationResent { get; set; }
+
+    /// <summary>Asteriscos y los cuatro últimos dígitos. Null si la cuenta no tiene teléfono.</summary>
+    [Parameter]
+    public string? MaskedPhone { get; set; }
+
+    /// <summary>¿La cuenta tiene teléfono dado de alta?</summary>
+    [Parameter]
+    public bool HasPhone { get; set; }
+
+    /// <summary>¿Ese teléfono está confirmado?</summary>
+    [Parameter]
+    public bool PhoneConfirmed { get; set; }
+
+    /// <summary>Ruta para dar de alta un teléfono, cuando la cuenta no tiene ninguno.</summary>
+    [Parameter]
+    public string? AddPhoneUrl { get; set; }
+
+    /// <summary>Ruta para sustituir el teléfono ya confirmado por otro.</summary>
+    [Parameter]
+    public string? ChangePhoneUrl { get; set; }
+
+    /// <summary>Ruta para confirmar el teléfono que todavía no lo está.</summary>
+    [Parameter]
+    public string? VerifyPhoneUrl { get; set; }
+
+    /// <summary>
+    /// Ruta a la que lleva el enlace "quitar": no borra nada por sí sola, solo hace que la
+    /// página vuelva a montar este componente con <see cref="ConfirmRemovePhone"/> a true.
+    /// </summary>
+    [Parameter]
+    public string? RemovePhoneConfirmUrl { get; set; }
+
+    /// <summary>Muestra el aviso y el formulario de confirmación en vez de las acciones normales.</summary>
+    [Parameter]
+    public bool ConfirmRemovePhone { get; set; }
+
+    /// <summary>Ruta a la que postea la baja real del teléfono, una vez confirmada.</summary>
+    [Parameter]
+    public string? RemovePhoneAction { get; set; }
+
+    /// <summary>Enlace de vuelta a la vista normal desde el panel de confirmación.</summary>
+    [Parameter]
+    public string? CancelRemovePhoneUrl { get; set; }
+
+    /// <summary>Código de error de la API, tal cual llega por query string.</summary>
+    [Parameter]
+    public string? ErrorCode { get; set; }
+}

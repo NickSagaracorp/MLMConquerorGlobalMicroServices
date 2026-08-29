@@ -1197,6 +1197,9 @@
   <data name="Account.Error.PasswordResetFailed" xml:space="preserve"><value>თქვენი ახალი პაროლი არ აკმაყოფილებს ქვემოთ მოცემულ მოთხოვნებს. გადაამოწმეთ ისინი და სცადეთ ხელახლა.</value></data>
   <data name="Account.Error.UserNotFound" xml:space="preserve"><value>ეს ანგარიში ვერ მოიძებნა.</value></data>
   <data name="Account.Error.Generic" xml:space="preserve"><value>დაფიქსირდა შეცდომა. გთხოვთ, სცადოთ ხელახლა.</value></data>
+  <data name="Account.Error.PasswordChangeFailed" xml:space="preserve"><value>ვერ შევძელით თქვენი პაროლის შეცვლა. გადაამოწმეთ მიმდინარე პაროლი და დარწმუნდით, რომ ახალი აკმაყოფილებს ქვემოთ მითითებულ მოთხოვნებს.</value></data>
+  <data name="Account.Error.PasswordAlreadySet" xml:space="preserve"><value>ამ ანგარიშს უკვე აქვს პაროლი. სამაგიეროდ გამოიყენეთ პაროლის შეცვლა.</value></data>
+  <data name="Account.Error.InvalidPhone" xml:space="preserve"><value>შეიყვანეთ სწორი ტელეფონის ნომერი საერთაშორისო ფორმატში, მაგალითად +15551234567.</value></data>
   <data name="ResetPassword.RequirementsIntro" xml:space="preserve"><value>თქვენი ახალი პაროლი უნდა:</value></data>
   <data name="ResetPassword.RequirementLength" xml:space="preserve"><value>შეიცავდეს მინიმუმ 8 სიმბოლოს</value></data>
   <data name="ResetPassword.RequirementUppercase" xml:space="preserve"><value>შეიცავდეს მინიმუმ ერთ დიდ ასოს</value></data>
@@ -1213,6 +1216,15 @@
   <data name="ConfirmEmail.InvalidTitle" xml:space="preserve"><value>დადასტურების ბმული არასწორია</value></data>
   <data name="ConfirmEmail.InvalidMessage" xml:space="preserve"><value>დადასტურების ეს ბმული არასწორია ან უკვე გამოყენებულია. მოითხოვეთ ახალი ქვემოთ.</value></data>
   <data name="ConfirmEmail.ResendButton" xml:space="preserve"><value>დადასტურების ელფოსტის ხელახლა გაგზავნა</value></data>
+  <data name="AccountLayout.PersonalData" xml:space="preserve"><value>პირადი მონაცემები</value></data>
+  <data name="ManageIndex.Confirmed" xml:space="preserve"><value>დადასტურებულია</value></data>
+  <data name="ManageIndex.Unconfirmed" xml:space="preserve"><value>არ არის დადასტურებული</value></data>
+  <data name="ManageIndex.ResendConfirmationSent" xml:space="preserve"><value>გამოგზავნილია დადასტურების ახალი ელფოსტა.</value></data>
+  <data name="ManageIndex.ChangePhone" xml:space="preserve"><value>შეცვლა</value></data>
+  <data name="ManageIndex.RemovePhoneWarning" xml:space="preserve"><value>ტელეფონის ამოშლა გამორთავს SMS-ით დადასტურებას ამ ანგარიშისთვის. თუ SMS იყო თქვენი სასურველი ორფაქტორიანი მეთოდი, ის შეიცვლება ელფოსტით, სანამ ახალ ნომერს დაამატებთ.</value></data>
+  <data name="SetPassword.Title" xml:space="preserve"><value>დააყენეთ თქვენი პაროლი</value></data>
+  <data name="SetPassword.Subtitle" xml:space="preserve"><value>ამ ანგარიშს ჯერ არ აქვს პაროლი. აირჩიეთ ერთი ქვემოთ.</value></data>
+  <data name="SetPassword.SubmitButton" xml:space="preserve"><value>პაროლის დაყენება</value></data>
 
   <!-- PageTitle — F5 -->
   <data name="PageTitle.Tickets" xml:space="preserve"><value>მხარდაჭერის ბილეთები</value></data>

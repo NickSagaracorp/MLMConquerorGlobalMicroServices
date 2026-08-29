@@ -26,6 +26,16 @@ public static class AccountMessages
             "TOKEN_EXPIRED"          => "Account.Error.TokenExpired",
             "PASSWORD_RESET_FAILED"  => "Account.Error.PasswordResetFailed",
             "USER_NOT_FOUND"         => "Account.Error.UserNotFound",
+
+            // ChangePassword / SetPassword / teléfono (gestión de cuenta autenticada).
+            "PASSWORD_CHANGE_FAILED" => "Account.Error.PasswordChangeFailed",
+            // Mismo texto que PASSWORD_RESET_FAILED a propósito: en ambos casos la contraseña
+            // nueva no cumple la política, y el usuario la tiene justo debajo en la lista de
+            // requisitos. Un texto propio no diría nada distinto.
+            "PASSWORD_SET_FAILED"    => "Account.Error.PasswordResetFailed",
+            "PASSWORD_ALREADY_SET"   => "Account.Error.PasswordAlreadySet",
+            "INVALID_PHONE"          => "Account.Error.InvalidPhone",
+
             _                        => "Account.Error.Generic"
         };
 

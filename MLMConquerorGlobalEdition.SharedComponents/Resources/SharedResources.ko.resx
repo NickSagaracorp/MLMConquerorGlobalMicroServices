@@ -1266,6 +1266,9 @@
   <data name="Account.Error.PasswordResetFailed" xml:space="preserve"><value>새 비밀번호가 아래 요구 사항을 충족하지 않습니다. 확인 후 다시 시도해 주세요.</value></data>
   <data name="Account.Error.UserNotFound" xml:space="preserve"><value>해당 계정을 찾을 수 없습니다.</value></data>
   <data name="Account.Error.Generic" xml:space="preserve"><value>문제가 발생했습니다. 다시 시도해 주세요.</value></data>
+  <data name="Account.Error.PasswordChangeFailed" xml:space="preserve"><value>비밀번호를 변경할 수 없습니다. 현재 비밀번호를 확인하고 새 비밀번호가 아래 요구 사항을 충족하는지 확인하세요.</value></data>
+  <data name="Account.Error.PasswordAlreadySet" xml:space="preserve"><value>이 계정에는 이미 비밀번호가 설정되어 있습니다. 대신 비밀번호 변경을 사용하세요.</value></data>
+  <data name="Account.Error.InvalidPhone" xml:space="preserve"><value>국제 형식의 유효한 전화번호를 입력하세요. 예: +15551234567.</value></data>
   <data name="ResetPassword.RequirementsIntro" xml:space="preserve"><value>새 비밀번호는 다음 조건을 충족해야 합니다:</value></data>
   <data name="ResetPassword.RequirementLength" xml:space="preserve"><value>최소 8자 이상</value></data>
   <data name="ResetPassword.RequirementUppercase" xml:space="preserve"><value>대문자를 하나 이상 포함</value></data>
@@ -1282,6 +1285,15 @@
   <data name="ConfirmEmail.InvalidTitle" xml:space="preserve"><value>확인 링크가 유효하지 않습니다</value></data>
   <data name="ConfirmEmail.InvalidMessage" xml:space="preserve"><value>이 확인 링크가 유효하지 않거나 이미 사용되었습니다. 아래에서 새 링크를 요청하세요.</value></data>
   <data name="ConfirmEmail.ResendButton" xml:space="preserve"><value>확인 이메일 다시 보내기</value></data>
+  <data name="AccountLayout.PersonalData" xml:space="preserve"><value>개인 정보</value></data>
+  <data name="ManageIndex.Confirmed" xml:space="preserve"><value>확인됨</value></data>
+  <data name="ManageIndex.Unconfirmed" xml:space="preserve"><value>미확인</value></data>
+  <data name="ManageIndex.ResendConfirmationSent" xml:space="preserve"><value>새 확인 이메일을 보냈습니다.</value></data>
+  <data name="ManageIndex.ChangePhone" xml:space="preserve"><value>변경</value></data>
+  <data name="ManageIndex.RemovePhoneWarning" xml:space="preserve"><value>전화번호를 삭제하면 이 계정의 SMS 인증이 비활성화됩니다. SMS가 선호하는 2단계 인증 방법이었다면 새 번호를 추가할 때까지 이메일로 전환됩니다.</value></data>
+  <data name="SetPassword.Title" xml:space="preserve"><value>비밀번호 설정</value></data>
+  <data name="SetPassword.Subtitle" xml:space="preserve"><value>이 계정에는 아직 비밀번호가 없습니다. 아래에서 비밀번호를 선택하세요.</value></data>
+  <data name="SetPassword.SubmitButton" xml:space="preserve"><value>비밀번호 설정</value></data>
 
   <!-- PageTitle — F5 -->
   <data name="PageTitle.Tickets" xml:space="preserve"><value>지원 티켓</value></data>
