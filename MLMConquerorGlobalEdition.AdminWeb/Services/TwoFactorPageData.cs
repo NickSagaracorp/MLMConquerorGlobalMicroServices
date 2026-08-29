@@ -51,7 +51,7 @@ public sealed class TwoFactorPageData
     /// </remarks>
     public ChallengeDisplay? ReadChallenge()
     {
-        var token = _httpContextAccessor.HttpContext?.Request.Cookies[AuthEndpoints.ChallengeCookie];
+        var token = ChallengeCookies.Read(_httpContextAccessor.HttpContext, ChallengeCookies.Login);
         if (string.IsNullOrWhiteSpace(token))
             return null;
 
@@ -84,8 +84,8 @@ public sealed class TwoFactorPageData
     /// </summary>
     public async Task<EnrollmentMaterial?> BeginEnrollmentAsync(CancellationToken ct = default)
     {
-        var enrollmentToken = _httpContextAccessor.HttpContext?
-            .Request.Cookies[AuthEndpoints.EnrollmentCookie];
+        var enrollmentToken = ChallengeCookies.Read(
+            _httpContextAccessor.HttpContext, ChallengeCookies.Enrollment);
 
         if (string.IsNullOrWhiteSpace(enrollmentToken))
             return null;

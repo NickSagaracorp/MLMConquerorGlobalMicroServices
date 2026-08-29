@@ -1,0 +1,64 @@
+@page "/admin/account"
+@attribute [Authorize]
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Account
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
+@inject AccountPageData PageData
+@inject IStringLocalizer<SharedResources> L
+
+@* Perfil de la cuenta: correo con su estado y teléfono enmascarado con el suyo.
+
+   Sin @@rendermode: SSR estático, como el resto del área. Los datos se piden aquí, durante el
+   render, con UNA sola llamada a account-status; los formularios postean a endpoints mínimos y
+   el token de acceso nunca sale del servidor.
+
+   "Quitar teléfono" no borra desde el primer clic: el enlace vuelve a esta misma ruta con
+   ?confirm=remove-phone y es esa segunda pasada la que pinta el aviso y el botón que sí actúa.
+   El aviso importa tanto como la confirmación — si el canal preferido del segundo factor era
+   SMS, el backend lo pasa a correo en el mismo momento en que borra el número. *@
+
+<PageTitle>@L["Profile.PageTitle"]</PageTitle>
+
+<AdminAccountShell ActiveSection="@AccountLayout.ProfileSection"
+                   Unavailable="@(_status is null)"
+                   ErrorCode="@PageData.StatusErrorCode">
+    @if (_status is not null)
+    {
+        <ManageIndex Email="@_status.Email"
+                     EmailConfirmed="@_status.EmailConfirmed"
+                     ResendConfirmationAction="/account/resend-confirmation"
+                     EmailConfirmationResent="@(Resent == "1")"
+                     MaskedPhone="@_status.MaskedPhone"
+                     HasPhone="@_status.HasPhone"
+                     PhoneConfirmed="@_status.PhoneConfirmed"
+                     AddPhoneUrl="/admin/account/phone"
+                     ChangePhoneUrl="/admin/account/phone"
+                     VerifyPhoneUrl="/admin/account/phone/verify"
+                     RemovePhoneConfirmUrl="/admin/account?confirm=remove-phone"
+                     ConfirmRemovePhone="@(Confirm == RemovePhoneConfirmation)"
+                     RemovePhoneAction="/account/phone/remove"
+                     CancelRemovePhoneUrl="/admin/account"
+                     ErrorCode="@Error" />
+    }
+</AdminAccountShell>
+
+@code {
+    /// <summary>Marca de la query que activa la pantalla de confirmación de la baja del teléfono.</summary>
+    private const string RemovePhoneConfirmation = "remove-phone";
+
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
+    /// <summary>Se acaba de reenviar el correo de confirmación de dirección.</summary>
+    [SupplyParameterFromQuery]
+    public string? Resent { get; set; }
+
+    /// <summary>Qué acción está pidiendo confirmación. Ver <see cref="RemovePhoneConfirmation"/>.</summary>
+    [SupplyParameterFromQuery]
+    public string? Confirm { get; set; }
+
+    private AccountPageData.AccountStatus? _status;
+
+    protected override async Task OnInitializedAsync() =>
+        _status = await PageData.GetStatusAsync();
+}

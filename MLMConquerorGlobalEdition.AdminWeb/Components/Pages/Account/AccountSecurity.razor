@@ -1,0 +1,68 @@
+@page "/admin/account/security"
+@attribute [Authorize]
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Account
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
+@inject AccountPageData PageData
+@inject IStringLocalizer<SharedResources> L
+
+@* Panel del segundo factor: qué tiene puesto la cuenta y qué canales tienen destino.
+
+   LOS CANALES LLEGAN DEL SERVIDOR TAL CUAL. AvailableChannels es lo que devuelve account-status y
+   no se recalcula aquí: la regla que los decide (correo siempre; SMS solo con teléfono
+   confirmado; autenticador solo con enrolamiento confirmado) vive en GetAccountStatusHandler, que
+   es quien conoce el estado real. Reproducirla en el portal solo abriría la puerta a que las dos
+   copias divergieran y se le ofreciera al usuario un canal sin destino.
+
+   RequiredByRole se resuelve comparando los roles del token con Auth:TwoFactor:MandatoryRoles,
+   que es exactamente lo que hace LoginHandler para decidir si fuerza el enrolamiento. Las dos
+   listas tienen que ser la misma.
+
+   LO QUE ESTA PANTALLA NO PUEDE OFRECER TODAVÍA, y por qué está en blanco en vez de mal:
+   SignupAPI no expone ninguna ruta para cambiar el canal preferido, para apagar el segundo factor
+   ni para abrir un enrolamiento desde una sesión ya iniciada — two-factor/enroll/begin pide un
+   EnrollmentToken que solo emite el login cuando exige enrolarse. Por eso ChangeChannelAction,
+   DisableAction, DisableConfirmUrl, EnrollUrl y ReEnrollConfirmUrl van sin valor: el componente
+   está escrito para que una ruta ausente signifique "esta acción no se ofrece" y así no pinta
+   botones que llevarían a un 404. Reportado como bloqueante de la tarea. *@
+
+<PageTitle>@L["TwoFactorPanel.Title"]</PageTitle>
+
+<AdminAccountShell ActiveSection="@AccountLayout.SecuritySection"
+                   Unavailable="@(_status is null)"
+                   ErrorCode="@PageData.StatusErrorCode">
+    @if (_status is not null)
+    {
+        <TwoFactorPanel TwoFactorEnabled="@_status.TwoFactorEnabled"
+                        PreferredChannel="@_status.PreferredTwoFactorChannel"
+                        AvailableChannels="@_status.AvailableChannels"
+                        EnrolledAt="@_status.TwoFactorEnrolledAt"
+                        RequiredByRole="@_requiredByRole"
+                        PhoneSetupUrl="@PhoneSetupUrl"
+                        ErrorCode="@Error" />
+    }
+</AdminAccountShell>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
+    private AccountPageData.AccountStatus? _status;
+    private bool _requiredByRole;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _status         = await PageData.GetStatusAsync();
+        _requiredByRole = PageData.TwoFactorRequiredByRole();
+    }
+
+    /// <summary>
+    /// A dónde va el enlace "configurar" del canal SMS. Lo elige esta página porque es la que
+    /// conoce el estado del teléfono: con un número ya dado de alta pero sin confirmar, mandar al
+    /// alta otra vez haría teclearlo de nuevo sin necesidad.
+    /// </summary>
+    private string PhoneSetupUrl =>
+        _status is { HasPhone: true, PhoneConfirmed: false }
+            ? "/admin/account/phone/verify"
+            : "/admin/account/phone";
+}

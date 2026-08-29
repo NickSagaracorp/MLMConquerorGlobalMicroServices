@@ -1,0 +1,28 @@
+@page "/admin/account/phone"
+@attribute [Authorize]
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Account
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
+@inject IStringLocalizer<SharedResources> L
+
+@* Alta del teléfono del canal SMS.
+
+   Sin llamada a account-status: esta pantalla es un campo y un botón, y no hay nada del estado de
+   la cuenta que cambie lo que pinta. La regla de "una sola llamada por página" se cumple mejor
+   con cero que con una que no se usa.
+
+   Sirve tanto para dar de alta el primer número como para sustituir uno ya confirmado: el
+   endpoint de la API es el mismo y manda el código en los dos casos. *@
+
+<PageTitle>@L["AddPhone.Title"]</PageTitle>
+
+<AdminAccountShell ActiveSection="@AccountLayout.ProfileSection">
+    <AddPhoneNumber FormAction="/account/phone/add"
+                    ErrorCode="@Error"
+                    CancelUrl="/admin/account" />
+</AdminAccountShell>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+}

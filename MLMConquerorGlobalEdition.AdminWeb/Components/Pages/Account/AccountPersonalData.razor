@@ -1,0 +1,32 @@
+@page "/admin/account/personal-data"
+@attribute [Authorize]
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Account
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
+@inject AccountPageData PageData
+@inject IStringLocalizer<SharedResources> L
+
+@* Qué guarda el sistema de la cuenta, y cómo descargarlo.
+
+   Sin llamada a la API: lo único que decide esta pantalla es si enseña la categoría de perfil de
+   miembro, y eso sale del claim memberId del token — el handler de datos personales rellena
+   MemberProfile exactamente cuando MemberProfileId no está vacío. Pedir el archivo entero de
+   datos personales para quedarse con ese booleano movería toda la PII del usuario por la red a
+   cambio de nada.
+
+   La descarga NO apunta a la API: GET /api/v1/auth/personal-data/download pide Bearer y un
+   <a href> normal no lo lleva, así que un enlace directo devolvería 401. Va contra
+   /account/personal-data/download, que hace de intermediaria poniendo el token de la sesión. *@
+
+<PageTitle>@L["PersonalData.PageTitle"]</PageTitle>
+
+<AdminAccountShell ActiveSection="@AccountLayout.PersonalDataSection">
+    <PersonalData DownloadUrl="/account/personal-data/download"
+                  HasMemberProfile="@PageData.HasMemberProfile()"
+                  ErrorCode="@Error" />
+</AdminAccountShell>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+}

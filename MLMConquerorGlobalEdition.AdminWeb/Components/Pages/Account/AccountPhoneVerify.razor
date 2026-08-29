@@ -1,0 +1,46 @@
+@page "/admin/account/phone/verify"
+@attribute [Authorize]
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Account
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
+@inject AccountPageData PageData
+@inject NavigationManager Navigation
+@inject IStringLocalizer<SharedResources> L
+
+@* Redención del código que confirma el teléfono recién dado de alta.
+
+   Sin reto no hay nada que verificar. Puede pasar por dos caminos: la cookie caducó, o el usuario
+   llegó desde el perfil con un teléfono que quedó sin confirmar en otra sesión. En los dos casos
+   el único sitio que emite un reto nuevo es POST /api/v1/auth/phone, así que se vuelve al alta en
+   vez de pintar un formulario que fallaría al enviarse — que es lo mismo que hace el manejador
+   del POST cuando se encuentra sin cookie.
+
+   El ChallengeToken no aparece en la pantalla ni en la URL: viaja en la cookie HttpOnly que puso
+   el alta, igual que el reto del segundo factor del login. Lo que sí va en la query es el destino
+   ya enmascarado (***4321), que no es una credencial y es lo único que permite al usuario darse
+   cuenta de que se equivocó al teclear el número. *@
+
+<PageTitle>@L["VerifyPhone.Title"]</PageTitle>
+
+<AdminAccountShell ActiveSection="@AccountLayout.ProfileSection">
+    <VerifyPhoneNumber FormAction="/account/phone/verify"
+                       MaskedPhone="@Target"
+                       ChangePhoneUrl="/admin/account/phone"
+                       ErrorCode="@Error"
+                       CancelUrl="/admin/account" />
+</AdminAccountShell>
+
+@code {
+    /// <summary>Destino enmascarado que puso el alta al redirigir hasta aquí.</summary>
+    [SupplyParameterFromQuery]
+    public string? Target { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (!PageData.HasPhoneChallenge())
+            Navigation.NavigateTo("/admin/account/phone?error=INVALID_CHALLENGE", forceLoad: false);
+    }
+}

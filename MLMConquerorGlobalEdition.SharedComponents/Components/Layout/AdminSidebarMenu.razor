@@ -1,4 +1,5 @@
 @inject NavigationManager Nav
+@inject IStringLocalizer<SharedResources> L
 
 <div class="logo position-relative">
     <a href="/admin/dashboard" class="d-block text-decoration-none">
@@ -421,6 +422,21 @@
                 </li>
             </Authorized>
         </AuthorizeView>
+
+        @* ── Mi cuenta ──
+           Sin AuthorizeView: no es una sección del negocio, es la propia cuenta de quien está
+           mirando el menú, y cualquiera que haya entrado tiene una. Va justo encima de "Logout"
+           porque las dos son sobre uno mismo y no sobre lo que administra.
+
+           IsSection y no IsActive: el área tiene seis pantallas colgando de /admin/account y la
+           entrada tiene que quedarse marcada en todas — con IsActive solo se encendería en el
+           perfil y el usuario perdería de vista dónde está en cuanto entrara en "Seguridad". *@
+        <li class="menu-item @(IsSection("/admin/account") ? "active" : "")">
+            <a href="/admin/account" class="menu-link @(IsSection("/admin/account") ? "active" : "")">
+                <i class="ri-user-settings-line menu-icon"></i>
+                <span class="title">@L["Account.Title"]</span>
+            </a>
+        </li>
 
         <li class="menu-item">
             <a href="/account/logout" class="menu-link">
