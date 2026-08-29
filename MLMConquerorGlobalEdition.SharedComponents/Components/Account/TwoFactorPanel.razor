@@ -1,0 +1,310 @@
+@* Centro de la gestión del segundo factor para un usuario que ya entró: qué tiene puesto y qué
+   puede cambiar. Pinta lo que devuelve GET /api/v1/auth/account-status, tal cual llega en los
+   parámetros — este componente no lo consulta, eso lo hace la página que lo monta.
+
+   Sin dependencia de SignupAPI ni de Domain: los parámetros son primitivos, y los canales llegan
+   como texto y no como TwoFactorChannel, por lo mismo que TwoFactorVerify recibe Channel como
+   texto — SharedComponents no referencia ninguno de los dos y no debe empezar a hacerlo aquí.
+
+   LOS CANALES DISPONIBLES LLEGAN EN AvailableChannels Y NO SE CALCULAN AQUÍ. La regla que los
+   decide (correo siempre; SMS solo con teléfono confirmado; autenticador solo con enrolamiento
+   confirmado) vive en el servidor, que es quien sabe el estado real de la cuenta. Si esta
+   pantalla la reprodujera por su cuenta, bastaría una divergencia entre las dos —un teléfono
+   borrado en otra pestaña, una regla que cambia en el servidor y no aquí— para ofrecerle al
+   usuario un canal sin destino. Elegirlo lo deja pidiendo un código que nunca sale y sin poder
+   entrar en su siguiente inicio de sesión. Por eso una lista vacía o nula no habilita nada: ante
+   la duda, no se ofrece.
+
+   Un canal que no está disponible NO desaparece. Se pinta deshabilitado y con la frase de qué
+   falta para habilitarlo, más el enlace que lleva a hacerlo. Ocultarlo sin más deja al usuario
+   sin saber siquiera que ese canal existe, y sin forma de averiguar por qué el suyo no está.
+
+   Las confirmaciones van por query string y sin JavaScript, igual que "quitar teléfono" en
+   ManageIndex: el enlace lleva a una ruta que vuelve a montar este componente con la marca
+   puesta, y solo entonces se pinta el aviso y el botón que sí actúa. *@
+
+@inject IStringLocalizer<SharedResources> L
+
+<div class="two-factor-panel">
+
+    <h5 class="mb-3">@L["TwoFactorPanel.Title"]</h5>
+
+    @if (!string.IsNullOrWhiteSpace(ErrorCode))
+    {
+        <div class="alert alert-danger" role="alert">@L[AccountMessages.ErrorKeyFor(ErrorCode)]</div>
+    }
+
+    @* ---- Estado ---- *@
+    <div class="two-factor-panel-status mb-4">
+        <div class="d-flex align-items-center flex-wrap gap-2">
+            <label class="form-label mb-0">@L["Common.Status"]</label>
+            <span class="badge @(TwoFactorEnabled ? "bg-success" : "bg-secondary")">
+                @(TwoFactorEnabled ? L["Common.Active"] : L["Common.Inactive"])
+            </span>
+        </div>
+
+        @if (TwoFactorEnabled)
+        {
+            <div class="d-flex align-items-center flex-wrap gap-2 mt-2">
+                <label class="form-label mb-0">@L["TwoFactorPanel.PreferredChannelLabel"]</label>
+                <span>@ChannelName(PreferredChannel)</span>
+            </div>
+        }
+
+        @* La fecha de enrolamiento es la única pista de cuándo se dio de alta la aplicación que
+           genera los códigos. Sirve para reconocer un enrolamiento que uno no hizo. *@
+        @if (EnrolledAt.HasValue)
+        {
+            <p class="text-muted small mb-0 mt-2">
+                @string.Format((string)L["TwoFactorPanel.EnrolledSince"], EnrolledAt.Value.ToString("d"))
+            </p>
+        }
+    </div>
+
+    @* ---- Activar: solo cuando no hay 2FA ---- *@
+    @if (!TwoFactorEnabled)
+    {
+        <div class="two-factor-panel-enable mb-4">
+            <p class="text-muted small">@L["TwoFactorPanel.EnableHint"]</p>
+            @if (!string.IsNullOrWhiteSpace(EnrollUrl))
+            {
+                <a href="@EnrollUrl" class="btn btn-warning fw-semibold">@L["TwoFactorPanel.Enable"]</a>
+            }
+        </div>
+    }
+
+    @* ---- Canal preferido: solo con el 2FA activo ---- *@
+    @if (TwoFactorEnabled)
+    {
+        <div class="two-factor-panel-channels mb-4">
+            <h6 class="mb-1">@L["TwoFactorPanel.ChannelSectionTitle"]</h6>
+
+            <form method="post" action="@ChangeChannelAction">
+                @foreach (var channel in AllChannels)
+                {
+                    var available = IsAvailable(channel);
+                    var inputId   = $"two-factor-channel-{channel.ToLowerInvariant()}";
+
+                    <div class="form-check mt-2">
+                        @* Un canal sin destino se pinta deshabilitado, nunca oculto: el usuario
+                           tiene que poder ver que existe para querer habilitarlo. *@
+                        <input class="form-check-input"
+                               type="radio"
+                               name="Channel"
+                               id="@inputId"
+                               value="@channel"
+                               checked="@IsPreferred(channel)"
+                               disabled="@(!available)" />
+                        <label class="form-check-label @(available ? null : "text-muted")" for="@inputId">
+                            @ChannelName(channel)
+                        </label>
+
+                        @if (!available)
+                        {
+                            <div class="small text-muted">
+                                @L[RequirementKeyFor(channel)]
+                                @{
+                                    var setupUrl = SetupUrlFor(channel);
+                                }
+                                @if (!string.IsNullOrWhiteSpace(setupUrl))
+                                {
+                                    <a href="@setupUrl" class="ms-1">@L["TwoFactorPanel.SetUpLink"]</a>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(ChangeChannelAction))
+                {
+                    <button type="submit" class="btn btn-outline-primary btn-sm mt-3">@L["Common.Save"]</button>
+                }
+            </form>
+        </div>
+    }
+
+    @* ---- Volver a enrolar: solo si ya hay enrolamiento ---- *@
+    @if (EnrolledAt.HasValue)
+    {
+        <div class="two-factor-panel-reenroll mb-4">
+            @if (ConfirmReEnroll)
+            {
+                @* Quien vuelve a enrolar suele creer que añade un segundo dispositivo. No: el
+                   nuevo secreto sustituye al anterior, y la aplicación que estaba usando deja de
+                   dar códigos válidos en cuanto termine. Enterarse después es quedarse fuera. *@
+                <div class="alert alert-warning" role="alert">@L["TwoFactorPanel.ReEnrollWarning"]</div>
+                <div class="d-flex flex-wrap gap-2">
+                    @if (!string.IsNullOrWhiteSpace(EnrollUrl))
+                    {
+                        <a href="@EnrollUrl" class="btn btn-warning btn-sm">@L["Common.Confirm"]</a>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(CancelReEnrollUrl))
+                    {
+                        <a href="@CancelReEnrollUrl" class="btn btn-outline-secondary btn-sm">@L["Common.Cancel"]</a>
+                    }
+                </div>
+            }
+            else if (!string.IsNullOrWhiteSpace(ReEnrollConfirmUrl))
+            {
+                <a href="@ReEnrollConfirmUrl" class="btn btn-outline-secondary btn-sm">@L["TwoFactorPanel.ReEnroll"]</a>
+            }
+        </div>
+    }
+
+    @* ---- Desactivar: solo con el 2FA activo y si el rol no lo exige ---- *@
+    @if (TwoFactorEnabled)
+    {
+        <div class="two-factor-panel-disable">
+            @if (RequiredByRole)
+            {
+                @* Sin botón, pero con motivo. Un botón que falta y no se explica se lee como una
+                   pantalla rota; escrito, se lee como lo que es: una política de la organización. *@
+                <p class="text-muted small mb-0">@L["TwoFactorPanel.RequiredByRole"]</p>
+            }
+            else if (ConfirmDisable)
+            {
+                <div class="alert alert-warning" role="alert">@L["TwoFactorPanel.DisableWarning"]</div>
+                <form method="post" action="@DisableAction" class="d-flex flex-wrap gap-2">
+                    <button type="submit" class="btn btn-danger btn-sm">@L["Common.Confirm"]</button>
+                    @if (!string.IsNullOrWhiteSpace(CancelDisableUrl))
+                    {
+                        <a href="@CancelDisableUrl" class="btn btn-outline-secondary btn-sm">@L["Common.Cancel"]</a>
+                    }
+                </form>
+            }
+            else if (!string.IsNullOrWhiteSpace(DisableConfirmUrl))
+            {
+                <a href="@DisableConfirmUrl" class="btn btn-outline-danger btn-sm">@L["TwoFactorPanel.Disable"]</a>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Nombre del canal de correo tal y como lo emite <c>TwoFactorChannel</c>. Los otros dos ya
+    /// están en <see cref="TwoFactorMessages"/>; se comparan como texto porque SharedComponents no
+    /// referencia Domain.
+    /// </summary>
+    private const string EmailChannel = "Email";
+
+    /// <summary>Los tres canales que existen, en el orden en que se ofrecen.</summary>
+    /// <remarks>
+    /// Esta lista es solo el catálogo de lo que puede pintarse. Qué está habilitado lo dice
+    /// <see cref="AvailableChannels"/>, y nada más.
+    /// </remarks>
+    private static readonly string[] AllChannels =
+    [
+        EmailChannel,
+        TwoFactorMessages.SmsChannel,
+        TwoFactorMessages.AuthenticatorChannel
+    ];
+
+    /// <summary>¿La cuenta tiene el segundo factor activo?</summary>
+    [Parameter]
+    public bool TwoFactorEnabled { get; set; }
+
+    /// <summary>Canal preferido: <c>Email</c>, <c>Sms</c> o <c>Authenticator</c>.</summary>
+    [Parameter]
+    public string? PreferredChannel { get; set; }
+
+    /// <summary>
+    /// Canales con destino real, calculados por el servidor y enviados en <c>account-status</c>.
+    /// No se recalculan aquí; ver la cabecera del archivo. Nula o vacía no habilita ninguno.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<string>? AvailableChannels { get; set; }
+
+    /// <summary>Cuándo se enroló la aplicación autenticadora. Null si nunca se enroló.</summary>
+    [Parameter]
+    public DateTime? EnrolledAt { get; set; }
+
+    /// <summary>El rol del usuario exige el segundo factor, así que no puede desactivarlo.</summary>
+    [Parameter]
+    public bool RequiredByRole { get; set; }
+
+    /// <summary>
+    /// Ruta del enrolamiento con QR. Sirve para activar el 2FA la primera vez y para volver a
+    /// enrolar: en los dos casos el destino es la misma pantalla.
+    /// </summary>
+    [Parameter]
+    public string? EnrollUrl { get; set; }
+
+    /// <summary>
+    /// Ruta que lleva a poner el teléfono al día —alta o verificación, según el estado— para
+    /// habilitar el SMS. La elige la página, que es la que conoce ese estado.
+    /// </summary>
+    [Parameter]
+    public string? PhoneSetupUrl { get; set; }
+
+    /// <summary>Ruta a la que postea el cambio de canal preferido. Sin ella no se ofrece guardar.</summary>
+    [Parameter]
+    public string? ChangeChannelAction { get; set; }
+
+    /// <summary>
+    /// Ruta del enlace "volver a enrolar": no enrola nada por sí sola, solo hace que la página
+    /// vuelva a montar este componente con <see cref="ConfirmReEnroll"/> a true.
+    /// </summary>
+    [Parameter]
+    public string? ReEnrollConfirmUrl { get; set; }
+
+    /// <summary>Muestra el aviso de que el enrolamiento anterior deja de servir.</summary>
+    [Parameter]
+    public bool ConfirmReEnroll { get; set; }
+
+    /// <summary>Enlace de vuelta a la vista normal desde el aviso de re-enrolamiento.</summary>
+    [Parameter]
+    public string? CancelReEnrollUrl { get; set; }
+
+    /// <summary>
+    /// Ruta del enlace "desactivar": tampoco desactiva nada, solo pide
+    /// <see cref="ConfirmDisable"/>.
+    /// </summary>
+    [Parameter]
+    public string? DisableConfirmUrl { get; set; }
+
+    /// <summary>Muestra el aviso y el formulario que sí desactiva el segundo factor.</summary>
+    [Parameter]
+    public bool ConfirmDisable { get; set; }
+
+    /// <summary>Ruta a la que postea la baja real del segundo factor, una vez confirmada.</summary>
+    [Parameter]
+    public string? DisableAction { get; set; }
+
+    /// <summary>Enlace de vuelta a la vista normal desde el panel de confirmación.</summary>
+    [Parameter]
+    public string? CancelDisableUrl { get; set; }
+
+    /// <summary>Código de error de la API, tal cual llega por query string.</summary>
+    [Parameter]
+    public string? ErrorCode { get; set; }
+
+    /// <summary>
+    /// ¿El servidor declaró este canal utilizable? Lo único que decide si se puede elegir.
+    /// </summary>
+    private bool IsAvailable(string channel) =>
+        AvailableChannels?.Any(c => string.Equals(c?.Trim(), channel, StringComparison.OrdinalIgnoreCase)) == true;
+
+    private bool IsPreferred(string channel) =>
+        string.Equals(PreferredChannel?.Trim(), channel, StringComparison.OrdinalIgnoreCase);
+
+    private string ChannelName(string? channel) =>
+        TwoFactorMessages.IsAuthenticator(channel) ? L["TwoFactorPanel.ChannelAuthenticator"]
+        : TwoFactorMessages.IsSms(channel)         ? L["TwoFactorPanel.ChannelSms"]
+        :                                            L["Common.Email"];
+
+    /// <summary>Qué le falta al canal para poder usarse.</summary>
+    private static string RequirementKeyFor(string channel) =>
+        TwoFactorMessages.IsAuthenticator(channel) ? "TwoFactorPanel.AuthenticatorRequirement"
+        : TwoFactorMessages.IsSms(channel)         ? "TwoFactorPanel.SmsRequirement"
+        :                                            "TwoFactorPanel.EmailRequirement";
+
+    /// <summary>
+    /// A dónde ir para habilitarlo. El correo no lleva enlace: no hay nada que el usuario pueda
+    /// hacer desde aquí para darle destino.
+    /// </summary>
+    private string? SetupUrlFor(string channel) =>
+        TwoFactorMessages.IsAuthenticator(channel) ? EnrollUrl
+        : TwoFactorMessages.IsSms(channel)         ? PhoneSetupUrl
+        :                                            null;
+}

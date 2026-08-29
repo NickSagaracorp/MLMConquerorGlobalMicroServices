@@ -1225,6 +1225,36 @@
   <data name="SetPassword.Title" xml:space="preserve"><value>设置您的密码</value></data>
   <data name="SetPassword.Subtitle" xml:space="preserve"><value>此账户尚未设置密码，请在下面选择一个。</value></data>
   <data name="SetPassword.SubmitButton" xml:space="preserve"><value>设置密码</value></data>
+  <!-- TwoFactorPanel / AddPhoneNumber / VerifyPhoneNumber — segundo factor y teléfono (Tarea 6) -->
+  <data name="Account.Error.PhoneNotFound" xml:space="preserve"><value>此账户未登记电话号码。请先添加一个。</value></data>
+  <data name="Account.Error.InvalidChallenge" xml:space="preserve"><value>此验证已失效。请重新添加您的电话号码以获取新验证码。</value></data>
+  <data name="Account.Error.ChannelUnavailable" xml:space="preserve"><value>该方式尚未在此账户上启用。请先完成设置，然后再选择。</value></data>
+  <data name="TwoFactorPanel.Title" xml:space="preserve"><value>双重验证</value></data>
+  <data name="TwoFactorPanel.PreferredChannelLabel" xml:space="preserve"><value>首选方式</value></data>
+  <data name="TwoFactorPanel.EnrolledSince" xml:space="preserve"><value>身份验证器应用注册于 {0}。</value></data>
+  <data name="TwoFactorPanel.Enable" xml:space="preserve"><value>启用双重验证</value></data>
+  <data name="TwoFactorPanel.EnableHint" xml:space="preserve"><value>双重验证会在您登录时要求输入第二个验证码，因此仅凭密码无法进入您的账户。</value></data>
+  <data name="TwoFactorPanel.ChannelSectionTitle" xml:space="preserve"><value>您如何接收验证码</value></data>
+  <data name="TwoFactorPanel.ChannelSms" xml:space="preserve"><value>短信（SMS）</value></data>
+  <data name="TwoFactorPanel.ChannelAuthenticator" xml:space="preserve"><value>身份验证器应用</value></data>
+  <data name="TwoFactorPanel.SmsRequirement" xml:space="preserve"><value>要使用短信，请添加电话号码并完成验证。</value></data>
+  <data name="TwoFactorPanel.AuthenticatorRequirement" xml:space="preserve"><value>要使用身份验证器应用，请先在手机上完成设置。</value></data>
+  <data name="TwoFactorPanel.EmailRequirement" xml:space="preserve"><value>此账户目前无法使用邮件验证码。</value></data>
+  <data name="TwoFactorPanel.SetUpLink" xml:space="preserve"><value>去设置</value></data>
+  <data name="TwoFactorPanel.ReEnroll" xml:space="preserve"><value>重新设置身份验证器应用</value></data>
+  <data name="TwoFactorPanel.ReEnrollWarning" xml:space="preserve"><value>重新设置身份验证器应用会替换您现在使用的那个。完成后，您今天使用的应用将不再生成有效验证码，因此请在开始前准备好新的应用。</value></data>
+  <data name="TwoFactorPanel.Disable" xml:space="preserve"><value>关闭双重验证</value></data>
+  <data name="TwoFactorPanel.DisableWarning" xml:space="preserve"><value>关闭双重验证后，仅凭密码就能进入您的账户。任何知道密码的人都可以冒用您的身份登录。</value></data>
+  <data name="TwoFactorPanel.RequiredByRole" xml:space="preserve"><value>您的角色要求启用双重验证，因此无法在此关闭。这是贵组织的政策，并非本页面出错。</value></data>
+  <data name="AddPhone.Title" xml:space="preserve"><value>添加电话号码</value></data>
+  <data name="AddPhone.Intro" xml:space="preserve"><value>我们会将登录验证码以短信发送到此号码。</value></data>
+  <data name="AddPhone.Placeholder" xml:space="preserve"><value>+14155552671</value></data>
+  <data name="AddPhone.FormatExample" xml:space="preserve"><value>示例：+14155552671</value></data>
+  <data name="AddPhone.FormatHint" xml:space="preserve"><value>请以 + 和国家代码开头，然后填写号码其余部分，不要加空格、连字符或括号。</value></data>
+  <data name="AddPhone.SmsNotice" xml:space="preserve"><value>继续后，我们会向此号码发送一个 6 位验证码，以确认号码属于您。可能会产生短信费用。</value></data>
+  <data name="AddPhone.Submit" xml:space="preserve"><value>发送验证码</value></data>
+  <data name="VerifyPhone.Title" xml:space="preserve"><value>验证您的电话号码</value></data>
+  <data name="VerifyPhone.ChangeNumber" xml:space="preserve"><value>号码有误？请输入其他号码</value></data>
 
   <!-- PageTitle — F5 -->
   <data name="PageTitle.Tickets" xml:space="preserve"><value>支持工单</value></data>

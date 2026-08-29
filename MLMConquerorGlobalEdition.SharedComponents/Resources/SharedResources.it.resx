@@ -1294,6 +1294,36 @@
   <data name="SetPassword.Title" xml:space="preserve"><value>Imposta la tua password</value></data>
   <data name="SetPassword.Subtitle" xml:space="preserve"><value>Questo account non ha ancora una password. Scegline una qui sotto.</value></data>
   <data name="SetPassword.SubmitButton" xml:space="preserve"><value>IMPOSTA PASSWORD</value></data>
+  <!-- TwoFactorPanel / AddPhoneNumber / VerifyPhoneNumber — segundo factor y teléfono (Tarea 6) -->
+  <data name="Account.Error.PhoneNotFound" xml:space="preserve"><value>Questo account non ha alcun numero di telefono. Aggiungine uno prima.</value></data>
+  <data name="Account.Error.InvalidChallenge" xml:space="preserve"><value>Questa verifica non è più valida. Aggiungi di nuovo il tuo numero per ricevere un nuovo codice.</value></data>
+  <data name="Account.Error.ChannelUnavailable" xml:space="preserve"><value>Questo metodo non è ancora disponibile su questo account. Configuralo prima e poi selezionalo.</value></data>
+  <data name="TwoFactorPanel.Title" xml:space="preserve"><value>Verifica in due passaggi</value></data>
+  <data name="TwoFactorPanel.PreferredChannelLabel" xml:space="preserve"><value>Metodo preferito</value></data>
+  <data name="TwoFactorPanel.EnrolledSince" xml:space="preserve"><value>App di autenticazione registrata il {0}.</value></data>
+  <data name="TwoFactorPanel.Enable" xml:space="preserve"><value>Attiva la verifica in due passaggi</value></data>
+  <data name="TwoFactorPanel.EnableHint" xml:space="preserve"><value>La verifica in due passaggi richiede un secondo codice quando accedi, così la tua password da sola non basta per entrare nel tuo account.</value></data>
+  <data name="TwoFactorPanel.ChannelSectionTitle" xml:space="preserve"><value>Come ricevi i tuoi codici</value></data>
+  <data name="TwoFactorPanel.ChannelSms" xml:space="preserve"><value>Messaggio di testo (SMS)</value></data>
+  <data name="TwoFactorPanel.ChannelAuthenticator" xml:space="preserve"><value>App di autenticazione</value></data>
+  <data name="TwoFactorPanel.SmsRequirement" xml:space="preserve"><value>Per usare gli SMS, aggiungi un numero di telefono e verificalo.</value></data>
+  <data name="TwoFactorPanel.AuthenticatorRequirement" xml:space="preserve"><value>Per usare un'app di autenticazione, configurala prima sul tuo telefono.</value></data>
+  <data name="TwoFactorPanel.EmailRequirement" xml:space="preserve"><value>I codici via e-mail non sono disponibili su questo account al momento.</value></data>
+  <data name="TwoFactorPanel.SetUpLink" xml:space="preserve"><value>Configura</value></data>
+  <data name="TwoFactorPanel.ReEnroll" xml:space="preserve"><value>Configura di nuovo l'app di autenticazione</value></data>
+  <data name="TwoFactorPanel.ReEnrollWarning" xml:space="preserve"><value>Configurare di nuovo l'app di autenticazione sostituisce quella che hai adesso. Appena avrai finito, l'app che usi oggi smetterà di generare codici validi, quindi tieni a portata di mano quella nuova prima di iniziare.</value></data>
+  <data name="TwoFactorPanel.Disable" xml:space="preserve"><value>Disattiva la verifica in due passaggi</value></data>
+  <data name="TwoFactorPanel.DisableWarning" xml:space="preserve"><value>Senza la verifica in due passaggi, la tua password da sola basterà per entrare nel tuo account. Chiunque la scopra potrà accedere al posto tuo.</value></data>
+  <data name="TwoFactorPanel.RequiredByRole" xml:space="preserve"><value>Il tuo ruolo richiede la verifica in due passaggi, quindi non può essere disattivata da qui. È una politica della tua organizzazione, non un problema di questa schermata.</value></data>
+  <data name="AddPhone.Title" xml:space="preserve"><value>Aggiungi un numero di telefono</value></data>
+  <data name="AddPhone.Intro" xml:space="preserve"><value>Invieremo i codici di accesso via SMS a questo numero.</value></data>
+  <data name="AddPhone.Placeholder" xml:space="preserve"><value>+14155552671</value></data>
+  <data name="AddPhone.FormatExample" xml:space="preserve"><value>Esempio: +14155552671</value></data>
+  <data name="AddPhone.FormatHint" xml:space="preserve"><value>Inizia con + e il prefisso del tuo paese, poi il resto del numero, senza spazi, trattini o parentesi.</value></data>
+  <data name="AddPhone.SmsNotice" xml:space="preserve"><value>Continuando, invieremo un codice di 6 cifre via SMS a questo numero per verificare che sia tuo. Potrebbero essere applicate tariffe per i messaggi.</value></data>
+  <data name="AddPhone.Submit" xml:space="preserve"><value>Invia il codice</value></data>
+  <data name="VerifyPhone.Title" xml:space="preserve"><value>Verifica il tuo numero di telefono</value></data>
+  <data name="VerifyPhone.ChangeNumber" xml:space="preserve"><value>Numero sbagliato? Inseriscine un altro</value></data>
 
   <!-- PageTitle — F5 -->
   <data name="PageTitle.Tickets" xml:space="preserve"><value>Ticket di supporto</value></data>

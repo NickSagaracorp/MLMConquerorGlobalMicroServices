@@ -35,6 +35,26 @@ public static class AccountMessages
             "PASSWORD_SET_FAILED"    => "Account.Error.PasswordResetFailed",
             "PASSWORD_ALREADY_SET"   => "Account.Error.PasswordAlreadySet",
             "INVALID_PHONE"          => "Account.Error.InvalidPhone",
+            "PHONE_NOT_FOUND"        => "Account.Error.PhoneNotFound",
+
+            // Segundo factor gestionado desde la cuenta: alta y verificación del teléfono, cambio
+            // de canal preferido, re-enrolamiento. Los cuatro códigos del código de un solo uso
+            // reutilizan el texto de TwoFactorMessages porque dicen exactamente lo mismo y el
+            // usuario tiene delante el mismo campo de seis dígitos; duplicarlos con otra
+            // redacción solo conseguiría que la misma situación se explicase de dos maneras.
+            "CODE_INVALID"           => "TwoFactor.Error.CodeInvalid",
+            "CODE_EXPIRED"           => "TwoFactor.Error.CodeExpired",
+            "TOO_MANY_ATTEMPTS"      => "TwoFactor.Error.TooManyAttempts",
+            "TOO_MANY_REQUESTS"      => "TwoFactor.Error.TooManyRequests",
+
+            // Estos dos sí llevan texto propio. El de TwoFactorMessages termina en "vuelve a
+            // iniciar sesión", que es la salida correcta durante un login pero no aquí: quien ve
+            // esto ya tiene sesión y lo que se le rompió fue el alta del teléfono, así que la
+            // salida es volver a empezarla.
+            "INVALID_CHALLENGE"      => "Account.Error.InvalidChallenge",
+            // Y aquí CHANNEL_UNAVAILABLE no significa "no pudimos enviar el código" sino "el
+            // canal que elegiste no tiene destino en esta cuenta", que se arregla dándoselo.
+            "CHANNEL_UNAVAILABLE"    => "Account.Error.ChannelUnavailable",
 
             _                        => "Account.Error.Generic"
         };

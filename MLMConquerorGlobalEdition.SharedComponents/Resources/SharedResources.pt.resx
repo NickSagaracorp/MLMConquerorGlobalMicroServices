@@ -1312,6 +1312,36 @@
   <data name="SetPassword.Title" xml:space="preserve"><value>Defina sua senha</value></data>
   <data name="SetPassword.Subtitle" xml:space="preserve"><value>Esta conta ainda não tem uma senha. Escolha uma abaixo.</value></data>
   <data name="SetPassword.SubmitButton" xml:space="preserve"><value>DEFINIR SENHA</value></data>
+  <!-- TwoFactorPanel / AddPhoneNumber / VerifyPhoneNumber — segundo factor y teléfono (Tarea 6) -->
+  <data name="Account.Error.PhoneNotFound" xml:space="preserve"><value>Esta conta não tem nenhum telefone. Adicione um primeiro.</value></data>
+  <data name="Account.Error.InvalidChallenge" xml:space="preserve"><value>Esta verificação já não é válida. Adicione o seu telefone novamente para receber um código novo.</value></data>
+  <data name="Account.Error.ChannelUnavailable" xml:space="preserve"><value>Esse método ainda não está disponível nesta conta. Configure-o primeiro e depois escolha-o.</value></data>
+  <data name="TwoFactorPanel.Title" xml:space="preserve"><value>Verificação em duas etapas</value></data>
+  <data name="TwoFactorPanel.PreferredChannelLabel" xml:space="preserve"><value>Método preferido</value></data>
+  <data name="TwoFactorPanel.EnrolledSince" xml:space="preserve"><value>Aplicativo autenticador registrado em {0}.</value></data>
+  <data name="TwoFactorPanel.Enable" xml:space="preserve"><value>Ativar a verificação em duas etapas</value></data>
+  <data name="TwoFactorPanel.EnableHint" xml:space="preserve"><value>A verificação em duas etapas pede um segundo código quando você entra, de modo que a sua senha sozinha não basta para acessar a sua conta.</value></data>
+  <data name="TwoFactorPanel.ChannelSectionTitle" xml:space="preserve"><value>Como você recebe os seus códigos</value></data>
+  <data name="TwoFactorPanel.ChannelSms" xml:space="preserve"><value>Mensagem de texto (SMS)</value></data>
+  <data name="TwoFactorPanel.ChannelAuthenticator" xml:space="preserve"><value>Aplicativo autenticador</value></data>
+  <data name="TwoFactorPanel.SmsRequirement" xml:space="preserve"><value>Para usar SMS, adicione um telefone e verifique-o.</value></data>
+  <data name="TwoFactorPanel.AuthenticatorRequirement" xml:space="preserve"><value>Para usar um aplicativo autenticador, configure-o antes no seu telefone.</value></data>
+  <data name="TwoFactorPanel.EmailRequirement" xml:space="preserve"><value>Os códigos por e-mail não estão disponíveis nesta conta no momento.</value></data>
+  <data name="TwoFactorPanel.SetUpLink" xml:space="preserve"><value>Configurar</value></data>
+  <data name="TwoFactorPanel.ReEnroll" xml:space="preserve"><value>Configurar o aplicativo autenticador novamente</value></data>
+  <data name="TwoFactorPanel.ReEnrollWarning" xml:space="preserve"><value>Configurar o aplicativo autenticador novamente substitui o que você tem agora. Assim que terminar, o aplicativo que usa hoje deixará de gerar códigos válidos, portanto tenha o novo à mão antes de começar.</value></data>
+  <data name="TwoFactorPanel.Disable" xml:space="preserve"><value>Desativar a verificação em duas etapas</value></data>
+  <data name="TwoFactorPanel.DisableWarning" xml:space="preserve"><value>Sem a verificação em duas etapas, a sua senha sozinha bastará para acessar a sua conta. Qualquer pessoa que a descubra poderá entrar no seu lugar.</value></data>
+  <data name="TwoFactorPanel.RequiredByRole" xml:space="preserve"><value>A sua função exige a verificação em duas etapas, por isso ela não pode ser desativada aqui. É uma política da sua organização, não uma falha desta tela.</value></data>
+  <data name="AddPhone.Title" xml:space="preserve"><value>Adicionar um telefone</value></data>
+  <data name="AddPhone.Intro" xml:space="preserve"><value>Enviaremos por SMS os códigos de acesso para este número.</value></data>
+  <data name="AddPhone.Placeholder" xml:space="preserve"><value>+14155552671</value></data>
+  <data name="AddPhone.FormatExample" xml:space="preserve"><value>Exemplo: +14155552671</value></data>
+  <data name="AddPhone.FormatHint" xml:space="preserve"><value>Comece com + e o código do seu país, e continue com o restante do número, sem espaços, hífens ou parênteses.</value></data>
+  <data name="AddPhone.SmsNotice" xml:space="preserve"><value>Ao continuar, enviaremos por SMS um código de 6 dígitos para este número para confirmar que é seu. Podem ser aplicadas tarifas de mensagens.</value></data>
+  <data name="AddPhone.Submit" xml:space="preserve"><value>Enviar o código</value></data>
+  <data name="VerifyPhone.Title" xml:space="preserve"><value>Verifique o seu telefone</value></data>
+  <data name="VerifyPhone.ChangeNumber" xml:space="preserve"><value>Número errado? Digite outro</value></data>
 
   <!-- PageTitle — F5 -->
   <data name="PageTitle.Tickets" xml:space="preserve"><value>Tickets de suporte</value></data>

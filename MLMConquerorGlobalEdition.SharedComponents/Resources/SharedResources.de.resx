@@ -1294,6 +1294,36 @@
   <data name="SetPassword.Title" xml:space="preserve"><value>Passwort festlegen</value></data>
   <data name="SetPassword.Subtitle" xml:space="preserve"><value>Dieses Konto hat noch kein Passwort. Wählen Sie unten eines aus.</value></data>
   <data name="SetPassword.SubmitButton" xml:space="preserve"><value>PASSWORT FESTLEGEN</value></data>
+  <!-- TwoFactorPanel / AddPhoneNumber / VerifyPhoneNumber — segundo factor y teléfono (Tarea 6) -->
+  <data name="Account.Error.PhoneNotFound" xml:space="preserve"><value>Für dieses Konto ist keine Telefonnummer hinterlegt. Fügen Sie zuerst eine hinzu.</value></data>
+  <data name="Account.Error.InvalidChallenge" xml:space="preserve"><value>Diese Bestätigung ist nicht mehr gültig. Fügen Sie Ihre Telefonnummer erneut hinzu, um einen neuen Code zu erhalten.</value></data>
+  <data name="Account.Error.ChannelUnavailable" xml:space="preserve"><value>Diese Methode ist für dieses Konto noch nicht verfügbar. Richten Sie sie zuerst ein und wählen Sie sie dann aus.</value></data>
+  <data name="TwoFactorPanel.Title" xml:space="preserve"><value>Zwei-Faktor-Authentifizierung</value></data>
+  <data name="TwoFactorPanel.PreferredChannelLabel" xml:space="preserve"><value>Bevorzugte Methode</value></data>
+  <data name="TwoFactorPanel.EnrolledSince" xml:space="preserve"><value>Authenticator-App eingerichtet am {0}.</value></data>
+  <data name="TwoFactorPanel.Enable" xml:space="preserve"><value>Zwei-Faktor-Authentifizierung aktivieren</value></data>
+  <data name="TwoFactorPanel.EnableHint" xml:space="preserve"><value>Die Zwei-Faktor-Authentifizierung verlangt bei der Anmeldung einen zweiten Code, sodass Ihr Passwort allein nicht ausreicht, um in Ihr Konto zu gelangen.</value></data>
+  <data name="TwoFactorPanel.ChannelSectionTitle" xml:space="preserve"><value>Wie Sie Ihre Codes erhalten</value></data>
+  <data name="TwoFactorPanel.ChannelSms" xml:space="preserve"><value>SMS-Nachricht</value></data>
+  <data name="TwoFactorPanel.ChannelAuthenticator" xml:space="preserve"><value>Authenticator-App</value></data>
+  <data name="TwoFactorPanel.SmsRequirement" xml:space="preserve"><value>Um SMS zu nutzen, fügen Sie eine Telefonnummer hinzu und bestätigen Sie sie.</value></data>
+  <data name="TwoFactorPanel.AuthenticatorRequirement" xml:space="preserve"><value>Um eine Authenticator-App zu nutzen, richten Sie sie zuerst auf Ihrem Telefon ein.</value></data>
+  <data name="TwoFactorPanel.EmailRequirement" xml:space="preserve"><value>E-Mail-Codes sind für dieses Konto derzeit nicht verfügbar.</value></data>
+  <data name="TwoFactorPanel.SetUpLink" xml:space="preserve"><value>Einrichten</value></data>
+  <data name="TwoFactorPanel.ReEnroll" xml:space="preserve"><value>Authenticator-App erneut einrichten</value></data>
+  <data name="TwoFactorPanel.ReEnrollWarning" xml:space="preserve"><value>Wenn Sie die Authenticator-App erneut einrichten, ersetzt sie die bisherige. Sobald Sie fertig sind, erzeugt die App, die Sie heute verwenden, keine gültigen Codes mehr — halten Sie die neue also bereit, bevor Sie beginnen.</value></data>
+  <data name="TwoFactorPanel.Disable" xml:space="preserve"><value>Zwei-Faktor-Authentifizierung deaktivieren</value></data>
+  <data name="TwoFactorPanel.DisableWarning" xml:space="preserve"><value>Ohne Zwei-Faktor-Authentifizierung genügt Ihr Passwort allein, um in Ihr Konto zu gelangen. Wer es erfährt, kann sich als Sie anmelden.</value></data>
+  <data name="TwoFactorPanel.RequiredByRole" xml:space="preserve"><value>Ihre Rolle setzt die Zwei-Faktor-Authentifizierung voraus, daher lässt sie sich hier nicht deaktivieren. Das ist eine Vorgabe Ihrer Organisation und kein Fehler dieser Seite.</value></data>
+  <data name="AddPhone.Title" xml:space="preserve"><value>Telefonnummer hinzufügen</value></data>
+  <data name="AddPhone.Intro" xml:space="preserve"><value>Wir senden Ihre Anmeldecodes per SMS an diese Nummer.</value></data>
+  <data name="AddPhone.Placeholder" xml:space="preserve"><value>+14155552671</value></data>
+  <data name="AddPhone.FormatExample" xml:space="preserve"><value>Beispiel: +14155552671</value></data>
+  <data name="AddPhone.FormatHint" xml:space="preserve"><value>Beginnen Sie mit + und Ihrer Ländervorwahl, dann folgt der Rest der Nummer — ohne Leerzeichen, Bindestriche oder Klammern.</value></data>
+  <data name="AddPhone.SmsNotice" xml:space="preserve"><value>Wenn Sie fortfahren, senden wir einen 6-stelligen Code per SMS an diese Nummer, um zu prüfen, dass sie Ihnen gehört. Es können Gebühren für Nachrichten anfallen.</value></data>
+  <data name="AddPhone.Submit" xml:space="preserve"><value>Code senden</value></data>
+  <data name="VerifyPhone.Title" xml:space="preserve"><value>Bestätigen Sie Ihre Telefonnummer</value></data>
+  <data name="VerifyPhone.ChangeNumber" xml:space="preserve"><value>Falsche Nummer? Geben Sie eine andere ein</value></data>
 
   <!-- PageTitle — F5 -->
   <data name="PageTitle.Tickets" xml:space="preserve"><value>Support-Tickets</value></data>
