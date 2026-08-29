@@ -319,9 +319,17 @@ de error—; si el archivo pasa de unas 400 líneas, sepáralo por área.
 Lo mismo para el portal de miembros, **sin tocar** `ForgotPassword.razor`,
 `ResetPassword.razor` ni `TwoFactor.razor`, que ya existen y funcionan.
 
-Las páginas nuevas para miembros son: confirmación de correo, gestión de cuenta, contraseña,
-panel de 2FA, teléfono, datos personales y enrolamiento con QR —que hoy solo tiene
-administración—.
+Las páginas nuevas para miembros son: confirmación de correo, gestión de cuenta, panel de 2FA,
+teléfono, datos personales y enrolamiento con QR —que hoy solo tiene administración—.
+
+**El cambio de contraseña queda fuera para BizCenter.** Ya existe y funciona:
+`SharedComponents/Components/Profile/CredentialsForm.razor`, montado en la pestaña de cuenta
+del perfil, contra `PUT /api/v1/bizcenter/profile/credentials/password`. Montar además el
+componente `ChangePassword` de este plan daría dos formas de hacer lo mismo contra endpoints
+distintos y con validaciones que pueden divergir. La sección «Contraseña» del layout de
+cuenta, en el portal de miembros, **enlaza a esa pestaña** en vez de duplicar el formulario.
+
+En administración sí se monta el componente nuevo: allí no existe ningún cambio de contraseña.
 
 - [ ] **Step 1: Rutas y endpoints**
 - [ ] **Step 2: Enlace desde el perfil**, que es donde un miembro buscaría esto

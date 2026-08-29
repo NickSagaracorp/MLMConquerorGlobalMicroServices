@@ -70,7 +70,16 @@ public class ProfileController : ControllerBase
         return Ok(ApiResponse<bool>.Ok(true, "Email update request recorded. A verification email will be sent."));
     }
 
-    /// <summary>PUT /api/v1/bizcenter/profile/credentials/password — update password (not implemented)</summary>
+    /// <summary>
+    /// PUT /api/v1/bizcenter/profile/credentials/password — cambia la contraseña del miembro.
+    ///
+    /// El comentario anterior decía "not implemented" y era falso: UpdatePasswordHandler llama
+    /// a ChangePasswordAsync y funciona. Lo corrijo porque documentación así invita a construir
+    /// un segundo camino para lo mismo, creyendo que este no existe.
+    ///
+    /// Nota: SignupAPI expone además PUT /api/v1/auth/change-password, que hace lo mismo para
+    /// los dos portales. Este sigue en uso desde CredentialsForm en la pestaña de perfil.
+    /// </summary>
     [HttpPut("profile/credentials/password")]
     public async Task<IActionResult> UpdatePassword([FromBody] UpdatePasswordRequest request, CancellationToken ct)
     {
