@@ -20,8 +20,18 @@ public static class SharedComponentsServiceExtensions
     public static IServiceCollection AddSharedComponents(this IServiceCollection services)
     {
         services.TryAddScoped<IViewContextSeed, NullViewContextSeed>();
-        services.AddScoped<IViewContextService, ViewContextService>();
-        services.AddScoped<ViewContextService>();   // also register concrete type for SetContext()
+
+        // Una sola instancia por ámbito, servida por los dos registros. Antes eran dos
+        // AddScoped independientes —uno para la interfaz y otro para el tipo concreto— y eso
+        // fabrica DOS objetos distintos: quien llama a SetContext (los inicializadores, que
+        // inyectan el tipo concreto) escribía en uno, y los componentes, que inyectan la
+        // interfaz, leían el otro. El contexto no llegaba nunca a la pantalla.
+        //
+        // En web el fallo quedaba tapado porque la instancia de la interfaz se rellena sola
+        // desde HttpContextViewContextSeed. En las dos MAUI la semilla es la vacía, así que
+        // allí la impersonación de AdminApp simplemente no surtía efecto.
+        services.AddScoped<ViewContextService>();
+        services.AddScoped<IViewContextService>(sp => sp.GetRequiredService<ViewContextService>());
         services.AddScoped<IThemeService, ThemeService>();
         services.AddLocalization();
         return services;
