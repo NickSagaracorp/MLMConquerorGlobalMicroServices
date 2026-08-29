@@ -6,19 +6,34 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <!-- Provides IHttpContextAccessor, IHostEnvironment, etc. without adding a NuGet dep -->
-  <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
-  </ItemGroup>
+  <!--
+    INVARIANTE DE ESTE PROYECTO: aquí NO entra ASP.NET Core.
 
+    Ni <FrameworkReference Include="Microsoft.AspNetCore.App" /> ni ningún paquete
+    Microsoft.AspNetCore.*. La razón no es de estilo. SharedKernel es la base de ClientCore, y
+    ClientCore existe para que la lógica de cliente se escriba una vez y sirva también a las
+    aplicaciones MAUI que vienen después. Un FrameworkReference es transitivo: mientras
+    SharedKernel declarara el de ASP.NET Core, ClientCore lo arrastraba, y una MAUI que
+    referenciara ClientCore no compilaba. Eso es exactamente lo que pasaba hasta ahora.
+
+    Lo que necesite alojamiento web —HttpContext, DataProtection, el cliente de Redis, la
+    tubería de MediatR— va en MLMConquerorGlobalEdition.SharedKernel.Server, que referencia a
+    este proyecto y no al revés. Ahí están ErrorHandlingBehavior, ValidationBehavior,
+    CacheService y GatewayCredentialProtector, que es lo que se sacó de aquí.
+
+    Hay una prueba que lo vigila: ClientCoreNoAspNetCoreTests, en BizCenter.Tests. Recorre el
+    cierre transitivo de referencias de ClientCore, así que si alguien vuelve a meter ASP.NET
+    Core aquí, se pone roja. Si se rompe, lo que hay que quitar es la dependencia, no la prueba.
+
+    Lo que SÍ vale: el framework base (System.*) y los paquetes Microsoft.Extensions.*, que
+    corren igual en un anfitrión web y en MAUI.
+  -->
   <ItemGroup>
-    <PackageReference Include="FluentValidation" Version="11.10.0" />
-    <PackageReference Include="MediatR" Version="12.4.1" />
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="10.0.11" />
-    <!-- ICacheService.IncrementAsync necesita INCR, que IDistributedCache no expone. Los ocho
-         hosts ya llaman AddStackExchangeRedisCache, así que esto ya venía como dependencia
-         transitiva en todos: declararlo aquí no añade nada a ningún despliegue. -->
-    <PackageReference Include="StackExchange.Redis" Version="2.7.27" />
+    <!-- ILogger<T> para NullEmailService. Solo las abstracciones. -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.2" />
+    <!-- El formateador de consola que enmascara PII (Logging/). Lo trae este paquete, que
+         antes llegaba de rebote por el framework compartido de ASP.NET Core. -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.2" />
   </ItemGroup>
 
 </Project>

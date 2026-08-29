@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <!--
+    PROPÓSITO DE ESTE PROYECTO: es la mitad de servidor del SharedKernel.
+
+    SharedKernel tiene que poder compilarse dentro de una MAUI, y una MAUI no puede referenciar
+    el framework compartido de ASP.NET Core. Pero cuatro de sus archivos sí necesitaban
+    alojamiento web —HttpContext, el proveedor de DataProtection, el cliente de Redis, la
+    tubería de MediatR— y un <FrameworkReference> es transitivo: mientras vivieran allí,
+    cualquiera que referenciara SharedKernel (o ClientCore, que lo referencia) arrastraba
+    ASP.NET Core entero. Por eso están aquí y no allí.
+
+    Lo que entra aquí: lo que necesita un anfitrión web para funcionar.
+    Lo que NO entra aquí: contratos, DTOs y ayudantes puros — esos son de SharedKernel, porque
+    móvil también los necesita. Antes de añadir un archivo a este proyecto, comprobar que de
+    verdad depende del alojamiento; si no depende, su sitio es SharedKernel.
+
+    Los espacios de nombres se mantienen deliberadamente en MLMConquerorGlobalEdition.SharedKernel.*
+    (Behaviors, Services) aunque el ensamblado se llame .Server: los tipos no se movieron de
+    lugar conceptual, solo de ensamblado, y así el traslado no obligó a tocar ni un solo
+    `using` de los consumidores. El corte es de empaquetado, no de diseño.
+  -->
+
+  <!-- IHttpContextAccessor, IHostEnvironment e IDistributedCache, sin añadir un NuGet. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- ValidationBehavior: los validadores de FluentValidation que corren en la tubería. -->
+    <PackageReference Include="FluentValidation" Version="11.10.0" />
+    <!-- IPipelineBehavior, de donde cuelgan ValidationBehavior y ErrorHandlingBehavior. -->
+    <PackageReference Include="MediatR" Version="12.4.1" />
+    <!-- GatewayCredentialProtector. El framework compartido ya trae IDataProtectionProvider;
+         este paquete añade además DataProtectionProvider.Create, que usan las pruebas para
+         montar un key ring en disco sin levantar un anfitrión. -->
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="10.0.11" />
+    <!-- ICacheService.IncrementAsync necesita INCR, que IDistributedCache no expone. Los ocho
+         hosts ya llaman AddStackExchangeRedisCache, así que esto ya venía como dependencia
+         transitiva en todos: declararlo aquí no añade nada a ningún despliegue. -->
+    <PackageReference Include="StackExchange.Redis" Version="2.7.27" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- ICacheService, IEncryptionService, ApiResponse<T> y demás contratos comunes. -->
+    <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel\MLMConquerorGlobalEdition.SharedKernel.csproj" />
+  </ItemGroup>
+
+</Project>
