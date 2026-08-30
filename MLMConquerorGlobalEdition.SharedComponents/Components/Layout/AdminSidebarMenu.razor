@@ -301,6 +301,24 @@
             </Authorized>
         </AuthorizeView>
 
+        @*
+            Cobros en cripto. Va en su propio grupo y no dentro de "Billing" porque la lista de
+            roles NO es la misma: el grupo de arriba es SuperAdmin, Admin y BillingManager, y aquí
+            entra además SupportLevel3, que el dueño del producto incluyó explícitamente. Meterlo
+            dentro habría dejado a SupportLevel3 con permiso en la API y sin entrada en el menú.
+        *@
+        <AuthorizeView Roles="@AppRoles.CryptoPaymentApprovers">
+            <Authorized>
+                <li class="menu-item @(IsActive("/admin/billing/crypto-signups") == "active" ? "active" : "")">
+                    <a href="/admin/billing/crypto-signups"
+                       class="menu-link @IsActive("/admin/billing/crypto-signups")">
+                        <i class="ri-bit-coin-line menu-icon"></i>
+                        <span class="title">Crypto Signups</span>
+                    </a>
+                </li>
+            </Authorized>
+        </AuthorizeView>
+
         <AuthorizeView Roles="SuperAdmin,Admin,IT,ContentManager">
             <Authorized>
                 @* ── Marketing ── *@

@@ -1,7 +1,6 @@
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using MLMConquerorGlobalEdition.Billing.Services.Recurring;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
@@ -17,43 +16,49 @@ using MLMConquerorGlobalEdition.SignupAPI.Services;
 namespace MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Commands.CompleteSignup;
 
 /// <summary>
-/// Phase 3 of the signup wizard — activates the member, processes payment evidence, issues JWT.
+/// Fase 3 del asistente de alta.
+///
+/// Con tarjeta, token o código de descuento el dinero ya está cobrado cuando se llega aquí, así
+/// que esta fase activa al miembro y dispara las comisiones.
+///
+/// CON CRIPTO NO. El cobro llega por fuera —no hay pasarela integrada, es el diseño— y hasta que
+/// alguien de la casa confirme que la transferencia entró, el alta queda registrada pero la
+/// membresía no se activa y no se genera ni una comisión. Lo que sí ocurre igual es la
+/// COLOCACIÓN: el nodo de genealogía se creó en la fase 1 y no se toca aquí, para que la
+/// estructura del árbol no dependa de cuándo alguien se siente a aprobar.
+///
+/// La razón de no adelantar las comisiones la dio el dueño del producto: nadie cobra sobre dinero
+/// no recibido, y si la transferencia nunca llega no hay comisiones que revertir.
 /// </summary>
 public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Result<SignupResponse>>
 {
-    private readonly AppDbContext                       _db;
-    private readonly IDateTimeProvider                  _dateTime;
-    private readonly IS3FileService                     _s3;
-    private readonly ISponsorBonusService               _sponsorBonus;
-    private readonly IFastStartBonusService             _fastStartBonus;
-    private readonly UserManager<ApplicationUser>       _userManager;
-    private readonly IJwtService                        _jwtService;
-    private readonly IEncryptionService                 _encryption;
-    private readonly ITokenRedemptionService            _tokenRedemption;
-    private readonly IRecurringBillingEnrollmentService _recurringBillingEnrollment;
+    private readonly AppDbContext                 _db;
+    private readonly IDateTimeProvider            _dateTime;
+    private readonly IS3FileService               _s3;
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IJwtService                  _jwtService;
+    private readonly IEncryptionService           _encryption;
+    private readonly ITokenRedemptionService      _tokenRedemption;
+    private readonly ISignupActivationService     _activation;
 
     public CompleteSignupHandler(
         AppDbContext db,
         IDateTimeProvider dateTime,
         IS3FileService s3,
-        ISponsorBonusService sponsorBonus,
-        IFastStartBonusService fastStartBonus,
         UserManager<ApplicationUser> userManager,
         IJwtService jwtService,
         IEncryptionService encryption,
         ITokenRedemptionService tokenRedemption,
-        IRecurringBillingEnrollmentService recurringBillingEnrollment)
+        ISignupActivationService activation)
     {
-        _db                          = db;
-        _dateTime                    = dateTime;
-        _s3                          = s3;
-        _sponsorBonus                = sponsorBonus;
-        _fastStartBonus              = fastStartBonus;
-        _userManager                 = userManager;
-        _jwtService                  = jwtService;
-        _encryption                  = encryption;
-        _tokenRedemption             = tokenRedemption;
-        _recurringBillingEnrollment  = recurringBillingEnrollment;
+        _db              = db;
+        _dateTime        = dateTime;
+        _s3              = s3;
+        _userManager     = userManager;
+        _jwtService      = jwtService;
+        _encryption      = encryption;
+        _tokenRedemption = tokenRedemption;
+        _activation      = activation;
     }
 
     public async Task<Result<SignupResponse>> Handle(CompleteSignupCommand command, CancellationToken ct)
@@ -153,21 +158,6 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
             }, ct);
         }
 
-        order.Status         = OrderStatus.Completed;
-        order.LastUpdateDate = now;
-        order.LastUpdateBy   = member.Email;
-
-        member.Status         = MemberAccountStatus.Active;
-        member.LastUpdateDate = now;
-        member.LastUpdateBy   = member.Email;
-
-        subscription.SubscriptionStatus = MembershipStatus.Active;
-        subscription.StartDate          = now;
-        subscription.EndDate            = now.AddMonths(1);
-        subscription.RenewalDate        = now.AddMonths(1);
-        subscription.LastUpdateDate     = now;
-        subscription.LastUpdateBy       = member.Email;
-
         var totalQualPoints = await _db.OrderDetails
             .AsNoTracking()
             .Where(od => od.OrderId == order.Id)
@@ -189,66 +179,58 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
             CreationDate     = now
         }, ct);
 
-        if (!string.IsNullOrEmpty(member.SponsorMemberId))
+        if (req.PaymentMethod == PaymentMethodType.Crypto)
         {
-            var sponsorNode = await _db.GenealogyTree
-                .AsNoTracking()
-                .FirstOrDefaultAsync(g => g.MemberId == member.SponsorMemberId, ct);
+            // El pedido queda EN PROCESO, no completado: el dinero está anunciado pero no
+            // recibido. Y es lo que impide que esta misma llamada se repita —CompleteSignup solo
+            // encuentra pedidos en Pending— y que la herramienta de altas zombis
+            // (AdminSignupsController.RetryComplete, que también filtra por Pending) active por
+            // detrás un alta que está esperando cobro.
+            order.Status         = OrderStatus.Processing;
+            order.LastUpdateDate = now;
+            order.LastUpdateBy   = member.Email;
 
-            if (sponsorNode is not null)
+            // El miembro se queda en Pending, que es donde lo dejó la fase 1. Pending, y no
+            // Inactive, porque en esta base Inactive significa "estuvo activo y dejó de estarlo":
+            // lo escriben CancelMembershipHandler y ProcessScheduledCancellationsJob al dar de
+            // baja. Pending significa "dado de alta, todavía no activado", que es exactamente
+            // esto. Marcarlo Inactive lo contaría como bajas en GetMemberStatsHandler y en el
+            // panel del CEO, y ensuciaría la métrica de cancelaciones con gente que nunca llegó
+            // a entrar. La suscripción, por lo mismo, sigue en MembershipStatus.Pending.
+            member.LastUpdateDate = now;
+            member.LastUpdateBy   = member.Email;
+
+            await _db.CryptoPaymentConfirmations.AddAsync(new CryptoPaymentConfirmation
             {
-                var ancestorIds = ParseHierarchyPath(sponsorNode.HierarchyPath);
+                OrderId        = order.Id,
+                MemberId       = member.MemberId,
+                MemberEmail    = member.Email,
+                CryptoCurrency = req.CryptoCurrency ?? string.Empty,
+                AmountDue      = order.TotalAmount,
+                Status         = CryptoPaymentConfirmationStatus.AwaitingPayment,
+                // CryptoTransactionId se queda a null a propósito: el identificador de la
+                // transferencia lo captura quien confirma el cobro, no el aspirante.
+                CreatedBy      = member.Email,
+                CreationDate   = now,
+                LastUpdateDate = now
+            }, ct);
 
-                // Sprint-16 — eventual-consistency pipeline. Previously this loop
-                // executed one MERGE … WITH (HOLDLOCK) per ancestor (Sprint-15 Bug A
-                // fix) which was correct but serialised on shared rows near the
-                // root and pushed mean signup latency to ~16s at 350-concurrent.
-                //
-                // We now enqueue one MemberStatisticDelta row per ancestor in a
-                // single batch insert. ApplyMemberStatisticDeltasJob (recurring,
-                // every minute, "signups" queue) groups by MemberId and rolls
-                // the summed delta into MemberStatistics with one MERGE per
-                // distinct upline per cycle — so 350 concurrent signups under
-                // the same upline produce one MERGE instead of 350.
-                //
-                // Stat freshness lag: up to ~1 min. Rank evaluation runs every
-                // 5 min via ProcessRankQueueJob so the deltas are always caught
-                // up before evaluation; for extra safety the apply job re-enqueues
-                // a RankEvaluationQueue entry for each member whose stats it just
-                // updated (mirrors SignupAmbassadorHandler L255).
-                var deltas = new List<MemberStatisticDelta>(ancestorIds.Count);
-                foreach (var ancestorId in ancestorIds)
-                {
-                    var qualDelta = ancestorId == member.SponsorMemberId ? 1 : 0;
-                    deltas.Add(new MemberStatisticDelta
-                    {
-                        MemberId                       = ancestorId,
-                        EnrollmentPointsDelta          = totalQualPoints,
-                        EnrollmentTeamSizeDelta        = 1,
-                        QualifiedSponsoredMembersDelta = qualDelta,
-                        SourceMemberId                 = member.MemberId,
-                        IsApplied                      = false,
-                        CreatedBy                      = member.Email,
-                        CreationDate                   = now
-                    });
-                }
+            await _db.SaveChangesAsync(ct);
 
-                if (deltas.Count > 0)
-                    await _db.MemberStatisticDeltas.AddRangeAsync(deltas, ct);
-            }
+            // Ni IsActive ni EmailConfirmed ni tokens: la cuenta no puede entrar al portal hasta
+            // que el cobro esté confirmado. LoginHandler rechaza a los usuarios con IsActive=false.
+            return Result<SignupResponse>.Success(new SignupResponse
+            {
+                SignupId   = order.Id,
+                MemberId   = member.MemberId,
+                Email      = member.Email,
+                MemberType = member.MemberType.ToString(),
+                EnrollDate = member.EnrollDate
+            });
         }
 
-        await _sponsorBonus.ComputeAsync(
-            member.SponsorMemberId, member.MemberId, order.Id,
-            order.TotalAmount, member.Email, now, ct);
-
-        await _fastStartBonus.ComputeAsync(
-            member.SponsorMemberId, member.MemberId, order.Id,
-            now, member.Email, ct);
-
-        // Create or update the SubscriptionBillingState so the dunning sweep
-        // knows this subscription is enrolled in recurring billing from today.
-        await _recurringBillingEnrollment.EnsureStateForSubscriptionAsync(subscription, member.Email, ct);
+        await _activation.ActivateAsync(
+            order, member, subscription, totalQualPoints, now, member.Email, ct);
 
         await _db.SaveChangesAsync(ct);
 
@@ -280,9 +262,6 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
         => string.IsNullOrEmpty(first6) || string.IsNullOrEmpty(last4)
             ? $"******{last4}"
             : $"{first6}******{last4}";
-
-    private static List<string> ParseHierarchyPath(string hierarchyPath)
-        => hierarchyPath.Split('/', StringSplitOptions.RemoveEmptyEntries).ToList();
 
     private static string HashToken(string value)
     {

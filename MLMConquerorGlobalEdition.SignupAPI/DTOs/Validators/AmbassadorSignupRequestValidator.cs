@@ -109,11 +109,15 @@ public class AmbassadorSignupRequestValidator : AbstractValidator<AmbassadorSign
                 .WithMessage("Business name contains invalid characters.")
             .When(x => !string.IsNullOrEmpty(x.BusinessName));
 
+        // IsNullOrWhiteSpace y no IsNullOrEmpty: un campo con solo espacios significa "no he
+        // elegido nombre de sitio", igual que la cadena vacía, y el handler lo normaliza a NULL.
+        // Con IsNullOrEmpty la regla sí se evaluaba para "   ", el patrón no casaba y al aspirante
+        // le salía un error de formato por un campo que había dejado en blanco.
         RuleFor(x => x.ReplicateSiteSlug)
             .MaximumLength(ValidationPatterns.ReplicateSlugMaxLength)
             .Matches(ValidationPatterns.ReplicateSlugPattern)
                 .WithMessage("Replicate site slug must be lowercase alphanumeric with hyphens (2-50 chars), no leading or trailing hyphen.")
-            .When(x => !string.IsNullOrEmpty(x.ReplicateSiteSlug));
+            .When(x => !string.IsNullOrWhiteSpace(x.ReplicateSiteSlug));
 
         RuleFor(x => x.MembershipLevelId)
             .GreaterThan(0)

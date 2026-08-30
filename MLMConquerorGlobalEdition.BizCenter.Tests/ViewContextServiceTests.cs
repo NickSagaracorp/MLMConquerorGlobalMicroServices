@@ -1,4 +1,5 @@
 ﻿using MLMConquerorGlobalEdition.SharedComponents.Constants;
+using MLMConquerorGlobalEdition.SharedKernel.Constants;
 using MLMConquerorGlobalEdition.SharedComponents.Services;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Tests;

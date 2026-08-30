@@ -99,6 +99,10 @@ builder.Services.AddScoped<
 
 builder.Services.AddScoped<ISponsorBonusService, SponsorBonusService>();
 builder.Services.AddScoped<IFastStartBonusService, FastStartBonusService>();
+// Activación del alta: cierre del pedido, alta del miembro, deltas del upline y comisiones.
+// Lo usan las dos vías que cobran — la inmediata (tarjeta, token, descuento) al completar, y la
+// de cripto al confirmar el cobro a mano — para que no existan dos versiones de lo mismo.
+builder.Services.AddScoped<ISignupActivationService, SignupActivationService>();
 builder.Services.AddScoped<ITokenRedemptionService, TokenRedemptionService>();
 builder.Services.AddScoped<IFraudFingerprintService, FraudFingerprintService>();
 builder.Services.AddScoped<IEncryptionService, EncryptionService>();

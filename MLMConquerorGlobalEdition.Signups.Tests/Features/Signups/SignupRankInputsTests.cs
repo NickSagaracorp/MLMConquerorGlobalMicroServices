@@ -250,21 +250,24 @@ public class SignupRankInputsTests
         DiscountCode  = "FREE100"
     };
 
+    /// <summary>El servicio de activación real sobre los dobles de los bonos: estas pruebas
+    /// miran justo lo que ese servicio escribe (los deltas del upline), así que no puede ser un mock.</summary>
+    private static ISignupActivationService BuildActivation(
+        MLMConquerorGlobalEdition.Repository.Context.AppDbContext db)
+        => new SignupActivationService(
+            db,
+            BuildSponsorBonusMock().Object,
+            BuildFastStartBonusMock().Object,
+            BuildRecurringBillingEnrollmentMock().Object);
+
     private CompleteSignupHandler BuildHandler(
         MLMConquerorGlobalEdition.Repository.Context.AppDbContext db,
         Mock<UserManager<ApplicationUser>> userMgr)
     {
         return new CompleteSignupHandler(
-            db,
-            BuildDateTimeMock().Object,
-            BuildS3Mock().Object,
-            BuildSponsorBonusMock().Object,
-            BuildFastStartBonusMock().Object,
-            userMgr.Object,
-            BuildJwtMock().Object,
-            BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object,
-            BuildRecurringBillingEnrollmentMock().Object);
+            db, BuildDateTimeMock().Object, BuildS3Mock().Object,
+            userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
+            BuildTokenRedemptionMock().Object, BuildActivation(db));
     }
 
     // ── Tests ────────────────────────────────────────────────────────────────

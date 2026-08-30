@@ -1,9 +1,13 @@
+using System.Security.Claims;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Constants;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Commands.CompleteSignup;
+using MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Commands.ConfirmCryptoPayment;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Commands.SelectProducts;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Commands.SignupAmbassador;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Commands.SignupMember;
@@ -101,6 +105,52 @@ public class SignupsController : ControllerBase
         if (!result.IsSuccess)
             return BadRequest(ApiResponse<SignupResponse>.Fail(result.ErrorCode!, result.Error!));
         return Ok(ApiResponse<SignupResponse>.Ok(result.Value!));
+    }
+
+
+    /// <summary>
+    /// POST /api/v1/signups/{signupId}/confirm-crypto-payment — confirma a mano que el cobro en
+    /// cripto de un alta entró: activa miembro y suscripción y dispara comisiones y deltas.
+    ///
+    /// LA COMPROBACIÓN DE ROL ESTÁ AQUÍ, EN EL SERVIDOR, y no solo en el botón de AdminWeb ni
+    /// solo en AdminAPI. AdminAPI reenvía a este endpoint el Bearer del administrador que pulsó,
+    /// así que quien intente llamar a cualquiera de los dos directamente con un token de un rol
+    /// que no está en la lista se lleva un 403 igual. Los dos servicios validan contra el mismo
+    /// emisor, la misma audiencia y la misma clave pública, de modo que el JWT que emite AdminAPI
+    /// vale aquí sin ningún puente de confianza inventado.
+    /// </summary>
+    [HttpPost("{signupId}/confirm-crypto-payment")]
+    [Authorize(Roles = AppRoles.CryptoPaymentApprovers)]
+    public async Task<IActionResult> ConfirmCryptoPayment(
+        string signupId, [FromBody] ConfirmCryptoPaymentRequest request, CancellationToken ct)
+    {
+        // Quién aprueba sale de los claims, nunca del cuerpo: si el llamante pudiera elegir a
+        // nombre de quién queda el rastro, el rastro no auditaría nada.
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                  ?? User.FindFirstValue("sub")
+                  ?? string.Empty;
+        var email  = User.FindFirstValue(ClaimTypes.Email)
+                  ?? User.FindFirstValue("email")
+                  ?? string.Empty;
+
+        var result = await _mediator.Send(
+            new ConfirmCryptoPaymentCommand(signupId, request, userId, email), ct);
+
+        if (!result.IsSuccess)
+        {
+            return result.ErrorCode switch
+            {
+                "CRYPTO_PAYMENT_NOT_FOUND" => NotFound(
+                    ApiResponse<ConfirmCryptoPaymentResponse>.Fail(result.ErrorCode!, result.Error!)),
+                "CRYPTO_PAYMENT_ALREADY_CONFIRMED" => Conflict(
+                    ApiResponse<ConfirmCryptoPaymentResponse>.Fail(result.ErrorCode!, result.Error!)),
+                _ => BadRequest(
+                    ApiResponse<ConfirmCryptoPaymentResponse>.Fail(result.ErrorCode!, result.Error!))
+            };
+        }
+
+        return Ok(ApiResponse<ConfirmCryptoPaymentResponse>.Ok(
+            result.Value!, "Crypto payment confirmed. Membership activated."));
     }
 
 

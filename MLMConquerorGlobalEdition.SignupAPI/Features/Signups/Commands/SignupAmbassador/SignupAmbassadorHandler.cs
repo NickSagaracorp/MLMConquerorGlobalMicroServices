@@ -60,12 +60,26 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
         if (emailTaken is not null)
             return Result<SignupResponse>.Failure("EMAIL_TAKEN", "This email is already registered.");
 
-        if (!string.IsNullOrEmpty(req.ReplicateSiteSlug))
+        // La cadena vacía NO es NULL, y el índice único de MemberProfiles.ReplicateSiteSlug está
+        // filtrado por IS NOT NULL: "" entra en la unicidad como cualquier otro valor. Con lo que
+        // había, la primera alta sin nombre de sitio pasaba y TODAS las siguientes reventaban con
+        // clave duplicada, que al usuario le salía como "An unexpected error occurred". En un
+        // evento, donde casi nadie elige nombre de sitio, se daba de alta el primero y fallaban
+        // los demás.
+        //
+        // Se normaliza AQUÍ, en el servidor, y no en el asistente: el cliente puede mandar "",
+        // "   ", null o no mandar nada, y ninguna de esas cuatro cosas puede acabar en la
+        // columna. Lo que persiste más abajo es esta variable, no req.ReplicateSiteSlug.
+        var replicateSiteSlug = string.IsNullOrWhiteSpace(req.ReplicateSiteSlug)
+            ? null
+            : req.ReplicateSiteSlug.Trim();
+
+        if (replicateSiteSlug is not null)
         {
             var slugExists = await _db.MemberProfiles
-                .AnyAsync(x => x.ReplicateSiteSlug == req.ReplicateSiteSlug, ct);
+                .AnyAsync(x => x.ReplicateSiteSlug == replicateSiteSlug, ct);
             if (slugExists)
-                throw new DuplicateReplicateSiteException(req.ReplicateSiteSlug);
+                throw new DuplicateReplicateSiteException(replicateSiteSlug);
         }
 
         // Resolve sponsor by either replicate-site slug OR MemberId — referral links use both.
@@ -154,7 +168,7 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
             Status            = MemberAccountStatus.Pending,
             EnrollDate        = now,
             SponsorMemberId   = sponsorMemberId,
-            ReplicateSiteSlug = req.ReplicateSiteSlug,
+            ReplicateSiteSlug = replicateSiteSlug,
             PayoutFrequency   = defaultFrequency,
             CreatedBy         = req.Email,
             CreationDate      = now,

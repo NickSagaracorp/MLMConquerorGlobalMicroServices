@@ -34,10 +34,12 @@ public class SignupAmbassadorValidator : AbstractValidator<SignupAmbassadorComma
         RuleFor(x => x.Request.MembershipLevelId)
             .GreaterThan(0).WithMessage("A valid membership level is required.");
 
+        // Ver el comentario de la regla gemela en AmbassadorSignupRequestValidator: solo espacios
+        // es "no he elegido nombre de sitio", no un formato inválido.
         RuleFor(x => x.Request.ReplicateSiteSlug)
             .MaximumLength(100)
             .Matches("^[a-z0-9-]+$").WithMessage("Replicate site slug must be lowercase alphanumeric with hyphens.")
-            .When(x => !string.IsNullOrEmpty(x.Request.ReplicateSiteSlug));
+            .When(x => !string.IsNullOrWhiteSpace(x.Request.ReplicateSiteSlug));
 
         // SSN is required only for United States residents (ISO2 "US").
         When(x => IsUnitedStates(x.Request.Country), () =>

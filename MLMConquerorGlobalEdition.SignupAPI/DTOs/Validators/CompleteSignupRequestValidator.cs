@@ -29,11 +29,15 @@ public class CompleteSignupRequestValidator : AbstractValidator<CompleteSignupRe
                 .Matches(ValidationPatterns.CryptoCurrencyPattern)
                     .WithMessage("CryptoCurrency contains invalid characters.");
 
+            // Opcional al completar el alta: el cobro en cripto llega por fuera y el hash lo
+            // captura quien lo confirma. Si de todas formas viniera en la petición —un cliente
+            // antiguo, una prueba— se sigue exigiendo que tenga la forma correcta, porque un
+            // valor con basura dentro no es mejor que ninguno.
             RuleFor(x => x.CryptoTransactionId)
-                .NotEmpty().WithMessage("CryptoTransactionId is required when PaymentMethod is Crypto.")
                 .MaximumLength(ValidationPatterns.CryptoTxIdMaxLength)
                 .Matches(ValidationPatterns.CryptoTxIdPattern)
-                    .WithMessage("CryptoTransactionId contains invalid characters.");
+                    .WithMessage("CryptoTransactionId contains invalid characters.")
+                .When(x => !string.IsNullOrEmpty(x.CryptoTransactionId));
         });
 
         When(x => x.PaymentMethod == PaymentMethodType.Token, () =>

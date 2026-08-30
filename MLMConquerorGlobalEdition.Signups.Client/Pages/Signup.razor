@@ -86,10 +86,29 @@
         {
             <div class="section-card">
                 <div class="section-body text-center py-5">
-                    <i class="ri-checkbox-circle-fill success-check"></i>
-                    <h3 class="mt-3 mb-2">Welcome, @_completedEmail!</h3>
-                    <p class="text-muted mb-4">Your account is active. Access your BizCenter to get started.</p>
-                    <a href="/login" class="btn btn-enroll px-5">Go to BizCenter</a>
+                    @* La vía de cripto NO deja la cuenta activa: el cobro llega por fuera y alguien
+                       lo confirma a mano. Mandar aquí a esta persona al BizCenter con un "tu cuenta
+                       está activa" la lleva a un login que la va a rechazar, porque su usuario sigue
+                       inactivo hasta que el pago se confirme. *@
+                    @if (_completedPendingCrypto)
+                    {
+                        <i class="ri-time-line success-check"></i>
+                        <h3 class="mt-3 mb-2">Thank you, @_completedEmail!</h3>
+                        <p class="text-muted mb-1">
+                            Your enrollment is registered and your position in the team is secured.
+                        </p>
+                        <p class="text-muted mb-4">
+                            Your membership activates as soon as we confirm your crypto transfer.
+                            We'll email you at <strong>@_completedEmail</strong> the moment it's done.
+                        </p>
+                    }
+                    else
+                    {
+                        <i class="ri-checkbox-circle-fill success-check"></i>
+                        <h3 class="mt-3 mb-2">Welcome, @_completedEmail!</h3>
+                        <p class="text-muted mb-4">Your account is active. Access your BizCenter to get started.</p>
+                        <a href="/login" class="btn btn-enroll px-5">Go to BizCenter</a>
+                    }
                 </div>
             </div>
         }
@@ -772,11 +791,20 @@
                     </div>
                 }
 
+                @* No hay pasarela de cripto integrada y no la va a haber: el cobro llega por fuera
+                   y alguien de la casa lo confirma a mano. El texto de antes prometía una
+                   redirección a una pasarela que no existe. *@
                 @if (_paymentTab == "crypto")
                 {
                     <div class="text-center py-4 text-muted">
                         <i class="ri-bit-coin-line" style="font-size:3rem;opacity:.5"></i>
-                        <p class="mt-2 mb-0 small">You'll be redirected to our crypto gateway after clicking Join Now.</p>
+                        <p class="mt-3 mb-1 small">
+                            Send your payment to the wallet address our team will email you, then click Join Now.
+                        </p>
+                        <p class="mb-0 small">
+                            Your spot in the team is reserved right away. Your membership activates once we
+                            confirm the transfer — usually within one business day.
+                        </p>
                     </div>
                 }
 
@@ -1086,6 +1114,8 @@
     private bool    _busy;
     private string  _error         = string.Empty;
     private bool    _success;
+    /// <summary>El alta se completó pero el cobro en cripto está pendiente de confirmación manual.</summary>
+    private bool    _completedPendingCrypto;
     private string? _completedEmail;
     private string? _signupId;
 
@@ -1727,7 +1757,7 @@
             var b3 = await r3.Content.ReadFromJsonAsync<ApiWrapper<SignupResponseModel>>();
 
             if (b3?.Success == true && b3.Data is not null)
-            { _completedEmail = b3.Data.Email; _success = true; }
+            { _completedEmail = b3.Data.Email; _completedPendingCrypto = _paymentTab == "crypto"; _success = true; }
             else
             { _error = b3?.Message ?? b3?.Errors?.FirstOrDefault() ?? "Could not complete enrollment."; }
         }

@@ -27,8 +27,13 @@ public class CompleteSignupValidator : AbstractValidator<CompleteSignupCommand>
             .When(x => x.Request.PaymentMethod == PaymentMethodType.CreditCard
                      && x.Request.CreditCard != null);
 
-        RuleFor(x => x.Request.CryptoTransactionId)
-            .NotEmpty().WithMessage("Crypto transaction ID is required.")
+        // El identificador de la transacción NO se exige aquí. Nadie puede producirlo al
+        // completar el alta: la transferencia todavía no se ha hecho, o se acaba de hacer y el
+        // aspirante no tiene el hash a mano. Se captura al confirmar el cobro, en
+        // ConfirmCryptoPaymentValidator, que sí lo exige. Lo que sí hace falta desde el principio
+        // es saber en qué moneda se va a pagar, y eso lo cubre CompleteSignupRequestValidator.
+        RuleFor(x => x.Request.CryptoCurrency)
+            .NotEmpty().WithMessage("Crypto currency is required.")
             .When(x => x.Request.PaymentMethod == PaymentMethodType.Crypto);
 
         RuleFor(x => x.Request.TokenCode)

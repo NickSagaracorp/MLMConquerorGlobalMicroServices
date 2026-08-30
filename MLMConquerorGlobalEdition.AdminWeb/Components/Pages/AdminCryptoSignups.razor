@@ -1,0 +1,282 @@
+@page "/admin/billing/crypto-signups"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.CryptoPaymentApprovers)]
+@inject HttpClient Http
+
+@*
+    Altas pagadas en cripto esperando que alguien confirme a mano que el dinero entró.
+
+    El atributo de arriba solo esconde la pantalla. Quien de verdad decide es el servidor:
+    AdminCryptoSignupsController y, detrás, el endpoint de SignupAPI comprueban los mismos cuatro
+    roles. Una llamada directa a la API con un token de otro rol rebota aunque nunca se pase por aquí.
+*@
+
+<PageTitle>Crypto Signups — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> {
+    new("Admin Dashboard", "/admin"), new("Billing"), new("Crypto Signups") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="mb-0 fw-bold">Awaiting payment confirmation</h5>
+            <small class="text-muted">
+                The membership stays inactive and no commissions are generated until the transfer is confirmed.
+            </small>
+        </div>
+        <button class="btn btn-sm btn-outline-secondary" @onclick="LoadAsync" disabled="@_loading">
+            <i class="ri-refresh-line"></i> Refresh
+        </button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+        }
+        else if (_pending.Count == 0)
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="ri-bit-coin-line" style="font-size:2.5rem;opacity:.4"></i>
+                <p class="mt-2 mb-0">No crypto signups are waiting for confirmation.</p>
+            </div>
+        }
+        else
+        {
+            <SfGrid TValue="PendingCryptoSignupDto" DataSource="@_pending"
+                    AllowFiltering="true" AllowSorting="true" AllowResizing="true"
+                    GridLines="GridLine.Horizontal">
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn HeaderText="Requested" Width="150">
+                        <Template>
+                            <span class="small text-muted">
+                                @(((PendingCryptoSignupDto)context).RequestedAt.ToString("yyyy-MM-dd HH:mm"))
+                            </span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(PendingCryptoSignupDto.MemberId)" HeaderText="Member ID" Width="130" />
+                    <GridColumn Field="@nameof(PendingCryptoSignupDto.FullName)" HeaderText="Name" Width="180" />
+                    <GridColumn Field="@nameof(PendingCryptoSignupDto.Email)" HeaderText="Email" Width="220" />
+                    <GridColumn Field="@nameof(PendingCryptoSignupDto.Country)" HeaderText="Country" Width="90" />
+                    <GridColumn HeaderText="Sponsor" Width="130">
+                        <Template>@(((PendingCryptoSignupDto)context).SponsorMemberId ?? "—")</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Currency" Width="100" TextAlign="TextAlign.Center">
+                        <Template>
+                            <span class="badge bg-warning text-dark">
+                                @(((PendingCryptoSignupDto)context).CryptoCurrency)
+                            </span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Amount due" Width="120" TextAlign="TextAlign.Right">
+                        <Template>@(((PendingCryptoSignupDto)context).AmountDue.ToString("C"))</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="170" TextAlign="TextAlign.Center">
+                        <Template>
+                            @{ var dto = (PendingCryptoSignupDto)context; }
+                            <button class="btn btn-sm btn-outline-success py-0"
+                                    @onclick="() => OpenConfirm(dto)"
+                                    title="Confirm the crypto payment was received">
+                                <i class="ri-check-double-line"></i> Confirm payment
+                            </button>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3">
+        <h5 class="mb-0 fw-bold">Confirmed — audit trail</h5>
+        <small class="text-muted">Who confirmed each payment, when, and against which transaction id.</small>
+    </div>
+    <div class="card-body p-0">
+        @if (_confirmed.Count == 0)
+        {
+            <div class="text-center py-4 text-muted"><p class="mb-0">Nothing confirmed yet.</p></div>
+        }
+        else
+        {
+            <SfGrid TValue="ConfirmedCryptoSignupDto" DataSource="@_confirmed"
+                    AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridColumns>
+                    <GridColumn HeaderText="Confirmed at" Width="150">
+                        <Template>
+                            <span class="small text-muted">
+                                @(((ConfirmedCryptoSignupDto)context).ConfirmedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")
+                            </span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(ConfirmedCryptoSignupDto.MemberId)" HeaderText="Member ID" Width="130" />
+                    <GridColumn Field="@nameof(ConfirmedCryptoSignupDto.FullName)" HeaderText="Name" Width="170" />
+                    <GridColumn HeaderText="Amount" Width="110" TextAlign="TextAlign.Right">
+                        <Template>@(((ConfirmedCryptoSignupDto)context).AmountDue.ToString("C"))</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Transaction id" Width="240">
+                        <Template>
+                            <code class="small">@(((ConfirmedCryptoSignupDto)context).CryptoTransactionId ?? "—")</code>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Confirmed by" Width="200">
+                        <Template>@(((ConfirmedCryptoSignupDto)context).ConfirmedByEmail ?? "—")</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Notes" Width="220">
+                        <Template>
+                            <span class="small text-muted">@(((ConfirmedCryptoSignupDto)context).Notes ?? "—")</span>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+@if (_confirmTarget is not null)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm crypto payment</h5>
+                    <button type="button" class="btn-close" @onclick="CloseConfirm" disabled="@_saving"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">
+                        <strong>@_confirmTarget.FullName</strong> (@_confirmTarget.MemberId) —
+                        @_confirmTarget.AmountDue.ToString("C") in @_confirmTarget.CryptoCurrency
+                    </p>
+                    <div class="alert alert-warning py-2 small">
+                        <i class="ri-alert-line me-1"></i>
+                        Confirming activates the membership and generates the upline commissions.
+                        Only do this once the transfer is verified on-chain.
+                    </div>
+                    <label class="form-label small fw-semibold">Transaction id <span class="text-danger">*</span></label>
+                    <input class="form-control form-control-sm mb-3" @bind="_txId" @bind:event="oninput"
+                           placeholder="On-chain transaction hash" maxlength="128" />
+                    <label class="form-label small fw-semibold">Notes (optional)</label>
+                    <textarea class="form-control form-control-sm" rows="3" @bind="_notes"
+                              maxlength="500" placeholder="Network used, amount received, anything worth recording."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseConfirm" disabled="@_saving">Cancel</button>
+                    <button class="btn btn-success"
+                            disabled="@(_saving || string.IsNullOrWhiteSpace(_txId))"
+                            @onclick="ConfirmPayment">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Confirm payment
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<PendingCryptoSignupDto>   _pending   = new();
+    private List<ConfirmedCryptoSignupDto> _confirmed = new();
+
+    private bool    _loading = true;
+    private bool    _saving;
+    private string? _alertMsg;
+    private bool    _alertIsError;
+
+    private PendingCryptoSignupDto? _confirmTarget;
+    private string  _txId  = string.Empty;
+    private string? _notes;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+        try
+        {
+            var pending = await Http.GetFromJsonAsync<ApiResp<List<PendingCryptoSignupDto>>>(
+                "api/v1/admin/crypto-signups/pending");
+            _pending = pending?.Data ?? new();
+
+            var confirmed = await Http.GetFromJsonAsync<ApiResp<List<ConfirmedCryptoSignupDto>>>(
+                "api/v1/admin/crypto-signups/confirmed?take=100");
+            _confirmed = confirmed?.Data ?? new();
+        }
+        catch (Exception ex)
+        {
+            _alertMsg = $"Error: {ex.Message}";
+            _alertIsError = true;
+        }
+        finally { _loading = false; }
+    }
+
+    private void OpenConfirm(PendingCryptoSignupDto dto)
+    {
+        _confirmTarget = dto;
+        _txId  = string.Empty;
+        _notes = null;
+    }
+
+    private void CloseConfirm()
+    {
+        _confirmTarget = null;
+        _txId  = string.Empty;
+        _notes = null;
+    }
+
+    private async Task ConfirmPayment()
+    {
+        if (_confirmTarget is null || string.IsNullOrWhiteSpace(_txId)) return;
+
+        _saving = true;
+        try
+        {
+            var resp = await Http.PostAsJsonAsync(
+                $"api/v1/admin/crypto-signups/{_confirmTarget.OrderId}/confirm",
+                new { CryptoTransactionId = _txId.Trim(), Notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes!.Trim() });
+
+            if (resp.IsSuccessStatusCode)
+            {
+                _alertMsg = $"Payment confirmed. {_confirmTarget.FullName} is now active and the upline commissions were generated.";
+                _alertIsError = false;
+                CloseConfirm();
+                await LoadAsync();
+            }
+            else
+            {
+                var payload = await resp.Content.ReadFromJsonAsync<ApiResp<object>>();
+                _alertMsg = payload?.Errors?.FirstOrDefault()
+                         ?? payload?.Message
+                         ?? $"Confirmation failed ({(int)resp.StatusCode}).";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _alertMsg = $"Error: {ex.Message}";
+            _alertIsError = true;
+        }
+        finally { _saving = false; }
+    }
+
+    // AdminWeb no referencia el proyecto de AdminAPI a propósito —habla con él por HTTP—, así que
+    // el contrato se duplica por forma del JSON, igual que en Members.razor y AdminFlaggedSignups.razor.
+    private record ApiResp<T>(bool Success, T? Data, string? Message, IEnumerable<string>? Errors);
+
+    private record PendingCryptoSignupDto(
+        string OrderId, string? OrderNo, string MemberId, string FullName, string Email,
+        string Country, string? SponsorMemberId, string CryptoCurrency, decimal AmountDue,
+        DateTime EnrollDate, DateTime RequestedAt);
+
+    private record ConfirmedCryptoSignupDto(
+        string OrderId, string MemberId, string FullName, string Email, string CryptoCurrency,
+        decimal AmountDue, string? CryptoTransactionId, string? ConfirmedByEmail,
+        DateTime? ConfirmedAt, string? Notes);
+}
