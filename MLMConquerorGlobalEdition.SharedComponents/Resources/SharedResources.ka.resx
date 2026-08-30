@@ -1099,6 +1099,7 @@
   <data name="Signup.Welcome" xml:space="preserve"><value>კეთილი იყოს თქვენი მობრძანება, {0}!</value></data>
   <data name="Signup.AccountActive" xml:space="preserve"><value>თქვენი ანგარიში აქტიურია. &lt;a href="/login"&gt;შესვლა ახლა&lt;/a&gt;</value></data>
   <data name="Signup.AlreadyHaveAccount" xml:space="preserve"><value>უკვე გაქვთ ანგარიში? შესვლა</value></data>
+  <data name="Signup.SessionClosedNotice" xml:space="preserve"><value>უსაფრთხოებისთვის ამ კომპიუტერზე გახსნილი სესია დაიხურა.</value></data>
   <data name="Signup.ErrorNameRequired" xml:space="preserve"><value>სახელი და გვარი სავალდებულოა.</value></data>
   <data name="Signup.ErrorEmailRequired" xml:space="preserve"><value>ელ. ფოსტა სავალდებულოა.</value></data>
   <data name="Signup.ErrorPasswordMismatch" xml:space="preserve"><value>პაროლები უნდა ემთხვეოდეს.</value></data>

@@ -1099,6 +1099,7 @@
   <data name="Signup.Welcome" xml:space="preserve"><value>欢迎，{0}！</value></data>
   <data name="Signup.AccountActive" xml:space="preserve"><value>您的账户已激活。&lt;a href="/login"&gt;立即登录&lt;/a&gt;</value></data>
   <data name="Signup.AlreadyHaveAccount" xml:space="preserve"><value>已经有账户？登录</value></data>
+  <data name="Signup.SessionClosedNotice" xml:space="preserve"><value>出于安全考虑，已关闭此计算机上打开的会话。</value></data>
   <data name="Signup.ErrorNameRequired" xml:space="preserve"><value>姓名是必填项。</value></data>
   <data name="Signup.ErrorEmailRequired" xml:space="preserve"><value>电子邮件是必填项。</value></data>
   <data name="Signup.ErrorPasswordMismatch" xml:space="preserve"><value>密码必须匹配。</value></data>

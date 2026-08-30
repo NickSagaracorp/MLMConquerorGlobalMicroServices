@@ -1168,6 +1168,7 @@
   <data name="Signup.Welcome" xml:space="preserve"><value>{0}님, 환영합니다!</value></data>
   <data name="Signup.AccountActive" xml:space="preserve"><value>계정이 활성화되었습니다. &lt;a href="/login"&gt;지금 로그인&lt;/a&gt;</value></data>
   <data name="Signup.AlreadyHaveAccount" xml:space="preserve"><value>이미 계정이 있으신가요? 로그인</value></data>
+  <data name="Signup.SessionClosedNotice" xml:space="preserve"><value>보안을 위해 이 컴퓨터에서 열려 있던 세션이 종료되었습니다.</value></data>
   <data name="Signup.ErrorNameRequired" xml:space="preserve"><value>이름과 성은 필수입니다.</value></data>
   <data name="Signup.ErrorEmailRequired" xml:space="preserve"><value>이메일은 필수입니다.</value></data>
   <data name="Signup.ErrorPasswordMismatch" xml:space="preserve"><value>비밀번호가 일치해야 합니다.</value></data>

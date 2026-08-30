@@ -157,4 +157,34 @@ public static class PortalServerAuthExtensions
     /// </remarks>
     public static IApplicationBuilder UseSessionExpiry(this IApplicationBuilder app) =>
         app.UseMiddleware<SessionExpiryMiddleware>();
+
+    /// <summary>
+    /// Mata cualquier sesión abierta en el navegador en cuanto alguien carga la pantalla de alta.
+    /// </summary>
+    /// <remarks>
+    /// DÓNDE VA, y las dos mitades importan: DESPUÉS de <c>UseAuthentication()</c>, porque necesita
+    /// el <c>ClaimsPrincipal</c> de la cookie para saber si hay algo que matar, y ANTES de
+    /// <see cref="UseSessionExpiry"/>, porque quien llegue al alta con el JWT ya caducado tiene que
+    /// quedarse en el alta y no acabar en el login con el aviso de sesión caducada. Ese orden no lo
+    /// comprueba el compilador; lo comprueban las pruebas del middleware.
+    ///
+    /// Falla al arrancar si el portal no declaró su <see cref="AuthPortalOptions.SignupPage"/>. Es
+    /// deliberado: la alternativa —un middleware que no mira ninguna ruta— es una protección de
+    /// seguridad apagada que parece encendida desde el <c>Program.cs</c>, y no se notaría hasta que
+    /// alguien mirase las cookies de un navegador en un evento.
+    /// </remarks>
+    public static IApplicationBuilder UseSignupSessionReset(this IApplicationBuilder app)
+    {
+        var portal = app.ApplicationServices.GetRequiredService<AuthPortalOptions>();
+
+        if (string.IsNullOrWhiteSpace(portal.SignupPage))
+        {
+            throw new InvalidOperationException(
+                "UseSignupSessionReset() necesita AuthPortalOptions.SignupPage: es la ruta cuya " +
+                "carga tiene que matar la sesión del navegador. Un portal sin pantalla de alta " +
+                "—administración— no debe montar este middleware.");
+        }
+
+        return app.UseMiddleware<SignupSessionResetMiddleware>();
+    }
 }

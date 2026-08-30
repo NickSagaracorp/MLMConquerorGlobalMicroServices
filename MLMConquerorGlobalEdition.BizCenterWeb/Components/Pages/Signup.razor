@@ -38,6 +38,16 @@
             </div>
         </div>
 
+        @* La sesión que había abierta en este navegador se cerró al cargar esta pantalla. Se dice,
+           y no se calla, porque a quien llega aquí por error —un miembro que abre el enlace del
+           sitio replicado de un compañero— la sesión se le cierra sin haber pedido nada, y sin una
+           línea que lo explique parece que el portal se ha estropeado. Lo pone el middleware en la
+           URL; aquí solo se lee. *@
+        @if (SessionClosed == "1" && Step < 4)
+        {
+            <div class="alert alert-secondary py-2 small mb-3">@L["Signup.SessionClosedNotice"]</div>
+        }
+
         @if (!string.IsNullOrEmpty(_error))
         {
             <div class="alert alert-danger">@_error</div>
@@ -283,6 +293,14 @@
 
 @code {
     [Parameter] public string? SponsorSlug { get; set; }
+
+    /// <summary>
+    /// La marca que deja el middleware cuando acaba de cerrar una sesión para abrir esta pantalla.
+    /// El nombre es el de <c>SignupSessionResetMiddleware.ClosedQueryParam</c>; se escribe aquí
+    /// literal porque esta página no puede referenciar SharedComponents.Server.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "session_closed")]
+    public string? SessionClosed { get; set; }
 
     private int    Step   = 1;
     private bool   _busy;

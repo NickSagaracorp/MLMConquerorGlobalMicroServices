@@ -1204,6 +1204,7 @@
   <data name="Signup.Welcome" xml:space="preserve"><value>¡Bienvenido, {0}!</value></data>
   <data name="Signup.AccountActive" xml:space="preserve"><value>Tu cuenta está activa. &lt;a href="/login"&gt;Inicia sesión ahora&lt;/a&gt;</value></data>
   <data name="Signup.AlreadyHaveAccount" xml:space="preserve"><value>¿Ya tienes una cuenta? Inicia sesión</value></data>
+  <data name="Signup.SessionClosedNotice" xml:space="preserve"><value>Por seguridad se cerró la sesión que estaba abierta en esta computadora.</value></data>
   <data name="Signup.ErrorNameRequired" xml:space="preserve"><value>El nombre y el apellido son obligatorios.</value></data>
   <data name="Signup.ErrorEmailRequired" xml:space="preserve"><value>El correo es obligatorio.</value></data>
   <data name="Signup.ErrorPasswordMismatch" xml:space="preserve"><value>Las contraseñas deben coincidir.</value></data>

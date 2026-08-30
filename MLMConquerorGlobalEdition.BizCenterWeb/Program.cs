@@ -93,6 +93,12 @@ builder.Services.AddAuthSurface(new AuthPortalOptions
 
     HomePage = "/",
 
+    // La pantalla de alta pública, cuya carga MATA cualquier sesión abierta en ese navegador. La
+    // ruta se declara sin el slug del patrocinador porque se compara por segmentos: con esto quedan
+    // cubiertas las dos rutas de la pantalla, /signup y /signup/{patrocinador} —que en un evento es
+    // la que de verdad se usa, porque es el enlace del sitio replicado—.
+    SignupPage = "/signup",
+
     // Sin lista de roles: el centro de negocios admite a cualquier cuenta válida.
 
     // El idioma preferido del miembro viaja en el claim default_language del token; fijarlo aquí
@@ -151,6 +157,12 @@ app.UseRequestLocalization(new RequestLocalizationOptions()
     .AddSupportedUICultures(supportedCultures));
 app.UseAntiforgery();
 app.UseAuthentication();
+// En un evento se dan de alta varias personas seguidas en el mismo ordenador, y la anterior no
+// siempre se acuerda de salir: cargar la pantalla de alta mata cualquier sesión abierta en ese
+// navegador antes de pintar nada. Va ANTES del middleware de caducidad a propósito: quien llegue al
+// alta con el JWT ya caducado tiene que quedarse en el alta, no acabar en el login con el aviso de
+// sesión caducada.
+app.UseSignupSessionReset();
 // Justo después de la autenticación, que es cuando ya hay ClaimsPrincipal y todavía no ha empezado
 // la respuesta: una navegación de un usuario cuyo JWT ya caducó se corta aquí, se le limpia la
 // cookie y se le manda al login con el aviso. Dentro del circuito ese trabajo lo hace ApiAuthHandler;

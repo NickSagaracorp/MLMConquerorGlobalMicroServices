@@ -265,49 +265,16 @@ public static class AuthEndpoints
         [FromQuery] string?                 reason = null,
         CancellationToken                   ct = default)
     {
-        await RevokeRefreshTokenAsync(httpContext, api, sessionTokens, ct);
-
-        ChallengeCookies.Delete(httpContext, challengeCookies.Login);
-        ChallengeCookies.Delete(httpContext, challengeCookies.Enrollment);
-        await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        // TODO lo que significa cerrar una sesión está en PortalSignOut: el refresh token en la
+        // API, la entrada del almacén, las cookies de reto, la cookie de sesión y el principal de
+        // esta petición. Lo comparte con el middleware que mata la sesión al abrir el alta, y por
+        // eso está fuera: dos listas de "lo que hay que limpiar" se desincronizan en cuanto aparece
+        // la sexta cosa que limpiar.
+        await PortalSignOut.KillAsync(httpContext, api, challengeCookies, sessionTokens, ct);
 
         return reason == SessionExpiredCode
             ? Failure(portal.LoginPage, SessionExpiredCode)
             : Results.Redirect(portal.LoginPage);
-    }
-
-    /// <summary>
-    /// Mata el refresh token EN LA API antes de limpiar nada del portal.
-    /// </summary>
-    /// <remarks>
-    /// SIN ESTO, SALIR NO SERÍA SALIR. Desde que el portal guarda el refresh token, borrar la cookie
-    /// deja de ser suficiente: es una credencial de treinta días que sigue viva en la base y que
-    /// vale para pedir tokens de acceso nuevos sin contraseña. <c>POST /api/v1/auth/logout</c> la
-    /// invalida —pone a nulo <c>ApplicationUser.RefreshToken</c>—, y esa llamada es la única
-    /// diferencia entre cerrar la sesión y esconderla.
-    ///
-    /// La llamada va autenticada, así que necesita un token de acceso VIVO. Si el del usuario ya
-    /// caducó, el proveedor de token renueva primero —el área de cuenta está fuera del middleware,
-    /// que es quien lo haría en una navegación normal— y la salida sale con el token bueno. Si ni
-    /// siquiera se puede renovar, el refresco ya estaba muerto y no hay nada que invalidar.
-    ///
-    /// El resultado se ignora a propósito: pase lo que pase con la API, la sesión del portal se
-    /// cierra. Una salida que se quedara a medias porque SignupAPI no responde sería peor que una
-    /// salida que deja un refresh token vivo hasta que caduque solo.
-    /// </remarks>
-    private static async Task RevokeRefreshTokenAsync(
-        HttpContext         httpContext,
-        AuthApiGateway      api,
-        PortalSessionTokens sessionTokens,
-        CancellationToken   ct)
-    {
-        if (httpContext.User.Identity?.IsAuthenticated != true) return;
-
-        await api.CallAsync(HttpMethod.Post, "api/v1/auth/logout", null, authenticated: true, ct);
-
-        // Y fuera del almacén: dejar la entrada viva sería guardar en memoria una credencial que ya
-        // no abre nada, y bastaría para que una petición en vuelo resucitara la sesión.
-        sessionTokens.Forget(httpContext.User);
     }
 
     // ===========================================================================================

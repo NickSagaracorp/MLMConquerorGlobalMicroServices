@@ -48,6 +48,25 @@ public sealed record AuthPortalOptions
     /// <summary>A dónde aterriza el usuario con la sesión ya firmada.</summary>
     public required string HomePage { get; init; }
 
+    /// <summary>
+    /// La raíz de la pantalla de ALTA PÚBLICA de este portal, o null si no tiene ninguna.
+    /// </summary>
+    /// <remarks>
+    /// Es lo contrario del resto de este registro: los demás son destinos a los que se manda a un
+    /// usuario, y este es un camino del que se le SACA la sesión. Está aquí de todas formas porque
+    /// es un dato de la puerta —una pantalla a la que se llega sin sesión y de la que se sale con
+    /// una— y porque quien lo consume, <see cref="SignupSessionResetMiddleware"/>, ya recibe estas
+    /// opciones.
+    ///
+    /// Cubre las DOS rutas de la pantalla, la de raíz y la del sitio replicado del patrocinador
+    /// (<c>/signup/{slug}</c>), porque se compara por segmentos.
+    ///
+    /// Null en administración, y no por descuido: ese portal no tiene alta. Un portal que no la
+    /// declare simplemente no monta el middleware, y si lo montara sin declararla el arranque falla
+    /// con un mensaje en vez de dejar la protección apagada en silencio.
+    /// </remarks>
+    public string? SignupPage { get; init; }
+
     // -------------------------------------------------------------------------------------------
     //  Quién entra
     // -------------------------------------------------------------------------------------------

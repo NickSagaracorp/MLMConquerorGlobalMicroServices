@@ -1168,6 +1168,7 @@
   <data name="Signup.Welcome" xml:space="preserve"><value>Bienvenue, {0} !</value></data>
   <data name="Signup.AccountActive" xml:space="preserve"><value>Votre compte est actif. &lt;a href="/login"&gt;Se connecter maintenant&lt;/a&gt;</value></data>
   <data name="Signup.AlreadyHaveAccount" xml:space="preserve"><value>Vous avez déjà un compte ? Se connecter</value></data>
+  <data name="Signup.SessionClosedNotice" xml:space="preserve"><value>Par sécurité, la session ouverte sur cet ordinateur a été fermée.</value></data>
   <data name="Signup.ErrorNameRequired" xml:space="preserve"><value>Le prénom et le nom sont obligatoires.</value></data>
   <data name="Signup.ErrorEmailRequired" xml:space="preserve"><value>L'e-mail est obligatoire.</value></data>
   <data name="Signup.ErrorPasswordMismatch" xml:space="preserve"><value>Les mots de passe doivent correspondre.</value></data>
