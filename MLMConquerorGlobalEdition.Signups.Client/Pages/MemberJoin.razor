@@ -1,9 +1,17 @@
 @page "/member-join"
 @page "/member-join/{SponsorSlug}"
-@rendermode InteractiveAuto
+@*
+    EL MODO DE RENDER ES PARTE DE LA DECISIÓN DE PCI DSS. Igual que en Signup.razor: con
+    InteractiveAuto la primera visita corre sobre un circuito de servidor y cada pulsación del campo
+    del número de tarjeta viajaba hasta nosotros. Con InteractiveWebAssembly la página se prepinta
+    como marcado estático y solo se vuelve interactiva dentro del navegador, que es donde se teclea
+    el PAN y donde se tokeniza.
+*@
+@rendermode InteractiveWebAssembly
 @inject IHttpClientFactory HttpFactory
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
+@inject ICardTokenizationService Tokenizer
 
 <div class="theme-member">
 
@@ -1233,15 +1241,13 @@
         catch { }
     }
 
+    // Misma función que en Signup.razor y que en el servidor: una sola, en CardBrandDetector
+    // (SharedKernel), alcanzada por la interfaz que tokeniza. Aquí solo se decide cómo se enseña lo
+    // que no se reconoce.
     private string DetectCardBrand()
     {
-        var n = _ccNumber.Replace(" ", "");
-        if (string.IsNullOrEmpty(n))    return "•••";
-        if (n.StartsWith("4"))          return "Visa";
-        if (n.Length > 1 && (n[0] == '5' || n[0] == '2')) return "MC";
-        if (n.StartsWith("34") || n.StartsWith("37")) return "Amex";
-        if (n.StartsWith("6"))          return "Disc";
-        return "•••";
+        var brand = Tokenizer.DetectBrand(_ccNumber);
+        return brand == CardBrandDetector.Unknown ? "•••" : brand;
     }
 
     private void ApplyCoupon()
@@ -1356,26 +1362,39 @@
                 { _error = b2?.Message ?? "Product selection failed."; return; }
             }
 
-            object payment = _paymentTab switch
+            // La vía de tarjeta se tokeniza en el navegador y manda los tres identificadores que
+            // devuelve la pasarela. Mismo bloque que en Signup.razor y con la misma razón: aquí
+            // estaban los mismos dos valores a fuego ("manual" y "Stripe") y faltaba CardToken.
+            object payment;
+            if (_paymentTab == "card")
             {
-                "card" => new
+                var cardProblem = CardPayment.Validate(_ccNumber, _ccExpMonth, _ccExpYear, _ccCvv);
+                if (cardProblem is not null) { _error = cardProblem; return; }
+
+                CreditCardPaymentInfo card;
+                try
                 {
-                    PaymentMethod = "CreditCard",
-                    CreditCard = new
-                    {
-                        GatewayToken = "manual",
-                        Last4   = _ccNumber.Replace(" ","").Length >= 4 ? _ccNumber.Replace(" ","")[^4..] : string.Empty,
-                        First6  = _ccNumber.Replace(" ","").Length >= 6 ? _ccNumber.Replace(" ","")[..6]  : string.Empty,
-                        CardBrand   = DetectCardBrand(),
-                        ExpiryMonth = _ccExpMonth,
-                        ExpiryYear  = _ccExpYear,
-                        Gateway     = "Stripe"
-                    }
-                },
-                "token"  => (object)new { PaymentMethod = "Token",  TokenCode = _payToken },
-                "crypto" => (object)new { PaymentMethod = "Crypto", CryptoCurrency = "BTC" },
-                _        => (object)new { PaymentMethod = "CreditCard" }
-            };
+                    card = await CardPayment.PrepareAsync(
+                        Tokenizer, _ccNumber, _ccExpMonth, _ccExpYear,
+                        $"{_ccFirst} {_ccLast}".Trim(), _ccCvv);
+                }
+                catch (Exception ex)
+                {
+                    _error = $"We could not verify your card with the payment gateway: {ex.Message}";
+                    return;
+                }
+
+                payment = new { PaymentMethod = "CreditCard", CreditCard = card };
+            }
+            else
+            {
+                payment = _paymentTab switch
+                {
+                    "token"  => (object)new { PaymentMethod = "Token",  TokenCode = _payToken },
+                    "crypto" => (object)new { PaymentMethod = "Crypto", CryptoCurrency = "BTC" },
+                    _        => (object)new { PaymentMethod = "CreditCard" }
+                };
+            }
 
             var r3 = await api.PostAsJsonAsync($"api/v1/signups/{_signupId}/complete", payment);
             var b3 = await r3.Content.ReadFromJsonAsync<ApiWrapper<SignupResponseModel>>();

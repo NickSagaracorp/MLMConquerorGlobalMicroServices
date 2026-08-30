@@ -1,9 +1,24 @@
 @page "/ambassador-join"
 @page "/ambassador-join/{SponsorSlug}"
-@rendermode InteractiveAuto
+@*
+    EL MODO DE RENDER ES PARTE DE LA DECISIÓN DE PCI DSS, no una preferencia de rendimiento.
+
+    Estaba en InteractiveAuto, que significa: la PRIMERA visita se ejecuta en el SERVIDOR, sobre un
+    circuito, y solo las siguientes corren en WebAssembly. Sobre un circuito, cada pulsación de un
+    @@oninput viaja al servidor — incluidas las del campo del número de tarjeta. Es decir: con
+    InteractiveAuto el PAN completo YA estaba llegando a nuestros servidores, tecla a tecla, en toda
+    primera visita, aunque el cuerpo de la petición a la API no lo llevara nunca.
+
+    Con InteractiveWebAssembly la página se PREPINTA en el servidor (marcado estático, sin circuito
+    y sin campos que el visitante pueda rellenar todavía) y solo se vuelve interactiva ya dentro del
+    navegador. A partir de ahí lo que se teclea se queda en el dispositivo, y la tokenización —que
+    también corre aquí— devuelve los identificadores que sí pueden viajar.
+*@
+@rendermode InteractiveWebAssembly
 @inject IHttpClientFactory HttpFactory
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
+@inject ICardTokenizationService Tokenizer
 
 <div class="theme-ambassador">
 
@@ -1530,15 +1545,18 @@
         catch { }
     }
 
+    // La detección de marca ya no se escribe aquí. Vive en CardBrandDetector (SharedKernel) y llega
+    // por la misma interfaz que tokeniza, porque una pasarela real puede querer decir la suya. Esta
+    // pantalla solo decide cómo se ENSEÑA lo que no se reconoce: con el número vacío o con un BIN
+    // que no es de ninguna red conocida, un marcador en vez de la palabra "Unknown".
+    //
+    // Antes esto era una copia divergente: devolvía "MC" y "Disc", daba Mastercard a cualquier
+    // número que empezara por 2 y Discover a cualquiera que empezara por 6, y no conocía JCB ni
+    // Diners. La marca que veía la persona y la que se guardaba en la base no eran la misma.
     private string DetectCardBrand()
     {
-        var n = _ccNumber.Replace(" ", "");
-        if (string.IsNullOrEmpty(n))    return "•••";
-        if (n.StartsWith("4"))          return "Visa";
-        if (n.Length > 1 && (n[0] == '5' || n[0] == '2')) return "MC";
-        if (n.StartsWith("34") || n.StartsWith("37")) return "Amex";
-        if (n.StartsWith("6"))          return "Disc";
-        return "•••";
+        var brand = Tokenizer.DetectBrand(_ccNumber);
+        return brand == CardBrandDetector.Unknown ? "•••" : brand;
     }
 
     private void ApplyCoupon()
@@ -1663,26 +1681,47 @@
                 { _error = b2?.Message ?? "Product selection failed."; return; }
             }
 
-            object payment = _paymentTab switch
+            // ── EL PAGO ────────────────────────────────────────────────────────────────────────
+            // La vía de tarjeta se TOKENIZA aquí, en el navegador, y a la API van los tres
+            // identificadores que devuelve la pasarela. Antes se mandaban a fuego
+            // GatewayToken = "manual" y Gateway = "Stripe" (con mayúscula), y CardToken no se
+            // mandaba: las tres cosas las rechaza CreditCardInfoDtoValidator, y por eso el alta con
+            // tarjeta llevaba rota desde el 23 de mayo sin que nadie lo notara — las altas se
+            // venían haciendo con token, que sí funciona.
+            //
+            // El PAN no aparece en este objeto ni en ningún otro que salga de aquí.
+            object payment;
+            if (_paymentTab == "card")
             {
-                "card" => new
+                var cardProblem = CardPayment.Validate(_ccNumber, _ccExpMonth, _ccExpYear, _ccCvv);
+                if (cardProblem is not null) { _error = cardProblem; return; }
+
+                CreditCardPaymentInfo card;
+                try
                 {
-                    PaymentMethod = "CreditCard",
-                    CreditCard = new
-                    {
-                        GatewayToken = "manual",
-                        Last4   = _ccNumber.Replace(" ","").Length >= 4 ? _ccNumber.Replace(" ","")[^4..] : string.Empty,
-                        First6  = _ccNumber.Replace(" ","").Length >= 6 ? _ccNumber.Replace(" ","")[..6]  : string.Empty,
-                        CardBrand   = DetectCardBrand(),
-                        ExpiryMonth = _ccExpMonth,
-                        ExpiryYear  = _ccExpYear,
-                        Gateway     = "Stripe"
-                    }
-                },
-                "token"  => (object)new { PaymentMethod = "Token",  TokenCode = _payToken },
-                "crypto" => (object)new { PaymentMethod = "Crypto", CryptoCurrency = "BTC" },
-                _        => (object)new { PaymentMethod = "CreditCard" }
-            };
+                    card = await CardPayment.PrepareAsync(
+                        Tokenizer, _ccNumber, _ccExpMonth, _ccExpYear,
+                        $"{_ccFirst} {_ccLast}".Trim(), _ccCvv);
+                }
+                catch (Exception ex)
+                {
+                    // Un fallo de la pasarela no puede quedar como un error genérico de conexión:
+                    // la persona tiene que saber que su tarjeta no se llegó a aceptar.
+                    _error = $"We could not verify your card with the payment gateway: {ex.Message}";
+                    return;
+                }
+
+                payment = new { PaymentMethod = "CreditCard", CreditCard = card };
+            }
+            else
+            {
+                payment = _paymentTab switch
+                {
+                    "token"  => (object)new { PaymentMethod = "Token",  TokenCode = _payToken },
+                    "crypto" => (object)new { PaymentMethod = "Crypto", CryptoCurrency = "BTC" },
+                    _        => (object)new { PaymentMethod = "CreditCard" }
+                };
+            }
 
             var r3 = await api.PostAsJsonAsync($"api/v1/signups/{_signupId}/complete", payment);
             var b3 = await r3.Content.ReadFromJsonAsync<ApiWrapper<SignupResponseModel>>();

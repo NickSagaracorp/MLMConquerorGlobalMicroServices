@@ -1,8 +1,10 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using MLMConquerorGlobalEdition.SharedKernel.Billing;
 using MLMConquerorGlobalEdition.Signups.Components;
 using MLMConquerorGlobalEdition.Signups.Middleware;
+using MLMConquerorGlobalEdition.Signups.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +12,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddInteractiveWebAssemblyComponents();
+
+// LA TOKENIZACIÓN DE TARJETA NO SE HACE AQUÍ. El asistente se prepinta en el servidor y por eso el
+// contenedor tiene que poder construirlo, pero lo que se registra es un guardián que lanza si
+// alguien intenta tokenizar de este lado. Quien tokeniza de verdad es el contenedor de WebAssembly
+// (Signups.Client/Program.cs), en el navegador, donde está el número de tarjeta y donde se queda.
+builder.Services.AddScoped<ICardTokenizationService, ServerSideCardTokenizationGuard>();
 
 // HTTP client to call SignupAPI
 builder.Services.AddHttpClient("SignupsInternal", client =>

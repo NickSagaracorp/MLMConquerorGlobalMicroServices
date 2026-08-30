@@ -112,8 +112,12 @@ builder.Services.AddScoped<IS3FileService, S3FileService>();
 
 builder.Services.AddDataProtection();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.SharedKernel.Interfaces.IEncryptionService, EncryptionService>();
-builder.Services.AddScoped<MLMConquerorGlobalEdition.BizCenter.Services.Billing.ICardTokenizationService,
-                            MLMConquerorGlobalEdition.BizCenter.Services.Billing.SimulatedCardTokenizationService>();
+// La tokenización de tarjeta ya no es de este proyecto: vive en SharedKernel, que es el único sitio
+// que alcanzan a la vez BizCenter, SignupAPI y la aplicación de alta. Aquí sigue registrándose la
+// implementación simulada porque este alta de tarjeta SÍ recibe el número en el servidor —viene por
+// el cuerpo de AddCreditCardCommand—, cosa que el alta de miembro no hace y no debe hacer.
+builder.Services.AddScoped<MLMConquerorGlobalEdition.SharedKernel.Billing.ICardTokenizationService,
+                            MLMConquerorGlobalEdition.SharedKernel.Billing.SimulatedCardTokenizationService>();
 builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 builder.Services.AddSingleton<MLMConquerorGlobalEdition.SharedKernel.Interfaces.IDateTimeProvider>(
     sp => sp.GetRequiredService<IDateTimeProvider>());

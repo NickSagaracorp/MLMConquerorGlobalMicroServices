@@ -15,4 +15,22 @@
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!--
+      ICardTokenizationService y CardPayment, que son quienes convierten el número de tarjeta en los
+      tres identificadores que la API exige.
+
+      ESTA REFERENCIA ES LA DECISIÓN DE PCI DSS ESCRITA EN EL FICHERO DE PROYECTO. La tokenización
+      se ejecuta AQUÍ, en el ensamblado que corre dentro del navegador, para que el PAN no cruce la
+      red hacia nuestros servidores. Si esto se resolviera llamando a un endpoint nuestro, el número
+      de tarjeta pasaría a transitar —y potencialmente a registrarse— en nuestra infraestructura, que
+      es justo lo que mete un sistema dentro del alcance de PCI DSS.
+
+      SharedKernel se puede referenciar desde WebAssembly porque tiene prohibido ASP.NET Core por
+      contrato (lo vigila ClientCoreNoAspNetCoreTests). Es la misma razón por la que sirve a las
+      MAUI que vienen después.
+    -->
+    <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel\MLMConquerorGlobalEdition.SharedKernel.csproj" />
+  </ItemGroup>
+
 </Project>

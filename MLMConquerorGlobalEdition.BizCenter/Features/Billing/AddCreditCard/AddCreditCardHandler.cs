@@ -2,10 +2,10 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.BizCenter.DTOs.Billing;
 using MLMConquerorGlobalEdition.BizCenter.Services;
-using MLMConquerorGlobalEdition.BizCenter.Services.Billing;
 using MLMConquerorGlobalEdition.Domain.Entities.Wallet;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Billing;
 using IEncryptionService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IEncryptionService;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Features.Billing.AddCreditCard;
