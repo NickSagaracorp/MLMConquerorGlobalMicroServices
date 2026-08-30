@@ -19,6 +19,14 @@ namespace MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.AccountEnro
 ///
 /// La librería activa el 2FA y fija el canal preferido solo si el código es válido; si no lo es,
 /// no toca nada.
+///
+/// <b>Y SE REVOCA LA SESIÓN VIVA</b>, que es lo que faltaba. Activar el segundo factor sin revocar
+/// dejaba a la cuenta con un refresh token de treinta días emitido ANTES de que existiera ese
+/// factor: quien lo tuviera —incluido quien no debía tenerlo, que es el motivo por el que el
+/// usuario está activando el 2FA— seguía renovando su sesión un mes entero sin pasar nunca por el
+/// código. Es decir, la medida no alcanzaba a nadie que ya estuviera dentro, que son exactamente
+/// las sesiones de las que hay que protegerse. La regla y dónde está la línea, en
+/// <see cref="SessionRevocation"/>.
 /// </remarks>
 public class ConfirmAccountEnrollmentHandler
     : IRequestHandler<ConfirmAccountEnrollmentCommand, Result<bool>>
@@ -44,6 +52,10 @@ public class ConfirmAccountEnrollmentHandler
         var confirmed = await _enrollment.ConfirmAsync(user, command.Request.Code, ct);
         if (!confirmed.IsSuccess)
             return Result<bool>.Failure(confirmed.ErrorCode!, confirmed.Error!);
+
+        // DESPUÉS de confirmar y nunca antes: un código inválido no toca nada, así que tampoco
+        // puede servirle a nadie para tirar la sesión de otro.
+        await _userManager.RevokeLiveSessionsAsync(user);
 
         return Result<bool>.Success(true);
     }

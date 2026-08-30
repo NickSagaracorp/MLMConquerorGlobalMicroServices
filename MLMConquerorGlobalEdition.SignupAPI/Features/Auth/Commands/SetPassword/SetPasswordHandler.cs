@@ -55,12 +55,9 @@ public class SetPasswordHandler : IRequestHandler<SetPasswordCommand, Result<boo
             return Result<bool>.Failure("PASSWORD_SET_FAILED", errors);
         }
 
-        // Mismo criterio que el cambio de contraseña: se invalidan los tokens de refresco. A
-        // partir de aquí la cuenta tiene una credencial nueva, y las sesiones abiertas antes de
-        // tenerla no deben sobrevivirla.
-        user.RefreshToken       = null;
-        user.RefreshTokenExpiry = null;
-        await _userManager.UpdateAsync(user);
+        // Mismo criterio que el cambio de contraseña: a partir de aquí la cuenta tiene una
+        // credencial nueva, y las sesiones abiertas antes de tenerla no deben sobrevivirla.
+        await _userManager.RevokeLiveSessionsAsync(user);
 
         return Result<bool>.Success(true);
     }

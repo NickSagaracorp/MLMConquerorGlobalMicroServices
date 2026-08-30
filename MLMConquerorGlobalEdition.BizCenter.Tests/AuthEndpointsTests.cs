@@ -293,6 +293,7 @@ public class AuthEndpointsTests
             ForgotPasswordSentPage = "/login/forgot-password/sent",
             ResetPasswordPage      = "/login/reset-password",
             ResetPasswordDonePage  = "/login/reset-password/done",
+            LoginPage              = "/login",
             ProfilePage            = "/account",
             PasswordPage           = "/account/password",
             PhonePage              = "/account/phone",

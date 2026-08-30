@@ -11,6 +11,17 @@ using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Features.Profile.UpdatePassword;
 
+/// <summary>
+/// Cambia la contraseña del miembro desde la pestaña de credenciales del centro de negocios.
+/// </summary>
+/// <remarks>
+/// <b>REVOCA LA SESIÓN VIVA</b>, que es lo que le faltaba para hacer lo mismo que la otra puerta.
+/// La misma operación se ofrece por dos rutas —<c>PUT /api/v1/bizcenter/profile/credentials/password</c>
+/// y <c>PUT /api/v1/auth/change-password</c> de SignupAPI— y solo la segunda invalidaba el refresco.
+/// Una puerta que revoca y otra que no es peor que ninguna de las dos: el usuario cree haber
+/// expulsado a quien tuviera su contraseña vieja, y si entró por esta pantalla no ha expulsado a
+/// nadie. Ver <see cref="SessionRevocation"/>.
+/// </remarks>
 public class UpdatePasswordHandler : IRequestHandler<UpdatePasswordCommand, Result<bool>>
 {
     private readonly AppDbContext                 _db;
@@ -52,6 +63,9 @@ public class UpdatePasswordHandler : IRequestHandler<UpdatePasswordCommand, Resu
         if (!changeRes.Succeeded)
             return Result<bool>.Failure("PASSWORD_CHANGE_REJECTED",
                 string.Join("; ", changeRes.Errors.Select(e => e.Description)));
+
+        // Fuera las sesiones vivas, igual que hace ChangePasswordHandler en SignupAPI.
+        await _userManager.RevokeLiveSessionsAsync(user);
 
         // Log the change without ever touching the password itself.
         _db.MemberCredentialChangeLogs.Add(new MemberCredentialChangeLog

@@ -59,10 +59,10 @@ public class ResetPasswordHandler : IRequestHandler<ResetPasswordCommand, Result
             return Result<bool>.Failure("PASSWORD_RESET_FAILED", errors);
         }
 
-        // Invalidate all refresh tokens on password reset
-        user.RefreshToken       = null;
-        user.RefreshTokenExpiry = null;
-        await _userManager.UpdateAsync(user);
+        // Restablecer la contraseña expulsa a quien ya estuviera dentro. Aquí importa más que en
+        // ningún otro sitio: quien llega por este camino puede estar recuperando una cuenta que ya
+        // no controlaba, y la sesión del que se la quitó vive en el mismo refresco.
+        await _userManager.RevokeLiveSessionsAsync(user);
 
         return Result<bool>.Success(true);
     }

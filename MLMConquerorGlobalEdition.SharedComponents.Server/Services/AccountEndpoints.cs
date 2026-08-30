@@ -138,10 +138,17 @@ public static class AccountEndpoints
     }
 
     /// <summary>Cambia la contraseña de una cuenta que ya tiene una.</summary>
+    /// <remarks>
+    /// SALE BIEN Y ACABA EN EL LOGIN. Ver <see cref="KillAndBackToLoginAsync"/>: la API acaba de
+    /// invalidar el refresco de esta cuenta, así que esta sesión ya no se puede renovar.
+    /// </remarks>
     public static async Task<IResult> ChangePasswordAsync(
         [FromForm] ChangePasswordForm? form,
         AuthApiGateway                 api,
+        HttpContext                    httpContext,
         [FromServices] AccountPageRoutes routes,
+        [FromServices] ChallengeCookieNames challengeCookies,
+        [FromServices] PortalSessionTokens  sessionTokens,
         CancellationToken              ct)
     {
         form ??= new();
@@ -159,15 +166,19 @@ public static class AccountEndpoints
             authenticated: true, ct);
 
         return outcome.Success
-            ? Results.Redirect(routes.ProfilePage)
+            ? await KillAndBackToLoginAsync(httpContext, api, challengeCookies, sessionTokens, routes, ct)
             : Failure(routes.PasswordPage, outcome.ErrorCodeOr("PASSWORD_CHANGE_FAILED"));
     }
 
     /// <summary>Fija la primera contraseña de una cuenta que no tiene ninguna.</summary>
+    /// <remarks>Acaba en el login por lo mismo que <see cref="ChangePasswordAsync"/>.</remarks>
     public static async Task<IResult> SetPasswordAsync(
         [FromForm] SetPasswordForm?   form,
         AuthApiGateway                api,
+        HttpContext                   httpContext,
         [FromServices] AccountPageRoutes routes,
+        [FromServices] ChallengeCookieNames challengeCookies,
+        [FromServices] PortalSessionTokens  sessionTokens,
         CancellationToken             ct)
     {
         form ??= new();
@@ -180,7 +191,7 @@ public static class AccountEndpoints
             new { NewPassword = form.NewPassword ?? string.Empty }, authenticated: true, ct);
 
         return outcome.Success
-            ? Results.Redirect(routes.ProfilePage)
+            ? await KillAndBackToLoginAsync(httpContext, api, challengeCookies, sessionTokens, routes, ct)
             : Failure(routes.PasswordPage, outcome.ErrorCodeOr("PASSWORD_SET_FAILED"));
     }
 
@@ -221,12 +232,17 @@ public static class AccountEndpoints
     }
 
     /// <summary>Confirma el teléfono con el código del SMS y el reto que viaja en cookie.</summary>
+    /// <remarks>
+    /// Acaba en el login: aquí es donde el número se convierte en un factor de autenticación de la
+    /// cuenta, y la API revoca el refresco por eso. Ver <see cref="KillAndBackToLoginAsync"/>.
+    /// </remarks>
     public static async Task<IResult> VerifyPhoneAsync(
         [FromForm] CodeForm?          form,
         AuthApiGateway                api,
         HttpContext                   httpContext,
         [FromServices] AccountPageRoutes routes,
         [FromServices] ChallengeCookieNames challengeCookies,
+        [FromServices] PortalSessionTokens  sessionTokens,
         CancellationToken             ct)
     {
         form ??= new();
@@ -247,7 +263,8 @@ public static class AccountEndpoints
         if (outcome.Success)
         {
             ChallengeCookies.Delete(httpContext, challengeCookies.Phone);
-            return Results.Redirect(routes.ProfilePage);
+            return await KillAndBackToLoginAsync(
+                httpContext, api, challengeCookies, sessionTokens, routes, ct);
         }
 
         // Un reto inválido o agotado ya no sirve para nada: fuera la cookie, y de vuelta al alta.
@@ -270,6 +287,7 @@ public static class AccountEndpoints
         HttpContext                   httpContext,
         [FromServices] AccountPageRoutes routes,
         [FromServices] ChallengeCookieNames challengeCookies,
+        [FromServices] PortalSessionTokens  sessionTokens,
         CancellationToken             ct)
     {
         var outcome = await api.CallAsync(
@@ -279,8 +297,9 @@ public static class AccountEndpoints
         // está en la cuenta.
         ChallengeCookies.Delete(httpContext, challengeCookies.Phone);
 
+        // Retirar un factor revoca en la API, igual que confirmarlo. Ver KillAndBackToLoginAsync.
         return outcome.Success
-            ? Results.Redirect(routes.ProfilePage)
+            ? await KillAndBackToLoginAsync(httpContext, api, challengeCookies, sessionTokens, routes, ct)
             : Failure(routes.ProfilePage, outcome.ErrorCodeOr("PHONE_NOT_FOUND"));
     }
 
@@ -326,15 +345,20 @@ public static class AccountEndpoints
     /// </remarks>
     public static async Task<IResult> DisableTwoFactorAsync(
         AuthApiGateway                api,
+        HttpContext                   httpContext,
         [FromServices] AccountPageRoutes routes,
+        [FromServices] ChallengeCookieNames challengeCookies,
+        [FromServices] PortalSessionTokens  sessionTokens,
         CancellationToken             ct)
     {
         var outcome = await api.CallAsync(
             HttpMethod.Post, "api/v1/auth/two-factor/disable",
             body: null, authenticated: true, ct);
 
+        // Quitar el segundo factor cambia el juego de credenciales de la cuenta y la API revoca el
+        // refresco. Ver KillAndBackToLoginAsync.
         return outcome.Success
-            ? Results.Redirect(routes.SecurityPage)
+            ? await KillAndBackToLoginAsync(httpContext, api, challengeCookies, sessionTokens, routes, ct)
             : Failure(routes.SecurityPage, outcome.ErrorCodeOr("TWO_FACTOR_DISABLE_FAILED"));
     }
 
@@ -391,6 +415,48 @@ public static class AccountEndpoints
     // ---------------------------------------------------------------------------------------
     //  Lo común
     // ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Mata esta sesión del portal entera y devuelve al usuario al login con el aviso puesto.
+    /// </summary>
+    /// <remarks>
+    /// A DÓNDE LLEGAN LAS OPERACIONES QUE CAMBIAN LA POSTURA DE SEGURIDAD DE LA CUENTA: contraseña
+    /// cambiada o fijada, teléfono confirmado o retirado, segundo factor apagado. Todas ellas
+    /// REVOCAN el refresh token en la API (ver <c>SessionRevocation</c>, en Repository), y esa
+    /// revocación por sí sola solo alcanza a la mitad de la sesión.
+    ///
+    /// POR QUÉ LA MITAD. La API deja de poder renovar, pero el token de ACCESO que el portal ya
+    /// tiene en la mano es autofirmado y sigue valiendo hasta su <c>exp</c>. Sin esto, el usuario se
+    /// queda dentro entre diez y quince minutos con una sesión que ya está muerta y se entera
+    /// cuando el JWT caduca, a mitad de lo que estuviera haciendo, con un "sesión caducada" que no
+    /// puede relacionar con el botón que pulsó. Y —esto es lo que importa— si quien pulsó el botón
+    /// era el intruso, sigue dentro ese rato.
+    ///
+    /// SE REUSA <see cref="PortalSignOut.KillAsync"/> Y NO SE ESCRIBE UNA SEGUNDA LISTA. Una sesión
+    /// del portal está en cuatro sitios —el refresco en la API, la entrada del almacén, las cookies
+    /// de reto y la cookie de sesión más el principal de esta petición— y ese método es el único
+    /// que los conoce todos. Copiar aquí "las tres cosas que hay que limpiar" es exactamente cómo se
+    /// desincronizan las dos copias en cuanto aparezca la quinta.
+    ///
+    /// AQUÍ SÍ SE PUEDE, y no en cualquier sitio: estos manejadores atienden un POST de formulario
+    /// del navegador, así que hay una respuesta HTTP que todavía no ha empezado y
+    /// <c>SignOutAsync</c> puede escribir su cabecera. Dentro de un circuito de Blazor no la habría.
+    ///
+    /// EL CÓDIGO ES <c>session_expired</c> Y NO UNO NUEVO. Es exactamente lo que ha pasado —esta
+    /// sesión dejó de valer— y las pantallas de login de los dos portales ya lo traducen en los
+    /// nueve idiomas. Un código propio sería un literal sin traducir en ocho de ellos.
+    /// </remarks>
+    private static async Task<IResult> KillAndBackToLoginAsync(
+        HttpContext          httpContext,
+        AuthApiGateway       api,
+        ChallengeCookieNames challengeCookies,
+        PortalSessionTokens  sessionTokens,
+        AccountPageRoutes    routes,
+        CancellationToken    ct)
+    {
+        await PortalSignOut.KillAsync(httpContext, api, challengeCookies, sessionTokens, ct);
+        return Failure(routes.LoginPage, SessionExpiry.ErrorCode);
+    }
 
     /// <summary>
     /// Vuelta a la pantalla de origen con el código del fallo en la query. Un solo sitio para

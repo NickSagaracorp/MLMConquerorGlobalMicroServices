@@ -17,9 +17,7 @@ public class LogoutHandler : IRequestHandler<LogoutCommand, Result<bool>>
         var user = await _userManager.FindByIdAsync(command.UserId);
         if (user is null) return Result<bool>.Success(true); // idempotent
 
-        user.RefreshToken       = null;
-        user.RefreshTokenExpiry = null;
-        await _userManager.UpdateAsync(user);
+        await _userManager.RevokeLiveSessionsAsync(user);
 
         return Result<bool>.Success(true);
     }

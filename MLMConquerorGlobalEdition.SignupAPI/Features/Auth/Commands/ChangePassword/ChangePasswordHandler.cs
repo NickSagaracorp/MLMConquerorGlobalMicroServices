@@ -66,10 +66,9 @@ public class ChangePasswordHandler : IRequestHandler<ChangePasswordCommand, Resu
             return Result<bool>.Failure("PASSWORD_CHANGE_FAILED", errors);
         }
 
-        // Invalidate refresh tokens on password change
-        user.RefreshToken       = null;
-        user.RefreshTokenExpiry = null;
-        await _userManager.UpdateAsync(user);
+        // Cambiar la contraseña expulsa a quien ya estuviera dentro. Era la única operación que lo
+        // hacía; ahora la regla —y la lista de qué la comparte y qué no— vive en SessionRevocation.
+        await _userManager.RevokeLiveSessionsAsync(user);
 
         await LogCredentialChangeAsync(user, ct);
 

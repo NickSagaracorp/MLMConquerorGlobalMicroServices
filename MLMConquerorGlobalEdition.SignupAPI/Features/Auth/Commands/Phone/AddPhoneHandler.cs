@@ -78,6 +78,13 @@ public class AddPhoneHandler : IRequestHandler<AddPhoneCommand, Result<PhoneChal
         if (replacedConfirmedPhone && user.PreferredTwoFactorChannel == TwoFactorChannel.Sms)
             user.PreferredTwoFactorChannel = TwoFactorChannel.Email;
 
+        // Y SOLO EN ESE CASO SE REVOCA LA SESIÓN VIVA. Dar de alta un número nuevo no toca la
+        // postura de seguridad de la cuenta —queda sin confirmar, no abre nada— pero SUSTITUIR uno
+        // que sí estaba confirmado retira un factor que existía, que es exactamente lo que hace
+        // RemovePhoneHandler. La línea la marca lo que la cuenta pierde, no la ruta que se llamó.
+        if (replacedConfirmedPhone)
+            user.RevokeLiveSessions();
+
         await _userManager.UpdateAsync(user);
 
         var languageCode = await ResolveLanguageAsync(user, ct);

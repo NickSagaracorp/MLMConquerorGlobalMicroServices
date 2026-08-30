@@ -1,10 +1,13 @@
 using System.Net;
+using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using MLMConquerorGlobalEdition.ClientCore;
 using MLMConquerorGlobalEdition.SharedComponents.Components.Account;
+using MLMConquerorGlobalEdition.SharedComponents.Resources;
 using MLMConquerorGlobalEdition.SharedComponents.Server.Services;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Tests;
@@ -40,12 +43,25 @@ public class AccountTwoFactorEndpointsTests
         ForgotPasswordSentPage = "/forgot-password/sent",
         ResetPasswordPage      = "/reset-password",
         ResetPasswordDonePage  = "/reset-password/done",
+        LoginPage              = LoginDePruebas,
         ProfilePage            = "/account",
         PasswordPage           = "/account/password",
         PhonePage              = "/account/phone",
         PhoneVerifyPage        = "/account/phone/confirm",
         SecurityPage           = paginaDeSeguridad,
         PersonalDataPage       = "/account/personal-data"
+    };
+
+    private const string LoginDePruebas = "/login";
+
+    /// <summary>A dónde acaba una operación que apaga la sesión: el login, con su aviso.</summary>
+    private static string LoginConAviso => $"{LoginDePruebas}?error={LoginErrorMessages.SessionExpired}";
+
+    private static ChallengeCookieNames Cookies() => new()
+    {
+        Login      = "prueba_2fa",
+        Enrollment = "prueba_enrolamiento",
+        Phone      = "prueba_telefono"
     };
 
     /// <summary>Las dos páginas de seguridad que existen hoy, una por portal.</summary>
@@ -153,19 +169,28 @@ public class AccountTwoFactorEndpointsTests
     //  Apagar el segundo factor
     // ===========================================================================================
 
+    /// <summary>
+    /// APAGAR EL SEGUNDO FACTOR ACABA EN EL LOGIN, no en la pantalla de seguridad, y en los dos
+    /// portales. No es una decisión de navegación: la API revoca el refresh token al desactivar
+    /// —quitar un factor cambia el juego de credenciales de la cuenta, igual que cambiar la
+    /// contraseña—, así que esta sesión ya no se puede renovar. Devolver al usuario a la pantalla
+    /// de seguridad lo dejaría dentro con una sesión muerta hasta que su JWT caducara.
+    /// </summary>
     [Theory]
     [MemberData(nameof(LasDosPantallas))]
-    public async Task Baja_CuandoSeApaga_VuelveALaPantallaDeSuPortal(string pantalla)
+    public async Task Baja_CuandoSeApaga_MataLaSesionYVaAlLogin(string pantalla)
     {
         var contexto = Contexto();
 
         var resultado = await AccountEndpoints.DisableTwoFactorAsync(
             GatewayQueResponde("""{"success":true,"data":true}"""),
-            Rutas(pantalla), default);
+            contexto, Rutas(pantalla), Cookies(), Almacen(), default);
 
         var destino = await Ejecutar(resultado, contexto);
 
-        destino.Should().Be(pantalla);
+        destino.Should().Be(LoginConAviso);
+        contexto.User.Identity?.IsAuthenticated.Should().NotBe(true,
+            "PortalSignOut se lleva por delante el principal de esta petición, no solo la cookie");
     }
 
     /// <summary>
@@ -181,7 +206,7 @@ public class AccountTwoFactorEndpointsTests
         var resultado = await AccountEndpoints.DisableTwoFactorAsync(
             GatewayQueResponde(
                 """{"success":false,"errorCode":"TWO_FACTOR_REQUIRED"}""", HttpStatusCode.BadRequest),
-            Rutas("/admin/account/security"), default);
+            contexto, Rutas("/admin/account/security"), Cookies(), Almacen(), default);
 
         var destino = await Ejecutar(resultado, contexto);
 
@@ -202,22 +227,25 @@ public class AccountTwoFactorEndpointsTests
     {
         var rutas = Rutas("/account/security");
 
-        var manejadores = new Func<Task<IResult>>[]
+        var manejadores = new Func<HttpContext, Task<IResult>>[]
         {
-            () => AccountEndpoints.SetTwoFactorChannelAsync(
+            contexto => AccountEndpoints.SetTwoFactorChannelAsync(
                 new AccountEndpoints.TwoFactorChannelForm("Email"), GatewayCaido(), rutas, default),
 
-            () => AccountEndpoints.DisableTwoFactorAsync(GatewayCaido(), rutas, default),
+            contexto => AccountEndpoints.DisableTwoFactorAsync(
+                GatewayCaido(), contexto, rutas, Cookies(), Almacen(), default),
         };
 
         foreach (var manejador in manejadores)
         {
             var contexto  = Contexto();
-            var resultado = await manejador();
+            var resultado = await manejador(contexto);
             var destino   = await Ejecutar(resultado, contexto);
 
             contexto.Response.StatusCode.Should().Be(302);
-            destino.Should().Be($"/account/security?error={AuthApiGateway.Unreachable}");
+            destino.Should().Be($"/account/security?error={AuthApiGateway.Unreachable}",
+                "con la API caída la baja NO ocurrió, así que tampoco se cierra la sesión: el " +
+                "usuario vuelve a su pantalla con el aviso y su segundo factor sigue puesto");
         }
     }
 
@@ -240,12 +268,55 @@ public class AccountTwoFactorEndpointsTests
             new ConToken(),
             NullLogger<AuthApiGateway>.Instance);
 
+    /// <summary>El almacén de sesión del portal, con un renovador que nunca renueva.</summary>
+    private static PortalSessionTokens Almacen() =>
+        new(new AuthTokenRefresher(
+                new FabricaDeClientes(new HandlerFalso(
+                    _ => new HttpResponseMessage(HttpStatusCode.Unauthorized))),
+                NullLogger<AuthTokenRefresher>.Instance),
+            NullLogger<PortalSessionTokens>.Instance);
+
+    /// <summary>
+    /// Un HttpContext con lo justo: el registro que pide la redirección y el servicio de
+    /// autenticación que pide <c>SignOutAsync</c> desde <c>PortalSignOut</c>. El usuario llega
+    /// autenticado porque estos manejadores son de gestión: quien llega ya tiene sesión, y es esa
+    /// sesión la que la baja del segundo factor tiene que matar.
+    /// </summary>
     private static DefaultHttpContext Contexto()
     {
         var servicios = new ServiceCollection();
         servicios.AddLogging();
+        servicios.AddSingleton<IAuthenticationService>(new AutenticacionFalsa());
 
-        return new DefaultHttpContext { RequestServices = servicios.BuildServiceProvider() };
+        return new DefaultHttpContext
+        {
+            RequestServices = servicios.BuildServiceProvider(),
+            User            = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, "un-usuario")], "prueba"))
+        };
+    }
+
+    /// <summary>Lo justo para que <c>SignOutAsync</c> no reviente; no serializa ninguna cookie.</summary>
+    private sealed class AutenticacionFalsa : IAuthenticationService
+    {
+        public Task<AuthenticateResult> AuthenticateAsync(HttpContext context, string? scheme) =>
+            Task.FromResult(AuthenticateResult.NoResult());
+
+        public Task ChallengeAsync(
+            HttpContext context, string? scheme, AuthenticationProperties? properties) =>
+            Task.CompletedTask;
+
+        public Task ForbidAsync(
+            HttpContext context, string? scheme, AuthenticationProperties? properties) =>
+            Task.CompletedTask;
+
+        public Task SignInAsync(
+            HttpContext context, string? scheme, ClaimsPrincipal principal,
+            AuthenticationProperties? properties) => Task.CompletedTask;
+
+        public Task SignOutAsync(
+            HttpContext context, string? scheme, AuthenticationProperties? properties) =>
+            Task.CompletedTask;
     }
 
     private static async Task<string?> Ejecutar(IResult resultado, HttpContext contexto)

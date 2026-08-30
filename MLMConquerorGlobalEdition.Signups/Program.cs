@@ -1,8 +1,4 @@
-using System.Text;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
 using MLMConquerorGlobalEdition.SharedKernel.Billing;
-using MLMConquerorGlobalEdition.SharedKernel.Configuration;
 using MLMConquerorGlobalEdition.Signups.Components;
 using MLMConquerorGlobalEdition.Signups.Middleware;
 using MLMConquerorGlobalEdition.Signups.Services;
@@ -27,36 +23,27 @@ builder.Services.AddHttpClient("SignupsInternal", client =>
         builder.Configuration["SignupApiBaseUrl"] ?? "https://localhost:7148");
 });
 
-// JWT Authentication — validates tokens issued by SignupAPI
-var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured.");
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer           = true,
-            ValidateAudience         = true,
-            ValidateLifetime         = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer              = builder.Configuration["Jwt:Issuer"],
-            ValidAudience            = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
-        };
-
-        // Segundo cinturón, detrás de la audiencia: un token que lleve el claim de propósito es
-        // un reto de 2FA sin verificar y no autoriza nada. Ver ChallengeAudience.
-        options.Events = new JwtBearerEvents
-        {
-            OnTokenValidated = ctx =>
-            {
-                if (ChallengeAudience.CarriesPurpose(ctx.Principal!.Claims))
-                    ctx.Fail("Un reto de 2FA no autoriza: falta completar el segundo factor.");
-                return Task.CompletedTask;
-            }
-        };
-    });
-
-builder.Services.AddAuthorization();
+// AQUÍ NO HAY AUTENTICACIÓN, Y ES A PROPÓSITO.
+//
+// La había —AddAuthentication + AddJwtBearer + AddAuthorization— y no protegía nada:
+//
+//   • CERO PANTALLAS Y CERO ENDPOINTS PROTEGIDOS. Esta aplicación es el asistente de alta: se
+//     visita SIN sesión por definición, ninguna página lleva [Authorize], no hay
+//     RequireAuthorization() en ninguna ruta y no se usa AuthorizeView ni el estado de
+//     autenticación en ningún componente. De hecho lo que hace al cargar es lo contrario: rebotar
+//     el navegador a los dos portales para MATAR cualquier sesión abierta (UsePortalSessionBounce).
+//
+//   • LA LLAVE ERA HMAC MIENTRAS SIGNUPAPI FIRMA CON RSA. El comentario decía "validates tokens
+//     issued by SignupAPI" y era falso: ningún token emitido por SignupAPI habría validado nunca
+//     contra una SymmetricSecurityKey.
+//
+//   • Y EL SECRETO ESTABA EN EL REPOSITORIO EN CLARO, en appsettings.json, con pinta de ser la
+//     llave de firma de la casa. No lo era —no firma nada— pero cualquiera que lo leyera tenía
+//     motivos para creerlo.
+//
+// Si algún día esta aplicación necesita distinguir a un visitante autenticado, lo que hay que
+// traer es el bloque RSA de SignupAPI (Jwt:PublicKeyBase64, emisor y audiencia del sistema y el
+// evento que rechaza los retos de 2FA), no volver a esto.
 
 // EL REBOTE. En un evento se dan de alta varias personas seguidas en el mismo ordenador y la
 // anterior no siempre se acuerda de salir. Cargar una pantalla de alta manda el navegador, una sola
@@ -72,8 +59,7 @@ app.UseStaticFiles();
 // posterior— se iría a mitad de rellenarlo y volvería con todo en blanco. Va después de los
 // estáticos solo por no hacerles mirar nada: el filtro de rutas ya los dejaría pasar.
 app.UsePortalSessionBounce();
-app.UseAuthentication();
-app.UseAuthorization();
+// Sin UseAuthentication/UseAuthorization: ver el bloque de arriba.
 app.UseAntiforgery();
 
 app.MapStaticAssets();

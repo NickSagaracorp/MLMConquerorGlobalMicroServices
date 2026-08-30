@@ -1,12 +1,8 @@
-using System.Text;
 using AspNetCoreRateLimit;
 using MediatR;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MLMConquerorGlobalEdition.Repository.Context;
-using MLMConquerorGlobalEdition.SharedKernel.Configuration;
 using MLMConquerorGlobalEdition.Repository.Services;
 using MLMConquerorGlobalEdition.SharedAPICenter.Middleware;
 using MLMConquerorGlobalEdition.SharedAPICenter.Services;
@@ -51,37 +47,40 @@ builder.Services.AddSingleton<IPushNotificationService, FirebasePushNotification
 
 builder.Services.AddControllers();
 
-var jwtKey = builder.Configuration["Jwt:Key"]
-    ?? throw new InvalidOperationException("JWT Key is not configured.");
-
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer           = true,
-            ValidateAudience         = true,
-            ValidateLifetime         = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer              = builder.Configuration["Jwt:Issuer"],
-            ValidAudience            = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
-        };
-
-        // Segundo cinturón, detrás de la audiencia: un token que lleve el claim de propósito es
-        // un reto de 2FA sin verificar y no autoriza nada. Ver ChallengeAudience.
-        options.Events = new JwtBearerEvents
-        {
-            OnTokenValidated = ctx =>
-            {
-                if (ChallengeAudience.CarriesPurpose(ctx.Principal!.Claims))
-                    ctx.Fail("Un reto de 2FA no autoriza: falta completar el segundo factor.");
-                return Task.CompletedTask;
-            }
-        };
-    });
-
-builder.Services.AddAuthorization();
+// AQUÍ NO HAY AUTENTICACIÓN JWT, Y ES A PROPÓSITO.
+//
+// Había una: AddAuthentication + AddJwtBearer + AddAuthorization, con toda la pinta de estar
+// protegiendo este servicio. No protegía nada, y no podía protegerlo aunque alguien lo intentara:
+//
+//   • CERO ENDPOINTS. Este anfitrión tiene dos controladores y ninguno lleva [Authorize] ni
+//     RequireAuthorization(). Los webhooks son públicos por contrato —los llama la pasarela de
+//     pago, que no tiene token nuestro— y ExternalController se defiende con una cabecera
+//     X-Api-Key comprobada a mano. La tubería entera se ejecutaba en cada petición sin decidir
+//     nunca nada.
+//
+//   • LA LLAVE ERA HMAC MIENTRAS TODO EL SISTEMA FIRMA CON RSA. El emisor único (Authn.JwtService)
+//     firma RS256 con la llave privada; aquí se validaba con SymmetricSecurityKey sobre Jwt:Key.
+//     Ningún token real habría pasado esa validación jamás.
+//
+//   • Y ESA Jwt:Key ERA EL LITERAL "YOUR_JWT_KEY_REPLACE_BEFORE_DEPLOY_MIN32CHARS", con un
+//     throw que obligaba a que el despliegue tuviera un secreto puesto para un mecanismo que no
+//     se usa. La audiencia además estaba mal escrita —"MLMConquerorGlobalEditionClients", sin el
+//     punto— frente a la del resto del sistema.
+//
+// POR QUÉ SE BORRA EN VEZ DE ARREGLARSE. Arreglarlo entero sería poner la validación RSA correcta
+// en un anfitrión donde seguiría sin proteger cero endpoints: el mismo adorno, ahora con mejor
+// criptografía. Y el adorno es una trampa, no una comodidad: quien mañana ponga un [Authorize]
+// aquí lo vería registrado, daría la protección por hecha, y se encontraría con que ningún token
+// del sistema valida contra esa llave.
+//
+// QUÉ PASA SI ALGUIEN AÑADE UN [Authorize] AHORA. Falla en el acto y a la vista: sin middleware de
+// autorización, ASP.NET Core lanza al servir el endpoint ("Endpoint contains authorization
+// metadata, but a middleware was not found that supports authorization"). Eso es exactamente lo
+// que hay que ver — y hay una prueba que lo dice antes, al compilar.
+//
+// LO QUE HABRÍA QUE HACER ENTONCES: copiar el bloque de SignupAPI o AdminAPI —RsaSecurityKey desde
+// Jwt:PublicKeyBase64, emisor y audiencia del resto del sistema, y el evento OnTokenValidated que
+// rechaza los retos de 2FA— y volver a poner UseAuthentication/UseAuthorization.
 
 builder.Services.AddMemoryCache();
 builder.Services.Configure<IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
@@ -98,31 +97,15 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title       = "MLMConqueror SharedAPICenter",
         Version     = "v1",
-        Description = "Inbound payment webhooks and external member data endpoints."
+        Description = "Inbound payment webhooks and external member data endpoints. " +
+                      "Ninguna ruta usa Bearer: los webhooks son públicos por contrato y " +
+                      "/api/v1/external se defiende con la cabecera X-Api-Key."
     });
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        Name         = "Authorization",
-        Type         = SecuritySchemeType.Http,
-        Scheme       = "Bearer",
-        BearerFormat = "JWT",
-        In           = ParameterLocation.Header,
-        Description  = "Enter your JWT Bearer token."
-    });
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id   = "Bearer"
-                }
-            },
-            Array.Empty<string>()
-        }
-    });
+
+    // SIN DEFINICIÓN DE SEGURIDAD BEARER. La había —con su botón "Authorize" y su requisito global—
+    // y era la misma mentira que el bloque de autenticación que se fue de este archivo, pero
+    // enseñada al integrador: la documentación decía que estas rutas piden un token cuando ninguna
+    // lo mira. Quien viniera a integrarse perdería el tiempo consiguiendo uno.
 });
 
 var app = builder.Build();
@@ -152,8 +135,8 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 app.UseIpRateLimiting();
-app.UseAuthentication();
-app.UseAuthorization();
+// Sin UseAuthentication/UseAuthorization: ver el bloque de arriba. Este anfitrión no protege
+// ningún endpoint con token, y dejar la tubería puesta solo serviría para aparentar que sí.
 app.MapControllers();
 
 app.MapGet("/health", async (AppDbContext db, CancellationToken ct) =>
