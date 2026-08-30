@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc;
 using MLMConquerorGlobalEdition.ClientCore;
+using MLMConquerorGlobalEdition.SharedComponents.Resources;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.SharedComponents.Server.Services;
@@ -45,6 +46,14 @@ public static class AuthEndpoints
 {
     /// <summary>Longitud del código de un solo uso que emiten todos los canales, TOTP incluido.</summary>
     private const int CodeLength = 6;
+
+    /// <summary>
+    /// Nombre del parámetro con el que el destino ya enmascarado viaja hasta la pantalla del
+    /// segundo factor. Lo lee <c>TwoFactorVerify</c>, que es el componente que montan los dos
+    /// portales, así que ya no entra por opciones: era una propiedad de
+    /// <c>AuthPortalOptions</c> mientras el centro de negocios tenía su pantalla propia.
+    /// </summary>
+    private const string TargetQueryParam = "target";
 
     // Códigos que la interfaz ya sabe traducir. Se propagan como CÓDIGO y no como mensaje: el texto
     // que ve el usuario lo decide la pantalla, que es la que puede traducirlo.
@@ -115,7 +124,7 @@ public static class AuthEndpoints
 
             ChallengeCookies.Set(httpContext, challengeCookies.Login, tokens.ChallengeToken!);
             return Results.Redirect(
-                portal.TwoFactorPage + TargetQuery(portal, tokens.MaskedTarget, '?'));
+                portal.TwoFactorPage + TargetQuery(tokens.MaskedTarget, '?'));
         }
 
         return await CompleteSignInAsync(httpContext, portal, tokens.AccessToken);
@@ -142,7 +151,7 @@ public static class AuthEndpoints
         // Un código con la forma equivocada no llega a salir: la API lo rechazaría igual, pero por
         // el camino le habría gastado al usuario uno de los intentos del reto.
         if (!IsWellFormedCode(form.Code))
-            return Failure(portal.TwoFactorPage, portal.TwoFactorErrorCode ?? CodeInvalid);
+            return Failure(portal.TwoFactorPage, CodeInvalid);
 
         var outcome = await api.CallAsync<AuthTokens>(
             HttpMethod.Post, "api/v1/auth/two-factor/verify",
@@ -153,8 +162,7 @@ public static class AuthEndpoints
         {
             return ChallengeRejected(
                 httpContext, portal, challengeCookies.Login,
-                portal.TwoFactorPage, portal.TwoFactorErrorCode,
-                outcome.ErrorCodeOr(CodeInvalid));
+                portal.TwoFactorPage, outcome.ErrorCodeOr(CodeInvalid));
         }
 
         ChallengeCookies.Delete(httpContext, challengeCookies.Login);
@@ -184,15 +192,14 @@ public static class AuthEndpoints
         {
             return ChallengeRejected(
                 httpContext, portal, challengeCookies.Login,
-                portal.TwoFactorPage, portal.TwoFactorErrorCode,
-                outcome.ErrorCodeOr(ChannelUnavailable));
+                portal.TwoFactorPage, outcome.ErrorCodeOr(ChannelUnavailable));
         }
 
         if (!string.IsNullOrWhiteSpace(outcome.Data.ChallengeToken))
             ChallengeCookies.Set(httpContext, challengeCookies.Login, outcome.Data.ChallengeToken!);
 
         return Results.Redirect(
-            $"{portal.TwoFactorPage}?resent=1{TargetQuery(portal, outcome.Data.MaskedTarget, '&')}");
+            $"{portal.TwoFactorPage}?resent=1{TargetQuery(outcome.Data.MaskedTarget, '&')}");
     }
 
     /// <summary>
@@ -223,12 +230,9 @@ public static class AuthEndpoints
 
         if (!outcome.Success || outcome.Data is null)
         {
-            // Sin sustitución de código: la pantalla del enrolamiento es el componente compartido
-            // en los dos portales, y ese sí habla el vocabulario de la API.
             return ChallengeRejected(
                 httpContext, portal, challengeCookies.Enrollment,
-                portal.EnrollAuthenticatorPage, screenErrorCode: null,
-                outcome.ErrorCodeOr(CodeInvalid));
+                portal.EnrollAuthenticatorPage, outcome.ErrorCodeOr(CodeInvalid));
         }
 
         ChallengeCookies.Delete(httpContext, challengeCookies.Enrollment);
@@ -351,15 +355,18 @@ public static class AuthEndpoints
     /// la cookie y de vuelta al login. Cualquier otro fallo deja el reto vivo y devuelve a la
     /// pantalla, donde el usuario puede volver a teclear o pedir otro código.
     /// </remarks>
-    /// <param name="screenErrorCode">
-    /// Código con el que esta pantalla nombra sus fallos, o null para propagar el de la API.
-    /// </param>
+    /// <remarks>
+    /// El código de la API se propaga TAL CUAL a la pantalla. Antes había un parámetro para
+    /// sustituirlo por uno propio del portal; existía solo para la pantalla vieja de segundo
+    /// factor del centro de negocios, que únicamente sabía traducir el literal <c>invalid_code</c>.
+    /// Ahora las dos pantallas montan <c>TwoFactorVerify</c>, que habla el vocabulario entero de la
+    /// API, y esa sustitución solo serviría para tirar información por el camino.
+    /// </remarks>
     private static IResult ChallengeRejected(
         HttpContext       httpContext,
         AuthPortalOptions portal,
         string            cookieName,
         string            screenPage,
-        string?           screenErrorCode,
         string            code)
     {
         if (SpentChallengeCodes.Contains(code))
@@ -368,7 +375,7 @@ public static class AuthEndpoints
             return Failure(portal.LoginPage, SessionExpiredCode);
         }
 
-        return Failure(screenPage, screenErrorCode ?? code);
+        return Failure(screenPage, code);
     }
 
     /// <summary>
@@ -387,17 +394,33 @@ public static class AuthEndpoints
     /// El código de error del login.
     /// </summary>
     /// <remarks>
-    /// Cualquier fallo de credenciales sale como <c>invalid</c> a propósito: distinguir "ese correo
-    /// no existe" de "esa contraseña no es" convertiría el formulario en un oráculo para enumerar
-    /// cuentas registradas.
+    /// LA REGLA: se propaga lo que NO habla de las credenciales, y todo lo demás sale como
+    /// <c>invalid</c>. La lista de lo propagable es
+    /// <see cref="LoginErrorMessages.PropagatedFromLogin"/> y vive en la interfaz, que es la única
+    /// que sabe qué códigos tiene traducidos; propagar uno que la pantalla no conozca la dejaría
+    /// callada justo cuando tiene algo que decir.
     ///
-    /// Un servicio que no responde NO es un fallo de credenciales y por eso sí se dice con su
-    /// nombre. Antes ni siquiera llegaba hasta aquí: la llamada iba sin <c>try</c> y la excepción
-    /// salía como un 500 en la cara del usuario.
+    /// LO QUE SIGUE APLASTADO, y es deliberado: <c>INVALID_CREDENTIALS</c> y <c>ACCOUNT_LOCKED</c>
+    /// salen los dos como <c>invalid</c>. Distinguirlos —igual que distinguir "ese correo no
+    /// existe" de "esa contraseña no es"— convertiría el formulario en un oráculo con el que
+    /// averiguar qué direcciones están registradas. Esa unificación no se toca.
+    ///
+    /// LO QUE ESTABA MAL: hasta ahora se propagaba SOLO <c>SERVICE_UNAVAILABLE</c> y el resto se
+    /// aplastaba, y en ese "resto" entraban los dos códigos que la API devuelve DESPUÉS de dar la
+    /// contraseña por buena. Con el emisor de códigos del segundo factor limitado
+    /// (<c>TOO_MANY_REQUESTS</c>, tres por cuarto de hora) el usuario leía "credenciales
+    /// inválidas" con credenciales correctas, y se ponía a revisar lo único que ya estaba bien.
+    /// Ninguno de los dos revela si una cuenta existe: para llegar ahí ya hubo autenticación
+    /// correcta sobre una cuenta con segundo factor activo.
+    ///
+    /// Un servicio que no responde tampoco es un fallo de credenciales. Antes ni siquiera llegaba
+    /// hasta aquí: la llamada iba sin <c>try</c> y la excepción salía como un 500 en la cara del
+    /// usuario.
     /// </remarks>
     private static string LoginErrorOf(string? gatewayErrorCode) =>
-        gatewayErrorCode == AuthApiGateway.Unreachable
-            ? AuthApiGateway.Unreachable
+        !string.IsNullOrWhiteSpace(gatewayErrorCode) &&
+        LoginErrorMessages.PropagatedFromLogin.Contains(gatewayErrorCode)
+            ? gatewayErrorCode!
             : InvalidCredentials;
 
     /// <summary>
@@ -410,10 +433,10 @@ public static class AuthEndpoints
     /// no tendría manera de ver a qué número se envió el código: el teléfono no viaja en el reto y
     /// la pantalla no tiene otra fuente.
     /// </remarks>
-    private static string TargetQuery(AuthPortalOptions portal, string? maskedTarget, char separator) =>
+    private static string TargetQuery(string? maskedTarget, char separator) =>
         string.IsNullOrWhiteSpace(maskedTarget)
             ? string.Empty
-            : $"{separator}{portal.TwoFactorTargetQueryParam}={Uri.EscapeDataString(maskedTarget)}";
+            : $"{separator}{TargetQueryParam}={Uri.EscapeDataString(maskedTarget)}";
 
     /// <summary>Seis dígitos, ni uno más. Es lo que emiten los tres canales y también TOTP.</summary>
     private static bool IsWellFormedCode(string? code) =>

@@ -70,6 +70,13 @@ public static class AccountMessages
             // canal que elegiste no tiene destino en esta cuenta", que se arregla dándoselo.
             "CHANNEL_UNAVAILABLE"    => "Account.Error.ChannelUnavailable",
 
+            // El servidor rechaza apagar el segundo factor cuando el rol lo exige. La pantalla ya
+            // esconde el botón en ese caso, así que llegar aquí significa que la política cambió
+            // entre que se pintó la página y se pulsó, o que alguien llamó a la ruta a mano. Se
+            // reutiliza el mismo texto que el panel enseña en lugar del botón: dice exactamente
+            // esto, y en los nueve idiomas.
+            "TWO_FACTOR_REQUIRED"    => "TwoFactorPanel.RequiredByRole",
+
             _                        => "Account.Error.Generic"
         };
 

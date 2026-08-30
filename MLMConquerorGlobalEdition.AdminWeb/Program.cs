@@ -69,6 +69,7 @@ builder.Services.AddAccountSurface(new AccountPageRoutes
     PasswordPage           = "/admin/account/password",
     PhonePage              = "/admin/account/phone",
     PhoneVerifyPage        = "/admin/account/phone/verify",
+    SecurityPage           = "/admin/account/security",
     PersonalDataPage       = "/admin/account/personal-data"
 },
 challengeCookieNames);

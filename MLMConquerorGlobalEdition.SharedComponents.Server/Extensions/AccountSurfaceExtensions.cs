@@ -118,6 +118,16 @@ public static class AccountSurfaceExtensions
         endpoints.MapPost("/account/phone/verify",        (Delegate)AccountEndpoints.VerifyPhoneAsync).DisableAntiforgery().RequireAuthorization();
         endpoints.MapPost("/account/phone/remove",        (Delegate)AccountEndpoints.RemovePhoneAsync).DisableAntiforgery().RequireAuthorization();
 
+        // Segundo factor de una cuenta que YA tiene sesión. Van aquí y no en AuthEndpoints porque
+        // no son de la puerta: nadie está entrando, alguien está cambiando un ajuste de su propia
+        // cuenta, y por eso los dos llevan RequireAuthorization() como el resto de la gestión.
+        //
+        // Las rutas son /account/two-factor/... y no /account/2fa/...: el centro de negocios ya
+        // sirve por ahí los dos POST de la PUERTA (/account/two-factor/verify y /resend), y
+        // mantener la misma familia deja las cuatro juntas en el inventario de rutas del portal.
+        endpoints.MapPost("/account/two-factor/channel",  (Delegate)AccountEndpoints.SetTwoFactorChannelAsync).DisableAntiforgery().RequireAuthorization();
+        endpoints.MapPost("/account/two-factor/disable",  (Delegate)AccountEndpoints.DisableTwoFactorAsync).DisableAntiforgery().RequireAuthorization();
+
         // GET y no POST: lo pide un <a href> de PersonalData.razor. Hace de intermediaria porque el
         // endpoint de la API exige Bearer y el navegador no lo lleva en un enlace normal.
         endpoints.MapGet("/account/personal-data/download", (Delegate)AccountEndpoints.DownloadPersonalDataAsync).RequireAuthorization();

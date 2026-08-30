@@ -1,4 +1,4 @@
-@page "/admin/account/security"
+@page "/account/security"
 @attribute [Authorize]
 @using MLMConquerorGlobalEdition.SharedComponents.Components.Account
 @using Microsoft.Extensions.Localization
@@ -6,42 +6,34 @@
 @inject AccountPageData PageData
 @inject IStringLocalizer<SharedResources> L
 
-@* Panel del segundo factor: qué tiene puesto la cuenta y qué canales tienen destino.
+@* Panel del segundo factor del miembro: qué tiene puesto y qué canales tienen destino.
 
    LOS CANALES LLEGAN DEL SERVIDOR TAL CUAL. AvailableChannels es lo que devuelve account-status y
-   no se recalcula aquí: la regla que los decide (correo siempre; SMS solo con teléfono
-   confirmado; autenticador solo con enrolamiento confirmado) vive en GetAccountStatusHandler, que
-   es quien conoce el estado real. Reproducirla en el portal solo abriría la puerta a que las dos
-   copias divergieran y se le ofreciera al usuario un canal sin destino.
+   no se recalcula aquí: la regla que los decide (correo siempre; SMS solo con teléfono confirmado;
+   autenticador solo con enrolamiento confirmado) vive en GetAccountStatusHandler, que es quien
+   conoce el estado real. Reproducirla en el portal solo abriría la puerta a que las dos copias
+   divergieran y se le ofreciera al miembro un canal sin destino.
 
-   RequiredByRole se resuelve comparando los roles del token con Auth:TwoFactor:MandatoryRoles,
-   que es exactamente lo que hace LoginHandler para decidir si fuerza el enrolamiento. Las dos
-   listas tienen que ser la misma.
-
-   CAMBIAR EL CANAL Y APAGAR EL SEGUNDO FACTOR YA SE OFRECEN. El comentario que había aquí decía
-   que SignupAPI no exponía rutas para ninguna de las dos y que por eso los botones se quedaban
-   sin pintar; era cierto cuando se escribió y dejó de serlo en af73db0, que añadió
-   POST /api/v1/auth/two-factor/channel y /two-factor/disable (AuthController:194 y :216). Las
-   dos acciones postean ahora a los manejadores compartidos del área de cuenta, igual que el
-   cambio de contraseña o el alta de teléfono.
+   RequiredByRole se resuelve comparando los roles del token con Auth:TwoFactor:MandatoryRoles, que
+   es exactamente lo que hace LoginHandler para decidir si fuerza el enrolamiento. Hoy esa lista no
+   incluye ningún rol de miembro, así que aquí sale false y el botón de desactivar se ofrece; el día
+   que se incluya alguno, el botón desaparece solo y con su motivo escrito.
 
    Apagarlo NO ocurre desde el primer clic: el enlace vuelve a esta misma ruta con
    ?confirm=disable-2fa y es esa segunda pasada la que pinta el aviso y el botón que sí actúa.
-   Mismo patrón que "quitar teléfono" en el perfil, y por el mismo motivo — quedarse sin segundo
-   factor por un clic de más es justo lo que no puede pasar.
 
-   LO QUE SIGUE SIN OFRECERSE, y ahora sí por lo que dice: activar o volver a enrolar el
-   autenticador desde una sesión ya iniciada. La API tiene las rutas
-   —POST /api/v1/auth/account/two-factor/enroll/begin y /enroll/confirm, ambas con [Authorize]—
-   pero el portal no monta todavía la pantalla que enseña el QR ni el endpoint que confirma el
-   código, así que EnrollUrl y ReEnrollConfirmUrl van sin valor y el componente, que trata una
-   ruta ausente como "esta acción no se ofrece", no pinta botones que llevarían a un 404. *@
+   LO QUE NO SE OFRECE TODAVÍA: activar o volver a enrolar el autenticador desde una sesión ya
+   iniciada. La API tiene las rutas —POST /api/v1/auth/account/two-factor/enroll/begin y
+   /enroll/confirm, las dos con [Authorize]— pero falta la pantalla del QR y el endpoint que
+   confirma el código, así que EnrollUrl y ReEnrollConfirmUrl van sin valor y el componente, que
+   trata una ruta ausente como "esta acción no se ofrece", no pinta botones que llevarían a un 404.
+   Mismo estado que en administración. *@
 
 <PageTitle>@L["TwoFactorPanel.Title"]</PageTitle>
 
-<AdminAccountShell ActiveSection="@AccountLayout.SecuritySection"
-                   Unavailable="@(_status is null)"
-                   ErrorCode="@PageData.StatusErrorCode">
+<AccountShell ActiveSection="@AccountLayout.SecuritySection"
+              Unavailable="@(_status is null)"
+              ErrorCode="@PageData.StatusErrorCode">
     @if (_status is not null)
     {
         <TwoFactorPanel TwoFactorEnabled="@_status.TwoFactorEnabled"
@@ -51,13 +43,13 @@
                         RequiredByRole="@_requiredByRole"
                         PhoneSetupUrl="@PhoneSetupUrl"
                         ChangeChannelAction="/account/two-factor/channel"
-                        DisableConfirmUrl="/admin/account/security?confirm=disable-2fa"
+                        DisableConfirmUrl="/account/security?confirm=disable-2fa"
                         ConfirmDisable="@(Confirm == DisableConfirmation)"
                         DisableAction="/account/two-factor/disable"
-                        CancelDisableUrl="/admin/account/security"
+                        CancelDisableUrl="/account/security"
                         ErrorCode="@Error" />
     }
-</AdminAccountShell>
+</AccountShell>
 
 @code {
     /// <summary>Marca de la query que activa la pantalla de confirmación de la baja del 2FA.</summary>
@@ -86,6 +78,6 @@
     /// </summary>
     private string PhoneSetupUrl =>
         _status is { HasPhone: true, PhoneConfirmed: false }
-            ? "/admin/account/phone/verify"
-            : "/admin/account/phone";
+            ? "/account/phone/confirm"
+            : "/account/phone";
 }

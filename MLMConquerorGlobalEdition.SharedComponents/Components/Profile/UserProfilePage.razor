@@ -12,7 +12,10 @@
     Editing is split deliberately:
       • Identity (name, DOB, business, SSN) is read-only — see PersonalInfoCard.
       • Contact + Address is editable from a dedicated card on the Profile tab.
-      • Email + Password live on the Account tab via CredentialsForm.
+      • Email lives on the Account tab via CredentialsForm. Password does NOT: it is
+        changed in the portal's shared account area, and CredentialsForm only links
+        there when the host passes AccountPasswordUrl. See CredentialsForm.razor for
+        why that duplicate was removed and what had to move first.
       • Payouts (frequency + gateways + cards) live on the Billing tab.
 *@
 
@@ -194,7 +197,7 @@
                         }
                         else
                         {
-                            <CredentialsForm MemberProfileId="@MemberProfileId" />
+                            <CredentialsForm PasswordPageUrl="@AccountPasswordUrl" />
                         }
                     </div>
                 </div>
@@ -259,6 +262,14 @@
 
 @code {
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Ruta de la pantalla de contraseña del área de cuenta de este portal, para que la pestaña
+    /// "Cuenta" pueda llevar hasta allí. La pone el anfitrión porque es lo único de esto que
+    /// cambia de un portal a otro; sin ella no se ofrece el enlace, que es lo correcto en una MAUI
+    /// —donde no hay área de cuenta montada— y en administración mirando a otro miembro.
+    /// </summary>
+    [Parameter] public string? AccountPasswordUrl { get; set; }
 
     private bool    _isLoading = true;
     private string  _tab       = "profile";

@@ -147,6 +147,22 @@
             </a>
         </li>
 
+        @* ── Mi cuenta ──
+           Correo, contraseña, teléfono, segundo factor y datos personales. Va justo detrás del
+           perfil porque las dos son sobre uno mismo, y justo por eso son cosas distintas: el perfil
+           son los datos del MIEMBRO —nombre, dirección, teléfono de contacto— y esto es la CUENTA
+           con la que entra. La pestaña "Cuenta" del perfil enlaza aquí para lo que ya no hace ella.
+
+           IsActive y no IsExact: el área tiene seis pantallas colgando de /account y la entrada
+           tiene que quedarse marcada en todas — con la comparación exacta se apagaría en cuanto el
+           miembro entrase en "Seguridad" y perdería de vista dónde está. *@
+        <li class="menu-item @IsActive("/account")">
+            <a href="/account" class="menu-link">
+                <span class="material-symbols-outlined menu-icon">manage_accounts</span>
+                <span class="title">@L["Account.Title"]</span>
+            </a>
+        </li>
+
         <!-- Support Tickets -->
         <li class="menu-item @IsActive("/tickets")">
             <a href="/tickets" class="menu-link">

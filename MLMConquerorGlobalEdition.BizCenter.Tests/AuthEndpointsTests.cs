@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using MLMConquerorGlobalEdition.ClientCore;
+using MLMConquerorGlobalEdition.SharedComponents.Resources;
 using MLMConquerorGlobalEdition.SharedComponents.Server.Services;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Tests;
@@ -65,15 +66,19 @@ public class AuthEndpointsTests
         ]
     };
 
+    /// <remarks>
+    /// Ya no declara TwoFactorTargetQueryParam ni TwoFactorErrorCode: eran las dos rarezas que
+    /// sostenían la pantalla /two-factor propia de este portal, y desde que monta el componente
+    /// compartido TwoFactorVerify no hacen falta. Se borraron de AuthPortalOptions, así que este
+    /// registro vuelve a ser exactamente lo que declara su Program.cs.
+    /// </remarks>
     private static readonly AuthPortalOptions BizCenter = new()
     {
         LoginPage                 = "/login",
         TwoFactorPage             = "/two-factor",
         EnrollAuthenticatorPage   = "/enroll-authenticator",
         HomePage                  = "/",
-        FollowsMemberLanguage     = true,
-        TwoFactorTargetQueryParam = "email",
-        TwoFactorErrorCode        = "invalid_code"
+        FollowsMemberLanguage     = true
     };
 
     /// <summary>Los dos portales para las pruebas que valen igual en los dos.</summary>
@@ -202,6 +207,12 @@ public class AuthEndpointsTests
     /// o la página de error de un proxy intermedio. Deserializarlo lanza, y esa excepción también
     /// salía como 500.
     /// </summary>
+    /// <remarks>
+    /// El código de vuelta es TOO_MANY_REQUESTS y no <c>invalid</c>: sin cuerpo del que sacar un
+    /// código, <see cref="AuthApiGateway"/> lo deduce del estado HTTP, y la puerta ya no aplasta
+    /// ese código. Decirle "credenciales inválidas" a quien se ha topado con un limitador de tasa
+    /// le manda a revisar lo único que no es el problema.
+    /// </remarks>
     [Theory]
     [MemberData(nameof(LosDosPortales))]
     public async Task Login_ConUnCuerpoQueNoEsJson_RedirigeEnVezDeReventar(string nombre)
@@ -212,6 +223,32 @@ public class AuthEndpointsTests
         var gateway = Gateway(new HandlerFalso(_ => new HttpResponseMessage(HttpStatusCode.TooManyRequests)
         {
             Content = new StringContent("<html>Too many requests</html>", Encoding.UTF8, "text/html")
+        }));
+
+        var resultado = await AuthEndpoints.LoginAsync(
+            new AuthEndpoints.LoginForm("quien@ejemplo.com", "x"),
+            gateway, contexto, portal, cookies, default);
+
+        var destino = await Ejecutar(resultado, contexto);
+
+        contexto.Response.StatusCode.Should().Be(302);
+        destino.Should().Be($"{portal.LoginPage}?error=TOO_MANY_REQUESTS");
+    }
+
+    /// <summary>
+    /// Un cuerpo que NO es JSON y tampoco trae un estado del que deducir nada acaba en
+    /// <c>invalid</c>, que es el valor seguro: sin código no hay nada que se pueda contar.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(LosDosPortales))]
+    public async Task Login_ConUnCuerpoQueNoEsJsonYSinCodigoDeducible_SaleComoInvalid(string nombre)
+    {
+        var (portal, cookies) = Portal(nombre);
+        var contexto = Contexto();
+
+        var gateway = Gateway(new HandlerFalso(_ => new HttpResponseMessage(HttpStatusCode.BadGateway)
+        {
+            Content = new StringContent("<html>Bad gateway</html>", Encoding.UTF8, "text/html")
         }));
 
         var resultado = await AuthEndpoints.LoginAsync(
@@ -259,7 +296,8 @@ public class AuthEndpointsTests
             ProfilePage            = "/account",
             PasswordPage           = "/account/password",
             PhonePage              = "/account/phone",
-            PhoneVerifyPage        = "/account/phone/verify",
+            PhoneVerifyPage        = "/account/phone/confirm",
+            SecurityPage           = "/account/security",
             PersonalDataPage       = "/account/personal-data"
         };
 
@@ -360,11 +398,12 @@ public class AuthEndpointsTests
         CookiesEscritas(contexto).Should().ContainSingle(c => c.StartsWith($"{cookies.Login}="))
             .Which.Should().Contain("el-reto");
 
-        // Y el destino enmascarado viaja con el nombre de parámetro que lee la pantalla de ESTE
-        // portal: `target` en el componente compartido, `email` en la pantalla propia del centro
-        // de negocios.
+        // Y el destino enmascarado viaja en `target`, que es el parámetro que lee TwoFactorVerify
+        // —el componente que montan LOS DOS portales—. Ya no entra por opciones: mientras el centro
+        // de negocios tenía su pantalla propia lo leía de `email`, y esa rareza desapareció con
+        // ella.
         destino.Should().Be(
-            $"{portal.TwoFactorPage}?{portal.TwoFactorTargetQueryParam}=q%2A%2A%2A%2A%40ejemplo.com");
+            $"{portal.TwoFactorPage}?target=q%2A%2A%2A%2A%40ejemplo.com");
     }
 
     [Fact]
@@ -506,6 +545,130 @@ public class AuthEndpointsTests
         var escritas = CookiesEscritas(contexto);
         escritas.Should().Contain(c => c.StartsWith($"{cookies.Login}="));
         escritas.Should().Contain(c => c.StartsWith($"{cookies.Enrollment}="));
+    }
+
+    // ===========================================================================================
+    //  4. Qué se le cuenta al usuario cuando el login falla
+    //
+    //  La regla: se propaga lo que NO habla de las credenciales y se aplasta todo lo demás. Las dos
+    //  mitades importan y las dos se comprueban aquí, porque equivocarse en cualquiera de ellas
+    //  tiene consecuencias — de un lado un oráculo de enumeración de cuentas, del otro un usuario
+    //  revisando una contraseña que estaba bien.
+    // ===========================================================================================
+
+    /// <summary>
+    /// EL FALLO QUE ESTO CIERRA, observado en caliente: con el emisor de códigos del segundo factor
+    /// limitado (tres por cuarto de hora), el login respondía "credenciales inválidas" a alguien que
+    /// las había tecleado bien. El rechazo ocurre DESPUÉS de comprobar la contraseña —LoginHandler
+    /// ya la dio por buena y falló al emitir el código— así que culpar a las credenciales manda al
+    /// usuario a revisar lo único que no era el problema.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(LosDosPortales))]
+    public async Task Login_ConElEmisorDeCodigosLimitado_NoCulpaALasCredenciales(string nombre)
+    {
+        var (portal, cookies) = Portal(nombre);
+        var contexto = Contexto();
+
+        var gateway = GatewayQueResponde(
+            """{"success":false,"errorCode":"TOO_MANY_REQUESTS"}""", HttpStatusCode.Unauthorized);
+
+        var resultado = await AuthEndpoints.LoginAsync(
+            new AuthEndpoints.LoginForm("quien@ejemplo.com", "la-contraseña-buena"),
+            gateway, contexto, portal, cookies, default);
+
+        var destino = await Ejecutar(resultado, contexto);
+
+        destino.Should().Be($"{portal.LoginPage}?error=TOO_MANY_REQUESTS");
+    }
+
+    /// <summary>
+    /// El hermano del anterior: sale del mismo <c>if (!issued.IsSuccess)</c> de LoginHandler cuando
+    /// el canal preferido no tiene destino o su transporte falla. Aplastarlo habría dejado el
+    /// arreglo a medias — mismo usuario, mismas credenciales buenas, mismo mensaje equivocado.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(LosDosPortales))]
+    public async Task Login_ConElCanalSinDestino_NoCulpaALasCredenciales(string nombre)
+    {
+        var (portal, cookies) = Portal(nombre);
+        var contexto = Contexto();
+
+        var gateway = GatewayQueResponde(
+            """{"success":false,"errorCode":"CHANNEL_UNAVAILABLE"}""", HttpStatusCode.Unauthorized);
+
+        var resultado = await AuthEndpoints.LoginAsync(
+            new AuthEndpoints.LoginForm("quien@ejemplo.com", "la-contraseña-buena"),
+            gateway, contexto, portal, cookies, default);
+
+        var destino = await Ejecutar(resultado, contexto);
+
+        destino.Should().Be($"{portal.LoginPage}?error=CHANNEL_UNAVAILABLE");
+    }
+
+    /// <summary>
+    /// LA OTRA MITAD, Y LA QUE NO SE PUEDE PERDER: correo que no existe, contraseña equivocada y
+    /// cuenta bloqueada tienen que salir los TRES con el mismo código. Distinguirlos convertiría el
+    /// formulario en un oráculo para averiguar qué direcciones están registradas, y esa unificación
+    /// es deliberada — no un descuido que arreglar al pasar por aquí.
+    /// </summary>
+    [Theory]
+    [InlineData("INVALID_CREDENTIALS")]
+    [InlineData("ACCOUNT_LOCKED")]
+    [InlineData("USER_NOT_FOUND")]
+    public async Task Login_LosFallosQueHablanDeLaCuentaSalenTodosIguales(string codigoDeLaApi)
+    {
+        var contexto = Contexto();
+
+        var gateway = GatewayQueResponde(
+            $$"""{"success":false,"errorCode":"{{codigoDeLaApi}}"}""", HttpStatusCode.Unauthorized);
+
+        var resultado = await AuthEndpoints.LoginAsync(
+            new AuthEndpoints.LoginForm("quien@ejemplo.com", "x"),
+            gateway, contexto, BizCenter, CookiesBizCenter, default);
+
+        var destino = await Ejecutar(resultado, contexto);
+
+        destino.Should().Be("/login?error=invalid",
+            "los tres tienen que ser indistinguibles desde fuera: si no, el formulario dice qué " +
+            "cuentas existen");
+    }
+
+    /// <summary>
+    /// Un código que la interfaz no sabe traducir tampoco se propaga: llegaría a la pantalla y
+    /// LoginErrorMessages lo ignoraría, dejando al usuario delante del formulario sin un solo aviso.
+    /// El valor seguro es <c>invalid</c>, que sí tiene texto.
+    /// </summary>
+    [Fact]
+    public async Task Login_ConUnCodigoQueLaPantallaNoConoce_SaleComoInvalid()
+    {
+        var contexto = Contexto();
+
+        var gateway = GatewayQueResponde(
+            """{"success":false,"errorCode":"THROTTLED_BY_EDGE"}""", HttpStatusCode.Unauthorized);
+
+        var resultado = await AuthEndpoints.LoginAsync(
+            new AuthEndpoints.LoginForm("quien@ejemplo.com", "x"),
+            gateway, contexto, BizCenter, CookiesBizCenter, default);
+
+        var destino = await Ejecutar(resultado, contexto);
+
+        destino.Should().Be("/login?error=invalid");
+    }
+
+    /// <summary>
+    /// Y la lista de lo propagable es exactamente la que la pantalla sabe enseñar. Sin esta prueba,
+    /// añadir un código a <c>PropagatedFromLogin</c> sin darle entrada en el mapa lo dejaría llegar
+    /// a la URL para que nadie lo tradujera.
+    /// </summary>
+    [Fact]
+    public void TodoLoQueLaPuertaPropagaTieneTextoEnLaPantalla()
+    {
+        foreach (var codigo in LoginErrorMessages.PropagatedFromLogin)
+        {
+            LoginErrorMessages.For(codigo).Should().NotBeNull(
+                $"la puerta propaga {codigo} y la pantalla de login tiene que saber enseñarlo");
+        }
     }
 
     // ===========================================================================================

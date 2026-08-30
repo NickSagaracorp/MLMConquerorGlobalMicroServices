@@ -285,6 +285,60 @@ public static class AccountEndpoints
     }
 
     /// <summary>
+    /// Fija el canal por el que la cuenta recibirá su código de segundo factor.
+    /// </summary>
+    /// <remarks>
+    /// El canal viaja como TEXTO —<c>Email</c>, <c>Sms</c>, <c>Authenticator</c>— porque es lo que
+    /// manda el radio del formulario y lo que el enum <c>TwoFactorChannel</c> de la API acepta al
+    /// deserializar. Aquí no se valida contra la lista de canales disponibles: eso lo hace el
+    /// servidor, que es quien sabe si el canal tiene destino en esta cuenta, y lo rechaza con
+    /// <c>CHANNEL_UNAVAILABLE</c>. Repetir la regla en el portal solo abriría la puerta a que las
+    /// dos copias divergieran y se le ofreciese al usuario un canal por el que no le llegará nada.
+    /// </remarks>
+    public static async Task<IResult> SetTwoFactorChannelAsync(
+        [FromForm] TwoFactorChannelForm? form,
+        AuthApiGateway                api,
+        [FromServices] AccountPageRoutes routes,
+        CancellationToken             ct)
+    {
+        form ??= new();
+
+        var outcome = await api.CallAsync(
+            HttpMethod.Post, "api/v1/auth/two-factor/channel",
+            new { Channel = form.Channel ?? string.Empty }, authenticated: true, ct);
+
+        return outcome.Success
+            ? Results.Redirect(routes.SecurityPage)
+            : Failure(routes.SecurityPage, outcome.ErrorCodeOr("CHANNEL_UNAVAILABLE"));
+    }
+
+    /// <summary>
+    /// Apaga el segundo factor de la cuenta.
+    /// </summary>
+    /// <remarks>
+    /// Llega ya confirmado por el usuario: el enlace "desactivar" de <c>TwoFactorPanel</c> no
+    /// postea nada, solo repinta la pantalla con el aviso, y es ese aviso el que trae este botón.
+    /// Mismo patrón que "quitar teléfono" en <c>ManageIndex</c>.
+    ///
+    /// Que el rol del usuario lo tenga prohibido lo decide el SERVIDOR, con
+    /// <c>TWO_FACTOR_REQUIRED</c>. El panel ya esconde el botón en ese caso, pero esconder un
+    /// botón no cierra una ruta: quien la llame a mano se lleva el mismo rechazo.
+    /// </remarks>
+    public static async Task<IResult> DisableTwoFactorAsync(
+        AuthApiGateway                api,
+        [FromServices] AccountPageRoutes routes,
+        CancellationToken             ct)
+    {
+        var outcome = await api.CallAsync(
+            HttpMethod.Post, "api/v1/auth/two-factor/disable",
+            body: null, authenticated: true, ct);
+
+        return outcome.Success
+            ? Results.Redirect(routes.SecurityPage)
+            : Failure(routes.SecurityPage, outcome.ErrorCodeOr("TWO_FACTOR_DISABLE_FAILED"));
+    }
+
+    /// <summary>
     /// Sirve el archivo de datos personales al navegador.
     /// </summary>
     /// <remarks>
@@ -397,6 +451,13 @@ public static class AccountEndpoints
 
     /// <summary>El formulario solo aporta el código; el reto vive en la cookie.</summary>
     public record CodeForm(string? Code = null);
+
+    /// <summary>
+    /// El canal preferido del segundo factor. El nombre <c>Channel</c> coincide con el
+    /// <c>name=</c> de los radios de <c>TwoFactorPanel</c>; cambiar uno sin el otro deja el campo
+    /// en null y el usuario se lleva un CHANNEL_UNAVAILABLE por un formulario vacío.
+    /// </summary>
+    public record TwoFactorChannelForm(string? Channel = null);
 
     /// <summary>Respuesta de <c>POST /api/v1/auth/phone</c>, recortada a lo que se usa.</summary>
     private sealed record PhoneChallenge

@@ -4,7 +4,12 @@
 @inject IViewContextService ViewContext
 @inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
 
+@* El perfil del miembro. La pestaña "Cuenta" ya no cambia la contraseña: la cambia el área de
+   cuenta compartida, y AccountPasswordUrl es lo que hace que esa pestaña sepa llevar hasta allí.
+   Es la única ruta de este portal que la página compartida necesita conocer. *@
+
 <PageTitle>@L["Profile.PageTitle"]</PageTitle>
 
-<UserProfilePage MemberProfileId="@ViewContext.ViewingMemberId" />
+<UserProfilePage MemberProfileId="@ViewContext.ViewingMemberId"
+                 AccountPasswordUrl="/account/password" />
 

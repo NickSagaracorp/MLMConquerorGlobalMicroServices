@@ -49,6 +49,19 @@ public sealed record AccountPageRoutes
     public required string PhoneVerifyPage { get; init; }
 
     /// <summary>
+    /// Panel del segundo factor: canal preferido y baja. Destino de las dos acciones que postean
+    /// desde <c>TwoFactorPanel</c>, salgan bien o mal.
+    /// </summary>
+    /// <remarks>
+    /// No estaba en el grupo original porque el área no ofrecía esas dos acciones: el comentario
+    /// de la pantalla decía que SignupAPI no exponía rutas para ellas. Sí las expone
+    /// —<c>POST /api/v1/auth/two-factor/channel</c> y <c>/two-factor/disable</c>—, así que el
+    /// panel dejó de ser de solo lectura y necesita, como las otras cinco pantallas, saber a dónde
+    /// vuelve el usuario después de pulsar.
+    /// </remarks>
+    public required string SecurityPage { get; init; }
+
+    /// <summary>
     /// Pantalla de datos personales, a la que vuelve la descarga cuando falla.
     /// </summary>
     /// <remarks>

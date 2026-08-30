@@ -55,6 +55,30 @@ var challengeCookieNames = new ChallengeCookieNames
     Phone      = "mlm_bizcenter_phone_challenge"
 };
 
+// Área de cuenta — el cableado (gateway a SignupAPI, carga de datos de página y manejadores de
+// formulario) vive en SharedComponents y lo monta también administración. Lo único que cambia de un
+// portal a otro es dónde están sus pantallas, y eso es exactamente lo que se pasa aquí.
+//
+// ESTE PORTAL NO TIENE PREFIJO, y eso obliga a una decisión que administración no tuvo que tomar:
+// allí las pantallas cuelgan de /admin/account/... y los POST del área de /account/..., así que las
+// dos familias no pueden chocar. Aquí comparten raíz. La única colisión real es la verificación del
+// teléfono —MapAccountEndpoints sirve POST /account/phone/verify—, así que su PANTALLA se llama
+// /account/phone/confirm. Las demás no coinciden con ningún endpoint.
+builder.Services.AddAccountSurface(new AccountPageRoutes
+{
+    ForgotPasswordPage     = "/forgot-password",
+    ForgotPasswordSentPage = "/forgot-password/sent",
+    ResetPasswordPage      = "/reset-password",
+    ResetPasswordDonePage  = "/reset-password/done",
+    ProfilePage            = "/account",
+    PasswordPage           = "/account/password",
+    PhonePage              = "/account/phone",
+    PhoneVerifyPage        = "/account/phone/confirm",
+    SecurityPage           = "/account/security",
+    PersonalDataPage       = "/account/personal-data"
+},
+challengeCookieNames);
+
 // La puerta — login, segundo factor, enrolamiento forzado y salida. Los manejadores son los mismos
 // que los de administración y viven en SharedComponents.Server; de este portal son solo los
 // destinos.
@@ -74,13 +98,6 @@ builder.Services.AddAuthSurface(new AuthPortalOptions
     // El idioma preferido del miembro viaja en el claim default_language del token; fijarlo aquí
     // hace que un primer inicio de sesión en un dispositivo nuevo ya aterrice en su idioma.
     FollowsMemberLanguage = true
-
-    // Ya NO se declaran TwoFactorTargetQueryParam ni TwoFactorErrorCode. Existían para sostener la
-    // pantalla /two-factor propia de este portal, que leía el destino enmascarado de `email` en vez
-    // de `target` y solo sabía traducir el literal `invalid_code`. Esa pantalla ya monta
-    // TwoFactorVerify, que lee `target` —el valor por defecto— y habla el vocabulario entero de la
-    // API, así que las dos propiedades vuelven a sus valores buenos y se pueden borrar de
-    // AuthPortalOptions cuando alguien pase por allí.
 },
 challengeCookieNames);
 
@@ -158,6 +175,12 @@ app.MapGet("/account/logout",  (Delegate)AuthEndpoints.LogoutAsync);
 app.MapPost("/account/two-factor/verify",   (Delegate)AuthEndpoints.LoginTwoFactorAsync).DisableAntiforgery();
 app.MapPost("/account/two-factor/resend",   (Delegate)AuthEndpoints.ResendTwoFactorAsync).DisableAntiforgery();
 app.MapPost("/account/enroll-authenticator",(Delegate)AuthEndpoints.EnrollAuthenticatorAsync).DisableAntiforgery();
+
+// ── Área de cuenta ──────────────────────────────────────────────────────────────────────────
+// Las mismas rutas que sirve administración, montadas desde SharedComponents. Cuál lleva
+// RequireAuthorization() y cuál no vive allí junto a los manejadores: es una decisión de seguridad
+// que no se ve desde la pantalla, y copiarla en cada portal es pedir que a uno se le olvide.
+app.MapAccountEndpoints();
 
 // Culture selection endpoint — sets cookie and redirects back
 app.MapGet("/culture", (HttpContext ctx, string culture, string redirectUri) =>

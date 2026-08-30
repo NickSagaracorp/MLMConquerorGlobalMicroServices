@@ -322,6 +322,7 @@
 
   <!-- Credentials Form -->
   <data name="Credentials.ChangePassword" xml:space="preserve"><value>Cambia Password</value></data>
+  <data name="Credentials.ManagedInAccountArea" xml:space="preserve"><value>La password si cambia nell'area account, dove puoi anche controllare la sicurezza del tuo accesso.</value></data>
   <data name="Credentials.CurrentPassword" xml:space="preserve"><value>Password Attuale</value></data>
   <data name="Credentials.NewPassword" xml:space="preserve"><value>Nuova Password</value></data>
   <data name="Credentials.ConfirmPassword" xml:space="preserve"><value>Conferma Nuova Password</value></data>
@@ -1113,6 +1114,7 @@
   <data name="Login.ErrorInvalid" xml:space="preserve"><value>E-mail o password non validi.</value></data>
   <data name="Login.ErrorInactive" xml:space="preserve"><value>Il tuo account è inattivo. Contatta il supporto.</value></data>
   <data name="Login.ErrorSessionExpired" xml:space="preserve"><value>La sessione è scaduta. Accedi di nuovo.</value></data>
+  <data name="Login.ErrorTooManyRequests" xml:space="preserve"><value>Troppi tentativi in poco tempo. I tuoi dati sono corretti: attendi qualche minuto e accedi di nuovo.</value></data>
   <data name="Login.EmailLabel" xml:space="preserve"><value>Indirizzo e-mail</value></data>
   <data name="Login.EmailPlaceholder" xml:space="preserve"><value>Inserisci la tua e-mail</value></data>
   <data name="Login.PasswordLabel" xml:space="preserve"><value>Password</value></data>
@@ -1274,6 +1276,7 @@
   <data name="ResetPassword.RequirementUppercase" xml:space="preserve"><value>Contenere almeno una lettera maiuscola</value></data>
   <data name="ResetPassword.RequirementLowercase" xml:space="preserve"><value>Contenere almeno una lettera minuscola</value></data>
   <data name="ResetPassword.RequirementDigit" xml:space="preserve"><value>Contenere almeno un numero</value></data>
+  <data name="ResetPassword.RequirementSpecial" xml:space="preserve"><value>Contenere almeno un carattere speciale (per esempio ! ? # $ %)</value></data>
   <data name="ForgotPasswordConfirmation.Title" xml:space="preserve"><value>Controlla la tua email</value></data>
   <data name="ResetPasswordConfirmation.Title" xml:space="preserve"><value>Password aggiornata</value></data>
   <data name="Lockout.Title" xml:space="preserve"><value>Account temporaneamente bloccato</value></data>

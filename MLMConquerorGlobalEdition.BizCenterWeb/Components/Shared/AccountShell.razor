@@ -1,0 +1,64 @@
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Account
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
+@inject IStringLocalizer<SharedResources> L
+
+@* Las cuatro rutas del área de cuenta del centro de negocios, escritas UNA vez.
+
+   Gemelo de AdminWeb/Components/Shared/AdminAccountShell.razor y por el mismo motivo: AccountLayout
+   no trae ninguna ruta escrita dentro —administración cuelga de /admin/account/... y este portal de
+   /account/...— así que sin este envoltorio las seis páginas de aquí repetirían las mismas cuatro
+   direcciones, y bastaría que una se quedara atrás al cambiar una ruta para que el menú lateral
+   llevara a un 404 desde una sola de las secciones. Ese es justo el fallo más difícil de ver,
+   porque desde las otras cinco sigue funcionando.
+
+   Vive en BizCenterWeb y no en SharedComponents porque lo único que aporta son las rutas de ESTE
+   portal; lo que se comparte es AccountLayout, que ya está en SharedComponents.
+
+   También centraliza la degradación: cuando account-status no se puede leer, todas las páginas de
+   gestión enseñan lo mismo —la navegación, para poder irse a otra sección, y un aviso en lugar del
+   contenido— en vez de reventar con una referencia nula.
+
+   El cromo de alrededor lo pone MainLayout, el mismo de las demás pantallas autenticadas de este
+   portal: cabecera, barra lateral y pie. Las pantallas de la PUERTA usan GateShell, que es otra
+   cosa — allí todavía no hay sesión y no hay menú al que volver. *@
+
+<AccountLayout ActiveSection="@ActiveSection"
+               ProfileUrl="/account"
+               PasswordUrl="/account/password"
+               SecurityUrl="/account/security"
+               PersonalDataUrl="/account/personal-data">
+    @if (Unavailable)
+    {
+        <div class="alert alert-danger" role="alert">
+            @L[AccountMessages.ErrorKeyFor(ErrorCode)]
+        </div>
+    }
+    else
+    {
+        @ChildContent
+    }
+</AccountLayout>
+
+@code {
+    /// <summary>
+    /// Sección activa. Usa las constantes de <see cref="AccountLayout"/>
+    /// (<c>ProfileSection</c>, <c>PasswordSection</c>…), no literales: un error de tecleo dejaría
+    /// el menú sin marcar nada y sin fallar.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string ActiveSection { get; set; } = string.Empty;
+
+    /// <summary>
+    /// No se pudieron cargar los datos de la cuenta. Enseña el aviso en lugar del contenido.
+    /// </summary>
+    [Parameter]
+    public bool Unavailable { get; set; }
+
+    /// <summary>Por qué no se pudieron cargar, para que el aviso diga algo concreto.</summary>
+    [Parameter]
+    public string? ErrorCode { get; set; }
+
+    [Parameter, EditorRequired]
+    public RenderFragment? ChildContent { get; set; }
+}

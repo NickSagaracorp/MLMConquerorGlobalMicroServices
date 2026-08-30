@@ -322,6 +322,7 @@
 
   <!-- Credentials Form -->
   <data name="Credentials.ChangePassword" xml:space="preserve"><value>Passwort ändern</value></data>
+  <data name="Credentials.ManagedInAccountArea" xml:space="preserve"><value>Ihr Passwort wird im Kontobereich geändert, wo Sie auch Ihre Anmeldesicherheit prüfen können.</value></data>
   <data name="Credentials.CurrentPassword" xml:space="preserve"><value>Aktuelles Passwort</value></data>
   <data name="Credentials.NewPassword" xml:space="preserve"><value>Neues Passwort</value></data>
   <data name="Credentials.ConfirmPassword" xml:space="preserve"><value>Neues Passwort bestätigen</value></data>
@@ -1113,6 +1114,7 @@
   <data name="Login.ErrorInvalid" xml:space="preserve"><value>Ungültige E-Mail oder Passwort.</value></data>
   <data name="Login.ErrorInactive" xml:space="preserve"><value>Dein Konto ist inaktiv. Bitte kontaktiere den Support.</value></data>
   <data name="Login.ErrorSessionExpired" xml:space="preserve"><value>Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.</value></data>
+  <data name="Login.ErrorTooManyRequests" xml:space="preserve"><value>Zu viele Versuche in kurzer Zeit. Deine Daten sind korrekt — warte bitte einige Minuten und melde dich erneut an.</value></data>
   <data name="Login.EmailLabel" xml:space="preserve"><value>E-Mail-Adresse</value></data>
   <data name="Login.EmailPlaceholder" xml:space="preserve"><value>E-Mail eingeben</value></data>
   <data name="Login.PasswordLabel" xml:space="preserve"><value>Passwort</value></data>
@@ -1274,6 +1276,7 @@
   <data name="ResetPassword.RequirementUppercase" xml:space="preserve"><value>Mindestens einen Großbuchstaben enthalten</value></data>
   <data name="ResetPassword.RequirementLowercase" xml:space="preserve"><value>Mindestens einen Kleinbuchstaben enthalten</value></data>
   <data name="ResetPassword.RequirementDigit" xml:space="preserve"><value>Mindestens eine Zahl enthalten</value></data>
+  <data name="ResetPassword.RequirementSpecial" xml:space="preserve"><value>Mindestens ein Sonderzeichen enthalten (zum Beispiel ! ? # $ %)</value></data>
   <data name="ForgotPasswordConfirmation.Title" xml:space="preserve"><value>Überprüfen Sie Ihre E-Mail</value></data>
   <data name="ResetPasswordConfirmation.Title" xml:space="preserve"><value>Passwort aktualisiert</value></data>
   <data name="Lockout.Title" xml:space="preserve"><value>Konto vorübergehend gesperrt</value></data>

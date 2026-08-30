@@ -1,0 +1,62 @@
+@page "/auth/confirm-email"
+@layout MLMConquerorGlobalEdition.SharedComponents.Components.Layout.BlankLayout
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Account
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
+@inject AccountPageData PageData
+@inject IStringLocalizer<SharedResources> L
+
+@* Destino del enlace del correo de confirmación de dirección.
+
+   ESTA PANTALLA FALTABA EN ESTE PORTAL. SendEmailConfirmationHandler construye el enlace como
+   {Auth:PortalBaseUrl}/auth/confirm-email?userId=…&token=… para toda cuenta con MemberProfile —es
+   decir, para los miembros de aquí— y esa ruta no existía: cada correo de confirmación que se
+   emitía llevaba a un 404. La ruta se escribe igual que la escribe el manejador, sin prefijo,
+   porque es la que ya va dentro de los correos emitidos.
+
+   La confirmación se ejecuta AQUÍ, durante el render, y no en un endpoint: es un GET —el miembro
+   llega pinchando un enlace, no enviando un formulario— y lo que hay que enseñar es el resultado de
+   esa llamada, no una redirección a otra pantalla que lo repita.
+
+   Cromo de la puerta (GateShell) y no el del portal: quien pincha este enlace normalmente no tiene
+   sesión, así que una cabecera con su menú sería mentira.
+
+   No se ofrece reenviar: POST /api/v1/auth/email/send-confirmation necesita el correo de la cuenta
+   y el enlace solo trae el userId, así que no hay forma de rellenar esa llamada desde aquí. Quien
+   sí puede reenviarlo es /account, que saca la dirección de la sesión. *@
+
+<PageTitle>@Title</PageTitle>
+
+<GateShell>
+    @if (_status is null)
+    {
+        <div class="alert alert-info" role="status">@L["Common.Loading"]</div>
+    }
+    else
+    {
+        <ConfirmEmail Status="@_status" LoginUrl="/login" />
+    }
+</GateShell>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? UserId { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Token { get; set; }
+
+    private string? _status;
+
+    protected override async Task OnInitializedAsync() =>
+        _status = await PageData.ConfirmEmailAsync(UserId, Token);
+
+    /// <summary>
+    /// El título sigue al resultado: una pestaña que dice "correo confirmado" sobre una pantalla
+    /// que dice que el enlace caducó es exactamente la clase de contradicción que hace dudar al
+    /// usuario de cuál de las dos cosas es verdad.
+    /// </summary>
+    private string Title =>
+        AccountMessages.IsConfirmEmailSuccess(_status) ? L["ConfirmEmail.SuccessTitle"]
+        : AccountMessages.IsConfirmEmailExpired(_status) ? L["ConfirmEmail.ExpiredTitle"]
+        :                                                  L["ConfirmEmail.InvalidTitle"];
+}

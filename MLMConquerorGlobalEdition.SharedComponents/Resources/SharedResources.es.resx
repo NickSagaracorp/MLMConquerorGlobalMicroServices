@@ -322,6 +322,7 @@
 
   <!-- Credentials Form -->
   <data name="Credentials.ChangePassword" xml:space="preserve"><value>Cambiar Contraseña</value></data>
+  <data name="Credentials.ManagedInAccountArea" xml:space="preserve"><value>La contraseña se cambia en el área de cuenta, donde además puedes revisar la seguridad de tu acceso.</value></data>
   <data name="Credentials.CurrentPassword" xml:space="preserve"><value>Contraseña Actual</value></data>
   <data name="Credentials.NewPassword" xml:space="preserve"><value>Nueva Contraseña</value></data>
   <data name="Credentials.ConfirmPassword" xml:space="preserve"><value>Confirmar Nueva Contraseña</value></data>
@@ -1147,6 +1148,7 @@
   <data name="Login.ErrorInvalid" xml:space="preserve"><value>Correo o contraseña inválidos.</value></data>
   <data name="Login.ErrorInactive" xml:space="preserve"><value>Tu cuenta está inactiva. Por favor contacta a soporte.</value></data>
   <data name="Login.ErrorSessionExpired" xml:space="preserve"><value>Tu sesión ha expirado. Inicia sesión de nuevo.</value></data>
+  <data name="Login.ErrorTooManyRequests" xml:space="preserve"><value>Demasiados intentos en poco tiempo. Tus datos son correctos: espera unos minutos y vuelve a entrar.</value></data>
   <data name="Login.ErrorAccessDenied" xml:space="preserve"><value>Acceso denegado. Tu cuenta no tiene permiso para usar este portal.</value></data>
   <data name="Login.ErrorServiceUnavailable" xml:space="preserve"><value>El servicio de inicio de sesión no está disponible en este momento. Inténtalo de nuevo en unos minutos.</value></data>
   <data name="Login.EmailLabel" xml:space="preserve"><value>Correo electrónico</value></data>
@@ -1310,6 +1312,7 @@
   <data name="ResetPassword.RequirementUppercase" xml:space="preserve"><value>Incluir al menos una letra mayúscula</value></data>
   <data name="ResetPassword.RequirementLowercase" xml:space="preserve"><value>Incluir al menos una letra minúscula</value></data>
   <data name="ResetPassword.RequirementDigit" xml:space="preserve"><value>Incluir al menos un número</value></data>
+  <data name="ResetPassword.RequirementSpecial" xml:space="preserve"><value>Incluir al menos un carácter especial (por ejemplo ! ? # $ %)</value></data>
   <data name="ForgotPasswordConfirmation.Title" xml:space="preserve"><value>Revisa tu correo</value></data>
   <data name="ResetPasswordConfirmation.Title" xml:space="preserve"><value>Contraseña actualizada</value></data>
   <data name="Lockout.Title" xml:space="preserve"><value>Cuenta bloqueada temporalmente</value></data>

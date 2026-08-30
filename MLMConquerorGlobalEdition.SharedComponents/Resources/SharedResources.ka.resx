@@ -246,6 +246,7 @@
 
   <!-- Credentials Form -->
   <data name="Credentials.ChangePassword" xml:space="preserve"><value>პაროლის შეცვლა</value></data>
+  <data name="Credentials.ManagedInAccountArea" xml:space="preserve"><value>პაროლი იცვლება ანგარიშის განყოფილებაში, სადაც ასევე შეგიძლიათ შეამოწმოთ თქვენი შესვლის უსაფრთხოება.</value></data>
   <data name="Credentials.CurrentPassword" xml:space="preserve"><value>მიმდინარე პაროლი</value></data>
   <data name="Credentials.NewPassword" xml:space="preserve"><value>ახალი პაროლი</value></data>
   <data name="Credentials.ConfirmPassword" xml:space="preserve"><value>დაადასტურეთ ახალი პაროლი</value></data>
@@ -1044,6 +1045,7 @@
   <data name="Login.ErrorInvalid" xml:space="preserve"><value>არასწორი ელ. ფოსტა ან პაროლი.</value></data>
   <data name="Login.ErrorInactive" xml:space="preserve"><value>თქვენი ანგარიში არააქტიურია. გთხოვთ, დაუკავშირდეთ მხარდაჭერას.</value></data>
   <data name="Login.ErrorSessionExpired" xml:space="preserve"><value>თქვენი სესიის დრო ამოიწურა. გთხოვთ, შეხვიდეთ ხელახლა.</value></data>
+  <data name="Login.ErrorTooManyRequests" xml:space="preserve"><value>ძალიან ბევრი მცდელობა მოკლე დროში. თქვენი მონაცემები სწორია — დაელოდეთ რამდენიმე წუთს და სცადეთ ხელახლა.</value></data>
   <data name="Login.EmailLabel" xml:space="preserve"><value>ელ. ფოსტის მისამართი</value></data>
   <data name="Login.EmailPlaceholder" xml:space="preserve"><value>შეიყვანეთ თქვენი ელ. ფოსტა</value></data>
   <data name="Login.PasswordLabel" xml:space="preserve"><value>პაროლი</value></data>
@@ -1205,6 +1207,7 @@
   <data name="ResetPassword.RequirementUppercase" xml:space="preserve"><value>შეიცავდეს მინიმუმ ერთ დიდ ასოს</value></data>
   <data name="ResetPassword.RequirementLowercase" xml:space="preserve"><value>შეიცავდეს მინიმუმ ერთ პატარა ასოს</value></data>
   <data name="ResetPassword.RequirementDigit" xml:space="preserve"><value>შეიცავდეს მინიმუმ ერთ ციფრს</value></data>
+  <data name="ResetPassword.RequirementSpecial" xml:space="preserve"><value>შეიცავდეს მინიმუმ ერთ სპეციალურ სიმბოლოს (მაგალითად ! ? # $ %)</value></data>
   <data name="ForgotPasswordConfirmation.Title" xml:space="preserve"><value>შეამოწმეთ თქვენი ელფოსტა</value></data>
   <data name="ResetPasswordConfirmation.Title" xml:space="preserve"><value>პაროლი განახლდა</value></data>
   <data name="Lockout.Title" xml:space="preserve"><value>ანგარიში დროებით დაბლოკილია</value></data>

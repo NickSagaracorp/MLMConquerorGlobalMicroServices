@@ -84,35 +84,17 @@ public sealed record AuthPortalOptions
     public bool FollowsMemberLanguage { get; init; }
 
     // -------------------------------------------------------------------------------------------
-    //  El contrato con la pantalla de segundo factor de este portal
+    //  Lo que ya NO hace falta declarar
     //
-    //  Las dos propiedades de aquí abajo son temporales y traen los valores buenos por defecto: las
-    //  necesita SOLO el centro de negocios, cuya pantalla /two-factor es anterior al componente
-    //  compartido TwoFactorVerify. En cuanto monte ese componente —como ya hizo administración—
-    //  dejará de declararlas y las dos propiedades se pueden borrar de aquí.
+    //  Aquí vivían TwoFactorTargetQueryParam y TwoFactorErrorCode. Existían para sostener la
+    //  pantalla /two-factor propia del centro de negocios, que leía el destino enmascarado del
+    //  parámetro `email` en vez de `target` y solo sabía traducir el literal `invalid_code`. Desde
+    //  que esa pantalla monta TwoFactorVerify —el mismo componente que administración— las dos
+    //  cosas son iguales en los dos portales: el destino viaja siempre en `target` y el código de
+    //  error de la API se propaga tal cual, porque el componente habla su vocabulario entero.
+    //
+    //  Se borran y no se dejan "por si acaso": una opción que nadie pasa es una rama de
+    //  comportamiento que nadie ejecuta, y la siguiente persona que la lea tendrá que averiguar
+    //  para quién era antes de poder tocar nada de lo que la rodea.
     // -------------------------------------------------------------------------------------------
-
-    /// <summary>
-    /// Cómo se llama, en la URL de la pantalla de segundo factor, el parámetro que lleva el destino
-    /// ya enmascarado (<c>n****@@dominio.com</c>, <c>***4321</c>).
-    /// </summary>
-    /// <remarks>
-    /// El componente compartido lo lee de <c>target</c>; la pantalla propia del centro de negocios
-    /// lo lee de <c>email</c>. El VALOR es el mismo en los dos casos —el destino enmascarado que
-    /// devuelve la API—, así que esto es de verdad solo el nombre.
-    /// </remarks>
-    public string TwoFactorTargetQueryParam { get; init; } = "target";
-
-    /// <summary>
-    /// Código único que se pone en la URL cuando la pantalla de segundo factor tiene que enseñar un
-    /// fallo, en vez del código que devolvió la API. Null —lo normal— propaga el de la API.
-    /// </summary>
-    /// <remarks>
-    /// La pantalla de administración usa <c>TwoFactorVerify</c>, que sabe traducir el vocabulario
-    /// entero de la API (<c>CODE_INVALID</c>, <c>TOO_MANY_REQUESTS</c>, <c>CHANNEL_UNAVAILABLE</c>…).
-    /// La del centro de negocios solo compara con el literal <c>invalid_code</c>: propagarle el
-    /// código de la API la dejaría sin enseñar NADA justo cuando el usuario teclea mal el código,
-    /// que es el único momento en que esa pantalla tiene algo que decir.
-    /// </remarks>
-    public string? TwoFactorErrorCode { get; init; }
 }

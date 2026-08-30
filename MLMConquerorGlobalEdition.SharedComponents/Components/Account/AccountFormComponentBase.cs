@@ -95,7 +95,7 @@ public abstract class AccountFormComponentBase : ComponentBase
 
     /// <summary>
     /// ¿La contraseña incumple la política que las tres pantallas enseñan en su lista de
-    /// requisitos? Longitud, una mayúscula, una minúscula y un dígito.
+    /// requisitos? Longitud, una mayúscula, una minúscula, un dígito y un carácter especial.
     /// </summary>
     /// <remarks>
     /// ESTO SUBIÓ AQUÍ DESDE LA PANTALLA PROPIA DE BizCenterWeb, que sí lo comprobaba antes de
@@ -112,18 +112,35 @@ public abstract class AccountFormComponentBase : ComponentBase
     /// comprueba dos veces a propósito: en móvil el mismo componente puede montarse donde el
     /// atributo no llegue a aplicarse, y una comprobación de más aquí no cuesta nada.
     ///
-    /// LO QUE NO COMPRUEBA, y es deliberado: el carácter especial. El validador de SignupAPI lo
-    /// exige (ValidationPatterns.PasswordPattern), pero la lista de requisitos que estas tres
-    /// pantallas enseñan NO lo menciona. Rechazar aquí por algo que no está escrito arriba dejaría
-    /// al usuario mirando una lista que cumple mientras el formulario le dice que no la cumple.
-    /// Eso se arregla añadiendo la línea que falta a la lista, no añadiendo la condición a solas.
+    /// EL CARÁCTER ESPECIAL ES LA CONDICIÓN QUE FALTABA, y faltaba de las DOS mitades a la vez.
+    /// <c>ValidationPatterns.PasswordPattern</c> —el que aplican los validadores de SignupAPI a
+    /// reset, change y set— exige <c>(?=.*[^A-Za-z0-9])</c>, pero ni la lista de requisitos lo
+    /// mencionaba ni esta comprobación lo miraba. El usuario cumplía las cuatro líneas que leía y
+    /// el servidor le rechazaba la contraseña sin decirle por qué. Se arregla en pareja: la línea
+    /// en la lista (<c>ResetPassword.RequirementSpecial</c>, en las tres pantallas) y la condición
+    /// aquí. Una sola de las dos vuelve a desalinear lo que se promete de lo que se exige.
+    ///
+    /// "Especial" es lo mismo que dice el patrón: cualquier carácter que no sea letra ASCII ni
+    /// dígito. <see cref="char.IsLetterOrDigit(char)"/> no vale tal cual —acepta letras de
+    /// cualquier alfabeto, así que una "ñ" o una "ü" no contarían como especiales aquí y sí para
+    /// el servidor—, y por eso la condición se escribe sobre el mismo conjunto ASCII del patrón.
     /// </remarks>
     protected static bool PasswordFailsPolicy(string? password) =>
         string.IsNullOrEmpty(password) ||
         password.Length < 8            ||
         !password.Any(char.IsUpper)    ||
         !password.Any(char.IsLower)    ||
-        !password.Any(char.IsDigit);
+        !password.Any(char.IsDigit)    ||
+        !password.Any(IsSpecial);
+
+    /// <summary>
+    /// Un carácter que el patrón del servidor cuenta como especial: cualquiera fuera de
+    /// <c>A-Z a-z 0-9</c>. Se compara contra ese conjunto ASCII y no con
+    /// <see cref="char.IsLetterOrDigit(char)"/> porque aquel acepta letras acentuadas y de otros
+    /// alfabetos, y entonces las dos mitades de la política dejarían de decir lo mismo.
+    /// </summary>
+    private static bool IsSpecial(char c) =>
+        c is not (>= 'a' and <= 'z') and not (>= 'A' and <= 'Z') and not (>= '0' and <= '9');
 
     /// <summary>
     /// El código de error de la contraseña nueva, o null si no hay nada que objetar. Un solo

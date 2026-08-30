@@ -153,6 +153,10 @@ public class AccountFormsDosModosTests : BunitContext
     [InlineData(LoginErrorMessages.Inactive,           "Login.ErrorInactive",           "alert-warning")]
     [InlineData(LoginErrorMessages.SessionExpired,     "Login.ErrorSessionExpired",     "alert-info")]
     [InlineData(LoginErrorMessages.ServiceUnavailable, "Login.ErrorServiceUnavailable", "alert-warning")]
+    // Los dos que la puerta dejó de aplastar a "invalid": ocurren DESPUÉS de dar la contraseña por
+    // buena, así que decirlos con su nombre no revela nada de una cuenta que no se tenga ya.
+    [InlineData(LoginErrorMessages.TooManyRequests,    "Login.ErrorTooManyRequests",    "alert-warning")]
+    [InlineData(LoginErrorMessages.ChannelUnavailable, "TwoFactor.Error.ChannelUnavailable", "alert-warning")]
     public void Login_CadaCodigoConocidoSeEnsenaConSuTextoYSuSeveridad(
         string codigo, string claveEsperada, string claseEsperada)
     {
@@ -179,7 +183,9 @@ public class AccountFormsDosModosTests : BunitContext
                 LoginErrorMessages.AccessDenied,
                 LoginErrorMessages.Inactive,
                 LoginErrorMessages.SessionExpired,
-                LoginErrorMessages.ServiceUnavailable
+                LoginErrorMessages.ServiceUnavailable,
+                LoginErrorMessages.TooManyRequests,
+                LoginErrorMessages.ChannelUnavailable
             },
             "cada código que la puerta sabe emitir tiene que tener su caso en " +
             "Login_CadaCodigoConocidoSeEnsenaConSuTextoYSuSeveridad");
@@ -284,8 +290,8 @@ public class AccountFormsDosModosTests : BunitContext
             .Add(c => c.OnSubmit, (ChangePasswordFormModel m) => recibido = m));
 
         Escribir(cut, "#change-password-current", "LaDeAntes1");
-        Escribir(cut, "#change-password-new",     "LaNueva1A");
-        Escribir(cut, "#change-password-confirm", "LaNueva1A");
+        Escribir(cut, "#change-password-new",     "LaNueva1A!");
+        Escribir(cut, "#change-password-confirm", "LaNueva1A!");
 
         var form = cut.Find("form");
         DebeEnviarSinRecargar(form);
@@ -293,8 +299,8 @@ public class AccountFormsDosModosTests : BunitContext
 
         recibido.Should().NotBeNull();
         recibido!.CurrentPassword.Should().Be("LaDeAntes1");
-        recibido.NewPassword.Should().Be("LaNueva1A");
-        recibido.ConfirmPassword.Should().Be("LaNueva1A");
+        recibido.NewPassword.Should().Be("LaNueva1A!");
+        recibido.ConfirmPassword.Should().Be("LaNueva1A!");
     }
 
     /// <summary>
@@ -312,8 +318,8 @@ public class AccountFormsDosModosTests : BunitContext
             .Add(c => c.OnSubmit, (ChangePasswordFormModel _) => llamadas++));
 
         Escribir(cut, "#change-password-current", "LaDeAntes1");
-        Escribir(cut, "#change-password-new",     "LaNueva1A");
-        Escribir(cut, "#change-password-confirm", "OtraCosa1B");
+        Escribir(cut, "#change-password-new",     "LaNueva1A!");
+        Escribir(cut, "#change-password-confirm", "OtraCosa1B!");
 
         cut.Find("form").Submit(EventArgs.Empty);
 
@@ -332,11 +338,11 @@ public class AccountFormsDosModosTests : BunitContext
             .Add(c => c.OnSubmit, (ChangePasswordFormModel _) => llamadas++));
 
         Escribir(cut, "#change-password-current", "LaDeAntes1");
-        Escribir(cut, "#change-password-new",     "LaNueva1A");
-        Escribir(cut, "#change-password-confirm", "OtraCosa1B");
+        Escribir(cut, "#change-password-new",     "LaNueva1A!");
+        Escribir(cut, "#change-password-confirm", "OtraCosa1B!");
         cut.Find("form").Submit(EventArgs.Empty);
 
-        Escribir(cut, "#change-password-confirm", "LaNueva1A");
+        Escribir(cut, "#change-password-confirm", "LaNueva1A!");
         cut.Find("form").Submit(EventArgs.Empty);
 
         llamadas.Should().Be(1);
@@ -364,14 +370,14 @@ public class AccountFormsDosModosTests : BunitContext
         var cut = Render<SetPassword>(p => p
             .Add(c => c.OnSubmit, (SetPasswordFormModel m) => recibido = m));
 
-        Escribir(cut, "#set-password-new",     "Primera1A");
-        Escribir(cut, "#set-password-confirm", "Primera1A");
+        Escribir(cut, "#set-password-new",     "Primera1A!");
+        Escribir(cut, "#set-password-confirm", "Primera1A!");
 
         DebeEnviarSinRecargar(cut.Find("form"));
         cut.Find("form").Submit(EventArgs.Empty);
 
         recibido.Should().NotBeNull();
-        recibido!.NewPassword.Should().Be("Primera1A");
+        recibido!.NewPassword.Should().Be("Primera1A!");
     }
 
     [Fact]
@@ -382,8 +388,8 @@ public class AccountFormsDosModosTests : BunitContext
         var cut = Render<SetPassword>(p => p
             .Add(c => c.OnSubmit, (SetPasswordFormModel _) => llamadas++));
 
-        Escribir(cut, "#set-password-new",     "Primera1A");
-        Escribir(cut, "#set-password-confirm", "Segunda1B");
+        Escribir(cut, "#set-password-new",     "Primera1A!");
+        Escribir(cut, "#set-password-confirm", "Segunda1B!");
         cut.Find("form").Submit(EventArgs.Empty);
 
         llamadas.Should().Be(0);
@@ -420,8 +426,8 @@ public class AccountFormsDosModosTests : BunitContext
             .Add(c => c.Token, "tok-1")
             .Add(c => c.OnSubmit, (ResetPasswordFormModel m) => recibido = m));
 
-        Escribir(cut, "#reset-password-new",     "Recien1AB");
-        Escribir(cut, "#reset-password-confirm", "Recien1AB");
+        Escribir(cut, "#reset-password-new",     "Recien1AB!");
+        Escribir(cut, "#reset-password-confirm", "Recien1AB!");
 
         DebeEnviarSinRecargar(cut.Find("form"));
         cut.Find("form").Submit(EventArgs.Empty);
@@ -429,24 +435,29 @@ public class AccountFormsDosModosTests : BunitContext
         recibido.Should().NotBeNull();
         recibido!.UserId.Should().Be("usr-1");
         recibido.Token.Should().Be("tok-1");
-        recibido.NewPassword.Should().Be("Recien1AB");
+        recibido.NewPassword.Should().Be("Recien1AB!");
     }
 
     /// <summary>
-    /// La política de contraseñas —longitud, mayúscula, MINÚSCULA y dígito— se comprueba antes de
-    /// llamar, y con el mismo código de error que usa el manejador del POST.
+    /// La política de contraseñas —longitud, mayúscula, MINÚSCULA, dígito y CARÁCTER ESPECIAL— se
+    /// comprueba antes de llamar, y con el mismo código de error que usa el manejador del POST.
     ///
     /// ESTO SUBIÓ DESDE LA PANTALLA PROPIA DE BizCenterWeb al unificarla: aquella lo comprobaba y
     /// el componente compartido no, así que convertirla en envoltorio sin traerse esta regla habría
     /// sido perder una validación por el camino. La minúscula es la que se olvida: SignupAPI no
     /// sobreescribe RequireLowercase, que en Identity vale true por defecto, así que "PASSWORD1"
     /// pasaba el filtro del cliente y el servidor la rechazaba después sin decir por qué.
+    ///
+    /// CADA CASO INCUMPLE UNA SOLA COSA, y las demás las cumple. No es cosmético: si las cadenas
+    /// incumplieran dos requisitos a la vez, la prueba seguiría verde aunque una de las cinco
+    /// condiciones desapareciera del código.
     /// </summary>
     [Theory]
-    [InlineData("Corta1A")]      // menos de 8
-    [InlineData("password1a")]   // sin mayúscula
-    [InlineData("PASSWORD1A")]   // sin minúscula
-    [InlineData("PasswordAB")]   // sin dígito
+    [InlineData("Cort1A!")]      // menos de 8
+    [InlineData("password1a!")]  // sin mayúscula
+    [InlineData("PASSWORD1A!")]  // sin minúscula
+    [InlineData("PasswordAB!")]  // sin dígito
+    [InlineData("Password1A")]   // sin carácter especial — el que la lista no mencionaba
     public void ResetPassword_ConOnSubmit_YContrasenaQueIncumpleLaPolitica_NiLlama_NiCalla(
         string contrasena)
     {
@@ -477,8 +488,8 @@ public class AccountFormsDosModosTests : BunitContext
             .Add(c => c.OnSubmit, (ChangePasswordFormModel _) => cambios++));
 
         Escribir(cambio, "#change-password-current", "LaDeAntes1");
-        Escribir(cambio, "#change-password-new",     "PASSWORD1A");
-        Escribir(cambio, "#change-password-confirm", "PASSWORD1A");
+        Escribir(cambio, "#change-password-new",     "PASSWORD1A!");
+        Escribir(cambio, "#change-password-confirm", "PASSWORD1A!");
         cambio.Find("form").Submit(EventArgs.Empty);
 
         cambios.Should().Be(0);
@@ -488,14 +499,117 @@ public class AccountFormsDosModosTests : BunitContext
         var alta = Render<SetPassword>(p => p
             .Add(c => c.OnSubmit, (SetPasswordFormModel _) => altas++));
 
-        Escribir(alta, "#set-password-new",     "PASSWORD1A");
-        Escribir(alta, "#set-password-confirm", "PASSWORD1A");
+        Escribir(alta, "#set-password-new",     "PASSWORD1A!");
+        Escribir(alta, "#set-password-confirm", "PASSWORD1A!");
         alta.Find("form").Submit(EventArgs.Empty);
 
         altas.Should().Be(0);
         alta.Find(".alert-danger").TextContent.Trim()
             .Should().Be("Account.Error.PasswordResetFailed");
     }
+
+    // -------------------------------------------------------------------------------------------
+    //  La lista de requisitos y la comprobación tienen que decir LO MISMO
+    //
+    //  El fallo que esto cierra: ValidationPatterns.PasswordPattern exigía un carácter especial, la
+    //  lista que el usuario lee no lo mencionaba y PasswordFailsPolicy tampoco lo miraba. El
+    //  usuario cumplía las cuatro líneas que tenía delante y el servidor le rechazaba la contraseña
+    //  sin decirle nunca qué le faltaba.
+    //
+    //  Se arregla en pareja, y por eso se prueba en pareja: las dos mitades por separado vuelven a
+    //  desalinearse, cada una por su lado.
+    // -------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Las tres pantallas de contraseña enseñan LA MISMA lista, con las mismas claves. No es
+    /// cosmético: si una añade una línea y las otras no, el usuario aprende una política distinta
+    /// según por dónde entre a cambiar su contraseña.
+    /// </summary>
+    [Fact]
+    public void LasTresPantallasDeContrasenaEnsenanLaMismaListaDeRequisitos()
+    {
+        var esperada = new[]
+        {
+            "ResetPassword.RequirementLength",
+            "ResetPassword.RequirementUppercase",
+            "ResetPassword.RequirementLowercase",
+            "ResetPassword.RequirementDigit",
+            "ResetPassword.RequirementSpecial"
+        };
+
+        Requisitos(Render<ChangePassword>(p => p.Add(c => c.FormAction, "/x")))
+            .Should().Equal(esperada);
+
+        Requisitos(Render<SetPassword>(p => p.Add(c => c.FormAction, "/x")))
+            .Should().Equal(esperada);
+
+        Requisitos(Render<ResetPassword>(p => p
+                .Add(c => c.UserId, "usr-1")
+                .Add(c => c.Token, "tok-1")
+                .Add(c => c.FormAction, "/x")))
+            .Should().Equal(esperada);
+    }
+
+    /// <summary>
+    /// Y la comprobación del cliente exige EXACTAMENTE esas cinco cosas: ni una de menos —el
+    /// usuario se llevaría un rechazo del servidor por algo que la pantalla nunca le pidió— ni una
+    /// de más —el formulario le diría que no cumple una lista que sí cumple—.
+    ///
+    /// Cada cadena de abajo incumple UNA sola línea de la lista y cumple las otras cuatro, así que
+    /// si una condición desapareciera del código su caso se pondría rojo a solas.
+    /// </summary>
+    [Theory]
+    [InlineData("Cort1A!",     "ResetPassword.RequirementLength")]
+    [InlineData("password1a!", "ResetPassword.RequirementUppercase")]
+    [InlineData("PASSWORD1A!", "ResetPassword.RequirementLowercase")]
+    [InlineData("PasswordAB!", "ResetPassword.RequirementDigit")]
+    [InlineData("Password1A",  "ResetPassword.RequirementSpecial")]
+    public void CadaLineaDeLaListaTieneSuCondicionEnLaComprobacion(
+        string contrasena, string requisitoQueIncumple)
+    {
+        var llamadas = 0;
+
+        var cut = Render<ChangePassword>(p => p
+            .Add(c => c.OnSubmit, (ChangePasswordFormModel _) => llamadas++));
+
+        // La línea existe en la pantalla…
+        Requisitos(cut).Should().Contain(requisitoQueIncumple);
+
+        // …y una contraseña que solo incumple esa línea se rechaza aquí, sin viaje a la API.
+        Escribir(cut, "#change-password-current", "LaDeAntes1!");
+        Escribir(cut, "#change-password-new",     contrasena);
+        Escribir(cut, "#change-password-confirm", contrasena);
+        cut.Find("form").Submit(EventArgs.Empty);
+
+        llamadas.Should().Be(0);
+        cut.Find(".alert-danger").TextContent.Trim()
+           .Should().Be("Account.Error.PasswordChangeFailed");
+    }
+
+    /// <summary>
+    /// La otra cara: una contraseña que cumple las cinco líneas SÍ pasa. Sin esto, la prueba de
+    /// arriba se quedaría verde con una comprobación que rechazara absolutamente todo.
+    /// </summary>
+    [Fact]
+    public void UnaContrasenaQueCumpleLaListaEnteraSePuedeEnviar()
+    {
+        var llamadas = 0;
+
+        var cut = Render<ChangePassword>(p => p
+            .Add(c => c.OnSubmit, (ChangePasswordFormModel _) => llamadas++));
+
+        Escribir(cut, "#change-password-current", "LaDeAntes1!");
+        Escribir(cut, "#change-password-new",     "Password1A!");
+        Escribir(cut, "#change-password-confirm", "Password1A!");
+        cut.Find("form").Submit(EventArgs.Empty);
+
+        llamadas.Should().Be(1);
+        cut.FindAll(".alert-danger").Should().BeEmpty();
+    }
+
+    /// <summary>Las claves de la lista de requisitos que pinta una pantalla de contraseña.</summary>
+    private static string[] Requisitos(IRenderedComponent<IComponent> cut) =>
+        [.. cut.FindAll("ul.small li").Select(li => li.TextContent.Trim())];
 
     /// <summary>Sin enlace no se pinta formulario, en ninguno de los dos modos.</summary>
     [Fact]
