@@ -15,6 +15,19 @@
     <PackageReference Include="Moq" Version="4.20.70" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <!--
+      RetoComoBearerTests levanta un anfitrión de verdad y comprueba el 401 que devuelve el
+      middleware, no una condición que la prueba se invente. Comprobar la separación con solo
+      ValidateToken() probaría la librería de tokens; lo que hay que probar es que la petición
+      rebota, que es lo que falló. TestHost es lo que permite hacerlo en memoria, sin puertos.
+    -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="10.0.0" />
+    <!-- System.IdentityModel.Tokens.Jwt llega por el proyecto Authn, que ya fija la versión. -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
   <ItemGroup>

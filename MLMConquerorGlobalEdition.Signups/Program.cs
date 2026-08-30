@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using MLMConquerorGlobalEdition.SharedKernel.Billing;
+using MLMConquerorGlobalEdition.SharedKernel.Configuration;
 using MLMConquerorGlobalEdition.Signups.Components;
 using MLMConquerorGlobalEdition.Signups.Middleware;
 using MLMConquerorGlobalEdition.Signups.Services;
@@ -40,6 +41,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidIssuer              = builder.Configuration["Jwt:Issuer"],
             ValidAudience            = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        };
+
+        // Segundo cinturón, detrás de la audiencia: un token que lleve el claim de propósito es
+        // un reto de 2FA sin verificar y no autoriza nada. Ver ChallengeAudience.
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = ctx =>
+            {
+                if (ChallengeAudience.CarriesPurpose(ctx.Principal!.Claims))
+                    ctx.Fail("Un reto de 2FA no autoriza: falta completar el segundo factor.");
+                return Task.CompletedTask;
+            }
         };
     });
 

@@ -16,7 +16,9 @@ namespace MLMConquerorGlobalEdition.Authn.Services;
 /// <inheritdoc cref="IChallengeTokenService"/>
 public sealed class ChallengeTokenService : IChallengeTokenService
 {
-    private const string PurposeClaim      = "purpose";
+    // El mismo nombre que rechazan los anfitriones como segundo cinturón: una sola definición
+    // para que el claim que se escribe aquí y el que allí se rechaza no puedan divergir.
+    private const string PurposeClaim      = ChallengeAudience.PurposeClaim;
     private const string CodeHashClaim     = "code_hash";
     private const string ChannelClaim      = "channel";
     private const string OperationKeyClaim = "operation_key";
@@ -37,8 +39,14 @@ public sealed class ChallengeTokenService : IChallengeTokenService
     public ChallengeTokenService(IConfiguration config, IDateTimeProvider dateTime)
     {
         _dateTime = dateTime;
-        _issuer   = config["Jwt:Issuer"]   ?? throw new InvalidOperationException("Jwt:Issuer not configured.");
-        _audience = config["Jwt:Audience"] ?? throw new InvalidOperationException("Jwt:Audience not configured.");
+        _issuer   = config["Jwt:Issuer"] ?? throw new InvalidOperationException("Jwt:Issuer not configured.");
+
+        // Audiencia propia para los retos, derivada de la de acceso. Es lo único que impide que
+        // un reto —emitido en el login antes de verificar ningún código, y con `sub` dentro—
+        // valga como token de acceso: los anfitriones validan `Jwt:Audience` y este token no la
+        // lleva, así que lo rechazan sin tener que comprobar nada más. Ver ChallengeAudience.
+        var accessAudience = config["Jwt:Audience"] ?? throw new InvalidOperationException("Jwt:Audience not configured.");
+        _audience = ChallengeAudience.For(accessAudience);
 
         var privateKeyBase64 = JwtKeyGuard.ValidatePrivateKey(config["Jwt:PrivateKeyBase64"]);
         var rsaPrivate = RSA.Create();

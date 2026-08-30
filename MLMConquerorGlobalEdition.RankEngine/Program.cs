@@ -155,6 +155,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey         = jwtValidationKey,
             ClockSkew                = TimeSpan.Zero
         };
+
+        // Segundo cinturón, detrás de la audiencia: un token que lleve el claim de propósito es
+        // un reto de 2FA sin verificar y no autoriza nada. Ver ChallengeAudience.
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = ctx =>
+            {
+                if (ChallengeAudience.CarriesPurpose(ctx.Principal!.Claims))
+                    ctx.Fail("Un reto de 2FA no autoriza: falta completar el segundo factor.");
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
