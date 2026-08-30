@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using MLMConquerorGlobalEdition.ClientCore;
 using MLMConquerorGlobalEdition.SharedComponents.Resources;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Portal;
 
 namespace MLMConquerorGlobalEdition.SharedComponents.Server.Services;
 
@@ -250,11 +251,32 @@ public static class AuthEndpoints
     /// circuito. Es el único camino por el que una sesión caducada puede limpiar de verdad la cookie:
     /// allí la respuesta HTTP a mano es la del WebSocket y ya empezó, aquí hay una petición nueva.
     /// </param>
+    /// <param name="returnUrl">
+    /// A dónde volver después de cerrar, cuando quien llama no es una pantalla de este portal.
+    /// </param>
     /// <remarks>
     /// El motivo se compara contra el único valor conocido y NO se propaga tal cual a la URL. Es
     /// deliberado: esto lo llama el navegador, así que el valor viene del usuario, y reflejarlo en la
     /// redirección convertiría la salida en un altavoz para meter texto ajeno en la pantalla de
     /// login.
+    ///
+    /// EL <c>returnUrl</c> ES LO QUE HACE POSIBLE EL REBOTE DEL ALTA. La aplicación de alta vive en
+    /// otro origen; al cargarse manda el navegador aquí una sola vez para que la sesión que hubiera
+    /// abierta en ese ordenador muera —el escenario del evento: la persona anterior se levantó sin
+    /// salir—, y vuelve por aquí a donde iba, con el slug del patrocinador entero.
+    ///
+    /// Y POR ESO EL DESTINO SE VALIDA CONTRA UNA LISTA BLANCA, que es obligatorio y no opcional: sin
+    /// ella esta ruta sería una redirección abierta que empieza en el dominio del portal y termina
+    /// donde quiera quien escriba el enlace, justo en el instante en el que al usuario se le acaba de
+    /// cerrar la sesión y espera que le vuelvan a pedir la contraseña. La lista es
+    /// <see cref="AuthPortalOptions.SignOutReturnUrlAllowList"/> y falla cerrado: un destino que no
+    /// esté en ella NO se sigue y el usuario acaba en la pantalla de login de este portal, que es lo
+    /// que habría pasado sin <c>returnUrl</c> ninguno.
+    ///
+    /// EL ORDEN DE LOS DOS DESTINOS. El <c>returnUrl</c> válido gana al <c>reason</c>, y no chocan
+    /// nunca: <c>reason</c> lo pone el propio circuito de este portal —que jamás pasa
+    /// <c>returnUrl</c>— y <c>returnUrl</c> lo pone el rebote del alta, que jamás pasa
+    /// <c>reason</c>.
     /// </remarks>
     public static async Task<IResult> LogoutAsync(
         HttpContext                         httpContext,
@@ -263,14 +285,20 @@ public static class AuthEndpoints
         [FromServices] ChallengeCookieNames challengeCookies,
         [FromServices] PortalSessionTokens  sessionTokens,
         [FromQuery] string?                 reason = null,
+        [FromQuery] string?                 returnUrl = null,
         CancellationToken                   ct = default)
     {
         // TODO lo que significa cerrar una sesión está en PortalSignOut: el refresh token en la
         // API, la entrada del almacén, las cookies de reto, la cookie de sesión y el principal de
-        // esta petición. Lo comparte con el middleware que mata la sesión al abrir el alta, y por
-        // eso está fuera: dos listas de "lo que hay que limpiar" se desincronizan en cuanto aparece
-        // la sexta cosa que limpiar.
+        // esta petición. Lo comparte con el rebote de la aplicación de alta, que llega justo por
+        // aquí, y por eso está fuera: dos listas de "lo que hay que limpiar" se desincronizan en
+        // cuanto aparece la sexta cosa que limpiar.
         await PortalSignOut.KillAsync(httpContext, api, challengeCookies, sessionTokens, ct);
+
+        // La sesión ya está muerta pase lo que pase con el destino. Eso importa: un returnUrl
+        // rechazado tiene que costarle al visitante una vuelta al login, no dejarle la sesión viva.
+        if (PortalSessionBounce.IsAllowedReturnUrl(returnUrl, portal.SignOutReturnUrlAllowList))
+            return Results.Redirect(returnUrl!);
 
         return reason == SessionExpiredCode
             ? Failure(portal.LoginPage, SessionExpiredCode)

@@ -9,11 +9,11 @@ namespace MLMConquerorGlobalEdition.SharedComponents.Server.Services;
 /// <summary>
 /// QUÉ SIGNIFICA MATAR UNA SESIÓN DEL PORTAL, en un solo sitio y en un solo orden.
 ///
-/// Lo usan los dos únicos caminos que la matan de verdad: la salida de la puerta
-/// (<see cref="AuthEndpoints.LogoutAsync"/>), a la que el usuario llega pulsando "Salir" o a la que
-/// manda el circuito con una sesión caducada, y
-/// <see cref="SignupSessionResetMiddleware"/>, que la mata sin que nadie la haya pedido cerrar
-/// porque alguien abrió la pantalla de alta en ese navegador.
+/// Lo ejecuta la salida de la puerta (<see cref="AuthEndpoints.LogoutAsync"/>), y por ahí pasan los
+/// TRES caminos que matan una sesión de verdad: el usuario que pulsa "Salir", el circuito que
+/// descubre su sesión caducada, y el REBOTE de la aplicación de alta —que cae en la misma salida con
+/// un <c>returnUrl</c>— cuando alguien carga el asistente de alta en un navegador donde la persona
+/// anterior se dejó la sesión abierta.
 /// </summary>
 /// <remarks>
 /// POR QUÉ ESTO ES UNA CLASE Y NO CUATRO LÍNEAS COPIADAS EN CADA SITIO: una sesión del portal está
@@ -48,9 +48,10 @@ public static class PortalSignOut
     /// Mata la sesión de este navegador entera, en el orden de arriba.
     /// </summary>
     /// <returns>
-    /// Si había una sesión que matar. Sirve a quien tenga algo distinto que hacer en cada caso
-    /// —el middleware del alta solo avisa al usuario cuando de verdad le cerró algo—; a la salida
-    /// de la puerta le da igual, porque su destino es el mismo de todas formas.
+    /// Si había una sesión que matar. Hoy no lo mira nadie —la salida va al mismo sitio en los dos
+    /// casos—, pero se devuelve porque es el único dato con el que se puede distinguir un rebote que
+    /// hizo su trabajo de uno que llegó sin cookie, que es exactamente lo que pasaría si algún día
+    /// la aplicación de alta se sirviera desde otro dominio registrable.
     /// </returns>
     /// <remarks>
     /// EL RESULTADO DE LA API SE IGNORA A PROPÓSITO. Pase lo que pase al otro lado —servicio caído,

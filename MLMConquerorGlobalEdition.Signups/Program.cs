@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using MLMConquerorGlobalEdition.Signups.Components;
+using MLMConquerorGlobalEdition.Signups.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,9 +37,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
+// EL REBOTE. En un evento se dan de alta varias personas seguidas en el mismo ordenador y la
+// anterior no siempre se acuerda de salir. Cargar una pantalla de alta manda el navegador, una sola
+// vez por portal, al cierre de sesión de cada uno y lo devuelve aquí con el patrocinador intacto.
+// Los portales y sus direcciones salen de configuración: cambian de un entorno a otro.
+builder.Services.AddPortalSessionBounce(builder.Configuration);
+
 var app = builder.Build();
 
 app.UseStaticFiles();
+// DELANTE DE TODO LO QUE PINTE, y esa es la mitad de la decisión: el navegador tiene que irse y
+// volver ANTES de que el visitante vea un formulario. Desde la página —o desde cualquier sitio
+// posterior— se iría a mitad de rellenarlo y volvería con todo en blanco. Va después de los
+// estáticos solo por no hacerles mirar nada: el filtro de rutas ya los dejaría pasar.
+app.UsePortalSessionBounce();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();

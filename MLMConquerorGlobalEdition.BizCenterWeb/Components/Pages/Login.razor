@@ -1,6 +1,7 @@
 @page "/login"
 @layout MLMConquerorGlobalEdition.SharedComponents.Components.Layout.BlankLayout
 @inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
+@inject IConfiguration Configuration
 
 @* La puerta del centro de negocios.
 
@@ -19,10 +20,26 @@
         FormAction="/account/login"
         ErrorCode="@Error"
         ForgotPasswordUrl="/forgot-password"
-        SignupUrl="/signup" />
+        SignupUrl="@SignupUrl" />
 </GateShell>
 
 @code {
     [SupplyParameterFromQuery]
     public string? Error { get; set; }
+
+    /// <summary>
+    /// A dónde va quien todavía no tiene cuenta: a la APLICACIÓN DE ALTA, que está en otro origen.
+    /// </summary>
+    /// <remarks>
+    /// Este portal ya no tiene pantalla de alta. La que tenía era una copia atrasada del asistente
+    /// de verdad —mandaba <c>SponsorMemberId</c>, un campo que <c>AmbassadorSignupRequest</c> no
+    /// tiene, así que el deserializador lo tiraba y el alta se guardaba SIN PATROCINADOR— y por eso
+    /// se borró: desde el centro de negocios no se hace ningún alta.
+    ///
+    /// La dirección sale de configuración y no escrita aquí porque cambia en cada entorno, y porque
+    /// es la misma que la aplicación de alta declara como su origen público. Sin configurar, el
+    /// enlace no se pinta: el componente compartido esconde el bloque entero cuando llega vacío, que
+    /// es mejor que ofrecer un enlace roto.
+    /// </remarks>
+    private string? SignupUrl => Configuration["SignupAppUrl"];
 }

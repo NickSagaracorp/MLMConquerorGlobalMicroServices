@@ -1,3 +1,5 @@
+using MLMConquerorGlobalEdition.SharedKernel.Portal;
+
 namespace MLMConquerorGlobalEdition.SharedComponents.Server.Services;
 
 /// <summary>
@@ -49,23 +51,31 @@ public sealed record AuthPortalOptions
     public required string HomePage { get; init; }
 
     /// <summary>
-    /// La raíz de la pantalla de ALTA PÚBLICA de este portal, o null si no tiene ninguna.
+    /// Los ÚNICOS destinos a los que la salida de este portal acepta volver cuando alguien le pasa
+    /// un <c>returnUrl</c>. Sin lista, la salida solo va a su propia pantalla de login.
     /// </summary>
     /// <remarks>
-    /// Es lo contrario del resto de este registro: los demás son destinos a los que se manda a un
-    /// usuario, y este es un camino del que se le SACA la sesión. Está aquí de todas formas porque
-    /// es un dato de la puerta —una pantalla a la que se llega sin sesión y de la que se sale con
-    /// una— y porque quien lo consume, <see cref="SignupSessionResetMiddleware"/>, ya recibe estas
-    /// opciones.
+    /// PARA QUÉ EXISTE ESTE PARÁMETRO. La aplicación de alta vive en otro origen y, al cargarse,
+    /// manda el navegador aquí una sola vez para que esta sesión muera antes de que nadie se dé de
+    /// alta encima de ella; el <c>returnUrl</c> es cómo vuelve a donde iba, con el slug del
+    /// patrocinador intacto.
     ///
-    /// Cubre las DOS rutas de la pantalla, la de raíz y la del sitio replicado del patrocinador
-    /// (<c>/signup/{slug}</c>), porque se compara por segmentos.
+    /// POR QUÉ ES UNA LISTA Y NO UN "SI EMPIEZA POR HTTP". Un <c>returnUrl</c> sin filtrar convierte
+    /// esta salida en una redirección abierta: un enlace que EMPIEZA en el dominio del portal —el
+    /// que el usuario reconoce— y termina donde quiera el atacante, justo después de cerrarle la
+    /// sesión, que es el momento en que se espera volver a teclear la contraseña. La comprobación
+    /// entera —origen exacto, camino por segmentos y lo que se rechaza antes de mirar la lista— está
+    /// en <see cref="PortalSessionBounce.IsAllowedReturnUrl"/>, en un solo sitio para los dos
+    /// portales.
     ///
-    /// Null en administración, y no por descuido: ese portal no tiene alta. Un portal que no la
-    /// declare simplemente no monta el middleware, y si lo montara sin declararla el arranque falla
-    /// con un mensaje en vez de dejar la protección apagada en silencio.
+    /// FALLA CERRADO. Null o vacía significan "ningún destino": una lista que se quedó sin
+    /// configurar tiene que romper el rebote, que es una comodidad, y nunca abrir la redirección,
+    /// que es el agujero.
+    ///
+    /// Cada entrada es una dirección ABSOLUTA que marca origen y, si se quiere, un camino por
+    /// debajo del cual todo vale: <c>https://alta.ejemplo.com/</c>.
     /// </remarks>
-    public string? SignupPage { get; init; }
+    public IReadOnlyCollection<string>? SignOutReturnUrlAllowList { get; init; }
 
     // -------------------------------------------------------------------------------------------
     //  Quién entra

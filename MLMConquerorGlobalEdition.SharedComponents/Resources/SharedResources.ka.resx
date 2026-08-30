@@ -1055,62 +1055,6 @@
   <data name="Login.NoAccount" xml:space="preserve"><value>არ გაქვთ ანგარიში?</value></data>
   <data name="Login.ContactSupport" xml:space="preserve"><value>დაუკავშირდით ჩვენს მხარდაჭერის გუნდს</value></data>
 
-  <!-- Signup — F5 -->
-  <data name="Signup.BrandTitle" xml:space="preserve"><value>MLM Conqueror</value></data>
-  <data name="Signup.BrandSubtitle" xml:space="preserve"><value>შექმენით თქვენი ანგარიში</value></data>
-  <data name="Signup.StepPersonal" xml:space="preserve"><value>პირადი ინფორმაცია</value></data>
-  <data name="Signup.StepProducts" xml:space="preserve"><value>პროდუქტები</value></data>
-  <data name="Signup.StepPayment" xml:space="preserve"><value>გადახდა</value></data>
-  <data name="Signup.SponsorBadge" xml:space="preserve"><value>სპონსორი</value></data>
-  <data name="Signup.FirstName" xml:space="preserve"><value>სახელი</value></data>
-  <data name="Signup.LastName" xml:space="preserve"><value>გვარი</value></data>
-  <data name="Signup.Email" xml:space="preserve"><value>ელ. ფოსტა</value></data>
-  <data name="Signup.Password" xml:space="preserve"><value>პაროლი</value></data>
-  <data name="Signup.ConfirmPassword" xml:space="preserve"><value>პაროლის დადასტურება</value></data>
-  <data name="Signup.DateOfBirth" xml:space="preserve"><value>დაბადების თარიღი</value></data>
-  <data name="Signup.Country" xml:space="preserve"><value>ქვეყანა</value></data>
-  <data name="Signup.Phone" xml:space="preserve"><value>ტელეფონი</value></data>
-  <data name="Signup.ReplicateSlug" xml:space="preserve"><value>რეპლიცირებული საიტის Slug</value></data>
-  <data name="Signup.ReplicateSlugPlaceholder" xml:space="preserve"><value>my-unique-site</value></data>
-  <data name="Signup.MembershipLevel" xml:space="preserve"><value>წევრობის დონე</value></data>
-  <data name="Signup.LoadingLevels" xml:space="preserve"><value>წევრობის დონეების ჩატვირთვა…</value></data>
-  <data name="Signup.SelectLevel" xml:space="preserve"><value>— აირჩიე დონე —</value></data>
-  <data name="Signup.Continue" xml:space="preserve"><value>გაგრძელება</value></data>
-  <data name="Signup.Back" xml:space="preserve"><value>უკან</value></data>
-  <data name="Signup.ProductsIntro" xml:space="preserve"><value>აირჩიე პროდუქტები რეგისტრაციაში ჩასართავად.</value></data>
-  <data name="Signup.NoProducts" xml:space="preserve"><value>დამატებითი პროდუქტები არ არის ხელმისაწვდომი. დააჭირე გაგრძელებას.</value></data>
-  <data name="Signup.PaymentMethod" xml:space="preserve"><value>გადახდის მეთოდი</value></data>
-  <data name="Signup.PaymentCreditCard" xml:space="preserve"><value>საკრედიტო ბარათი</value></data>
-  <data name="Signup.PaymentCrypto" xml:space="preserve"><value>კრიპტოვალუტა</value></data>
-  <data name="Signup.PaymentToken" xml:space="preserve"><value>ტოკენი / სტუმრის ბილეთი</value></data>
-  <data name="Signup.PaymentDiscount" xml:space="preserve"><value>ფასდაკლების კოდი</value></data>
-  <data name="Signup.GatewayToken" xml:space="preserve"><value>გეითვეის ტოკენი</value></data>
-  <data name="Signup.First6" xml:space="preserve"><value>პირველი 6</value></data>
-  <data name="Signup.Last4" xml:space="preserve"><value>ბოლო 4</value></data>
-  <data name="Signup.CardBrand" xml:space="preserve"><value>ბრენდი</value></data>
-  <data name="Signup.ExpMonth" xml:space="preserve"><value>ვადის თვე</value></data>
-  <data name="Signup.ExpYear" xml:space="preserve"><value>ვადის წელი</value></data>
-  <data name="Signup.Gateway" xml:space="preserve"><value>გეითვეი</value></data>
-  <data name="Signup.Cryptocurrency" xml:space="preserve"><value>კრიპტოვალუტა</value></data>
-  <data name="Signup.TransactionId" xml:space="preserve"><value>ტრანზაქციის ID</value></data>
-  <data name="Signup.TokenCode" xml:space="preserve"><value>ტოკენის / სტუმრის ბილეთის კოდი</value></data>
-  <data name="Signup.DiscountCode" xml:space="preserve"><value>ფასდაკლების კოდი</value></data>
-  <data name="Signup.CompleteSignup" xml:space="preserve"><value>რეგისტრაციის დასრულება</value></data>
-  <data name="Signup.Welcome" xml:space="preserve"><value>კეთილი იყოს თქვენი მობრძანება, {0}!</value></data>
-  <data name="Signup.AccountActive" xml:space="preserve"><value>თქვენი ანგარიში აქტიურია. &lt;a href="/login"&gt;შესვლა ახლა&lt;/a&gt;</value></data>
-  <data name="Signup.AlreadyHaveAccount" xml:space="preserve"><value>უკვე გაქვთ ანგარიში? შესვლა</value></data>
-  <data name="Signup.SessionClosedNotice" xml:space="preserve"><value>უსაფრთხოებისთვის ამ კომპიუტერზე გახსნილი სესია დაიხურა.</value></data>
-  <data name="Signup.ErrorNameRequired" xml:space="preserve"><value>სახელი და გვარი სავალდებულოა.</value></data>
-  <data name="Signup.ErrorEmailRequired" xml:space="preserve"><value>ელ. ფოსტა სავალდებულოა.</value></data>
-  <data name="Signup.ErrorPasswordMismatch" xml:space="preserve"><value>პაროლები უნდა ემთხვეოდეს.</value></data>
-  <data name="Signup.ErrorLevelRequired" xml:space="preserve"><value>გთხოვთ, აირჩიეთ წევრობის დონე.</value></data>
-  <data name="Signup.ErrorAge18" xml:space="preserve"><value>თქვენ უნდა იყოთ მინიმუმ 18 წლის.</value></data>
-  <data name="Signup.ErrorGeneric" xml:space="preserve"><value>რეგისტრაცია ვერ მოხერხდა. შეამოწმეთ თქვენი მონაცემები.</value></data>
-  <data name="Signup.ErrorServerUnreachable" xml:space="preserve"><value>სერვერთან დაკავშირება ვერ მოხერხდა: {0}</value></data>
-  <data name="Signup.ErrorProductRequired" xml:space="preserve"><value>გთხოვთ, აირჩიეთ მინიმუმ ერთი პროდუქტი.</value></data>
-  <data name="Signup.ErrorProductsSave" xml:space="preserve"><value>პროდუქტის არჩევანის შენახვა ვერ მოხერხდა.</value></data>
-  <data name="Signup.ErrorComplete" xml:space="preserve"><value>რეგისტრაციის დასრულება ვერ მოხერხდა.</value></data>
-
   <!-- Error page — F5 -->
   <data name="Error.Title" xml:space="preserve"><value>შეცდომა.</value></data>
   <data name="Error.Subtitle" xml:space="preserve"><value>თქვენი მოთხოვნის დამუშავებისას მოხდა შეცდომა.</value></data>
@@ -1279,7 +1223,6 @@
   <data name="PageTitle.Tickets" xml:space="preserve"><value>მხარდაჭერის ბილეთები</value></data>
   <data name="PageTitle.TicketDetail" xml:space="preserve"><value>ბილეთის დეტალი</value></data>
   <data name="PageTitle.Login" xml:space="preserve"><value>MLM Conqueror - შესვლა</value></data>
-  <data name="PageTitle.Signup" xml:space="preserve"><value>MLM Conqueror - რეგისტრაცია</value></data>
   <data name="PageTitle.Error" xml:space="preserve"><value>შეცდომა</value></data>
   <data name="PageTitle.NotFound" xml:space="preserve"><value>გვერდი ვერ მოიძებნა</value></data>
   <data name="PageTitle.ForgotPassword" xml:space="preserve"><value>MLM Conqueror - პაროლის აღდგენის მოთხოვნა</value></data>

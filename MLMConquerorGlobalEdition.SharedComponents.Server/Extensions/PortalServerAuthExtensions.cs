@@ -158,33 +158,18 @@ public static class PortalServerAuthExtensions
     public static IApplicationBuilder UseSessionExpiry(this IApplicationBuilder app) =>
         app.UseMiddleware<SessionExpiryMiddleware>();
 
-    /// <summary>
-    /// Mata cualquier sesión abierta en el navegador en cuanto alguien carga la pantalla de alta.
-    /// </summary>
-    /// <remarks>
-    /// DÓNDE VA, y las dos mitades importan: DESPUÉS de <c>UseAuthentication()</c>, porque necesita
-    /// el <c>ClaimsPrincipal</c> de la cookie para saber si hay algo que matar, y ANTES de
-    /// <see cref="UseSessionExpiry"/>, porque quien llegue al alta con el JWT ya caducado tiene que
-    /// quedarse en el alta y no acabar en el login con el aviso de sesión caducada. Ese orden no lo
-    /// comprueba el compilador; lo comprueban las pruebas del middleware.
-    ///
-    /// Falla al arrancar si el portal no declaró su <see cref="AuthPortalOptions.SignupPage"/>. Es
-    /// deliberado: la alternativa —un middleware que no mira ninguna ruta— es una protección de
-    /// seguridad apagada que parece encendida desde el <c>Program.cs</c>, y no se notaría hasta que
-    /// alguien mirase las cookies de un navegador en un evento.
-    /// </remarks>
-    public static IApplicationBuilder UseSignupSessionReset(this IApplicationBuilder app)
-    {
-        var portal = app.ApplicationServices.GetRequiredService<AuthPortalOptions>();
-
-        if (string.IsNullOrWhiteSpace(portal.SignupPage))
-        {
-            throw new InvalidOperationException(
-                "UseSignupSessionReset() necesita AuthPortalOptions.SignupPage: es la ruta cuya " +
-                "carga tiene que matar la sesión del navegador. Un portal sin pantalla de alta " +
-                "—administración— no debe montar este middleware.");
-        }
-
-        return app.UseMiddleware<SignupSessionResetMiddleware>();
-    }
+    // -----------------------------------------------------------------------------------------------
+    //  Lo que ya NO está aquí: UseSignupSessionReset()
+    //
+    //  Montaba un middleware que vigilaba la ruta /signup del portal y mataba la sesión del navegador
+    //  al cargarla. Esa ruta ya no existe: la pantalla de alta del portal era una copia atrasada del
+    //  asistente de verdad —mandaba un campo que el contrato de la API ni siquiera tiene, así que las
+    //  altas se guardaban sin patrocinador— y se ha borrado. El alta solo vive en su propia
+    //  aplicación, que es otro origen y no pasa por esta tubería.
+    //
+    //  El requisito sigue en pie y lo cumple ahora el rebote: la aplicación de alta manda el
+    //  navegador una vez a /account/logout de cada portal y vuelve. Lo que ese middleware hacía de
+    //  útil —matar la sesión entera y en orden— no se ha perdido: está en PortalSignOut, que es lo
+    //  que ejecuta la salida cuando le llega el rebote.
+    // -----------------------------------------------------------------------------------------------
 }

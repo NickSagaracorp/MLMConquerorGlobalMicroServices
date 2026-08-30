@@ -83,6 +83,22 @@ builder.Services.AddAuthSurface(new AuthPortalOptions
     EnrollAuthenticatorPage = "/admin/enroll-authenticator",
     HomePage                = "/admin",
 
+    // A dónde puede volver la SALIDA de este portal cuando alguien le pasa un returnUrl. Lo usa la
+    // aplicación de alta: al cargarse manda el navegador por aquí para que ninguna sesión abierta en
+    // ese ordenador sobreviva a la persona que se va a dar de alta.
+    //
+    // POR QUÉ ADMINISTRACIÓN TAMBIÉN, Y NO SOLO EL CENTRO DE NEGOCIOS. La regla del dueño no
+    // distingue portales, y en un portátil de evento —que es material de la empresa— la sesión que
+    // puede quedarse abierta no es solo la de un miembro: una sesión de administración viva en el
+    // navegador de la persona que acaba de sentarse es estrictamente peor que una de miembro. El
+    // coste de cubrirlo es esta lista y una entrada en la configuración del alta.
+    //
+    // ESTO ES OBLIGATORIO. Sin lista, /account/logout?returnUrl=… sería una redirección abierta que
+    // empieza en el dominio de administración —el más creíble de los dos— y termina donde quiera
+    // quien escriba el enlace. Falla cerrado: sin configuración no se acepta ningún destino.
+    SignOutReturnUrlAllowList = builder.Configuration
+        .GetSection("SignOut:AllowedReturnUrls").Get<string[]>() ?? [],
+
     // Administración es un portal de personal: la comprobación se hace sobre el token final, en el
     // único sitio donde se firma la sesión, así que da igual si el usuario llegó por el login
     // directo, por el segundo factor o por el enrolamiento.
@@ -170,6 +186,11 @@ app.MapRazorComponents<App>()
 // Los manejadores viven en SharedComponents.Server; las RUTAS se quedan aquí porque tienen que
 // coincidir letra a letra con el action= del formulario de cada pantalla de este portal.
 // Antiforgery desactivado en todos: son anónimos por definición, o un logout trivial.
+// El pulso de este portal. Lo consulta la aplicación de alta antes de mandarle el navegador a
+// cerrar sesión: una navegación no tiene plan B, así que si este portal no contesta el alta se abre
+// sin pasar por aquí en vez de dejar al visitante en la pantalla de error del navegador.
+app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
+
 app.MapPost("/account/login",  (Delegate)AuthEndpoints.LoginAsync).DisableAntiforgery();
 app.MapPost("/account/logout", (Delegate)AuthEndpoints.LogoutAsync).DisableAntiforgery();
 app.MapGet("/account/logout",  (Delegate)AuthEndpoints.LogoutAsync);

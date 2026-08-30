@@ -1124,62 +1124,6 @@
   <data name="Login.NoAccount" xml:space="preserve"><value>Noch kein Konto?</value></data>
   <data name="Login.ContactSupport" xml:space="preserve"><value>Kontaktiere unser Support-Team</value></data>
 
-  <!-- Signup — F5 -->
-  <data name="Signup.BrandTitle" xml:space="preserve"><value>MLM Conqueror</value></data>
-  <data name="Signup.BrandSubtitle" xml:space="preserve"><value>Konto erstellen</value></data>
-  <data name="Signup.StepPersonal" xml:space="preserve"><value>Persönliche Daten</value></data>
-  <data name="Signup.StepProducts" xml:space="preserve"><value>Produkte</value></data>
-  <data name="Signup.StepPayment" xml:space="preserve"><value>Zahlung</value></data>
-  <data name="Signup.SponsorBadge" xml:space="preserve"><value>Sponsor</value></data>
-  <data name="Signup.FirstName" xml:space="preserve"><value>Vorname</value></data>
-  <data name="Signup.LastName" xml:space="preserve"><value>Nachname</value></data>
-  <data name="Signup.Email" xml:space="preserve"><value>E-Mail</value></data>
-  <data name="Signup.Password" xml:space="preserve"><value>Passwort</value></data>
-  <data name="Signup.ConfirmPassword" xml:space="preserve"><value>Passwort bestätigen</value></data>
-  <data name="Signup.DateOfBirth" xml:space="preserve"><value>Geburtsdatum</value></data>
-  <data name="Signup.Country" xml:space="preserve"><value>Land</value></data>
-  <data name="Signup.Phone" xml:space="preserve"><value>Telefon</value></data>
-  <data name="Signup.ReplicateSlug" xml:space="preserve"><value>Replikatseiten-Slug</value></data>
-  <data name="Signup.ReplicateSlugPlaceholder" xml:space="preserve"><value>meine-einzigartige-seite</value></data>
-  <data name="Signup.MembershipLevel" xml:space="preserve"><value>Mitgliedschaftsstufe</value></data>
-  <data name="Signup.LoadingLevels" xml:space="preserve"><value>Mitgliedschaftsstufen werden geladen…</value></data>
-  <data name="Signup.SelectLevel" xml:space="preserve"><value>— Stufe wählen —</value></data>
-  <data name="Signup.Continue" xml:space="preserve"><value>Weiter</value></data>
-  <data name="Signup.Back" xml:space="preserve"><value>Zurück</value></data>
-  <data name="Signup.ProductsIntro" xml:space="preserve"><value>Wähle die Produkte aus, die in deine Anmeldung aufgenommen werden sollen.</value></data>
-  <data name="Signup.NoProducts" xml:space="preserve"><value>Keine zusätzlichen Produkte verfügbar. Klicke auf Weiter, um fortzufahren.</value></data>
-  <data name="Signup.PaymentMethod" xml:space="preserve"><value>Zahlungsmethode</value></data>
-  <data name="Signup.PaymentCreditCard" xml:space="preserve"><value>Kreditkarte</value></data>
-  <data name="Signup.PaymentCrypto" xml:space="preserve"><value>Kryptowährung</value></data>
-  <data name="Signup.PaymentToken" xml:space="preserve"><value>Token / Gastausweis</value></data>
-  <data name="Signup.PaymentDiscount" xml:space="preserve"><value>Rabattcode</value></data>
-  <data name="Signup.GatewayToken" xml:space="preserve"><value>Gateway-Token</value></data>
-  <data name="Signup.First6" xml:space="preserve"><value>Erste 6</value></data>
-  <data name="Signup.Last4" xml:space="preserve"><value>Letzte 4</value></data>
-  <data name="Signup.CardBrand" xml:space="preserve"><value>Marke</value></data>
-  <data name="Signup.ExpMonth" xml:space="preserve"><value>Ablaufmonat</value></data>
-  <data name="Signup.ExpYear" xml:space="preserve"><value>Ablaufjahr</value></data>
-  <data name="Signup.Gateway" xml:space="preserve"><value>Gateway</value></data>
-  <data name="Signup.Cryptocurrency" xml:space="preserve"><value>Kryptowährung</value></data>
-  <data name="Signup.TransactionId" xml:space="preserve"><value>Transaktions-ID</value></data>
-  <data name="Signup.TokenCode" xml:space="preserve"><value>Token-/Gastauscodecode</value></data>
-  <data name="Signup.DiscountCode" xml:space="preserve"><value>Rabattcode</value></data>
-  <data name="Signup.CompleteSignup" xml:space="preserve"><value>Anmeldung abschließen</value></data>
-  <data name="Signup.Welcome" xml:space="preserve"><value>Willkommen, {0}!</value></data>
-  <data name="Signup.AccountActive" xml:space="preserve"><value>Dein Konto ist aktiv. &lt;a href="/login"&gt;Jetzt anmelden&lt;/a&gt;</value></data>
-  <data name="Signup.AlreadyHaveAccount" xml:space="preserve"><value>Schon ein Konto? Anmelden</value></data>
-  <data name="Signup.SessionClosedNotice" xml:space="preserve"><value>Aus Sicherheitsgründen wurde die auf diesem Computer geöffnete Sitzung geschlossen.</value></data>
-  <data name="Signup.ErrorNameRequired" xml:space="preserve"><value>Vor- und Nachname sind erforderlich.</value></data>
-  <data name="Signup.ErrorEmailRequired" xml:space="preserve"><value>E-Mail ist erforderlich.</value></data>
-  <data name="Signup.ErrorPasswordMismatch" xml:space="preserve"><value>Die Passwörter müssen übereinstimmen.</value></data>
-  <data name="Signup.ErrorLevelRequired" xml:space="preserve"><value>Bitte wähle eine Mitgliedschaftsstufe aus.</value></data>
-  <data name="Signup.ErrorAge18" xml:space="preserve"><value>Du musst mindestens 18 Jahre alt sein.</value></data>
-  <data name="Signup.ErrorGeneric" xml:space="preserve"><value>Anmeldung fehlgeschlagen. Überprüfe deine Angaben.</value></data>
-  <data name="Signup.ErrorServerUnreachable" xml:space="preserve"><value>Server nicht erreichbar: {0}</value></data>
-  <data name="Signup.ErrorProductRequired" xml:space="preserve"><value>Bitte wähle mindestens ein Produkt aus.</value></data>
-  <data name="Signup.ErrorProductsSave" xml:space="preserve"><value>Produktauswahl konnte nicht gespeichert werden.</value></data>
-  <data name="Signup.ErrorComplete" xml:space="preserve"><value>Anmeldung konnte nicht abgeschlossen werden.</value></data>
-
   <!-- Error page — F5 -->
   <data name="Error.Title" xml:space="preserve"><value>Fehler.</value></data>
   <data name="Error.Subtitle" xml:space="preserve"><value>Beim Verarbeiten deiner Anfrage ist ein Fehler aufgetreten.</value></data>
@@ -1348,7 +1292,6 @@
   <data name="PageTitle.Tickets" xml:space="preserve"><value>Support-Tickets</value></data>
   <data name="PageTitle.TicketDetail" xml:space="preserve"><value>Ticket-Details</value></data>
   <data name="PageTitle.Login" xml:space="preserve"><value>MLM Conqueror - Anmelden</value></data>
-  <data name="PageTitle.Signup" xml:space="preserve"><value>MLM Conqueror - Registrieren</value></data>
   <data name="PageTitle.Error" xml:space="preserve"><value>Fehler</value></data>
   <data name="PageTitle.NotFound" xml:space="preserve"><value>Seite nicht gefunden</value></data>
   <data name="PageTitle.ForgotPassword" xml:space="preserve"><value>MLM Conqueror - Passwort vergessen</value></data>

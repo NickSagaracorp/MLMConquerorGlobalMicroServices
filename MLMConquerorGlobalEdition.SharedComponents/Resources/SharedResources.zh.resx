@@ -1055,62 +1055,6 @@
   <data name="Login.NoAccount" xml:space="preserve"><value>还没有账户？</value></data>
   <data name="Login.ContactSupport" xml:space="preserve"><value>联系我们的支持团队</value></data>
 
-  <!-- Signup — F5 -->
-  <data name="Signup.BrandTitle" xml:space="preserve"><value>MLM Conqueror</value></data>
-  <data name="Signup.BrandSubtitle" xml:space="preserve"><value>创建您的账户</value></data>
-  <data name="Signup.StepPersonal" xml:space="preserve"><value>个人信息</value></data>
-  <data name="Signup.StepProducts" xml:space="preserve"><value>产品</value></data>
-  <data name="Signup.StepPayment" xml:space="preserve"><value>付款</value></data>
-  <data name="Signup.SponsorBadge" xml:space="preserve"><value>赞助人</value></data>
-  <data name="Signup.FirstName" xml:space="preserve"><value>名</value></data>
-  <data name="Signup.LastName" xml:space="preserve"><value>姓</value></data>
-  <data name="Signup.Email" xml:space="preserve"><value>电子邮件</value></data>
-  <data name="Signup.Password" xml:space="preserve"><value>密码</value></data>
-  <data name="Signup.ConfirmPassword" xml:space="preserve"><value>确认密码</value></data>
-  <data name="Signup.DateOfBirth" xml:space="preserve"><value>出生日期</value></data>
-  <data name="Signup.Country" xml:space="preserve"><value>国家</value></data>
-  <data name="Signup.Phone" xml:space="preserve"><value>电话</value></data>
-  <data name="Signup.ReplicateSlug" xml:space="preserve"><value>副本站点 Slug</value></data>
-  <data name="Signup.ReplicateSlugPlaceholder" xml:space="preserve"><value>my-unique-site</value></data>
-  <data name="Signup.MembershipLevel" xml:space="preserve"><value>会员等级</value></data>
-  <data name="Signup.LoadingLevels" xml:space="preserve"><value>正在加载会员等级…</value></data>
-  <data name="Signup.SelectLevel" xml:space="preserve"><value>— 选择等级 —</value></data>
-  <data name="Signup.Continue" xml:space="preserve"><value>继续</value></data>
-  <data name="Signup.Back" xml:space="preserve"><value>返回</value></data>
-  <data name="Signup.ProductsIntro" xml:space="preserve"><value>选择要包含在您的注册中的产品。</value></data>
-  <data name="Signup.NoProducts" xml:space="preserve"><value>暂无其他产品。点击继续以前进。</value></data>
-  <data name="Signup.PaymentMethod" xml:space="preserve"><value>付款方式</value></data>
-  <data name="Signup.PaymentCreditCard" xml:space="preserve"><value>信用卡</value></data>
-  <data name="Signup.PaymentCrypto" xml:space="preserve"><value>加密货币</value></data>
-  <data name="Signup.PaymentToken" xml:space="preserve"><value>令牌 / 访客通行证</value></data>
-  <data name="Signup.PaymentDiscount" xml:space="preserve"><value>折扣码</value></data>
-  <data name="Signup.GatewayToken" xml:space="preserve"><value>网关令牌</value></data>
-  <data name="Signup.First6" xml:space="preserve"><value>前 6 位</value></data>
-  <data name="Signup.Last4" xml:space="preserve"><value>后 4 位</value></data>
-  <data name="Signup.CardBrand" xml:space="preserve"><value>品牌</value></data>
-  <data name="Signup.ExpMonth" xml:space="preserve"><value>到期月</value></data>
-  <data name="Signup.ExpYear" xml:space="preserve"><value>到期年</value></data>
-  <data name="Signup.Gateway" xml:space="preserve"><value>网关</value></data>
-  <data name="Signup.Cryptocurrency" xml:space="preserve"><value>加密货币</value></data>
-  <data name="Signup.TransactionId" xml:space="preserve"><value>交易 ID</value></data>
-  <data name="Signup.TokenCode" xml:space="preserve"><value>令牌 / 访客通行证代码</value></data>
-  <data name="Signup.DiscountCode" xml:space="preserve"><value>折扣码</value></data>
-  <data name="Signup.CompleteSignup" xml:space="preserve"><value>完成注册</value></data>
-  <data name="Signup.Welcome" xml:space="preserve"><value>欢迎，{0}！</value></data>
-  <data name="Signup.AccountActive" xml:space="preserve"><value>您的账户已激活。&lt;a href="/login"&gt;立即登录&lt;/a&gt;</value></data>
-  <data name="Signup.AlreadyHaveAccount" xml:space="preserve"><value>已经有账户？登录</value></data>
-  <data name="Signup.SessionClosedNotice" xml:space="preserve"><value>出于安全考虑，已关闭此计算机上打开的会话。</value></data>
-  <data name="Signup.ErrorNameRequired" xml:space="preserve"><value>姓名是必填项。</value></data>
-  <data name="Signup.ErrorEmailRequired" xml:space="preserve"><value>电子邮件是必填项。</value></data>
-  <data name="Signup.ErrorPasswordMismatch" xml:space="preserve"><value>密码必须匹配。</value></data>
-  <data name="Signup.ErrorLevelRequired" xml:space="preserve"><value>请选择会员等级。</value></data>
-  <data name="Signup.ErrorAge18" xml:space="preserve"><value>您必须年满 18 岁。</value></data>
-  <data name="Signup.ErrorGeneric" xml:space="preserve"><value>注册失败。请检查您的资料。</value></data>
-  <data name="Signup.ErrorServerUnreachable" xml:space="preserve"><value>无法连接到服务器：{0}</value></data>
-  <data name="Signup.ErrorProductRequired" xml:space="preserve"><value>请至少选择一个产品。</value></data>
-  <data name="Signup.ErrorProductsSave" xml:space="preserve"><value>无法保存产品选择。</value></data>
-  <data name="Signup.ErrorComplete" xml:space="preserve"><value>无法完成注册。</value></data>
-
   <!-- Error page — F5 -->
   <data name="Error.Title" xml:space="preserve"><value>错误。</value></data>
   <data name="Error.Subtitle" xml:space="preserve"><value>处理您的请求时发生错误。</value></data>
@@ -1279,7 +1223,6 @@
   <data name="PageTitle.Tickets" xml:space="preserve"><value>支持工单</value></data>
   <data name="PageTitle.TicketDetail" xml:space="preserve"><value>工单详情</value></data>
   <data name="PageTitle.Login" xml:space="preserve"><value>MLM Conqueror - 登录</value></data>
-  <data name="PageTitle.Signup" xml:space="preserve"><value>MLM Conqueror - 注册</value></data>
   <data name="PageTitle.Error" xml:space="preserve"><value>错误</value></data>
   <data name="PageTitle.NotFound" xml:space="preserve"><value>未找到页面</value></data>
   <data name="PageTitle.ForgotPassword" xml:space="preserve"><value>MLM Conqueror - 忘记密码</value></data>

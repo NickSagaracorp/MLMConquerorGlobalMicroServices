@@ -93,11 +93,17 @@ builder.Services.AddAuthSurface(new AuthPortalOptions
 
     HomePage = "/",
 
-    // La pantalla de alta pública, cuya carga MATA cualquier sesión abierta en ese navegador. La
-    // ruta se declara sin el slug del patrocinador porque se compara por segmentos: con esto quedan
-    // cubiertas las dos rutas de la pantalla, /signup y /signup/{patrocinador} —que en un evento es
-    // la que de verdad se usa, porque es el enlace del sitio replicado—.
-    SignupPage = "/signup",
+    // A dónde puede volver la SALIDA de este portal cuando alguien le pasa un returnUrl. Hoy solo
+    // la aplicación de alta lo hace: al cargarse manda el navegador aquí para que la sesión que
+    // hubiera abierta en ese ordenador muera antes de que nadie se dé de alta encima de ella, y
+    // vuelve por aquí a donde iba, con el slug del patrocinador entero.
+    //
+    // ESTO ES OBLIGATORIO. Sin lista, /account/logout?returnUrl=… sería una redirección abierta: un
+    // enlace que empieza en el dominio del portal y termina donde quiera quien lo escriba, justo
+    // después de cerrarle la sesión al usuario. Falla cerrado: sin configuración no se acepta ningún
+    // destino y la salida se queda en su propio login.
+    SignOutReturnUrlAllowList = builder.Configuration
+        .GetSection("SignOut:AllowedReturnUrls").Get<string[]>() ?? [],
 
     // Sin lista de roles: el centro de negocios admite a cualquier cuenta válida.
 
@@ -135,11 +141,10 @@ builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().Cre
 builder.Services.AddAuthApiClient(
     builder.Configuration["AuthApiBaseUrl"] ?? "https://localhost:7005");
 
-// HTTP client — Signups public API (unauthenticated signup wizard)
-builder.Services.AddHttpClient("SignupsApi", client =>
-{
-    client.BaseAddress = new Uri(builder.Configuration["SignupsApiBaseUrl"] ?? "https://localhost:7005");
-});
+// Aquí vivía el cliente "SignupsApi", que solo usaba la pantalla de alta de este portal. Esa
+// pantalla era una copia atrasada del asistente de verdad —mandaba SponsorMemberId, un campo que
+// AmbassadorSignupRequest no tiene, así que el patrocinador se perdía en silencio— y se ha borrado:
+// el alta solo se hace desde la aplicación de alta. Sin ella, este cliente no lo pedía nadie.
 
 var app = builder.Build();
 
@@ -157,12 +162,6 @@ app.UseRequestLocalization(new RequestLocalizationOptions()
     .AddSupportedUICultures(supportedCultures));
 app.UseAntiforgery();
 app.UseAuthentication();
-// En un evento se dan de alta varias personas seguidas en el mismo ordenador, y la anterior no
-// siempre se acuerda de salir: cargar la pantalla de alta mata cualquier sesión abierta en ese
-// navegador antes de pintar nada. Va ANTES del middleware de caducidad a propósito: quien llegue al
-// alta con el JWT ya caducado tiene que quedarse en el alta, no acabar en el login con el aviso de
-// sesión caducada.
-app.UseSignupSessionReset();
 // Justo después de la autenticación, que es cuando ya hay ClaimsPrincipal y todavía no ha empezado
 // la respuesta: una navegación de un usuario cuyo JWT ya caducó se corta aquí, se le limpia la
 // cookie y se le manda al login con el aviso. Dentro del circuito ese trabajo lo hace ApiAuthHandler;
@@ -179,6 +178,11 @@ app.MapRazorComponents<App>()
 // Los manejadores viven en SharedComponents.Server; las RUTAS se quedan aquí porque tienen que
 // coincidir letra a letra con el action= del formulario de cada pantalla de este portal.
 // Antiforgery desactivado en todos: son anónimos por definición, o un logout trivial.
+// El pulso de este portal. Lo consulta la aplicación de alta antes de mandarle el navegador a
+// cerrar sesión: una navegación no tiene plan B, así que si este portal no contesta el alta se abre
+// sin pasar por aquí en vez de dejar al visitante en la pantalla de error del navegador.
+app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
+
 app.MapPost("/account/login",  (Delegate)AuthEndpoints.LoginAsync).DisableAntiforgery();
 app.MapPost("/account/logout", (Delegate)AuthEndpoints.LogoutAsync).DisableAntiforgery();
 app.MapGet("/account/logout",  (Delegate)AuthEndpoints.LogoutAsync);

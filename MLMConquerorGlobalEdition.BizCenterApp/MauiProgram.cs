@@ -55,10 +55,19 @@ public static class MauiProgram
             client.BaseAddress = new Uri("https://localhost:7001");
         });
 
-        // HTTP client — Signups API (public unauthenticated signup flow)
-        builder.Services.AddHttpClient<SignupsApiClient>(client =>
+        // A DÓNDE MANDAR A QUIEN NO TIENE CUENTA. Aquí vivía SignupsApiClient, que solo usaba la
+        // pantalla de alta de esta aplicación. Esa pantalla era una copia atrasada del asistente de
+        // verdad —mandaba SponsorMemberId, un campo que AmbassadorSignupRequest no tiene, así que el
+        // deserializador lo tiraba y el alta se guardaba SIN PATROCINADOR— y se ha borrado: desde el
+        // centro de negocios no se hace ningún alta, solo desde la aplicación de alta.
+        //
+        // Lo que queda es el ENLACE, y sale de configuración —con un valor por defecto para el
+        // entorno de desarrollo— en vez de escrito dentro de la pantalla de login. La aplicación de
+        // alta cambia de dirección en cada entorno; una pantalla no es sitio para saberlo.
+        builder.Services.AddSingleton(new AppLinks
         {
-            client.BaseAddress = new Uri("https://localhost:7147");
+            SignupAppUrl = builder.Configuration["SignupAppUrl"]
+                        ?? "https://localhost:7147/ambassador-join"
         });
 
         return builder.Build();

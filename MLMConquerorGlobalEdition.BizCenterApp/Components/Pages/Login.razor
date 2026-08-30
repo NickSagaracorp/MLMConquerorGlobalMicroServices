@@ -4,6 +4,7 @@
 @inject BizCenterApiClient Api
 @inject NavigationManager Navigation
 @inject ViewContextInitializer ViewContextInitializer
+@inject AppLinks Links
 
 <div class="login-wrapper">
     <div class="login-card">
@@ -38,10 +39,18 @@
         <div class="mt-3 text-center">
             <a href="/forgot-password">Forgot your password?</a>
         </div>
-        <div class="mt-2 text-center">
-            <span class="text-muted small">Don't have an account?</span>
-            <a href="/signup" class="ms-1 small">Sign up</a>
-        </div>
+        @* A la APLICACIÓN DE ALTA, que es otra aplicación y otro origen. Este centro de negocios ya
+           no tiene pantalla de alta: la que tenía mandaba SponsorMemberId, un campo que
+           AmbassadorSignupRequest no tiene, así que las altas se guardaban sin patrocinador. La
+           dirección viene de AppLinks —declarada en MauiProgram, que es la raíz de composición— y no
+           escrita aquí: cambia en cada entorno. Sin ella, no se pinta el enlace. *@
+        @if (!string.IsNullOrWhiteSpace(Links.SignupAppUrl))
+        {
+            <div class="mt-2 text-center">
+                <span class="text-muted small">Don't have an account?</span>
+                <a href="@Links.SignupAppUrl" target="_blank" rel="noopener" class="ms-1 small">Sign up</a>
+            </div>
+        }
     </div>
 </div>
 

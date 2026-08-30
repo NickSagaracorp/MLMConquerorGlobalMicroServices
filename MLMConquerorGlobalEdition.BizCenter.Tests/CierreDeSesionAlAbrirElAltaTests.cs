@@ -2,38 +2,50 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using MLMConquerorGlobalEdition.ClientCore;
-using MLMConquerorGlobalEdition.SharedComponents.Server.Extensions;
 using MLMConquerorGlobalEdition.SharedComponents.Server.Services;
+using MLMConquerorGlobalEdition.SharedKernel.Portal;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Tests;
 
 /// <summary>
-/// CARGAR LA PANTALLA DE ALTA TIENE QUE MATAR CUALQUIER SESIÓN ABIERTA EN ESE NAVEGADOR.
+/// CARGAR EL ASISTENTE DE ALTA TIENE QUE MATAR CUALQUIER SESIÓN ABIERTA EN ESE NAVEGADOR. Esta es
+/// LA MITAD DEL PORTAL: lo que ocurre cuando el rebote de la aplicación de alta llega a su salida.
 ///
 /// EL ESCENARIO, que es el que hay que tener en la cabeza leyendo este archivo: en un evento se dan
 /// de alta varias personas seguidas en el mismo ordenador. La persona A termina y se levanta sin
 /// salir; la persona B se sienta y abre el alta —normalmente por el enlace del sitio replicado de su
-/// patrocinador, que es la ruta con slug—. Con la sesión de A viva, a B le basta con teclear
-/// cualquier dirección del portal para estar dentro de la cuenta de A.
+/// patrocinador—. Con la sesión de A viva, a B le basta con teclear cualquier dirección del portal
+/// para estar dentro de la cuenta de A.
 ///
-/// LO QUE SE PRUEBA AQUÍ NO ES "SE LLAMA A SignOutAsync". Eso lo haría igual de bien un
-/// <c>OnInitializedAsync</c> en la página, y ahí NO FUNCIONARÍA: dentro de un circuito de Blazor
-/// Server la respuesta a mano es la del WebSocket y ya empezó, así que la cookie de A seguiría en el
-/// navegador de B con una línea de código encima que hace creer que está resuelto. Lo que se prueba
-/// son las CUATRO cosas que tienen que morir —la cookie de sesión, las tres cookies de reto, la
-/// entrada del almacén y el refresh token EN LA API—, que el alta sigue funcionando para quien llega
-/// sin sesión, y el orden en la tubería, que es lo que decide si el usuario acaba en el alta o en el
-/// login.
+/// POR QUÉ ESTAS PRUEBAS CAMBIARON DE FORMA. Antes vigilaban un middleware DEL PORTAL sobre su ruta
+/// <c>/signup</c>. Esa ruta era una copia atrasada del asistente —mandaba <c>SponsorMemberId</c>, un
+/// campo que <c>AmbassadorSignupRequest</c> no tiene, así que las altas se guardaban sin
+/// patrocinador— y se ha borrado. El alta solo vive en su propia aplicación, que es otro origen: el
+/// portal ya no ve pasar esa navegación y no tiene nada que vigilar.
+///
+/// Ahora el corte lo da la aplicación de alta, que al cargarse manda el navegador UNA SOLA VEZ POR
+/// PORTAL a <c>/account/logout</c> y vuelve. Lo que se prueba aquí es la mitad que sigue siendo del
+/// portal, y sigue siendo lo mismo de antes más una cosa nueva:
+///
+///   • QUE MUERAN LAS CINCO COSAS, y en su orden. No cambió nada: sigue siendo
+///     <see cref="PortalSignOut.KillAsync"/>, que es lo que se conservó entero del intento anterior.
+///   • QUE EL DESTINO DE VUELTA ESTÉ EN UNA LISTA BLANCA. Esto es nuevo y es obligatorio: sin ello,
+///     la salida del portal sería una redirección abierta.
+///
+/// La otra mitad —que el rebote ocurra una sola vez, que conserve el patrocinador y que el alta se
+/// abra igual con el portal caído— vive donde vive el middleware que la hace, en
+/// <c>Signups.Tests/RebotePortalSessionBounceTests</c>.
 /// </summary>
 public class CierreDeSesionAlAbrirElAltaTests
 {
-    private const string Alta  = "/signup";
     private const string Login = "/login";
+
+    /// <summary>El origen desde el que rebota la aplicación de alta.</summary>
+    private const string Alta = "https://alta.ejemplo.com";
 
     private static readonly ChallengeCookieNames Cookies = new()
     {
@@ -42,59 +54,39 @@ public class CierreDeSesionAlAbrirElAltaTests
         Phone      = "mlm_pruebas_phone_challenge"
     };
 
-    /// <summary>El centro de negocios: el único portal con pantalla de alta.</summary>
+    /// <summary>El centro de negocios, con la aplicación de alta admitida como destino de vuelta.</summary>
     private static readonly AuthPortalOptions CentroDeNegocios = new()
     {
-        LoginPage               = Login,
-        TwoFactorPage           = "/two-factor",
-        EnrollAuthenticatorPage = "/enroll-authenticator",
-        HomePage                = "/",
-        SignupPage              = Alta
+        LoginPage                 = Login,
+        TwoFactorPage             = "/two-factor",
+        EnrollAuthenticatorPage   = "/enroll-authenticator",
+        HomePage                  = "/",
+        SignOutReturnUrlAllowList = [$"{Alta}/"]
     };
 
-    /// <summary>Administración, que no tiene alta y por eso no declara la ruta.</summary>
-    private static readonly AuthPortalOptions Administracion = new()
+    /// <summary>Un portal que nunca configuró la lista. No acepta ningún destino.</summary>
+    private static readonly AuthPortalOptions SinListaBlanca = CentroDeNegocios with
     {
-        LoginPage               = "/admin/login",
-        TwoFactorPage           = "/admin/login-2fa",
-        EnrollAuthenticatorPage = "/admin/enroll-authenticator",
-        HomePage                = "/admin"
+        SignOutReturnUrlAllowList = null
     };
 
-    // ===========================================================================================
-    //  1. Las cuatro cosas que tienen que morir
-    // ===========================================================================================
+    // ===============================================================================================
+    //  1. Las cinco cosas que tienen que morir cuando llega el rebote
+    // ===============================================================================================
 
     /// <summary>
-    /// LA PRUEBA DEL ESCENARIO. Se abre el alta con la sesión de la persona anterior viva: la cookie
-    /// de sesión se limpia y la petición no llega a la página, porque se redirige.
+    /// LA PRUEBA DEL ESCENARIO. El rebote llega con la sesión de la persona anterior viva: la cookie
+    /// de sesión se limpia y el navegador se va de vuelta al alta.
     /// </summary>
     [Fact]
-    public async Task AbrirElAlta_ConLaSesionDeOtroViva_LimpiaLaCookieDeSesion()
+    public async Task ElRebote_ConLaSesionDeOtroViva_LimpiaLaCookieDeSesion()
     {
-        var mundo = new MundoDePruebas(Alta, TokenVivo());
+        var mundo = new MundoDePruebas(TokenVivo());
 
-        var llegoALaPagina = await mundo.EjecutarAsync();
+        await mundo.SalirAsync(returnUrl: $"{Alta}/ambassador-join?portal_session=1");
 
         mundo.Autenticacion.Salidas.Should().Be(1,
             "la cookie de sesión de la persona anterior es lo primero que tiene que desaparecer");
-        llegoALaPagina.Should().BeFalse("se redirige con el aviso, así que esta petición acaba aquí");
-    }
-
-    /// <summary>
-    /// LA RUTA QUE DE VERDAD SE USA EN UN EVENTO: el enlace del sitio replicado del patrocinador.
-    /// Cubrir solo <c>/signup</c> dejaría el agujero abierto justo por donde entra la gente.
-    /// </summary>
-    [Fact]
-    public async Task AbrirElAltaConElSlugDelPatrocinador_TambienMataLaSesion()
-    {
-        var mundo = new MundoDePruebas("/signup/JUANPEREZ", TokenVivo());
-
-        await mundo.EjecutarAsync();
-
-        mundo.Autenticacion.Salidas.Should().Be(1);
-        mundo.Destino.Should().Be("/signup/JUANPEREZ?session_closed=1",
-            "el patrocinador tiene que llegar entero al asistente de alta");
     }
 
     /// <summary>
@@ -102,11 +94,11 @@ public class CierreDeSesionAlAbrirElAltaTests
     /// de la persona anterior son credenciales de un solo paso que la siguiente podría canjear.
     /// </summary>
     [Fact]
-    public async Task MataLasTresCookiesDeReto()
+    public async Task ElRebote_MataLasTresCookiesDeReto()
     {
-        var mundo = new MundoDePruebas(Alta, TokenVivo());
+        var mundo = new MundoDePruebas(TokenVivo());
 
-        await mundo.EjecutarAsync();
+        await mundo.SalirAsync(returnUrl: $"{Alta}/ambassador-join?portal_session=1");
 
         var escritas = mundo.CookiesEscritas();
 
@@ -122,12 +114,12 @@ public class CierreDeSesionAlAbrirElAltaTests
     /// contraseña: borrar la cookie sin invalidarlo no es cerrar la sesión, es esconderla.
     /// </summary>
     [Fact]
-    public async Task InvalidaElRefreshTokenEnLaApi_ConElTokenDelUsuarioPuesto()
+    public async Task ElRebote_InvalidaElRefreshTokenEnLaApi_ConElTokenDelUsuarioPuesto()
     {
         var token = TokenVivo();
-        var mundo = new MundoDePruebas(Alta, token);
+        var mundo = new MundoDePruebas(token);
 
-        await mundo.EjecutarAsync();
+        await mundo.SalirAsync(returnUrl: $"{Alta}/ambassador-join?portal_session=1");
 
         mundo.Api.Peticiones.Should().ContainSingle()
             .Which.Should().Be(("POST", "/api/v1/auth/logout", $"Bearer {token}"),
@@ -141,27 +133,26 @@ public class CierreDeSesionAlAbrirElAltaTests
     /// tokens con la que una petición en vuelo puede resucitar la sesión recién cerrada.
     /// </summary>
     [Fact]
-    public async Task OlvidaLaEntradaDelAlmacenDeSesion()
+    public async Task ElRebote_OlvidaLaEntradaDelAlmacenDeSesion()
     {
-        var mundo = new MundoDePruebas(Alta, TokenVivo());
+        var mundo = new MundoDePruebas(TokenVivo());
         mundo.Almacen.Count.Should().Be(1, "la sesión de la persona anterior estaba sembrada");
 
-        await mundo.EjecutarAsync();
+        await mundo.SalirAsync(returnUrl: $"{Alta}/ambassador-join?portal_session=1");
 
         mundo.Almacen.Count.Should().Be(0);
     }
 
     /// <summary>
     /// Y EL USUARIO DE ESTA PETICIÓN. <c>SignOutAsync</c> escribe una cabecera para el navegador; no
-    /// toca lo que el resto de la tubería ya tiene en la mano. Sin esto, el middleware siguiente, la
-    /// autorización y el apretón de manos del circuito seguirían viendo a la persona anterior.
+    /// toca lo que el resto de la tubería ya tiene en la mano.
     /// </summary>
     [Fact]
-    public async Task DejaAnonimoAlUsuarioDeEstaPeticion()
+    public async Task ElRebote_DejaAnonimoAlUsuarioDeEstaPeticion()
     {
-        var mundo = new MundoDePruebas(Alta, TokenVivo());
+        var mundo = new MundoDePruebas(TokenVivo());
 
-        await mundo.EjecutarAsync();
+        await mundo.SalirAsync(returnUrl: $"{Alta}/ambassador-join?portal_session=1");
 
         mundo.Contexto.User.Identity?.IsAuthenticated.Should().NotBe(true);
     }
@@ -174,216 +165,43 @@ public class CierreDeSesionAlAbrirElAltaTests
     [Fact]
     public async Task SinElClaimDelToken_LaSesionMuereIgual()
     {
-        var mundo = new MundoDePruebas(Alta, token: null);
+        var mundo = new MundoDePruebas(token: null);
 
-        await mundo.EjecutarAsync();
+        await mundo.SalirAsync(returnUrl: $"{Alta}/ambassador-join?portal_session=1");
 
         mundo.Autenticacion.Salidas.Should().Be(1);
         mundo.Api.Peticiones.Should().BeEmpty(
             "sin token no hay nada que invalidar al otro lado, pero la sesión local se cierra igual");
     }
 
-    // ===========================================================================================
-    //  2. El alta sigue funcionando
-    // ===========================================================================================
-
     /// <summary>
-    /// EL CAMINO DE CASI TODO EL MUNDO: llegar al alta sin sesión ninguna. Ni se firma nada, ni se
-    /// redirige, ni se avisa de nada.
+    /// Quien llega al rebote SIN sesión —que es casi todo el mundo— no rompe nada: se le devuelve al
+    /// alta igual y sin haber firmado ni cerrado nada.
     /// </summary>
     [Fact]
-    public async Task SinSesion_ElAltaSeAbreComoSiempre()
+    public async Task SinSesion_ElReboteDevuelveAlAltaIgual()
     {
-        var mundo = new MundoDePruebas(Alta, token: null, conSesion: false);
+        var mundo = new MundoDePruebas(token: null, conSesion: false);
 
-        var llegoALaPagina = await mundo.EjecutarAsync();
+        var destino = await mundo.SalirAsync(returnUrl: $"{Alta}/ambassador-join?portal_session=1");
 
-        llegoALaPagina.Should().BeTrue();
-        mundo.Autenticacion.Salidas.Should().Be(0);
-        mundo.Destino.Should().BeEmpty("sin sesión cerrada no hay nada que avisar");
+        destino.Should().Be($"{Alta}/ambassador-join?portal_session=1");
+        mundo.Api.Peticiones.Should().BeEmpty();
     }
 
-    /// <summary>
-    /// Lo que no es el navegador CARGANDO la página no se toca: el WebSocket del circuito, los
-    /// recursos de <c>/_framework</c> y las llamadas del propio asistente de alta. Cortar cualquiera
-    /// de esos dejaría el alta a medias sin que el usuario supiera por qué.
-    /// </summary>
+    // ===============================================================================================
+    //  2. Las dos salidas de siempre, que no cambian
+    // ===============================================================================================
+
+    /// <summary>La salida normal del portal, sin destino de vuelta: al login de siempre.</summary>
     [Fact]
-    public async Task NoTocaLoQueNoEsUnaNavegacionDelNavegador()
+    public async Task LaSalidaDeLaPuerta_SigueLimpiandoTodoYYendoAlLogin()
     {
-        var noEsHtml = new MundoDePruebas(Alta, TokenVivo(), acepta: "*/*");
-        (await noEsHtml.EjecutarAsync()).Should().BeTrue();
-        noEsHtml.Autenticacion.Salidas.Should().Be(0);
+        var mundo = new MundoDePruebas(TokenVivo());
 
-        var noEsGet = new MundoDePruebas(Alta, TokenVivo(), metodo: HttpMethods.Post);
-        (await noEsGet.EjecutarAsync()).Should().BeTrue();
-        noEsGet.Autenticacion.Salidas.Should().Be(0);
+        var destino = await mundo.SalirAsync();
 
-        var elCircuito = new MundoDePruebas("/_blazor", TokenVivo(), acepta: "*/*");
-        (await elCircuito.EjecutarAsync()).Should().BeTrue();
-        elCircuito.Autenticacion.Salidas.Should().Be(0);
-    }
-
-    /// <summary>
-    /// El resto del portal no se toca. Si esto fallara, un miembro no podría usar su centro de
-    /// negocios: cada pantalla le cerraría la sesión.
-    /// </summary>
-    [Theory]
-    [InlineData("/")]
-    [InlineData("/account")]
-    [InlineData("/account/logout")]
-    [InlineData(Login)]
-    [InlineData("/team")]
-    public async Task NoTocaNingunaOtraPantalla(string ruta)
-    {
-        var mundo = new MundoDePruebas(ruta, TokenVivo());
-
-        (await mundo.EjecutarAsync()).Should().BeTrue();
-        mundo.Autenticacion.Salidas.Should().Be(0);
-    }
-
-    /// <summary>
-    /// Una ruta que empieza con las mismas letras no es la pantalla de alta. Se compara por
-    /// segmentos justamente para esto.
-    /// </summary>
-    [Fact]
-    public async Task NoConfundeUnaRutaQueSoloEmpiezaIgual()
-    {
-        var mundo = new MundoDePruebas("/signupdelotro", TokenVivo());
-
-        (await mundo.EjecutarAsync()).Should().BeTrue();
-        mundo.Autenticacion.Salidas.Should().Be(0);
-    }
-
-    /// <summary>
-    /// El portal que no declara pantalla de alta —administración— no tiene aquí ninguna ruta que
-    /// mirar, ni siquiera una que se llame igual.
-    /// </summary>
-    [Fact]
-    public void UnPortalSinPantallaDeAlta_NoMiraNingunaRuta()
-    {
-        var contexto = Navegacion(Alta, TokenVivo(), HttpMethods.Get, "text/html", conSesion: true);
-
-        SignupSessionResetMiddleware.IsSignupNavigation(contexto, Administracion.SignupPage)
-            .Should().BeFalse();
-    }
-
-    /// <summary>
-    /// Y montarlo en un portal que no la declaró falla AL ARRANCAR, no en silencio. Un middleware
-    /// que no mira ninguna ruta es una protección apagada que parece encendida desde el
-    /// <c>Program.cs</c>, y eso no se nota hasta que alguien mira las cookies de un navegador en un
-    /// evento.
-    /// </summary>
-    [Fact]
-    public void MontarloSinLaRutaDeAlta_FallaAlArrancar()
-    {
-        var servicios = new ServiceCollection()
-            .AddLogging()
-            .AddSingleton(Administracion)
-            .BuildServiceProvider();
-
-        var app = new ApplicationBuilder(servicios);
-
-        app.Invoking(a => a.UseSignupSessionReset())
-           .Should().Throw<InvalidOperationException>()
-           .WithMessage("*SignupPage*");
-    }
-
-    // ===========================================================================================
-    //  3. El aviso al usuario, y que no haya bucle
-    // ===========================================================================================
-
-    /// <summary>
-    /// La marca del aviso se añade CONSERVANDO lo que ya traía la dirección: el slug del
-    /// patrocinador y la query de la campaña por la que llegó.
-    /// </summary>
-    [Fact]
-    public async Task ElAviso_ConservaElSlugYLaQueQueYaTraia()
-    {
-        var mundo = new MundoDePruebas("/signup/JUANPEREZ", TokenVivo(), query: "?utm_source=evento");
-
-        await mundo.EjecutarAsync();
-
-        mundo.Destino.Should().Be("/signup/JUANPEREZ?utm_source=evento&session_closed=1");
-    }
-
-    /// <summary>
-    /// EL BUCLE, QUE ES LO ÚNICO QUE PODRÍA DEJAR SIN ALTA A UNA SALA ENTERA. Si por lo que sea la
-    /// cookie volviera a llegar después del aviso, la sesión se mata igual pero NO se redirige otra
-    /// vez: se sigue a la página. Como mucho una redirección, pase lo que pase al otro lado.
-    /// </summary>
-    [Fact]
-    public async Task ConElAvisoYaPuesto_MataLaSesionPeroNoRedirigeOtraVez()
-    {
-        var mundo = new MundoDePruebas(Alta, TokenVivo(), query: "?session_closed=1");
-
-        var llegoALaPagina = await mundo.EjecutarAsync();
-
-        mundo.Autenticacion.Salidas.Should().Be(1, "la sesión se mata igual, que es lo importante");
-        llegoALaPagina.Should().BeTrue("y se sigue a la página en vez de redirigir por segunda vez");
-        mundo.Destino.Should().BeEmpty();
-    }
-
-    // ===========================================================================================
-    //  4. El orden en la tubería — lo que decide si el usuario acaba en el alta o en el login
-    // ===========================================================================================
-
-    /// <summary>
-    /// MATAR LA SESIÓN AQUÍ NO ES "SESIÓN CADUCADA". Quien abre el alta quiere darse de alta, así
-    /// que se queda en el alta aunque el JWT que traía estuviera caducado. Esta prueba monta los dos
-    /// middlewares EN EL ORDEN REAL del portal.
-    /// </summary>
-    [Fact]
-    public async Task ConElJwtCaducado_SeQuedaEnElAltaYNoAcabaEnElLogin()
-    {
-        var mundo = new MundoDePruebas(Alta, TokenCaducado());
-
-        var llegoALaPagina = await mundo.EjecutarConLaTuberiaCompletaAsync();
-
-        llegoALaPagina.Should().BeFalse();
-        mundo.Destino.Should().Be("/signup?session_closed=1");
-        mundo.Destino.Should().NotContain(Login,
-            "acabar en el login sería cerrarle la única pantalla a la que venía");
-        mundo.Destino.Should().NotContain("session_expired");
-    }
-
-    /// <summary>
-    /// Y POR QUÉ ESE ORDEN Y NO EL OTRO. Con el middleware de caducidad delante, la misma persona
-    /// —misma sesión, mismo token caducado— acaba en el login con el aviso de sesión caducada. La
-    /// sesión moriría igual, pero el alta se le habría cerrado en la cara.
-    ///
-    /// Esta prueba existe para que ese orden no se pueda cambiar por descuido: es de las cosas que
-    /// no fallan al compilar y no se ven leyendo el diff.
-    /// </summary>
-    [Fact]
-    public async Task ConLosMiddlewaresAlReves_ElAltaSePierdeEnElLogin()
-    {
-        var mundo = new MundoDePruebas(Alta, TokenCaducado());
-
-        await mundo.EjecutarConLaTuberiaAlRevesAsync();
-
-        mundo.Destino.Should().Be($"{Login}?error=session_expired",
-            "es exactamente lo que NO puede pasar, y por eso el orden del Program.cs importa");
-    }
-
-    // ===========================================================================================
-    //  5. La salida de la puerta, que ahora comparte el cierre
-    // ===========================================================================================
-
-    /// <summary>
-    /// La salida normal del portal sigue haciendo lo suyo, y ahora además se lleva el reto del
-    /// teléfono, que antes sobrevivía a la sesión de su dueño.
-    /// </summary>
-    [Fact]
-    public async Task LaSalidaDeLaPuerta_LimpiaLosTresRetosYSigueYendoAlLogin()
-    {
-        var mundo = new MundoDePruebas(Alta, TokenVivo());
-
-        var resultado = await AuthEndpoints.LogoutAsync(
-            mundo.Contexto, mundo.Gateway, CentroDeNegocios, Cookies, mundo.Almacen);
-        await resultado.ExecuteAsync(mundo.Contexto);
-
-        mundo.Contexto.Response.Headers.Location.ToString().Should().Be(Login);
+        destino.Should().Be(Login);
         mundo.Autenticacion.Salidas.Should().Be(1);
 
         var escritas = mundo.CookiesEscritas();
@@ -395,14 +213,278 @@ public class CierreDeSesionAlAbrirElAltaTests
             .Which.Path.Should().Be("/api/v1/auth/logout");
     }
 
-    // ===========================================================================================
-    //  Ayudas
-    // ===========================================================================================
+    /// <summary>
+    /// Y la salida a la que manda el circuito cuando descubre su sesión caducada sigue llevando su
+    /// aviso hasta el login. Es el arreglo de la sesión caducada, y este trabajo no lo toca.
+    /// </summary>
+    [Fact]
+    public async Task LaSalidaDeUnaSesionCaducada_SigueLlevandoSuAvisoAlLogin()
+    {
+        var mundo = new MundoDePruebas(TokenVivo());
+
+        var destino = await mundo.SalirAsync(reason: "session_expired");
+
+        destino.Should().Be($"{Login}?error=session_expired");
+    }
+
+    // ===============================================================================================
+    //  3. LA LISTA BLANCA DEL DESTINO DE VUELTA
+    //
+    //  Sin esto, /account/logout?returnUrl=… es una redirección abierta: un enlace que EMPIEZA en el
+    //  dominio del portal —el que el usuario reconoce y mira antes de pulsar— y termina donde quiera
+    //  el atacante, justo en el instante en que se le acaba de cerrar la sesión y espera que le
+    //  vuelvan a pedir la contraseña. Ese salto de confianza es el valor entero del truco.
+    // ===============================================================================================
+
+    /// <summary>El camino bueno: un destino de la lista se sigue.</summary>
+    [Fact]
+    public async Task ConUnDestinoDeLaLista_ElNavegadorVuelveAlAlta()
+    {
+        var mundo = new MundoDePruebas(TokenVivo());
+
+        var destino = await mundo.SalirAsync(returnUrl: $"{Alta}/ambassador-join?portal_session=1");
+
+        destino.Should().Be($"{Alta}/ambassador-join?portal_session=1");
+    }
 
     /// <summary>
-    /// Una petición del navegador con la sesión de la persona anterior encima, y todo lo que hace
-    /// falta para que el cierre pueda ocurrir de verdad: el servicio de autenticación que borra la
-    /// cookie, el almacén de sesión con su entrada sembrada y un gateway apuntando a una API falsa.
+    /// EL PATROCINADOR VUELVE ENTERO. Es la ruta que de verdad se usa en un evento —el enlace del
+    /// sitio replicado— y perderlo aquí sería reproducir, por otro camino, el mismo fallo que este
+    /// trabajo viene a cerrar: un alta guardada sin patrocinador.
+    /// </summary>
+    [Fact]
+    public async Task ElDestinoDeVuelta_ConservaElPatrocinadorYLaQueryQueTraia()
+    {
+        var mundo   = new MundoDePruebas(TokenVivo());
+        var volviendoA = $"{Alta}/ambassador-join/AMB-320189?utm_source=evento&portal_session=1";
+
+        var destino = await mundo.SalirAsync(returnUrl: volviendoA);
+
+        destino.Should().Be(volviendoA);
+    }
+
+    /// <summary>
+    /// UN DESTINO EXTERNO SE RECHAZA. Es la prueba que justifica la lista entera: sin ella, este
+    /// mismo enlace mandaría al usuario al sitio del atacante desde el dominio del portal.
+    /// </summary>
+    [Fact]
+    public async Task UnDestinoEXTERNO_SeRechazaYElUsuarioAcabaEnElLoginDelPortal()
+    {
+        var mundo = new MundoDePruebas(TokenVivo());
+
+        var destino = await mundo.SalirAsync(returnUrl: "https://malo.io/inicia-sesion");
+
+        destino.Should().Be(Login, "un destino que no está en la lista no se sigue jamás");
+        destino.Should().NotContain("malo.io");
+    }
+
+    /// <summary>
+    /// Y SE RECHAZA SIN DEJAR VIVA LA SESIÓN. Importa el orden: primero se mata, después se decide a
+    /// dónde. Al revés, un returnUrl malo sería además una forma de que la sesión sobreviviera.
+    /// </summary>
+    [Fact]
+    public async Task UnDestinoRechazado_MataLaSesionIgual()
+    {
+        var mundo = new MundoDePruebas(TokenVivo());
+
+        await mundo.SalirAsync(returnUrl: "https://malo.io/inicia-sesion");
+
+        mundo.Autenticacion.Salidas.Should().Be(1);
+        mundo.Almacen.Count.Should().Be(0);
+        mundo.Api.Peticiones.Should().ContainSingle();
+    }
+
+    /// <summary>
+    /// FALLA CERRADO. Un portal que nunca configuró la lista no acepta ningún destino. Una lista sin
+    /// configurar tiene que romper el rebote —que es una comodidad— y nunca abrir la redirección.
+    /// </summary>
+    [Fact]
+    public async Task SinListaConfigurada_NoSeAceptaNiSiquieraElDestinoBueno()
+    {
+        var mundo = new MundoDePruebas(TokenVivo());
+
+        var destino = await mundo.SalirAsync(
+            returnUrl: $"{Alta}/ambassador-join", portal: SinListaBlanca);
+
+        destino.Should().Be(Login);
+    }
+
+    /// <summary>
+    /// LAS FORMAS CON LAS QUE SE INTENTA COLAR UN DESTINO AJENO. Cada línea es una de las maneras
+    /// conocidas de que una comprobación floja diga que sí.
+    /// </summary>
+    [Theory]
+    // Otro sitio, sin más.
+    [InlineData("https://malo.io/x")]
+    // El clásico del prefijo de cadena: empieza igual y es otro dominio.
+    [InlineData("https://alta.ejemplo.com.malo.io/x")]
+    // Y el mismo por el otro lado.
+    [InlineData("https://malo-alta.ejemplo.com.io/x")]
+    // Credenciales en la autoridad, para que un humano lea mal la barra de direcciones.
+    [InlineData("https://alta.ejemplo.com@malo.io/x")]
+    // Otro esquema: no es un sitio al que volver.
+    [InlineData("javascript:alert(1)")]
+    [InlineData("data:text/html,<h1>hola</h1>")]
+    // Protocolo-relativa: el navegador la resuelve como otro sitio.
+    [InlineData("//malo.io/x")]
+    // Relativa: no es un destino absoluto y no puede validarse contra un origen.
+    [InlineData("/ambassador-join")]
+    // La barra invertida, que unos analizadores normalizan y otros no.
+    [InlineData("https://alta.ejemplo.com\\@malo.io/x")]
+    [InlineData("/\\malo.io/x")]
+    // Partir la cabecera Location en dos.
+    [InlineData("https://alta.ejemplo.com/x\r\nLocation: https://malo.io")]
+    // Vacíos.
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public void DestinosQueNoSeAceptanNunca(string? returnUrl)
+    {
+        PortalSessionBounce
+            .IsAllowedReturnUrl(returnUrl, CentroDeNegocios.SignOutReturnUrlAllowList)
+            .Should().BeFalse();
+    }
+
+    /// <summary>El mismo anfitrión no basta: el origen es esquema, anfitrión y PUERTO.</summary>
+    [Theory]
+    [InlineData("http://alta.ejemplo.com/x",       "el esquema no es el mismo")]
+    [InlineData("https://alta.ejemplo.com:8443/x", "el puerto no es el mismo")]
+    public void ElOrigenSeComparaENTERO(string returnUrl, string porque)
+    {
+        PortalSessionBounce
+            .IsAllowedReturnUrl(returnUrl, CentroDeNegocios.SignOutReturnUrlAllowList)
+            .Should().BeFalse(porque);
+    }
+
+    /// <summary>Lo que sí se acepta, y por qué cada uno.</summary>
+    [Theory]
+    [InlineData("https://alta.ejemplo.com/")]
+    [InlineData("https://alta.ejemplo.com/ambassador-join")]
+    [InlineData("https://alta.ejemplo.com/ambassador-join/AMB-320189")]
+    [InlineData("https://alta.ejemplo.com/ambassador-join/AMB-320189?portal_session=1")]
+    // El esquema y el anfitrión no distinguen mayúsculas, y un navegador los manda como le apetece.
+    [InlineData("HTTPS://ALTA.EJEMPLO.COM/ambassador-join")]
+    public void DestinosQueSiSeAceptan(string returnUrl)
+    {
+        PortalSessionBounce
+            .IsAllowedReturnUrl(returnUrl, CentroDeNegocios.SignOutReturnUrlAllowList)
+            .Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Cuando la entrada de la lista lleva CAMINO, se compara por segmentos: un camino que empieza
+    /// con las mismas letras y sigue con otras no está por debajo de él.
+    /// </summary>
+    [Theory]
+    [InlineData("https://alta.ejemplo.com/alta",            true)]
+    [InlineData("https://alta.ejemplo.com/alta/AMB-320189", true)]
+    [InlineData("https://alta.ejemplo.com/altaajena",       false)]
+    [InlineData("https://alta.ejemplo.com/otra-cosa",       false)]
+    // Uri normaliza el escalado de directorios antes de que nadie lo compare.
+    [InlineData("https://alta.ejemplo.com/alta/../otra",    false)]
+    public void ConCaminoEnLaLista_SeComparaPorSegmentos(string returnUrl, bool admitido)
+    {
+        PortalSessionBounce
+            .IsAllowedReturnUrl(returnUrl, [$"{Alta}/alta"])
+            .Should().Be(admitido);
+    }
+
+    // ===============================================================================================
+    //  4. La marca del regreso: una vez por portal y nunca un bucle
+    // ===============================================================================================
+
+    /// <summary>Sin marca, no se ha visitado ningún portal todavía.</summary>
+    [Fact]
+    public void SinMarca_NoSeHaVisitadoNingunPortal() =>
+        PortalSessionBounce.CompletedSteps("?utm_source=evento", stepCount: 2).Should().Be(0);
+
+    /// <summary>Con marca, se sigue por donde iba.</summary>
+    [Theory]
+    [InlineData("?portal_session=1", 1)]
+    [InlineData("?portal_session=2", 2)]
+    [InlineData("?a=b&portal_session=1&c=d", 1)]
+    public void ConMarca_SeContinuaElRecorrido(string query, int esperado) =>
+        PortalSessionBounce.CompletedSteps(query, stepCount: 2).Should().Be(esperado);
+
+    /// <summary>
+    /// UNA MARCA FUERA DE RANGO VALE COMO SI NO HUBIERA NINGUNA. Sin acotarla, pegar
+    /// <c>?portal_session=99</c> a un enlace saltaría el cierre entero.
+    /// </summary>
+    [Theory]
+    [InlineData("?portal_session=99")]
+    [InlineData("?portal_session=-1")]
+    [InlineData("?portal_session=lo-que-sea")]
+    [InlineData("?portal_session=")]
+    public void UnaMarcaFueraDeRango_ValeComoSiNoHubieraNinguna(string query) =>
+        PortalSessionBounce.CompletedSteps(query, stepCount: 2).Should().Be(0);
+
+    /// <summary>
+    /// EL RECORRIDO TERMINA SIEMPRE. La marca solo sube y su techo es el número de portales: por eso
+    /// no hay bucle posible, pase lo que pase con las cookies al otro lado.
+    /// </summary>
+    [Fact]
+    public void ElRecorridoTermina_LaMarcaLlegaAlTecheYNoPasaDeAhi()
+    {
+        var url = "https://alta.ejemplo.com/ambassador-join/AMB-320189";
+
+        for (var paso = 0; paso < 2; paso++)
+        {
+            PortalSessionBounce.CompletedSteps(SoloLaQuery(url), stepCount: 2).Should().Be(paso);
+            url = PortalSessionBounce.WithStep(url, paso + 1);
+        }
+
+        PortalSessionBounce.CompletedSteps(SoloLaQuery(url), stepCount: 2).Should().Be(2,
+            "y al llegar aquí ya no queda ningún portal al que ir");
+    }
+
+    /// <summary>
+    /// LA MARCA SE PONE CONSERVANDO LO QUE YA TRAÍA LA DIRECCIÓN: el slug del patrocinador en el
+    /// camino y la query de la campaña por la que llegó.
+    /// </summary>
+    [Fact]
+    public void LaMarca_ConservaElPatrocinadorYLaQuery() =>
+        PortalSessionBounce
+            .WithStep("https://alta.ejemplo.com/ambassador-join/AMB-320189?utm_source=evento", 1)
+            .Should().Be(
+                "https://alta.ejemplo.com/ambassador-join/AMB-320189?utm_source=evento&portal_session=1");
+
+    /// <summary>
+    /// Y NO SE ACUMULA. Si cada vuelta añadiera la suya, a la tercera habría tres
+    /// <c>portal_session</c> en la misma dirección y mandaría la más vieja.
+    /// </summary>
+    [Fact]
+    public void LaMarca_SeReemplazaYNoSeAcumula() =>
+        PortalSessionBounce
+            .WithStep("https://alta.ejemplo.com/ambassador-join?portal_session=1&utm_source=evento", 2)
+            .Should().Be(
+                "https://alta.ejemplo.com/ambassador-join?utm_source=evento&portal_session=2");
+
+    /// <summary>El destino de vuelta viaja escapado, que es lo que lo deja llegar entero.</summary>
+    [Fact]
+    public void ElDestinoDeVuelta_ViajaEscapadoEnLaDireccionDeSalida() =>
+        PortalSessionBounce
+            .SignOutUrlWithReturn(
+                "https://portal.ejemplo.com/account/logout",
+                "https://alta.ejemplo.com/ambassador-join/AMB-320189?portal_session=1")
+            .Should().Be(
+                "https://portal.ejemplo.com/account/logout?returnUrl=" +
+                "https%3A%2F%2Falta.ejemplo.com%2Fambassador-join%2FAMB-320189%3Fportal_session%3D1");
+
+    // ===============================================================================================
+    //  Ayudas
+    // ===============================================================================================
+
+    private static string SoloLaQuery(string url)
+    {
+        var mark = url.IndexOf('?');
+        return mark < 0 ? string.Empty : url[mark..];
+    }
+
+    /// <summary>
+    /// La petición del rebote llegando al portal con la sesión de la persona anterior encima, y todo
+    /// lo que hace falta para que el cierre pueda ocurrir de verdad: el servicio de autenticación que
+    /// borra la cookie, el almacén de sesión con su entrada sembrada y un gateway apuntando a una API
+    /// falsa.
     ///
     /// El gateway se monta con el proveedor de token DE VERDAD
     /// (<see cref="HttpContextAccessTokenProvider"/>), no con uno de mentira: así la prueba del
@@ -416,15 +498,9 @@ public class CierreDeSesionAlAbrirElAltaTests
         public ApiFalsa             Api           { get; } = new();
         public AuthApiGateway       Gateway       { get; }
 
-        public MundoDePruebas(
-            string  ruta,
-            string? token,
-            string  acepta    = "text/html,application/xhtml+xml",
-            string  metodo    = "GET",
-            string  query     = "",
-            bool    conSesion = true)
+        public MundoDePruebas(string? token, bool conSesion = true)
         {
-            Contexto = Navegacion(ruta, token, metodo, acepta, conSesion, query);
+            Contexto = Navegacion(token, conSesion);
 
             Almacen = new PortalSessionTokens(
                 new AuthTokenRefresher(
@@ -448,56 +524,27 @@ public class CierreDeSesionAlAbrirElAltaTests
                 .BuildServiceProvider();
         }
 
-        /// <summary>A dónde se redirigió, o cadena vacía si no hubo redirección.</summary>
-        public string Destino => Contexto.Response.Headers.Location.ToString();
+        /// <summary>Llama a la salida del portal de verdad y devuelve a dónde mandó al navegador.</summary>
+        public async Task<string> SalirAsync(
+            string? returnUrl = null, string? reason = null, AuthPortalOptions? portal = null)
+        {
+            var resultado = await AuthEndpoints.LogoutAsync(
+                Contexto, Gateway, portal ?? CentroDeNegocios, Cookies, Almacen, reason, returnUrl);
+
+            await resultado.ExecuteAsync(Contexto);
+
+            return Contexto.Response.Headers.Location.ToString();
+        }
 
         public IReadOnlyList<string> CookiesEscritas() =>
             Contexto.Response.Headers.SetCookie.Select(c => c ?? string.Empty).ToList();
-
-        /// <summary>Corre el middleware del alta y dice si la petición llegó a la página.</summary>
-        public Task<bool> EjecutarAsync() => CorrerAsync(soloElDelAlta: true, alReves: false);
-
-        /// <summary>El orden REAL del portal: primero el del alta, después el de caducidad.</summary>
-        public Task<bool> EjecutarConLaTuberiaCompletaAsync() =>
-            CorrerAsync(soloElDelAlta: false, alReves: false);
-
-        /// <summary>El orden equivocado, para dejar por escrito lo que produce.</summary>
-        public Task<bool> EjecutarConLaTuberiaAlRevesAsync() =>
-            CorrerAsync(soloElDelAlta: false, alReves: true);
-
-        private async Task<bool> CorrerAsync(bool soloElDelAlta, bool alReves)
-        {
-            var llegoALaPagina = false;
-            RequestDelegate laPagina = _ => { llegoALaPagina = true; return Task.CompletedTask; };
-
-            RequestDelegate DelAlta(RequestDelegate siguiente) =>
-                new SignupSessionResetMiddleware(
-                    siguiente, CentroDeNegocios, Cookies, Almacen,
-                    NullLogger<SignupSessionResetMiddleware>.Instance).InvokeAsync;
-
-            RequestDelegate DeCaducidad(RequestDelegate siguiente) =>
-                new SessionExpiryMiddleware(
-                    siguiente, CentroDeNegocios, Almacen,
-                    NullLogger<SessionExpiryMiddleware>.Instance).InvokeAsync;
-
-            var tuberia = soloElDelAlta
-                ? DelAlta(laPagina)
-                : alReves
-                    ? DeCaducidad(DelAlta(laPagina))
-                    : DelAlta(DeCaducidad(laPagina));
-
-            await tuberia(Contexto);
-            return llegoALaPagina;
-        }
     }
 
     /// <summary>El identificador de la sesión sembrada, el mismo que lleva el claim de la cookie.</summary>
     private const string SesionSembrada = "la-sesion-de-la-persona-anterior";
 
-    /// <summary>Una navegación del navegador con la sesión que se le diga.</summary>
-    private static DefaultHttpContext Navegacion(
-        string ruta, string? token, string metodo, string acepta, bool conSesion,
-        string query = "")
+    /// <summary>La petición del rebote, con la sesión que se le diga.</summary>
+    private static DefaultHttpContext Navegacion(string? token, bool conSesion)
     {
         var contexto = new DefaultHttpContext();
 
@@ -518,10 +565,9 @@ public class CierreDeSesionAlAbrirElAltaTests
             contexto.User = new ClaimsPrincipal(new ClaimsIdentity(claims, "cookie"));
         }
 
-        contexto.Request.Method         = metodo;
-        contexto.Request.Path           = ruta;
-        contexto.Request.QueryString    = new QueryString(query);
-        contexto.Request.Headers.Accept = acepta;
+        contexto.Request.Method         = HttpMethods.Get;
+        contexto.Request.Path           = "/account/logout";
+        contexto.Request.Headers.Accept = "text/html,application/xhtml+xml";
 
         return contexto;
     }
@@ -600,8 +646,7 @@ public class CierreDeSesionAlAbrirElAltaTests
 
     // ── Tokens ──────────────────────────────────────────────────────────────────────────────────
 
-    private static string TokenVivo()     => Token(DateTime.UtcNow.AddMinutes(15));
-    private static string TokenCaducado() => Token(DateTime.UtcNow.AddMinutes(-1));
+    private static string TokenVivo() => Token(DateTime.UtcNow.AddMinutes(15));
 
     /// <summary>
     /// Un JWT sin firmar. Nada de este camino comprueba la firma —la comprobó la API al emitirlo—,
