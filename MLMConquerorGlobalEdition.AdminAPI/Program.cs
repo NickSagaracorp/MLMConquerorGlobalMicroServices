@@ -27,7 +27,7 @@ using IErrorTrackingService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.
 using ICurrentUserService   = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICurrentUserService;
 using IDateTimeProvider     = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IDateTimeProvider;
 using CacheService          = MLMConquerorGlobalEdition.SharedKernel.Server.Services.CacheService;
-using JwtService            = MLMConquerorGlobalEdition.AdminAPI.Services.JwtService;
+using MLMConquerorGlobalEdition.Authn;
 using MLMConquerorGlobalEdition.Notifications;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -112,7 +112,10 @@ builder.Services.AddScoped<IRecurringBillingPlanner, RecurringBillingPlanner>();
 builder.Services.AddPayoutServices();
 
 builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
-builder.Services.AddScoped<IJwtService, JwtService>();
+// AdminAPI ya NO tiene puerta de entrada: la única que firma tokens aquí es la impersonación
+// (StartImpersonationHandler), y el administrador que la usa llegó con un token emitido por
+// SignupAPI, que es donde vive el segundo factor.
+builder.Services.AddAuthnAccessTokens();
 builder.Services.AddScoped<IS3StorageService, S3StorageService>();
 
 // Cache backend — probe Redis at startup. Cache:Mode controls behavior on

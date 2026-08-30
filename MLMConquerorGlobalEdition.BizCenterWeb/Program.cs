@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Localization;
 using MLMConquerorGlobalEdition.BizCenterWeb.Components;
 using MLMConquerorGlobalEdition.BizCenterWeb.Middleware;
+using MLMConquerorGlobalEdition.ClientCore;
 using MLMConquerorGlobalEdition.SharedComponents.Extensions;
 using MLMConquerorGlobalEdition.SharedComponents.Server.Extensions;
 using MLMConquerorGlobalEdition.SharedComponents.Server.Services;

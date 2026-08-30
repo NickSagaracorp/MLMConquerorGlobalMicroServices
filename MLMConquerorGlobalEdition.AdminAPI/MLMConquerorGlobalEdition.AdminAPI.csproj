@@ -7,6 +7,8 @@
     <ProjectReference Include="..\MLMConquerorGlobalEdition.Repository\MLMConquerorGlobalEdition.Repository.csproj" />
     <ProjectReference Include="..\MLMConquerorGlobalEdition.Billing\MLMConquerorGlobalEdition.Billing.csproj" />
     <ProjectReference Include="..\MLMConquerorGlobalEdition.Notifications\MLMConquerorGlobalEdition.Notifications.csproj" />
+    <!-- JwtService: el emisor único de tokens de acceso. Aquí solo lo usa la impersonación. -->
+    <ProjectReference Include="..\MLMConquerorGlobalEdition.Authn\MLMConquerorGlobalEdition.Authn.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,30 +1,34 @@
 namespace MLMConquerorGlobalEdition.ClientCore;
 
 /// <summary>
-/// Las llamadas de la PUERTA con nombre propio: entrar, pedir el correo de recuperación y fijar la
-/// contraseña nueva.
+/// Las llamadas de la PUERTA con nombre propio: entrar, resolver el segundo factor, cerrar el
+/// enrolamiento, pedir el correo de recuperación y fijar la contraseña nueva.
 /// </summary>
 /// <remarks>
-/// POR QUÉ EXISTE. La ruta <c>api/v1/auth/login</c> —y las otras dos— iba camino de estar escrita
-/// tres veces: en la pantalla de BizCenterWeb, en AdminApp y en BizCenterApp. Una cadena copiada no
+/// POR QUÉ EXISTE. La ruta <c>api/v1/auth/login</c> —y las demás— iba camino de estar escrita tres
+/// veces: en las pantallas de los portales, en AdminApp y en BizCenterApp. Una cadena copiada no
 /// falla al compilar cuando la API renombra su ruta; falla en caliente, en un cliente, y meses
 /// después. Con la ruta en un solo sitio, un renombrado se hace una vez.
 ///
 /// SON MÉTODOS DE EXTENSIÓN Y NO UN SERVICIO NUEVO A PROPÓSITO. <see cref="AuthApiGateway"/> ya está
-/// registrado en los dos portales —lo registra <c>AddAuthSurface</c>— y en las MAUI lo estará por su
-/// propio cableado. Un servicio nuevo habría obligado a añadir un <c>AddScoped</c> en cada uno de los
-/// cuatro anfitriones, y a acordarse de hacerlo en el quinto. Una clase estática de extensiones no
-/// necesita cableado ninguno: quien ya tiene el gateway, ya tiene esto.
+/// registrado en los dos portales —lo registra <c>AddAuthSurface</c>— y en las MAUI por su propio
+/// cableado. Un servicio nuevo habría obligado a añadir un <c>AddScoped</c> en cada uno de los
+/// cuatro anfitriones, y a acordarse de hacerlo en el quinto.
+///
+/// LAS RUTAS DEL SEGUNDO FACTOR YA ESTÁN AQUÍ. Estaban escritas a mano dentro de
+/// <c>AuthEndpoints</c>, con la nota de que se moverían el día que hubiera un segundo cliente que
+/// las llamara de verdad. Ese día llegó con AdminApp: la aplicación de administración dejó de tener
+/// su propio login en AdminAPI y ahora entra por esta misma puerta, segundo factor incluido.
+///
+/// LAS QUE EMITEN TOKENS VAN POR <c>...ForTokensAsync</c>. El refresh token NO viene en el cuerpo:
+/// la API lo vacía a propósito y lo entrega en la cabecera <c>Set-Cookie</c>. Quien llame al login,
+/// a la verificación del código o a la confirmación del enrolamiento con el método corriente se
+/// queda con la sesión a medias —token de acceso sí, con qué renovarlo no— y no se entera hasta que
+/// caduca. Por eso esos tres NO tienen variante corriente.
 ///
 /// AQUÍ NO SE DECIDE NADA DE INTERFAZ. Se devuelve el <see cref="ApiOutcome{T}"/> tal cual lo da el
 /// gateway, con su código de error, porque quién enseña qué es cosa de la pantalla —que es la que
 /// puede traducirlo— y porque el mismo fallo se cuenta distinto en un portal y en el otro.
-///
-/// LO QUE NO ESTÁ AQUÍ: las rutas que solo usa <c>AuthEndpoints</c> del lado servidor
-/// (<c>two-factor/verify</c>, <c>two-factor/resend</c>, <c>two-factor/enroll/*</c>). Se quedan
-/// escritas allí hasta que haya un segundo cliente que las llame de verdad; adelantarlas aquí sin
-/// que aquel archivo las tome dejaría la ruta escrita en DOS sitios en vez de en uno, que es
-/// exactamente lo que esta clase existe para evitar.
 /// </remarks>
 public static class AuthApiGatewayExtensions
 {
@@ -35,6 +39,18 @@ public static class AuthApiGatewayExtensions
     /// <summary>Validación de credenciales. Anónima: es justo lo que ocurre antes de haber sesión.</summary>
     public const string LoginPath = "api/v1/auth/login";
 
+    /// <summary>Canje del código de seis dígitos junto con el reto que emitió el login.</summary>
+    public const string TwoFactorVerifyPath = "api/v1/auth/two-factor/verify";
+
+    /// <summary>Reenvío del código. Devuelve un reto NUEVO que sustituye al anterior.</summary>
+    public const string TwoFactorResendPath = "api/v1/auth/two-factor/resend";
+
+    /// <summary>Apertura del enrolamiento TOTP: clave compartida, URI <c>otpauth://</c> y su QR.</summary>
+    public const string TwoFactorEnrollBeginPath = "api/v1/auth/two-factor/enroll/begin";
+
+    /// <summary>Cierre del enrolamiento con el primer código de la aplicación autenticadora.</summary>
+    public const string TwoFactorEnrollConfirmPath = "api/v1/auth/two-factor/enroll/confirm";
+
     /// <summary>Petición del correo de recuperación.</summary>
     public const string ForgotPasswordPath = "api/v1/auth/forgot-password";
 
@@ -42,7 +58,7 @@ public static class AuthApiGatewayExtensions
     public const string ResetPasswordPath = "api/v1/auth/reset-password";
 
     // -----------------------------------------------------------------------------------------
-    //  Las llamadas
+    //  Las llamadas que EMITEN TOKENS. Todas devuelven además el refresh token del Set-Cookie.
     // -----------------------------------------------------------------------------------------
 
     /// <summary>
@@ -51,14 +67,60 @@ public static class AuthApiGatewayExtensions
     /// reto —ver <see cref="AuthTokensResult"/>—, y quien llama tiene que llevar al usuario a la
     /// pantalla que corresponda en vez de dar por hecho que ya está dentro.
     /// </summary>
-    public static Task<ApiOutcome<AuthTokensResult>> LoginAsync(
+    public static Task<(ApiOutcome<AuthTokensResult> Outcome, string? RefreshToken)> LoginForTokensAsync(
         this AuthApiGateway api,
         string              email,
         string              password,
         CancellationToken   ct = default) =>
-        api.CallAsync<AuthTokensResult>(
+        api.CallForTokensAsync<AuthTokensResult>(
             HttpMethod.Post, LoginPath,
-            new { Email = email, Password = password },
+            new { Email = email, Password = password }, ct);
+
+    /// <summary>
+    /// Canjea el código de seis dígitos y el reto por los tokens de verdad.
+    /// </summary>
+    /// <remarks>
+    /// El reto NO lo escribe el usuario: lo guarda quien llama —cookie HttpOnly en los portales,
+    /// almacenamiento seguro en las MAUI— desde que lo emitió el login. Lo único que aporta la
+    /// pantalla es el código.
+    /// </remarks>
+    public static Task<(ApiOutcome<AuthTokensResult> Outcome, string? RefreshToken)> VerifyTwoFactorForTokensAsync(
+        this AuthApiGateway api,
+        string              challengeToken,
+        string              code,
+        CancellationToken   ct = default) =>
+        api.CallForTokensAsync<AuthTokensResult>(
+            HttpMethod.Post, TwoFactorVerifyPath,
+            new { ChallengeToken = challengeToken, Code = code }, ct);
+
+    /// <summary>
+    /// Cierra el enrolamiento con el primer código de la aplicación autenticadora. La API deja al
+    /// usuario dentro sin pedirle que vuelva a iniciar sesión, así que esto también emite tokens.
+    /// </summary>
+    public static Task<(ApiOutcome<AuthTokensResult> Outcome, string? RefreshToken)> ConfirmEnrollmentForTokensAsync(
+        this AuthApiGateway api,
+        string              enrollmentToken,
+        string              code,
+        CancellationToken   ct = default) =>
+        api.CallForTokensAsync<AuthTokensResult>(
+            HttpMethod.Post, TwoFactorEnrollConfirmPath,
+            new { EnrollmentToken = enrollmentToken, Code = code }, ct);
+
+    // -----------------------------------------------------------------------------------------
+    //  Las que no emiten tokens
+    // -----------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Reenvía el código. La API emite un reto NUEVO: quien llama tiene que sustituir el que
+    /// guardaba por el que vuelve aquí, o el siguiente canje irá con uno ya gastado.
+    /// </summary>
+    public static Task<ApiOutcome<AuthTokensResult>> ResendTwoFactorAsync(
+        this AuthApiGateway api,
+        string              challengeToken,
+        CancellationToken   ct = default) =>
+        api.CallAsync<AuthTokensResult>(
+            HttpMethod.Post, TwoFactorResendPath,
+            new { ChallengeToken = challengeToken },
             authenticated: false, ct);
 
     /// <summary>
@@ -104,17 +166,31 @@ public static class AuthApiGatewayExtensions
 /// Lo que devuelven los endpoints de autenticación, recortado a lo que un cliente necesita mirar.
 /// </summary>
 /// <remarks>
-/// Las tres respuestas posibles de <see cref="AuthApiGatewayExtensions.LoginAsync"/> se distinguen
-/// por banderas y no por tipos distintos porque así llegan de la API. Hay que mirarlas EN ESTE
-/// ORDEN —enrolamiento, segundo factor, sesión— y ramificar ANTES de tocar
+/// Las tres respuestas posibles de <see cref="AuthApiGatewayExtensions.LoginForTokensAsync"/> se
+/// distinguen por banderas y no por tipos distintos porque así llegan de la API. Hay que mirarlas EN
+/// ESTE ORDEN —enrolamiento, segundo factor, sesión— y ramificar ANTES de tocar
 /// <see cref="AccessToken"/>: en las dos primeras viene vacío, y leerlo como si fuera un JWT es lo
 /// que hacía que unas credenciales buenas acabasen en "credenciales inválidas".
+///
+/// ES EL ÚNICO REGISTRO DE ESTA FORMA EN LA SOLUCIÓN. <c>AuthEndpoints</c> tenía su propia copia
+/// privada, y antes de eso el centro de negocios tenía una tercera SIN
+/// <see cref="RequiresEnrollment"/> ni <see cref="EnrollmentToken"/>: el día que un rol de miembro
+/// entrara en <c>Auth:TwoFactor:MandatoryRoles</c>, aquel portal habría mandado al usuario a
+/// <c>/login?error=invalid</c> sin explicación. Con un solo registro eso no puede volver a pasar en
+/// un cliente y no en otro.
 /// </remarks>
 public sealed record AuthTokensResult
 {
     /// <summary>El JWT de la sesión. Vacío mientras haya un reto por resolver.</summary>
     public string AccessToken { get; init; } = string.Empty;
 
+    /// <summary>
+    /// EXISTE EN EL CONTRATO Y SIEMPRE LLEGA VACÍO. La API lo pone a cadena vacía antes de
+    /// responder (<c>response.RefreshToken = string.Empty</c>) y entrega el token de verdad en la
+    /// cabecera <c>Set-Cookie</c>. Se deja declarado para que quien lea este registro con el de la
+    /// API delante vea que no falta nada, pero leerlo de aquí es quedarse sin refresco y no
+    /// enterarse hasta el segundo refresco; el bueno lo traen los <c>...ForTokensAsync</c>.
+    /// </summary>
     public string RefreshToken { get; init; } = string.Empty;
 
     /// <summary>Caducidad del token. Del protocolo, así que va en UTC.</summary>

@@ -81,6 +81,9 @@
     </ItemGroup>
 
     <ItemGroup>
+        <!-- AuthApiGateway y sus extensiones: la puerta a SignupAPI. Llegaba de rebote por
+             SharedComponents; se declara porque este proyecto la usa directamente. -->
+        <ProjectReference Include="..\MLMConquerorGlobalEdition.ClientCore\MLMConquerorGlobalEdition.ClientCore.csproj" />
         <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedComponents\MLMConquerorGlobalEdition.SharedComponents.csproj" />
         <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel\MLMConquerorGlobalEdition.SharedKernel.csproj" />
     </ItemGroup>

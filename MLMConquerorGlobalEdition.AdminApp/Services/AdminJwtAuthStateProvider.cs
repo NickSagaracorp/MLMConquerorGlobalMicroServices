@@ -54,10 +54,26 @@ public class AdminJwtAuthStateProvider : AuthenticationStateProvider
         }
     }
 
-    public async Task NotifyLoginAsync(string accessToken, string refreshToken)
+    /// <summary>
+    /// Guarda la sesión recién emitida por SignupAPI.
+    /// </summary>
+    /// <param name="refreshToken">
+    /// El que venía en la cabecera <c>Set-Cookie</c> de la respuesta, que es donde la API lo
+    /// entrega —en el cuerpo lo manda vacío a propósito—. Puede ser null si esa cabecera no llegó;
+    /// se admite en vez de reventar porque quedarse sin refresco no es motivo para tirar una sesión
+    /// que sí se emitió: el token de acceso vale sus quince minutos y luego habrá que volver a
+    /// entrar. Antes se guardaba <c>response.Data.RefreshToken</c> del cuerpo, que siempre era
+    /// cadena vacía, así que esta aplicación nunca tuvo con qué renovar nada.
+    /// </param>
+    public async Task NotifyLoginAsync(string accessToken, string? refreshToken)
     {
         await SecureStorage.SetAsync(AdminTokenKey, accessToken);
-        await SecureStorage.SetAsync(AdminRefreshTokenKey, refreshToken);
+
+        if (!string.IsNullOrWhiteSpace(refreshToken))
+            await SecureStorage.SetAsync(AdminRefreshTokenKey, refreshToken!);
+        else
+            SecureStorage.Remove(AdminRefreshTokenKey);
+
         NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
     }
 

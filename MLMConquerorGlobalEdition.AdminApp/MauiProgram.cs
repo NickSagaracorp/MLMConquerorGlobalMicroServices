@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.AdminApp.Services;
+using MLMConquerorGlobalEdition.ClientCore;
 using MLMConquerorGlobalEdition.SharedComponents.Extensions;
 
 namespace MLMConquerorGlobalEdition.AdminApp;
@@ -29,6 +30,28 @@ public static class MauiProgram
         builder.Services.AddScoped<AdminJwtAuthStateProvider>();
         builder.Services.AddScoped<AuthenticationStateProvider>(sp =>
             sp.GetRequiredService<AdminJwtAuthStateProvider>());
+
+        // ── LA PUERTA ────────────────────────────────────────────────────────────────────────
+        // Esta aplicación NO tiene login propio. Entra por SignupAPI, que es la única puerta de
+        // la solución y la única que sabe de segundo factor. Hasta ahora posteaba credenciales a
+        // AdminAPI, que las comprobaba y devolvía un token con los roles dentro sin preguntar por
+        // el segundo factor: era una puerta paralela que abría el panel entero con solo la
+        // contraseña. Ese endpoint ya no existe.
+        //
+        // El cliente HTTP y su UseCookies=false los pone AddAuthApiClient, que vive en ClientCore
+        // para que los cuatro anfitriones —dos portales y dos MAUI— monten exactamente el mismo.
+        // Sin esa opción, el manejador se tragaría el Set-Cookie del refresh token y la sesión
+        // moriría al caducar el JWT.
+        //
+        // TODO: dirección de SignupAPI desde configuración antes de producción, igual que las de
+        // AdminAPI de más abajo.
+        builder.Services.AddAuthApiClient("https://localhost:7005");
+        builder.Services.AddScoped<IAccessTokenProvider, SecureStorageAccessTokenProvider>();
+        builder.Services.AddScoped<AuthApiGateway>();
+
+        // El reto del segundo factor mientras se resuelve. Singleton porque tiene que sobrevivir a
+        // la navegación entre la pantalla de entrada y la del código, que son dos componentes.
+        builder.Services.AddSingleton<AdminLoginChallenge>();
 
         // Shared components (IViewContextService, IThemeService)
         builder.Services.AddSharedComponents();

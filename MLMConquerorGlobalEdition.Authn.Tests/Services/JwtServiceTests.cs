@@ -2,9 +2,9 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using Microsoft.Extensions.Configuration;
-using MLMConquerorGlobalEdition.SignupAPI.Services;
+using MLMConquerorGlobalEdition.Authn.Services;
 
-namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Services;
+namespace MLMConquerorGlobalEdition.Authn.Tests.Services;
 
 public class JwtServiceTests
 {

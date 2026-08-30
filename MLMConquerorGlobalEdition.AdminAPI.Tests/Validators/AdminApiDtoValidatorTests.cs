@@ -1,6 +1,4 @@
 using FluentValidation.TestHelper;
-using MLMConquerorGlobalEdition.AdminAPI.Controllers;
-using MLMConquerorGlobalEdition.AdminAPI.Controllers.Validators;
 using MLMConquerorGlobalEdition.AdminAPI.DTOs.Commissions;
 using MLMConquerorGlobalEdition.AdminAPI.DTOs.Commissions.Validators;
 using MLMConquerorGlobalEdition.AdminAPI.DTOs.CorporateEvents;
@@ -34,25 +32,10 @@ using MLMConquerorGlobalEdition.Domain.Entities.Support;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Tests.Validators;
 
-public class AdminLoginRequestValidatorTests
-{
-    private readonly AdminLoginRequestValidator _v = new();
-
-    [Fact]
-    public void Validate_WhenValid_Passes()
-        => _v.TestValidate(new AuthController.LoginRequest("a@b.com", "anything"))
-            .ShouldNotHaveAnyValidationErrors();
-
-    [Fact]
-    public void Validate_WhenEmailMalformed_Fails()
-        => _v.TestValidate(new AuthController.LoginRequest("nope", "x"))
-            .ShouldHaveValidationErrorFor(x => x.Email);
-
-    [Fact]
-    public void Validate_WhenPasswordEmpty_Fails()
-        => _v.TestValidate(new AuthController.LoginRequest("a@b.com", ""))
-            .ShouldHaveValidationErrorFor(x => x.Password);
-}
+// AdminLoginRequestValidatorTests vivía aquí y se fue con lo que validaba: AdminAPI ya no tiene
+// AuthController.LoginRequest porque ya no tiene login. Quien busque la validación del correo y la
+// contraseña de la puerta la encontrará en SignupAPI (LoginValidator), que es la única que queda.
+// La prueba de que no vuelva a aparecer una segunda puerta está en PuertaUnicaDe2FATests.
 
 public class CreateCommissionRequestValidatorTests
 {

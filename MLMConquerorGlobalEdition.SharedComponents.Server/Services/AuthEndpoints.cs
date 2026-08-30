@@ -1,4 +1,4 @@
-using System.IdentityModel.Tokens.Jwt;
+﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -98,10 +98,8 @@ public static class AuthEndpoints
     {
         form ??= new();
 
-        var (outcome, refreshToken) = await api.CallForTokensAsync<AuthTokens>(
-            HttpMethod.Post, "api/v1/auth/login",
-            new { Email = form.Email ?? string.Empty, Password = form.Password ?? string.Empty },
-            ct);
+        var (outcome, refreshToken) = await api.LoginForTokensAsync(
+            form.Email ?? string.Empty, form.Password ?? string.Empty, ct);
 
         if (!outcome.Success || outcome.Data is null)
             return Failure(portal.LoginPage, LoginErrorOf(outcome.ErrorCode));
@@ -157,9 +155,8 @@ public static class AuthEndpoints
         if (!IsWellFormedCode(form.Code))
             return Failure(portal.TwoFactorPage, CodeInvalid);
 
-        var (outcome, refreshToken) = await api.CallForTokensAsync<AuthTokens>(
-            HttpMethod.Post, "api/v1/auth/two-factor/verify",
-            new { ChallengeToken = challengeToken, Code = form.Code ?? string.Empty }, ct);
+        var (outcome, refreshToken) = await api.VerifyTwoFactorForTokensAsync(
+            challengeToken!, form.Code ?? string.Empty, ct);
 
         if (!outcome.Success || outcome.Data is null)
         {
@@ -188,9 +185,7 @@ public static class AuthEndpoints
         if (string.IsNullOrWhiteSpace(challengeToken))
             return SessionExpired(httpContext, portal, challengeCookies);
 
-        var outcome = await api.CallAsync<AuthTokens>(
-            HttpMethod.Post, "api/v1/auth/two-factor/resend",
-            new { ChallengeToken = challengeToken }, authenticated: false, ct);
+        var outcome = await api.ResendTwoFactorAsync(challengeToken!, ct);
 
         if (!outcome.Success || outcome.Data is null)
         {
@@ -228,9 +223,8 @@ public static class AuthEndpoints
         if (!IsWellFormedCode(form.Code))
             return Failure(portal.EnrollAuthenticatorPage, CodeInvalid);
 
-        var (outcome, refreshToken) = await api.CallForTokensAsync<AuthTokens>(
-            HttpMethod.Post, "api/v1/auth/two-factor/enroll/confirm",
-            new { EnrollmentToken = enrollmentToken, Code = form.Code ?? string.Empty }, ct);
+        var (outcome, refreshToken) = await api.ConfirmEnrollmentForTokensAsync(
+            enrollmentToken!, form.Code ?? string.Empty, ct);
 
         if (!outcome.Success || outcome.Data is null)
         {
@@ -540,37 +534,8 @@ public static class AuthEndpoints
     /// <summary>El formulario solo aporta el código; el reto vive en la cookie.</summary>
     public record CodeForm(string? Code = null);
 
-    /// <summary>
-    /// La respuesta de los cuatro endpoints de autenticación, recortada a lo que se usa aquí.
-    /// </summary>
-    /// <remarks>
-    /// El centro de negocios tenía su propia copia de este registro SIN
-    /// <see cref="RequiresEnrollment"/> ni <see cref="EnrollmentToken"/>. El día que un rol de
-    /// miembro entrara en <c>Auth:TwoFactor:MandatoryRoles</c>, la API habría respondido
-    /// <c>RequiresEnrollment=true</c> con el AccessToken vacío y ese portal habría mandado al
-    /// usuario a <c>/login?error=invalid</c> sin explicación ninguna. Con un solo registro, eso ya
-    /// no puede pasar en un portal y no en el otro.
-    /// </remarks>
-    private sealed record AuthTokens
-    {
-        public string   AccessToken        { get; init; } = string.Empty;
-
-        /// <summary>
-        /// EXISTE EN EL CONTRATO Y SIEMPRE LLEGA VACÍO. La API lo pone a cadena vacía antes de
-        /// responder (<c>response.RefreshToken = string.Empty</c>) y entrega el token de verdad en
-        /// la cabecera <c>Set-Cookie</c>. Se deja declarado para que quien lea este registro con el
-        /// de la API delante vea que no falta nada, pero leerlo de aquí es quedarse sin refresco y
-        /// no enterarse hasta el segundo refresco; el bueno lo trae
-        /// <see cref="AuthApiGateway.CallForTokensAsync{T}"/>.
-        /// </summary>
-        public string   RefreshToken       { get; init; } = string.Empty;
-
-        public DateTime TokenExpiry        { get; init; }
-        public bool     RequiresTwoFactor  { get; init; }
-        public string?  ChallengeToken     { get; init; }
-        public bool     RequiresEnrollment { get; init; }
-        public string?  EnrollmentToken    { get; init; }
-        public string?  Channel            { get; init; }
-        public string?  MaskedTarget       { get; init; }
-    }
+    // El registro con la forma de la respuesta ya no está aquí: es AuthTokensResult, en
+    // ClientCore, el mismo que usan las MAUI. Tener una copia privada en este archivo era la
+    // tercera de esa misma forma en la solución, y la anterior se quedó sin RequiresEnrollment sin
+    // que nada se pusiera rojo.
 }

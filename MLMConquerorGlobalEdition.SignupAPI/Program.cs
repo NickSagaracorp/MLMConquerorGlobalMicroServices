@@ -117,7 +117,7 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Billing.Services.Recurring.
                             MLMConquerorGlobalEdition.Billing.Services.Recurring.RecurringBillingEnrollmentService>();
 
 // JWT Service
-builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddAuthnAccessTokens();
 
 // Librería Authn: challenge firmado, enrolamiento TOTP y la orquestación de los tres
 // canales de 2FA. Todo el camino de dos factores —login, verificación, reenvío y

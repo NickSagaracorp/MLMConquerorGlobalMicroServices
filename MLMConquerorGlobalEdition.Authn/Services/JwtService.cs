@@ -6,9 +6,36 @@ using Microsoft.IdentityModel.Tokens;
 using MLMConquerorGlobalEdition.SharedKernel.Configuration;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
-namespace MLMConquerorGlobalEdition.SignupAPI.Services;
+namespace MLMConquerorGlobalEdition.Authn.Services;
 
-public class JwtService : IJwtService
+/// <summary>
+/// El emisor de TOKENS DE ACCESO. Uno solo para toda la solución.
+/// </summary>
+/// <remarks>
+/// POR QUÉ ESTÁ AQUÍ Y NO EN CADA API. Hasta ahora había dos copias —una en AdminAPI y otra en
+/// SignupAPI— idénticas salvo por el espaciado y por un claim de idioma que solo tenía la de
+/// SignupAPI. Dos copias de la clase que FIRMA las credenciales de la casa son dos sitios donde
+/// arreglar el mismo fallo y, peor, dos sitios que pueden divergir sin que nada se ponga rojo:
+/// la copia de AdminAPI ya había perdido el claim <c>default_language</c> y nadie se enteró.
+///
+/// POR QUÉ EN Authn Y NO EN SharedKernel NI EN SharedKernel.Server. En SharedKernel no puede
+/// estar: ese proyecto es la base de ClientCore y de las MAUI, y el código que carga una llave
+/// PRIVADA no tiene nada que hacer dentro de una aplicación de móvil. En SharedKernel.Server
+/// tampoco: ese proyecto existe para lo que necesita un anfitrión web —HttpContext,
+/// DataProtection, Redis, la tubería de MediatR— y firmar un JWT no necesita ninguna de esas
+/// cosas; su propio .csproj pide comprobarlo antes de añadir nada.
+///
+/// Su sitio es Authn, que ya es la biblioteca de autenticación de la solución y ya firma con esta
+/// misma llave RSA el reto del segundo factor (<see cref="ChallengeTokenService"/>). Con las dos
+/// clases en el mismo proyecto, la invariante que las separa —el reto lleva la audiencia derivada
+/// de <c>ChallengeAudience</c> y el token de acceso lleva la de verdad, que es lo único que impide
+/// que un reto valga como sesión— se lee de un vistazo en vez de estar repartida entre dos
+/// ensamblados.
+///
+/// Authn no referencia ASP.NET Core, así que traerlo aquí no toca las pruebas de invariante de
+/// ClientCore ni de SharedComponents.
+/// </remarks>
+public sealed class JwtService : IJwtService
 {
     private readonly IConfiguration _config;
     private readonly string         _issuer;
@@ -52,9 +79,9 @@ public class JwtService : IJwtService
         if (!string.IsNullOrEmpty(impersonatedBy))
             claims.Add(new Claim("impersonatedBy", impersonatedBy));
 
-        // Default language preference — propagated to the BizCenterWeb cookie
-        // sign-in handler so a fresh-device login lands on the user's preferred
-        // language without an extra round-trip to /profile.
+        // Idioma preferido — lo propaga el manejador de la cookie de sesión de BizCenterWeb para
+        // que un inicio de sesión en un dispositivo nuevo caiga en el idioma del usuario sin una
+        // vuelta extra a /profile.
         if (!string.IsNullOrEmpty(defaultLanguage))
             claims.Add(new Claim("default_language", defaultLanguage));
 

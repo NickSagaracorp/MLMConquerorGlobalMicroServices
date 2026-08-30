@@ -68,36 +68,9 @@ public static class AuthSurfaceExtensions
         return services;
     }
 
-    /// <summary>
-    /// El cliente HTTP con el que los dos portales hablan con SignupAPI.
-    /// </summary>
-    /// <param name="baseAddress">La dirección de SignupAPI, que sale de la configuración del portal.</param>
-    /// <remarks>
-    /// ESTABA EN LOS DOS <c>Program.cs</c> COMO UN <c>AddHttpClient</c> A SECAS, y así ya no puede
-    /// estar: este cliente lleva ahora refresh tokens, y con las cookies del manejador encendidas
-    /// —que es como vienen por defecto— eso es una fuga entre usuarios.
-    ///
-    /// EL PROBLEMA, en concreto. <c>IHttpClientFactory</c> construye UN manejador primario por
-    /// cliente con nombre y lo reutiliza para TODAS las llamadas de TODOS los usuarios.
-    /// <c>HttpClientHandler.UseCookies</c> viene en <c>true</c>, así que ese manejador tiene un
-    /// <c>CookieContainer</c> COMPARTIDO: el <c>Set-Cookie</c> con el que SignupAPI entrega el
-    /// refresh token de quien acaba de entrar se guardaría ahí, y saldría enganchado en la siguiente
-    /// llamada de cualquier otro usuario. Además se sumaría a la cabecera <c>Cookie</c> que la
-    /// renovación pone a mano, mandando dos refresh tokens distintos en la misma petición.
-    ///
-    /// Con <c>UseCookies = false</c> el manejador no guarda ni reenvía nada, y cada llamada lleva
-    /// exactamente el token que quien la hace le puso. En un navegador esto no se decide; aquí sí,
-    /// y hay que decidirlo bien.
-    ///
-    /// Se registra por aquí y no en cada <c>Program.cs</c> por lo mismo que el resto de esta
-    /// superficie: es una decisión de seguridad que no se ve desde la línea que la copia.
-    /// </remarks>
-    public static IHttpClientBuilder AddAuthApiClient(
-        this IServiceCollection services, string baseAddress) =>
-        services
-            .AddHttpClient(AuthApiGateway.HttpClientName, client =>
-            {
-                client.BaseAddress = new Uri(baseAddress);
-            })
-            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseCookies = false });
+    // AddAuthApiClient ya no está aquí: se bajó a ClientCore
+    // (MLMConquerorGlobalEdition.ClientCore.AuthApiClientRegistration) porque las MAUI necesitan
+    // exactamente el mismo cliente —con UseCookies = false, que es lo que deja leer el refresh
+    // token del Set-Cookie— y no pueden referenciar este proyecto. Los Program.cs de los dos
+    // portales lo siguen llamando igual, con un `using MLMConquerorGlobalEdition.ClientCore;`.
 }
