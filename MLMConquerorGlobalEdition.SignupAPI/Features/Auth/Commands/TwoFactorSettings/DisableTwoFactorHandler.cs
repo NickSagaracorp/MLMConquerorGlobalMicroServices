@@ -27,6 +27,12 @@ namespace MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.TwoFactorSe
 /// olvida: dejar la clave viva significa que la entrada que el usuario tiene en su teléfono
 /// —posiblemente en un aparato que ya no controla— seguiría siendo válida en cuanto volviera a
 /// activar el 2FA, cuando él cree que la desactivó y la dio por muerta.
+///
+/// <b>Y SE REVOCA LA SESIÓN VIVA.</b> Apagar el segundo factor cambia el juego de credenciales con
+/// las que se entra a esta cuenta, igual que cambiar la contraseña, así que se aplica la misma
+/// regla que <c>ChangePasswordHandler</c> y por el mismo motivo: quitar un factor no puede dejar
+/// atrás un refresco de treinta días emitido cuando ese factor todavía protegía la cuenta. Dónde
+/// está la línea entre lo que revoca y lo que no, en <see cref="SessionRevocation"/>.
 /// </remarks>
 public class DisableTwoFactorHandler : IRequestHandler<DisableTwoFactorCommand, Result<bool>>
 {
@@ -72,10 +78,13 @@ public class DisableTwoFactorHandler : IRequestHandler<DisableTwoFactorCommand, 
         // el 2FA sin re-enrolar arrancaría apuntando a un factor que no existe. El correo siempre
         // está —es el que identifica la cuenta—, así que ahí vuelve.
         if (user.PreferredTwoFactorChannel == TwoFactorChannel.Authenticator)
-        {
             user.PreferredTwoFactorChannel = TwoFactorChannel.Email;
-            await _userManager.UpdateAsync(user);
-        }
+
+        // Un solo UpdateAsync para las dos cosas: el canal de arriba y la revocación. Separarlos
+        // haría dos escrituras sobre la misma fila para nada, y la revocación tiene que ocurrir
+        // salga o no el canal por esa rama.
+        user.RevokeLiveSessions();
+        await _userManager.UpdateAsync(user);
 
         return Result<bool>.Success(true);
     }

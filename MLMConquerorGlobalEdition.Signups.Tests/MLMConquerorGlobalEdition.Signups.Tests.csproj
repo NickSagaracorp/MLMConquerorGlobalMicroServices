@@ -34,6 +34,11 @@
          el de la superficie de alta, y porque el rebote solo tiene sentido leído junto a lo que
          protege: un alta que se guarda encima de la sesión de otra persona. -->
     <ProjectReference Include="..\MLMConquerorGlobalEdition.Signups\MLMConquerorGlobalEdition.Signups.csproj" />
+    <!-- SharedAPICenter entra por una sola prueba: es el otro anfitrión que NO registra
+         autenticación (ver ConfiguracionEnganosaTests). Los dos comparten el mismo riesgo —un
+         [Authorize] añadido ahí no tendría con qué validar nada— y la prueba que lo vigila tiene
+         que poder mirar los dos ensamblados a la vez. -->
+    <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedAPICenter\MLMConquerorGlobalEdition.SharedAPICenter.csproj" />
   </ItemGroup>
 
 </Project>

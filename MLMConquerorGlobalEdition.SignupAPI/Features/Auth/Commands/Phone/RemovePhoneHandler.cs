@@ -7,6 +7,13 @@ using MLMConquerorGlobalEdition.SharedKernel;
 namespace MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Phone;
 
 /// <summary>Da de baja el teléfono del canal SMS del 2FA.</summary>
+/// <remarks>
+/// <b>Revoca la sesión viva</b>, como su simétrico <c>VerifyPhoneHandler</c>: quitar un factor
+/// cambia la postura de seguridad de la cuenta igual que añadirlo, y dejar vivo un refresco de
+/// treinta días emitido cuando ese factor todavía estaba puesto es dejar atrás justo la sesión de
+/// la que uno se está protegiendo al retirar un teléfono que ya no controla. Dónde está la línea,
+/// en <see cref="SessionRevocation"/>.
+/// </remarks>
 public class RemovePhoneHandler : IRequestHandler<RemovePhoneCommand, Result<bool>>
 {
     private readonly UserManager<ApplicationUser> _userManager;
@@ -35,6 +42,7 @@ public class RemovePhoneHandler : IRequestHandler<RemovePhoneCommand, Result<boo
         if (user.PreferredTwoFactorChannel == TwoFactorChannel.Sms)
             user.PreferredTwoFactorChannel = TwoFactorChannel.Email;
 
+        user.RevokeLiveSessions();
         await _userManager.UpdateAsync(user);
 
         return Result<bool>.Success(true);

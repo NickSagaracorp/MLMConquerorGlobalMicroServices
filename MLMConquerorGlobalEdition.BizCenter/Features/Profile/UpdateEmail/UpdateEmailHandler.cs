@@ -11,6 +11,24 @@ using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Features.Profile.UpdateEmail;
 
+/// <summary>
+/// Cambia la dirección de correo de la cuenta del miembro (y su nombre de usuario, que la refleja).
+/// </summary>
+/// <remarks>
+/// <b>REVOCA LA SESIÓN VIVA</b>, y de todas las operaciones de esta familia es la que más lo
+/// necesita: el correo de una cuenta no es un dato de contacto. Es a la vez el identificador con el
+/// que se inicia sesión, el destino del enlace de recuperación de contraseña y el canal de segundo
+/// factor que SIEMPRE está disponible —el único que no se puede quitar—. Cambiarlo reapunta las tres
+/// cosas a la vez.
+///
+/// Sin revocar, una sesión robada se convertía en propiedad permanente de la cuenta: cambiar el
+/// correo aquí y pedir después un restablecimiento de contraseña deja al dueño legítimo fuera de su
+/// propia cuenta, y el segundo factor por correo llegando a otro buzón.
+///
+/// LO QUE SIGUE SIN ESTAR, y se deja para decisión del dueño porque cambia el contrato de la
+/// pantalla: este endpoint NO pide la contraseña actual, al contrario que el cambio de contraseña
+/// que vive al lado. Revocar cierra la ventana pero no impide el cambio.
+/// </remarks>
 public class UpdateEmailHandler : IRequestHandler<UpdateEmailCommand, Result<bool>>
 {
     private readonly AppDbContext                 _db;
@@ -64,6 +82,9 @@ public class UpdateEmailHandler : IRequestHandler<UpdateEmailCommand, Result<boo
 
         // Username often mirrors the email — keep it in sync.
         await _userManager.SetUserNameAsync(user, newEmail);
+
+        // Y fuera las sesiones vivas: ver el remarks de la clase.
+        await _userManager.RevokeLiveSessionsAsync(user);
 
         // Mirror the change on the profile shadow copy used by services that
         // don't want to round-trip through Identity.

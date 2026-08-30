@@ -71,6 +71,12 @@ builder.Services.AddAccountSurface(new AccountPageRoutes
     ForgotPasswordSentPage = "/forgot-password/sent",
     ResetPasswordPage      = "/reset-password",
     ResetPasswordDonePage  = "/reset-password/done",
+
+    // El mismo valor que LoginPage de AuthPortalOptions, aquí abajo. El área de cuenta lo necesita
+    // desde que las operaciones que cambian la postura de seguridad de la cuenta cierran la sesión:
+    // ver AccountEndpoints.KillAndBackToLoginAsync.
+    LoginPage              = "/login",
+
     ProfilePage            = "/account",
     PasswordPage           = "/account/password",
     PhonePage              = "/account/phone",

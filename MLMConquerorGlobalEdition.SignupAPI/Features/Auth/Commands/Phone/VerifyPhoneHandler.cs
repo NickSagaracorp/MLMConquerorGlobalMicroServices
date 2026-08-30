@@ -12,6 +12,20 @@ namespace MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Phone;
 /// Redime el código SMS del alta y marca el teléfono como confirmado. Es el único sitio que pone
 /// <c>TwoFactorPhoneConfirmed = true</c>: a partir de aquí el canal SMS existe para esa cuenta.
 /// </summary>
+/// <remarks>
+/// <b>Y POR ESO REVOCA LA SESIÓN VIVA.</b> Aquí es donde un número se convierte en un factor de
+/// autenticación de la cuenta —antes era PII guardada, no una llave—, y eso cambia su postura de
+/// seguridad igual que activar el 2FA.
+///
+/// LA CADENA QUE ESTO CORTA, y es el motivo real: con una sesión robada, un atacante da de alta SU
+/// teléfono, lo confirma con el código que le llega a él, y a partir de ahí solo le queda cambiar
+/// el canal preferido —que no pide nada— para que TODOS los códigos futuros del segundo factor
+/// vayan a su aparato. El paso irreversible es este, no el cambio de canal, así que es aquí donde
+/// hay que expulsar. Dónde está la línea, en <see cref="SessionRevocation"/>.
+///
+/// Dar de ALTA el teléfono (<c>AddPhoneHandler</c>) no revoca: mientras el número esté sin
+/// confirmar no es un factor y no abre nada.
+/// </remarks>
 public class VerifyPhoneHandler : IRequestHandler<VerifyPhoneCommand, Result<bool>>
 {
     private readonly UserManager<ApplicationUser> _userManager;
@@ -60,6 +74,7 @@ public class VerifyPhoneHandler : IRequestHandler<VerifyPhoneCommand, Result<boo
                 "INVALID_CHALLENGE", "Este challenge no corresponde a la verificación de un teléfono.");
 
         user.TwoFactorPhoneConfirmed = true;
+        user.RevokeLiveSessions();
         await _userManager.UpdateAsync(user);
 
         return Result<bool>.Success(true);

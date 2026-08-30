@@ -32,6 +32,25 @@ public sealed record AccountPageRoutes
     /// <summary>Acuse de contraseña cambiada.</summary>
     public required string ResetPasswordDonePage { get; init; }
 
+    /// <summary>
+    /// La pantalla de login de este portal.
+    /// </summary>
+    /// <remarks>
+    /// EL ÁREA DE CUENTA NO LA NECESITABA HASTA AHORA, y por eso no estaba: todo lo de aquí ocurre
+    /// con la sesión ya firmada y volvía siempre a una pantalla de gestión. Dejó de ser cierto
+    /// cuando las operaciones que cambian la postura de seguridad de la cuenta —contraseña,
+    /// teléfono confirmado o retirado, segundo factor apagado— empezaron a REVOCAR el refresco en la
+    /// API: a partir de ahí la sesión desde la que se hizo el cambio ya no se puede renovar, así que
+    /// el destino honesto es el login y no el perfil.
+    ///
+    /// Va aquí y no se toma de <c>AuthPortalOptions</c> a propósito, aunque los dos portales de hoy
+    /// monten las dos superficies: el área de cuenta puede montarse sin la puerta, y depender de
+    /// aquello convertiría una decisión de pantallas en una dependencia entre dos superficies que
+    /// están separadas justamente para no tenerla. Es el mismo valor, escrito en el mismo
+    /// <c>Program.cs</c>, dos líneas más arriba.
+    /// </remarks>
+    public required string LoginPage { get; init; }
+
     // -------------------------------------------------------------------------------------------
     //  De gestión — requieren sesión.
     // -------------------------------------------------------------------------------------------
