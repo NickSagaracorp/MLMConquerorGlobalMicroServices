@@ -92,14 +92,15 @@ public static class AuthEndpoints
         HttpContext                         httpContext,
         [FromServices] AuthPortalOptions    portal,
         [FromServices] ChallengeCookieNames challengeCookies,
+        [FromServices] PortalSessionTokens  sessionTokens,
         CancellationToken                   ct)
     {
         form ??= new();
 
-        var outcome = await api.CallAsync<AuthTokens>(
+        var (outcome, refreshToken) = await api.CallForTokensAsync<AuthTokens>(
             HttpMethod.Post, "api/v1/auth/login",
             new { Email = form.Email ?? string.Empty, Password = form.Password ?? string.Empty },
-            authenticated: false, ct);
+            ct);
 
         if (!outcome.Success || outcome.Data is null)
             return Failure(portal.LoginPage, LoginErrorOf(outcome.ErrorCode));
@@ -127,7 +128,8 @@ public static class AuthEndpoints
                 portal.TwoFactorPage + TargetQuery(tokens.MaskedTarget, '?'));
         }
 
-        return await CompleteSignInAsync(httpContext, portal, tokens.AccessToken);
+        return await CompleteSignInAsync(
+            httpContext, portal, sessionTokens, tokens.AccessToken, refreshToken);
     }
 
     /// <summary>
@@ -140,6 +142,7 @@ public static class AuthEndpoints
         HttpContext                         httpContext,
         [FromServices] AuthPortalOptions    portal,
         [FromServices] ChallengeCookieNames challengeCookies,
+        [FromServices] PortalSessionTokens  sessionTokens,
         CancellationToken                   ct)
     {
         form ??= new();
@@ -153,10 +156,9 @@ public static class AuthEndpoints
         if (!IsWellFormedCode(form.Code))
             return Failure(portal.TwoFactorPage, CodeInvalid);
 
-        var outcome = await api.CallAsync<AuthTokens>(
+        var (outcome, refreshToken) = await api.CallForTokensAsync<AuthTokens>(
             HttpMethod.Post, "api/v1/auth/two-factor/verify",
-            new { ChallengeToken = challengeToken, Code = form.Code ?? string.Empty },
-            authenticated: false, ct);
+            new { ChallengeToken = challengeToken, Code = form.Code ?? string.Empty }, ct);
 
         if (!outcome.Success || outcome.Data is null)
         {
@@ -166,7 +168,8 @@ public static class AuthEndpoints
         }
 
         ChallengeCookies.Delete(httpContext, challengeCookies.Login);
-        return await CompleteSignInAsync(httpContext, portal, outcome.Data.AccessToken);
+        return await CompleteSignInAsync(
+            httpContext, portal, sessionTokens, outcome.Data.AccessToken, refreshToken);
     }
 
     /// <summary>
@@ -212,6 +215,7 @@ public static class AuthEndpoints
         HttpContext                         httpContext,
         [FromServices] AuthPortalOptions    portal,
         [FromServices] ChallengeCookieNames challengeCookies,
+        [FromServices] PortalSessionTokens  sessionTokens,
         CancellationToken                   ct)
     {
         form ??= new();
@@ -223,10 +227,9 @@ public static class AuthEndpoints
         if (!IsWellFormedCode(form.Code))
             return Failure(portal.EnrollAuthenticatorPage, CodeInvalid);
 
-        var outcome = await api.CallAsync<AuthTokens>(
+        var (outcome, refreshToken) = await api.CallForTokensAsync<AuthTokens>(
             HttpMethod.Post, "api/v1/auth/two-factor/enroll/confirm",
-            new { EnrollmentToken = enrollmentToken, Code = form.Code ?? string.Empty },
-            authenticated: false, ct);
+            new { EnrollmentToken = enrollmentToken, Code = form.Code ?? string.Empty }, ct);
 
         if (!outcome.Success || outcome.Data is null)
         {
@@ -236,7 +239,8 @@ public static class AuthEndpoints
         }
 
         ChallengeCookies.Delete(httpContext, challengeCookies.Enrollment);
-        return await CompleteSignInAsync(httpContext, portal, outcome.Data.AccessToken);
+        return await CompleteSignInAsync(
+            httpContext, portal, sessionTokens, outcome.Data.AccessToken, refreshToken);
     }
 
     /// <summary>Cierra la sesión y se lleva por delante cualquier reto a medias.</summary>
@@ -254,10 +258,15 @@ public static class AuthEndpoints
     /// </remarks>
     public static async Task<IResult> LogoutAsync(
         HttpContext                         httpContext,
+        AuthApiGateway                      api,
         [FromServices] AuthPortalOptions    portal,
         [FromServices] ChallengeCookieNames challengeCookies,
-        [FromQuery] string?                 reason = null)
+        [FromServices] PortalSessionTokens  sessionTokens,
+        [FromQuery] string?                 reason = null,
+        CancellationToken                   ct = default)
     {
+        await RevokeRefreshTokenAsync(httpContext, api, sessionTokens, ct);
+
         ChallengeCookies.Delete(httpContext, challengeCookies.Login);
         ChallengeCookies.Delete(httpContext, challengeCookies.Enrollment);
         await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
@@ -265,6 +274,40 @@ public static class AuthEndpoints
         return reason == SessionExpiredCode
             ? Failure(portal.LoginPage, SessionExpiredCode)
             : Results.Redirect(portal.LoginPage);
+    }
+
+    /// <summary>
+    /// Mata el refresh token EN LA API antes de limpiar nada del portal.
+    /// </summary>
+    /// <remarks>
+    /// SIN ESTO, SALIR NO SERÍA SALIR. Desde que el portal guarda el refresh token, borrar la cookie
+    /// deja de ser suficiente: es una credencial de treinta días que sigue viva en la base y que
+    /// vale para pedir tokens de acceso nuevos sin contraseña. <c>POST /api/v1/auth/logout</c> la
+    /// invalida —pone a nulo <c>ApplicationUser.RefreshToken</c>—, y esa llamada es la única
+    /// diferencia entre cerrar la sesión y esconderla.
+    ///
+    /// La llamada va autenticada, así que necesita un token de acceso VIVO. Si el del usuario ya
+    /// caducó, el proveedor de token renueva primero —el área de cuenta está fuera del middleware,
+    /// que es quien lo haría en una navegación normal— y la salida sale con el token bueno. Si ni
+    /// siquiera se puede renovar, el refresco ya estaba muerto y no hay nada que invalidar.
+    ///
+    /// El resultado se ignora a propósito: pase lo que pase con la API, la sesión del portal se
+    /// cierra. Una salida que se quedara a medias porque SignupAPI no responde sería peor que una
+    /// salida que deja un refresh token vivo hasta que caduque solo.
+    /// </remarks>
+    private static async Task RevokeRefreshTokenAsync(
+        HttpContext         httpContext,
+        AuthApiGateway      api,
+        PortalSessionTokens sessionTokens,
+        CancellationToken   ct)
+    {
+        if (httpContext.User.Identity?.IsAuthenticated != true) return;
+
+        await api.CallAsync(HttpMethod.Post, "api/v1/auth/logout", null, authenticated: true, ct);
+
+        // Y fuera del almacén: dejar la entrada viva sería guardar en memoria una credencial que ya
+        // no abre nada, y bastaría para que una petición en vuelo resucitara la sesión.
+        sessionTokens.Forget(httpContext.User);
     }
 
     // ===========================================================================================
@@ -277,8 +320,29 @@ public static class AuthEndpoints
     /// pasan por aquí, así que la comprobación de rol se aplica siempre sobre el token FINAL y
     /// nunca sobre un reto.
     /// </summary>
+    /// <param name="refreshToken">
+    /// El refresh token que la API dejó en la cabecera <c>Set-Cookie</c> de la respuesta. Puede
+    /// venir vacío —una API que no lo entregue, un camino que todavía no lo capture— y entonces la
+    /// sesión funciona igual pero no se podrá renovar: cuando el JWT caduque acabará en el login,
+    /// que es como acababa antes de que existiera la renovación.
+    /// </param>
+    /// <remarks>
+    /// AQUÍ SE GUARDA EL REFRESH TOKEN, y este era el agujero. La API lo devolvía en cada inicio de
+    /// sesión y este método lo DESCARTABA: sin él no había forma de renovar nada, así que caducar el
+    /// JWT <em>era</em> que la sesión estaba muerta. Ahora entra como un claim más de la misma cookie
+    /// —<c>HttpOnly</c>, <c>Secure</c>, <c>SameSite=Strict</c>— y además se siembra el almacén de
+    /// sesión, que es lo que verán el circuito y el middleware.
+    ///
+    /// El identificador de sesión es nuevo en cada firma, también cuando el mismo usuario vuelve a
+    /// entrar: dos inicios de sesión son dos sesiones, y compartir entrada haría que salir de una
+    /// dejara a la otra con una credencial que ya no vale.
+    /// </remarks>
     private static async Task<IResult> CompleteSignInAsync(
-        HttpContext httpContext, AuthPortalOptions portal, string? accessToken)
+        HttpContext         httpContext,
+        AuthPortalOptions   portal,
+        PortalSessionTokens sessionTokens,
+        string?             accessToken,
+        string?             refreshToken)
     {
         var handler = new JwtSecurityTokenHandler();
         if (string.IsNullOrWhiteSpace(accessToken) || !handler.CanReadToken(accessToken))
@@ -286,10 +350,21 @@ public static class AuthEndpoints
 
         var jwt    = handler.ReadJwtToken(accessToken);
         var claims = jwt.Claims.ToList();
-        claims.Add(new Claim("access_token", accessToken!));
+        claims.Add(new Claim(SessionExpiry.AccessTokenClaim, accessToken!));
 
         if (!HasAdmittedRole(claims, portal.AllowedRoles))
             return Failure(portal.LoginPage, AccessDenied);
+
+        // El nombre de ESTA sesión. No es una credencial —no abre nada— y por eso puede ir en la
+        // cookie al lado de las que sí lo son.
+        var sessionId = Guid.NewGuid().ToString("N");
+        claims.Add(new Claim(SessionExpiry.SessionIdClaim, sessionId));
+
+        if (!string.IsNullOrWhiteSpace(refreshToken))
+        {
+            claims.Add(new Claim(SessionExpiry.RefreshTokenClaim, refreshToken!));
+            sessionTokens.Seed(sessionId, new SessionTokens(accessToken!, refreshToken!));
+        }
 
         // httpContext aquí ES la petición real del navegador, así que la cookie de sesión sale con
         // la respuesta de esta redirección.
@@ -484,7 +559,17 @@ public static class AuthEndpoints
     private sealed record AuthTokens
     {
         public string   AccessToken        { get; init; } = string.Empty;
+
+        /// <summary>
+        /// EXISTE EN EL CONTRATO Y SIEMPRE LLEGA VACÍO. La API lo pone a cadena vacía antes de
+        /// responder (<c>response.RefreshToken = string.Empty</c>) y entrega el token de verdad en
+        /// la cabecera <c>Set-Cookie</c>. Se deja declarado para que quien lea este registro con el
+        /// de la API delante vea que no falta nada, pero leerlo de aquí es quedarse sin refresco y
+        /// no enterarse hasta el segundo refresco; el bueno lo trae
+        /// <see cref="AuthApiGateway.CallForTokensAsync{T}"/>.
+        /// </summary>
         public string   RefreshToken       { get; init; } = string.Empty;
+
         public DateTime TokenExpiry        { get; init; }
         public bool     RequiresTwoFactor  { get; init; }
         public string?  ChallengeToken     { get; init; }

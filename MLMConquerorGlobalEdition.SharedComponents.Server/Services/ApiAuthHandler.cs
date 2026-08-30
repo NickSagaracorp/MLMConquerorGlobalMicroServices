@@ -11,10 +11,24 @@ namespace MLMConquerorGlobalEdition.SharedComponents.Server.Services;
 
 /// <summary>
 /// El <c>DelegatingHandler</c> que lleva el JWT del usuario a la API del portal: lo saca de la
-/// cookie de sesión, comprueba la caducidad ANTES de gastar una llamada, y cuando la sesión ya no
-/// vale cierra la sesión y manda al usuario a su pantalla de login.
+/// cookie de sesión, comprueba la caducidad ANTES de gastar una llamada, LA RENUEVA si hace falta, y
+/// solo cuando la renovación tampoco sale cierra la sesión y manda al usuario a su pantalla de
+/// login.
 /// </summary>
 /// <remarks>
+/// LA RENOVACIÓN, QUE ES LO ÚLTIMO QUE SE AÑADIÓ. Hasta ahora, encontrar el JWT caducado aquí era el
+/// final: fuera la sesión y al login, aunque el usuario acabara de pulsar un botón. Ahora es el
+/// principio de un intento — <see cref="PortalSessionTokens.EnsureFreshAsync"/> cambia el refresh
+/// token por una pareja nueva y la llamada sigue su camino con el token bueno. El usuario no se
+/// entera de nada, que es exactamente lo que tiene que pasar.
+///
+/// LO QUE AQUÍ NO SE PUEDE HACER, y es la misma pared de siempre: reescribir la cookie de sesión.
+/// Dentro de un circuito la respuesta a mano es la del WebSocket y ya empezó. Así que la pareja
+/// nueva se queda en el almacén de sesión —que el middleware y este manejador comparten— y la cookie
+/// se pone al día en la siguiente navegación del navegador. Mientras tanto el almacén es la verdad y
+/// la cookie va un paso por detrás, que no molesta a nadie porque todo el que necesita el token
+/// pregunta primero al almacén.
+///
 /// Era un archivo por portal —<c>AdminApiAuthHandler</c> y <c>BizCenterApiAuthHandler</c>— haciendo
 /// exactamente el mismo trabajo, y las dos copias ya se habían separado: la del centro de negocios
 /// recibió la navegación forzada al login y la de administración nunca. Al unificar se conserva la
@@ -58,6 +72,7 @@ public class ApiAuthHandler : DelegatingHandler
 {
     private readonly IHttpContextAccessor      _httpContextAccessor;
     private readonly CircuitServicesAccessor   _circuitServices;
+    private readonly PortalSessionTokens       _sessionTokens;
     private readonly ILogger<ApiAuthHandler>   _logger;
     private readonly string                    _loginPage;
     private readonly string                    _logoutRoute;
@@ -73,12 +88,14 @@ public class ApiAuthHandler : DelegatingHandler
     public ApiAuthHandler(
         IHttpContextAccessor    httpContextAccessor,
         CircuitServicesAccessor circuitServices,
+        PortalSessionTokens     sessionTokens,
         ILogger<ApiAuthHandler> logger,
         string                  loginPage,
         string                  logoutRoute)
     {
         _httpContextAccessor = httpContextAccessor;
         _circuitServices     = circuitServices;
+        _sessionTokens       = sessionTokens;
         _logger              = logger;
         _loginPage           = loginPage;
         _logoutRoute         = logoutRoute;
@@ -91,28 +108,39 @@ public class ApiAuthHandler : DelegatingHandler
         // se pasan hacia abajo: son un AsyncLocal y no hay motivo para volver a mirarlo.
         var circuit = _circuitServices.Services;
 
-        var token = await ResolveTokenAsync(circuit);
+        var user = await ResolveUserAsync(circuit);
 
-        // Comprobación previa: si el token ya caducó, ni se gasta la llamada.
-        if (!string.IsNullOrEmpty(token) && SessionExpiry.IsExpired(token))
+        // ¿Esta llamada lleva sesión? Sin token en ninguna parte no la lleva —hay clientes que salen
+        // sin usuario— y se deja pasar tal cual, que es lo que se hacía antes.
+        if (_sessionTokens.Current(user) is not null)
         {
-            await EndSessionAsync(circuit);
-            return new HttpResponseMessage(HttpStatusCode.Unauthorized) { RequestMessage = request };
-        }
+            // AQUÍ ES DONDE SE RENUEVA. Antes esto era la comprobación previa que mataba la sesión;
+            // ahora es un intento de salvarla, y solo si falla se muere. Dentro de un circuito la
+            // cookie no se puede reescribir, así que la pareja nueva se queda en el almacén de
+            // sesión y la cookie se pone al día en la siguiente navegación, por el middleware.
+            var vigentes = await _sessionTokens.EnsureFreshAsync(user, cancellationToken);
 
-        if (!string.IsNullOrEmpty(token))
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            if (vigentes is null)
+            {
+                // Refresco caducado, revocado o ausente: esta sesión sí está muerta de verdad.
+                await EndSessionAsync(circuit, user);
+                return new HttpResponseMessage(HttpStatusCode.Unauthorized) { RequestMessage = request };
+            }
+
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", vigentes.AccessToken);
+        }
 
         var response = await base.SendAsync(request, cancellationToken);
 
         if (response.StatusCode == HttpStatusCode.Unauthorized)
-            await EndSessionAsync(circuit);
+            await EndSessionAsync(circuit, user);
 
         return response;
     }
 
     /// <summary>
-    /// De dónde sale el JWT del usuario, en este orden.
+    /// De dónde sale el usuario de esta llamada, en este orden.
     /// </summary>
     /// <remarks>
     /// Paso 1 — render en servidor o petición HTTP directa: hay <c>HttpContext</c> y el principal de
@@ -126,34 +154,43 @@ public class ApiAuthHandler : DelegatingHandler
     /// Ese paso 2 es el que antes preguntaba al proveedor del ámbito de la fábrica, que está vacío,
     /// y devolvía nada. De ahí el 401 que <c>Members.razor</c> esquivaba adjuntando el Bearer a mano
     /// desde el <c>AuthenticationState</c> en cascada; ese apaño ya no hace falta y se ha quitado.
+    ///
+    /// Se devuelve el PRINCIPAL entero y no solo el token: con la renovación hacen falta los tres
+    /// claims —acceso, refresco e identificador de sesión—, y sacarlos de sitios distintos es cómo
+    /// se acaba renovando la sesión de una cookie con el refresco de otra.
     /// </remarks>
-    private async Task<string?> ResolveTokenAsync(IServiceProvider? circuit)
+    private async Task<ClaimsPrincipal?> ResolveUserAsync(IServiceProvider? circuit)
     {
-        var token = _httpContextAccessor.HttpContext?.User.FindFirstValue(SessionExpiry.AccessTokenClaim);
-        if (!string.IsNullOrEmpty(token)) return token;
+        var fromRequest = _httpContextAccessor.HttpContext?.User;
+        if (fromRequest?.FindFirst(SessionExpiry.AccessTokenClaim) is not null) return fromRequest;
 
-        if (circuit is null) return null;
+        if (circuit is null) return fromRequest;
 
         try
         {
             var provider = circuit.GetService<AuthenticationStateProvider>();
-            if (provider is null) return null;
+            if (provider is null) return fromRequest;
 
             var state = await provider.GetAuthenticationStateAsync();
-            return state.User.FindFirstValue(SessionExpiry.AccessTokenClaim);
+            return state.User;
         }
         catch (Exception ex)
         {
             _logger.LogDebug(ex, "No se pudo leer el estado de autenticación del circuito.");
-            return null;
+            return fromRequest;
         }
     }
 
     /// <summary>
     /// La sesión ya no vale: fuera de aquí y al login con el aviso.
     /// </summary>
-    private async Task EndSessionAsync(IServiceProvider? circuit)
+    private async Task EndSessionAsync(IServiceProvider? circuit, ClaimsPrincipal? user)
     {
+        // Lo primero, olvidarla en el almacén. Si se quedara, la siguiente llamada volvería a
+        // intentar renovarla con el mismo refresco que la API acaba de rechazar, y el usuario vería
+        // un viaje de ida y vuelta a la API por cada clic mientras la navegación a la salida vuela.
+        _sessionTokens.Forget(user);
+
         // Camino del circuito: navegación completa del navegador a la salida del portal. forceLoad
         // se salta el enrutador de Blazor, así la cookie se limpia en una petición nueva y el
         // componente que estaba en vuelo no llega a enseñarle al usuario su "401" crudo.

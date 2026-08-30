@@ -335,7 +335,7 @@ public class SessionExpiredRedirectTests
         var contexto = ContextoDeSalida();
 
         var resultado = await AuthEndpoints.LogoutAsync(
-            contexto, portal, Cookies, SessionExpiry.ErrorCode);
+            contexto, GatewayCaido(), portal, Cookies, Almacen(), SessionExpiry.ErrorCode);
         await resultado.ExecuteAsync(contexto);
 
         contexto.Response.Headers.Location.ToString()
@@ -350,7 +350,8 @@ public class SessionExpiredRedirectTests
         var portal   = Portal(nombre);
         var contexto = ContextoDeSalida();
 
-        var resultado = await AuthEndpoints.LogoutAsync(contexto, portal, Cookies);
+        var resultado = await AuthEndpoints.LogoutAsync(
+            contexto, GatewayCaido(), portal, Cookies, Almacen());
         await resultado.ExecuteAsync(contexto);
 
         contexto.Response.Headers.Location.ToString().Should().Be(portal.LoginPage);
@@ -367,7 +368,8 @@ public class SessionExpiredRedirectTests
     public async Task Salida_ConUnMotivoDesconocido_NoLoRefleja(string motivo)
     {
         var contexto  = ContextoDeSalida();
-        var resultado = await AuthEndpoints.LogoutAsync(contexto, Admin, Cookies, motivo);
+        var resultado = await AuthEndpoints.LogoutAsync(
+            contexto, GatewayCaido(), Admin, Cookies, Almacen(), motivo);
         await resultado.ExecuteAsync(contexto);
 
         contexto.Response.Headers.Location.ToString().Should().Be(Admin.LoginPage);
@@ -640,6 +642,7 @@ public class SessionExpiredRedirectTests
         var middleware = new SessionExpiryMiddleware(
             _ => { siguio = true; return Task.CompletedTask; },
             portal,
+            Almacen(),
             NullLogger<SessionExpiryMiddleware>.Instance);
 
         await middleware.InvokeAsync(contexto);
@@ -661,30 +664,30 @@ public class SessionExpiredRedirectTests
         // SignupAPI caída.
         codigos.Add(await CodigoDe(async contexto => await AuthEndpoints.LoginAsync(
             new AuthEndpoints.LoginForm("quien@ejemplo.com", "la-contraseña"),
-            GatewayCaido(), contexto, Admin, Cookies, default)));
+            GatewayCaido(), contexto, Admin, Cookies, Almacen(), default)));
 
         // Credenciales que no valen.
         codigos.Add(await CodigoDe(async contexto => await AuthEndpoints.LoginAsync(
             new AuthEndpoints.LoginForm("quien@ejemplo.com", "la-contraseña"),
             GatewayQueResponde("""{"success":false,"errorCode":"INVALID_CREDENTIALS"}"""),
-            contexto, Admin, Cookies, default)));
+            contexto, Admin, Cookies, Almacen(), default)));
 
         // Cuenta buena, rol que este portal no admite.
         codigos.Add(await CodigoDe(async contexto => await AuthEndpoints.LoginAsync(
             new AuthEndpoints.LoginForm("quien@ejemplo.com", "la-contraseña"),
             GatewayQueResponde(
                 "{\"success\":true,\"data\":{\"accessToken\":\"" + TokenDeMiembro() + "\"}}"),
-            contexto, Admin, Cookies, default)));
+            contexto, Admin, Cookies, Almacen(), default)));
 
         // Reto del segundo factor gastado.
         codigos.Add(await CodigoDe(async contexto => await AuthEndpoints.LoginTwoFactorAsync(
             new AuthEndpoints.CodeForm("123456"),
             GatewayQueResponde("""{"success":false,"errorCode":"CODE_EXPIRED"}"""),
-            contexto, Admin, Cookies, default), conRetoEnCookie: true));
+            contexto, Admin, Cookies, Almacen(), default), conRetoEnCookie: true));
 
         // La salida por caducidad, que es el camino nuevo.
         codigos.Add(await CodigoDe(async contexto => await AuthEndpoints.LogoutAsync(
-            contexto, Admin, Cookies, SessionExpiry.ErrorCode)));
+            contexto, GatewayCaido(), Admin, Cookies, Almacen(), SessionExpiry.ErrorCode)));
 
         codigos.Remove(string.Empty);
         return codigos;
@@ -706,6 +709,19 @@ public class SessionExpiredRedirectTests
 
         return marca < 0 ? string.Empty : Uri.UnescapeDataString(destino[(marca + 6)..]);
     }
+
+    /// <summary>
+    /// Un almacén de sesión de usar y tirar cuyo renovador no puede renovar nada: el cliente
+    /// responde 401 a todo. Es lo que hace falta en este archivo, que prueba qué pasa cuando la
+    /// sesión está MUERTA de verdad; la renovación que sí sale bien se prueba en
+    /// <c>RefrescoDeSesionTests</c>.
+    /// </summary>
+    private static PortalSessionTokens Almacen() =>
+        new(new AuthTokenRefresher(
+                new FabricaDeClientes(new ApiFalsa(
+                    _ => new HttpResponseMessage(HttpStatusCode.Unauthorized))),
+                NullLogger<AuthTokenRefresher>.Instance),
+            NullLogger<PortalSessionTokens>.Instance);
 
     private static AuthApiGateway GatewayCaido() =>
         Gateway(new ApiFalsa(_ => throw new HttpRequestException("SignupAPI no responde")));

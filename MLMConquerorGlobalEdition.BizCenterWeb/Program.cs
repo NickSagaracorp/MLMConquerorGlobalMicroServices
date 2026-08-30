@@ -122,11 +122,12 @@ builder.Services.AddHttpClient("BizCenterApi", client =>
 }).AddHttpMessageHandler<ApiAuthHandler>();
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("BizCenterApi"));
 
-// HTTP client — Auth (SignupAPI handles auth for all apps)
-builder.Services.AddHttpClient("AuthApi", client =>
-{
-    client.BaseAddress = new Uri(builder.Configuration["AuthApiBaseUrl"] ?? "https://localhost:7005");
-});
+// El cliente a SignupAPI. Sin manejador que autentique —el login es anónimo por definición— y con
+// las cookies del manejador APAGADAS, que es lo que impide que el refresh token de un usuario salga
+// enganchado en la llamada de otro. Ese detalle vive en AddAuthApiClient y no aquí a propósito: los
+// dos portales tienen que registrarlo igual.
+builder.Services.AddAuthApiClient(
+    builder.Configuration["AuthApiBaseUrl"] ?? "https://localhost:7005");
 
 // HTTP client — Signups public API (unauthenticated signup wizard)
 builder.Services.AddHttpClient("SignupsApi", client =>

@@ -5,9 +5,26 @@ using Microsoft.Extensions.Logging;
 namespace MLMConquerorGlobalEdition.SharedComponents.Server.Services;
 
 /// <summary>
-/// Corta cualquier navegación de un usuario cuya sesión ya no vale y lo manda al login con el aviso.
+/// En cada navegación del navegador: renueva la sesión si su JWT caducó, pone la cookie al día con
+/// los tokens vigentes, y solo si la renovación no sale corta la navegación y manda al login con el
+/// aviso.
 /// </summary>
 /// <remarks>
+/// LAS DOS COSAS NUEVAS, y las dos ocurren aquí por el mismo motivo: esta es la ÚNICA de las tres
+/// piezas de sesión que tiene delante una respuesta HTTP que todavía no ha empezado, así que es la
+/// única que puede reescribir la cookie.
+///
+///   • RENOVAR EN UNA RECARGA. Un usuario que vuelve después de comer y pulsa F5 tiene el JWT
+///     caducado y el circuito ni siquiera existe todavía. Aquí se le renueva antes de que se pinte
+///     nada, y aterriza en su pantalla en vez de en el login.
+///
+///   • REEMITIR LA COOKIE. Cuando quien renovó fue el circuito —o un POST del área de cuenta—, la
+///     pareja nueva está en <see cref="PortalSessionTokens"/> y la cookie se quedó con la vieja. Eso
+///     NO es cosmético: la API ROTA el refresh token, así que una cookie con el refresco viejo es
+///     una cookie con una credencial ya invalidada, y si el proceso se reiniciara antes de ponerla
+///     al día esa sesión no podría renovarse nunca más. Por eso se reemite en cuanto hay ocasión, y
+///     no solo cuando algo caduca.
+///
 /// LA MITAD DEL ARREGLO QUE OCURRE FUERA DEL CIRCUITO. Dentro del circuito, quien descubre la
 /// caducidad es <see cref="ApiAuthHandler"/> y quien navega es el <c>NavigationManager</c> de la
 /// pantalla, alcanzado por <see cref="CircuitServicesAccessor"/>. Pero un circuito recién abierto
@@ -34,41 +51,70 @@ public sealed class SessionExpiryMiddleware
 {
     private readonly RequestDelegate                    _next;
     private readonly AuthPortalOptions                  _portal;
+    private readonly PortalSessionTokens                _sessionTokens;
     private readonly ILogger<SessionExpiryMiddleware>   _logger;
 
     public SessionExpiryMiddleware(
-        RequestDelegate next, AuthPortalOptions portal, ILogger<SessionExpiryMiddleware> logger)
+        RequestDelegate                  next,
+        AuthPortalOptions                portal,
+        PortalSessionTokens              sessionTokens,
+        ILogger<SessionExpiryMiddleware> logger)
     {
-        _next   = next;
-        _portal = portal;
-        _logger = logger;
+        _next          = next;
+        _portal        = portal;
+        _sessionTokens = sessionTokens;
+        _logger        = logger;
     }
 
     public async Task InvokeAsync(HttpContext context)
     {
-        if (ShouldEndSession(context, _portal))
+        if (IsPortalNavigation(context, _portal))
         {
-            _logger.LogInformation(
-                "Sesión caducada en {Path}: se cierra y se manda al login con el aviso.",
-                context.Request.Path.Value);
+            // Los de la cookie tal cual, para saber después si hay que reescribirla. Se leen ANTES
+            // de renovar: después el almacén ya devolvería la pareja nueva y no habría con qué
+            // comparar.
+            var enLaCookie = PortalSessionTokens.FromClaims(context.User);
 
-            await SessionExpiry.SignOutAndRedirectAsync(context, _portal.LoginPage);
-            return;
+            // Sin claim no hay nada que juzgar: esta sesión no la firmó la puerta de este portal.
+            if (enLaCookie is not null)
+            {
+                var vigentes = await _sessionTokens.EnsureFreshAsync(context.User, context.RequestAborted);
+
+                if (vigentes is null)
+                {
+                    _logger.LogInformation(
+                        "Sesión muerta en {Path}: no se pudo renovar, se cierra y se manda al " +
+                        "login con el aviso.",
+                        context.Request.Path.Value);
+
+                    await SessionExpiry.SignOutAndRedirectAsync(context, _portal.LoginPage);
+                    return;
+                }
+
+                // La cookie va por detrás del almacén: o porque acabamos de renovar aquí, o porque
+                // quien renovó fue un circuito y allí no se podía reescribir. Aquí sí se puede.
+                if (vigentes != enLaCookie && !context.Response.HasStarted)
+                    await SessionExpiry.ReissueCookieAsync(context, vigentes);
+            }
         }
 
         await _next(context);
     }
 
     /// <summary>
-    /// ¿Esta petición es una navegación de un usuario con la sesión muerta?
+    /// ¿Esta petición es una navegación del navegador sobre la que este middleware manda?
     /// </summary>
     /// <remarks>
     /// Público y estático para poder ejercer las exclusiones una a una desde las pruebas: cada una
     /// de ellas, mal puesta, produce un fallo que solo se ve con una sesión caducada de verdad —un
     /// bucle de redirecciones en el login, un usuario que no puede salir, un circuito cortado a
     /// media conexión.
+    ///
+    /// Aquí solo se decide SI se mira esta petición; qué hacer con la sesión —renovarla, reemitir la
+    /// cookie o cerrarla— se decide en <see cref="InvokeAsync"/>, que es donde se puede preguntar a
+    /// la API.
     /// </remarks>
-    public static bool ShouldEndSession(HttpContext context, AuthPortalOptions portal)
+    public static bool IsPortalNavigation(HttpContext context, AuthPortalOptions portal)
     {
         if (context.User?.Identity?.IsAuthenticated != true) return false;
 
@@ -76,13 +122,7 @@ public sealed class SessionExpiryMiddleware
         if (!HttpMethods.IsGet(context.Request.Method)) return false;
         if (!AcceptsHtml(context)) return false;
 
-        if (IsGateOrAccountPath(context.Request.Path, portal)) return false;
-
-        // Sin claim no hay nada que juzgar: esta sesión no la firmó la puerta de este portal.
-        var token = context.User.FindFirst(SessionExpiry.AccessTokenClaim)?.Value;
-        if (string.IsNullOrEmpty(token)) return false;
-
-        return SessionExpiry.IsExpired(token);
+        return !IsGateOrAccountPath(context.Request.Path, portal);
     }
 
     /// <summary>

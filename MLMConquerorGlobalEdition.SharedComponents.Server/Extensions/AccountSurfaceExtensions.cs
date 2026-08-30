@@ -58,6 +58,11 @@ public static class AccountSurfaceExtensions
         // dentro, así que no estorba al portal que ya lo llame por su cuenta.
         services.AddHttpContextAccessor();
 
+        // Los tokens vigentes de cada sesión. Aquí hace falta porque el proveedor de token de abajo
+        // renueva: por él pasan los POST del área de cuenta, que el middleware no mira —no son
+        // navegaciones— y que con el JWT caducado devolvían SESSION_EXPIRED sin intentar nada.
+        services.AddPortalSessionTokens();
+
         // De dónde saca el gateway el token del usuario. En un portal, del claim access_token de
         // la cookie de sesión; en una aplicación MAUI será otra implementación, y por eso el
         // gateway pide la interfaz y no el HttpContext. Registrarlo aquí y no en cada Program.cs

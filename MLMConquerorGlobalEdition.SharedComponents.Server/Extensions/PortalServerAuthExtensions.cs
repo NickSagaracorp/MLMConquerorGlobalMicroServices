@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using MLMConquerorGlobalEdition.ClientCore;
 using MLMConquerorGlobalEdition.SharedComponents.Server.Services;
 using MLMConquerorGlobalEdition.SharedComponents.Services;
 
@@ -88,12 +89,56 @@ public static class PortalServerAuthExtensions
         services.TryAddEnumerable(
             ServiceDescriptor.Scoped<CircuitHandler, CircuitServicesAccessorHandler>());
 
+        // Los tokens vigentes de cada sesión y la renovación. Es la otra mitad de lo que este
+        // manejador necesita: sin ella, encontrar el JWT caducado volvería a ser el final.
+        services.AddPortalSessionTokens();
+
         services.AddTransient(sp => new ApiAuthHandler(
             sp.GetRequiredService<IHttpContextAccessor>(),
             sp.GetRequiredService<CircuitServicesAccessor>(),
+            sp.GetRequiredService<PortalSessionTokens>(),
             sp.GetRequiredService<ILogger<ApiAuthHandler>>(),
             loginPage,
             logoutRoute));
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registra el almacén de tokens de sesión del portal y el cliente que los renueva.
+    /// </summary>
+    /// <remarks>
+    /// LOS DOS SON SINGLETON, y no por ahorrar objetos. El almacén tiene que ser el mismo para el
+    /// middleware de la petición, para el manejador que la fábrica de clientes HTTP construyó en su
+    /// propio ámbito y para el circuito del usuario: son tres ámbitos de DI distintos —esa
+    /// separación es justo lo que rompía el arreglo anterior— y si cada uno tuviera su diccionario,
+    /// la rotación del refresh token se perdería entre ellos y la sesión moriría al segundo
+    /// refresco. El renovador es singleton porque puede serlo: solo pide
+    /// <c>IHttpClientFactory</c>.
+    ///
+    /// Lo llaman las tres superficies (la puerta, el área de cuenta y el manejador de las APIs) con
+    /// <c>TryAdd</c>, porque un portal monta unas u otras y no puede acabar con dos almacenes: dos
+    /// almacenes es lo mismo que ninguno.
+    ///
+    /// Lo que NO registra: el cliente HTTP <c>AuthApi</c>, que lleva la dirección de SignupAPI y por
+    /// tanto es de cada portal. Va por <see cref="AuthSurfaceExtensions.AddAuthApiClient"/>, y ahí
+    /// se apagan las cookies del manejador —lo que impide que el refresh token de un usuario acabe
+    /// enviado en la llamada de otro.
+    /// </remarks>
+    public static IServiceCollection AddPortalSessionTokens(this IServiceCollection services)
+    {
+        // Dependencia dura del renovador: sin IHttpClientFactory no se construye. Es idempotente,
+        // así que no estorba al portal que ya registre sus clientes.
+        services.AddHttpClient();
+
+        services.TryAddSingleton<AuthTokenRefresher>();
+
+        // Con fábrica y no con el registro por tipo: el constructor lleva una ventana de inactividad
+        // opcional que solo usan las pruebas, y dejar que el contenedor decida qué hacer con un
+        // parámetro con valor por defecto es apoyarse en un detalle suyo sin necesidad.
+        services.TryAddSingleton(sp => new PortalSessionTokens(
+            sp.GetRequiredService<AuthTokenRefresher>(),
+            sp.GetRequiredService<ILogger<PortalSessionTokens>>()));
 
         return services;
     }

@@ -86,6 +86,43 @@ public sealed class AuthApiGateway
         bool              authenticated,
         CancellationToken ct = default)
     {
+        var (outcome, _) = await SendAsync<T>(method, path, body, authenticated, ct);
+        return outcome;
+    }
+
+    /// <summary>
+    /// Igual que <see cref="CallAsync{T}"/> para los endpoints que EMITEN TOKENS —login,
+    /// verificación del segundo factor, confirmación del enrolamiento—, con el refresh token que la
+    /// API deja en la cabecera <c>Set-Cookie</c> de la respuesta.
+    /// </summary>
+    /// <remarks>
+    /// Existe porque el refresh token NO viene en el cuerpo: la API lo vacía a propósito
+    /// (<c>response.RefreshToken = string.Empty</c>) y lo entrega como cookie, contando con que al
+    /// otro lado hay un navegador. Los portales hablan servidor a servidor, así que si nadie lee esa
+    /// cabecera el token se pierde — que es exactamente lo que pasaba, y por lo que la sesión moría
+    /// al caducar el JWT.
+    ///
+    /// Siempre anónima: los tres endpoints que emiten tokens lo son por definición, porque ocurren
+    /// cuando todavía no hay sesión.
+    /// </remarks>
+    public Task<(ApiOutcome<T> Outcome, string? RefreshToken)> CallForTokensAsync<T>(
+        HttpMethod        method,
+        string            path,
+        object?           body,
+        CancellationToken ct = default) =>
+        SendAsync<T>(method, path, body, authenticated: false, ct);
+
+    /// <summary>
+    /// El cuerpo común de las dos formas de llamar. Devuelve además el refresh token de la
+    /// respuesta, que casi todas las llamadas descartan y las tres de la puerta necesitan.
+    /// </summary>
+    private async Task<(ApiOutcome<T> Outcome, string? RefreshToken)> SendAsync<T>(
+        HttpMethod        method,
+        string            path,
+        object?           body,
+        bool              authenticated,
+        CancellationToken ct)
+    {
         using var request = new HttpRequestMessage(method, path);
 
         if (body is not null)
@@ -95,7 +132,7 @@ public sealed class AuthApiGateway
         {
             var token = await _accessTokens.GetAccessTokenAsync(ct);
             if (string.IsNullOrWhiteSpace(token))
-                return ApiOutcome<T>.Failed(SessionExpired);
+                return (ApiOutcome<T>.Failed(SessionExpired), null);
 
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
@@ -105,12 +142,13 @@ public sealed class AuthApiGateway
             var httpClient = _httpClientFactory.CreateClient(HttpClientName);
             using var response = await httpClient.SendAsync(request, ct);
 
-            var apiResponse = await ReadEnvelopeAsync<T>(response, ct);
+            var apiResponse  = await ReadEnvelopeAsync<T>(response, ct);
+            var refreshToken = RefreshCookie.ReadFrom(response);
 
             if (response.IsSuccessStatusCode && apiResponse?.Success == true)
-                return ApiOutcome<T>.Succeeded(apiResponse.Data);
+                return (ApiOutcome<T>.Succeeded(apiResponse.Data), refreshToken);
 
-            return ApiOutcome<T>.Failed(ErrorCodeOf(response, apiResponse?.ErrorCode));
+            return (ApiOutcome<T>.Failed(ErrorCodeOf(response, apiResponse?.ErrorCode)), null);
         }
         catch (Exception ex)
         {
@@ -118,7 +156,7 @@ public sealed class AuthApiGateway
             // pantalla que llamó tiene que poder enseñar un mensaje y dejar reintentar.
             _logger.LogError(ex, "La llamada {Method} {Path} a la API de autenticación falló.",
                 method.Method, path);
-            return ApiOutcome<T>.Failed(Unreachable);
+            return (ApiOutcome<T>.Failed(Unreachable), null);
         }
     }
 

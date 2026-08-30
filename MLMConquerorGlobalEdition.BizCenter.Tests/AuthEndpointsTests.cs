@@ -100,7 +100,7 @@ public class AuthEndpointsTests
 
         var resultado = await AuthEndpoints.LoginAsync(
             new AuthEndpoints.LoginForm("quien@ejemplo.com", "la-contraseña"),
-            GatewayCaido(), contexto, portal, cookies, default);
+            GatewayCaido(), contexto, portal, cookies, Almacen(), default);
 
         var destino = await Ejecutar(resultado, contexto);
 
@@ -118,7 +118,7 @@ public class AuthEndpointsTests
 
         var resultado = await AuthEndpoints.LoginTwoFactorAsync(
             new AuthEndpoints.CodeForm("123456"),
-            GatewayCaido(), contexto, portal, cookies, default);
+            GatewayCaido(), contexto, portal, cookies, Almacen(), default);
 
         var destino = await Ejecutar(resultado, contexto);
 
@@ -153,7 +153,7 @@ public class AuthEndpointsTests
 
         var resultado = await AuthEndpoints.EnrollAuthenticatorAsync(
             new AuthEndpoints.CodeForm("123456"),
-            GatewayCaido(), contexto, portal, cookies, default);
+            GatewayCaido(), contexto, portal, cookies, Almacen(), default);
 
         var destino = await Ejecutar(resultado, contexto);
 
@@ -175,18 +175,18 @@ public class AuthEndpointsTests
         {
             ctx => AuthEndpoints.LoginAsync(
                 new AuthEndpoints.LoginForm("quien@ejemplo.com", "x"),
-                GatewayCaido(), ctx, BizCenter, cookies, default),
+                GatewayCaido(), ctx, BizCenter, cookies, Almacen(), default),
 
             ctx => AuthEndpoints.LoginTwoFactorAsync(
                 new AuthEndpoints.CodeForm("123456"),
-                GatewayCaido(), ctx, BizCenter, cookies, default),
+                GatewayCaido(), ctx, BizCenter, cookies, Almacen(), default),
 
             ctx => AuthEndpoints.ResendTwoFactorAsync(
                 GatewayCaido(), ctx, BizCenter, cookies, default),
 
             ctx => AuthEndpoints.EnrollAuthenticatorAsync(
                 new AuthEndpoints.CodeForm("123456"),
-                GatewayCaido(), ctx, BizCenter, cookies, default),
+                GatewayCaido(), ctx, BizCenter, cookies, Almacen(), default),
         };
 
         foreach (var manejador in manejadores)
@@ -227,7 +227,7 @@ public class AuthEndpointsTests
 
         var resultado = await AuthEndpoints.LoginAsync(
             new AuthEndpoints.LoginForm("quien@ejemplo.com", "x"),
-            gateway, contexto, portal, cookies, default);
+            gateway, contexto, portal, cookies, Almacen(), default);
 
         var destino = await Ejecutar(resultado, contexto);
 
@@ -253,7 +253,7 @@ public class AuthEndpointsTests
 
         var resultado = await AuthEndpoints.LoginAsync(
             new AuthEndpoints.LoginForm("quien@ejemplo.com", "x"),
-            gateway, contexto, portal, cookies, default);
+            gateway, contexto, portal, cookies, Almacen(), default);
 
         var destino = await Ejecutar(resultado, contexto);
 
@@ -273,7 +273,7 @@ public class AuthEndpointsTests
         var contexto = Contexto();
 
         var resultado = await AuthEndpoints.LoginAsync(
-            form: null, GatewayCaido(), contexto, portal, cookies, default);
+            form: null, GatewayCaido(), contexto, portal, cookies, Almacen(), default);
 
         await Ejecutar(resultado, contexto);
         contexto.Response.StatusCode.Should().Be(302);
@@ -309,7 +309,7 @@ public class AuthEndpointsTests
         var contextoLogin = Contexto();
         var login = await AuthEndpoints.LoginAsync(
             new AuthEndpoints.LoginForm("quien@ejemplo.com", "x"),
-            GatewayCaido(), contextoLogin, BizCenter, CookiesBizCenter, default);
+            GatewayCaido(), contextoLogin, BizCenter, CookiesBizCenter, Almacen(), default);
         var destinoLogin = await Ejecutar(login, contextoLogin);
 
         destinoRecuperacion.Should().EndWith($"error={AuthApiGateway.Unreachable}");
@@ -337,7 +337,7 @@ public class AuthEndpointsTests
 
         var resultado = await AuthEndpoints.LoginAsync(
             new AuthEndpoints.LoginForm("quien@ejemplo.com", "la-contraseña"),
-            gateway, contexto, portal, cookies, default);
+            gateway, contexto, portal, cookies, Almacen(), default);
 
         var destino = await Ejecutar(resultado, contexto);
 
@@ -362,7 +362,7 @@ public class AuthEndpointsTests
 
         var resultado = await AuthEndpoints.LoginAsync(
             new AuthEndpoints.LoginForm("quien@ejemplo.com", "x"),
-            gateway, contexto, portal, cookies, default);
+            gateway, contexto, portal, cookies, Almacen(), default);
 
         var destino = await Ejecutar(resultado, contexto);
 
@@ -389,7 +389,7 @@ public class AuthEndpointsTests
 
         var resultado = await AuthEndpoints.LoginAsync(
             new AuthEndpoints.LoginForm("quien@ejemplo.com", "la-contraseña"),
-            gateway, contexto, portal, cookies, default);
+            gateway, contexto, portal, cookies, Almacen(), default);
 
         var destino = await Ejecutar(resultado, contexto);
 
@@ -414,7 +414,7 @@ public class AuthEndpointsTests
 
         var resultado = await AuthEndpoints.LoginAsync(
             new AuthEndpoints.LoginForm("quien@ejemplo.com", "la-contraseña"),
-            gateway, contexto, Admin, CookiesAdmin, default);
+            gateway, contexto, Admin, CookiesAdmin, Almacen(), default);
 
         var destino = await Ejecutar(resultado, contexto);
 
@@ -430,7 +430,7 @@ public class AuthEndpointsTests
 
         var resultado = await AuthEndpoints.LoginAsync(
             new AuthEndpoints.LoginForm("quien@ejemplo.com", "la-contraseña"),
-            gateway, contexto, Admin, CookiesAdmin, default);
+            gateway, contexto, Admin, CookiesAdmin, Almacen(), default);
 
         var destino = await Ejecutar(resultado, contexto);
 
@@ -448,7 +448,7 @@ public class AuthEndpointsTests
 
         var resultado = await AuthEndpoints.LoginAsync(
             new AuthEndpoints.LoginForm("quien@ejemplo.com", "la-contraseña"),
-            gateway, contexto, BizCenter, CookiesBizCenter, default);
+            gateway, contexto, BizCenter, CookiesBizCenter, Almacen(), default);
 
         var destino = await Ejecutar(resultado, contexto);
 
@@ -474,7 +474,7 @@ public class AuthEndpointsTests
 
         var resultado = await AuthEndpoints.LoginAsync(
             new AuthEndpoints.LoginForm("quien@ejemplo.com", "la-contraseña"),
-            gateway, contexto, portal, cookies, default);
+            gateway, contexto, portal, cookies, Almacen(), default);
 
         await Ejecutar(resultado, contexto);
 
@@ -500,7 +500,7 @@ public class AuthEndpointsTests
 
         var resultado = await AuthEndpoints.LoginTwoFactorAsync(
             new AuthEndpoints.CodeForm("123456"),
-            gateway, contexto, portal, cookies, default);
+            gateway, contexto, portal, cookies, Almacen(), default);
 
         var destino = await Ejecutar(resultado, contexto);
 
@@ -523,7 +523,7 @@ public class AuthEndpointsTests
         // Un gateway que reventaría si alguien lo llamara: si esta prueba pasa, es que no se llamó.
         var resultado = await AuthEndpoints.LoginTwoFactorAsync(
             new AuthEndpoints.CodeForm("123456"),
-            GatewayCaido(), contexto, portal, cookies, default);
+            GatewayCaido(), contexto, portal, cookies, Almacen(), default);
 
         var destino = await Ejecutar(resultado, contexto);
 
@@ -537,7 +537,8 @@ public class AuthEndpointsTests
         var (portal, cookies) = Portal(nombre);
         var contexto = Contexto();
 
-        var resultado = await AuthEndpoints.LogoutAsync(contexto, portal, cookies);
+        var resultado = await AuthEndpoints.LogoutAsync(
+            contexto, GatewayCaido(), portal, cookies, Almacen());
         var destino   = await Ejecutar(resultado, contexto);
 
         destino.Should().Be(portal.LoginPage);
@@ -575,7 +576,7 @@ public class AuthEndpointsTests
 
         var resultado = await AuthEndpoints.LoginAsync(
             new AuthEndpoints.LoginForm("quien@ejemplo.com", "la-contraseña-buena"),
-            gateway, contexto, portal, cookies, default);
+            gateway, contexto, portal, cookies, Almacen(), default);
 
         var destino = await Ejecutar(resultado, contexto);
 
@@ -599,7 +600,7 @@ public class AuthEndpointsTests
 
         var resultado = await AuthEndpoints.LoginAsync(
             new AuthEndpoints.LoginForm("quien@ejemplo.com", "la-contraseña-buena"),
-            gateway, contexto, portal, cookies, default);
+            gateway, contexto, portal, cookies, Almacen(), default);
 
         var destino = await Ejecutar(resultado, contexto);
 
@@ -625,7 +626,7 @@ public class AuthEndpointsTests
 
         var resultado = await AuthEndpoints.LoginAsync(
             new AuthEndpoints.LoginForm("quien@ejemplo.com", "x"),
-            gateway, contexto, BizCenter, CookiesBizCenter, default);
+            gateway, contexto, BizCenter, CookiesBizCenter, Almacen(), default);
 
         var destino = await Ejecutar(resultado, contexto);
 
@@ -649,7 +650,7 @@ public class AuthEndpointsTests
 
         var resultado = await AuthEndpoints.LoginAsync(
             new AuthEndpoints.LoginForm("quien@ejemplo.com", "x"),
-            gateway, contexto, BizCenter, CookiesBizCenter, default);
+            gateway, contexto, BizCenter, CookiesBizCenter, Almacen(), default);
 
         var destino = await Ejecutar(resultado, contexto);
 
@@ -674,6 +675,19 @@ public class AuthEndpointsTests
     // ===========================================================================================
     //  Ayudas
     // ===========================================================================================
+
+    /// <summary>
+    /// Un almacén de sesión de usar y tirar. Su renovador no puede renovar nada —el cliente
+    /// responde 401 a todo—, y es lo correcto aquí: esto prueba LA PUERTA, que solo lo usa para
+    /// dejar sembrada la sesión que acaba de firmar. La renovación se prueba en
+    /// <c>RefrescoDeSesionTests</c>.
+    /// </summary>
+    private static PortalSessionTokens Almacen() =>
+        new(new AuthTokenRefresher(
+                new FabricaDeClientes(new HandlerFalso(
+                    _ => new HttpResponseMessage(HttpStatusCode.Unauthorized))),
+                NullLogger<AuthTokenRefresher>.Instance),
+            NullLogger<PortalSessionTokens>.Instance);
 
     /// <summary>Un gateway cuyo cliente HTTP lanza: es SignupAPI apagada, o la red caída.</summary>
     private static AuthApiGateway GatewayCaido() =>

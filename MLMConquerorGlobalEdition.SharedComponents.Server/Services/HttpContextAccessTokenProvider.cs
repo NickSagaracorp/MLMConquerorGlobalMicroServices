@@ -1,13 +1,11 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using MLMConquerorGlobalEdition.ClientCore;
 
 namespace MLMConquerorGlobalEdition.SharedComponents.Server.Services;
 
 /// <summary>
-/// El lado web de <see cref="IAccessTokenProvider"/>: saca el token del claim
-/// <c>access_token</c> de la cookie de sesión, que es donde lo dejó
-/// <c>AuthEndpoints.CompleteSignInAsync</c>.
+/// El lado web de <see cref="IAccessTokenProvider"/>: el token de acceso VIGENTE del usuario de esta
+/// petición, renovándolo contra la API si el de su cookie ya caducó.
 ///
 /// Se queda aquí, y no en ClientCore, porque <c>HttpContext</c> es exactamente la dependencia de
 /// alojamiento web de la que había que librar al gateway. Aquí no estorba: SharedComponents ya es
@@ -17,27 +15,45 @@ namespace MLMConquerorGlobalEdition.SharedComponents.Server.Services;
 /// De ámbito de petición, como todo lo que lee del <c>HttpContext</c>: el token que devuelve es
 /// el del usuario de ESTA petición y de ninguna otra.
 /// </summary>
+/// <remarks>
+/// POR QUÉ RENUEVA AQUÍ Y NO SOLO EN EL MIDDLEWARE. Por este proveedor pasa TODO lo que el portal le
+/// pide a SignupAPI con sesión: cambiar la contraseña, dar de alta un teléfono, apagar el segundo
+/// factor, descargar los datos personales, salir. Ninguna de esas cosas es una navegación —son POST
+/// de formulario—, así que el middleware no las mira, y con el JWT caducado todas devolvían
+/// <c>SESSION_EXPIRED</c> aunque el usuario acabara de teclear su contraseña actual. Renovando en el
+/// único sitio por el que pasan todas, funcionan las cinco sin tocar ninguna.
+///
+/// La cookie no se reemite desde aquí: hay peticiones en las que la respuesta ya empezó, y decidir
+/// caso por caso sería repartir por el archivo una regla que ya está en un sitio. Los tokens nuevos
+/// quedan en <see cref="PortalSessionTokens"/> y la cookie se pone al día en la siguiente
+/// navegación, que es el mismo trato que tiene la renovación dentro de un circuito.
+/// </remarks>
 public sealed class HttpContextAccessTokenProvider : IAccessTokenProvider
 {
-    /// <summary>Nombre del claim donde el manejador de login guardó el token.</summary>
-    private const string AccessTokenClaim = "access_token";
+    private readonly IHttpContextAccessor  _httpContextAccessor;
+    private readonly PortalSessionTokens   _sessionTokens;
 
-    private readonly IHttpContextAccessor _httpContextAccessor;
-
-    public HttpContextAccessTokenProvider(IHttpContextAccessor httpContextAccessor) =>
+    public HttpContextAccessTokenProvider(
+        IHttpContextAccessor httpContextAccessor, PortalSessionTokens sessionTokens)
+    {
         _httpContextAccessor = httpContextAccessor;
+        _sessionTokens       = sessionTokens;
+    }
 
     /// <inheritdoc />
     /// <remarks>
-    /// Sin ceder el hilo: el claim ya está en memoria —lo trajo la autenticación por cookie al
-    /// principio de la petición—, así que no hay nada que esperar. La firma es asíncrona por lo
-    /// que necesita móvil, no por lo que necesita web.
+    /// Devuelve null cuando no hay <c>HttpContext</c> (por ejemplo, fuera de una petición), cuando
+    /// el usuario no tiene sesión y cuando la sesión ya no se puede renovar. Las tres son, para
+    /// quien llama, la misma: no hay token, y el gateway lo traduce a <c>SESSION_EXPIRED</c>.
     ///
-    /// Devuelve null cuando no hay <c>HttpContext</c> (por ejemplo, fuera de una petición) o
-    /// cuando el usuario no tiene sesión. Las dos cosas son, para quien llama, la misma: no hay
-    /// token.
+    /// Solo cede el hilo cuando hay que renovar de verdad. Con el token todavía vivo —que es el caso
+    /// de casi todas las llamadas— la comprobación es la lectura de un claim que ya está en memoria.
     /// </remarks>
-    public ValueTask<string?> GetAccessTokenAsync(CancellationToken ct = default) =>
-        ValueTask.FromResult(
-            _httpContextAccessor.HttpContext?.User.FindFirstValue(AccessTokenClaim));
+    public async ValueTask<string?> GetAccessTokenAsync(CancellationToken ct = default)
+    {
+        var user = _httpContextAccessor.HttpContext?.User;
+
+        var vigentes = await _sessionTokens.EnsureFreshAsync(user, ct);
+        return vigentes?.AccessToken;
+    }
 }

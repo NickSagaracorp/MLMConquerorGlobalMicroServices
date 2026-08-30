@@ -1,7 +1,9 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
+using MLMConquerorGlobalEdition.ClientCore;
 using MLMConquerorGlobalEdition.SharedComponents.Resources;
 
 namespace MLMConquerorGlobalEdition.SharedComponents.Server.Services;
@@ -16,11 +18,16 @@ namespace MLMConquerorGlobalEdition.SharedComponents.Server.Services;
 /// <remarks>
 /// POR QUÉ CADUCA LA SESIÓN AUNQUE LA COOKIE SIGA VIVA: la cookie del portal dura horas (8 en
 /// administración, 24 en el centro de negocios) y lleva dentro el JWT como claim
-/// <c>access_token</c>. Ese JWT dura lo que diga <c>Jwt:AccessTokenExpiryMinutes</c> de SignupAPI, y
-/// NO se renueva: el refresh token que devuelve la API no se guarda en ninguna parte. Así que en
-/// cuanto el JWT caduca la cookie es un envoltorio sin nada dentro — el usuario sigue "autenticado"
-/// para ASP.NET Core y no lo está para ninguna API. De ahí que caducar signifique cerrar la sesión,
-/// y no solo enseñar un aviso.
+/// <c>access_token</c>. Ese JWT dura lo que diga <c>Jwt:AccessTokenExpiryMinutes</c> de SignupAPI.
+/// En cuanto caduca, la cookie es un envoltorio sin nada dentro — el usuario sigue "autenticado"
+/// para ASP.NET Core y no lo está para ninguna API.
+///
+/// LO QUE CAMBIÓ: antes eso ERA el final, porque el refresh token que devuelve la API no se
+/// guardaba en ninguna parte y no había con qué renovar. Ahora se guarda —claim
+/// <see cref="RefreshTokenClaim"/>, en la misma cookie— y caducar es solo el momento de intentar la
+/// renovación. Quien la intenta es <see cref="PortalSessionTokens"/>; todo lo de este archivo es lo
+/// que pasa cuando esa renovación NO sale: refresh caducado, revocado o ausente. Es decir, sigue
+/// siendo el final del camino, pero ahora hay un camino antes.
 /// </remarks>
 public static class SessionExpiry
 {
@@ -40,6 +47,29 @@ public static class SessionExpiry
 
     /// <summary>El claim donde <c>AuthEndpoints</c> guarda el JWT dentro de la cookie de sesión.</summary>
     public const string AccessTokenClaim = "access_token";
+
+    /// <summary>
+    /// El claim donde <c>AuthEndpoints</c> guarda el refresh token, al lado del de acceso.
+    /// </summary>
+    /// <remarks>
+    /// VA DONDE VA EL DE ACCESO Y EN NINGÚN OTRO SITIO. Es una credencial de larga vida —treinta
+    /// días— y la cookie de sesión de los dos portales es <c>HttpOnly</c>, <c>Secure</c> y
+    /// <c>SameSite=Strict</c>: no la lee JavaScript, no sale sin TLS y no viaja en peticiones de
+    /// otro sitio. Nunca en la URL, ni en el cuerpo de una página, ni en el almacenamiento del
+    /// navegador, que son los tres sitios donde sí se podría robar.
+    /// </remarks>
+    public const string RefreshTokenClaim = "refresh_token";
+
+    /// <summary>
+    /// El claim que nombra esta sesión del portal. No es una credencial: no abre nada, solo dice qué
+    /// entrada de <see cref="PortalSessionTokens"/> le corresponde a este usuario.
+    /// </summary>
+    /// <remarks>
+    /// Hace falta porque el circuito y la petición siguiente son dos mundos distintos —ámbitos de DI
+    /// distintos, incluso momentos distintos— y necesitan poder señalar la misma pareja de tokens.
+    /// Lo único que comparten es la cookie, así que la identidad de la sesión viaja en ella.
+    /// </remarks>
+    public const string SessionIdClaim = "portal_session";
 
     /// <summary>
     /// Margen con el que se considera caducado un token que aún no lo está. Evita gastar una
@@ -94,5 +124,50 @@ public static class SessionExpiry
     {
         await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         httpContext.Response.Redirect(LoginUrl(loginPage));
+    }
+
+    /// <summary>
+    /// Vuelve a firmar la cookie de sesión con una pareja de tokens nueva, dejando intacto todo lo
+    /// demás que lleva dentro (identidad, roles, correo, idioma).
+    /// </summary>
+    /// <remarks>
+    /// ES LA SEGUNDA MITAD DE LA RENOVACIÓN. La primera —conseguir los tokens nuevos— puede ocurrir
+    /// en cualquier parte, circuito incluido. Esta solo puede ocurrir sobre una respuesta que
+    /// todavía no haya empezado, y por eso la hace el middleware en la siguiente navegación y no el
+    /// manejador dentro del circuito. Quien llame tiene que haber comprobado
+    /// <c>!Response.HasStarted</c>.
+    ///
+    /// El principal se reconstruye entero en vez de mutarlo: un <c>ClaimsIdentity</c> ya emitido
+    /// puede venir de sitios que no admiten borrar claims, y sustituir dos claims sobre una lista
+    /// nueva no tiene ese problema. También se actualiza <c>httpContext.User</c>, y eso NO es
+    /// cosmético: el apretón de manos del circuito de Blazor se lleva el principal de ESTA petición,
+    /// así que sin esa línea el circuito recién abierto arrancaría con el token viejo.
+    /// </remarks>
+    public static async Task ReissueCookieAsync(HttpContext httpContext, SessionTokens tokens)
+    {
+        var identity = httpContext.User.Identity as ClaimsIdentity;
+
+        var claims = httpContext.User.Claims
+            .Where(c => c.Type != AccessTokenClaim && c.Type != RefreshTokenClaim)
+            .ToList();
+
+        claims.Add(new Claim(AccessTokenClaim, tokens.AccessToken));
+        if (!string.IsNullOrEmpty(tokens.RefreshToken))
+            claims.Add(new Claim(RefreshTokenClaim, tokens.RefreshToken));
+
+        var renovada = new ClaimsIdentity(
+            claims,
+            identity?.AuthenticationType ?? CookieAuthenticationDefaults.AuthenticationScheme,
+            identity?.NameClaimType ?? ClaimsIdentity.DefaultNameClaimType,
+            identity?.RoleClaimType ?? ClaimsIdentity.DefaultRoleClaimType);
+
+        var principal = new ClaimsPrincipal(renovada);
+
+        await httpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            principal,
+            new AuthenticationProperties { IsPersistent = true });
+
+        httpContext.User = principal;
     }
 }
