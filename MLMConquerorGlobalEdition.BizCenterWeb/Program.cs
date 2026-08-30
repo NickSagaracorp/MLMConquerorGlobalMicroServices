@@ -57,17 +57,14 @@ var challengeCookieNames = new ChallengeCookieNames
 
 // La puerta — login, segundo factor, enrolamiento forzado y salida. Los manejadores son los mismos
 // que los de administración y viven en SharedComponents.Server; de este portal son solo los
-// destinos y las dos rarezas que todavía tiene su pantalla de segundo factor.
+// destinos.
 builder.Services.AddAuthSurface(new AuthPortalOptions
 {
     LoginPage     = "/login",
     TwoFactorPage = "/two-factor",
 
-    // Todavía no existe esta pantalla; la monta la tarea siguiente. La ruta se declara ya porque el
-    // manejador tiene que tener a dónde mandar al usuario el día que un rol de miembro entre en
-    // Auth:TwoFactor:MandatoryRoles: hasta ahora este portal no sabía leer RequiresEnrollment y
-    // mandaba a /login?error=invalid, que para el usuario es "tus credenciales están mal" cuando lo
-    // que pasa es que le falta configurar el segundo factor. Va en la raíz, como /two-factor.
+    // La pantalla del enrolamiento forzado, a la que va el miembro cuyo rol exige segundo factor y
+    // todavía no lo tiene configurado. Va en la raíz, como /two-factor.
     EnrollAuthenticatorPage = "/enroll-authenticator",
 
     HomePage = "/",
@@ -76,13 +73,14 @@ builder.Services.AddAuthSurface(new AuthPortalOptions
 
     // El idioma preferido del miembro viaja en el claim default_language del token; fijarlo aquí
     // hace que un primer inicio de sesión en un dispositivo nuevo ya aterrice en su idioma.
-    FollowsMemberLanguage = true,
+    FollowsMemberLanguage = true
 
-    // Las dos rarezas de /two-factor, que es anterior al componente compartido TwoFactorVerify:
-    // lee el destino enmascarado de `email` en vez de `target`, y solo sabe traducir el literal
-    // `invalid_code`. Las dos líneas se borran en cuanto esa pantalla monte el componente.
-    TwoFactorTargetQueryParam = "email",
-    TwoFactorErrorCode        = "invalid_code"
+    // Ya NO se declaran TwoFactorTargetQueryParam ni TwoFactorErrorCode. Existían para sostener la
+    // pantalla /two-factor propia de este portal, que leía el destino enmascarado de `email` en vez
+    // de `target` y solo sabía traducir el literal `invalid_code`. Esa pantalla ya monta
+    // TwoFactorVerify, que lee `target` —el valor por defecto— y habla el vocabulario entero de la
+    // API, así que las dos propiedades vuelven a sus valores buenos y se pueden borrar de
+    // AuthPortalOptions cuando alguien pase por allí.
 },
 challengeCookieNames);
 
@@ -156,8 +154,7 @@ app.MapPost("/account/logout", (Delegate)AuthEndpoints.LogoutAsync).DisableAntif
 app.MapGet("/account/logout",  (Delegate)AuthEndpoints.LogoutAsync);
 
 // Segundo factor y enrolamiento — el reto viaja en cookie HttpOnly, nunca en la URL ni en el
-// formulario. El del enrolamiento es nuevo aquí: su pantalla la monta la tarea siguiente, pero el
-// endpoint ya existe para que el camino esté entero desde el manejador de login.
+// formulario.
 app.MapPost("/account/two-factor/verify",   (Delegate)AuthEndpoints.LoginTwoFactorAsync).DisableAntiforgery();
 app.MapPost("/account/two-factor/resend",   (Delegate)AuthEndpoints.ResendTwoFactorAsync).DisableAntiforgery();
 app.MapPost("/account/enroll-authenticator",(Delegate)AuthEndpoints.EnrollAuthenticatorAsync).DisableAntiforgery();

@@ -1,116 +1,84 @@
 @page "/two-factor"
 @layout MLMConquerorGlobalEdition.SharedComponents.Components.Layout.BlankLayout
-@inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Account
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
+@inject TwoFactorPageData PageData
+@inject NavigationManager Navigation
+@inject IStringLocalizer<SharedResources> L
+
+@* Segundo paso del login del centro de negocios.
+
+   MODO FORMULARIO, como estaba: los dos <form method="post"> siguen posteando a
+   /account/two-factor/verify y /account/two-factor/resend, que son las rutas que este portal tiene
+   mapeadas en su Program.cs. Sigue sin @@rendermode —SSR estático— porque el reto vive en una
+   cookie HttpOnly y quien la lee es el manejador del POST, no la pantalla.
+
+   LO QUE ESTA PANTALLA GANA AL MONTAR EL COMPONENTE COMPARTIDO, y que su formulario propio no hacía:
+
+     · Sabe de canales. Antes daba por hecho que el código había ido al correo y ofrecía "reenviar"
+       siempre; con la aplicación autenticadora no hay nada que reenviar y pulsarlo gastaba cupo de
+       emisiones sin enviar nada. El canal sale del propio ChallengeToken, así que sobrevive a los
+       rebotes de error.
+     · Habla el vocabulario entero de la API. Solo sabía traducir el literal `invalid_code`; con
+       CODE_EXPIRED, TOO_MANY_ATTEMPTS o TOO_MANY_REQUESTS se quedaba muda. Por eso desaparecen de
+       Program.cs las dos rarezas que existían para sostener esta pantalla —TwoFactorErrorCode y
+       TwoFactorTargetQueryParam—: ya no hacen falta.
+     · Sin reto no pinta formulario. Antes, entrar a /two-factor a mano enseñaba un formulario que
+       fallaba al enviarse; ahora se vuelve al login con el aviso, igual que administración.
+
+   El destino enmascarado lo pone la API y llega por la query como `target`. El enmascarado que
+   hacía esta página a mano se va con ella: enmascarar aquí un correo que ya venía enmascarado era
+   trabajo repetido, y encima obligaba a llevar la dirección en claro por la URL. *@
 
 <PageTitle>@L["PageTitle.TwoFactor"]</PageTitle>
 
-<div class="container">
-    <div class="main-content d-flex flex-column p-0">
-        <div class="m-auto m-1230">
-            <div class="row align-items-center">
-                <div class="col-lg-6 d-none d-lg-block">
-                    <img src="assets/images/poster-login.webp" class="rounded-3" alt="@L["Login.PosterAlt"]">
-                </div>
-                <div class="col-lg-6">
-                    <div class="mw-480 ms-lg-auto">
-                        <div class="d-inline-block mb-4">
-                            <img src="assets/images/logo.svg" class="rounded-3 for-light-logo" alt="@L["Login.LogoAlt"]">
-                            <img src="assets/images/logo.svg" class="rounded-3 for-dark-logo" alt="@L["Login.LogoAlt"]">
-                        </div>
-                        <h3 class="fs-28 mb-2">@L["TwoFactor.Title"]</h3>
-                        <p class="fw-medium fs-16 mb-2">@L["TwoFactor.Subtitle"]</p>
-                        @if (!string.IsNullOrEmpty(_maskedEmail))
-                        {
-                            <p class="fw-medium fs-14 text-secondary mb-4">
-                                @string.Format((string)L["TwoFactor.SentTo"], _maskedEmail)
-                            </p>
-                        }
-                        else
-                        {
-                            <div class="mb-4"></div>
-                        }
-
-                        @if (Resent == "1")
-                        {
-                            <div class="alert alert-info mb-3">
-                                @L["TwoFactor.ResentNotice"]
-                            </div>
-                        }
-
-                        @if (Error == "invalid_code")
-                        {
-                            <div class="alert alert-danger mb-3">@L["TwoFactor.ErrorInvalidCode"]</div>
-                        }
-
-                        <form method="post" action="/account/two-factor/verify">
-                            <div class="form-group mb-4">
-                                <label class="label text-secondary">@L["TwoFactor.CodeLabel"]</label>
-                                <input name="Code"
-                                       type="text"
-                                       class="form-control h-55"
-                                       inputmode="numeric"
-                                       autocomplete="one-time-code"
-                                       maxlength="6"
-                                       pattern="[0-9]{6}"
-                                       placeholder="@L["TwoFactor.CodePlaceholder"]"
-                                       required />
-                                <small class="text-secondary fs-12">@L["TwoFactor.CodeHint"]</small>
-                            </div>
-                            <div class="form-group mb-4">
-                                <button type="submit" class="btn btn-primary fw-medium py-2 px-3 w-100">
-                                    <div class="d-flex align-items-center justify-content-center py-1">
-                                        <i class="material-symbols-outlined text-white fs-20 me-2">verified_user</i>
-                                        <span>@L["TwoFactor.VerifyButton"]</span>
-                                    </div>
-                                </button>
-                            </div>
-                        </form>
-
-                        <form method="post" action="/account/two-factor/resend" class="mb-3">
-                            <p class="mb-1">
-                                @L["TwoFactor.NoCodeQuestion"]
-                                <button type="submit"
-                                        class="btn btn-link p-0 fw-medium text-primary text-decoration-none align-baseline">
-                                    @L["TwoFactor.ResendLink"]
-                                </button>
-                            </p>
-                        </form>
-
-                        <p>
-                            <a href="/login" class="fw-medium text-primary text-decoration-none">
-                                @L["TwoFactor.CancelLink"]
-                            </a>
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<GateShell>
+    <TwoFactorVerify FormAction="/account/two-factor/verify"
+                     ResendAction="/account/two-factor/resend"
+                     Channel="@_channel"
+                     MaskedTarget="@_maskedTarget"
+                     ErrorCode="@Error"
+                     Resent="@(Resent == "1")"
+                     CancelUrl="/login" />
+</GateShell>
 
 @code {
-    [SupplyParameterFromQuery]
-    public string? Email { get; set; }
-
     [SupplyParameterFromQuery]
     public string? Error { get; set; }
 
     [SupplyParameterFromQuery]
     public string? Resent { get; set; }
 
-    private string _maskedEmail = string.Empty;
+    /// <summary>Destino enmascarado que puso el manejador del POST al redirigir hasta aquí.</summary>
+    [SupplyParameterFromQuery]
+    public string? Target { get; set; }
+
+    private string? _channel;
+    private string? _maskedTarget;
 
     protected override void OnInitialized()
-        => _maskedEmail = MaskEmail(Email);
-
-    private static string MaskEmail(string? email)
     {
-        if (string.IsNullOrWhiteSpace(email)) return string.Empty;
-        var atIndex = email.IndexOf('@');
-        if (atIndex <= 0) return email;
-        var local  = email[..atIndex];
-        var domain = email[(atIndex + 1)..];
-        var visible = local.Length <= 1 ? local : local[..1];
-        return $"{visible}{new string('*', Math.Max(1, local.Length - 1))}@{domain}";
+        // Sin reto no hay nada que verificar: o caducó, o alguien tecleó la URL a mano. En vez
+        // de pintar un formulario que fallaría al enviarse, vuelta al login — que es lo mismo
+        // que hace el manejador del POST cuando se encuentra sin cookie.
+        var challenge = PageData.ReadChallenge();
+        if (challenge is null)
+        {
+            Navigation.NavigateTo("/login?error=session_expired", forceLoad: false);
+            return;
+        }
+
+        _channel = challenge.Channel;
+
+        // El destino de la query solo llega en la primera carga y tras un reenvío; al volver de
+        // un error se ha perdido. El correo del propio reto lo reconstruye, pero SOLO si el
+        // canal es el correo: en SMS el código fue al teléfono, y enseñar ahí la dirección de
+        // correo sería decirle al miembro que mire donde no hay nada.
+        _maskedTarget = !string.IsNullOrWhiteSpace(Target)
+            ? Target
+            : string.Equals(_channel?.Trim(), "Email", StringComparison.OrdinalIgnoreCase)
+                ? challenge.MaskedEmail
+                : null;
     }
 }

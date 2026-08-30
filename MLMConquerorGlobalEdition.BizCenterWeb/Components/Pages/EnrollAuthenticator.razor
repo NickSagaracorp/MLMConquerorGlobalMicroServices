@@ -1,0 +1,62 @@
+@page "/enroll-authenticator"
+@layout MLMConquerorGlobalEdition.SharedComponents.Components.Layout.BlankLayout
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
+@inject TwoFactorPageData PageData
+@inject NavigationManager Navigation
+@inject IStringLocalizer<SharedResources> L
+
+@* Alta de la aplicación autenticadora en el centro de negocios.
+
+   ESTA PANTALLA FALTABA. El manejador de login ya sabía mandar aquí —desde que AuthEndpoints se
+   unificó, este portal lee RequiresEnrollment y escribe la cookie mlm_bizcenter_2fa_enrollment— y
+   el endpoint /account/enroll-authenticator ya estaba mapeado, pero /enroll-authenticator no
+   existía: el día que un rol de miembro entrase en Auth:TwoFactor:MandatoryRoles, el miembro se
+   habría quedado en un 404 con la sesión a medias y sin manera de entrar.
+
+   MODO FORMULARIO: el POST va a /account/enroll-authenticator, que confirma el enrolamiento y firma
+   la sesión — la API devuelve tokens reales al confirmar, así que no hay que volver a iniciar
+   sesión. Sin @@rendermode, SSR estático, porque el token del enrolamiento vive en una cookie
+   HttpOnly que solo el servidor puede leer.
+
+   El componente compartido se referencia con su nombre completo a propósito: se llama igual que
+   esta página, y un @@using de su espacio de nombres dejaría la etiqueta ambigua. *@
+
+<PageTitle>@L["Enroll.Title"]</PageTitle>
+
+<GateShell>
+    @if (_material is not null)
+    {
+        <MLMConquerorGlobalEdition.SharedComponents.Components.Account.EnrollAuthenticator
+            FormAction="/account/enroll-authenticator"
+            QrCodePngDataUri="@_material.QrCodePngDataUri"
+            SharedKey="@_material.SharedKey"
+            ErrorCode="@Error"
+            CancelUrl="/login" />
+    }
+</GateShell>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
+    private TwoFactorPageData.EnrollmentMaterial? _material;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // El QR y la clave son material de página, no de formulario: se piden aquí, durante el
+        // render, y no en AuthEndpoints. La llamada sale del servidor porque la cookie del
+        // enrolamiento es HttpOnly y el navegador no puede leerla.
+        //
+        // Repetir esta llamada es inofensivo: BeginAsync reutiliza la clave mientras el
+        // enrolamiento sigue abierto, así que volver aquí tras un código fallido devuelve el
+        // mismo QR que el miembro ya escaneó.
+        _material = await PageData.BeginEnrollmentAsync();
+
+        // Sin material no hay pantalla: o no hay cookie, o la API rechazó el token, o no
+        // respondió. Los tres acaban igual para el miembro, así que vuelta al login en vez de
+        // una tarjeta vacía con un formulario que fallaría al enviarse.
+        if (_material is null)
+            Navigation.NavigateTo("/login?error=session_expired", forceLoad: false);
+    }
+}

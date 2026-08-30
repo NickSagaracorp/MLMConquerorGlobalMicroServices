@@ -3,6 +3,7 @@ using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
+using MLMConquerorGlobalEdition.ClientCore;
 using MLMConquerorGlobalEdition.SharedComponents.Components.Account;
 using MLMConquerorGlobalEdition.SharedComponents.Resources;
 
@@ -86,6 +87,177 @@ public class AccountFormsDosModosTests : BunitContext
 
     private static void Escribir(IRenderedComponent<IComponent> cut, string selector, string valor) =>
         cut.Find(selector).Input(new ChangeEventArgs { Value = valor });
+
+    // -------------------------------------------------------------------------------------------
+    //  Login — la puerta
+    // -------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Login_SinOnSubmit_PosteaElFormularioDeSiempre()
+    {
+        var cut = Render<Login>(p => p
+            .Add(c => c.FormAction, "/account/login")
+            .Add(c => c.ForgotPasswordUrl, "/forgot-password"));
+
+        DebePostearA(cut.Find("form"), "/account/login");
+
+        // Los mismos nombres que AuthEndpoints.LoginForm. Si alguien renombra uno de los dos, el
+        // POST llega con el campo vacío y la puerta responde "credenciales inválidas" con
+        // credenciales buenas — un fallo que no rompe ninguna compilación.
+        NombresDeCampo(cut).Should().Equal("Email", "Password");
+    }
+
+    [Fact]
+    public void Login_ConOnSubmit_EntregaLasCredencialesYNoRecarga()
+    {
+        LoginFormModel? recibido = null;
+
+        var cut = Render<Login>(p => p
+            .Add(c => c.OnSubmit, (LoginFormModel m) => recibido = m));
+
+        Escribir(cut, "#login-email",    "alguien@example.com");
+        Escribir(cut, "#login-password", "LaSuya1A");
+
+        var form = cut.Find("form");
+        DebeEnviarSinRecargar(form);
+        form.Submit(EventArgs.Empty);
+
+        recibido.Should().NotBeNull();
+        recibido!.Email.Should().Be("alguien@example.com");
+        recibido.Password.Should().Be("LaSuya1A");
+    }
+
+    /// <summary>
+    /// La contraseña del login NO lleva minlength. Una cuenta creada antes de la política de hoy
+    /// tiene que poder entrar para poder cambiarla; bloquearla en la puerta la deja fuera de la
+    /// única pantalla desde la que podría arreglarlo.
+    /// </summary>
+    [Fact]
+    public void Login_LaContrasenaNoExigeLongitudMinima()
+    {
+        var cut = Render<Login>(p => p.Add(c => c.FormAction, "/x"));
+
+        cut.Find("#login-password").HasAttribute("minlength").Should().BeFalse();
+        cut.Find("#login-password").HasAttribute("required").Should().BeTrue();
+    }
+
+    /// <summary>
+    /// TODOS los códigos que LoginErrorMessages conoce se enseñan de verdad, con su clave y su
+    /// severidad. Esta es la prueba que faltaba cuando cada pantalla llevaba su propia cadena de
+    /// <c>@if</c>: SERVICE_UNAVAILABLE se emitía desde la puerta y ninguna de las dos lo traducía,
+    /// así que el usuario veía el formulario otra vez sin un solo aviso.
+    /// </summary>
+    [Theory]
+    [InlineData(LoginErrorMessages.Invalid,            "Login.ErrorInvalid",            "alert-danger")]
+    [InlineData(LoginErrorMessages.AccessDenied,       "Login.ErrorAccessDenied",       "alert-warning")]
+    [InlineData(LoginErrorMessages.Inactive,           "Login.ErrorInactive",           "alert-warning")]
+    [InlineData(LoginErrorMessages.SessionExpired,     "Login.ErrorSessionExpired",     "alert-info")]
+    [InlineData(LoginErrorMessages.ServiceUnavailable, "Login.ErrorServiceUnavailable", "alert-warning")]
+    public void Login_CadaCodigoConocidoSeEnsenaConSuTextoYSuSeveridad(
+        string codigo, string claveEsperada, string claseEsperada)
+    {
+        var cut = Render<Login>(p => p
+            .Add(c => c.FormAction, "/account/login")
+            .Add(c => c.ErrorCode, codigo));
+
+        var aviso = cut.Find(".alert");
+        aviso.TextContent.Trim().Should().Be(claveEsperada);
+        aviso.ClassList.Should().Contain(claseEsperada);
+    }
+
+    /// <summary>
+    /// Y la lista de arriba está completa: si alguien añade un código a LoginErrorMessages sin
+    /// añadir su caso aquí, esto se pone rojo en vez de dejar el código sin cubrir.
+    /// </summary>
+    [Fact]
+    public void Login_NoHayCodigosConocidosSinProbar()
+    {
+        LoginErrorMessages.AllCodes.Should().BeEquivalentTo(
+            new[]
+            {
+                LoginErrorMessages.Invalid,
+                LoginErrorMessages.AccessDenied,
+                LoginErrorMessages.Inactive,
+                LoginErrorMessages.SessionExpired,
+                LoginErrorMessages.ServiceUnavailable
+            },
+            "cada código que la puerta sabe emitir tiene que tener su caso en " +
+            "Login_CadaCodigoConocidoSeEnsenaConSuTextoYSuSeveridad");
+    }
+
+    /// <summary>
+    /// Un código que esta versión de la interfaz no conoce se calla. Enseñar el literal en crudo
+    /// —"THROTTLED_BY_EDGE"— no le dice nada al usuario y encima convierte la query string en un
+    /// altavoz para meter texto ajeno en la pantalla de login.
+    /// </summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("un_codigo_que_nadie_conoce")]
+    public void Login_UnCodigoQueNoConoceNoPintaNada(string codigo)
+    {
+        var cut = Render<Login>(p => p
+            .Add(c => c.FormAction, "/account/login")
+            .Add(c => c.ErrorCode, codigo));
+
+        cut.FindAll(".alert").Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// El error se pinta igual venga del POST (query string) o de una llamada interactiva. Es el
+    /// mismo parámetro y el mismo marcado en los dos modos.
+    /// </summary>
+    [Fact]
+    public void Login_ElErrorSePintaIgualEnLosDosModos()
+    {
+        var enFormulario = Render<Login>(p => p
+            .Add(c => c.FormAction, "/account/login")
+            .Add(c => c.ErrorCode, LoginErrorMessages.ServiceUnavailable));
+
+        var interactivo = Render<Login>(p => p
+            .Add(c => c.OnSubmit, (LoginFormModel _) => { })
+            .Add(c => c.ErrorCode, LoginErrorMessages.ServiceUnavailable));
+
+        enFormulario.Find(".alert").TextContent.Trim()
+            .Should().Be("Login.ErrorServiceUnavailable");
+        interactivo.Find(".alert").TextContent.Trim()
+            .Should().Be("Login.ErrorServiceUnavailable");
+    }
+
+    /// <summary>
+    /// Los dos enlaces se pintan solo si el portal los da. Administración no tiene alta pública
+    /// —sus cuentas las crea otro administrador—, así que no puede aparecer un "regístrate" que no
+    /// lleva a ninguna parte.
+    /// </summary>
+    [Fact]
+    public void Login_LosEnlacesSePintanSoloSiElPortalLosDa()
+    {
+        var sinEnlaces = Render<Login>(p => p.Add(c => c.FormAction, "/x"));
+        sinEnlaces.FindAll("a").Should().BeEmpty();
+
+        var conEnlaces = Render<Login>(p => p
+            .Add(c => c.FormAction, "/x")
+            .Add(c => c.ForgotPasswordUrl, "/forgot-password")
+            .Add(c => c.SignupUrl, "/signup"));
+
+        conEnlaces.FindAll("a").Select(a => a.GetAttribute("href"))
+            .Should().Equal("/forgot-password", "/signup");
+    }
+
+    /// <summary>
+    /// El enlace de recuperación va DENTRO del formulario: así el orden de tabulación lleva de la
+    /// contraseña a "no la recuerdo" y de ahí al botón, en vez de saltárselo.
+    /// </summary>
+    [Fact]
+    public void Login_ElEnlaceDeRecuperacionVaDentroDelFormulario()
+    {
+        var cut = Render<Login>(p => p
+            .Add(c => c.FormAction, "/x")
+            .Add(c => c.ForgotPasswordUrl, "/forgot-password"));
+
+        cut.Find("form").QuerySelectorAll("a").Select(a => a.GetAttribute("href"))
+            .Should().Equal("/forgot-password");
+    }
 
     // -------------------------------------------------------------------------------------------
     //  ChangePassword
@@ -260,6 +432,71 @@ public class AccountFormsDosModosTests : BunitContext
         recibido.NewPassword.Should().Be("Recien1AB");
     }
 
+    /// <summary>
+    /// La política de contraseñas —longitud, mayúscula, MINÚSCULA y dígito— se comprueba antes de
+    /// llamar, y con el mismo código de error que usa el manejador del POST.
+    ///
+    /// ESTO SUBIÓ DESDE LA PANTALLA PROPIA DE BizCenterWeb al unificarla: aquella lo comprobaba y
+    /// el componente compartido no, así que convertirla en envoltorio sin traerse esta regla habría
+    /// sido perder una validación por el camino. La minúscula es la que se olvida: SignupAPI no
+    /// sobreescribe RequireLowercase, que en Identity vale true por defecto, así que "PASSWORD1"
+    /// pasaba el filtro del cliente y el servidor la rechazaba después sin decir por qué.
+    /// </summary>
+    [Theory]
+    [InlineData("Corta1A")]      // menos de 8
+    [InlineData("password1a")]   // sin mayúscula
+    [InlineData("PASSWORD1A")]   // sin minúscula
+    [InlineData("PasswordAB")]   // sin dígito
+    public void ResetPassword_ConOnSubmit_YContrasenaQueIncumpleLaPolitica_NiLlama_NiCalla(
+        string contrasena)
+    {
+        var llamadas = 0;
+
+        var cut = Render<ResetPassword>(p => p
+            .Add(c => c.UserId, "usr-1")
+            .Add(c => c.Token, "tok-1")
+            .Add(c => c.OnSubmit, (ResetPasswordFormModel _) => llamadas++));
+
+        Escribir(cut, "#reset-password-new",     contrasena);
+        Escribir(cut, "#reset-password-confirm", contrasena);
+        cut.Find("form").Submit(EventArgs.Empty);
+
+        llamadas.Should().Be(0, "no hay nada que mandar a la API si la contraseña ya se sabe mala");
+        cut.Find(".alert-danger").TextContent.Trim()
+           .Should().Be("Account.Error.PasswordResetFailed");
+    }
+
+    /// <summary>Y la misma regla vale en las otras dos pantallas de contraseña, con su código.</summary>
+    [Fact]
+    public void ChangePassword_YSetPassword_TambienExigenLaPolitica()
+    {
+        var cambios = 0;
+        var altas   = 0;
+
+        var cambio = Render<ChangePassword>(p => p
+            .Add(c => c.OnSubmit, (ChangePasswordFormModel _) => cambios++));
+
+        Escribir(cambio, "#change-password-current", "LaDeAntes1");
+        Escribir(cambio, "#change-password-new",     "PASSWORD1A");
+        Escribir(cambio, "#change-password-confirm", "PASSWORD1A");
+        cambio.Find("form").Submit(EventArgs.Empty);
+
+        cambios.Should().Be(0);
+        cambio.Find(".alert-danger").TextContent.Trim()
+              .Should().Be("Account.Error.PasswordChangeFailed");
+
+        var alta = Render<SetPassword>(p => p
+            .Add(c => c.OnSubmit, (SetPasswordFormModel _) => altas++));
+
+        Escribir(alta, "#set-password-new",     "PASSWORD1A");
+        Escribir(alta, "#set-password-confirm", "PASSWORD1A");
+        alta.Find("form").Submit(EventArgs.Empty);
+
+        altas.Should().Be(0);
+        alta.Find(".alert-danger").TextContent.Trim()
+            .Should().Be("Account.Error.PasswordResetFailed");
+    }
+
     /// <summary>Sin enlace no se pinta formulario, en ninguno de los dos modos.</summary>
     [Fact]
     public void ResetPassword_SinUserIdNiToken_NoPintaFormularioAunqueHayaOnSubmit()
@@ -298,6 +535,22 @@ public class AccountFormsDosModosTests : BunitContext
         cut.Find("form").Submit(EventArgs.Empty);
 
         recibido!.Email.Should().Be("alguien@example.com");
+    }
+
+    /// <summary>
+    /// Que SignupAPI no responda se dice con su nombre y no como "algo salió mal". El código lo
+    /// emite AuthApiGateway y hasta ahora caía en la rama genérica de AccountMessages, que le pide
+    /// al usuario que reintente sin decirle que el problema no es suyo — el mismo agujero que
+    /// LoginErrorMessages tapó en las pantallas de login.
+    /// </summary>
+    [Fact]
+    public void ForgotPassword_UnServicioQueNoRespondeSeDiceConSuNombre()
+    {
+        var cut = Render<ForgotPassword>(p => p
+            .Add(c => c.FormAction, "/account/forgot-password")
+            .Add(c => c.ErrorCode, AuthApiGateway.Unreachable));
+
+        cut.Find(".alert-danger").TextContent.Trim().Should().Be("ForgotPassword.ServerError");
     }
 
     // -------------------------------------------------------------------------------------------
@@ -698,6 +951,14 @@ public class AccountFormsDosModosTests : BunitContext
     [Fact]
     public void ElCuerpoDelFormularioEsElMISMOEnLosDosModos()
     {
+        DebenTenerElMismoCuerpo(
+            Render<Login>(p => p
+                .Add(c => c.ForgotPasswordUrl, "/f").Add(c => c.SignupUrl, "/s")
+                .Add(c => c.FormAction, "/x")),
+            Render<Login>(p => p
+                .Add(c => c.ForgotPasswordUrl, "/f").Add(c => c.SignupUrl, "/s")
+                .Add(c => c.OnSubmit, (LoginFormModel _) => { })));
+
         DebenTenerElMismoCuerpo(
             Render<ChangePassword>(p => p.Add(c => c.FormAction, "/x")),
             Render<ChangePassword>(p => p.Add(c => c.OnSubmit, (ChangePasswordFormModel _) => { })));

@@ -1,3 +1,5 @@
+using MLMConquerorGlobalEdition.ClientCore;
+
 namespace MLMConquerorGlobalEdition.SharedComponents.Components.Account;
 
 /// <summary>
@@ -26,6 +28,18 @@ public static class AccountMessages
             "TOKEN_EXPIRED"          => "Account.Error.TokenExpired",
             "PASSWORD_RESET_FAILED"  => "Account.Error.PasswordResetFailed",
             "USER_NOT_FOUND"         => "Account.Error.UserNotFound",
+
+            // SignupAPI no respondió. Lo emite AuthApiGateway y hasta ahora caía en la rama
+            // genérica ("algo salió mal"), que le dice al usuario que reintente sin decirle que
+            // el problema no es suyo. Es el mismo agujero que LoginErrorMessages tapó en las
+            // pantallas de login, y por el mismo motivo: un código que emite el servidor no rompe
+            // nada que el compilador pueda ver.
+            //
+            // La clave se llama ForgotPassword.ServerError por dónde nació, pero su texto no
+            // menciona ninguna pantalla —"no se pudo contactar con el servidor"— y sirve igual en
+            // el restablecimiento. Renombrarla obligaría a tocar los nueve .resx para no cambiar
+            // ni una palabra de lo que lee el usuario.
+            AuthApiGateway.Unreachable => "ForgotPassword.ServerError",
 
             // ChangePassword / SetPassword / teléfono (gestión de cuenta autenticada).
             "PASSWORD_CHANGE_FAILED" => "Account.Error.PasswordChangeFailed",

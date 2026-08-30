@@ -626,3 +626,20 @@ h1:focus {
     font-size: .95rem;
     letter-spacing: .08em;
 }
+
+/* Los títulos y subtítulos que traen los componentes de Components/Account. Bootstrap los
+   pinta para fondo claro y sobre la tarjeta oscura quedaban ilegibles — se veía en
+   /admin/login, y también en /admin/forgot-password, /admin/reset-password y
+   /admin/login-2fa, que montan esos mismos componentes desde antes. Va con las otras dos
+   correcciones de contraste de esta tarjeta, justo encima. */
+.login-card-admin h5 {
+    color: #e6e8f0;
+}
+
+.login-card-admin .account-login > p,
+.login-card-admin .two-factor-verify > p,
+.login-card-admin .forgot-password > p,
+.login-card-admin .reset-password > p,
+.login-card-admin .enroll-authenticator > p {
+    color: #c3c7d6;
+}

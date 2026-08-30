@@ -52,6 +52,14 @@ public static class AuthSurfaceExtensions
         // 500 en la cara del usuario. Scoped porque su proveedor de token lo es.
         services.TryAddScoped<AuthApiGateway>();
 
+        // Lo que las DOS PANTALLAS DE LA PUERTA piden durante el render y no cabe en un formulario:
+        // con qué canal se emitió el reto (la de verificación) y el QR con la clave compartida (la
+        // del enrolamiento). Estaba solo en AddAccountSurface, y ahí no llegaba: un portal que monta
+        // la puerta sin el área de cuenta —el centro de negocios— se quedaba sin poder inyectarlo en
+        // sus propias pantallas de segundo factor y enrolamiento, que son suyas y de la puerta.
+        // Scoped: lee las cookies HttpOnly del reto del HttpContext de la petición.
+        services.TryAddScoped<TwoFactorPageData>();
+
         return services;
     }
 }

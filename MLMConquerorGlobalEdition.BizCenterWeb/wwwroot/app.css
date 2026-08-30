@@ -578,3 +578,115 @@ h1:focus {
     .fsb-footerline.locked {
         color: #000;
     }
+/* ── Pantallas de acceso del centro de negocios ──────────────────────────────
+   El formulario de /login, /two-factor, /forgot-password, /reset-password y
+   /enroll-authenticator lo pintan los componentes de SharedComponents/Components/Account,
+   que son los mismos que usa administración y por eso salen en Bootstrap liso: tamaños
+   por defecto, botón .btn-warning y etiquetas .form-label.
+
+   Este bloque es lo que el ENVOLTORIO aporta — el aspecto de este portal — sin tocar el
+   marcado del componente, que es de los dos. Es lo mismo que hace administración desde
+   .login-card-admin, solo que allí la tarjeta es oscura y aquí el formulario va sobre el
+   fondo claro de la plantilla, a la derecha del póster.
+
+   El gancho es .bizcenter-gate, que pone GateShell.razor. Los valores salen tal cual de
+   assets/css/style.css (.fs-28, .label, .form-control.h-55, .btn-primary), que es de donde
+   los tomaba el marcado propio que estas pantallas tenían antes. */
+
+.bizcenter-gate .account-login h5,
+.bizcenter-gate .two-factor-verify h5,
+.bizcenter-gate .forgot-password h5,
+.bizcenter-gate .reset-password h5 {
+    font-size: 28px;
+    margin-bottom: .5rem !important;
+}
+
+.bizcenter-gate .account-login > p:first-of-type,
+.bizcenter-gate .two-factor-verify > p:first-of-type,
+.bizcenter-gate .forgot-password > p:first-of-type,
+.bizcenter-gate .reset-password > p:first-of-type {
+    font-size: 16px;
+    font-weight: 500;
+}
+
+/* La plantilla usa .label para las etiquetas de formulario; los componentes usan la
+   .form-label de Bootstrap. Mismo tamaño, mismo peso y mismo hueco debajo. */
+.bizcenter-gate .form-label {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 10px;
+}
+
+/* Los 55 píxeles de alto de los campos de esta plantilla. */
+.bizcenter-gate .form-control {
+    height: 55px;
+}
+
+/* El botón. Los componentes de la puerta traen .btn-warning —el ámbar de administración—;
+   aquí el color de acción es el morado de la plantilla. Se cambian las variables de
+   Bootstrap en vez de las propiedades para que el hover, el foco y el estado deshabilitado
+   sigan viniendo de la misma regla que el resto de los botones del portal. */
+.bizcenter-gate .btn-warning {
+    --bs-btn-color: #fff;
+    --bs-btn-bg: #605DFF;
+    --bs-btn-border-color: #605DFF;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #5250D9;
+    --bs-btn-hover-border-color: #4D4ACC;
+    --bs-btn-focus-shadow-rgb: 120, 117, 255;
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: #4D4ACC;
+    --bs-btn-active-border-color: #4846BF;
+    --bs-btn-disabled-color: #fff;
+    --bs-btn-disabled-bg: #605DFF;
+    --bs-btn-disabled-border-color: #605DFF;
+}
+
+/* El icono que la plantilla pone dentro de los botones de estas pantallas. Va por CSS y no
+   por marcado porque es decoración de este portal: meterlo en el componente compartido lo
+   habría llevado también a la tarjeta de administración, que no lo tiene en ninguna de sus
+   pantallas de acceso. content: se apoya en las ligaduras de Material Symbols, igual que
+   <i class="material-symbols-outlined">login</i>. */
+.bizcenter-gate .btn-warning::before,
+.bizcenter-gate .btn-primary::before {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 20px;
+    line-height: 1;
+    vertical-align: -4px;
+    margin-right: .5rem;
+    -webkit-font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+}
+
+.bizcenter-gate .account-login .btn-warning::before {
+    content: 'login';
+}
+
+.bizcenter-gate .two-factor-verify .btn-warning::before {
+    content: 'verified_user';
+}
+
+/* Estas dos pantallas ya traen .btn-primary del componente —el morado de la plantilla—,
+   así que solo les falta el icono. */
+.bizcenter-gate .forgot-password .btn-primary::before {
+    content: 'mail';
+}
+
+.bizcenter-gate .reset-password .btn-primary::before {
+    content: 'lock_reset';
+}
+
+/* El botón de "reenviar código" es un .btn-link dentro de un párrafo, no el de acción:
+   ni color de fondo ni icono. */
+.bizcenter-gate .btn-link::before {
+    content: none;
+}
+
+/* La clave compartida del enrolamiento: monoespaciada, seleccionable de una pasada y con
+   salto de línea, que en móvil no cabe en el ancho de la columna. */
+.bizcenter-gate code {
+    font-size: .95rem;
+    letter-spacing: .08em;
+}

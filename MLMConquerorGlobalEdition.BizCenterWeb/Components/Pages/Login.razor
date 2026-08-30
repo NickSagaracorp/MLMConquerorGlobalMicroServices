@@ -1,91 +1,26 @@
 @page "/login"
 @layout MLMConquerorGlobalEdition.SharedComponents.Components.Layout.BlankLayout
-@using MLMConquerorGlobalEdition.SharedComponents.Resources
 @inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
 
-@* Matches UI-Templates/login.html structure EXACTLY:
-     <div class="container">
-       <div class="main-content d-flex flex-column p-0">
-         <div class="m-auto m-1230">
-           <div class="row align-items-center">
-             <div class="col-lg-6 d-none d-lg-block"><img poster-login.webp></div>
-             <div class="col-lg-6">
-               <div class="mw-480 ms-lg-auto"> ...logo, title, form... </div>
-             </div>
-           </div>
-         </div>
-       </div>
-     </div>
-   BlankLayout renders only @Body, so no sidebar/header interferes. *@
+@* La puerta del centro de negocios.
+
+   MODO FORMULARIO, como estaba: el POST va a /account/login, que es quien firma la cookie de
+   sesión. Eso no se puede hacer desde un circuito interactivo —allí la respuesta HTTP ya empezó y
+   no admite una cabecera Set-Cookie más—, así que esta pantalla se queda en SSR estático.
+
+   El cromo lo pone GateShell (el póster, el logotipo y la rejilla de UI-Templates/login.html); el
+   formulario lo pone el componente compartido. El componente se referencia con su nombre completo
+   a propósito: se llama igual que esta página y un @@using dejaría la etiqueta ambigua. *@
 
 <PageTitle>@L["PageTitle.Login"]</PageTitle>
 
-<div class="container">
-    <div class="main-content d-flex flex-column p-0">
-        <div class="m-auto m-1230">
-            <div class="row align-items-center">
-                <div class="col-lg-6 d-none d-lg-block">
-                    <img src="assets/images/poster-login.webp" class="rounded-3" alt="@L["Login.PosterAlt"]">
-                </div>
-                <div class="col-lg-6">
-                    <div class="mw-480 ms-lg-auto">
-                        <div class="d-inline-block mb-4">
-                            <img src="assets/images/logo.svg" class="rounded-3 for-light-logo" alt="@L["Login.LogoAlt"]">
-                            <img src="assets/images/logo.svg" class="rounded-3 for-dark-logo" alt="@L["Login.LogoAlt"]">
-                        </div>
-                        <h3 class="fs-28 mb-2">@L["Login.WelcomeBack"]</h3>
-                        <p class="fw-medium fs-16 mb-4">@L["Login.PleaseSignIn"]</p>
-
-                        @* Qué códigos entiende esta pantalla y con qué aviso lo dice cada uno vive
-                           en LoginErrorMessages, compartido con el login de administración. Estaba
-                           escrito aquí como una cadena de @if, y así fue como SERVICE_UNAVAILABLE
-                           —que la puerta ya emitía— se quedó sin traducir en los dos portales. *@
-                        @if (LoginErrorMessages.For(Error) is { } loginError)
-                        {
-                            <div class="alert @loginError.AlertClass mb-3">
-                                @L[loginError.ResourceKey]
-                            </div>
-                        }
-
-                        <form method="post" action="/account/login">
-                            <div class="form-group mb-4">
-                                <label class="label text-secondary">@L["Login.EmailLabel"]</label>
-                                <input name="Email" type="email" class="form-control h-55"
-                                       placeholder="@L["Login.EmailPlaceholder"]" required autocomplete="username" />
-                            </div>
-                            <div class="form-group mb-4">
-                                <label class="label text-secondary">@L["Login.PasswordLabel"]</label>
-                                <input name="Password" type="password" class="form-control h-55"
-                                       placeholder="@L["Login.PasswordPlaceholder"]" required autocomplete="current-password" />
-                            </div>
-                            <div class="form-group mb-4">
-                                <a href="/forgot-password" class="text-decoration-none text-primary fw-semibold">
-                                    @L["Login.ForgotPassword"]
-                                </a>
-                            </div>
-                            <div class="form-group mb-4">
-                                <button type="submit" class="btn btn-primary fw-medium py-2 px-3 w-100">
-                                    <div class="d-flex align-items-center justify-content-center py-1">
-                                        <i class="material-symbols-outlined text-white fs-20 me-2">login</i>
-                                        <span>@L["Login.SignInButton"]</span>
-                                    </div>
-                                </button>
-                            </div>
-                            <div class="form-group">
-                                <p>
-                                    @L["Login.NoAccount"]
-                                    <a href="/signup" class="fw-medium text-primary text-decoration-none">
-                                        @L["Login.ContactSupport"]
-                                    </a>
-                                </p>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<GateShell>
+    <MLMConquerorGlobalEdition.SharedComponents.Components.Account.Login
+        FormAction="/account/login"
+        ErrorCode="@Error"
+        ForgotPasswordUrl="/forgot-password"
+        SignupUrl="/signup" />
+</GateShell>
 
 @code {
     [SupplyParameterFromQuery]

@@ -79,7 +79,11 @@ public static class AccountSurfaceExtensions
         // Datos que las páginas del segundo factor piden durante el render (canal del reto, QR y
         // clave del enrolamiento). Scoped: depende del HttpContext de la petición, que es de donde
         // salen las cookies HttpOnly del reto.
-        services.AddScoped<TwoFactorPageData>();
+        //
+        // TryAdd porque AddAuthSurface registra lo mismo: esas dos páginas son de la PUERTA, y un
+        // portal puede montar la puerta sin montar el área de cuenta — es lo que hace hoy el centro
+        // de negocios. Quien llame a las dos no puede acabar con dos registros.
+        services.TryAddScoped<TwoFactorPageData>();
 
         return services;
     }

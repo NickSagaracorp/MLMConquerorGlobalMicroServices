@@ -1,0 +1,48 @@
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
+@inject IStringLocalizer<SharedResources> L
+
+@* El cromo de las pantallas de acceso del centro de negocios: la composición a dos columnas de
+   UI-Templates/login.html —el póster a la izquierda, el formulario a la derecha— con el logotipo
+   encima.
+
+   ESTABA COPIADO EN CUATRO PÁGINAS (login, segundo factor, recuperar contraseña y restablecerla) y
+   ahora hay cinco, con el enrolamiento. Cinco copias del mismo <div> anidado se desincronizan en
+   cuanto alguien retoca una: basta que una pierda el `align-items-center` para que su formulario
+   quede pegado arriba y las demás no, y nadie lo nota hasta que un miembro lo ve.
+
+   Vive en BizCenterWeb y no en SharedComponents porque es EL ASPECTO DE ESTE PORTAL: administración
+   tiene el suyo, una tarjeta oscura centrada, y no hay nada que compartir entre los dos salvo el
+   formulario de dentro — que es justo lo que sí está compartido.
+
+   La clase .bizcenter-gate es el gancho de wwwroot/app.css: los componentes de Components/Account
+   pintan Bootstrap liso y ese bloque les da los 55 píxeles de alto, los tamaños de letra y el color
+   de botón de la plantilla, para que el miembro no note que la pantalla cambió por dentro. *@
+
+<div class="container">
+    <div class="main-content d-flex flex-column p-0">
+        <div class="m-auto m-1230">
+            <div class="row align-items-center">
+                <div class="col-lg-6 d-none d-lg-block">
+                    <img src="assets/images/poster-login.webp" class="rounded-3" alt="@L["Login.PosterAlt"]">
+                </div>
+                <div class="col-lg-6">
+                    <div class="mw-480 ms-lg-auto bizcenter-gate">
+                        <div class="d-inline-block mb-4">
+                            <img src="assets/images/logo.svg" class="rounded-3 for-light-logo" alt="@L["Login.LogoAlt"]">
+                            <img src="assets/images/logo.svg" class="rounded-3 for-dark-logo" alt="@L["Login.LogoAlt"]">
+                        </div>
+
+                        @ChildContent
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    /// <summary>El formulario de la pantalla. Lo único que cambia de una a otra.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

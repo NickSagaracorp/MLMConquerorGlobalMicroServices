@@ -3,6 +3,27 @@
 @using MLMConquerorGlobalEdition.SharedComponents.Resources
 @inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
 
+@* La puerta del portal de administración.
+
+   Sin @@rendermode, igual que antes: SSR estático. El formulario postea a /account/login, que es
+   quien firma la cookie de sesión — algo que no se puede hacer desde dentro de un circuito, porque
+   allí la respuesta HTTP ya empezó.
+
+   El componente compartido se referencia con su nombre completo a propósito: se llama igual que
+   esta página, y un @@using de su espacio de nombres dejaría la etiqueta ambigua. Es el mismo caso
+   que EnrollAuthenticator.razor.
+
+   QUÉ SE GANÓ AL DEJAR DE TENER FORMULARIO PROPIO: las etiquetas ("Email", "Password", "Sign In to
+   Admin") estaban en inglés a fuego y ahora salen del .resx en los nueve idiomas, y el enlace de
+   recuperación aparece por fin — /admin/forgot-password existía desde hace tres commits sin que
+   nada enlazara a ella, así que un administrador que olvidara su contraseña no tenía por dónde
+   empezar.
+
+   Las clases .login-wrapper-admin / .login-card-admin / .login-logo viven en wwwroot/app.css:
+   las comparten esta página, /admin/login-2fa y /admin/enroll-authenticator. *@
+
+<PageTitle>@L["PageTitle.Login"]</PageTitle>
+
 <div class="login-wrapper-admin">
     <div class="login-card-admin">
         <div class="login-logo">
@@ -10,34 +31,12 @@
             <p class="text-muted">Administration Portal</p>
         </div>
 
-        @* Qué códigos entiende esta pantalla y con qué aviso lo dice cada uno vive en
-           LoginErrorMessages, compartido con el login del centro de negocios. Estaba escrito aquí
-           como una cadena de @if con los textos en inglés a fuego, y así fue como
-           SERVICE_UNAVAILABLE —que la puerta ya emitía cuando SignupAPI no responde— se quedó sin
-           traducir en los dos portales: el usuario veía el formulario otra vez, sin un solo aviso. *@
-        @if (LoginErrorMessages.For(Error) is { } loginError)
-        {
-            <div class="alert @loginError.AlertClass">@L[loginError.ResourceKey]</div>
-        }
-
-        <form method="post" action="/account/login">
-            <div class="mb-3">
-                <label class="form-label text-light">Email</label>
-                <input name="Email" type="email" class="form-control" required autocomplete="username" />
-            </div>
-            <div class="mb-3">
-                <label class="form-label text-light">Password</label>
-                <input name="Password" type="password" class="form-control" required autocomplete="current-password" />
-            </div>
-            <button type="submit" class="btn btn-warning w-100 fw-semibold">
-                Sign In to Admin
-            </button>
-        </form>
+        <MLMConquerorGlobalEdition.SharedComponents.Components.Account.Login
+            FormAction="/account/login"
+            ErrorCode="@Error"
+            ForgotPasswordUrl="/admin/forgot-password" />
     </div>
 </div>
-
-@* Las clases .login-wrapper-admin / .login-card-admin / .login-logo viven en wwwroot/app.css:
-   las comparten esta página, /admin/login-2fa y /admin/enroll-authenticator. *@
 
 @code {
     [SupplyParameterFromQuery]

@@ -93,6 +93,49 @@ public abstract class AccountFormComponentBase : ComponentBase
         string.IsNullOrEmpty(newPassword) ||
         !string.Equals(newPassword, confirmPassword, StringComparison.Ordinal);
 
+    /// <summary>
+    /// ¿La contraseña incumple la política que las tres pantallas enseñan en su lista de
+    /// requisitos? Longitud, una mayúscula, una minúscula y un dígito.
+    /// </summary>
+    /// <remarks>
+    /// ESTO SUBIÓ AQUÍ DESDE LA PANTALLA PROPIA DE BizCenterWeb, que sí lo comprobaba antes de
+    /// llamar mientras el componente compartido no. Sin ello, el modo interactivo mandaba a la API
+    /// una contraseña que ya se sabía mala y esperaba un viaje de ida y vuelta para decir lo mismo.
+    ///
+    /// LA MINÚSCULA TAMBIÉN CUENTA, y ese detalle es el que se pierde al escribir esto de memoria:
+    /// SignupAPI/Program.cs sobreescribe RequiredLength, RequireDigit, RequireUppercase y
+    /// RequireNonAlphanumeric, pero NO RequireLowercase, que en Identity vale true por defecto. Sin
+    /// esta condición una contraseña como "PASSWORD1" pasaba el filtro del cliente y el servidor la
+    /// rechazaba después, sin que la pantalla hubiera dicho nunca que faltaba una minúscula.
+    ///
+    /// El navegador ya exige <c>required</c> y <c>minlength="8"</c>, así que la longitud se
+    /// comprueba dos veces a propósito: en móvil el mismo componente puede montarse donde el
+    /// atributo no llegue a aplicarse, y una comprobación de más aquí no cuesta nada.
+    ///
+    /// LO QUE NO COMPRUEBA, y es deliberado: el carácter especial. El validador de SignupAPI lo
+    /// exige (ValidationPatterns.PasswordPattern), pero la lista de requisitos que estas tres
+    /// pantallas enseñan NO lo menciona. Rechazar aquí por algo que no está escrito arriba dejaría
+    /// al usuario mirando una lista que cumple mientras el formulario le dice que no la cumple.
+    /// Eso se arregla añadiendo la línea que falta a la lista, no añadiendo la condición a solas.
+    /// </remarks>
+    protected static bool PasswordFailsPolicy(string? password) =>
+        string.IsNullOrEmpty(password) ||
+        password.Length < 8            ||
+        !password.Any(char.IsUpper)    ||
+        !password.Any(char.IsLower)    ||
+        !password.Any(char.IsDigit);
+
+    /// <summary>
+    /// El código de error de la contraseña nueva, o null si no hay nada que objetar. Un solo
+    /// código para los dos fallos porque el texto que se enseña ya remite a la lista de requisitos
+    /// que el usuario tiene justo encima, y porque es lo que hace el manejador del POST.
+    /// </summary>
+    protected static string? NewPasswordProblem(
+        string? newPassword, string? confirmPassword, string errorCode) =>
+        PasswordFailsPolicy(newPassword) || PasswordsMismatch(newPassword, confirmPassword)
+            ? errorCode
+            : null;
+
     private async Task RunAsync(Func<Task> invoke, Func<string?>? validate)
     {
         // Un segundo envío mientras el primero sigue en el aire duplicaría la operación: dos SMS,

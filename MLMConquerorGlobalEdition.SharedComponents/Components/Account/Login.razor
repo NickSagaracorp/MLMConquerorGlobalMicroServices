@@ -1,0 +1,122 @@
+@* La puerta: correo, contraseña y un botón. La misma en los dos portales web y, cuando la monten,
+   en las dos MAUI.
+
+   Igual que el resto de la familia de Components/Account, no trae tarjeta ni fondo: la maquetación
+   la pone la página que lo monta. Aquí solo va el bloque del formulario, para que administración y
+   el centro de negocios compartan comportamiento sin compartir maquetación. Cada portal le da su
+   aspecto desde su propia hoja de estilos, que es lo que ya hacía administración con
+   .login-card-admin para ForgotPassword, ResetPassword y TwoFactorVerify.
+
+   DOS MODOS DE ENVÍO, UN SOLO CUERPO: sin OnSubmit postea a FormAction como siempre; con OnSubmit
+   entrega las credenciales tecleadas y no recarga. Ver AccountForm.razor. Los dos portales web van
+   en modo formulario —su POST lo atiende AuthEndpoints, que es quien firma la cookie de sesión, y
+   eso no se puede hacer desde dentro de un circuito—; el modo interactivo existe para las MAUI,
+   donde no hay endpoint al que postear y el token se guarda en el almacenamiento seguro.
+
+   LOS CÓDIGOS DE ERROR SALEN DE LoginErrorMessages Y NO DE UNA CADENA DE @@if AQUÍ DENTRO. Estaban
+   escritos así en las dos pantallas propias, y por eso SERVICE_UNAVAILABLE —que la puerta ya emitía
+   cuando SignupAPI no responde— se quedó sin traducir en los dos portales a la vez: el usuario veía
+   el formulario otra vez, sin un solo aviso, y volvía a probar credenciales buenas contra un
+   servicio caído. Con el mapa en un sitio, un código nuevo se enseña en las cuatro pantallas o en
+   ninguna. *@
+
+@inherits AccountFormComponentBase
+@inject IStringLocalizer<SharedResources> L
+
+<div class="account-login">
+
+    <h5 class="mb-1">@L["Login.WelcomeBack"]</h5>
+    <p class="mb-3">@L["Login.PleaseSignIn"]</p>
+
+    @if (LoginErrorMessages.For(ShownErrorCode) is { } loginError)
+    {
+        <div class="alert @loginError.AlertClass" role="alert">@L[loginError.ResourceKey]</div>
+    }
+
+    <AccountForm Action="@FormAction" OnSubmit="@Submit">
+        <div class="mb-3">
+            <label class="form-label" for="login-email">@L["Login.EmailLabel"]</label>
+            <input @bind="Model.Email"
+                   @bind:event="oninput"
+                   id="login-email"
+                   name="Email"
+                   type="email"
+                   class="form-control"
+                   autocomplete="username"
+                   placeholder="@L["Login.EmailPlaceholder"]"
+                   required
+                   autofocus />
+        </div>
+        <div class="mb-3">
+            <label class="form-label" for="login-password">@L["Login.PasswordLabel"]</label>
+            @* Sin minlength: la política de contraseñas la aplica el alta, no la puerta. Una cuenta
+               antigua con una contraseña más corta que la política de hoy tiene que poder entrar
+               para poder cambiarla. *@
+            <input @bind="Model.Password"
+                   @bind:event="oninput"
+                   id="login-password"
+                   name="Password"
+                   type="password"
+                   class="form-control"
+                   autocomplete="current-password"
+                   placeholder="@L["Login.PasswordPlaceholder"]"
+                   required />
+        </div>
+
+        @* El enlace de recuperación va DENTRO del formulario, que es donde lo tenía el centro de
+           negocios: así el orden de tabulación lleva de la contraseña a "no la recuerdo" y de ahí
+           al botón, en vez de saltarse el enlace por estar fuera. *@
+        @if (!string.IsNullOrWhiteSpace(ForgotPasswordUrl))
+        {
+            <p class="mb-3 small">
+                <a href="@ForgotPasswordUrl" class="text-decoration-none">@L["Login.ForgotPassword"]</a>
+            </p>
+        }
+
+        <button type="submit" class="btn btn-warning w-100 fw-semibold" disabled="@Submitting">@L["Login.SignInButton"]</button>
+    </AccountForm>
+
+    @* Solo si el portal tiene a dónde mandar a quien no tiene cuenta. Administración no lo tiene:
+       sus cuentas las crea otro administrador, no un formulario público. *@
+    @if (!string.IsNullOrWhiteSpace(SignupUrl))
+    {
+        <p class="mt-3 mb-0 small">
+            @L["Login.NoAccount"]
+            <a href="@SignupUrl" class="text-decoration-none">@L["Login.ContactSupport"]</a>
+        </p>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Ruta a la que postea las credenciales. La pone el portal: es la misma que su
+    /// <c>MapPost</c> de <c>AuthEndpoints.LoginAsync</c>. No hace falta con OnSubmit.
+    /// </summary>
+    [Parameter]
+    public string? FormAction { get; set; }
+
+    /// <summary>
+    /// Envío interactivo: recibe correo y contraseña y hace la llamada por su cuenta. Sin asignar,
+    /// el formulario postea a <see cref="FormAction"/>.
+    /// </summary>
+    [Parameter]
+    public EventCallback<LoginFormModel> OnSubmit { get; set; }
+
+    /// <summary>Enlace a "he olvidado mi contraseña". Si viene vacío no se pinta.</summary>
+    [Parameter]
+    public string? ForgotPasswordUrl { get; set; }
+
+    /// <summary>Enlace para quien todavía no tiene cuenta. Si viene vacío no se pinta.</summary>
+    [Parameter]
+    public string? SignupUrl { get; set; }
+
+    /// <summary>Lo que hay escrito ahora mismo en las dos casillas. Solo se usa en modo interactivo.</summary>
+    private LoginFormModel Model { get; } = new();
+
+    /// <summary>
+    /// Se entrega una COPIA y no <see cref="Model"/>: la página se queda con lo que había cuando
+    /// se pulsó el botón, y no con una referencia viva que siga cambiando mientras espera a la API.
+    /// </summary>
+    private EventCallback Submit => SubmitFor(
+        OnSubmit, () => new LoginFormModel { Email = Model.Email, Password = Model.Password });
+}

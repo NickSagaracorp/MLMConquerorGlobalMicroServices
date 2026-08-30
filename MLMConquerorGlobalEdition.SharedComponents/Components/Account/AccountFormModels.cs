@@ -28,6 +28,19 @@ public sealed class ForgotPasswordFormModel
     public string Email { get; set; } = string.Empty;
 }
 
+/// <summary>
+/// Las credenciales de la puerta. Los nombres son los de <c>AuthEndpoints.LoginForm</c>, igual que
+/// en el resto de esta familia: es lo que hace que postear el formulario y llamar a la API desde el
+/// móvil lleven los mismos datos con los mismos nombres.
+/// </summary>
+/// <inheritdoc cref="ForgotPasswordFormModel"/>
+public sealed class LoginFormModel
+{
+    public string Email { get; set; } = string.Empty;
+
+    public string Password { get; set; } = string.Empty;
+}
+
 /// <inheritdoc cref="ForgotPasswordFormModel"/>
 public sealed class ResetPasswordFormModel
 {
