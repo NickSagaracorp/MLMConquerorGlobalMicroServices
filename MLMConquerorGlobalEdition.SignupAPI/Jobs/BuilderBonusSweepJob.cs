@@ -4,6 +4,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Jobs;
 
@@ -76,14 +77,7 @@ public class BuilderBonusSweepJob
             .ToListAsync(ct);
 
         // ── Step 1: Membership level per order ───────────────────────────────
-        var orderLevels = await (
-            from od in _db.OrderDetails.AsNoTracking()
-            join p  in _db.Products.AsNoTracking() on od.ProductId equals p.Id
-            where p.MembershipLevelId.HasValue
-               && EligibleLevelIds.Contains(p.MembershipLevelId!.Value)
-            group p.MembershipLevelId!.Value by od.OrderId into g
-            select new { OrderId = g.Key, LevelId = g.Max() }
-        ).ToDictionaryAsync(x => x.OrderId, x => x.LevelId, ct);
+        var orderLevels = await _db.GetHighestMembershipLevelIdsByOrderAsync(EligibleLevelIds, ct);
 
         if (orderLevels.Count == 0) return;
 

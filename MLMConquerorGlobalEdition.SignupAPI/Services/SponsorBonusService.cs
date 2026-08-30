@@ -3,6 +3,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Services;
 
@@ -23,12 +24,7 @@ public class SponsorBonusService : ISponsorBonusService
     {
         if (string.IsNullOrEmpty(sponsorMemberId)) return;
 
-        var membershipLevelId = await (
-            from od in _db.OrderDetails.AsNoTracking()
-            join p  in _db.Products.AsNoTracking() on od.ProductId equals p.Id
-            where od.OrderId == orderId && p.MembershipLevelId.HasValue
-            select p.MembershipLevelId!.Value
-        ).FirstOrDefaultAsync(ct);
+        var membershipLevelId = await _db.GetHighestMembershipLevelIdAsync(orderId, ct);
 
         if (membershipLevelId <= 1) return;
 

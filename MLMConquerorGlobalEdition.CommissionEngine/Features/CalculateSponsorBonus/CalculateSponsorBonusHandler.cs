@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.CommissionEngine.DTOs;
 using MLMConquerorGlobalEdition.CommissionEngine.Services;
 using MLMConquerorGlobalEdition.SharedKernel;
@@ -61,12 +62,7 @@ public class CalculateSponsorBonusHandler
         // The Member Bonus amount differs by tier (VIP=$20, Elite=$40, Turbo=$80).
         // CommissionType.LevelNo matches MembershipLevel.Id.
         // Lifestyle Ambassador (LevelNo=1) does not trigger a Member Bonus.
-        var membershipLevelId = await (
-            from od in _db.OrderDetails.AsNoTracking()
-            join p in _db.Products.AsNoTracking() on od.ProductId equals p.Id
-            where od.OrderId == command.OrderId && p.MembershipLevelId.HasValue
-            select p.MembershipLevelId!.Value
-        ).FirstOrDefaultAsync(ct);
+        var membershipLevelId = await _db.GetHighestMembershipLevelIdAsync(command.OrderId, ct);
 
         if (membershipLevelId <= 1)
             return Result<CalculationResultResponse>.Success(new CalculationResultResponse

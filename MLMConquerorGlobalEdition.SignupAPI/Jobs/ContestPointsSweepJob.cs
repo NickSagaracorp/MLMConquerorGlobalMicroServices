@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Events;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Jobs;
 
@@ -70,15 +71,9 @@ public class ContestPointsSweepJob
 
         if (contests.Count == 0) return;
 
-        // Per-order membership level — same logic BuilderBonusSweep uses.
-        var orderLevels = await (
-            from od in _db.OrderDetails.AsNoTracking()
-            join p  in _db.Products.AsNoTracking() on od.ProductId equals p.Id
-            where p.MembershipLevelId.HasValue
-               && ContestPointsByLevel.Keys.Contains(p.MembershipLevelId!.Value)
-            group p.MembershipLevelId!.Value by od.OrderId into g
-            select new { OrderId = g.Key, LevelId = g.Max() }
-        ).ToDictionaryAsync(x => x.OrderId, x => x.LevelId, ct);
+        // Per-order membership level — same shared query BuilderBonusSweep uses.
+        var orderLevels = await _db.GetHighestMembershipLevelIdsByOrderAsync(
+            ContestPointsByLevel.Keys.ToArray(), ct);
 
         if (orderLevels.Count == 0) return;
 

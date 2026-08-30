@@ -174,6 +174,84 @@ public class CalculateSponsorBonusHandlerTests
         earning.Amount.Should().Be(20);
     }
 
+    // ── Regression: an order can carry BOTH the default Lifestyle Ambassador
+    // product (level 1, always present) AND an upgraded membership product
+    // (VIP/Elite/Turbo) by design. The resolved level must always be the
+    // HIGHEST of the two, regardless of insertion/enumeration order — tested
+    // both ways, because the original bug (FirstOrDefaultAsync, no ORDER BY)
+    // depended on exactly which row the engine happened to return first.
+    [Fact]
+    public async Task Handle_WhenOrderHasLifestylePlusVip_LifestyleInsertedFirst_PaysVipLevelBonus()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await db.Orders.AddAsync(BuildOrder("ORD-006", "AMB-006"));
+        await db.MemberProfiles.AddAsync(BuildMember("AMB-006", sponsor: "AMB-SPONSOR"));
+        await db.CommissionTypes.AddAsync(BuildSponsorBonusType(id: 10, levelNo: 2, Amount: 40));
+
+        // Lifestyle (level 1) product + order detail saved first.
+        await db.Products.AddAsync(BuildProduct("P-LIFESTYLE", membershipLevelId: 1));
+        await db.OrderDetails.AddAsync(new OrderDetail
+        {
+            OrderId = "ORD-006", ProductId = "P-LIFESTYLE", Quantity = 1, UnitPrice = 0,
+            CreatedBy = "seed", CreationDate = FixedNow
+        });
+        await db.SaveChangesAsync();
+
+        // VIP (level 2) product + order detail saved second, same order.
+        await db.Products.AddAsync(BuildProduct("P-VIP", membershipLevelId: 2));
+        await db.OrderDetails.AddAsync(new OrderDetail
+        {
+            OrderId = "ORD-006", ProductId = "P-VIP", Quantity = 1, UnitPrice = 80,
+            CreatedBy = "seed", CreationDate = FixedNow
+        });
+        await db.SaveChangesAsync();
+
+        var handler = new CalculateSponsorBonusHandler(db, BuildClock().Object, BuildUser().Object);
+        var result = await handler.Handle(
+            new CalculateSponsorBonusCommand("AMB-006", "ORD-006"), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.RecordsCreated.Should().Be(1);
+        result.Value.TotalAmountCalculated.Should().Be(40);
+        db.CommissionEarnings.Single().BeneficiaryMemberId.Should().Be("AMB-SPONSOR");
+    }
+
+    [Fact]
+    public async Task Handle_WhenOrderHasLifestylePlusVip_VipInsertedFirst_PaysVipLevelBonus()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await db.Orders.AddAsync(BuildOrder("ORD-007", "AMB-007"));
+        await db.MemberProfiles.AddAsync(BuildMember("AMB-007", sponsor: "AMB-SPONSOR"));
+        await db.CommissionTypes.AddAsync(BuildSponsorBonusType(id: 10, levelNo: 2, Amount: 40));
+
+        // VIP (level 2) product + order detail saved first — reversed insertion order.
+        await db.Products.AddAsync(BuildProduct("P-VIP", membershipLevelId: 2));
+        await db.OrderDetails.AddAsync(new OrderDetail
+        {
+            OrderId = "ORD-007", ProductId = "P-VIP", Quantity = 1, UnitPrice = 80,
+            CreatedBy = "seed", CreationDate = FixedNow
+        });
+        await db.SaveChangesAsync();
+
+        // Lifestyle (level 1) product + order detail saved second, same order.
+        await db.Products.AddAsync(BuildProduct("P-LIFESTYLE", membershipLevelId: 1));
+        await db.OrderDetails.AddAsync(new OrderDetail
+        {
+            OrderId = "ORD-007", ProductId = "P-LIFESTYLE", Quantity = 1, UnitPrice = 0,
+            CreatedBy = "seed", CreationDate = FixedNow
+        });
+        await db.SaveChangesAsync();
+
+        var handler = new CalculateSponsorBonusHandler(db, BuildClock().Object, BuildUser().Object);
+        var result = await handler.Handle(
+            new CalculateSponsorBonusCommand("AMB-007", "ORD-007"), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.RecordsCreated.Should().Be(1);
+        result.Value.TotalAmountCalculated.Should().Be(40);
+        db.CommissionEarnings.Single().BeneficiaryMemberId.Should().Be("AMB-SPONSOR");
+    }
+
     [Fact]
     public async Task Handle_WhenCalledTwice_IsIdempotent()
     {

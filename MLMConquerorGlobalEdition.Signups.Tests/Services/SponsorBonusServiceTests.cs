@@ -105,6 +105,48 @@ public class SponsorBonusServiceTests
         db.CommissionEarnings.Should().BeEmpty();
     }
 
+    // ── Regression: order carries BOTH the default Lifestyle Ambassador product
+    // (level 1, always present per the catalog design) AND an upgraded membership
+    // product (VIP/Elite/Turbo). The order's level must always resolve to the
+    // HIGHEST level regardless of which product SQL/EF happens to return first —
+    // tested in both possible insertion orders, because the original bug
+    // (FirstOrDefaultAsync with no ORDER BY) depended on exactly that.
+    [Fact]
+    public async Task ComputeAsync_WhenOrderHasLifestylePlusVip_LifestyleInsertedFirst_PaysVipLevelBonus()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        // Lifestyle (level 1) inserted BEFORE VIP (level 2).
+        await SeedProductAndOrderDetail(db, "order-001", "prod-lifestyle", membershipLevelId: 1);
+        await SeedProductAndOrderDetail(db, "order-001", "prod-vip", membershipLevelId: 2);
+        await SeedCommissionType(db, 10, levelNo: 2, Amount: 40m);
+
+        var service = new SponsorBonusService(db);
+        await service.ComputeAsync("AMB-SPONSOR", "MBR-001", "order-001", 99m, "seed", FixedNow, CancellationToken.None);
+        await db.SaveChangesAsync();
+
+        var earning = db.CommissionEarnings.Single();
+        earning.BeneficiaryMemberId.Should().Be("AMB-SPONSOR");
+        earning.Amount.Should().Be(40m);
+    }
+
+    [Fact]
+    public async Task ComputeAsync_WhenOrderHasLifestylePlusVip_VipInsertedFirst_PaysVipLevelBonus()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        // VIP (level 2) inserted BEFORE Lifestyle (level 1) — reversed insertion order.
+        await SeedProductAndOrderDetail(db, "order-001", "prod-vip", membershipLevelId: 2);
+        await SeedProductAndOrderDetail(db, "order-001", "prod-lifestyle", membershipLevelId: 1);
+        await SeedCommissionType(db, 10, levelNo: 2, Amount: 40m);
+
+        var service = new SponsorBonusService(db);
+        await service.ComputeAsync("AMB-SPONSOR", "MBR-001", "order-001", 99m, "seed", FixedNow, CancellationToken.None);
+        await db.SaveChangesAsync();
+
+        var earning = db.CommissionEarnings.Single();
+        earning.BeneficiaryMemberId.Should().Be("AMB-SPONSOR");
+        earning.Amount.Should().Be(40m);
+    }
+
     [Fact]
     public async Task ComputeAsync_WhenNoMatchingCommissionType_DoesNotCreateEarning()
     {
