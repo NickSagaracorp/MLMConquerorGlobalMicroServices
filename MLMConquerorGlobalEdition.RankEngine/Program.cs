@@ -1,3 +1,4 @@
+﻿using MLMConquerorGlobalEdition.SharedKernel.Server.Middleware;
 using System.Text;
 using Amazon.S3;
 using AspNetCoreRateLimit;
@@ -223,6 +224,12 @@ app.UseStaticFiles();
 app.UseIpRateLimiting();
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Un token de suplantacion marcado de solo lectura no escribe. Va detras de la autorizacion para
+// que un 401 o un 403 por rol se contesten antes, y delante de las rutas para que ninguna llegue a
+// ejecutarse. Ver ImpersonationScope.
+app.UseImpersonationReadOnly();
+
 app.MapControllers();
 
 app.UseHangfireDashboard("/hangfire");

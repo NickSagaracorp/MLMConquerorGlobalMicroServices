@@ -19,18 +19,47 @@ using MLMConquerorGlobalEdition.BizCenter.Features.Commissions.GetFastStartBonus
 using MLMConquerorGlobalEdition.BizCenter.Features.Commissions.GetFastStartBonusSummary;
 using MLMConquerorGlobalEdition.BizCenter.Features.Commissions.GetPresidentialBonusCommissions;
 using MLMConquerorGlobalEdition.BizCenter.Features.Commissions.GetPresidentialBonusSummary;
+using MLMConquerorGlobalEdition.BizCenter.Services;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Security;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Controllers;
 
+/// <summary>
+/// Las comisiones del miembro que llama.
+/// </summary>
+/// <remarks>
+/// TODAS ESTAS RUTAS SACAN EL MIEMBRO DEL TOKEN dentro de su manejador —ninguna lo lleva en la
+/// URL— menos una: <c>car-bonus/ambassadors/{memberId}/branch</c>, que recibía el identificador
+/// por la ruta y no miraba el token en ningún sitio. Con eso, cualquier cuenta autenticada leía el
+/// desglose de la rama de cualquier embajador: nombres, nivel de membresía, caducidad y puntos de
+/// toda su descendencia con suscripción activa. Es la misma familia de agujeros que cerró
+/// 4f4beaf.
+///
+/// El sujeto legítimo aquí no es solo la cuenta propia: el informe del bono del coche despliega la
+/// rama de cada embajador de la red del que mira, así que la comprobación va por
+/// <see cref="IDownlineGuard"/> contra el árbol de PATROCINIO, que es el que ese informe recorre
+/// —<c>GetCarBonusBranchAsync</c> filtra por <c>GenealogyTree</c>—.
+/// </remarks>
 [ApiController]
 [Route("api/v1/bizcenter/commissions")]
 [Authorize]
 public class CommissionsController : ControllerBase
 {
-    private readonly IMediator _mediator;
+    private readonly IMediator      _mediator;
+    private readonly IDownlineGuard _propiedad;
 
-    public CommissionsController(IMediator mediator) => _mediator = mediator;
+    public CommissionsController(IMediator mediator, IDownlineGuard propiedad)
+    {
+        _mediator  = mediator;
+        _propiedad = propiedad;
+    }
+
+    /// <inheritdoc cref="TeamController"/>
+    private IActionResult Ajeno() =>
+        StatusCode(StatusCodes.Status403Forbidden,
+            ApiResponse<bool>.Fail("FORBIDDEN", "Ese miembro no está en tu red.",
+                HttpContext.TraceIdentifier));
 
     /// <summary>GET /api/v1/bizcenter/commissions — paged list with optional status/date filters</summary>
     [HttpGet]
@@ -223,6 +252,8 @@ public class CommissionsController : ControllerBase
         [FromRoute] string memberId,
         CancellationToken ct = default)
     {
+        if (!await _propiedad.PuedeVerRamaDePatrocinioAsync(User, memberId, ct)) return Ajeno();
+
         var result = await _mediator.Send(new GetCarBonusBranchQuery(memberId), ct);
         if (!result.IsSuccess)
             return BadRequest(ApiResponse<CarBonusBranchDto>.Fail(result.ErrorCode!, result.Error!));

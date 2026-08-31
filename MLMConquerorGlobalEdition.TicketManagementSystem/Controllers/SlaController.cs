@@ -1,15 +1,19 @@
-using MediatR;
+﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.TicketManagementSystem.DTOs;
 using MLMConquerorGlobalEdition.TicketManagementSystem.Features.SlaPolicy;
 
+using MLMConquerorGlobalEdition.TicketManagementSystem.Security;
+
 namespace MLMConquerorGlobalEdition.TicketManagementSystem.Controllers;
 
 [ApiController]
 [Route("api/v1/helpdesk/sla")]
-[Authorize]
+// Politicas de SLA. Misma lista que AdminSlaPolicies.razor. GET policies no tenia ninguna
+// comprobacion: su manejador ni inyecta ICurrentUserService.
+[Authorize(Roles = HelpdeskRoles.Coordinacion)]
 public class SlaController : ControllerBase
 {
     private readonly IMediator _mediator;

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Identity;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Constants;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Features.Impersonation.Commands.StartImpersonation;
@@ -63,23 +64,48 @@ public class StartImpersonationHandler
                 $"Member '{command.TargetMemberId}' does not have an associated user account.");
         }
 
-        // SupportManager without SuperAdmin/Admin gets read-only access
-        var isReadOnly = command.AdminRoles.Contains("SupportManager")
-                      && !command.AdminRoles.Contains("SuperAdmin")
-                      && !command.AdminRoles.Contains("Admin");
-
         var targetRoles = await _userManager.GetRolesAsync(targetUser);
+
+        // NO SE SUPLANTA A UNA CUENTA DE PERSONAL. El token de suplantación se emite con los roles
+        // DEL SUPLANTADO, así que una cuenta de miembro que además tuviera un rol de panel
+        // convertiría la suplantación en una subida de privilegios: un SupportManager entraría a
+        // ese miembro y saldría con los roles de ese miembro. La superficie existe para atender a
+        // miembros, y un miembro no tiene roles de personal; si los tiene, es que esa cuenta no es
+        // el sujeto de esta operación.
+        var rolesDePersonal = targetRoles.Where(AppRoles.AdminRoles.Contains).ToList();
+        if (rolesDePersonal.Count > 0)
+        {
+            _logger.LogWarning(
+                "Impersonation attempt by admin {AdminUserId} — member {TargetMemberId} holds staff roles {StaffRoles}.",
+                command.AdminUserId, command.TargetMemberId, string.Join(",", rolesDePersonal));
+
+            return Result<StartImpersonationResult>.Failure(
+                "TARGET_IS_STAFF",
+                $"Member '{command.TargetMemberId}' is linked to a staff account and cannot be impersonated.");
+        }
+
+        // SupportManager without SuperAdmin/Admin gets read-only access
+        var isReadOnly = command.AdminRoles.Contains(AppRoles.SupportManager)
+                      && !command.AdminRoles.Contains(AppRoles.SuperAdmin)
+                      && !command.AdminRoles.Contains(AppRoles.Admin);
 
         // Impersonation tokens have a fixed 2-hour expiry
         var expiresAt = _dateTime.Now.AddHours(2);
 
+        // isReadOnly VIAJA EN EL TOKEN. Antes solo salía en el cuerpo de la respuesta —abajo, en
+        // IsReadOnly— y eso no limitaba nada: quien usara el token contra la API directamente iba
+        // con los roles completos del suplantado durante dos horas. La restricción la aplica ahora
+        // el servidor que recibe la petición, en ImpersonationReadOnlyMiddleware; el campo de la
+        // respuesta se queda porque la interfaz lo usa para pintarse en modo consulta, pero ya no
+        // es lo único que separa a un vistazo de una escritura.
         var accessToken = _jwt.GenerateAccessToken(
-            userId:          targetUser.Id,
-            memberId:        command.TargetMemberId,
-            email:           targetUser.Email ?? string.Empty,
-            roles:           targetRoles,
-            isImpersonating: true,
-            impersonatedBy:  command.AdminUserId);
+            userId:                targetUser.Id,
+            memberId:              command.TargetMemberId,
+            email:                 targetUser.Email ?? string.Empty,
+            roles:                 targetRoles,
+            isImpersonating:       true,
+            impersonatedBy:        command.AdminUserId,
+            impersonationReadOnly: isReadOnly);
 
         var memberName = $"{member.FirstName} {member.LastName}".Trim();
 

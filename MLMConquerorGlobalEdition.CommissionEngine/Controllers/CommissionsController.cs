@@ -1,4 +1,4 @@
-using MediatR;
+﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MLMConquerorGlobalEdition.CommissionEngine.DTOs;
@@ -12,14 +12,41 @@ using MLMConquerorGlobalEdition.CommissionEngine.Features.GetCommissionCollectio
 using MLMConquerorGlobalEdition.CommissionEngine.Features.GetCommissionRules;
 using MLMConquerorGlobalEdition.CommissionEngine.Features.ReverseSponsorBonus;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Constants;
 
 namespace MLMConquerorGlobalEdition.CommissionEngine.Controllers;
 
+/// <summary>
+/// El motor de cálculo de comisiones.
+/// </summary>
+/// <remarks>
+/// LAS SIETE RUTAS DE CÁLCULO DEJABAN FUERA AL SuperAdmin. Llevaban <c>Roles = "Admin"</c> a
+/// secas, y eran las siete ÚNICAS de toda la solución que nombran <c>Admin</c> sin
+/// <c>SuperAdmin</c>: de los 105 atributos que mencionan <c>Admin</c>, 98 incluyen también
+/// <c>SuperAdmin</c> y los 7 que no estaban todos en este archivo. No era una decisión —las tres
+/// listas que sí están recortadas a propósito en este repositorio
+/// (<see cref="AppRoles.CryptoPaymentApprovers"/>, la de tesorería de <c>BillingController</c> y
+/// el <c>SuperAdmin</c> solo de <c>SystemUsersController</c>) llevan escrito por qué—; era un
+/// olvido, y el efecto era que la cuenta con más privilegios del sistema recibía un 403 al
+/// relanzar un cálculo.
+///
+/// LA LISTA NO SE INVENTA AQUÍ: es la misma con la que ya está cerrada la superficie
+/// administrativa de comisiones, <c>AdminCommissionsController</c> y
+/// <c>AdminMemberCommissionsController</c>, que son las dos pantallas desde las que un humano
+/// llega a esto.
+///
+/// ESTO ES UNA APERTURA MÍNIMA Y NO UN CIERRE: añade <c>SuperAdmin</c> y no quita a nadie. Lo que
+/// estas siete mueven —bonos de arranque, residual binario, matching, patrocinio y su reverso— es
+/// dinero del upline, así que la lista sigue siendo corta.
+/// </remarks>
 [ApiController]
 [Route("api/v1/commissions")]
 [Authorize]
 public class CommissionsController : ControllerBase
 {
+    /// <summary>Quién puede lanzar o deshacer un cálculo de comisiones.</summary>
+    private const string CalculoRoles = AppRoles.SuperAdmin + "," + AppRoles.Admin;
+
     private readonly IMediator _mediator;
 
     public CommissionsController(IMediator mediator) => _mediator = mediator;
@@ -55,7 +82,7 @@ public class CommissionsController : ControllerBase
     /// Called in real-time when an order completes (or by admin for backfill).
     /// </summary>
     [HttpPost("calculate/fast-start-bonus")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = CalculoRoles)]
     [ProducesResponseType(typeof(ApiResponse<CalculationResultResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> CalculateFastStartBonus(
         [FromBody] FastStartBonusRequest request, CancellationToken ct)
@@ -72,7 +99,7 @@ public class CommissionsController : ControllerBase
     /// Normally triggered by HangFire; also callable by admin for manual runs.
     /// </summary>
     [HttpPost("calculate/daily-residual")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = CalculoRoles)]
     [ProducesResponseType(typeof(ApiResponse<CalculationResultResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> CalculateDailyResidual(
         [FromQuery] DateTime? periodDate, CancellationToken ct)
@@ -88,7 +115,7 @@ public class CommissionsController : ControllerBase
     /// Normally triggered by HangFire every Sunday; also callable by admin.
     /// </summary>
     [HttpPost("calculate/boost-bonus")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = CalculoRoles)]
     [ProducesResponseType(typeof(ApiResponse<CalculationResultResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> CalculateBoostBonus(
         [FromQuery] DateTime? periodDate, CancellationToken ct)
@@ -104,7 +131,7 @@ public class CommissionsController : ControllerBase
     /// Normally triggered by HangFire on the 1st of each month; also callable by admin.
     /// </summary>
     [HttpPost("calculate/presidential-bonus")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = CalculoRoles)]
     [ProducesResponseType(typeof(ApiResponse<CalculationResultResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> CalculatePresidentialBonus(
         [FromQuery] DateTime? periodDate, CancellationToken ct)
@@ -120,7 +147,7 @@ public class CommissionsController : ControllerBase
     /// Must be run after Daily Residual has been calculated for the same period.
     /// </summary>
     [HttpPost("calculate/matching-bonus")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = CalculoRoles)]
     [ProducesResponseType(typeof(ApiResponse<CalculationResultResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> CalculateMatchingBonus(
         [FromQuery] DateTime? periodDate, CancellationToken ct)
@@ -136,7 +163,7 @@ public class CommissionsController : ControllerBase
     /// Triggered automatically on signup completion; also callable by admin for backfill.
     /// </summary>
     [HttpPost("calculate/sponsor-bonus")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = CalculoRoles)]
     [ProducesResponseType(typeof(ApiResponse<CalculationResultResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> CalculateSponsorBonus(
         [FromBody] SponsorBonusRequest request, CancellationToken ct)
@@ -153,7 +180,7 @@ public class CommissionsController : ControllerBase
     /// Pending → cancelled in place. Paid → negative reversal earning via CommissionType.ReverseId.
     /// </summary>
     [HttpPost("reverse/sponsor-bonus")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = CalculoRoles)]
     [ProducesResponseType(typeof(ApiResponse<CalculationResultResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ReverseSponsorBonus(
         [FromBody] ReverseSponsorBonusRequest request, CancellationToken ct)

@@ -15,13 +15,31 @@ using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetVisualizerChildren;
 using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetDualTreeNode;
 using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetDualTreeStats;
 using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetDualTeamMyTeam;
+using MLMConquerorGlobalEdition.BizCenter.Services;
 using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.Repository.Services.Teams;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Security;
 using ICurrentUserService = MLMConquerorGlobalEdition.BizCenter.Services.ICurrentUserService;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Controllers;
 
+/// <summary>
+/// El equipo del miembro que llama.
+/// </summary>
+/// <remarks>
+/// LA MAYORÍA DE ESTAS RUTAS NO TIENEN SUJETO EN LA URL: sacan el miembro del token, por
+/// <c>ICurrentUserService.MemberId</c> o dentro del manejador, y por eso el <c>[Authorize]</c> de
+/// la clase les basta. Tres sí lo llevan —<c>dual-tree/node/{id}</c>,
+/// <c>dual-tree/stats/{id}</c> y las dos de visualizador y rama— y ninguna de las tres miraba el
+/// token: cualquier cuenta autenticada leía el nodo binario, los puntos de pierna y la
+/// descendencia de CUALQUIER miembro cambiando una cadena en la URL. Es la misma familia que
+/// cerró 4f4beaf en membresía, colocación y facturación.
+///
+/// El sujeto de estas tres no es solo la cuenta propia —el visualizador baja por el árbol— así que
+/// van por <see cref="IDownlineGuard"/>, que aplica <see cref="CallerIdentity.CanActOnMember"/>
+/// primero y solo después pregunta por la descendencia. Ver ahí por qué eso no es una regla nueva.
+/// </remarks>
 [ApiController]
 [Route("api/v1/bizcenter/team")]
 [Authorize]
@@ -31,18 +49,30 @@ public class TeamController : ControllerBase
     private readonly IDualTeamService       _dualTeam;
     private readonly IEnrollmentTeamService _enrollment;
     private readonly ICurrentUserService    _currentUser;
+    private readonly IDownlineGuard         _propiedad;
 
     public TeamController(
         IMediator              mediator,
         IDualTeamService       dualTeam,
         IEnrollmentTeamService enrollment,
-        ICurrentUserService    currentUser)
+        ICurrentUserService    currentUser,
+        IDownlineGuard         propiedad)
     {
         _mediator    = mediator;
         _dualTeam    = dualTeam;
         _enrollment  = enrollment;
         _currentUser = currentUser;
+        _propiedad   = propiedad;
     }
+
+    /// <summary>
+    /// 403 y no 404: quien llama está autenticado y la ruta existe, lo que no tiene es permiso
+    /// sobre esa posición del árbol.
+    /// </summary>
+    private IActionResult Ajeno() =>
+        StatusCode(StatusCodes.Status403Forbidden,
+            ApiResponse<bool>.Fail("FORBIDDEN", "Ese miembro no está en tu equipo.",
+                HttpContext.TraceIdentifier));
 
     // ─── Server-side grid reads (search/filter/sort/page span the whole team) ──
     // These delegate straight to the shared team services — the same ones the
@@ -51,7 +81,13 @@ public class TeamController : ControllerBase
     // (the MediatR handlers map 1:1), so the frontend deserializes unchanged.
 
     /// <summary>POST /api/v1/bizcenter/team/dual-tree/my-team/grid</summary>
+    /// <remarks>
+    /// POST porque el filtro, el orden y la página van en el cuerpo, pero no escribe nada: por eso
+    /// lleva <see cref="ReadOnlySafeAttribute"/> y sigue siendo visible en una sesión de
+    /// suplantación de solo lectura. Las tres rejillas de abajo, igual.
+    /// </remarks>
     [HttpPost("dual-tree/my-team/grid")]
+    [ReadOnlySafe]
     public async Task<IActionResult> GetDualTeamMyTeamGrid([FromBody] GridDataRequest request, CancellationToken ct = default)
     {
         var result = await _dualTeam.GetMyTeamGridAsync(_currentUser.MemberId, request, ct);
@@ -60,6 +96,7 @@ public class TeamController : ControllerBase
 
     /// <summary>POST /api/v1/bizcenter/team/enrollment/my-team/grid</summary>
     [HttpPost("enrollment/my-team/grid")]
+    [ReadOnlySafe]
     public async Task<IActionResult> GetEnrollmentMyTeamGrid([FromBody] GridDataRequest request, CancellationToken ct = default)
     {
         var result = await _enrollment.GetMyTeamGridAsync(_currentUser.MemberId, request, ct);
@@ -68,6 +105,7 @@ public class TeamController : ControllerBase
 
     /// <summary>POST /api/v1/bizcenter/team/enrollment/customers/grid</summary>
     [HttpPost("enrollment/customers/grid")]
+    [ReadOnlySafe]
     public async Task<IActionResult> GetEnrollmentCustomersGrid([FromBody] GridDataRequest request, CancellationToken ct = default)
     {
         var result = await _enrollment.GetCustomersGridAsync(_currentUser.MemberId, request, ct);
@@ -202,6 +240,8 @@ public class TeamController : ControllerBase
     [HttpGet("dual-tree/node/{nodeMemberId}")]
     public async Task<IActionResult> GetDualTreeNode(string nodeMemberId, CancellationToken ct)
     {
+        if (!await _propiedad.PuedeVerNodoBinarioAsync(User, nodeMemberId, ct)) return Ajeno();
+
         var result = await _mediator.Send(new GetDualTreeNodeQuery(nodeMemberId), ct);
         if (!result.IsSuccess)
             return BadRequest(ApiResponse<DualTreeNodeDto>.Fail(result.ErrorCode!, result.Error!));
@@ -270,6 +310,8 @@ public class TeamController : ControllerBase
     [HttpGet("dual-tree/stats/{nodeMemberId}")]
     public async Task<IActionResult> GetDualTreeStats(string nodeMemberId, CancellationToken ct)
     {
+        if (!await _propiedad.PuedeVerNodoBinarioAsync(User, nodeMemberId, ct)) return Ajeno();
+
         var result = await _mediator.Send(new GetDualTreeStatsQuery(nodeMemberId), ct);
         if (!result.IsSuccess)
             return BadRequest(ApiResponse<DualTreeStatsDto>.Fail(result.ErrorCode!, result.Error!));
