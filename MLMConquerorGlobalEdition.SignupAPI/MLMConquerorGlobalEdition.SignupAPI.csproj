@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -6,6 +6,31 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <!-- CS0436: top-level Program type collision when referencing another Web project assembly; benign -->
     <NoWarn>$(NoWarn);CS0436</NoWarn>
+
+    <!--
+      LA LLAVE PRIVADA DE FIRMA NO VIVE EN UN ARCHIVO DEL PROYECTO.
+
+      Estaba byte a byte en appsettings.Development.json, aqui y en el otro firmante. Ese archivo
+      esta excluido de git (.gitignore linea 99, appsettings.*.json) y nunca se commiteo, asi que
+      la llave no llego al historial; pero seguia en texto plano dentro del arbol de trabajo, se
+      copiaba a bin/Debug en cada compilacion, y bastaba un add forzado a git, un zip de la
+      carpeta o un respaldo del disco para sacarla. El secreto que firma las credenciales de
+      la casa no
+      tiene por que estar en el directorio del codigo.
+
+      Ahora va en el almacen de secretos de usuario (dotnet user-secrets), que guarda el JSON
+      fuera del repositorio, en %APPDATA%/Microsoft/UserSecrets/{UserSecretsId}/secrets.json.
+      WebApplication.CreateBuilder lo carga solo, y solo en Development.
+
+      EL MISMO UserSecretsId EN LOS DOS FIRMANTES, A PROPOSITO. AdminAPI y SignupAPI tienen que
+      firmar con LA MISMA llave o los tokens de uno no valen en el otro; compartir el almacen
+      convierte esa invariante en algo estructural en vez de en una nota que hay que recordar.
+      Los cinco servicios que solo verifican no llevan esto: la llave publica no es secreta y
+      sigue en appsettings.json.
+
+      Como se configura una maquina nueva: docs/deployment/llaves-jwt-en-desarrollo.md
+    -->
+    <UserSecretsId>mlmconqueror-jwt-signers</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

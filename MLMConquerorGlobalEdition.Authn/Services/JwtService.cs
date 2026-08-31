@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using MLMConquerorGlobalEdition.SharedKernel.Configuration;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
+using MLMConquerorGlobalEdition.SharedKernel.Security;
 
 namespace MLMConquerorGlobalEdition.Authn.Services;
 
@@ -65,7 +66,8 @@ public sealed class JwtService : IJwtService
         IEnumerable<string> roles,
         bool isImpersonating = false,
         string? impersonatedBy = null,
-        string? defaultLanguage = null)
+        string? defaultLanguage = null,
+        bool impersonationReadOnly = false)
     {
         var claims = new List<Claim>
         {
@@ -78,6 +80,19 @@ public sealed class JwtService : IJwtService
 
         if (!string.IsNullOrEmpty(impersonatedBy))
             claims.Add(new Claim("impersonatedBy", impersonatedBy));
+
+        // La restricción de solo lectura va en el TOKEN y no en la respuesta. Antes se calculaba
+        // en StartImpersonationHandler y se devolvía en el cuerpo como dato informativo: el token
+        // salía con los roles completos del miembro y dos horas de vida, así que "solo lectura"
+        // dependía de que la interfaz quisiera honrarlo. Aquí dentro va firmado y lo aplica el
+        // servidor que recibe la petición. Ver ImpersonationScope.
+        //
+        // El claim solo se escribe cuando de verdad restringe: un `false` explícito en todos los
+        // demás tokens no añadiría nada y sí invitaría a leerlo como "restricción evaluada", que
+        // es distinto de "no es un token restringido".
+        if (impersonationReadOnly)
+            claims.Add(new Claim(
+                ImpersonationScope.ReadOnlyClaim, ImpersonationScope.ReadOnlyValue));
 
         // Idioma preferido — lo propaga el manejador de la cookie de sesión de BizCenterWeb para
         // que un inicio de sesión en un dispositivo nuevo caiga en el idioma del usuario sin una

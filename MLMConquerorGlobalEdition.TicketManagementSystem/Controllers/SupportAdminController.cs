@@ -1,15 +1,19 @@
-using MediatR;
+﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.TicketManagementSystem.DTOs;
 using MLMConquerorGlobalEdition.TicketManagementSystem.Features.SupportAdmin;
 
+using MLMConquerorGlobalEdition.TicketManagementSystem.Security;
+
 namespace MLMConquerorGlobalEdition.TicketManagementSystem.Controllers;
 
 [ApiController]
 [Route("api/v1/helpdesk/admin")]
-[Authorize]
+// Equipos y agentes de soporte. Misma lista que AdminSupportAgents.razor. GET teams no tenia
+// ninguna comprobacion: su manejador ni inyecta ICurrentUserService.
+[Authorize(Roles = HelpdeskRoles.Coordinacion)]
 public class SupportAdminController : ControllerBase
 {
     private readonly IMediator _mediator;

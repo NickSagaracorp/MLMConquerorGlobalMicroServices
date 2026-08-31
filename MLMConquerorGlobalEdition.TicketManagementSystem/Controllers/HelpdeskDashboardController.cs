@@ -1,15 +1,20 @@
-using MediatR;
+﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.TicketManagementSystem.DTOs;
 using MLMConquerorGlobalEdition.TicketManagementSystem.Features.Dashboard;
 
+using MLMConquerorGlobalEdition.TicketManagementSystem.Security;
+
 namespace MLMConquerorGlobalEdition.TicketManagementSystem.Controllers;
 
 [ApiController]
 [Route("api/v1/helpdesk/dashboard")]
-[Authorize]
+// Tablero de soporte. Misma lista que AdminHelpdeskDashboard.razor. Los manejadores ya
+// filtraban por IsAdmin o por los roles "Agent"/"Supervisor", que no existen en AppRoles ni
+// se siembran en ningun sitio: en la practica la puerta era admin o nadie.
+[Authorize(Roles = HelpdeskRoles.Soporte)]
 public class HelpdeskDashboardController : ControllerBase
 {
     private readonly IMediator _mediator;

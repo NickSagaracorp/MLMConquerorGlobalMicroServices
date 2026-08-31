@@ -12,6 +12,7 @@ using MLMConquerorGlobalEdition.RankEngine.Features.GetRankProgress;
 using MLMConquerorGlobalEdition.RankEngine.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Security;
 
 namespace MLMConquerorGlobalEdition.RankEngine.Controllers;
 
@@ -23,6 +24,15 @@ public class RanksController : ControllerBase
     private readonly IMediator _mediator;
 
     public RanksController(IMediator mediator) => _mediator = mediator;
+
+    /// <summary>
+    /// 403 y no 404: quien llama está autenticado y la ruta existe, lo que no tiene es permiso
+    /// sobre esa cuenta.
+    /// </summary>
+    private IActionResult Ajeno() =>
+        StatusCode(StatusCodes.Status403Forbidden,
+            ApiResponse<object>.Fail("FORBIDDEN", "Esa cuenta no es la tuya.",
+                HttpContext.TraceIdentifier));
 
     /// <summary>
     /// Returns all active rank definitions with their qualification requirements.
@@ -39,11 +49,27 @@ public class RanksController : ControllerBase
     /// Returns a member's current rank, next rank target, and real-time progress metrics.
     /// Members can view their own progress; admins can view any member.
     /// </summary>
+    /// <remarks>
+    /// ESO QUE DICE EL COMENTARIO DE ARRIBA NO LO COMPROBABA NADIE. El <c>[Authorize]</c> de la
+    /// clase solo mira que HAYA sesión, el sujeto salía del <c>{memberId}</c> de la ruta y
+    /// <c>GetRankProgressHandler</c> no inyecta <c>ICurrentUserService</c>: cualquier cuenta
+    /// autenticada leía el progreso de rango de cualquier miembro —puntos personales, puntos de
+    /// pierna, patrocinados cualificados— cambiando una cadena en la URL. Misma familia que
+    /// 4f4beaf, y la cura es la misma regla y no una nueva:
+    /// <see cref="CallerIdentity.CanActOnMember"/>.
+    ///
+    /// AQUÍ NO HAY DESCENDENCIA QUE ADMITIR, al revés que en el centro de negocios: esta ruta la
+    /// llama el portal para la barra de progreso del PROPIO miembro, y el panel tiene su propia
+    /// superficie. O es tu cuenta o eres personal.
+    /// </remarks>
     [HttpGet("progress/{memberId}")]
     [ProducesResponseType(typeof(ApiResponse<RankProgressResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetProgress(string memberId, CancellationToken ct)
     {
+        if (!User.CanActOnMember(memberId)) return Ajeno();
+
         var result = await _mediator.Send(new GetRankProgressQuery(memberId), ct);
 
         if (!result.IsSuccess)

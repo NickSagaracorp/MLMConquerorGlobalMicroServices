@@ -1,15 +1,20 @@
-using MediatR;
+﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.TicketManagementSystem.DTOs;
 using MLMConquerorGlobalEdition.TicketManagementSystem.Features.CannedResponses;
 
+using MLMConquerorGlobalEdition.TicketManagementSystem.Security;
+
 namespace MLMConquerorGlobalEdition.TicketManagementSystem.Controllers;
 
 [ApiController]
 [Route("api/v1/helpdesk/canned-responses")]
-[Authorize]
+// Plantillas internas de respuesta. Misma lista que AdminCannedResponses.razor, que es la
+// pantalla que consume estas rutas. Antes: [Authorize] pelado, y ni GET ni apply miraban el
+// token en su manejador.
+[Authorize(Roles = HelpdeskRoles.Soporte)]
 public class CannedResponsesController : ControllerBase
 {
     private readonly IMediator _mediator;

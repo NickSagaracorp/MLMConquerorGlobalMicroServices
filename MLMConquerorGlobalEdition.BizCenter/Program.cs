@@ -1,3 +1,4 @@
+﻿using MLMConquerorGlobalEdition.SharedKernel.Server.Middleware;
 using System.Security.Cryptography;
 using AspNetCoreRateLimit;
 using Hangfire;
@@ -67,6 +68,10 @@ builder.Services.AddFluentValidationAutoValidation();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+// La comprobación de propiedad de las rutas que llevan un {memberId} ajeno en la URL. Ver
+// DownlineGuard: la regla sigue siendo CallerIdentity.CanActOnMember, con la descendencia del que
+// llama como sujeto añadido para las pantallas que recorren el árbol hacia abajo.
+builder.Services.AddScoped<IDownlineGuard, DownlineGuard>();
 // Registers all rank services in one call:
 //   IEnrollmentTeamPointsService, IPersonalCustomerPointsService,
 //   IRankQualificationService, IRankComputationService.
@@ -343,6 +348,12 @@ app.UseSwaggerUI();
 app.UseIpRateLimiting();
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Un token de suplantacion marcado de solo lectura no escribe. Va detras de la autorizacion para
+// que un 401 o un 403 por rol se contesten antes, y delante de las rutas para que ninguna llegue a
+// ejecutarse. Ver ImpersonationScope.
+app.UseImpersonationReadOnly();
+
 app.MapControllers();
 
 app.UseHangfireDashboard("/hangfire", new DashboardOptions
