@@ -27,9 +27,9 @@ public static class NotificationEvents
     /// <summary>Sent to an ambassador when a payout receipt is issued. Variables: { FullName, AmountUsd, Gateway, ProcessDate, ReceiptUrl }.</summary>
     public const string PayoutReceiptIssued  = "PAYOUT_RECEIPT_ISSUED";
 
-    /// <summary>Sent so the user can confirm the email address they signed up with. Variables: { ConfirmationUrl, ExpiresInHours }.</summary>
+    /// <summary>Sent so the user can confirm the email address they signed up with. Variables: { ConfirmationUrl, ExpiresInMinutes }.</summary>
     public const string EmailConfirmation    = "EMAIL_CONFIRMATION";
 
-    /// <summary>Sent by the forgot-password flow so the user can set a new password. Variables: { ResetUrl, ExpiresInHours }.</summary>
+    /// <summary>Sent by the forgot-password flow so the user can set a new password. Variables: { ResetUrl, ExpiresInMinutes }.</summary>
     public const string PasswordReset        = "PASSWORD_RESET";
 }

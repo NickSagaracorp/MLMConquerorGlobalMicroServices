@@ -15,6 +15,7 @@ using MLMConquerorGlobalEdition.Repository.Services;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using MLMConquerorGlobalEdition.SharedKernel.Server.Behaviors;
+using MLMConquerorGlobalEdition.SharedKernel.Server.Configuration;
 using MLMConquerorGlobalEdition.SharedKernel.Configuration;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SharedKernel.Logging;
@@ -51,6 +52,11 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
 .AddRoles<IdentityRole>()
 .AddEntityFrameworkStores<AppDbContext>()
 .AddDefaultTokenProviders();
+
+// Aquí no sale ningún correo con enlace, pero la Identity es la misma que la de SignupAPI: dejar
+// este anfitrión con el día entero por defecto sería tener dos vigencias distintas para el mismo
+// proveedor de tokens. Ver EmailLinkLifetime.
+builder.Services.AddEmailLinkTokenLifetime(builder.Configuration);
 
 builder.Services.AddMediatR(cfg =>
 {

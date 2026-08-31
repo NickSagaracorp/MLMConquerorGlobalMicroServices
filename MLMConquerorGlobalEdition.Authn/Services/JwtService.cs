@@ -56,8 +56,30 @@ public sealed class JwtService : IJwtService
         _signingKey = new RsaSecurityKey(rsa);
     }
 
-    public TimeSpan AccessTokenExpiry  => TimeSpan.FromMinutes(_config.GetValue("Jwt:AccessTokenExpiryMinutes", 15));
-    public TimeSpan RefreshTokenExpiry => TimeSpan.FromDays(_config.GetValue("Jwt:RefreshTokenExpiryDays", 30));
+    public TimeSpan AccessTokenExpiry  => TimeSpan.FromMinutes(_config.GetValue("Jwt:AccessTokenExpiryMinutes",  15));
+
+    /// <summary>
+    /// Vigencia del REFRESCO, en minutos. Es el reloj del cierre por inactividad.
+    /// </summary>
+    /// <remarks>
+    /// LA CLAVE SE LLAMABA <c>Jwt:RefreshTokenExpiryDays</c> Y SE LEÍA CON <c>FromDays</c>: treinta
+    /// días. Ahora son treinta MINUTOS y la clave se llama <c>RefreshTokenExpiryMinutes</c>. El
+    /// renombrado no es cosmético: dejar el nombre viejo con el valor 30 habría seguido
+    /// compilando, seguido leyéndose "treinta días" en cualquier revisión, y la única forma de
+    /// saber la verdad habría sido abrir este archivo.
+    ///
+    /// NO ES UN LÍMITE DE SESIÓN, ES UN LÍMITE DE INACTIVIDAD. Cada refresco emite una pareja
+    /// nueva y vuelve a poner el contador a treinta minutos (ver <c>RefreshTokenHandler</c>), así
+    /// que quien está trabajando no se cae nunca; quien deja el ordenador vuelve a pasar por su
+    /// segundo factor. Ese es todo el efecto buscado.
+    ///
+    /// TIENE QUE SER MAYOR QUE <see cref="AccessTokenExpiry"/> y esto no es una preferencia. El
+    /// refresco solo se usa cuando el acceso ya caducó; si los dos duran lo mismo, el refresco
+    /// caduca en el mismo instante en que empezaría a hacer falta y la sesión se muere SIEMPRE al
+    /// caducar el acceso, con renovación o sin ella. Lo fija
+    /// <c>VigenciasDeSesionTests.ElRefrescoDuraMasQueElAcceso</c> sobre los appsettings reales.
+    /// </remarks>
+    public TimeSpan RefreshTokenExpiry => TimeSpan.FromMinutes(_config.GetValue("Jwt:RefreshTokenExpiryMinutes", 30));
 
     public string GenerateAccessToken(
         string userId,

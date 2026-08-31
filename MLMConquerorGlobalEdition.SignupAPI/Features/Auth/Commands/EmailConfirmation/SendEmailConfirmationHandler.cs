@@ -6,6 +6,7 @@ using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Identity;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
+using MLMConquerorGlobalEdition.SharedKernel.Server.Configuration;
 using System.Text;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.EmailConfirmation;
@@ -17,13 +18,6 @@ namespace MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.EmailConfir
 /// </summary>
 public class SendEmailConfirmationHandler : IRequestHandler<SendEmailConfirmationCommand, Result<bool>>
 {
-    /// <summary>
-    /// Vigencia del token de Identity. Es el valor por defecto de <c>DataProtectionTokenProvider</c>
-    /// (<c>TokenLifespan</c> = 1 día); se declara aquí porque el correo se lo dice al usuario y
-    /// las dos cifras tienen que coincidir.
-    /// </summary>
-    public const int ExpiresInHours = 24;
-
     private const string DefaultPortalBaseUrl      = "https://localhost:7004";
     private const string DefaultAdminPortalBaseUrl = "https://localhost:7001";
     private const string DefaultLanguage           = "en";
@@ -70,10 +64,13 @@ public class SendEmailConfirmationHandler : IRequestHandler<SendEmailConfirmatio
 
         var (languageCode, displayName) = await ResolveRecipientAsync(user, ct);
 
+        // La cifra sale de EmailLinkLifetime, que es la MISMA fuente con la que Program.cs
+        // configura TokenLifespan del proveedor de Identity. Mismo criterio que
+        // ForgotPasswordHandler: el correo no puede anunciar una caducidad que el token no tenga.
         var variables = new Dictionary<string, string>
         {
-            ["ConfirmationUrl"] = BuildConfirmationUrl(user, encodedToken),
-            ["ExpiresInHours"]  = ExpiresInHours.ToString()
+            ["ConfirmationUrl"]  = BuildConfirmationUrl(user, encodedToken),
+            ["ExpiresInMinutes"] = EmailLinkLifetime.Minutes(_config).ToString()
         };
 
         try

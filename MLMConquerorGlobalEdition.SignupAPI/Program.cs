@@ -18,6 +18,7 @@ using MLMConquerorGlobalEdition.Repository.Identity;
 using MLMConquerorGlobalEdition.Repository.Seeders;
 using MLMConquerorGlobalEdition.Repository.Services;
 using MLMConquerorGlobalEdition.SharedKernel.Server.Behaviors;
+using MLMConquerorGlobalEdition.SharedKernel.Server.Configuration;
 using MLMConquerorGlobalEdition.SharedKernel.Configuration;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using IErrorTrackingService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IErrorTrackingService;
@@ -55,6 +56,11 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
 .AddEntityFrameworkStores<AppDbContext>()
 .AddDefaultTokenProviders()
 .AddSignInManager();
+
+// Los enlaces de correo —confirmación de dirección y recuperación de contraseña— caducan a los 15
+// minutos en vez del día entero que trae Identity por defecto. La misma cifra es la que los
+// manejadores meten en el texto del correo; por eso sale de un único sitio. Ver EmailLinkLifetime.
+builder.Services.AddEmailLinkTokenLifetime(builder.Configuration);
 
 // MediatR
 builder.Services.AddMediatR(cfg =>

@@ -6,6 +6,7 @@ using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Identity;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
+using MLMConquerorGlobalEdition.SharedKernel.Server.Configuration;
 using System.Text;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.ForgotPassword;
@@ -21,13 +22,6 @@ namespace MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.ForgotPassw
 /// </remarks>
 public class ForgotPasswordHandler : IRequestHandler<ForgotPasswordCommand, Result<bool>>
 {
-    /// <summary>
-    /// Vigencia del token de Identity. Es el valor por defecto de <c>DataProtectionTokenProvider</c>
-    /// (<c>TokenLifespan</c> = 1 día); se declara aquí porque el correo se lo dice al usuario y
-    /// las dos cifras tienen que coincidir.
-    /// </summary>
-    public const int ExpiresInHours = 24;
-
     private const string DefaultPortalBaseUrl      = "https://localhost:7004";
     private const string DefaultAdminPortalBaseUrl = "https://localhost:7001";
     private const string DefaultLanguage           = "en";
@@ -73,10 +67,14 @@ public class ForgotPasswordHandler : IRequestHandler<ForgotPasswordCommand, Resu
 
         var (languageCode, displayName) = await ResolveRecipientAsync(user, ct);
 
+        // LA CIFRA SALE DE DONDE SE APLICA. Antes era un const 24 aquí dentro cuyo comentario
+        // decía que tenía que coincidir con TokenLifespan y confiaba en que alguien se acordara.
+        // Ahora EmailLinkLifetime es la misma fuente que Program.cs usa para configurar el
+        // proveedor de Identity: el correo no puede anunciar una caducidad que el token no tenga.
         var variables = new Dictionary<string, string>
         {
-            ["ResetUrl"]       = BuildResetUrl(user, encodedToken),
-            ["ExpiresInHours"] = ExpiresInHours.ToString()
+            ["ResetUrl"]         = BuildResetUrl(user, encodedToken),
+            ["ExpiresInMinutes"] = EmailLinkLifetime.Minutes(_config).ToString()
         };
 
         try

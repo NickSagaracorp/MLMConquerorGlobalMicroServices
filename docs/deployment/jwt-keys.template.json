@@ -42,7 +42,7 @@
     "PublicKeyBase64": "",
     "Issuer": "MLMConquerorGlobalEdition",
     "Audience": "MLMConquerorGlobalEdition.Clients",
-    "AccessTokenExpiryMinutes": 120,
-    "RefreshTokenExpiryDays": 30
+    "AccessTokenExpiryMinutes": 15,
+    "RefreshTokenExpiryMinutes": 30
   }
 }

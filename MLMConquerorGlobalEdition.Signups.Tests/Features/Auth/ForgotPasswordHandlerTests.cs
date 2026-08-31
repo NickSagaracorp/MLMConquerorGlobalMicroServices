@@ -111,7 +111,7 @@ public class ForgotPasswordHandlerTests
                 && v["ResetUrl"].Contains("userId=user-1")
                 && !v["ResetUrl"].Contains("email=")
                 && !v["ResetUrl"].Contains('+')
-                && v.ContainsKey("ExpiresInHours")),
+                && v.ContainsKey("ExpiresInMinutes") && v["ExpiresInMinutes"] == "15"),
             It.IsAny<CancellationToken>()),
             Times.Once);
     }

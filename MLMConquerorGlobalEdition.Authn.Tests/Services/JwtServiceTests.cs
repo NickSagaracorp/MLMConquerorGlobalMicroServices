@@ -15,21 +15,32 @@ public class JwtServiceTests
     }
 
     private static IConfiguration BuildConfig(
-        int accessExpiryMinutes = 60,
-        int refreshExpiryDays = 30)
+        int accessExpiryMinutes = 15,
+        int refreshExpiryMinutes = 30)
     {
         var data = new Dictionary<string, string?>
         {
-            ["Jwt:PrivateKeyBase64"]          = GeneratePrivateKeyBase64(),
-            ["Jwt:Issuer"]                    = "MLMConqueror",
-            ["Jwt:Audience"]                  = "MLMConquerorUsers",
-            ["Jwt:AccessTokenExpiryMinutes"]  = accessExpiryMinutes.ToString(),
-            ["Jwt:RefreshTokenExpiryDays"]    = refreshExpiryDays.ToString()
+            ["Jwt:PrivateKeyBase64"]           = GeneratePrivateKeyBase64(),
+            ["Jwt:Issuer"]                     = "MLMConqueror",
+            ["Jwt:Audience"]                   = "MLMConquerorUsers",
+            ["Jwt:AccessTokenExpiryMinutes"]   = accessExpiryMinutes.ToString(),
+            ["Jwt:RefreshTokenExpiryMinutes"]  = refreshExpiryMinutes.ToString()
         };
         return new ConfigurationBuilder()
             .AddInMemoryCollection(data)
             .Build();
     }
+
+    /// <summary>Solo lo imprescindible para construir el servicio: ni una vigencia.</summary>
+    private static IConfiguration BuildConfigSinVigencias() =>
+        new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:PrivateKeyBase64"] = GeneratePrivateKeyBase64(),
+                ["Jwt:Issuer"]           = "MLMConqueror",
+                ["Jwt:Audience"]         = "MLMConquerorUsers"
+            })
+            .Build();
 
     [Fact]
     public void Constructor_WhenJwtKeyMissing_ThrowsInvalidOperationException()
@@ -58,8 +69,64 @@ public class JwtServiceTests
     [Fact]
     public void RefreshTokenExpiry_ReturnsConfiguredValue()
     {
-        var service = new JwtService(BuildConfig(refreshExpiryDays: 7));
-        service.RefreshTokenExpiry.Should().Be(TimeSpan.FromDays(7));
+        var service = new JwtService(BuildConfig(refreshExpiryMinutes: 45));
+        service.RefreshTokenExpiry.Should().Be(TimeSpan.FromMinutes(45));
+    }
+
+    /// <summary>
+    /// La clave se llama <c>RefreshTokenExpiryMinutes</c> y se lee en MINUTOS.
+    /// </summary>
+    /// <remarks>
+    /// Esta prueba existe por el renombrado: antes la clave era <c>RefreshTokenExpiryDays</c> y se
+    /// leía con <c>FromDays</c>. Si alguien devuelve la lectura a días —o restaura el nombre viejo
+    /// en un appsettings— un 30 se convertiría en treinta DÍAS de inactividad tolerada en vez de
+    /// treinta minutos, y nada más en la solución se pondría rojo: el tipo es el mismo TimeSpan.
+    /// </remarks>
+    [Fact]
+    public void RefreshTokenExpiry_SeLeeEnMinutosNoEnDias()
+    {
+        var service = new JwtService(BuildConfig(refreshExpiryMinutes: 30));
+
+        service.RefreshTokenExpiry.Should().Be(TimeSpan.FromMinutes(30),
+            "la clave está en minutos; 30 días serían un cierre por inactividad de un mes");
+        service.RefreshTokenExpiry.Should().NotBe(TimeSpan.FromDays(30));
+    }
+
+    /// <summary>
+    /// La clave VIEJA ya no se lee. Un appsettings que se quedara con
+    /// <c>Jwt:RefreshTokenExpiryDays</c> no debe poder alargar la vigencia por la puerta de atrás.
+    /// </summary>
+    [Fact]
+    public void RefreshTokenExpiry_IgnoraLaClaveVieja()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:PrivateKeyBase64"]        = GeneratePrivateKeyBase64(),
+                ["Jwt:Issuer"]                  = "MLMConqueror",
+                ["Jwt:Audience"]                = "MLMConquerorUsers",
+                ["Jwt:RefreshTokenExpiryDays"]  = "30"
+            })
+            .Build();
+
+        new JwtService(config).RefreshTokenExpiry.Should().Be(TimeSpan.FromMinutes(30),
+            "sin la clave nueva manda el valor por defecto, no la clave vieja");
+    }
+
+    /// <summary>
+    /// Los valores por defecto del código —los que rigen si falta la clave en configuración—
+    /// tienen que cumplir la misma invariante que los appsettings: refresco &gt; acceso.
+    /// </summary>
+    [Fact]
+    public void VigenciasPorDefecto_ElRefrescoDuraMasQueElAcceso()
+    {
+        var service = new JwtService(BuildConfigSinVigencias());
+
+        service.AccessTokenExpiry.Should().Be(TimeSpan.FromMinutes(15));
+        service.RefreshTokenExpiry.Should().Be(TimeSpan.FromMinutes(30));
+        service.RefreshTokenExpiry.Should().BeGreaterThan(service.AccessTokenExpiry,
+            "el refresco solo se usa DESPUÉS de que caduque el acceso: si no dura más, no hay "
+          + "ventana para usarlo y la sesión muere siempre al caducar el acceso");
     }
 
     [Fact]

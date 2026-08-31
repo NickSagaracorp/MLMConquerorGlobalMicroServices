@@ -99,7 +99,7 @@ public class SendEmailConfirmationHandlerTests
                 && v["ConfirmationUrl"].Contains(expectedToken)
                 && v["ConfirmationUrl"].StartsWith("https://portal.test")
                 && !v["ConfirmationUrl"].Contains('+')
-                && v.ContainsKey("ExpiresInHours")),
+                && v.ContainsKey("ExpiresInMinutes") && v["ExpiresInMinutes"] == "15"),
             It.IsAny<CancellationToken>()),
             Times.Once);
     }
