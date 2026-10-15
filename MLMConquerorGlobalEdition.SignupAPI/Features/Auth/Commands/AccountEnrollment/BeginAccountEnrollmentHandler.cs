@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Identity;
 using MLMConquerorGlobalEdition.Authn.Abstractions;
 using MLMConquerorGlobalEdition.Repository.Identity;
+using MLMConquerorGlobalEdition.Repository.Services.Security;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs.Auth;
 
@@ -31,13 +32,16 @@ public class BeginAccountEnrollmentHandler
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ITotpEnrollmentService       _enrollment;
+    private readonly ISecurityFactorNotifier      _notifier;
 
     public BeginAccountEnrollmentHandler(
         UserManager<ApplicationUser> userManager,
-        ITotpEnrollmentService       enrollment)
+        ITotpEnrollmentService       enrollment,
+        ISecurityFactorNotifier      notifier)
     {
         _userManager = userManager;
         _enrollment  = enrollment;
+        _notifier    = notifier;
     }
 
     public async Task<Result<EnrollmentResponse>> Handle(
@@ -47,7 +51,20 @@ public class BeginAccountEnrollmentHandler
         if (user is null || !user.IsActive)
             return Result<EnrollmentResponse>.Failure("USER_NOT_FOUND", "User not found.");
 
+        // Sobre un autenticador ya enrolado, BeginAsync no abre un alta: REEMPLAZA la clave, y el
+        // autenticador que el dueño lleva en el móvil deja de valer en ese momento. Es un cambio de
+        // canal de sus códigos tan real como cambiar el teléfono, así que se le avisa igual —si no
+        // fue él, es lo único que le dice que alguien con su sesión está reapuntando su 2FA—. Se
+        // mira ANTES de llamar, y se avisa aunque BeginAsync devuelva fallo: la clave vieja se
+        // resetea antes de que nada pueda fallar. En un alta primera no hay nada que se pierda y
+        // no se avisa. El aviso vive aquí y no en Authn para no darle a Authn una dependencia más.
+        var reenrolling = user.TwoFactorEnrolledAt is not null;
+
         var begun = await _enrollment.BeginAsync(user, ct);
+
+        if (reenrolling)
+            await _notifier.NotifyAsync(user, SecurityFactorChange.Authenticator, ct: ct);
+
         if (!begun.IsSuccess)
             return Result<EnrollmentResponse>.Failure(begun.ErrorCode!, begun.Error!);
 
