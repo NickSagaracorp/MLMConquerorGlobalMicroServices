@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using MediatR;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
@@ -56,9 +57,33 @@ public class CriptoDeTokensNoEsUnAltaTests
               .ReturnsAsync(new[] { new CryptoDepositAddressDto { Currency = "BTC", Address = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh" } });
         var controller = new SignupsController(Mock.Of<IMediator>(), Mock.Of<IFraudFingerprintService>());
 
-        var r = await controller.GetCryptoDepositAddresses(lector.Object, default);
+        var r = await controller.GetCryptoDepositAddresses(lector.Object, new MemoryCache(new MemoryCacheOptions()), default);
 
         ((OkObjectResult)r).Value.Should().BeOfType<ApiResponse<IReadOnlyList<CryptoDepositAddressDto>>>()
             .Which.Data!.Single().Currency.Should().Be("BTC");
+    }
+
+    [Fact]
+    public async Task Las_direcciones_del_alta_se_cachean_y_no_se_leen_en_cada_peticion()
+    {
+        var lector = new Mock<ICryptoDepositAddressReader>();
+        lector.Setup(l => l.GetConfiguredAsync(It.IsAny<CancellationToken>()))
+              .ReturnsAsync(new[] { new CryptoDepositAddressDto { Currency = "BTC", Address = "bc1q" } });
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        var controller = new SignupsController(Mock.Of<IMediator>(), Mock.Of<IFraudFingerprintService>());
+
+        await controller.GetCryptoDepositAddresses(lector.Object, cache, default);
+        await controller.GetCryptoDepositAddresses(lector.Object, cache, default);
+
+        lector.Verify(l => l.GetConfiguredAsync(It.IsAny<CancellationToken>()), Times.Once);
+        SignupsController.CryptoDepositAddressesTtl.Should().Be(TimeSpan.FromSeconds(60));
+    }
+
+    [Fact]
+    public void El_endpoint_de_direcciones_es_anonimo()
+    {
+        typeof(SignupsController).GetMethod(nameof(SignupsController.GetCryptoDepositAddresses))!
+            .GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AllowAnonymousAttribute), false)
+            .Should().ContainSingle("el alta lo pide antes de que exista la cuenta.");
     }
 }

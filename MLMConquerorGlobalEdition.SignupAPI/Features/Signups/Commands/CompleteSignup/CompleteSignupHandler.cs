@@ -8,7 +8,9 @@ using MLMConquerorGlobalEdition.Domain.Entities.Wallet;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Identity;
+using MLMConquerorGlobalEdition.Repository.Services.Crypto;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Billing;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs;
 using MLMConquerorGlobalEdition.SignupAPI.Services;
@@ -40,6 +42,7 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
     private readonly IEncryptionService           _encryption;
     private readonly ITokenRedemptionService      _tokenRedemption;
     private readonly ISignupActivationService     _activation;
+    private readonly ICryptoDepositAddressReader  _cryptoAddresses;
 
     public CompleteSignupHandler(
         AppDbContext db,
@@ -49,7 +52,8 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
         IJwtService jwtService,
         IEncryptionService encryption,
         ITokenRedemptionService tokenRedemption,
-        ISignupActivationService activation)
+        ISignupActivationService activation,
+        ICryptoDepositAddressReader cryptoAddresses)
     {
         _db              = db;
         _dateTime        = dateTime;
@@ -59,12 +63,30 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
         _encryption      = encryption;
         _tokenRedemption = tokenRedemption;
         _activation      = activation;
+        _cryptoAddresses = cryptoAddresses;
     }
 
     public async Task<Result<SignupResponse>> Handle(CompleteSignupCommand command, CancellationToken ct)
     {
         var req = command.Request;
         var now = _dateTime.Now;
+
+        // La moneda se valida contra las direcciones configuradas ANTES de tocar nada, igual que
+        // Billing en la compra de tokens: aceptar un alta en una moneda sin dirección deja al
+        // aspirante sin saber a dónde pagar y a tesorería con un cobro imposible de conciliar.
+        string? cryptoCurrency = null;
+        if (req.PaymentMethod == PaymentMethodType.Crypto)
+        {
+            cryptoCurrency = req.CryptoCurrency?.Trim().ToUpperInvariant();
+            if (cryptoCurrency is null || !TokenPurchaseRules.CryptoCurrencies.Contains(cryptoCurrency))
+                return Result<SignupResponse>.Failure(TokenPurchaseErrors.CryptoCurrencyNotSupported,
+                    $"Supported currencies: {string.Join(", ", TokenPurchaseRules.CryptoCurrencies)}.");
+
+            var configured = await _cryptoAddresses.GetConfiguredAsync(ct);
+            if (!configured.Any(c => c.Currency == cryptoCurrency))
+                return Result<SignupResponse>.Failure(TokenPurchaseErrors.CryptoAddressNotConfigured,
+                    $"Payments in {cryptoCurrency} are not available right now.");
+        }
 
         var order = await _db.Orders
             .FirstOrDefaultAsync(o => o.Id == command.SignupId && o.Status == OrderStatus.Pending, ct);
@@ -205,7 +227,7 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
                 OrderId        = order.Id,
                 MemberId       = member.MemberId,
                 MemberEmail    = member.Email,
-                CryptoCurrency = req.CryptoCurrency ?? string.Empty,
+                CryptoCurrency = cryptoCurrency!,
                 AmountDue      = order.TotalAmount,
                 Status         = CryptoPaymentConfirmationStatus.AwaitingPayment,
                 // CryptoTransactionId se queda a null a propósito: el identificador de la

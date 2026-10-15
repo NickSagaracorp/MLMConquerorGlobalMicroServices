@@ -267,7 +267,8 @@ public class SignupRankInputsTests
         return new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildActivation(db));
+            BuildTokenRedemptionMock().Object, BuildActivation(db),
+            Mock.Of<MLMConquerorGlobalEdition.Repository.Services.Crypto.ICryptoDepositAddressReader>());
     }
 
     // ── Tests ────────────────────────────────────────────────────────────────
