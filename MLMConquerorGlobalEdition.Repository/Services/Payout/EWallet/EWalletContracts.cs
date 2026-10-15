@@ -28,6 +28,12 @@ public static class EWalletFunctions
 
     /// <summary>Acredita fondos en una o varias cuentas — es el disburse.</summary>
     public const string Load = "eWallet_Load";
+
+    /// <summary>
+    /// Cobra de la cuenta del usuario con AutoChargeAccount = "true". Es el débito del legado
+    /// (EWallet_AddDeductionFromBalance). PROCESSING y PENDING devuelven también m_Code 0.
+    /// </summary>
+    public const string AddCheckoutItems = "eWallet_AddCheckoutItems";
 }
 
 /// <summary>Envoltorio común de respuesta.</summary>
@@ -82,3 +88,35 @@ public sealed class EWalletLoadAccount
     /// </summary>
     [JsonPropertyName("MerchantReferenceID")] public string? MerchantReferenceId { get; set; }
 }
+
+/// <summary>Un ítem de arrItems de eWallet_AddCheckoutItems, con los valores del legado.</summary>
+public sealed class EWalletCheckoutItem
+{
+    [JsonPropertyName("Amount")]              public decimal Amount              { get; set; }
+    [JsonPropertyName("CurrencyCode")]        public string  CurrencyCode        { get; set; } = "USD";
+    [JsonPropertyName("ItemDescription")]     public string  ItemDescription     { get; set; } = string.Empty;
+    [JsonPropertyName("MerchantReferenceID")] public string  MerchantReferenceId { get; set; } = string.Empty;
+    [JsonPropertyName("IsSubscription")]      public string  IsSubscription      { get; set; } = "false";
+    [JsonPropertyName("SubscriptionAmount")]  public decimal SubscriptionAmount  { get; set; }
+    [JsonPropertyName("UserReturnURL")]       public string  UserReturnUrl       { get; set; } = string.Empty;
+    [JsonPropertyName("MustComplete")]        public string  MustComplete        { get; set; } = "false";
+}
+
+public sealed class EWalletCheckoutResponse : EWalletResponseEnvelope
+{
+    [JsonPropertyName("arrItemsResponse")] public List<EWalletStatus>? Items { get; set; }
+}
+
+public enum EWalletDeductionStatus
+{
+    /// <summary>Envoltorio e ítems con m_Code &gt;= 0. Puede estar en PROCESSING/PENDING: hay que verificar el saldo.</summary>
+    Accepted,
+
+    /// <summary>i-Payout dijo que no (código negativo) o no se llegó a enviar (sin credencial).</summary>
+    Rejected,
+
+    /// <summary>No hubo respuesta clara: el dinero pudo salir o no. No se reintenta.</summary>
+    Unknown
+}
+
+public sealed record EWalletDeduction(EWalletDeductionStatus Status, string? Code, string? Text);
