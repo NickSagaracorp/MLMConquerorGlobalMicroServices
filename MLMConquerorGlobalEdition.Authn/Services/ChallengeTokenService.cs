@@ -30,11 +30,22 @@ public sealed class ChallengeTokenService : IChallengeTokenService
     private const string InvalidChallenge = "INVALID_CHALLENGE";
     private const string CodeExpired      = "CODE_EXPIRED";
 
+    /// <summary>
+    /// Etiquetas HKDF (el <c>info</c>) de las claves que se derivan de la llave privada. Fijas y
+    /// versionadas: cambiarlas cambia las claves, así que solo se tocan a propósito. Una por uso,
+    /// para que la huella del reto y la marca antirreplay del TOTP no compartan clave y lo
+    /// calculado para una no pueda presentarse como la otra.
+    /// </summary>
+    internal const string CodeMacInfo    = "mlmconqueror/2fa-code-mac/v1";
+    internal const string TotpReplayInfo = "mlmconqueror/2fa-totp-replay/v1";
+
     private readonly RsaSecurityKey    _signingKey;
     private readonly RsaSecurityKey    _validationKey;
     private readonly string            _issuer;
     private readonly string            _audience;
     private readonly IDateTimeProvider _dateTime;
+    private readonly byte[]            _codeMacKey;
+    private readonly byte[]            _totpReplayKey;
 
     public ChallengeTokenService(IConfiguration config, IDateTimeProvider dateTime)
     {
@@ -52,6 +63,25 @@ public sealed class ChallengeTokenService : IChallengeTokenService
         var rsaPrivate = RSA.Create();
         rsaPrivate.ImportPkcs8PrivateKey(Convert.FromBase64String(privateKeyBase64), out _);
         _signingKey = new RsaSecurityKey(rsaPrivate);
+
+        // La clave de la huella del código se DERIVA de la llave privada en vez de ser un secreto
+        // nuevo: no hay nada más que configurar ni repartir, y la tienen exactamente los
+        // anfitriones que ya pueden firmar retos —este servicio no arranca sin ella—, que son los
+        // únicos que necesitan emitirlos y verificarlos. Un anfitrión que solo valida tokens con
+        // la llave pública no puede calcular huellas, y no le hace falta.
+        //
+        // No se usa la llave RSA directamente como clave HMAC: mezclar usos de una misma clave
+        // invita a interacciones que nadie ha analizado. HKDF-SHA256 con una etiqueta propia saca
+        // de ella una clave independiente; quien tenga la huella no aprende nada de la llave de
+        // firma ni al revés.
+        //
+        // Consecuencia al rotar la llave JWT: las huellas de los retos en vuelo dejan de cuadrar y
+        // esos retos fallan con CODE_INVALID. Con 5 minutos de vida es asumible: el usuario pide
+        // otro código.
+        var privateKeyBytes = Convert.FromBase64String(privateKeyBase64);
+        _codeMacKey    = DeriveKey(privateKeyBytes, CodeMacInfo);
+        _totpReplayKey = DeriveKey(privateKeyBytes, TotpReplayInfo);
+        CryptographicOperations.ZeroMemory(privateKeyBytes);
 
         var publicKeyBase64 = JwtKeyGuard.ValidatePublicKey(config["Jwt:PublicKeyBase64"]);
         var rsaPublic = RSA.Create();
@@ -75,18 +105,56 @@ public sealed class ChallengeTokenService : IChallengeTokenService
         return num.ToString("D6");
     }
 
-    public string HashCode(string code)
+    /// <summary>
+    /// Huella del código para un reto concreto: HMAC-SHA256(clave, jti + ":" + código), en base64.
+    /// El jti entra en el mensaje para que la huella de un reto no sirva en otro: el mismo código
+    /// enviado dos veces da dos huellas distintas, y copiar la de A en B no prueba nada.
+    /// </summary>
+    private string CodeMac(string jti, string code) =>
+        Convert.ToBase64String(HMACSHA256.HashData(_codeMacKey, Encoding.UTF8.GetBytes(jti + ":" + code)));
+
+    /// <inheritdoc/>
+    public bool VerifyCode(ChallengeClaims claims, string code)
     {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(code));
-        return Convert.ToBase64String(bytes);
+        if (string.IsNullOrEmpty(claims.CodeHash) || string.IsNullOrEmpty(code))
+            return false;
+
+        byte[] expected;
+        try
+        {
+            expected = Convert.FromBase64String(claims.CodeHash);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+
+        // Se recalcula con el jti del reto PRESENTADO, el que viene firmado junto a la huella.
+        // Comparación en tiempo constante: con == el tiempo de respuesta filtraría cuántos bytes
+        // iniciales coinciden.
+        var actual = HMACSHA256.HashData(_codeMacKey, Encoding.UTF8.GetBytes(claims.Jti + ":" + code));
+        return CryptographicOperations.FixedTimeEquals(expected, actual);
     }
+
+    /// <inheritdoc/>
+    public string TotpReplayTag(string userId, string code) =>
+        // Base64 URL-safe: va dentro de una clave de caché, y '/' o '+' ahí solo estorban.
+        Base64UrlEncoder.Encode(HMACSHA256.HashData(_totpReplayKey, Encoding.UTF8.GetBytes(userId + ":" + code)));
+
+    private static byte[] DeriveKey(byte[] privateKeyBytes, string info) =>
+        HKDF.DeriveKey(
+            HashAlgorithmName.SHA256,
+            ikm:          privateKeyBytes,
+            outputLength: 32,
+            salt:         [],
+            info:         Encoding.UTF8.GetBytes(info));
 
     public string Issue(
         string           userId,
         string           email,
         TwoFactorPurpose purpose,
         TwoFactorChannel channel,
-        string?          codeHash,
+        string?          code,
         string?          operationKey = null)
     {
         if (purpose == TwoFactorPurpose.StepUp && string.IsNullOrWhiteSpace(operationKey))
@@ -94,21 +162,22 @@ public sealed class ChallengeTokenService : IChallengeTokenService
                 "Un challenge de step-up necesita la operación que autoriza; sin ella el código " +
                 "valdría para cualquier operación.", nameof(operationKey));
 
-        // Correo y SMS llevan un código nuestro, así que el challenge tiene que llevar su hash:
-        // sin él no habría nada contra qué comparar lo que devuelva el usuario. Authenticator no,
+        // Correo y SMS llevan un código nuestro, así que el challenge tiene que llevar su huella:
+        // sin ella no habría nada contra qué comparar lo que devuelva el usuario. Authenticator no,
         // porque el código lo genera su aplicación y lo verifica Identity.
-        if (channel != TwoFactorChannel.Authenticator && string.IsNullOrWhiteSpace(codeHash))
+        if (channel != TwoFactorChannel.Authenticator && string.IsNullOrWhiteSpace(code))
             throw new ArgumentException(
-                $"El canal {channel} exige el hash del código enviado.", nameof(codeHash));
+                $"El canal {channel} exige el código enviado.", nameof(code));
 
         var now    = _dateTime.UtcNow;
         var expiry = now.Add(ChallengeLifetime);
+        var jti    = Guid.NewGuid().ToString();
 
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub,   userId),
             new(JwtRegisteredClaimNames.Email, email),
-            new(JwtRegisteredClaimNames.Jti,   Guid.NewGuid().ToString()),
+            new(JwtRegisteredClaimNames.Jti,   jti),
             new(PurposeClaim,                  FormatPurpose(purpose, operationKey)),
             new(ChannelClaim,                  channel.ToString()),
         };
@@ -117,7 +186,7 @@ public sealed class ChallengeTokenService : IChallengeTokenService
             claims.Add(new Claim(OperationKeyClaim, operationKey!));
 
         if (channel != TwoFactorChannel.Authenticator)
-            claims.Add(new Claim(CodeHashClaim, codeHash!));
+            claims.Add(new Claim(CodeHashClaim, CodeMac(jti, code!)));
 
         var credentials = new SigningCredentials(_signingKey, SecurityAlgorithms.RsaSha256);
         var token = new JwtSecurityToken(

@@ -92,13 +92,14 @@ public static class CacheKeys
     public static string StepUpIssueWindow(string userId) => $"stepup:user:{userId}:issues";
 
     /// <summary>
-    /// Marca de código TOTP ya usado, por usuario y hash del código. Identity acepta el
-    /// mismo código durante la tolerancia de reloj (~90 s); en una operación de dinero eso
-    /// significaría autorizar dos veces con el mismo código.
-    /// TTL: la ventana de tolerancia configurada.
+    /// Marca de código TOTP ya usado, por usuario y etiqueta con clave del código (ver
+    /// <c>IChallengeTokenService.TotpReplayTag</c>; nunca un hash sin clave, que con seis dígitos
+    /// se invierte al instante). Identity acepta el mismo código durante la tolerancia de reloj
+    /// (~150 s); en una operación de dinero eso significaría autorizar dos veces con el mismo código.
+    /// TTL: la ventana de tolerancia configurada, nunca por debajo de 150 s.
     /// </summary>
-    public static string TwoFactorTotpUsed(string userId, string codeHash) =>
-        $"2fa:user:{userId}:totp:{codeHash}";
+    public static string TwoFactorTotpUsed(string userId, string codeTag) =>
+        $"2fa:user:{userId}:totp:{codeTag}";
 
     /// <summary>
     /// Marca de permiso de step-up ya usado. Se incrementa al presentarlo: el primero que llega a 1

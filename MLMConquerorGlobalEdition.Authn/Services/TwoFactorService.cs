@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -67,9 +66,19 @@ public sealed class TwoFactorService : ITwoFactorService
         _maxIssuesPerWindow      = ReadPositiveInt(config, "Auth:TwoFactor:MaxIssuesPerWindow", 3);
         _issueWindow             = TimeSpan.FromMinutes(
             ReadPositiveInt(config, "Auth:TwoFactor:IssueWindowMinutes", 15));
-        _totpReplayWindow        = TimeSpan.FromSeconds(
-            ReadPositiveInt(config, "Auth:TwoFactor:TotpReplayWindowSeconds", 90));
+        _totpReplayWindow        = TimeSpan.FromSeconds(Math.Max(
+            MinTotpReplayWindowSeconds,
+            ReadPositiveInt(config, "Auth:TwoFactor:TotpReplayWindowSeconds", 180)));
     }
+
+    /// <summary>
+    /// Suelo de la ventana antirreplay del TOTP. Identity (AuthenticatorTokenProvider) acepta el
+    /// código de los pasos -2 a +2 de 30 s, así que un mismo código sigue valiendo unos 150 s. Si
+    /// la marca de "ya usado" caducara antes, el código volvería a servir dentro de su propia
+    /// vigencia y el antirreplay sería un adorno. Un valor configurado por debajo se sube aquí en
+    /// silencio: no es una preferencia que se pueda bajar sin romper la garantía.
+    /// </summary>
+    internal const int MinTotpReplayWindowSeconds = 150;
 
     // ── emisión ──────────────────────────────────────────────────────────────
 
@@ -107,9 +116,9 @@ public sealed class TwoFactorService : ITwoFactorService
         var language = string.IsNullOrWhiteSpace(languageCode) ? DefaultLanguage : languageCode;
 
         // Authenticator no lleva código nuestro: lo genera la aplicación del usuario y lo
-        // verifica Identity, así que el challenge va sin hash contra el que comparar.
-        var code     = channel == TwoFactorChannel.Authenticator ? null : _challenges.GenerateCode();
-        var codeHash = code is null ? null : _challenges.HashCode(code);
+        // verifica Identity, así que el challenge va sin huella contra la que comparar. La huella
+        // de correo y SMS la calcula el propio servicio de retos al emitir, atada al jti.
+        var code = channel == TwoFactorChannel.Authenticator ? null : _challenges.GenerateCode();
 
         try
         {
@@ -136,7 +145,7 @@ public sealed class TwoFactorService : ITwoFactorService
         }
 
         var challengeToken = _challenges.Issue(
-            user.Id, user.Email!, purpose, channel, codeHash, operationKey);
+            user.Id, user.Email!, purpose, channel, code, operationKey);
 
         return Result<ChallengeIssued>.Success(new ChallengeIssued(
             ChallengeToken: challengeToken,
@@ -250,7 +259,7 @@ public sealed class TwoFactorService : ITwoFactorService
             email:        user.Email!,
             purpose:      TwoFactorPurpose.Enrollment,
             channel:      TwoFactorChannel.Authenticator,
-            codeHash:     null,
+            code:         null,
             operationKey: null);
 
     // ── verificación ─────────────────────────────────────────────────────────
@@ -287,11 +296,9 @@ public sealed class TwoFactorService : ITwoFactorService
                 TooManyAttempts, "Demasiados intentos fallidos; solicite un código nuevo.");
         }
 
-        var codeHash = _challenges.HashCode(code);
-
         var verified = claims.Channel == TwoFactorChannel.Authenticator
             ? await VerifyAuthenticatorAsync(claims, code)
-            : VerifyStoredHash(claims.CodeHash, codeHash);
+            : _challenges.VerifyCode(claims, code);
 
         if (!verified)
         {
@@ -318,13 +325,16 @@ public sealed class TwoFactorService : ITwoFactorService
             return claim;
 
         // Antirreplay del código TOTP: Identity lo sigue aceptando durante la tolerancia de reloj
-        // (~90 s). En una operación de dinero eso serían dos autorizaciones con el mismo código,
+        // (~150 s). En una operación de dinero eso serían dos autorizaciones con el mismo código,
         // cada una con su challenge distinto —el jti no las relaciona—. Mismo trato: se reclama.
-        // Quien pierde ve CODE_INVALID, como cualquier código que ya no vale.
+        // Quien pierde ve CODE_INVALID, como cualquier código que ya no vale. La clave lleva una
+        // etiqueta con clave del servidor y no un hash a secas: quien lea la caché no puede sacar
+        // de ella el código.
         if (claims.Channel == TwoFactorChannel.Authenticator)
         {
             claim = await ClaimOnceAsync(
-                CacheKeys.TwoFactorTotpUsed(claims.UserId, codeHash), _totpReplayWindow, claims, "código TOTP", ct,
+                CacheKeys.TwoFactorTotpUsed(claims.UserId, _challenges.TotpReplayTag(claims.UserId, code)),
+                _totpReplayWindow, claims, "código TOTP", ct,
                 lostCode: CodeInvalid, lostMessage: "El código introducido no es válido.");
             if (claim is not null)
                 return claim;
@@ -373,29 +383,6 @@ public sealed class TwoFactorService : ITwoFactorService
 
         return await _userManager.VerifyTwoFactorTokenAsync(
             user, TokenOptions.DefaultAuthenticatorProvider, code);
-    }
-
-    /// <summary>
-    /// Compara el hash del código recibido con el que viaja en el challenge en tiempo
-    /// constante. Con <c>==</c> sobre cadenas el tiempo de respuesta filtraría cuántos
-    /// caracteres iniciales coinciden, y eso convierte una búsqueda de un millón de
-    /// combinaciones en seis búsquedas de diez.
-    /// </summary>
-    private static bool VerifyStoredHash(string? expectedHash, string actualHash)
-    {
-        if (string.IsNullOrEmpty(expectedHash))
-            return false;
-
-        try
-        {
-            return CryptographicOperations.FixedTimeEquals(
-                Convert.FromBase64String(expectedHash),
-                Convert.FromBase64String(actualHash));
-        }
-        catch (FormatException)
-        {
-            return false;
-        }
     }
 
     // ── límites y antirreplay ────────────────────────────────────────────────

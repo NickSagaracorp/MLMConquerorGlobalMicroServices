@@ -66,7 +66,13 @@ public class TwoFactorServiceTests
 
         _tokens.SetupGet(t => t.ChallengeLifetime).Returns(TimeSpan.FromMinutes(5));
         _tokens.Setup(t => t.GenerateCode()).Returns(Code);
-        _tokens.Setup(t => t.HashCode(It.IsAny<string>())).Returns<string>(HashOf);
+        // El doble compara contra un SHA-256 a secas solo por comodidad; la huella de verdad
+        // (HMAC con clave, atada al jti) se prueba en ChallengeTokenServiceTests y de punta a
+        // punta más abajo con el emisor real.
+        _tokens.Setup(t => t.VerifyCode(It.IsAny<ChallengeClaims>(), It.IsAny<string>()))
+               .Returns((ChallengeClaims c, string code) => c.CodeHash is not null && c.CodeHash == HashOf(code));
+        _tokens.Setup(t => t.TotpReplayTag(It.IsAny<string>(), It.IsAny<string>()))
+               .Returns<string, string>(TagOf);
         _tokens.Setup(t => t.Issue(
                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TwoFactorPurpose>(),
                    It.IsAny<TwoFactorChannel>(), It.IsAny<string?>(), It.IsAny<string?>()))
@@ -144,8 +150,10 @@ public class TwoFactorServiceTests
     private static string HashOf(string code) =>
         Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(code)));
 
+    private static string TagOf(string userId, string code) => $"tag({userId},{code})";
+
     private static IConfiguration BuildConfig(
-        int maxAttempts = 5, int maxIssues = 3, int windowMinutes = 15, int replaySeconds = 90) =>
+        int maxAttempts = 5, int maxIssues = 3, int windowMinutes = 15, int replaySeconds = 180) =>
         new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Auth:TwoFactor:MaxAttemptsPerChallenge"] = maxAttempts.ToString(),
@@ -849,12 +857,12 @@ public class TwoFactorServiceTests
         _userManager.Setup(m => m.FindByIdAsync(UserId)).ReturnsAsync(user);
         _userManager.Setup(m => m.VerifyTwoFactorTokenAsync(user, TokenOptions.DefaultAuthenticatorProvider, Code))
                     .ReturnsAsync(true);
-        var service = BuildService(BuildConfig(replaySeconds: 90));
+        var service = BuildService(BuildConfig(replaySeconds: 150));
 
         (await service.VerifyAsync(Token, Code, TwoFactorPurpose.Login)).IsSuccess.Should().BeTrue();
 
         _cache.Verify(c => c.TryClaimOnceAsync(
-            CacheKeys.TwoFactorTotpUsed(UserId, HashOf(Code)), TimeSpan.FromSeconds(90), It.IsAny<CancellationToken>()),
+            CacheKeys.TwoFactorTotpUsed(UserId, TagOf(UserId, Code)), TimeSpan.FromSeconds(150), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -935,5 +943,149 @@ public class TwoFactorServiceTests
 
         _cache.Verify(c => c.DecrementAsync(CacheKeys.StepUpIssueWindow(UserId), It.IsAny<CancellationToken>()), Times.Once);
         _cache.Verify(c => c.DecrementAsync(CacheKeys.TwoFactorIssueWindow(UserId), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // ── ventana antirreplay del TOTP ─────────────────────────────────────────
+
+    [Theory]
+    [InlineData(30,  150)]
+    [InlineData(90,  150)]
+    [InlineData(149, 150)]
+    [InlineData(150, 150)]
+    [InlineData(240, 240)]
+    public async Task VerifyAsync_VentanaTotp_NuncaBajaDe150Segundos(int configurado, int esperado)
+    {
+        // Identity acepta el código de los pasos -2..+2 de 30 s (~150 s). Una marca que caduca
+        // antes deja que el mismo código vuelva a valer dentro de su propia vigencia.
+        var user = BuildUser(preferred: TwoFactorChannel.Authenticator);
+        SetupValidate(Token, Claims(TwoFactorChannel.Authenticator));
+        _userManager.Setup(m => m.FindByIdAsync(UserId)).ReturnsAsync(user);
+        _userManager.Setup(m => m.VerifyTwoFactorTokenAsync(user, TokenOptions.DefaultAuthenticatorProvider, Code))
+                    .ReturnsAsync(true);
+        var service = BuildService(BuildConfig(replaySeconds: configurado));
+
+        (await service.VerifyAsync(Token, Code, TwoFactorPurpose.Login)).IsSuccess.Should().BeTrue();
+
+        _cache.Verify(c => c.TryClaimOnceAsync(
+            CacheKeys.TwoFactorTotpUsed(UserId, TagOf(UserId, Code)), TimeSpan.FromSeconds(esperado),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task VerifyAsync_VentanaTotp_PorDefectoEs180Segundos()
+    {
+        var user = BuildUser(preferred: TwoFactorChannel.Authenticator);
+        SetupValidate(Token, Claims(TwoFactorChannel.Authenticator));
+        _userManager.Setup(m => m.FindByIdAsync(UserId)).ReturnsAsync(user);
+        _userManager.Setup(m => m.VerifyTwoFactorTokenAsync(user, TokenOptions.DefaultAuthenticatorProvider, Code))
+                    .ReturnsAsync(true);
+        var service = BuildService(new ConfigurationBuilder().Build());
+
+        (await service.VerifyAsync(Token, Code, TwoFactorPurpose.Login)).IsSuccess.Should().BeTrue();
+
+        _cache.Verify(c => c.TryClaimOnceAsync(
+            CacheKeys.TwoFactorTotpUsed(UserId, TagOf(UserId, Code)), TimeSpan.FromSeconds(180),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // ── de punta a punta con el emisor de verdad ─────────────────────────────
+
+    /// <summary>
+    /// TwoFactorService con un <see cref="ChallengeTokenService"/> real: la huella la calcula el
+    /// emisor con el jti que genera y la comprueba con el del reto presentado. Con el doble no se
+    /// vería si las dos mitades dejaran de cuadrar.
+    /// </summary>
+    private (TwoFactorService Service, ChallengeTokenService Challenges) RealPipeline()
+    {
+        var (challenges, config) = RealChallengeService(_clock.Object);
+        return (new TwoFactorService(
+            challenges, _userManager.Object, _email.Object, _sms.Object,
+            _encryption.Object, _cache.Object, _clock.Object, config), challenges);
+    }
+
+    [Theory]
+    [InlineData(TwoFactorChannel.Email)]
+    [InlineData(TwoFactorChannel.Sms)]
+    public async Task DePuntaAPunta_CorreoYSms_ElCodigoEnviadoCanjeaYOtroNo(TwoFactorChannel channel)
+    {
+        var (service, challenges) = RealPipeline();
+        string? enviado = null;
+        _email.Setup(e => e.SendAsync(
+                  It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                  It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()))
+              .Callback((string _, string _, string _, string _, Dictionary<string, string> v, CancellationToken _) =>
+                  enviado = v["Code"])
+              .Returns(Task.CompletedTask);
+        _sms.Setup(s => s.SendAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()))
+            .Callback((string _, string _, string _, Dictionary<string, string> v, CancellationToken _) =>
+                enviado = v["Code"])
+            .Returns(Task.CompletedTask);
+
+        var issued = await service.IssueAsync(BuildUser(preferred: channel), TwoFactorPurpose.Login);
+        issued.IsSuccess.Should().BeTrue(because: issued.Error);
+        enviado.Should().MatchRegex("^[0-9]{6}$");
+
+        var otro  = enviado == "000000" ? "000001" : "000000";
+        var malo  = await service.VerifyAsync(issued.Value!.ChallengeToken, otro, TwoFactorPurpose.Login);
+        malo.ErrorCode.Should().Be("CODE_INVALID");
+
+        var bueno = await service.VerifyAsync(issued.Value!.ChallengeToken, enviado!, TwoFactorPurpose.Login);
+        bueno.IsSuccess.Should().BeTrue(because: bueno.Error);
+        bueno.Value!.Channel.Should().Be(channel);
+
+        // Y lo que viaja en el reto no es el SHA-256 del código.
+        challenges.Validate(issued.Value!.ChallengeToken, TwoFactorPurpose.Login).Value!.CodeHash
+            .Should().NotBe(HashOf(enviado!));
+    }
+
+    [Fact]
+    public async Task DePuntaAPunta_StepUp_ElCodigoDeOtroRetoNoSirve()
+    {
+        // Dos retos de step-up seguidos: el código del primero no canjea el segundo.
+        var (service, _) = RealPipeline();
+        var enviados = new List<string>();
+        _email.Setup(e => e.SendAsync(
+                  It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                  It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()))
+              .Callback((string _, string _, string _, string _, Dictionary<string, string> v, CancellationToken _) =>
+                  enviados.Add(v["Code"]))
+              .Returns(Task.CompletedTask);
+
+        var a = await service.IssueAsync(BuildUser(), TwoFactorPurpose.StepUp, "PAYOUT_WALLET_CHANGE");
+        var b = await service.IssueAsync(BuildUser(), TwoFactorPurpose.StepUp, "PAYOUT_WALLET_CHANGE");
+        enviados.Should().HaveCount(2);
+
+        if (enviados[0] != enviados[1])
+            (await service.VerifyAsync(b.Value!.ChallengeToken, enviados[0], TwoFactorPurpose.StepUp, "PAYOUT_WALLET_CHANGE"))
+                .ErrorCode.Should().Be("CODE_INVALID");
+
+        (await service.VerifyAsync(b.Value!.ChallengeToken, enviados[1], TwoFactorPurpose.StepUp, "PAYOUT_WALLET_CHANGE"))
+            .IsSuccess.Should().BeTrue();
+        (await service.VerifyAsync(a.Value!.ChallengeToken, enviados[0], TwoFactorPurpose.StepUp, "PAYOUT_WALLET_CHANGE"))
+            .IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task DePuntaAPunta_Totp_CanjeaUnaVez_YLaMarcaLlevaEtiquetaConClave()
+    {
+        var (service, challenges) = RealPipeline();
+        var user = BuildUser(preferred: TwoFactorChannel.Authenticator);
+        _userManager.Setup(m => m.FindByIdAsync(UserId)).ReturnsAsync(user);
+        _userManager.Setup(m => m.VerifyTwoFactorTokenAsync(user, TokenOptions.DefaultAuthenticatorProvider, Code))
+                    .ReturnsAsync(true);
+
+        var a = await service.IssueAsync(user, TwoFactorPurpose.Login);
+        var b = await service.IssueAsync(user, TwoFactorPurpose.Login);
+
+        (await service.VerifyAsync(a.Value!.ChallengeToken, Code, TwoFactorPurpose.Login)).IsSuccess.Should().BeTrue();
+
+        var repetido = await service.VerifyAsync(b.Value!.ChallengeToken, Code, TwoFactorPurpose.Login);
+        repetido.ErrorCode.Should().Be("CODE_INVALID");
+
+        var marca = CacheKeys.TwoFactorTotpUsed(UserId, challenges.TotpReplayTag(UserId, Code));
+        _claims.Should().Contain(marca);
+        _claims.Should().NotContain(CacheKeys.TwoFactorTotpUsed(UserId, HashOf(Code)));
     }
 }

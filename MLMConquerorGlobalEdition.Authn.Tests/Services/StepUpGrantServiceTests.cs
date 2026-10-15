@@ -121,7 +121,7 @@ public class StepUpGrantServiceTests
         var clock     = Clock(FixedNow);
         var challenge = new ChallengeTokenService(config, clock.Object).Issue(
             UserId, "u@d.com", MLMConquerorGlobalEdition.Domain.Entities.Security.TwoFactorPurpose.StepUp,
-            MLMConquerorGlobalEdition.Domain.Entities.Security.TwoFactorChannel.Email, "hash", Op);
+            MLMConquerorGlobalEdition.Domain.Entities.Security.TwoFactorChannel.Email, "123456", Op);
 
         new StepUpGrantValidator(config, clock.Object).Validate(challenge, UserId, Op)
             .IsSuccess.Should().BeFalse();
