@@ -337,8 +337,8 @@ explicación.
 | Qué | Estado | Por qué |
 |---|---|---|
 | `Auth:TwoFactor:MandatoryRoles` | vacío | Nadie está obligado a llevar 2FA. Encenderlo **antes** de que el correo entregue de verdad deja fuera del portal a quien tenga ese canal |
-| Correo y SMS | proveedor `Null` | Los códigos van al log. Encender SES es un paso de despliegue con prerrequisitos |
-| Step-up en operaciones críticas | sin construir | Es la segunda mitad del encargo original. Hoy el segundo factor se verifica al entrar, no en el momento de cada operación sensible |
+| Correo y SMS | proveedor `Null` | El log registra el evento y los nombres de las variables, nunca el código ni los enlaces. En desarrollo el correo va a MailHog (`docs/deployment/correo-en-desarrollo.md`). Encender SES es un paso de despliegue con prerrequisitos |
+| Step-up fuera del cambio de cobro | sin construir | El step-up existe (Plan E) y protege solo el cambio de wallet de cobro del BizCenter. Las operaciones del Admin (§6.4 de la spec de 2FA) siguen sin él |
 | Lista blanca de IP del limitador | sin declarar | El refresco tiene una red de seguridad de 600/min por IP. Los portales llaman servidor a servidor, así que en producción hay que declarar sus IP |
 
 ### Antes de encender el correo
@@ -381,3 +381,41 @@ no una tarea posterior.
 | 6.1 | El alta cierra la sesión | cookie borrada | ☐ |
 | 6.2 | Patrocinador guardado | no `NULL` | ☐ |
 | 6.3 | Recuperación y su texto | 15 minutos | ☐ |
+
+## 8. Step-up al cambiar la wallet de cobro (Plan E)
+
+Qué protege: `PUT api/v1/bizcenter/wallets/{tipo}` y `.../{tipo}/default`. Sin un permiso de
+step-up vigente y sin usar, responden `403 STEP_UP_REQUIRED` y no tocan nada. La ruta vieja
+`PUT api/v1/bizcenter/wallet` ya no existe.
+
+**Prueba en el navegador** (BizCenter, `https://localhost:7004`, MailHog en `http://localhost:8025`):
+
+1. Mi perfil → Billing & Commissions → Payout Options → *Add account* en Volet → Guardar.
+2. Se abre "Confirma que eres tú" **encima** del modal de edición, con el correo enmascarado.
+3. En MailHog llega "Confirm a change to your MLM Conqueror account" con el código.
+4. Un código equivocado muestra el error traducido; el bueno guarda ("Volet updated.").
+5. Cancelar el código no guarda nada.
+
+**Lo que tiene que fallar:**
+
+| Intento | Resultado esperado |
+|---|---|
+| `PUT .../wallets/6/default` con token de acceso y sin `X-Step-Up-Token` | `403 STEP_UP_REQUIRED` |
+| Reusar el mismo `X-Step-Up-Token` | `403 STEP_UP_INVALID` (un permiso, un uso) |
+| Cambiar correo, teléfono, autenticador o canal y pedir step-up | `STEP_UP_COOLDOWN` durante 24 h, y correo de aviso al dueño |
+| Más de 10 códigos de step-up fallidos en 24 h | `TWO_FACTOR_LOCKED` y correo al dueño |
+| Leer el código desde el JWT del reto | imposible: `code_hash` es un HMAC con clave del servidor atado al jti |
+
+**Condiciones de despliegue:**
+
+- `Cache:Mode=Required` con Redis en cada host que use `[RequiresStepUp]`; sin Redis el uso
+  único solo vale dentro de un proceso.
+- Todos los contenedores en la **misma zona horaria**: la espera compara la hora local del
+  BizCenter (que sella el cambio de correo) con la de SignupAPI.
+- SES configurado también en el **BizCenter**: es quien avisa al correo anterior cuando cambia
+  el correo.
+- Al desplegar, los retos emitidos en los 5 minutos anteriores dejan de valer (cambió la huella
+  del código): basta pedir uno nuevo.
+- Producto: un miembro que confirma su primer teléfono o autenticador espera 24 h antes de
+  poder elegir su wallet de cobro.
+
