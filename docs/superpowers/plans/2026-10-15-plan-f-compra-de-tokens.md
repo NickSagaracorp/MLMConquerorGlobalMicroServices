@@ -16,7 +16,7 @@
 |---|---|---|
 | E | OTP / step-up al cambiar el método de cobro | En `master` (`95028d3`). |
 | **F (este)** | Cobro desde el BizCenter + compra de tokens | Este documento (revisado 2026-10-15 con las respuestas del dueño). |
-| G | Upgrade de membresía | Reutiliza de F: `ITokenPurchaseGate`, la vía de tarjeta con pasos inmediatos, `IEWalletFunds`, la confirmación de cripto con `CryptoPaymentPurpose` y las direcciones de depósito. |
+| G | Upgrade de membresía | Reutiliza de F: `IMemberFundsGate`, la vía de tarjeta con pasos inmediatos, `IEWalletFunds`, la confirmación de cripto con `CryptoPaymentPurpose` y las direcciones de depósito. |
 
 ## Decisiones
 
@@ -24,8 +24,8 @@
 
 1. **Billing es el dueño del dinero.** El BizCenter llama a Billing por HTTP con el JWT del miembro; no toca saldos ni crea pedidos.
 2. **Métodos:** saldo de comisiones, saldo de eWallet, tarjeta guardada y cripto. **SafetyPay no.** Cripto es aprobación manual, como el alta: `CryptoPaymentConfirmation` + pedido en `Processing`; los tokens se emiten solo cuando un administrador confirma.
-3. **Precio = SUMA de los productos otorgados** (`TokenTypeProduct.Role == Granted`), cada uno `× QuantityGranted` si es mayor que 1. Se vende si tiene al menos un producto otorgado y el total es > 0. Los de upgrade (sin `Granted`) no se venden. Las variantes promocionales o gratuitas se excluyen con una regla de datos (D1).
-4. **Límite: 50 tokens por miembro y mes calendario**, hora de servidor (`Now`), contado sobre `TokenTransaction` con `TransactionType == Purchased`. **No reembolsable.**
+3. **Precio = SUMA de los productos otorgados** (`TokenTypeProduct.Role == Granted`), **una vez cada uno**: `QuantityGranted` no multiplica, porque al canjear el token se entrega un producto de cada uno. Se vende si tiene al menos un producto otorgado y el total es > 0. Los de upgrade (sin `Granted`) no se venden. Las variantes promocionales o gratuitas se excluyen con una regla de datos (D1).
+4. **Límite: 50 tokens por miembro y mes calendario**, hora de servidor (`Now`), contado sobre `TokenTransaction` con `TransactionType == Purchased` **imputados al mes de su compra** (`TokenPurchase.PeriodKey`, D3). **No reembolsable.**
 5. **Sin comisiones, volumen ni puntos por comprar**: llegan al canjear el token. Pedidos sin `OrderDetails`.
 6. **Direcciones de depósito cripto como parámetros** administrables: `Crypto.DepositAddress.{BTC|ETH|USDT}` (+ `Crypto.DepositNetwork.{…}`). CRUD de `GlobalParameter` en AdminAPI + página en AdminWeb. La compra muestra dirección, importe y moneda; una moneda sin dirección no se ofrece. El alta muestra también la dirección configurada.
 7. **eWallet = saldo REAL de i-Payout.** Saldo con `eWallet_GetCurrencyBalance` (USD); débito con `eWallet_AddCheckoutItems` exactamente como el legado (`EWallet_AddDeductionFromBalance`). Se abandona el libro interno de `WalletHistory` para las compras. `MerchantReferenceID` = id de la compra. Resultado dudoso → la compra queda **a conciliar a mano**, nunca se reintenta.
@@ -39,9 +39,9 @@
 | # | Decisión | Por qué |
 |---|---|---|
 | D1 | **Regla de "no se vende": columna `TokenType.IsPurchasable`** (por defecto `false`), que el admin cambia en la pantalla de tipos de token. La migración la inicializa a `true` para los tipos activos que no son de upgrade y cuyo nombre no lleva marca promocional (`FREE`, `Coupon`, `SpecialPromo`, `Help a Friend`). | Revisado: **nada en los datos distingue las variantes FREE** salvo el nombre. Otorgan los mismos productos que las de pago (p. ej. 81 y 5 = Ambassador + Elite), con los mismos precios; `Product` no tiene marca de gratuidad y `MembershipLevel.IsFree` describe niveles, no variantes de token (y marcaría como no vendible al Guest). Un flag explícito es la única regla de datos posible; el nombre solo se usa una vez para el valor inicial, y desde ahí manda el dato. Los tipos nuevos nacen sin vender hasta que alguien lo decide. |
-| D2 | Precio de cada producto = `SetupFee + MonthlyFee`; precio del token = suma × `QuantityGranted`. Sin precios promo. | Es lo que el alta escribe en `OrderDetail.UnitPrice` (`SelectProductsHandler.cs:92`). Un token sustituye ese cobro. |
-| D3 | Cupo: instancias `Purchased` con código cuyo `OriginalOwnerMemberId` es el miembro y `CreationDate` cae en el mes, **más** las compras en vuelo (`Pending`, `AwaitingCryptoConfirmation`, `NeedsReconciliation`) del mismo `PeriodKey`. | Contar solo lo emitido dejaría pasar compras simultáneas o pedidos de cripto sin confirmar. Por dueño original porque `TransferTokenInstance` cambia `MemberId`. |
-| D4 | Concurrencia: `sp_getapplock` exclusivo por miembro (`token-purchase:{memberId}`). | `TokenBalance` no tiene índice único ni `RowVersion` real. Serializa solo las compras del mismo miembro. |
+| D2 | Precio de cada producto = `SetupFee + MonthlyFee`; precio del token = suma de los productos otorgados, **sin multiplicar por `QuantityGranted`**. Sin precios promo. | Es lo que el alta escribe en `OrderDetail.UnitPrice` (`SelectProductsHandler.cs:92`). Un token sustituye ese cobro, y al canjearlo se entrega un producto de cada uno (`QuantityGranted` no se usa al canjear): cobrar por cantidad sería cobrar lo que no se entrega. |
+| D3 | Cupo: instancias `Purchased` con código cuyo `OriginalOwnerMemberId` es el miembro y cuya **compra dueña** (`TokenTransaction.TokenPurchaseId` → `TokenPurchase`) tiene el `PeriodKey` del mes, **más** las compras en vuelo (`Pending`, `AwaitingCryptoConfirmation`, `NeedsReconciliation`) del mismo `PeriodKey`. Las filas `Purchased` sin compra (anteriores a F) cuentan por `CreationDate`. **Una compra cuenta en un solo mes, desde que reserva hasta que emite**; confirmar una cripto o cerrar una conciliación **no** vuelve a comprobar el tope. | Contar solo lo emitido dejaría pasar compras simultáneas o pedidos de cripto sin confirmar. Contar lo emitido por `CreationDate` dejaba pasar el tope entre meses: 50 en cripto reservados el 30/09 no ocupaban octubre, el miembro compraba 50 más en octubre y al confirmar la de septiembre octubre quedaba con 100. Por dueño original porque `TransferTokenInstance` cambia `MemberId`. |
+| D4 | Concurrencia: `sp_getapplock` exclusivo por miembro, **el candado de fondos** `member-funds:{memberId}` (`IMemberFundsGate` en `Billing/Services/MemberFundsGate.cs`, un solo nombre en `MemberFundsLock.Resource`). Lo toman la compra de tokens, `PayoutOrchestrator` (alrededor de la lectura y reserva de comisiones) y el lote CSV (`PayoutBatchExportService`, un candado por miembro en orden ordinal y saltando al ocupado). Lo registra `AddPayoutServices`. | `TokenBalance` no tiene índice único ni `RowVersion` real. Serializa solo lo del mismo miembro. Compartido con los pagos porque, si no, un pago podía reservar las mismas comisiones que una compra acababa de gastar. |
 | D5 | Idempotencia: `IdempotencyKey` de la pantalla; índice único `(MemberId, IdempotencyKey)`. | Un timeout no se convierte en dos cobros. |
 | D6 | Pedido de compra de tokens en `Paid` y **sin `OrderDetails`**. | `EnrollmentTeamPointsService` y `PersonalCustomerPointsService` suman puntos de los `OrderDetails` de pedidos `Completed` (decisión 5 del dueño). |
 | D7 | Tarjeta: solo los pasos del plan de ruteo **sin espera** (`DelayMinutes == 0`); token de cobro = `SpreedlyPaymentMethodToken` o, si falta, `CardToken`. | Un paso con espera lo cobraría `DelayedFallbackChargeJob`, que no emite tokens. |
@@ -55,6 +55,7 @@
 | D15 | "Cliente externo" = compartir un código disponible (botón Copiar). | Los códigos son al portador: el alta no exige relación entre dueño y quien se inscribe. |
 | D16 | Cripto candidata: `BTC`, `ETH`, `USDT`; se ofrece la que tenga dirección configurada. El importe se muestra en USD ("importe a pagar en {moneda}"). | No hay tipo de cambio en el sistema; el admin coteja el equivalente al confirmar. |
 | D17 | Recibo sin códigos de token. | Los códigos son al portador: quien lea el buzón podría usarlos. La pantalla los muestra al comprar. |
+| D18 | **Salidas de una cripto sin pagar**: `AwaitingCryptoConfirmation` → `Cancelled` (el miembro, `POST tokens/purchases/{id}/cancel`), `Rejected` (un aprobador de cripto, con motivo) o `Expired` (trabajo `TokenPurchaseCryptoExpiryJob` cada hora, a los `Billing:TokenPurchase:CryptoExpiryDays` días, 3 por defecto). Las tres liberan el cupo, cancelan el pedido y dejan la `CryptoPaymentConfirmation` en `Cancelled` (ya no se puede confirmar). Estados nuevos en el enum (`int`, sin migración). | Sin salida, una cripto abandonada ocupaba cupo y el panel acumulaba pedidos muertos. Billing ya tiene Hangfire con trabajos recurrentes, así que la caducidad es un trabajo y no algo perezoso al listar. |
 
 ## Fuera de alcance
 
@@ -73,13 +74,15 @@
 | R1 | Débito eWallet en PROCESSING/PENDING o sin respuesta: el dinero pudo salir o no. | Compra `NeedsReconciliation`, sin tokens, reserva el cupo, aparece en *Admin → Billing → Token Purchases → To review*; tesorería consulta i-Payout y la cierra como cobrada (emite) o no cobrada (libera). La pantalla dice "no lo intentes de nuevo" y la clave repetida devuelve `PURCHASE_NEEDS_REVIEW`. |
 | R2 | La verificación por saldo puede engañarse si i-Payout acredita (un payout `eWallet_Load`) entre la lectura previa y la posterior: el saldo no baja y una compra cobrada queda a conciliar. | Va al lado seguro (revisión manual, nunca tokens sin cobro). Nuestros débitos del mismo miembro están serializados (D12). |
 | R3 | En desarrollo los `AccountIdentifier` de eWallet son correos sintéticos (`AMB-…@payout.dev`): i-Payout no los reconoce y el saldo falla. | La pantalla muestra el saldo como "—" y el error; probar el débito real exige sandbox de i-Payout con un usuario creado. |
-| R4 | `RecurringBillingProcessor` también debita comisiones sin pasar por el candado de compras. | Documentado; unificar en G o posterior. |
+| R4 | `RecurringBillingProcessor` también debita comisiones sin pasar por el candado de fondos (los pagos sí lo toman, D4). | Documentado; unificar en G o posterior. |
 | R5 | Caída del proceso entre un cobro (tarjeta o eWallet) y la emisión. | La emisión de tarjeta es un solo `SaveChanges` con `CancellationToken.None`; la de eWallet ocurre dentro de la transacción de la fase 2. Si el proceso muere, la compra queda `Pending` con el cobro hecho y la clave devuelve `PURCHASE_IN_PROGRESS`; se resuelve con la misma conciliación (falta un trabajo que la detecte sola). |
-| R6 | `TokenCodeGenerator` no es criptográfico y puede repetir. | `TokenIssuer` descarta los que ya existen. |
+| R6 | `TokenCodeGenerator` puede repetir (el espacio es pequeño). | Ya usa `RandomNumberGenerator` (impredecible y seguro entre hilos); `TokenIssuer` descarta los que ya existen. |
 | R7 | `TokenBalance` sin control de concurrencia. | Compras serializadas por miembro; confirmación de cripto y conciliación no. Mismo riesgo que `GrantTokens`. |
 | R8 | **Cambiar una dirección de depósito desvía dinero.** El CRUD de parámetros lo pueden usar SuperAdmin y Admin sin segundo factor (el step-up del panel admin no existe todavía) y `GlobalParameter` no guarda historial. | Se registra un aviso en el log con el valor viejo y el nuevo y quién lo cambió; las direcciones se validan por formato. Pedir step-up en el admin queda pendiente. |
 | R9 | La plantilla de código de step-up (Plan E) dice "un cambio sensible, como a dónde se pagan tus comisiones". Para una compra se lee raro pero no es falso. | El diálogo muestra un texto propio por operación (`StepUp.WhyTokenPurchase`). La plantilla de correo no se toca. |
 | R10 | La espera de 24 h tras cambiar un factor (Plan E, `STEP_UP_COOLDOWN`) también bloquea comprar con saldo. | Es lo deseable; tarjeta y cripto siguen disponibles. |
+| R11 | `IsPurchasable` se inicializa por nombre en la migración `CompraDeTokens`; un tipo promocional con un nombre sin marca quedaría vendible. | Tras aplicar la migración en producción, revisar a mano `SELECT Id, Name, IsPurchasable FROM TokenTypes WHERE IsActive = 1` (Tarea 16) y corregir en *Token Types*. |
+| R12 | Una compra en cripto que nadie paga reservaría el cupo para siempre. | D18: el miembro la cancela, un administrador la rechaza o caduca a los `Billing:TokenPurchase:CryptoExpiryDays` días (3 por defecto) con un trabajo recurrente de Hangfire. |
 
 ## Mapa de archivos
 
@@ -2796,14 +2799,14 @@ using MLMConquerorGlobalEdition.Repository.Context;
 namespace MLMConquerorGlobalEdition.Billing.Services.Tokens;
 
 /// <summary>Serializa las compras de UN miembro; las de miembros distintos no se esperan.</summary>
-public interface ITokenPurchaseGate
+public interface IMemberFundsGate
 {
     /// <summary>Abre una transacción y toma dentro el candado exclusivo del miembro. Se suelta al confirmar o deshacer.</summary>
-    /// <exception cref="TokenPurchaseBusyException">Si no se obtuvo el candado a tiempo.</exception>
+    /// <exception cref="MemberFundsBusyException">Si no se obtuvo el candado a tiempo.</exception>
     Task<IDbContextTransaction> EnterAsync(string memberId, CancellationToken ct = default);
 }
 
-public sealed class TokenPurchaseBusyException(string memberId)
+public sealed class MemberFundsBusyException(string memberId)
     : Exception($"Another token purchase for member {memberId} is in progress.");
 
 /// <summary>
@@ -2811,18 +2814,18 @@ public sealed class TokenPurchaseBusyException(string memberId)
 /// instancias de Billing. Preferido a SERIALIZABLE (resolvería la carrera con un interbloqueo) y a
 /// un contador con RowVersion (TokenBalance no tiene ni índice único ni RowVersion real).
 /// </summary>
-public sealed class SqlServerTokenPurchaseGate : ITokenPurchaseGate
+public sealed class SqlServerMemberFundsGate : IMemberFundsGate
 {
     private const int LockTimeoutMs = 15000;
 
     private readonly AppDbContext _db;
 
-    public SqlServerTokenPurchaseGate(AppDbContext db) => _db = db;
+    public SqlServerMemberFundsGate(AppDbContext db) => _db = db;
 
     public async Task<IDbContextTransaction> EnterAsync(string memberId, CancellationToken ct = default)
     {
         var tx       = await _db.Database.BeginTransactionAsync(ct);
-        var resource = $"token-purchase:{memberId}";
+        var resource = $"member-funds:{memberId}";
 
         // ToListAsync sin componer: EF manda el SQL tal cual. Un FirstAsync lo envolvería en una
         // subconsulta y SQL Server rechazaría el DECLARE/EXEC.
@@ -2835,7 +2838,7 @@ public sealed class SqlServerTokenPurchaseGate : ITokenPurchaseGate
 
         await tx.RollbackAsync(ct);
         await tx.DisposeAsync();
-        throw new TokenPurchaseBusyException(memberId);
+        throw new MemberFundsBusyException(memberId);
     }
 }
 ```
@@ -2853,7 +2856,7 @@ namespace MLMConquerorGlobalEdition.Billing.Tests.Helpers;
 /// La puerta en pruebas: la transacción (no-op en InMemory) sin el candado de SQL Server. La
 /// exclusión mutua real se comprueba contra SQL Server en la Tarea 16, paso 6.
 /// </summary>
-public sealed class TransactionOnlyGate(AppDbContext db) : ITokenPurchaseGate
+public sealed class TransactionOnlyGate(AppDbContext db) : IMemberFundsGate
 {
     public Task<IDbContextTransaction> EnterAsync(string memberId, CancellationToken ct = default) =>
         db.Database.BeginTransactionAsync(ct);
@@ -3673,6 +3676,90 @@ public class TokenPurchaseServiceTests
         (await Service().ReconcileAsync(id, new ReconcileTokenPurchaseRequest { Charged = true }, "tesoreria@x.com"))
             .ErrorCode.Should().Be(TokenPurchaseErrors.NotUnderReview);
     }
+
+    // ── Cripto sin pagar: cancelar, rechazar, caducar (D18) ────────────────────
+
+    private async Task<TokenPurchaseResultDto> CriptoPendiente(int qty = 3, string? key = null) =>
+        (await Buy(Request(TokenPaymentMethods.Crypto, qty: qty, crypto: "USDT", key: key))).Value!;
+
+    [Fact]
+    public async Task El_miembro_cancela_su_cripto_sin_pagar_libera_el_cupo_y_ya_no_se_confirma()
+    {
+        var p = await CriptoPendiente();
+
+        var r = await Service().CancelCryptoAsync(MemberId, p.PurchaseId, Actor);
+
+        r.Value!.Status.Should().Be(TokenPurchaseStatuses.Cancelled);
+        (await _db.TokenPurchases.SingleAsync()).Status.Should().Be(TokenPurchaseStatus.Cancelled);
+        (await _db.Orders.SingleAsync()).Status.Should().Be(OrderStatus.Cancelled);
+        (await _db.CryptoPaymentConfirmations.SingleAsync()).Status.Should().Be(CryptoPaymentConfirmationStatus.Cancelled);
+        (await new TokenMonthlyQuota(_db).UsedAsync(MemberId, FixedNow)).Should().Be(0);
+
+        (await Service().ConfirmCryptoAsync(p.OrderId, new ConfirmCryptoTokenPurchaseRequest { CryptoTransactionId = "0x1" }, "admin-1", "admin@x.com"))
+            .ErrorCode.Should().Be(TokenPurchaseErrors.NotAwaitingCrypto);
+        _db.TokenTransactions.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Nadie_cancela_la_compra_de_otro_ni_una_que_no_es_cripto_pendiente()
+    {
+        var p = await CriptoPendiente();
+        (await Service().CancelCryptoAsync("AMB-999999", p.PurchaseId, "otro")).ErrorCode.Should().Be(TokenPurchaseErrors.PurchaseNotFound);
+
+        SeedCommissions(500m);
+        var pagada = (await Buy(Request(TokenPaymentMethods.CommissionBalance))).Value!;
+        (await Service().CancelCryptoAsync(MemberId, pagada.PurchaseId, Actor)).ErrorCode.Should().Be(TokenPurchaseErrors.NotAwaitingCrypto);
+    }
+
+    [Fact]
+    public async Task El_admin_rechaza_con_motivo_y_la_misma_clave_lo_devuelve()
+    {
+        var p = await CriptoPendiente(2, key: "clave-cripto-1");
+
+        var r = await Service().RejectCryptoAsync(p.OrderId, new RejectCryptoTokenPurchaseRequest { Reason = "No llegó" }, "admin-1", "admin@x.com");
+
+        r.Value!.Status.Should().Be(TokenPurchaseStatuses.Rejected);
+        (await _db.TokenPurchases.SingleAsync()).Notes.Should().Be("No llegó");
+        (await _db.CryptoPaymentConfirmations.SingleAsync()).Notes.Should().Contain("No llegó");
+        (await new TokenMonthlyQuota(_db).UsedAsync(MemberId, FixedNow)).Should().Be(0);
+        (await Buy(Request(TokenPaymentMethods.Crypto, qty: 2, crypto: "USDT", key: "clave-cripto-1")))
+            .ErrorCode.Should().Be(TokenPurchase.RejectedByAdminCode);
+    }
+
+    [Fact]
+    public async Task Caducan_las_cripto_sin_confirmar_pasado_el_plazo_y_no_las_recientes()
+    {
+        var vieja    = await CriptoPendiente(2);
+        var reciente = await CriptoPendiente(1);
+        // AuditInterceptor sella CreationDate al insertar; se reescribe para fijar la antigüedad.
+        foreach (var c in await _db.TokenPurchases.ToListAsync())
+            c.CreationDate = c.Id == vieja.PurchaseId ? FixedNow.AddDays(-4) : FixedNow.AddHours(-1);
+        await _db.SaveChangesAsync();
+
+        var caducadas = await Service().ExpireStaleCryptoAsync(expiryDays: 3, actor: "token-purchase-crypto-expiry");
+
+        caducadas.Should().Be(1);
+        (await _db.TokenPurchases.SingleAsync(x => x.Id == vieja.PurchaseId)).Status.Should().Be(TokenPurchaseStatus.Expired);
+        (await _db.TokenPurchases.SingleAsync(x => x.Id == reciente.PurchaseId)).Status.Should().Be(TokenPurchaseStatus.AwaitingCryptoConfirmation);
+        (await new TokenMonthlyQuota(_db).UsedAsync(MemberId, FixedNow)).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Confirmar_en_octubre_una_cripto_de_septiembre_no_vuelve_a_mirar_el_tope()
+    {
+        // Septiembre: 50 en cripto sin pagar. Octubre: el miembro agota su cupo con otros 50.
+        var septiembre = await CriptoPendiente(50);
+        (await _db.TokenPurchases.SingleAsync()).PeriodKey = 202609;
+        await _db.SaveChangesAsync();
+        SeedCommissions(10000m);
+        (await Buy(Request(TokenPaymentMethods.CommissionBalance, qty: 50))).IsSuccess.Should().BeTrue();
+
+        var ok = await Service().ConfirmCryptoAsync(septiembre.OrderId,
+            new ConfirmCryptoTokenPurchaseRequest { CryptoTransactionId = "0xsep" }, "admin-1", "admin@x.com");
+
+        ok.IsSuccess.Should().BeTrue("el cupo se comprobó al reservar, en septiembre");
+        (await new TokenMonthlyQuota(_db).UsedAsync(MemberId, FixedNow)).Should().Be(50, "octubre solo cuenta lo suyo");
+    }
 }
 ```
 
@@ -3712,6 +3799,18 @@ public interface ITokenPurchaseService
         CancellationToken ct = default);
     Task<Result<TokenPurchaseResultDto>> ReconcileAsync(
         string purchaseId, ReconcileTokenPurchaseRequest request, string actor, CancellationToken ct = default);
+
+    /// <summary>El miembro retira su compra en cripto sin pagar (D18). Solo la suya.</summary>
+    Task<Result<TokenPurchaseResultDto>> CancelCryptoAsync(
+        string memberId, string purchaseId, string actor, CancellationToken ct = default);
+
+    /// <summary>Un aprobador de cripto rechaza la compra: la transferencia no llegó o no vale (D18).</summary>
+    Task<Result<TokenPurchaseResultDto>> RejectCryptoAsync(
+        string orderId, RejectCryptoTokenPurchaseRequest request, string rejectedByUserId, string rejectedByEmail,
+        CancellationToken ct = default);
+
+    /// <summary>Caduca las cripto sin confirmar de <paramref name="expiryDays"/> días o más. Devuelve cuántas.</summary>
+    Task<int> ExpireStaleCryptoAsync(int expiryDays, string actor, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -3728,6 +3827,8 @@ public interface ITokenPurchaseService
 ///     dirección, moneda e importe. Emite <see cref="ConfirmCryptoAsync"/>.
 ///
 /// Lo dudoso nunca se reintenta: queda NeedsReconciliation y lo cierra <see cref="ReconcileAsync"/>.
+/// Una cripto sin pagar sale por <see cref="CancelCryptoAsync"/>, <see cref="RejectCryptoAsync"/> o
+/// <see cref="ExpireStaleCryptoAsync"/>, y las tres liberan el cupo.
 /// No reembolsable.
 /// </summary>
 public sealed class TokenPurchaseService : ITokenPurchaseService
@@ -3736,7 +3837,7 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
     private readonly IDateTimeProvider           _clock;
     private readonly ITokenPricingService        _pricing;
     private readonly ITokenMonthlyQuota          _quota;
-    private readonly ITokenPurchaseGate          _gate;
+    private readonly IMemberFundsGate            _gate;
     private readonly ITokenIssuer                _issuer;
     private readonly ICommissionBalanceService   _commissions;
     private readonly IEWalletFunds               _eWallet;
@@ -3751,7 +3852,7 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
 
     public TokenPurchaseService(
         AppDbContext db, IDateTimeProvider clock, ITokenPricingService pricing, ITokenMonthlyQuota quota,
-        ITokenPurchaseGate gate, ITokenIssuer issuer, ICommissionBalanceService commissions, IEWalletFunds eWallet,
+        IMemberFundsGate gate, ITokenIssuer issuer, ICommissionBalanceService commissions, IEWalletFunds eWallet,
         IGatewayRouter router, IGatewayChargeOrchestrator orchestrator, ICardBrandDetector brands,
         ICryptoDepositAddressReader cryptoAddresses, ITokenPurchaseReceipts receipts,
         ICacheService cache, IPushNotificationService push, ILogger<TokenPurchaseService> logger)
@@ -3853,7 +3954,7 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
                 _ => Fail(TokenPurchaseErrors.PaymentMethodNotSupported, "Payment method not supported for tokens.")
             };
         }
-        catch (TokenPurchaseBusyException)
+        catch (MemberFundsBusyException)
         {
             return Fail(TokenPurchaseErrors.Busy, "Another purchase for this account is in progress. Try again in a moment.");
         }
@@ -3901,7 +4002,7 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
         // Comprobación temprana para responder rápido; la que cuenta se repite bajo el candado.
         var early = await _eWallet.BalanceAsync(userName, ct);
         if (!early.IsSuccess) return Fail(TokenPurchaseErrors.EWalletUnavailable, early.Error ?? "eWallet unavailable.");
-        if (early.Value < d.Total)
+        if (early.Value < EWalletFunds.ChargeAmount(d.Total))
             return Fail(TokenPurchaseErrors.InsufficientEWalletBalance, $"eWallet balance {early.Value:F2} is below {d.Total:F2}.");
 
         var now = _clock.Now;
@@ -3931,7 +4032,7 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
         {
             tx2 = await _gate.EnterAsync(d.MemberId, CancellationToken.None);
         }
-        catch (TokenPurchaseBusyException)
+        catch (MemberFundsBusyException)
         {
             // Todavía no se tocó i-Payout: se puede soltar la reserva.
             return await AbandonAsync(order, purchase, TokenPurchaseErrors.Busy, d.Actor,
@@ -3941,7 +4042,7 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
         await using (tx2)
         {
             var before = await _eWallet.BalanceAsync(userName, CancellationToken.None);
-            if (!before.IsSuccess || before.Value < d.Total)
+            if (!before.IsSuccess || before.Value < EWalletFunds.ChargeAmount(d.Total))
             {
                 await tx2.RollbackAsync(CancellationToken.None);
                 return await AbandonAsync(order, purchase,
@@ -3971,7 +4072,8 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
                     return Fail(TokenPurchaseErrors.NeedsReview, "We couldn't confirm the eWallet charge. It will be reviewed; do not retry.");
             }
 
-            var payment = AddPaymentHistory(order, d.Total, "eWallet", purchase.Id, d.Actor, at);
+            // Lo cobrado es el importe a centavos que mandó EWalletFunds, no los 4 decimales del precio.
+            var payment = AddPaymentHistory(order, EWalletFunds.ChargeAmount(d.Total), "eWallet", purchase.Id, d.Actor, at);
             var codes = await _issuer.IssueAsync(
                 new TokenIssue(d.MemberId, d.Quote.TokenTypeId, d.Quantity, purchase.Id, order.OrderNo, d.Actor, at),
                 CancellationToken.None);
@@ -4106,6 +4208,8 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
     /// <remarks>
     /// Mismas capas que ConfirmCryptoPaymentHandler (altas): máquina de estados, RowVersion de la
     /// confirmación en el mismo SaveChanges que los tokens y unicidad de OrderId. Solo filas de compra.
+    /// NO vuelve a comprobar el tope (D3): el cupo se comprobó al reservar, en el mes de su PeriodKey, y
+    /// los tokens que emite cuentan en ese mes aunque se confirme en el siguiente.
     /// </remarks>
     public async Task<Result<TokenPurchaseResultDto>> ConfirmCryptoAsync(
         string orderId, ConfirmCryptoTokenPurchaseRequest request, string confirmedByUserId, string confirmedByEmail,
@@ -4118,6 +4222,8 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
             .FirstOrDefaultAsync(c => c.OrderId == orderId && c.Purpose == CryptoPaymentPurpose.TokenPurchase, ct);
         if (confirmation is null)
             return Fail(TokenPurchaseErrors.CryptoPaymentNotFound, "No crypto token purchase awaiting confirmation was found for that order.");
+        if (confirmation.Status == CryptoPaymentConfirmationStatus.Cancelled)
+            return Fail(TokenPurchaseErrors.NotAwaitingCrypto, "This crypto purchase was cancelled, rejected or expired.");
         if (confirmation.Status != CryptoPaymentConfirmationStatus.AwaitingPayment)
             return Fail(TokenPurchaseErrors.CryptoAlreadyConfirmed, "This crypto payment has already been confirmed.");
 
@@ -4209,6 +4315,101 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
             await AfterIssueAsync(purchase, order, await TokenTypeNameAsync(purchase.TokenTypeId, ct));
 
         return Done(purchase, order, codes, await _quota.UsedAsync(purchase.MemberId, now, ct));
+    }
+
+    // ── Cripto sin pagar (D18) ────────────────────────────────────────────────
+    // Sin candado de fondos: cerrar una reserva solo puede BAJAR lo usado del mes, así que no rompe el
+    // tope aunque se cruce con una compra. Contra una confirmación simultánea protege el RowVersion.
+
+    public async Task<Result<TokenPurchaseResultDto>> CancelCryptoAsync(
+        string memberId, string purchaseId, string actor, CancellationToken ct = default)
+    {
+        // Por MemberId además de Id: una compra de otro es "no existe", no "no es tuya".
+        var purchase = await _db.TokenPurchases.FirstOrDefaultAsync(p => p.Id == purchaseId && p.MemberId == memberId, ct);
+        if (purchase is null) return Fail(TokenPurchaseErrors.PurchaseNotFound, "Token purchase not found.");
+
+        return await CloseUnpaidCryptoAsync(purchase, p => p.CancelByMember(_clock.Now, actor),
+            "Cancelled by the member before paying.", actor, ct);
+    }
+
+    public async Task<Result<TokenPurchaseResultDto>> RejectCryptoAsync(
+        string orderId, RejectCryptoTokenPurchaseRequest request, string rejectedByUserId, string rejectedByEmail,
+        CancellationToken ct = default)
+    {
+        var purchase = await _db.TokenPurchases
+            .FirstOrDefaultAsync(p => p.OrderId == orderId && p.PaymentMethod == TokenPaymentMethod.Crypto, ct);
+        if (purchase is null)
+            return Fail(TokenPurchaseErrors.CryptoPaymentNotFound, "No crypto token purchase was found for that order.");
+
+        var actor  = string.IsNullOrWhiteSpace(rejectedByEmail) ? rejectedByUserId : rejectedByEmail;
+        var reason = string.IsNullOrWhiteSpace(request.Reason) ? "Rejected by an administrator." : request.Reason.Trim();
+        return await CloseUnpaidCryptoAsync(purchase, p => p.Reject(reason, _clock.Now, actor),
+            $"Rejected by {actor}: {reason}", actor, ct);
+    }
+
+    /// <remarks>
+    /// Lo llama TokenPurchaseCryptoExpiryJob cada hora con Billing:TokenPurchase:CryptoExpiryDays. Cada
+    /// compra se guarda por separado: si un administrador confirma una justo entonces, el conflicto de
+    /// RowVersion la deja confirmada y las demás siguen.
+    /// </remarks>
+    public async Task<int> ExpireStaleCryptoAsync(int expiryDays, string actor, CancellationToken ct = default)
+    {
+        if (expiryDays <= 0) return 0;
+
+        var cutoff = _clock.Now.AddDays(-expiryDays);
+        var ids = await _db.TokenPurchases.AsNoTracking()
+            .Where(p => p.Status == TokenPurchaseStatus.AwaitingCryptoConfirmation && p.CreationDate <= cutoff)
+            .Select(p => p.Id)
+            .ToListAsync(ct);
+
+        var expired = 0;
+        foreach (var id in ids)
+        {
+            var purchase = await _db.TokenPurchases.FirstAsync(p => p.Id == id, ct);
+            var result = await CloseUnpaidCryptoAsync(purchase, p => p.Expire(_clock.Now, actor),
+                $"Expired after {expiryDays} days without confirmation.", actor, ct);
+            if (result.IsSuccess) expired++;
+        }
+
+        return expired;
+    }
+
+    /// <summary>
+    /// Cierra sin cobro una compra en cripto: la transición de la compra, el pedido cancelado y la
+    /// confirmación en Cancelled (sale de la lista del panel y ya no se puede confirmar), en un único
+    /// SaveChanges.
+    /// </summary>
+    private async Task<Result<TokenPurchaseResultDto>> CloseUnpaidCryptoAsync(
+        TokenPurchase purchase, Action<TokenPurchase> transition, string note, string actor, CancellationToken ct)
+    {
+        if (purchase.Status != TokenPurchaseStatus.AwaitingCryptoConfirmation)
+            return Fail(TokenPurchaseErrors.NotAwaitingCrypto, "This purchase is not a crypto payment awaiting confirmation.");
+
+        var order        = await _db.Orders.FirstAsync(o => o.Id == purchase.OrderId, ct);
+        var confirmation = await _db.CryptoPaymentConfirmations.FirstOrDefaultAsync(c => c.OrderId == purchase.OrderId, ct);
+        var now          = _clock.Now;
+
+        transition(purchase);
+        Cancel(order, actor, now);
+        if (confirmation is not null)
+        {
+            confirmation.Status         = CryptoPaymentConfirmationStatus.Cancelled;
+            confirmation.Notes          = Truncate(note);
+            confirmation.LastUpdateDate = now;
+            confirmation.LastUpdateBy   = actor;
+        }
+
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _db.ChangeTracker.Clear();
+            return Fail(TokenPurchaseErrors.NotAwaitingCrypto, "This crypto payment was closed by someone else.");
+        }
+
+        return Done(purchase, order, Array.Empty<string>(), await _quota.UsedAsync(purchase.MemberId, now, ct));
     }
 
     // ── Piezas ────────────────────────────────────────────────────────────────
@@ -4305,6 +4506,11 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
                 return Fail(TokenPurchaseErrors.NeedsReview, "This purchase is being reviewed; do not retry.");
             case TokenPurchaseStatus.Failed:
                 return Fail(existing.FailureCode ?? TokenPurchaseErrors.CardChargeFailed, "This purchase already failed. Start a new one.");
+            case TokenPurchaseStatus.Cancelled:
+            case TokenPurchaseStatus.Rejected:
+            case TokenPurchaseStatus.Expired:
+                return Fail(existing.FailureCode ?? TokenPurchaseErrors.NotAwaitingCrypto,
+                    "This crypto purchase was closed without payment. Start a new one.");
         }
 
         var order = await _db.Orders.AsNoTracking().FirstAsync(o => o.Id == existing.OrderId, ct);
@@ -4366,6 +4572,9 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
                 TokenPurchaseStatus.AwaitingCryptoConfirmation => TokenPurchaseStatuses.AwaitingCryptoConfirmation,
                 TokenPurchaseStatus.NeedsReconciliation        => TokenPurchaseStatuses.NeedsReconciliation,
                 TokenPurchaseStatus.Failed                     => TokenPurchaseStatuses.Failed,
+                TokenPurchaseStatus.Cancelled                  => TokenPurchaseStatuses.Cancelled,
+                TokenPurchaseStatus.Rejected                   => TokenPurchaseStatuses.Rejected,
+                TokenPurchaseStatus.Expired                    => TokenPurchaseStatuses.Expired,
                 _                                              => TokenPurchaseStatuses.Pending
             },
             TokenTypeId = p.TokenTypeId, Quantity = p.Quantity, UnitPrice = p.UnitPrice, TotalAmount = p.TotalAmount,
@@ -4397,6 +4606,7 @@ git commit -m "Servicio de compra de tokens en Billing: comisiones en una transa
 - Create: `MLMConquerorGlobalEdition.Billing/Services/SharedClockAdapter.cs`
 - Create: `MLMConquerorGlobalEdition.Billing/Services/Tokens/StepUpGrantCheck.cs`
 - Create: `MLMConquerorGlobalEdition.Billing/Controllers/TokenPurchasesController.cs`
+- Create: `MLMConquerorGlobalEdition.Billing/Jobs/TokenPurchaseCryptoExpiryJob.cs`
 - Modify: `MLMConquerorGlobalEdition.Billing/Program.cs`
 - Test: `MLMConquerorGlobalEdition.Billing.Tests/CompraDeTokensControllerTests.cs`
 
@@ -4528,6 +4738,31 @@ public class CompraDeTokensControllerTests
 
         r.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status409Conflict);
     }
+
+    [Fact]
+    public async Task Cancelar_una_cripto_usa_el_miembro_del_token()
+    {
+        _svc.Setup(s => s.CancelCryptoAsync("AMB-100001", "p1", "user-001", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<TokenPurchaseResultDto>.Success(new TokenPurchaseResultDto { PurchaseId = "p1", Status = TokenPurchaseStatuses.Cancelled }));
+
+        (await Controlador(Miembro()).Cancel("p1", default)).Should().BeOfType<OkObjectResult>();
+    }
+
+    [Fact]
+    public async Task Ni_el_personal_ni_una_suplantacion_cancelan()
+    {
+        var staff = Usuario(new Claim(ClaimTypes.NameIdentifier, "staff-1"), new Claim(ClaimTypes.Role, AppRoles.Admin));
+        var suplantado = Miembro(new Claim(ImpersonationScope.ImpersonatedByClaim, "admin-9"));
+
+        (await Controlador(staff).Cancel("p1", default)).Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        (await Controlador(suplantado).Cancel("p1", default)).Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        _svc.Verify(s => s.CancelCryptoAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public void Rechazar_cripto_lleva_el_rol_de_quien_confirma()
+        => typeof(TokenPurchasesController).GetMethod(nameof(TokenPurchasesController.RejectCrypto))!
+            .GetCustomAttribute<AuthorizeAttribute>()!.Roles.Should().Be(AppRoles.CryptoPaymentApprovers);
 }
 ```
 
@@ -4683,6 +4918,39 @@ public class TokenPurchasesController : ControllerBase
         return FromAdminResult(result);
     }
 
+    /// <summary>
+    /// POST api/v1/billing/tokens/purchases/{purchaseId}/cancel — el miembro retira su compra en cripto
+    /// antes de pagarla y libera el cupo (D18). Solo la suya; nunca suplantando.
+    /// </summary>
+    [HttpPost("purchases/{purchaseId}/cancel")]
+    public async Task<IActionResult> Cancel(string purchaseId, CancellationToken ct)
+    {
+        var memberId = CallerIdentity.MemberIdOf(User);
+        if (memberId is null)
+            return Forbidden(TokenPurchaseErrors.NotAMember, "Only members can cancel their purchases.");
+        if (ImpersonationScope.IsImpersonating(User))
+            return Forbidden(TokenPurchaseErrors.Impersonation, "Purchases cannot be changed during impersonation.");
+
+        var userId = CallerIdentity.UserIdOf(User);
+        var result = await _service.CancelCryptoAsync(memberId, purchaseId,
+            string.IsNullOrEmpty(userId) ? memberId : userId, ct);
+        return FromAdminResult(result);
+    }
+
+    /// <summary>
+    /// POST api/v1/billing/tokens/purchases/crypto/{orderId}/reject — un aprobador de cripto rechaza la
+    /// compra (la transferencia no llegó o no vale). Libera el cupo; no emite (D18).
+    /// </summary>
+    [HttpPost("purchases/crypto/{orderId}/reject")]
+    [Authorize(Roles = AppRoles.CryptoPaymentApprovers)]
+    public async Task<IActionResult> RejectCrypto(
+        string orderId, [FromBody] RejectCryptoTokenPurchaseRequest request, CancellationToken ct)
+    {
+        var result = await _service.RejectCryptoAsync(orderId, request,
+            CallerIdentity.UserIdOf(User) ?? string.Empty, EmailOf(User), ct);
+        return FromAdminResult(result);
+    }
+
     private IActionResult FromAdminResult(Result<TokenPurchaseResultDto> result)
     {
         if (result.IsSuccess) return Ok(ApiResponse<TokenPurchaseResultDto>.Ok(result.Value!));
@@ -4690,7 +4958,8 @@ public class TokenPurchasesController : ControllerBase
         var status = result.ErrorCode switch
         {
             TokenPurchaseErrors.CryptoPaymentNotFound or TokenPurchaseErrors.PurchaseNotFound => StatusCodes.Status404NotFound,
-            TokenPurchaseErrors.CryptoAlreadyConfirmed or TokenPurchaseErrors.NotUnderReview  => StatusCodes.Status409Conflict,
+            TokenPurchaseErrors.CryptoAlreadyConfirmed or TokenPurchaseErrors.NotUnderReview
+                or TokenPurchaseErrors.NotAwaitingCrypto                                    => StatusCodes.Status409Conflict,
             _                                                                                 => StatusCodes.Status400BadRequest
         };
         return StatusCode(status, ApiResponse<TokenPurchaseResultDto>.Fail(result.ErrorCode!, result.Error!, HttpContext.TraceIdentifier));
@@ -4718,11 +4987,72 @@ builder.Services.AddScoped<ICryptoDepositAddressReader, CryptoDepositAddressRead
 builder.Services.AddScoped<ITokenPricingService, TokenPricingService>();
 builder.Services.AddScoped<ITokenMonthlyQuota, TokenMonthlyQuota>();
 builder.Services.AddScoped<ITokenIssuer, TokenIssuer>();
-builder.Services.AddScoped<ITokenPurchaseGate, SqlServerTokenPurchaseGate>();
+// IMemberFundsGate (el candado de fondos) ya lo registra AddPayoutServices: lo comparten los pagos.
 builder.Services.AddScoped<IEWalletFunds, EWalletFunds>();
 builder.Services.AddScoped<ITokenPurchaseReceipts, TokenPurchaseReceipts>();
 builder.Services.AddScoped<ITokenPurchaseService, TokenPurchaseService>();
 ```
+
+y, junto a los demás trabajos (`builder.Services.AddScoped<PayoutReconciliationJob>();`):
+
+```csharp
+builder.Services.AddScoped<TokenPurchaseCryptoExpiryJob>();
+```
+
+y después de `RecurringJob.AddOrUpdate<DeferredPayoutAccountJob>(…)`:
+
+```csharp
+// Caduca las compras de tokens en cripto que nadie confirmó (Plan F, D18) y libera su cupo.
+RecurringJob.AddOrUpdate<TokenPurchaseCryptoExpiryJob>(
+    "token-purchase-crypto-expiry",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "0 * * * *",                    // Cada hora
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+```
+
+`Billing/Jobs/TokenPurchaseCryptoExpiryJob.cs`:
+
+```csharp
+using Hangfire;
+using MLMConquerorGlobalEdition.Billing.Services.Tokens;
+using MLMConquerorGlobalEdition.SharedKernel.Billing;
+
+namespace MLMConquerorGlobalEdition.Billing.Jobs;
+
+/// <summary>
+/// Trabajo recurrente de Hangfire — cada hora, cola "billing". Caduca las compras de tokens en cripto
+/// que nadie confirmó en Billing:TokenPurchase:CryptoExpiryDays días (3 por defecto; 0 lo apaga) y
+/// libera su cupo (D18). Idempotente: solo toca las que siguen esperando.
+/// </summary>
+[Queue("billing")]
+public class TokenPurchaseCryptoExpiryJob
+{
+    private const string Actor = "token-purchase-crypto-expiry";
+
+    private readonly ITokenPurchaseService _purchases;
+    private readonly IConfiguration _config;
+    private readonly ILogger<TokenPurchaseCryptoExpiryJob> _logger;
+
+    public TokenPurchaseCryptoExpiryJob(
+        ITokenPurchaseService purchases, IConfiguration config, ILogger<TokenPurchaseCryptoExpiryJob> logger)
+    {
+        _purchases = purchases;
+        _config    = config;
+        _logger    = logger;
+    }
+
+    public async Task ExecuteAsync(CancellationToken ct = default)
+    {
+        var days = _config.GetValue(TokenPurchaseRules.CryptoExpiryDaysConfigKey, TokenPurchaseRules.DefaultCryptoExpiryDays);
+        var expired = await _purchases.ExpireStaleCryptoAsync(days, Actor, ct);
+
+        if (expired > 0)
+            _logger.LogInformation("TokenPurchaseCryptoExpiryJob: {Count} compras en cripto caducadas tras {Days} días.", expired, days);
+    }
+}
+```
+
+`appsettings.json` de Billing no necesita la clave (el valor por defecto es 3); si se quiere otro plazo: `"Billing": { "TokenPurchase": { "CryptoExpiryDays": 3 } }`.
 
 Comprobar que `IEWalletClient` está en el contenedor de Billing:
 
@@ -4738,7 +5068,7 @@ Run: `dotnet build MLMConquerorGlobalEdition.Billing -v q -nologo` → `0 Error(
 
 ```bash
 git add MLMConquerorGlobalEdition.Billing MLMConquerorGlobalEdition.Billing.Tests
-git commit -m "Endpoints de compra de tokens en Billing: catalogo, fondos, compra, confirmacion de cripto y conciliacion; el comprador sale del token, nadie compra suplantando y pagar con saldo exige el permiso de step-up tambien aqui"
+git commit -m "Endpoints de compra de tokens en Billing: catalogo, fondos, compra, confirmacion, rechazo y cancelacion de cripto, caducidad de la cripto sin pagar y conciliacion; el comprador sale del token, nadie compra suplantando y pagar con saldo exige el permiso de step-up tambien aqui"
 ```
 
 ---
@@ -5165,6 +5495,23 @@ public class AdminTokenPurchasesControllerTests
     }
 
     [Fact]
+    public async Task Rechazar_reenvia_a_Billing_con_el_motivo()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await SeedAsync(db, "ORD-TOKENS", TokenPurchaseStatus.AwaitingCryptoConfirmation);
+        var captura = new Captura();
+        var factory = new Mock<IHttpClientFactory>();
+        factory.Setup(f => f.CreateClient("BillingApi")).Returns(new HttpClient(captura) { BaseAddress = new Uri("https://billing.pruebas/") });
+
+        var r = await Build(db, factory.Object, "Bearer admin.jwt")
+            .RejectCrypto("ORD-TOKENS", new AdminTokenPurchasesController.RejectCryptoRequest("No llegó"));
+
+        r.Should().BeOfType<ContentResult>().Which.StatusCode.Should().Be(200);
+        captura.Peticion!.RequestUri!.AbsolutePath.Should().Be("/api/v1/billing/tokens/purchases/crypto/ORD-TOKENS/reject");
+        (await captura.Peticion.Content!.ReadAsStringAsync()).Should().Contain("No lleg");
+    }
+
+    [Fact]
     public async Task Confirmar_un_alta_no_se_reenvia()
     {
         await using var db = InMemoryDbHelper.Create();
@@ -5306,6 +5653,22 @@ public class AdminTokenPurchasesController : ControllerBase
             new { cryptoTransactionId = request.CryptoTransactionId, notes = request.Notes }, ct);
     }
 
+    /// <summary>
+    /// POST /api/v1/admin/token-purchases/crypto/{orderId}/reject — la transferencia no llegó o no vale.
+    /// Billing cierra la compra sin emitir y libera el cupo (D18).
+    /// </summary>
+    [HttpPost("crypto/{orderId}/reject")]
+    public async Task<IActionResult> RejectCrypto(string orderId, [FromBody] RejectCryptoRequest request, CancellationToken ct = default)
+    {
+        var exists = await _db.CryptoPaymentConfirmations.AsNoTracking()
+            .AnyAsync(c => c.OrderId == orderId && c.Purpose == CryptoPaymentPurpose.TokenPurchase, ct);
+        if (!exists)
+            return NotFound(ApiResponse<object>.Fail("CRYPTO_PAYMENT_NOT_FOUND", "No crypto token purchase awaiting confirmation was found for that order."));
+
+        return await ForwardAsync($"api/v1/billing/tokens/purchases/crypto/{Uri.EscapeDataString(orderId)}/reject",
+            new { reason = request.Reason }, ct);
+    }
+
     /// <summary>GET /api/v1/admin/token-purchases/review — compras a conciliar (resultado del cobro dudoso).</summary>
     [HttpGet("review")]
     [Authorize(Roles = Treasury)]
@@ -5358,6 +5721,7 @@ public class AdminTokenPurchasesController : ControllerBase
 
     public record ConfirmCryptoRequest(string CryptoTransactionId, string? Notes);
     public record ReconcileRequest(bool Charged, string? GatewayReference, string? Notes);
+    public record RejectCryptoRequest(string? Reason);
 
     public record PendingCryptoTokenPurchaseDto(
         string OrderId, string? OrderNo, string MemberId, string FullName, string Email,
@@ -5414,7 +5778,7 @@ Run: `dotnet test MLMConquerorGlobalEdition.AdminAPI.Tests --filter "AdminTokenP
     <div class="card-header py-3 d-flex justify-content-between align-items-center">
         <div>
             <h5 class="mb-0 fw-bold">Crypto — awaiting payment confirmation</h5>
-            <small class="text-muted">No tokens are issued until the transfer is confirmed. Purchases are non-refundable.</small>
+            <small class="text-muted">No tokens are issued until the transfer is confirmed. Purchases are non-refundable. Unconfirmed purchases expire after a few days.</small>
         </div>
         <button class="btn btn-sm btn-outline-secondary" @onclick="LoadAsync" disabled="@_loading"><i class="ri-refresh-line"></i> Refresh</button>
     </div>
@@ -5440,7 +5804,10 @@ Run: `dotnet test MLMConquerorGlobalEdition.AdminAPI.Tests --filter "AdminTokenP
                                 <td class="text-end">@dto.Quantity</td>
                                 <td><span class="badge bg-warning text-dark">@dto.CryptoCurrency</span></td>
                                 <td class="text-end">@dto.AmountDue.ToString("C")</td>
-                                <td><button class="btn btn-sm btn-outline-success py-0" @onclick="() => OpenConfirm(dto)">Confirm payment</button></td>
+                                <td class="text-nowrap">
+                                    <button class="btn btn-sm btn-outline-success py-0" @onclick="() => OpenConfirm(dto)">Confirm payment</button>
+                                    <button class="btn btn-sm btn-outline-danger py-0" @onclick="() => OpenReject(dto)">Reject</button>
+                                </td>
                             </tr>
                         }
                     </tbody>
@@ -5497,17 +5864,23 @@ Run: `dotnet test MLMConquerorGlobalEdition.AdminAPI.Tests --filter "AdminTokenP
     </Authorized>
 </AuthorizeView>
 
-@if (_confirmTarget is not null || _reconcileTarget is not null)
+@if (_confirmTarget is not null || _reconcileTarget is not null || _rejectTarget is not null)
 {
     <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">@(_confirmTarget is not null ? "Confirm crypto payment" : _charged ? "Mark as charged" : "Mark as not charged")</h5>
+                    <h5 class="modal-title">@(_rejectTarget is not null ? "Reject crypto payment" : _confirmTarget is not null ? "Confirm crypto payment" : _charged ? "Mark as charged" : "Mark as not charged")</h5>
                     <button type="button" class="btn-close" @onclick="CloseModal" disabled="@_saving"></button>
                 </div>
                 <div class="modal-body">
-                    @if (_confirmTarget is not null)
+                    @if (_rejectTarget is not null)
+                    {
+                        <p class="mb-2"><strong>@_rejectTarget.FullName</strong> — @_rejectTarget.Quantity × @_rejectTarget.TokenTypeName, @_rejectTarget.AmountDue.ToString("C") in @_rejectTarget.CryptoCurrency</p>
+                        <div class="alert alert-warning py-2 small">No tokens are issued and the member's monthly quota is released. The order can no longer be confirmed.</div>
+                        <label class="form-label small fw-semibold">Reason <span class="text-danger">*</span></label>
+                    }
+                    else if (_confirmTarget is not null)
                     {
                         <p class="mb-2"><strong>@_confirmTarget.FullName</strong> — @_confirmTarget.Quantity × @_confirmTarget.TokenTypeName, @_confirmTarget.AmountDue.ToString("C") in @_confirmTarget.CryptoCurrency</p>
                         <div class="alert alert-warning py-2 small">Confirming issues the tokens. Only do this once the transfer is verified on-chain.</div>
@@ -5521,13 +5894,16 @@ Run: `dotnet test MLMConquerorGlobalEdition.AdminAPI.Tests --filter "AdminTokenP
                         </div>
                         <label class="form-label small fw-semibold">i-Payout reference @(_charged ? "" : "(optional)")</label>
                     }
-                    <input class="form-control form-control-sm mb-3" @bind="_reference" @bind:event="oninput" maxlength="128" />
-                    <label class="form-label small fw-semibold">Notes (optional)</label>
-                    <textarea class="form-control form-control-sm" rows="3" @bind="_notes" maxlength="400"></textarea>
+                    @if (_rejectTarget is null)
+                    {
+                        <input class="form-control form-control-sm mb-3" @bind="_reference" @bind:event="oninput" maxlength="128" />
+                        <label class="form-label small fw-semibold">Notes (optional)</label>
+                    }
+                    <textarea class="form-control form-control-sm" rows="3" @bind="_notes" @bind:event="oninput" maxlength="400"></textarea>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" @onclick="CloseModal" disabled="@_saving">Cancel</button>
-                    <button class="btn btn-success" disabled="@(_saving || (_confirmTarget is not null && string.IsNullOrWhiteSpace(_reference)))" @onclick="SubmitAsync">
+                    <button class="btn btn-success" disabled="@(_saving || (_confirmTarget is not null && string.IsNullOrWhiteSpace(_reference)) || (_rejectTarget is not null && string.IsNullOrWhiteSpace(_notes)))" @onclick="SubmitAsync">
                         @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
                         Confirm
                     </button>
@@ -5545,6 +5921,7 @@ Run: `dotnet test MLMConquerorGlobalEdition.AdminAPI.Tests --filter "AdminTokenP
     private string _reference = string.Empty;
     private CryptoDto? _confirmTarget;
     private ReviewDto? _reconcileTarget;
+    private CryptoDto? _rejectTarget;
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -5561,9 +5938,10 @@ Run: `dotnet test MLMConquerorGlobalEdition.AdminAPI.Tests --filter "AdminTokenP
         finally { _loading = false; }
     }
 
-    private void OpenConfirm(CryptoDto dto) { _confirmTarget = dto; _reconcileTarget = null; _reference = string.Empty; _notes = null; }
-    private void OpenReconcile(ReviewDto dto, bool charged) { _reconcileTarget = dto; _confirmTarget = null; _charged = charged; _reference = string.Empty; _notes = null; }
-    private void CloseModal() { _confirmTarget = null; _reconcileTarget = null; }
+    private void OpenConfirm(CryptoDto dto) { _confirmTarget = dto; _reconcileTarget = null; _rejectTarget = null; _reference = string.Empty; _notes = null; }
+    private void OpenReject(CryptoDto dto) { _rejectTarget = dto; _confirmTarget = null; _reconcileTarget = null; _reference = string.Empty; _notes = null; }
+    private void OpenReconcile(ReviewDto dto, bool charged) { _reconcileTarget = dto; _confirmTarget = null; _rejectTarget = null; _charged = charged; _reference = string.Empty; _notes = null; }
+    private void CloseModal() { _confirmTarget = null; _reconcileTarget = null; _rejectTarget = null; }
 
     private async Task SubmitAsync()
     {
@@ -5571,7 +5949,10 @@ Run: `dotnet test MLMConquerorGlobalEdition.AdminAPI.Tests --filter "AdminTokenP
         try
         {
             var notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes!.Trim();
-            var resp = _confirmTarget is not null
+            var resp = _rejectTarget is not null
+                ? await Http.PostAsJsonAsync($"api/v1/admin/token-purchases/crypto/{_rejectTarget.OrderId}/reject",
+                    new { Reason = notes })
+                : _confirmTarget is not null
                 ? await Http.PostAsJsonAsync($"api/v1/admin/token-purchases/crypto/{_confirmTarget.OrderId}/confirm",
                     new { CryptoTransactionId = _reference.Trim(), Notes = notes })
                 : await Http.PostAsJsonAsync($"api/v1/admin/token-purchases/{_reconcileTarget!.PurchaseId}/reconcile",
@@ -5900,6 +6281,10 @@ public interface IBillingClient
     /// <param name="stepUpGrant">Permiso de step-up ya validado por el filtro; obligatorio para pagar con saldo.</param>
     Task<Result<TokenPurchaseResultDto>> PurchaseTokensAsync(
         PurchaseTokensRequest request, string bearerToken, string? stepUpGrant = null, CancellationToken ct = default);
+
+    /// <summary>Retira una compra en cripto sin pagar del miembro del token (D18).</summary>
+    Task<Result<TokenPurchaseResultDto>> CancelTokenPurchaseAsync(
+        string purchaseId, string bearerToken, CancellationToken ct = default);
 }
 ```
 
@@ -5944,6 +6329,11 @@ public sealed class BillingClient : IBillingClient
             message.Headers.TryAddWithoutValidation(StepUpGrant.HeaderName, stepUpGrant);
         return SendAsync<TokenPurchaseResultDto>(message, bearerToken, ct);
     }
+
+    public Task<Result<TokenPurchaseResultDto>> CancelTokenPurchaseAsync(
+        string purchaseId, string bearerToken, CancellationToken ct = default) =>
+        SendAsync<TokenPurchaseResultDto>(new HttpRequestMessage(HttpMethod.Post,
+            $"api/v1/billing/tokens/purchases/{Uri.EscapeDataString(purchaseId)}/cancel"), bearerToken, ct);
 
     private async Task<Result<T>> SendAsync<T>(HttpRequestMessage request, string bearerToken, CancellationToken ct) where T : class
     {
@@ -6170,6 +6560,17 @@ Acciones nuevas, antes de la clase `TransferTokenInstanceRequest`:
 
         var grant  = Request.Headers[StepUpGrant.HeaderName].ToString();
         var result = await _billing.PurchaseTokensAsync(request, BearerToken.From(Request), grant, ct);
+        return result.IsSuccess ? Ok(ApiResponse<TokenPurchaseResultDto>.Ok(result.Value!)) : BillingFailure(result);
+    }
+
+    /// <summary>
+    /// POST /api/v1/bizcenter/tokens/purchases/{purchaseId}/cancel — el miembro retira una compra en
+    /// cripto que no va a pagar y recupera el cupo. Billing comprueba que es suya y que sigue sin pagar.
+    /// </summary>
+    [HttpPost("purchases/{purchaseId}/cancel")]
+    public async Task<IActionResult> CancelPurchase(string purchaseId, CancellationToken ct)
+    {
+        var result = await _billing.CancelTokenPurchaseAsync(purchaseId, BearerToken.From(Request), ct);
         return result.IsSuccess ? Ok(ApiResponse<TokenPurchaseResultDto>.Ok(result.Value!)) : BillingFailure(result);
     }
 
@@ -6535,6 +6936,8 @@ git commit -m "Distribuir tokens mueve los mismos codigos al destinatario y exig
 ---
 
 ### Task 15: La pantalla de tokens (SharedComponents)
+
+> **Cancelar una cripto sin pagar (D18).** El resultado `AwaitingCryptoConfirmation` muestra, junto a la dirección, un botón "Cancelar esta compra" que llama a `POST tokens/purchases/{purchaseId}/cancel` (Tarea 13) y, si va bien, recarga el catálogo (el cupo vuelve). Los estados `Cancelled`, `Rejected` y `Expired` y el código `TOKEN_PURCHASE_NOT_AWAITING_CRYPTO` necesitan texto en `TokenPurchaseMessages` y en los `.resx`.
 
 **Files:**
 - Create: `MLMConquerorGlobalEdition.SharedComponents/Components/Tokens/TokenPurchaseMessages.cs`
@@ -7713,14 +8116,14 @@ git commit -m "La pantalla de tokens habla el contrato real: catalogo con precio
 - Modify: `docs/deployment/pruebas-de-seguridad.md` (sección nueva al final)
 - Modify: `MWR Life → MLMConqueror SOW BizCenter y matriz de paridad.md` (filas 64-66, resumen de la línea 7 y la fila "Alta | Compra de tokens" de brechas)
 
-- [ ] **Step 1: Levantar con el código nuevo** Billing (https://localhost:7007, aplica `CompraDeTokens` y `SiembraPlantillaReciboCompraTokens` al arrancar), BizCenter API (7003), BizCenterWeb (7004), SignupAPI (7005, login y step-up), Signups (alta), AdminAPI y AdminWeb. MailHog en http://localhost:8025 recibe los códigos de 2FA, los de step-up y los recibos (proveedor de correo de desarrollo, ver `docs/deployment/correo-en-desarrollo.md`).
+- [ ] **Step 1: Levantar con el código nuevo** Billing (https://localhost:7007, aplica `CompraDeTokens`, `SiembraPlantillaReciboCompraTokens` y `AmpliaCreadoPorDeCompraDeTokens` al arrancar), BizCenter API (7003), BizCenterWeb (7004), SignupAPI (7005, login y step-up), Signups (alta), AdminAPI y AdminWeb. MailHog en http://localhost:8025 recibe los códigos de 2FA, los de step-up y los recibos (proveedor de correo de desarrollo, ver `docs/deployment/correo-en-desarrollo.md`).
 
 - [ ] **Step 2: Comprobar la regla de tipos vendibles** (SSMS):
 
 ```sql
 SELECT Id, Name, IsPurchasable FROM TokenTypes WHERE IsActive = 1 ORDER BY IsPurchasable, Name;
 ```
-Expected: las variantes `FREE`, `(Coupon)`, `SpecialPromo` y `(Help a Friend)` y los `Upgrade:` con `IsPurchasable = 0`; el resto con `1`.
+Expected: las variantes `FREE`, `(Coupon)`, `SpecialPromo` y `(Help a Friend)` y los `Upgrade:` con `IsPurchasable = 0`; el resto con `1`. **Repetir esta consulta en producción después de aplicar la migración (R11)**: la regla inicial va por nombre y un tipo promocional con otro nombre quedaría a la venta; corregirlo en *Token Types*.
 
 - [ ] **Step 3: Configurar las direcciones** — AdminWeb → Settings → Global Parameters: crear `Crypto.DepositAddress.BTC` = `bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh` y `Crypto.DepositAddress.USDT` = `TQ5NkEQwK6x9C2iGBDbTj9JxF8tqmL7Ak5` con `Crypto.DepositNetwork.USDT` = `TRC-20` (direcciones de prueba). Intentar guardar `Crypto.DepositAddress.BTC` = `hola` → error de validación. El log de AdminAPI muestra el aviso del cambio de dirección.
 
@@ -7761,7 +8164,7 @@ for k in qa-conc-a qa-conc-b; do
     -d "{\"tokenTypeId\":13,\"quantity\":30,\"paymentMethod\":\"Crypto\",\"cryptoCurrency\":\"USDT\",\"idempotencyKey\":\"$k\"}" -w " %{http_code}\n" &
 done; wait
 ```
-Expected: una `200` (`AwaitingCryptoConfirmation`, con la dirección USDT y la red TRC-20) y una `400 TOKEN_MONTHLY_LIMIT_REACHED`. Si las dos dan 200, el candado no funciona: revisar el registro de `SqlServerTokenPurchaseGate` y que `SqlQuery` no se compuso. Repetir una con la misma clave devuelve la misma compra.
+Expected: una `200` (`AwaitingCryptoConfirmation`, con la dirección USDT y la red TRC-20) y una `400 TOKEN_MONTHLY_LIMIT_REACHED`. Si las dos dan 200, el candado no funciona: revisar el registro de `SqlServerMemberFundsGate` y que `SqlQuery` no se compuso. Repetir una con la misma clave devuelve la misma compra.
 
 - [ ] **Step 7: Recorrido en el navegador** (https://localhost:7004/tokens):
   1. La nota dice "50 por mes"; el cupo restante coincide con la API (20 tras el paso 6).
@@ -7810,3 +8213,23 @@ Respuestas a las preguntas abiertas de la revisión del plan, tomadas para no fr
 3. **Conciliación del eWallet: manual.** i-Payout no ofrece consulta por referencia.
 4. **`MemberJoin.razor`** se corrige en este plan, en la Tarea 11, igual que `Signup.razor`.
 
+
+## Correcciones tras la revisión de las Tareas 1–7 (2026-10-15)
+
+Las Tareas 1–7 ya están en la rama; el código de sus bloques de arriba es el de la primera versión. Donde difiera, **manda el repositorio**. Lo que cambió y lo que las tareas siguientes deben tener en cuenta:
+
+| # | Cambio | Dónde | Efecto en las tareas pendientes |
+|---|---|---|---|
+| I1 | El cupo imputa lo emitido al `PeriodKey` de su compra (join `TokenTransaction.TokenPurchaseId` → `TokenPurchase`); lo `Purchased` sin compra sigue por `CreationDate`. Confirmar o conciliar no vuelve a mirar el tope. | `TokenMonthlyQuota` | Tarea 9: `ConfirmCryptoAsync`/`ReconcileAsync` no comprueban el cupo (documentado); prueba de septiembre/octubre. |
+| I2 | Estados `Cancelled = 6`, `Rejected = 7`, `Expired = 8`; `TokenPurchase.CancelByMember`, `Reject`, `Expire`, `IsCryptoExpired`; `CryptoPaymentConfirmationStatus.Cancelled = 3`; `TokenPurchaseStatuses.*`, `TokenPurchaseErrors.NotAwaitingCrypto`, `RejectCryptoTokenPurchaseRequest`, `TokenPurchaseRules.CryptoExpiryDaysConfigKey` (3 días por defecto). Enums `int`: sin migración. | Dominio y SharedKernel | Tareas 9, 10, 12, 13 y 15 (D18): cancelar, rechazar, caducar. |
+| I3 | El candado es de **fondos del miembro** y compartido: `IMemberFundsGate` / `SqlServerMemberFundsGate` / `MemberFundsBusyException` en `Billing/Services/MemberFundsGate.cs` (namespace `MLMConquerorGlobalEdition.Billing.Services`), recurso `member-funds:{memberId}`. Lo toman `PayoutOrchestrator` (solo lectura + reserva de comisiones; ocupado → `MEMBER_FUNDS_BUSY` sin escribir nada) y `PayoutBatchExportService` (`TryAcquireAsync` por miembro en orden ordinal, salta al ocupado y relee bajo candado). Registrado en `AddPayoutServices`. | Billing | Tareas 9 y 10 usan los nombres nuevos; Program.cs ya no registra el candado. |
+| I4 | `TokenCodeGenerator` usa `RandomNumberGenerator.GetInt32`; mismo formato (3 letras + 4 dígitos, mezclados) y ya salen la Z y el 9. | SharedKernel | — |
+| I5 | `EnterAsync` deshace y suelta la transacción con `CancellationToken.None` si la consulta del candado falla o se agota; tiempo de espera inyectable (`lockTimeoutMs`). El `HttpClient` "ewallet" mantiene 30 s explícitos, comentados. | Billing, Repository | — |
+| I6 | El CRUD de parámetros globales solo admite `Crypto.*` (sin distinguir mayúsculas); otras claves → 400 `GLOBAL_PARAMETER_NOT_MANAGED_HERE`. La clave se guarda canónica (`Crypto.DepositAddress.BTC`). Cambiar `Crypto.DepositNetwork.*` también avisa (moneda "USDT network"); crear una clave vacía no avisa. | AdminAPI, AdminWeb | Tarea 16, paso 3: solo claves `Crypto.*`. |
+| I7 | Pruebas de SQL Server con `[SqlServerFact]` propio: se marcan *skipped* si no hay servidor. `Xunit.SkippableFact` es MS-PL (no MIT), por eso no se añadió. | Billing.Tests | — |
+| M1 | Precio = suma de `SetupFee + MonthlyFee` de los otorgados, **sin** `× QuantityGranted`. | `TokenPricingService` | Decisión 3 y D2 actualizadas. |
+| M2 | El débito eWallet se redondea a centavos (`EWalletFunds.ChargeAmount`, AwayFromZero) y ese mismo importe se usa al verificar el saldo. | `EWalletFunds` | Tarea 9: comparar saldos y registrar el `PaymentHistory` con `ChargeAmount(d.Total)`. |
+| M4–M6 | `DeductAsync` trata `OperationCanceledException` como "no se sabe"; el usuario de i-Payout va enmascarado en los registros; a las notas solo llega un resumen corto, sin cuerpos crudos. `TokenPurchase` recorta `Notes` (500) y `FailureCode` (64). | Repository, Billing, Dominio | `Truncate` de la Tarea 9 queda como redundante, no estorba. |
+| M8 | `UserNameOfAsync` solo acepta wallets eWallet **aprobadas** y no borradas. | `EWalletFunds` | — |
+| M9 | `TokenPurchases.CreatedBy` pasa a 256 (migración `AmpliaCreadoPorDeCompraDeTokens`). | Repository | La aplica Billing al arrancar. |
+| M10–M11 | `CompraDeTokens` documenta los `UpdateData` vacíos que se quitaron; revisar `IsPurchasable` en producción (R11, Tarea 16 paso 2). | Migraciones, plan | — |
