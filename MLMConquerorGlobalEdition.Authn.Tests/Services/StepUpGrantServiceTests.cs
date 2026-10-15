@@ -359,4 +359,14 @@ public class StepUpGrantServiceTests
 
         await host.StopAsync();
     }
+
+    [Fact]
+    public void El_firmante_se_registra_como_singleton_para_importar_la_llave_una_sola_vez()
+    {
+        var services = new ServiceCollection();
+        services.AddAuthnStepUpGrants();
+
+        var d = services.Single(x => x.ServiceType == typeof(MLMConquerorGlobalEdition.Authn.Abstractions.IStepUpGrantService));
+        d.Lifetime.Should().Be(ServiceLifetime.Singleton);
+    }
 }

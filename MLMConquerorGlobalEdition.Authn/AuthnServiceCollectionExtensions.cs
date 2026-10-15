@@ -46,9 +46,16 @@ public static class AuthnServiceCollectionExtensions
     /// Registra el firmante del permiso de step-up. Solo en el anfitrión que verifica códigos: es
     /// el único que puede afirmar que el usuario acaba de demostrar el segundo factor.
     /// </summary>
+    /// <remarks>
+    /// SINGLETON por la misma razón que <see cref="AddAuthnChallengeTokens"/>: el constructor lee y
+    /// valida la llave privada y la importa como RSA, y como Scoped eso se repetía en cada canje.
+    /// La llave importada queda en un campo de solo lectura y <c>Issue</c> no guarda estado: solo
+    /// consulta el reloj. Depende de <c>IConfiguration</c> e <c>IDateTimeProvider</c>, singleton en
+    /// SignupAPI —el único anfitrión que lo registra—.
+    /// </remarks>
     public static IServiceCollection AddAuthnStepUpGrants(this IServiceCollection services)
     {
-        services.AddScoped<IStepUpGrantService, StepUpGrantService>();
+        services.AddSingleton<IStepUpGrantService, StepUpGrantService>();
         return services;
     }
 

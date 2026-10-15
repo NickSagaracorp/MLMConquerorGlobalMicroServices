@@ -208,9 +208,53 @@ public class StepUpAuthorizationFilterTests
     [Fact]
     public async Task Permiso_que_aun_no_es_valido_se_corta()
     {
-        var ctx = Context(Grant(notBefore: FixedNow.AddSeconds(30)));
+        var ctx = Context(Grant(notBefore: FixedNow.AddSeconds(31)));
         await Filter().OnAuthorizationAsync(ctx);
         ErrorCode(ctx).Should().Be(StepUpGrant.InvalidErrorCode);
+    }
+
+    [Fact]
+    public async Task Permiso_con_nbf_20_s_en_el_futuro_se_acepta_por_deriva_de_reloj()
+    {
+        // SignupAPI firma y BizCenter valida en máquinas distintas: unos segundos de deriva no
+        // pueden rechazar un código que la persona acaba de teclear bien.
+        var ctx = Context(Grant(notBefore: FixedNow.AddSeconds(20)));
+        await Filter().OnAuthorizationAsync(ctx);
+        ctx.Result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Permiso_con_nbf_en_el_limite_de_la_tolerancia_se_acepta_y_un_segundo_mas_no()
+    {
+        var enElLimite = Context(Grant(notBefore: FixedNow.Add(StepUpGrantValidator.NotBeforeSkew)));
+        await Filter().OnAuthorizationAsync(enElLimite);
+        enElLimite.Result.Should().BeNull();
+
+        var pasado = Context(Grant(notBefore: FixedNow.Add(StepUpGrantValidator.NotBeforeSkew).AddSeconds(1)));
+        await Filter().OnAuthorizationAsync(pasado);
+        ErrorCode(pasado).Should().Be(StepUpGrant.InvalidErrorCode);
+    }
+
+    [Fact]
+    public async Task Permiso_con_nbf_60_s_en_el_futuro_se_corta()
+    {
+        var ctx = Context(Grant(notBefore: FixedNow.AddSeconds(60)));
+        await Filter().OnAuthorizationAsync(ctx);
+        ErrorCode(ctx).Should().Be(StepUpGrant.InvalidErrorCode);
+    }
+
+    [Fact]
+    public async Task La_tolerancia_de_nbf_no_alarga_exp_ni_un_segundo()
+    {
+        // Emitido de modo que exp caiga exactamente en "ahora" (no vigente) y un segundo antes
+        // de "ahora" (tampoco): la deriva se perdona solo hacia delante en nbf.
+        var enExp = Context(Grant(now: FixedNow - StepUpGrant.Lifetime));
+        await Filter().OnAuthorizationAsync(enExp);
+        ErrorCode(enExp).Should().Be(StepUpGrant.InvalidErrorCode, "now < exp es estricto");
+
+        var vigente = Context(Grant(now: FixedNow - StepUpGrant.Lifetime + TimeSpan.FromSeconds(1)));
+        await Filter().OnAuthorizationAsync(vigente);
+        vigente.Result.Should().BeNull("un segundo antes de exp sigue valiendo");
     }
 
     [Fact]
@@ -255,7 +299,7 @@ public class StepUpAuthorizationFilterTests
             Context(Grant(now: FixedNow.AddMinutes(-3))),
             Context(Grant(asAccess: true)),
             Context(Grant(key: otra)),
-            Context(Grant(notBefore: FixedNow.AddSeconds(30))),
+            Context(Grant(notBefore: FixedNow.AddSeconds(31))),
             Context(Grant(), user: new ClaimsPrincipal(new ClaimsIdentity())),
             Context(new StringValues(new[] { Grant(), Grant() }))
         };

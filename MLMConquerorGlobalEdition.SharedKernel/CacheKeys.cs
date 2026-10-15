@@ -112,8 +112,10 @@ public static class CacheKeys
         $"2fa:user:{userId}:totp:{codeTag}";
 
     /// <summary>
-    /// Marca de permiso de step-up ya usado. Se incrementa al presentarlo: el primero que llega a 1
-    /// pasa, cualquier otro con el mismo jti es una repetición.
+    /// Marca de permiso de step-up ya usado. Se reclama con <c>ICacheService.TryClaimOnceAsync</c>
+    /// (SET NX con caducidad): el primero que la crea gana y pasa; cualquier otro con el mismo jti
+    /// la encuentra ya puesta y es una repetición. Si la caché falla, TryClaimOnceAsync lanza y el
+    /// filtro cierra: nunca se asume "no usado".
     /// </summary>
     public static string StepUpGrantConsumed(string jti) => $"stepup:grant:{jti}:consumed";
 

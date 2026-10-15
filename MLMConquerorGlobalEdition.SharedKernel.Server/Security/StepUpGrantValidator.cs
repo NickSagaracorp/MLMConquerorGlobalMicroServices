@@ -19,6 +19,15 @@ namespace MLMConquerorGlobalEdition.SharedKernel.Server.Security;
 /// </remarks>
 public sealed class StepUpGrantValidator
 {
+    /// <summary>
+    /// Margen que se perdona SOLO sobre <c>nbf</c>. El permiso lo firma SignupAPI y lo comprueba
+    /// BizCenter, que son máquinas distintas con relojes distintos: si el de BizCenter va unos
+    /// segundos por detrás, un permiso recién emitido aún "no es válido" y la persona, que acaba de
+    /// teclear su código bien, recibe un rechazo que no se explica. Treinta segundos cubren una
+    /// deriva normal con NTP sin abrir nada: el permiso sigue durando lo que dura (<c>exp</c>).
+    /// </summary>
+    public static readonly TimeSpan NotBeforeSkew = TimeSpan.FromSeconds(30);
+
     private readonly RsaSecurityKey    _validationKey;
     private readonly string            _issuer;
     private readonly string            _audience;
@@ -60,10 +69,13 @@ public sealed class StepUpGrantValidator
             IssuerSigningKey         = _validationKey,
             ClockSkew                = TimeSpan.Zero,
             // Mismo reloj que firma: ver ChallengeTokenService.ValidateLifetimeAgainstInjectedClock.
+            // La tolerancia es asimétrica a propósito: nbf perdona NotBeforeSkew (deriva entre
+            // máquinas) y exp NO perdona nada, porque alargar la vida de un permiso de un solo uso
+            // es lo único que aquí le sirve a un atacante.
             LifetimeValidator        = (nbf, exp, _, _) =>
             {
                 var now = _dateTime.UtcNow;
-                return exp is not null && now < exp.Value && (nbf is null || now >= nbf.Value);
+                return exp is not null && now < exp.Value && (nbf is null || now >= nbf.Value - NotBeforeSkew);
             }
         };
 
