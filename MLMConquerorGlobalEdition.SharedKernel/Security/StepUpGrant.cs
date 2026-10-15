@@ -23,6 +23,13 @@ public static class StepUpGrant
     public const string InvalidErrorCode  = "STEP_UP_INVALID";
 
     /// <summary>
+    /// SignupAPI no emite ni canjea un step-up mientras dure la espera tras un cambio de factor
+    /// (correo, teléfono, canal o autenticador). Va aquí y no en SignupAPI porque la UI que lo
+    /// traduce no referencia SignupAPI.
+    /// </summary>
+    public const string CooldownErrorCode = "STEP_UP_COOLDOWN";
+
+    /// <summary>
     /// Corta a propósito: el permiso se pide justo antes de reintentar la acción, y dentro de su
     /// vida no se puede revocar. Un solo uso lo garantiza el validador, no la vida.
     /// </summary>

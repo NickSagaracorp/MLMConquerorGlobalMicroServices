@@ -44,4 +44,14 @@ public class ApplicationUser : IdentityUser
     public string? TwoFactorPhoneLast4 { get; set; }
 
     public bool TwoFactorPhoneConfirmed { get; set; }
+
+    /// <summary>
+    /// Última vez (hora de servidor, <c>Now</c>) que cambió por dónde se le puede mandar un código a
+    /// esta cuenta: correo, teléfono de SMS, canal preferido o autenticador. Durante la espera
+    /// configurada después de esa fecha no se emite ni se canjea un step-up.
+    ///
+    /// No la escribe ningún manejador: la sella <c>SecurityFactorsInterceptor</c> al guardar, mire
+    /// quien mire el cambio. Ver allí por qué.
+    /// </summary>
+    public DateTime? SecurityFactorsChangedAt { get; set; }
 }
