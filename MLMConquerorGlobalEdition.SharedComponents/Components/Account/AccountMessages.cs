@@ -60,6 +60,8 @@ public static class AccountMessages
             "CODE_EXPIRED"           => "TwoFactor.Error.CodeExpired",
             "TOO_MANY_ATTEMPTS"      => "TwoFactor.Error.TooManyAttempts",
             "TOO_MANY_REQUESTS"      => "TwoFactor.Error.TooManyRequests",
+            // Verificar el teléfono cuenta en el mismo tope diario que el login.
+            "TWO_FACTOR_LOCKED"      => "TwoFactor.Error.Locked",
 
             // Estos dos sí llevan texto propio. El de TwoFactorMessages termina en "vuelve a
             // iniciar sesión", que es la salida correcta durante un login pero no aquí: quien ve

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -6,6 +7,7 @@ using MLMConquerorGlobalEdition.Authn.Abstractions;
 using MLMConquerorGlobalEdition.Authn.Models;
 using MLMConquerorGlobalEdition.Domain.Entities.Security;
 using MLMConquerorGlobalEdition.Repository.Identity;
+using MLMConquerorGlobalEdition.Repository.Services.Security;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
@@ -26,6 +28,34 @@ public sealed class TwoFactorService : ITwoFactorService
     /// </summary>
     private const string VerificationUnavailable = "VERIFICATION_UNAVAILABLE";
 
+    /// <summary>
+    /// Se alcanzó el tope diario de códigos fallidos para este ámbito (login o step-up): no se
+    /// verifica ni se emite nada más hasta que venza la ventana.
+    /// </summary>
+    private const string TwoFactorLocked = "TWO_FACTOR_LOCKED";
+
+    private const string LockedMessage =
+        "Demasiados códigos incorrectos; la verificación queda bloqueada hasta 24 horas.";
+
+    /// <summary>Ámbitos del contador diario de fallos. Login y enrolamiento comparten el suyo.</summary>
+    internal const string LoginFailureScope  = "login";
+    internal const string StepUpFailureScope = "stepup";
+
+    /// <summary>
+    /// Ventana del tope diario. Fija desde el primer fallo, no deslizante: el contador atómico de la
+    /// caché fija el vencimiento al crearse. En el peor caso caben dos topes seguidos a caballo del
+    /// vencimiento, y después nunca más de un tope por ventana.
+    /// </summary>
+    private static readonly TimeSpan FailureWindow = TimeSpan.FromHours(24);
+
+    /// <summary>
+    /// Valores de la ventana antirreplay del TOTP de los que ya se avisó al subirlos. El servicio es
+    /// Scoped: sin esto, una configuración por debajo del suelo escribiría el aviso en cada petición
+    /// de segundo factor. Por valor y no un solo indicador, para que cambiar la configuración a otro
+    /// valor también inválido vuelva a avisar.
+    /// </summary>
+    private static readonly ConcurrentDictionary<int, byte> WarnedTotpReplayValues = new();
+
     private const string DefaultLanguage = "en";
 
     private readonly IChallengeTokenService       _challenges;
@@ -36,11 +66,14 @@ public sealed class TwoFactorService : ITwoFactorService
     private readonly ICacheService                _cache;
     private readonly IDateTimeProvider            _dateTime;
     private readonly ILogger<TwoFactorService>    _logger;
+    private readonly ISecurityFactorNotifier?     _notifier;
 
     private readonly int      _maxAttemptsPerChallenge;
     private readonly int      _maxIssuesPerWindow;
     private readonly TimeSpan _issueWindow;
     private readonly TimeSpan _totpReplayWindow;
+    private readonly int      _maxLoginFailuresPerDay;
+    private readonly int      _maxStepUpFailuresPerDay;
 
     public TwoFactorService(
         IChallengeTokenService       challenges,
@@ -51,9 +84,13 @@ public sealed class TwoFactorService : ITwoFactorService
         ICacheService                cache,
         IDateTimeProvider            dateTime,
         IConfiguration               config,
-        ILogger<TwoFactorService>?   logger = null)
+        ILogger<TwoFactorService>?   logger = null,
+        ISecurityFactorNotifier?     notifier = null)
     {
         _logger      = logger ?? NullLogger<TwoFactorService>.Instance;
+        // Opcional: sin él el bloqueo se aplica igual y solo queda constancia en el log. Lo
+        // registran los anfitriones que ya avisan de cambios de factor (SignupAPI).
+        _notifier    = notifier;
         _challenges  = challenges;
         _userManager = userManager;
         _email       = email;
@@ -66,17 +103,38 @@ public sealed class TwoFactorService : ITwoFactorService
         _maxIssuesPerWindow      = ReadPositiveInt(config, "Auth:TwoFactor:MaxIssuesPerWindow", 3);
         _issueWindow             = TimeSpan.FromMinutes(
             ReadPositiveInt(config, "Auth:TwoFactor:IssueWindowMinutes", 15));
-        _totpReplayWindow        = TimeSpan.FromSeconds(Math.Max(
-            MinTotpReplayWindowSeconds,
-            ReadPositiveInt(config, "Auth:TwoFactor:TotpReplayWindowSeconds", 180)));
+        _totpReplayWindow        = TimeSpan.FromSeconds(ResolveTotpReplayWindowSeconds(config, _logger));
+
+        _maxLoginFailuresPerDay  = ReadPositiveInt(config, "Auth:TwoFactor:MaxFailuresPerDay", 15);
+        _maxStepUpFailuresPerDay = ReadPositiveInt(config, "Auth:StepUp:MaxFailuresPerDay", 10);
+    }
+
+    /// <summary>
+    /// La ventana antirreplay del TOTP, nunca por debajo de <see cref="MinTotpReplayWindowSeconds"/>.
+    /// Si la configuración pide menos se sube, y se avisa una vez por valor: quien la bajó cree que
+    /// tiene otra ventana, y un ajuste que se ignora en silencio no lo descubre nadie.
+    /// </summary>
+    private static int ResolveTotpReplayWindowSeconds(IConfiguration config, ILogger logger)
+    {
+        var configured = ReadPositiveInt(config, "Auth:TwoFactor:TotpReplayWindowSeconds", 180);
+        if (configured >= MinTotpReplayWindowSeconds)
+            return configured;
+
+        if (WarnedTotpReplayValues.TryAdd(configured, 0))
+            logger.LogWarning(
+                "2FA: Auth:TwoFactor:TotpReplayWindowSeconds = {Configured} está por debajo del mínimo; se usa {Minimum} s. " +
+                "Identity acepta un mismo código TOTP unos 150 s y una ventana menor lo dejaría reutilizable.",
+                configured, MinTotpReplayWindowSeconds);
+
+        return MinTotpReplayWindowSeconds;
     }
 
     /// <summary>
     /// Suelo de la ventana antirreplay del TOTP. Identity (AuthenticatorTokenProvider) acepta el
     /// código de los pasos -2 a +2 de 30 s, así que un mismo código sigue valiendo unos 150 s. Si
     /// la marca de "ya usado" caducara antes, el código volvería a servir dentro de su propia
-    /// vigencia y el antirreplay sería un adorno. Un valor configurado por debajo se sube aquí en
-    /// silencio: no es una preferencia que se pueda bajar sin romper la garantía.
+    /// vigencia y el antirreplay sería un adorno. Un valor configurado por debajo se sube aquí, con
+    /// un aviso en el log: no es una preferencia que se pueda bajar sin romper la garantía.
     /// </summary>
     internal const int MinTotpReplayWindowSeconds = 150;
 
@@ -99,6 +157,31 @@ public sealed class TwoFactorService : ITwoFactorService
         if (target is null)
             return Result<ChallengeIssued>.Failure(
                 ChannelUnavailable, $"El canal {channel} no está disponible para este usuario.");
+
+        // El bloqueo diario va antes del cupo: a quien ya agotó sus fallos no se le manda nada, ni
+        // se le gasta una emisión que no podría usar. Si el contador no se puede leer se cierra:
+        // emitir sin saber si la cuenta está bloqueada es justo lo que el tope tiene que impedir.
+        long failures;
+        try
+        {
+            failures = await _cache.GetCounterAsync(FailuresKey(user.Id, purpose), ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex,
+                "2FA: no se pudo leer el contador de fallos del usuario {UserId} (propósito {Purpose}); no se emite.",
+                user.Id, purpose);
+            return Result<ChallengeIssued>.Failure(
+                VerificationUnavailable, "No se pudo completar la verificación; inténtelo de nuevo en unos minutos.");
+        }
+
+        if (failures >= MaxFailuresFor(purpose))
+        {
+            _logger.LogWarning(
+                "2FA: emisión rechazada, segundo factor bloqueado para el usuario {UserId} (propósito {Purpose}).",
+                user.Id, purpose);
+            return Result<ChallengeIssued>.Failure(TwoFactorLocked, LockedMessage);
+        }
 
         // El cupo se reserva antes de emitir, no se anota después. Un contador atómico solo
         // sirve como tope si el incremento y la comprobación son el mismo paso: leer primero y
@@ -195,6 +278,13 @@ public sealed class TwoFactorService : ITwoFactorService
     /// El cupo de emisiones en el que cuenta este propósito. El step-up va aparte: pedir step-ups
     /// con una sesión robada no puede dejar al dueño sin códigos para entrar.
     /// </summary>
+    private static string FailuresKey(string userId, TwoFactorPurpose purpose) =>
+        CacheKeys.TwoFactorFailures(
+            userId, purpose == TwoFactorPurpose.StepUp ? StepUpFailureScope : LoginFailureScope);
+
+    private int MaxFailuresFor(TwoFactorPurpose purpose) =>
+        purpose == TwoFactorPurpose.StepUp ? _maxStepUpFailuresPerDay : _maxLoginFailuresPerDay;
+
     private static string IssueWindowKey(string userId, TwoFactorPurpose purpose) =>
         purpose == TwoFactorPurpose.StepUp
             ? CacheKeys.StepUpIssueWindow(userId)
@@ -277,6 +367,66 @@ public sealed class TwoFactorService : ITwoFactorService
 
         var claims = validation.Value!;
 
+        // Tope diario por usuario, encima del de cada reto. Con 5 intentos por reto y 3 retos cada
+        // 15 minutos cabían ~1.440 códigos al día contra la misma cuenta; esto lo baja a 15 (10 en
+        // step-up, que autoriza dinero), con contadores separados para que quemar el step-up con
+        // una sesión robada no deje al dueño sin poder entrar.
+        //
+        // Se RESERVA al entrar y se devuelve si el intento no resultó ser un código equivocado, por
+        // lo mismo que el contador de cada reto: leer el tope y apuntar el fallo después deja pasar
+        // a todas las peticiones simultáneas que lean el mismo valor. Así el que recibe el número 16
+        // es el decimosexto de verdad, y llega bloqueado.
+        //
+        // Si la caché lanza se cierra: sin contador no hay tope, y "no lo pude contar" no puede
+        // convertirse en "no cuenta".
+        var failuresKey = FailuresKey(claims.UserId, claims.Purpose);
+        var maxFailures = MaxFailuresFor(claims.Purpose);
+        long reserved;
+        try
+        {
+            reserved = await _cache.IncrementAsync(failuresKey, FailureWindow, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex,
+                "2FA: no se pudo apuntar el intento del usuario {UserId} (propósito {Purpose}); se rechaza.",
+                claims.UserId, claims.Purpose);
+            return Result<ChallengeClaims>.Failure(
+                VerificationUnavailable, "No se pudo completar la verificación; inténtelo de nuevo en unos minutos.");
+        }
+
+        if (reserved > maxFailures)
+        {
+            // La reserva no se devuelve: el contador ya pasó el tope y seguir subiéndolo no cambia
+            // nada. El reto ni se mira: mientras dure el bloqueo no pasa ni el código bueno, o el
+            // bloqueo solo frenaría a quien se equivoca.
+            _logger.LogWarning(
+                "2FA: verificación rechazada, segundo factor bloqueado para el usuario {UserId} (propósito {Purpose}).",
+                claims.UserId, claims.Purpose);
+            return Result<ChallengeClaims>.Failure(TwoFactorLocked, LockedMessage);
+        }
+
+        var (result, wrongCode) = await VerifyChallengeAsync(claims, code, ct);
+
+        if (!wrongCode)
+            await GiveBackFailureAsync(failuresKey, claims, ct);
+        else if (reserved == maxFailures)
+            // El fallo que llega justo al tope avisa, y solo ese: los siguientes ya no pasan del
+            // bloqueo de arriba, así que el aviso sale una vez por ventana.
+            await OnLockedAsync(claims, ct);
+
+        return result;
+    }
+
+    /// <summary>
+    /// La verificación del reto en sí: intentos por reto, formato, código y antirreplay.
+    /// <c>WrongCode</c> es true solo cuando se probó un código y no era —incluido uno mal formado—,
+    /// que es lo único que cuenta para el tope diario. Un reto agotado o repetido, o un almacén
+    /// caído, no son una adivinanza más.
+    /// </summary>
+    private async Task<(Result<ChallengeClaims> Result, bool WrongCode)> VerifyChallengeAsync(
+        ChallengeClaims claims, string code, CancellationToken ct)
+    {
         // Los intentos se miran antes que nada: al agotarlos el challenge se quema, y quien
         // insista tiene que enterarse de que el motivo es el límite y no un token cualquiera
         // inválido. Además así el sexto intento falla aunque el código sea el correcto, que es
@@ -292,13 +442,17 @@ public sealed class TwoFactorService : ITwoFactorService
         if (attempts > _maxAttemptsPerChallenge)
         {
             await BurnAsync(claims, ct);
-            return Result<ChallengeClaims>.Failure(
-                TooManyAttempts, "Demasiados intentos fallidos; solicite un código nuevo.");
+            return (Result<ChallengeClaims>.Failure(
+                TooManyAttempts, "Demasiados intentos fallidos; solicite un código nuevo."), false);
         }
 
-        var verified = claims.Channel == TwoFactorChannel.Authenticator
-            ? await VerifyAuthenticatorAsync(claims, code)
-            : _challenges.VerifyCode(claims, code);
+        // Los tres canales usan seis dígitos ASCII. Cualquier otra cosa es CODE_INVALID sin tocar el
+        // HMAC ni Identity, pero contando como intento —por reto y en el tope diario—: si lo mal
+        // formado saliera gratis, serviría para tantear el servicio sin gastar nada del límite.
+        var verified = IsWellFormedCode(code) &&
+            (claims.Channel == TwoFactorChannel.Authenticator
+                ? await VerifyAuthenticatorAsync(claims, code)
+                : _challenges.VerifyCode(claims, code));
 
         if (!verified)
         {
@@ -308,7 +462,7 @@ public sealed class TwoFactorService : ITwoFactorService
             if (attempts >= _maxAttemptsPerChallenge)
                 await BurnAsync(claims, ct);
 
-            return Result<ChallengeClaims>.Failure(CodeInvalid, "El código introducido no es válido.");
+            return (Result<ChallengeClaims>.Failure(CodeInvalid, "El código introducido no es válido."), true);
         }
 
         // Antirreplay del challenge: la firma sigue siendo válida hasta su exp, así que sin una
@@ -322,7 +476,7 @@ public sealed class TwoFactorService : ITwoFactorService
         var claim = await ClaimOnceAsync(
             CacheKeys.TwoFactorChallengeConsumed(claims.Jti), RemainingLifetime(claims), claims, "reto", ct);
         if (claim is not null)
-            return claim;
+            return (claim, false);
 
         // Antirreplay del código TOTP: Identity lo sigue aceptando durante la tolerancia de reloj
         // (~150 s). En una operación de dinero eso serían dos autorizaciones con el mismo código,
@@ -336,11 +490,64 @@ public sealed class TwoFactorService : ITwoFactorService
                 CacheKeys.TwoFactorTotpUsed(claims.UserId, _challenges.TotpReplayTag(claims.UserId, code)),
                 _totpReplayWindow, claims, "código TOTP", ct,
                 lostCode: CodeInvalid, lostMessage: "El código introducido no es válido.");
+            // Perder esta marca es repetir un código bueno, no adivinar uno: no cuenta como fallo.
             if (claim is not null)
-                return claim;
+                return (claim, false);
         }
 
-        return Result<ChallengeClaims>.Success(claims);
+        return (Result<ChallengeClaims>.Success(claims), false);
+    }
+
+    /// <summary>Exactamente seis dígitos ASCII: ni espacios, ni dígitos de otros alfabetos.</summary>
+    internal static bool IsWellFormedCode(string? code) =>
+        code is { Length: 6 } && code.All(char.IsAsciiDigit);
+
+    /// <summary>
+    /// Devuelve la reserva del tope diario cuando el intento no fue un código equivocado. Un fallo
+    /// de la caché aquí no se propaga: el error queda del lado seguro, un intento de más contado.
+    /// </summary>
+    private async Task GiveBackFailureAsync(string failuresKey, ChallengeClaims claims, CancellationToken ct)
+    {
+        try
+        {
+            await _cache.DecrementAsync(failuresKey, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex,
+                "2FA: no se pudo devolver la reserva del contador de fallos del usuario {UserId}; queda un intento de más contado.",
+                claims.UserId);
+        }
+    }
+
+    /// <summary>
+    /// Se acaba de alcanzar el tope diario: se deja constancia y se avisa al dueño por correo. El
+    /// aviso nunca cambia el resultado —el bloqueo ya está en el contador— y sus fallos no se
+    /// propagan.
+    /// </summary>
+    private async Task OnLockedAsync(ChallengeClaims claims, CancellationToken ct)
+    {
+        _logger.LogWarning(
+            "2FA: tope diario de códigos fallidos alcanzado para el usuario {UserId} (propósito {Purpose}); bloqueado hasta que venza la ventana.",
+            claims.UserId, claims.Purpose);
+
+        if (_notifier is null)
+        {
+            _logger.LogWarning(
+                "2FA: sin ISecurityFactorNotifier registrado; no se avisa al usuario {UserId} del bloqueo.", claims.UserId);
+            return;
+        }
+
+        try
+        {
+            var user = await _userManager.FindByIdAsync(claims.UserId);
+            if (user is not null)
+                await _notifier.NotifyTwoFactorLockedAsync(user, claims.Purpose == TwoFactorPurpose.StepUp, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "2FA: no se pudo avisar del bloqueo al usuario {UserId}.", claims.UserId);
+        }
     }
 
     /// <summary>
@@ -398,6 +605,12 @@ public sealed class TwoFactorService : ITwoFactorService
     /// </summary>
     private async Task BurnAsync(ChallengeClaims claims, CancellationToken ct)
     {
+        // Un reto quemado es alguien que agotó los intentos de un código: o se equivocó cinco veces
+        // o está probando. Sin rastro en el log no hay forma de ver el patrón.
+        _logger.LogWarning(
+            "2FA: reto quemado por intentos agotados para el usuario {UserId} (propósito {Purpose}).",
+            claims.UserId, claims.Purpose);
+
         try
         {
             await _cache.TryClaimOnceAsync(

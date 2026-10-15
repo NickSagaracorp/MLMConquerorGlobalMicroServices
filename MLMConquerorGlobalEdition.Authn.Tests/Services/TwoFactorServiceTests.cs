@@ -2,12 +2,14 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.Authn.Abstractions;
 using MLMConquerorGlobalEdition.Authn.Models;
 using MLMConquerorGlobalEdition.Authn.Services;
 using MLMConquerorGlobalEdition.Authn.Tests.Helpers;
 using MLMConquerorGlobalEdition.Domain.Entities.Security;
 using MLMConquerorGlobalEdition.Repository.Identity;
+using MLMConquerorGlobalEdition.Repository.Services.Security;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SharedKernel.Security;
@@ -102,7 +104,8 @@ public class TwoFactorServiceTests
     /// Simula INCR + EXPIRE: devuelve el valor nuevo y solo se queda con la expiración de la
     /// primera llamada, que es lo que hace Redis cuando el TTL se fija al crear el contador.
     /// </summary>
-    private void WireCounters() =>
+    private void WireCounters()
+    {
         _cache.Setup(c => c.IncrementAsync(
                   It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync((string key, TimeSpan expiry, CancellationToken _) =>
@@ -117,6 +120,36 @@ public class TwoFactorServiceTests
                       return next;
                   }
               });
+
+        _cache.Setup(c => c.DecrementAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync((string key, CancellationToken _) =>
+              {
+                  lock (_gate)
+                  {
+                      if (!_counters.TryGetValue(key, out var current))
+                          return 0;
+
+                      var next = current - 1;
+                      if (next <= 0)
+                      {
+                          _counters.Remove(key);
+                          _counterExpiries.Remove(key);
+                      }
+                      else
+                      {
+                          _counters[key] = next;
+                      }
+                      return next;
+                  }
+              });
+
+        _cache.Setup(c => c.GetCounterAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync((string key, CancellationToken _) =>
+              {
+                  lock (_gate)
+                      return _counters.TryGetValue(key, out var current) ? current : 0;
+              });
+    }
 
     // ── andamiaje ────────────────────────────────────────────────────────────
 
@@ -1087,5 +1120,278 @@ public class TwoFactorServiceTests
         var marca = CacheKeys.TwoFactorTotpUsed(UserId, challenges.TotpReplayTag(UserId, Code));
         _claims.Should().Contain(marca);
         _claims.Should().NotContain(CacheKeys.TwoFactorTotpUsed(UserId, HashOf(Code)));
+    }
+
+    // ── tope diario de códigos fallidos ──────────────────────────────────────
+
+    private const string WrongCode = "000000";
+
+    private static string LoginFailures  => CacheKeys.TwoFactorFailures(UserId, "login");
+    private static string StepUpFailures => CacheKeys.TwoFactorFailures(UserId, "stepup");
+
+    private ChallengeClaims StepUpClaims(string jti) =>
+        Claims(jti: jti) with { Purpose = TwoFactorPurpose.StepUp, OperationKey = "PAYOUT_WALLET_CHANGE" };
+
+    /// <summary>Cada intento con un reto nuevo, para que el límite por reto no se cruce.</summary>
+    private async Task<Result<ChallengeClaims>> VerifyWithFreshChallenge(
+        TwoFactorService service, int i, string code, bool stepUp = false)
+    {
+        var token  = $"tok-{(stepUp ? "su" : "lg")}-{i}";
+        var claims = stepUp ? StepUpClaims($"jti-su-{i}") : Claims(jti: $"jti-lg-{i}");
+        SetupValidate(token, claims);
+        return stepUp
+            ? await service.VerifyAsync(token, code, TwoFactorPurpose.StepUp, "PAYOUT_WALLET_CHANGE")
+            : await service.VerifyAsync(token, code, TwoFactorPurpose.Login);
+    }
+
+    private TwoFactorService BuildServiceWith(
+        ISecurityFactorNotifier? notifier = null, ILogger<TwoFactorService>? logger = null, IConfiguration? config = null) =>
+        new(_tokens.Object, _userManager.Object, _email.Object, _sms.Object,
+            _encryption.Object, _cache.Object, _clock.Object, config ?? BuildConfig(), logger, notifier);
+
+    [Fact]
+    public async Task Tope_diario_de_login_bloquea_la_verificacion_aunque_el_codigo_sea_bueno()
+    {
+        var service = BuildService();
+
+        for (var i = 0; i < 15; i++)
+            (await VerifyWithFreshChallenge(service, i, WrongCode)).ErrorCode.Should().Be("CODE_INVALID");
+
+        _counters[LoginFailures].Should().Be(15);
+        _counterExpiries[LoginFailures].Should().Be(TimeSpan.FromHours(24));
+
+        var bloqueado = await VerifyWithFreshChallenge(service, 99, Code);
+        bloqueado.IsSuccess.Should().BeFalse();
+        bloqueado.ErrorCode.Should().Be("TWO_FACTOR_LOCKED");
+
+        // Ni siquiera se miró el reto: no se gastó un intento suyo ni se reclamó su marca.
+        _counters.Should().NotContainKey(CacheKeys.TwoFactorAttempts("jti-lg-99"));
+        _claims.Should().NotContain(CacheKeys.TwoFactorChallengeConsumed("jti-lg-99"));
+    }
+
+    [Fact]
+    public async Task Con_el_tope_alcanzado_no_se_emite_ni_se_gasta_cupo()
+    {
+        _counters[LoginFailures] = 15;
+        var service = BuildService();
+
+        var result = await service.IssueAsync(BuildUser(), TwoFactorPurpose.Login);
+
+        result.ErrorCode.Should().Be("TWO_FACTOR_LOCKED");
+        _counters.Should().NotContainKey(CacheKeys.TwoFactorIssueWindow(UserId));
+        VerifyNothingDispatched();
+    }
+
+    [Fact]
+    public async Task Los_aciertos_devuelven_la_reserva_y_no_cuentan_como_fallo()
+    {
+        var service = BuildService();
+
+        (await VerifyWithFreshChallenge(service, 1, WrongCode)).ErrorCode.Should().Be("CODE_INVALID");
+        (await VerifyWithFreshChallenge(service, 2, Code)).IsSuccess.Should().BeTrue();
+
+        _counters[LoginFailures].Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Un_reto_repetido_no_cuenta_como_fallo()
+    {
+        var service = BuildService();
+        (await VerifyWithFreshChallenge(service, 1, Code)).IsSuccess.Should().BeTrue();
+
+        // El mismo reto otra vez: lo rechaza el antirreplay, no es una adivinanza.
+        (await service.VerifyAsync("tok-lg-1", Code, TwoFactorPurpose.Login)).ErrorCode.Should().Be("INVALID_CHALLENGE");
+
+        _counters.Should().NotContainKey(LoginFailures);
+    }
+
+    [Fact]
+    public async Task Login_y_step_up_tienen_topes_separados()
+    {
+        var service = BuildService();
+
+        for (var i = 0; i < 10; i++)
+            (await VerifyWithFreshChallenge(service, i, WrongCode, stepUp: true)).ErrorCode.Should().Be("CODE_INVALID");
+
+        (await VerifyWithFreshChallenge(service, 50, Code, stepUp: true)).ErrorCode.Should().Be("TWO_FACTOR_LOCKED");
+        (await service.IssueAsync(BuildUser(), TwoFactorPurpose.StepUp, "PAYOUT_WALLET_CHANGE"))
+            .ErrorCode.Should().Be("TWO_FACTOR_LOCKED");
+
+        // Quemar el step-up no deja al dueño sin entrar.
+        (await VerifyWithFreshChallenge(service, 51, Code)).IsSuccess.Should().BeTrue();
+        (await service.IssueAsync(BuildUser(), TwoFactorPurpose.Login)).IsSuccess.Should().BeTrue();
+        _counters.Should().NotContainKey(LoginFailures);
+        _counters[StepUpFailures].Should().BeGreaterThanOrEqualTo(10);
+    }
+
+    [Fact]
+    public async Task Los_topes_se_leen_de_la_configuracion()
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Auth:TwoFactor:MaxFailuresPerDay"] = "2",
+            ["Auth:StepUp:MaxFailuresPerDay"]    = "1"
+        }).Build();
+        var service = BuildService(config);
+
+        await VerifyWithFreshChallenge(service, 1, WrongCode);
+        await VerifyWithFreshChallenge(service, 2, WrongCode);
+        (await VerifyWithFreshChallenge(service, 3, Code)).ErrorCode.Should().Be("TWO_FACTOR_LOCKED");
+
+        await VerifyWithFreshChallenge(service, 1, WrongCode, stepUp: true);
+        (await VerifyWithFreshChallenge(service, 2, Code, stepUp: true)).ErrorCode.Should().Be("TWO_FACTOR_LOCKED");
+    }
+
+    [Fact]
+    public async Task Al_alcanzar_el_tope_se_avisa_al_dueno_una_sola_vez()
+    {
+        var user     = BuildUser();
+        var notifier = new Mock<ISecurityFactorNotifier>();
+        _userManager.Setup(m => m.FindByIdAsync(UserId)).ReturnsAsync(user);
+        var service = BuildServiceWith(notifier.Object);
+
+        for (var i = 0; i < 9; i++)
+            await VerifyWithFreshChallenge(service, i, WrongCode, stepUp: true);
+        notifier.Verify(n => n.NotifyTwoFactorLockedAsync(
+            It.IsAny<ApplicationUser>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+
+        await VerifyWithFreshChallenge(service, 9, WrongCode, stepUp: true);
+        for (var i = 10; i < 14; i++)
+            await VerifyWithFreshChallenge(service, i, WrongCode, stepUp: true);
+
+        notifier.Verify(n => n.NotifyTwoFactorLockedAsync(user, true, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Si_el_aviso_falla_el_bloqueo_se_mantiene()
+    {
+        var notifier = new Mock<ISecurityFactorNotifier>();
+        notifier.Setup(n => n.NotifyTwoFactorLockedAsync(
+                    It.IsAny<ApplicationUser>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("SES caído"));
+        _userManager.Setup(m => m.FindByIdAsync(UserId)).ReturnsAsync(BuildUser());
+        var service = BuildServiceWith(notifier.Object);
+
+        for (var i = 0; i < 15; i++)
+            (await VerifyWithFreshChallenge(service, i, WrongCode)).ErrorCode.Should().Be("CODE_INVALID");
+
+        (await VerifyWithFreshChallenge(service, 99, Code)).ErrorCode.Should().Be("TWO_FACTOR_LOCKED");
+    }
+
+    [Fact]
+    public async Task Si_el_contador_de_fallos_lanza_la_verificacion_se_cierra()
+    {
+        _cache.Setup(c => c.IncrementAsync(LoginFailures, It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+              .ThrowsAsync(new InvalidOperationException("Redis caído"));
+        var service = BuildService();
+
+        var result = await VerifyWithFreshChallenge(service, 1, Code);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be("VERIFICATION_UNAVAILABLE");
+        _claims.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Si_el_contador_de_fallos_no_se_puede_leer_no_se_emite()
+    {
+        _cache.Setup(c => c.GetCounterAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+              .ThrowsAsync(new InvalidOperationException("Redis caído"));
+        var service = BuildService();
+
+        var result = await service.IssueAsync(BuildUser(), TwoFactorPurpose.Login);
+
+        result.ErrorCode.Should().Be("VERIFICATION_UNAVAILABLE");
+        _counters.Should().NotContainKey(CacheKeys.TwoFactorIssueWindow(UserId));
+        VerifyNothingDispatched();
+    }
+
+    // ── formato del código ───────────────────────────────────────────────────
+
+    [Theory]
+    [InlineData("12345")]
+    [InlineData("1234567")]
+    [InlineData("12345a")]
+    [InlineData(" 23456")]
+    [InlineData("123456\n")]
+    [InlineData("١٢٣٤٥٦")] // dígitos arábigo-índicos: "\d" los acepta
+    [InlineData("１２３４５６")] // dígitos de ancho completo
+    [InlineData("")]
+    public async Task Un_codigo_mal_formado_es_CODE_INVALID_sin_tocar_el_HMAC_pero_cuenta(string code)
+    {
+        SetupValidate(Token, Claims());
+        var service = BuildService();
+
+        var result = await service.VerifyAsync(Token, code, TwoFactorPurpose.Login);
+
+        result.ErrorCode.Should().Be("CODE_INVALID");
+        _tokens.Verify(t => t.VerifyCode(It.IsAny<ChallengeClaims>(), It.IsAny<string>()), Times.Never);
+        _counters[CacheKeys.TwoFactorAttempts("jti-1")].Should().Be(1);
+        _counters[LoginFailures].Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Un_codigo_TOTP_mal_formado_no_llega_a_Identity()
+    {
+        SetupValidate(Token, Claims(TwoFactorChannel.Authenticator));
+        var service = BuildService();
+
+        (await service.VerifyAsync(Token, "12 456", TwoFactorPurpose.Login)).ErrorCode.Should().Be("CODE_INVALID");
+
+        _userManager.Verify(m => m.VerifyTwoFactorTokenAsync(
+            It.IsAny<ApplicationUser>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    // ── avisos en el log ─────────────────────────────────────────────────────
+
+    [Fact]
+    public void Subir_la_ventana_antirreplay_del_TOTP_avisa_una_vez()
+    {
+        // Valor que no usa ninguna otra prueba: el aviso es una vez por valor y proceso.
+        var logger = new ListLogger<TwoFactorService>();
+
+        BuildServiceWith(logger: logger, config: BuildConfig(replaySeconds: 37));
+        BuildServiceWith(logger: logger, config: BuildConfig(replaySeconds: 37));
+
+        logger.Entries.Where(e => e.Level == LogLevel.Warning && e.Message.Contains("37"))
+              .Should().ContainSingle();
+    }
+
+    [Fact]
+    public void Una_ventana_valida_no_avisa()
+    {
+        var logger = new ListLogger<TwoFactorService>();
+
+        BuildServiceWith(logger: logger, config: BuildConfig(replaySeconds: 151));
+
+        logger.Entries.Should().NotContain(e => e.Level == LogLevel.Warning);
+    }
+
+    [Fact]
+    public async Task Quemar_un_reto_deja_un_aviso()
+    {
+        SetupValidate(Token, Claims());
+        var logger  = new ListLogger<TwoFactorService>();
+        var service = BuildServiceWith(logger: logger);
+
+        for (var i = 0; i < 5; i++)
+            await service.VerifyAsync(Token, WrongCode, TwoFactorPurpose.Login);
+
+        logger.Entries.Should().Contain(e => e.Level == LogLevel.Warning && e.Message.Contains("quemado"));
+    }
+
+    private sealed class ListLogger<T> : ILogger<T>
+    {
+        public List<(LogLevel Level, string Message)> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            lock (Entries)
+                Entries.Add((logLevel, formatter(state, exception)));
+        }
     }
 }

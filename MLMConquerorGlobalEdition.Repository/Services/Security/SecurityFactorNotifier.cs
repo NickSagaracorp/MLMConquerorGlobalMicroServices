@@ -29,6 +29,14 @@ public interface ISecurityFactorNotifier
     /// puede ser justo el de quien robó la sesión, y avisarle a él no protege a nadie.
     /// </param>
     Task NotifyAsync(ApplicationUser user, SecurityFactorChange change, string? toEmail = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Avisa al dueño de que se alcanzó el tope diario de códigos fallidos y esa verificación quedó
+    /// bloqueada. Siempre por correo: si alguien está probando códigos de SMS, el teléfono no es un
+    /// canal en el que fiarse para avisar.
+    /// </summary>
+    /// <param name="stepUp">True si lo bloqueado es el step-up; false si es el login.</param>
+    Task NotifyTwoFactorLockedAsync(ApplicationUser user, bool stepUp, CancellationToken ct = default);
 }
 
 /// <inheritdoc cref="ISecurityFactorNotifier"/>
@@ -93,6 +101,54 @@ public sealed class SecurityFactorNotifier : ISecurityFactorNotifier
             _logger.LogError(ex, "No se pudo avisar del cambio de factor {Change} al usuario {UserId}; el cambio se mantiene.",
                 change, user.Id);
         }
+    }
+
+    public async Task NotifyTwoFactorLockedAsync(ApplicationUser user, bool stepUp, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(user.Email))
+        {
+            _logger.LogWarning("Aviso de bloqueo del segundo factor sin destino para el usuario {UserId}.", user.Id);
+            return;
+        }
+
+        try
+        {
+            var language = await TwoFactorLanguage.ResolveAsync(_db, user, ct) ?? "en";
+
+            await _email.SendAsync(
+                toEmail:      user.Email,
+                toName:       user.Email,
+                languageCode: language,
+                eventType:    NotificationEvents.TwoFactorLocked,
+                variables:    new Dictionary<string, string>
+                {
+                    ["Action"]   = DescribeLockedAction(stepUp, language),
+                    // Hora de servidor, como el resto de marcas que ve el usuario.
+                    ["LockedAt"] = _dateTime.Now.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)
+                },
+                ct:           ct);
+
+            _logger.LogInformation("Aviso de bloqueo del segundo factor (step-up: {StepUp}) enviado al usuario {UserId}.",
+                stepUp, user.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "No se pudo avisar del bloqueo del segundo factor (step-up: {StepUp}) al usuario {UserId}; el bloqueo se mantiene.",
+                stepUp, user.Id);
+        }
+    }
+
+    /// <summary>
+    /// Qué quedó bloqueado, con palabras y en el idioma de la plantilla (en/es; el resto cae a la
+    /// inglesa, así que el texto también va en inglés). Mismo criterio que <see cref="Describe"/>.
+    /// </summary>
+    internal static string DescribeLockedAction(bool stepUp, string language)
+    {
+        var es = language.StartsWith("es", StringComparison.OrdinalIgnoreCase);
+        return stepUp
+            ? es ? "confirmar cambios sensibles (como a dónde se pagan tus comisiones)"
+                 : "confirm sensitive changes (such as where your commissions are paid)"
+            : es ? "iniciar sesión" : "sign in";
     }
 
     /// <summary>

@@ -46,6 +46,8 @@ public class StepUpRequestValidatorTests
     [InlineData("1234567")]
     [InlineData("12a456")]
     [InlineData(" 123456")]
+    [InlineData("123456\n")]                               // "$" lo dejaba pasar
+    [InlineData("١٢٣٤٥٦")] // dígitos arábigo-índicos: "\d" los aceptaba
     public void Canje_con_codigo_que_no_son_seis_digitos_no_pasa(string code)
     {
         var r = ValidVerify(); r.Code = code;

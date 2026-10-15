@@ -99,4 +99,45 @@ public class SecurityFactorNotifierTests : IDisposable
 
         _email.VerifyNoOtherCalls();
     }
+
+    // ── aviso de bloqueo del segundo factor ──────────────────────────────────
+
+    [Theory]
+    [InlineData(false, "sign in")]
+    [InlineData(true,  "confirm sensitive changes (such as where your commissions are paid)")]
+    public async Task El_bloqueo_se_avisa_por_correo_con_lo_bloqueado_y_la_hora_de_servidor(bool stepUp, string action)
+    {
+        await Notifier().NotifyTwoFactorLockedAsync(Usuario(), stepUp);
+
+        _email.Verify(e => e.SendAsync(
+            "actual@dominio.com", It.IsAny<string>(), "en", NotificationEvents.TwoFactorLocked,
+            It.Is<Dictionary<string, string>>(v => v["Action"] == action && v["LockedAt"] == "2026-10-14 10:30"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task El_aviso_de_bloqueo_sale_en_el_idioma_del_miembro()
+    {
+        _db.MemberProfiles.Add(new MemberProfile { MemberId = "AMB-000003", DefaultLanguage = "es", CreatedBy = "t" });
+        await _db.SaveChangesAsync();
+
+        await Notifier().NotifyTwoFactorLockedAsync(Usuario("AMB-000003"), stepUp: false);
+
+        _email.Verify(e => e.SendAsync(
+            "actual@dominio.com", It.IsAny<string>(), "es", NotificationEvents.TwoFactorLocked,
+            It.Is<Dictionary<string, string>>(v => v["Action"] == "iniciar sesión"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Un_fallo_al_avisar_del_bloqueo_no_se_propaga()
+    {
+        _email.Setup(e => e.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                  It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()))
+              .ThrowsAsync(new InvalidOperationException("SES caído"));
+
+        var act = () => Notifier().NotifyTwoFactorLockedAsync(Usuario(), stepUp: true);
+
+        await act.Should().NotThrowAsync();
+    }
 }

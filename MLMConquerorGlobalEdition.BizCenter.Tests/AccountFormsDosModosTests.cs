@@ -157,6 +157,9 @@ public class AccountFormsDosModosTests : BunitContext
     // buena, así que decirlos con su nombre no revela nada de una cuenta que no se tenga ya.
     [InlineData(LoginErrorMessages.TooManyRequests,    "Login.ErrorTooManyRequests",    "alert-warning")]
     [InlineData(LoginErrorMessages.ChannelUnavailable, "TwoFactor.Error.ChannelUnavailable", "alert-warning")]
+    // Misma familia: segundo factor bloqueado por el tope diario, o almacén de límites caído.
+    [InlineData(LoginErrorMessages.TwoFactorLocked,         "TwoFactor.Error.Locked",                  "alert-danger")]
+    [InlineData(LoginErrorMessages.VerificationUnavailable, "TwoFactor.Error.VerificationUnavailable", "alert-warning")]
     public void Login_CadaCodigoConocidoSeEnsenaConSuTextoYSuSeveridad(
         string codigo, string claveEsperada, string claseEsperada)
     {
@@ -185,7 +188,9 @@ public class AccountFormsDosModosTests : BunitContext
                 LoginErrorMessages.SessionExpired,
                 LoginErrorMessages.ServiceUnavailable,
                 LoginErrorMessages.TooManyRequests,
-                LoginErrorMessages.ChannelUnavailable
+                LoginErrorMessages.ChannelUnavailable,
+                LoginErrorMessages.TwoFactorLocked,
+                LoginErrorMessages.VerificationUnavailable
             },
             "cada código que la puerta sabe emitir tiene que tener su caso en " +
             "Login_CadaCodigoConocidoSeEnsenaConSuTextoYSuSeveridad");

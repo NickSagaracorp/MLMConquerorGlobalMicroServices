@@ -12,12 +12,14 @@ namespace MLMConquerorGlobalEdition.Authn.Abstractions;
 ///
 /// Encima del challenge firmado (<see cref="IChallengeTokenService"/>, que es stateless) monta
 /// lo que exige estado compartido: el antirreplay del challenge y del código TOTP, el límite de
-/// intentos por challenge y el límite de emisiones por usuario.
+/// intentos por challenge, el límite de emisiones por usuario y el tope diario de códigos fallidos
+/// por usuario (uno para login y enrolamiento, otro para step-up).
 ///
 /// Códigos de error: <c>CHANNEL_UNAVAILABLE</c>, <c>TOO_MANY_REQUESTS</c>,
-/// <c>TOO_MANY_ATTEMPTS</c>, <c>CODE_INVALID</c>, <c>VERIFICATION_UNAVAILABLE</c> (el almacén
-/// de marcas de un solo uso no respondió: se cierra en vez de dar por buena la verificación),
-/// más los de
+/// <c>TOO_MANY_ATTEMPTS</c>, <c>CODE_INVALID</c>, <c>TWO_FACTOR_LOCKED</c> (tope diario de
+/// fallos alcanzado: ni se emite ni se verifica en ese ámbito hasta que venza la ventana),
+/// <c>VERIFICATION_UNAVAILABLE</c> (el almacén de marcas o de contadores no respondió: se cierra
+/// en vez de dar por buena la verificación), más los de
 /// <see cref="IChallengeTokenService"/> (<c>INVALID_CHALLENGE</c>, <c>CODE_EXPIRED</c>).
 /// </summary>
 public interface ITwoFactorService

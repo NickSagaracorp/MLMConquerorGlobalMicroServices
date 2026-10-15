@@ -92,6 +92,16 @@ public static class CacheKeys
     public static string StepUpIssueWindow(string userId) => $"stepup:user:{userId}:issues";
 
     /// <summary>
+    /// Códigos fallidos de un usuario en la ventana de 24 h, por ámbito (<c>login</c> para login y
+    /// enrolamiento, <c>stepup</c> para el step-up). El límite por reto (5) y el de emisiones (3 cada
+    /// 15 min) juntos aún dejaban ~1.440 intentos al día contra la misma cuenta; este contador es el
+    /// tope diario. Ámbitos separados por lo mismo que los cupos de emisión: quien tenga una sesión
+    /// robada y queme el step-up no puede dejar al dueño sin poder entrar.
+    /// TTL: 24 h desde el primer fallo (el contador no renueva su vencimiento al incrementarse).
+    /// </summary>
+    public static string TwoFactorFailures(string userId, string scope) => $"2fa:user:{userId}:failures:{scope}";
+
+    /// <summary>
     /// Marca de código TOTP ya usado, por usuario y etiqueta con clave del código (ver
     /// <c>IChallengeTokenService.TotpReplayTag</c>; nunca un hash sin clave, que con seis dígitos
     /// se invierte al instante). Identity acepta el mismo código durante la tolerancia de reloj

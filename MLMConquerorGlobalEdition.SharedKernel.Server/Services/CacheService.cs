@@ -197,6 +197,31 @@ public class CacheService : ICacheService
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Sin try/catch, como <see cref="TryClaimOnceAsync"/>: lo usan barreras de seguridad que
+    /// tienen que cerrar si no pueden leer el tope. Con Redis lee el entero que deja INCR; sin él,
+    /// el formato <c>"cuenta|vencimiento"</c> del respaldo por proceso.
+    /// </remarks>
+    public async Task<long> GetCounterAsync(string key, CancellationToken ct = default)
+    {
+        if (_multiplexer is not null)
+        {
+            ct.ThrowIfCancellationRequested();
+            var value = await _multiplexer.GetDatabase().StringGetAsync(key);
+            return value.IsNullOrEmpty ? 0 : (long)value;
+        }
+
+        WarnNonAtomicOnce();
+
+        var bytes = await _cache.GetAsync(key, ct);
+        return bytes is not null
+               && TryParseCounter(bytes, out var count, out var expiresAt)
+               && expiresAt > DateTimeOffset.UtcNow
+            ? count
+            : 0;
+    }
+
+    /// <inheritdoc/>
     public async Task<long> DecrementAsync(string key, CancellationToken ct = default)
     {
         if (_multiplexer is not null)

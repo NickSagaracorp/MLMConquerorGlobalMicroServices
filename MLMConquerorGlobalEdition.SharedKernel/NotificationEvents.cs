@@ -46,4 +46,11 @@ public static class NotificationEvents
     /// { Change, ChangedAt }. Sending failures are logged and never undo the change.
     /// </summary>
     public const string SecurityFactorChanged = "SECURITY_FACTOR_CHANGED";
+
+    /// <summary>
+    /// Sent once to the account owner when the daily cap of wrong verification codes is reached and
+    /// that kind of verification (sign-in or step-up) is blocked for the rest of the 24 h window.
+    /// Variables: { Action, LockedAt }. Sending failures are logged and never undo the lock.
+    /// </summary>
+    public const string TwoFactorLocked = "TWO_FACTOR_LOCKED";
 }

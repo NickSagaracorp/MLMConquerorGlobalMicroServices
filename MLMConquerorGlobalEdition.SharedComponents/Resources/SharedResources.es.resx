@@ -1391,6 +1391,7 @@
   <data name="StepUp.CooldownGeneric" xml:space="preserve"><value>Por seguridad, cambiaste un dato de acceso hace poco; podrás cambiar el método de cobro más adelante.</value></data>
   <data name="StepUp.RetryFailed" xml:space="preserve"><value>No se pudo confirmar la verificación; inténtalo de nuevo.</value></data>
   <data name="TwoFactor.Error.VerificationUnavailable" xml:space="preserve"><value>No podemos verificar códigos en este momento. Inténtalo de nuevo en unos minutos.</value></data>
+  <data name="TwoFactor.Error.Locked" xml:space="preserve"><value>Se han introducido demasiados códigos incorrectos. Para protegerte, la verificación queda bloqueada hasta 24 horas. Si no fuiste tú, cambia tu contraseña.</value></data>
   <data name="StepUp.Unavailable" xml:space="preserve"><value>La verificación por código no está disponible en esta aplicación en este momento, por lo que el método de cobro no se puede cambiar desde aquí. Usa el portal web.</value></data>
   <data name="Commissions.FrequencySavedWalletKept" xml:space="preserve"><value>Frecuencia guardada; el método de cobro no cambió.</value></data>
 </root>
