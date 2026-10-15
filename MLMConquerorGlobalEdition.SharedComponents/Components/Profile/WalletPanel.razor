@@ -1,11 +1,10 @@
 @using MLMConquerorGlobalEdition.SharedComponents.Components.Account.StepUp
+@using MLMConquerorGlobalEdition.SharedKernel.Security
 @inject HttpClient Http
 @inject IViewContextService ViewContext
 @inject IStringLocalizer<SharedResources> L
 
 <LoadingSpinner IsLoading="@_isLoading" />
-
-<StepUpDialog @ref="_stepUp" />
 
 @if (!_isLoading)
 {
@@ -391,6 +390,9 @@
     }
 }
 
+@* Al final y con z-index propio: el modal de edición es también un .modal y, montado después, tapaba el del código. *@
+<StepUpDialog @ref="_stepUp" />
+
 @code {
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
 
@@ -546,7 +548,7 @@
                 eWalletPasswordEncrypted  = string.IsNullOrEmpty(_editPassword) ? null : $"ENC:{_editPassword}"
             };
             // Si la API pide step-up, StepUpHttp pide el código y reintenta una vez; null = canceló.
-            var resp = await StepUpHttp.SendAsync(Http,
+            var resp = await StepUpHttp.SendAsync(Http, StepUpOperations.PayoutMethodChange,
                 () => new HttpRequestMessage(HttpMethod.Put, url) { Content = JsonContent.Create(payload) },
                 _stepUp.RequireAsync);
             if (resp is null) return; // canceló el código: el modal de edición sigue abierto
@@ -633,7 +635,7 @@
         _busy = true; StateHasChanged();
         try
         {
-            var resp = await StepUpHttp.SendAsync(Http,
+            var resp = await StepUpHttp.SendAsync(Http, StepUpOperations.PayoutMethodChange,
                 () => new HttpRequestMessage(HttpMethod.Put, $"{ListUrl}/{walletType}/default"),
                 _stepUp.RequireAsync);
             if (resp is null) return;

@@ -1,4 +1,5 @@
 @using MLMConquerorGlobalEdition.SharedComponents.Components.Account.StepUp
+@using MLMConquerorGlobalEdition.SharedKernel.Security
 @inject HttpClient Http
 @inject IStringLocalizer<SharedResources> L
 @inject IViewContextService ViewContext
@@ -14,8 +15,6 @@
     correct preferred gateway and account identifier without forcing the
     parent page to know about the wallet shape.
 *@
-
-<StepUpDialog @ref="_stepUp" />
 
 <div class="card border-0 shadow-sm rounded-3 mb-4">
     <div class="card-body p-4">
@@ -146,6 +145,9 @@
     </div>
 </div>
 
+@* Al final y con z-index propio, para quedar siempre por encima de cualquier otro modal. *@
+<StepUpDialog @ref="_stepUp" />
+
 @code {
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
     [Parameter] public bool CanEdit { get; set; }
@@ -237,6 +239,7 @@
     private async Task SaveAsync()
     {
         _busy = true; _alert = null; StateHasChanged();
+        var frequencySaved = false;
         try
         {
             // 1) Persist payout frequency via PUT /profile (full payload required).
@@ -256,15 +259,28 @@
                     _alertOk = false;
                     return;
                 }
+                frequencySaved = true;
             }
 
             // 2) Update preferred wallet if it changed.
             if (_editWalletType != 0 && _editWalletType != _initialWalletType)
             {
-                var walletResp = await StepUpHttp.SendAsync(Http,
+                var walletResp = await StepUpHttp.SendAsync(Http, StepUpOperations.PayoutMethodChange,
                     () => new HttpRequestMessage(HttpMethod.Put, $"{WalletsBase}/{_editWalletType}/default"),
                     _stepUp.RequireAsync);
-                if (walletResp is null) return; // canceló el código: la edición sigue abierta
+                if (walletResp is null)
+                {
+                    // Canceló el código. Si la frecuencia ya se guardó en el paso 1, hay que decirlo:
+                    // si no, la pantalla parecería no haber hecho nada y la persona repetiría.
+                    if (frequencySaved)
+                    {
+                        _initialFrequency = _editFrequency;
+                        _alert = L["Commissions.FrequencySavedWalletKept"].Value;
+                        _alertOk = true;
+                        await OnSaved.InvokeAsync();
+                    }
+                    return; // la edición sigue abierta
+                }
                 if (!walletResp.IsSuccessStatusCode)
                 {
                     var body = await walletResp.Content.ReadAsStringAsync();

@@ -9,11 +9,14 @@
 @inject IServiceProvider Services
 @inject IStringLocalizer<SharedResources> L
 
+@* El z-index 1080 (por encima del 1055 de cualquier .modal de Bootstrap) es deliberado: este
+   diálogo se abre DESDE otros modales (p. ej. el de edición de la wallet) y, sin él, quedaba detrás
+   de su telón y no se podía usar. Aquí el propio contenedor es el telón. *@
 @* Modal de confirmación por código. Un componente lo monta una vez y llama a RequireAsync cuando
    la API responde STEP_UP_REQUIRED; devuelve el permiso, o null si la persona cancela. *@
 @if (_open)
 {
-    <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" style="background:rgba(0,0,0,.5)">
+    <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" style="z-index:1080;background:rgba(0,0,0,.5)">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
@@ -38,7 +41,7 @@
                     }
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-link me-auto stepup-resend" @onclick="ResendAsync" disabled="@_busy">@L["StepUp.Resend"]</button>
+                    <button type="button" class="btn btn-link me-auto stepup-resend" @onclick="ResendAsync" disabled="@(_busy || _unavailable)">@L["StepUp.Resend"]</button>
                     @* Cancelar nunca se deshabilita: con una petición en vuelo tiene que poder cerrarse. *@
                     <button type="button" class="btn btn-outline-secondary stepup-cancel" @onclick="Cancel">@L["StepUp.Cancel"]</button>
                     <button type="button" class="btn btn-primary stepup-confirm" @onclick="ConfirmAsync"
@@ -50,7 +53,7 @@
 }
 
 @code {
-    private bool _open, _busy;
+    private bool _open, _busy, _unavailable;
     private string? _operationKey, _code, _errorKey;
     private object[] _errorArgs = [];
     private StepUpChallenge? _challenge;
@@ -71,7 +74,7 @@
         // El cliente se pide aquí y no por @inject: no todos los anfitriones lo registran (AdminWeb
         // y las apps MAUI montan el mismo panel de wallets, y la API de administración no pide
         // step-up). Sin cliente, un step-up pedido no se puede confirmar: se cancela, no revienta.
-        if (_disposed || Services.GetService<IStepUpClient>() is null) return null;
+        if (_disposed) return null;
 
         var session = ++_session;
         // RunContinuationsAsynchronously: quien completa la espera (un clic) no debe ejecutar de
@@ -80,6 +83,16 @@
         _operationKey = operationKey;
         _challenge = null; _code = null; ClearError(); _busy = false;
         _open = true;
+        if (Services.GetService<IStepUpClient>() is null)
+        {
+            // Sin cliente la persona no puede confirmar nada, pero tampoco puede quedarse sin
+            // saberlo: el modal se abre con el aviso y se cierra con Cancelar (devuelve null).
+            _unavailable = true;
+            _errorKey = "StepUp.Unavailable";
+            StateHasChanged();
+            return await tcs.Task;
+        }
+        _unavailable = false;
         await RequestAsync(session);
         return await tcs.Task;
     }
@@ -90,11 +103,22 @@
     {
         var client = Services.GetRequiredService<IStepUpClient>();
         _busy = true; ClearError(); _code = null; StateHasChanged();
-        var r = await client.RequestChallengeAsync(_operationKey!);
-        if (session != _session || _disposed) return;
-        if (r.Success) _challenge = r.Data;
-        else SetError(r.ErrorCode, r.Message);
-        _busy = false; StateHasChanged();
+        try
+        {
+            var r = await client.RequestChallengeAsync(_operationKey!);
+            if (session != _session || _disposed) return;
+            if (r.Success) _challenge = r.Data;
+            else SetError(r.ErrorCode, r.Message);
+        }
+        catch (Exception) when (session == _session && !_disposed)
+        {
+            // Que el cliente lance no puede dejar el modal congelado: error genérico y a reintentar.
+            SetError(null, null);
+        }
+        finally
+        {
+            if (session == _session && !_disposed) { _busy = false; StateHasChanged(); }
+        }
     }
 
     private async Task ConfirmAsync()
@@ -102,18 +126,28 @@
         var session = _session;
         var client = Services.GetRequiredService<IStepUpClient>();
         _busy = true; ClearError(); StateHasChanged();
-        var r = await client.VerifyAsync(_operationKey!, _challenge!.ChallengeToken, _code!.Trim());
-        if (session != _session || _disposed) return;
-        _busy = false;
-        if (r.Success && !string.IsNullOrEmpty(r.Data))
+        try
         {
-            var pending = _pending;
-            Close();
-            pending?.TrySetResult(r.Data);
-            return;
+            var r = await client.VerifyAsync(_operationKey!, _challenge!.ChallengeToken, _code!.Trim());
+            if (session != _session || _disposed) return;
+            if (r.Success && !string.IsNullOrEmpty(r.Data))
+            {
+                var pending = _pending;
+                Close();
+                pending?.TrySetResult(r.Data);
+                return;
+            }
+            SetError(r.ErrorCode, r.Message);
         }
-        SetError(r.ErrorCode, r.Message);
-        StateHasChanged();
+        catch (Exception) when (session == _session && !_disposed)
+        {
+            SetError(null, null);
+        }
+        finally
+        {
+            // Solo si la sesión sigue siendo esta: si ya se cerró o reabrió, el estado es de otra.
+            if (session == _session && !_disposed) { _busy = false; StateHasChanged(); }
+        }
     }
 
     private void Cancel()
@@ -143,7 +177,7 @@
             && StepUpClient.TryParseCooldownUntil(message) is { } until)
         {
             _errorKey = "StepUp.Cooldown";
-            _errorArgs = [until.ToString("f", CultureInfo.CurrentUICulture)];
+            _errorArgs = [until.ToString("f", CultureInfo.CurrentCulture)];
         }
     }
 

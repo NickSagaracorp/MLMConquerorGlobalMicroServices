@@ -60,7 +60,7 @@ public sealed partial class StepUpClient : IStepUpClient
     {
         try
         {
-            var resp = await _factory.CreateClient(HttpClientName).PostAsJsonAsync(path, body, ct);
+            using var resp = await _factory.CreateClient(HttpClientName).PostAsJsonAsync(path, body, ct);
             var env  = await resp.Content.ReadFromJsonAsync<Wrapper<T>>(cancellationToken: ct);
             return env is { Success: true }
                 ? new StepUpOutcome<T>(true, null, env.Data)

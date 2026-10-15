@@ -1286,4 +1286,6 @@
   <data name="StepUp.CooldownGeneric" xml:space="preserve"><value>出于安全考虑，您最近更改了登录相关信息；稍后方可更改收款方式。</value></data>
   <data name="StepUp.RetryFailed" xml:space="preserve"><value>无法确认验证，请重试。</value></data>
   <data name="TwoFactor.Error.VerificationUnavailable" xml:space="preserve"><value>目前无法验证验证码，请几分钟后重试。</value></data>
+  <data name="StepUp.Unavailable" xml:space="preserve"><value>此应用目前无法使用验证码验证，因此无法在此更改收款方式。请使用网页门户。</value></data>
+  <data name="Commissions.FrequencySavedWalletKept" xml:space="preserve"><value>付款频率已保存；收款方式未更改。</value></data>
 </root>

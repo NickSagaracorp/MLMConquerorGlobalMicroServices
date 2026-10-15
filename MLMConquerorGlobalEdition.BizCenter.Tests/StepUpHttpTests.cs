@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Text;
 using MLMConquerorGlobalEdition.SharedComponents.Components.Account.StepUp;
 
@@ -71,7 +72,7 @@ public class StepUpHttpTests
                 : new HttpResponseMessage(HttpStatusCode.OK);
         })) { BaseAddress = new Uri("https://x/") };
 
-        var resp = await StepUpHttp.SendAsync(http, () => new HttpRequestMessage(HttpMethod.Put, "w"),
+        var resp = await StepUpHttp.SendAsync(http, "op", () => new HttpRequestMessage(HttpMethod.Put, "w"),
             _ => Task.FromResult<string?>("permiso"));
 
         resp!.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -86,11 +87,41 @@ public class StepUpHttpTests
         { n++; return Resp(HttpStatusCode.Forbidden, "{\"errorCode\":\"STEP_UP_REQUIRED\"}"); }))
         { BaseAddress = new Uri("https://x/") };
 
-        var resp = await StepUpHttp.SendAsync(http, () => new HttpRequestMessage(HttpMethod.Put, "w"),
+        var resp = await StepUpHttp.SendAsync(http, "op", () => new HttpRequestMessage(HttpMethod.Put, "w"),
             _ => Task.FromResult<string?>(null));
 
         resp.Should().BeNull();
         n.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task El_reintento_reconstruye_el_cuerpo_porque_una_peticion_no_se_envia_dos_veces()
+    {
+        var cuerpos = new List<string>();
+        using var http = new HttpClient(new Manejador(req =>
+        {
+            cuerpos.Add(req.Content!.ReadAsStringAsync().Result);
+            return cuerpos.Count == 1
+                ? Resp(HttpStatusCode.Forbidden, "{\"errorCode\":\"STEP_UP_REQUIRED\"}")
+                : new HttpResponseMessage(HttpStatusCode.OK);
+        })) { BaseAddress = new Uri("https://x/") };
+
+        var resp = await StepUpHttp.SendAsync(http, "op",
+            () => new HttpRequestMessage(HttpMethod.Put, "w") { Content = JsonContent.Create(new { a = 1 }) },
+            _ => Task.FromResult<string?>("permiso"));
+
+        resp!.StatusCode.Should().Be(HttpStatusCode.OK);
+        cuerpos.Should().Equal("{\"a\":1}", "{\"a\":1}");
+    }
+
+    [Theory]
+    [InlineData("STEP_UP_REQUIRED")]
+    [InlineData("STEP_UP_INVALID")]
+    [InlineData("STEP_UP_COOLDOWN")]
+    public async Task Cualquier_codigo_de_step_up_en_el_reintento_cuenta_como_rechazo(string codigo)
+    {
+        var resp = Resp(HttpStatusCode.Forbidden, "{\"errorCode\":\"" + codigo + "\"}");
+        (await StepUpHttp.IsGrantRejectedAsync(resp)).Should().BeTrue();
     }
 
     private sealed class Manejador(Func<HttpRequestMessage, HttpResponseMessage> f) : HttpMessageHandler

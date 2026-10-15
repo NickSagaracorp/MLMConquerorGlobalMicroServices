@@ -1355,4 +1355,6 @@
   <data name="StepUp.CooldownGeneric" xml:space="preserve"><value>Aus Sicherheitsgründen haben Sie vor Kurzem eine Zugangsangabe geändert; Sie können Ihre Auszahlungsmethode später ändern.</value></data>
   <data name="StepUp.RetryFailed" xml:space="preserve"><value>Die Bestätigung konnte nicht abgeschlossen werden; bitte versuchen Sie es erneut.</value></data>
   <data name="TwoFactor.Error.VerificationUnavailable" xml:space="preserve"><value>Codes können derzeit nicht überprüft werden. Bitte versuchen Sie es in einigen Minuten erneut.</value></data>
+  <data name="StepUp.Unavailable" xml:space="preserve"><value>Die Code-Bestätigung ist in dieser App derzeit nicht verfügbar, daher kann die Auszahlungsmethode hier nicht geändert werden. Nutzen Sie das Webportal.</value></data>
+  <data name="Commissions.FrequencySavedWalletKept" xml:space="preserve"><value>Auszahlungshäufigkeit gespeichert; die Auszahlungsmethode wurde nicht geändert.</value></data>
 </root>

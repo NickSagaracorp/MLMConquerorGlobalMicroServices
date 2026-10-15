@@ -34,12 +34,13 @@ public static class StepUpHttp
         string.Equals(await ErrorCodeOfForbiddenAsync(response), StepUpGrant.RequiredErrorCode, StringComparison.Ordinal);
 
     /// <summary>
-    /// ¿La API rechazó el permiso que llevaba el reintento (403 STEP_UP_INVALID)? Pasa si otra
+    /// ¿La API rechazó el reintento por una razón de step-up (STEP_UP_INVALID, STEP_UP_REQUIRED de nuevo o STEP_UP_COOLDOWN)? Pasa si otra
     /// petición lo gastó antes o si el almacén no respondió; la persona no puede arreglarlo más que
     /// repitiendo, y el cuerpo crudo no le dice eso.
     /// </summary>
     public static async Task<bool> IsGrantRejectedAsync(HttpResponseMessage response) =>
-        string.Equals(await ErrorCodeOfForbiddenAsync(response), StepUpGrant.InvalidErrorCode, StringComparison.Ordinal);
+        await ErrorCodeOfForbiddenAsync(response) is
+            StepUpGrant.RequiredErrorCode or StepUpGrant.InvalidErrorCode or StepUpGrant.CooldownErrorCode;
 
     public static HttpRequestMessage WithGrant(HttpRequestMessage request, string? stepUpToken)
     {
@@ -58,12 +59,14 @@ public static class StepUpHttp
     /// tampoco vale, repetir en bucle solo quemaría códigos.
     /// </remarks>
     public static async Task<HttpResponseMessage?> SendAsync(
-        HttpClient http, Func<HttpRequestMessage> build, Func<string, Task<string?>> requireGrant)
+        HttpClient http, string operationKey, Func<HttpRequestMessage> build, Func<string, Task<string?>> requireGrant)
     {
         var resp = await http.SendAsync(build());
         if (!await IsStepUpRequiredAsync(resp)) return resp;
 
-        var grant = await requireGrant(StepUpOperations.PayoutMethodChange);
+        // El 403 inicial ya cumplió su función; se libera antes de esperar a la persona.
+        resp.Dispose();
+        var grant = await requireGrant(operationKey);
         if (grant is null) return null;
         return await http.SendAsync(WithGrant(build(), grant));
     }

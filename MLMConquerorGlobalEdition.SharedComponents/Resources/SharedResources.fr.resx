@@ -1355,4 +1355,6 @@
   <data name="StepUp.CooldownGeneric" xml:space="preserve"><value>Pour votre sécurité, vous avez récemment modifié une information d'accès ; vous pourrez changer votre mode de versement plus tard.</value></data>
   <data name="StepUp.RetryFailed" xml:space="preserve"><value>La vérification n'a pas pu être confirmée ; veuillez réessayer.</value></data>
   <data name="TwoFactor.Error.VerificationUnavailable" xml:space="preserve"><value>Nous ne pouvons pas vérifier les codes pour le moment. Veuillez réessayer dans quelques minutes.</value></data>
+  <data name="StepUp.Unavailable" xml:space="preserve"><value>La vérification par code n'est pas disponible dans cette application pour le moment ; le mode de versement ne peut donc pas être modifié ici. Utilisez le portail web.</value></data>
+  <data name="Commissions.FrequencySavedWalletKept" xml:space="preserve"><value>Fréquence enregistrée ; le mode de versement n'a pas changé.</value></data>
 </root>

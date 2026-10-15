@@ -1,3 +1,4 @@
+using System.Globalization;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
@@ -14,7 +15,7 @@ namespace MLMConquerorGlobalEdition.BizCenter.Tests;
 public class StepUpDialogTests : BunitContext
 {
     /// <summary>Devuelve la CLAVE (y los argumentos) en vez del texto, para no atar las pruebas al .resx.</summary>
-    private sealed class LocalizadorDeClaves : IStringLocalizer<SharedResources>
+    internal sealed class LocalizadorDeClaves : IStringLocalizer<SharedResources>
     {
         public LocalizedString this[string name] => new(name, name, resourceNotFound: false);
 
@@ -34,6 +35,7 @@ public class StepUpDialogTests : BunitContext
         /// <summary>Si se asigna, el canje no termina hasta que se complete: simula una petición en vuelo.</summary>
         public TaskCompletionSource<StepUpOutcome<string>>? CanjeEnVuelo { get; set; }
 
+        public bool CanjeLanza { get; set; }
         public int Retos { get; private set; }
         public string? CodigoEnviado { get; private set; }
 
@@ -47,6 +49,7 @@ public class StepUpDialogTests : BunitContext
             string operationKey, string challengeToken, string code, CancellationToken ct = default)
         {
             CodigoEnviado = code;
+            if (CanjeLanza) throw new HttpRequestException("caído");
             return CanjeEnVuelo?.Task ?? Task.FromResult(Canje);
         }
     }
@@ -116,7 +119,9 @@ public class StepUpDialogTests : BunitContext
 
         // La respuesta tardía de una sesión cancelada no puede reabrir ni completar nada.
         _cliente.CanjeEnVuelo.SetResult(new(true, null, "tarde"));
+        await Task.Delay(100); // deja correr la continuación del canje
         dialogo.FindAll(".modal").Should().BeEmpty();
+        (await espera).Should().BeNull("la espera ya estaba resuelta y no se re-completa con el permiso tardío");
     }
 
     [Fact]
@@ -127,6 +132,41 @@ public class StepUpDialogTests : BunitContext
         await DisposeComponentsAsync();
 
         (await espera).Should().BeNull();
+    }
+
+    [Fact]
+    public void El_dialogo_va_por_encima_de_cualquier_modal_de_Bootstrap()
+    {
+        var (dialogo, _) = Abrir();
+
+        // Se abre desde otros modales (1055): con menos z-index quedaría detrás de su telón.
+        dialogo.Find(".modal").GetAttribute("style").Should().Contain("z-index:1080");
+    }
+
+    [Fact]
+    public async Task Reabrir_con_una_espera_viva_resuelve_la_vieja_con_null()
+    {
+        var (dialogo, vieja) = Abrir();
+
+        Task<string?> nueva = null!;
+        await dialogo.InvokeAsync(() => { nueva = dialogo.Instance.RequireAsync("member.payout-method.change"); });
+
+        (await vieja).Should().BeNull();
+        nueva.IsCompleted.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Si_el_cliente_lanza_el_dialogo_no_se_queda_congelado()
+    {
+        _cliente.CanjeLanza = true;
+        var (dialogo, espera) = Abrir();
+        Teclear(dialogo, "123456");
+
+        await dialogo.Find(".stepup-confirm").ClickAsync(new());
+
+        dialogo.Find(".stepup-error").TextContent.Should().Be("TwoFactor.Error.Generic");
+        dialogo.Find("#stepup-code").HasAttribute("disabled").Should().BeFalse("_busy se resetea");
+        espera.IsCompleted.Should().BeFalse();
     }
 
     [Fact]
@@ -164,7 +204,8 @@ public class StepUpDialogTests : BunitContext
         dialogo.InvokeAsync(() => { _ = dialogo.Instance.RequireAsync("member.payout-method.change"); });
 
         dialogo.WaitForAssertion(() =>
-            dialogo.Find(".stepup-error").TextContent.Should().StartWith("StepUp.Cooldown|").And.Contain("2026"));
+            dialogo.Find(".stepup-error").TextContent.Should().Be(
+                "StepUp.Cooldown|" + new DateTime(2026, 10, 16, 9, 30, 0).ToString("f", CultureInfo.CurrentCulture)));
         dialogo.FindAll("#stepup-code").Should().BeEmpty("sin reto no hay dónde teclear");
     }
 
@@ -195,5 +236,27 @@ public class StepUpDialogTests : BunitContext
         dialogo.WaitForAssertion(() => dialogo.Find(".stepup-target"));
         dialogo.FindAll(".stepup-error").Should().BeEmpty();
         dialogo.Find("#stepup-code").GetAttribute("value").Should().BeNullOrEmpty();
+    }
+}
+
+/// <summary>Un anfitrión que no registra el cliente de step-up: la persona tiene que ver por qué no avanza.</summary>
+public class StepUpDialogSinClienteTests : BunitContext
+{
+    public StepUpDialogSinClienteTests() =>
+        Services.AddSingleton<IStringLocalizer<SharedResources>>(new StepUpDialogTests.LocalizadorDeClaves());
+
+    [Fact]
+    public async Task Sin_cliente_avisa_en_vez_de_no_hacer_nada_y_cancelar_devuelve_null()
+    {
+        var dialogo = Render<StepUpDialog>();
+        Task<string?> espera = null!;
+        await dialogo.InvokeAsync(() => { espera = dialogo.Instance.RequireAsync("member.payout-method.change"); });
+
+        dialogo.Find(".stepup-error").TextContent.Should().Be("StepUp.Unavailable");
+        dialogo.Find(".stepup-resend").HasAttribute("disabled").Should().BeTrue();
+        dialogo.FindAll("#stepup-code").Should().BeEmpty();
+
+        await dialogo.Find(".stepup-cancel").ClickAsync(new());
+        (await espera).Should().BeNull();
     }
 }
