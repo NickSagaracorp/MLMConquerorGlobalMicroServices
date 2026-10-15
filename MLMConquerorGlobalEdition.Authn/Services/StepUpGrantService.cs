@@ -33,6 +33,11 @@ public sealed class StepUpGrantService : IStepUpGrantService
 
     public string Issue(string userId, string operationKey)
     {
+        // Un permiso sin sujeto no lo podría reclamar nadie, pero firmarlo ya es un error de quien
+        // llama: que reviente aquí y no se descubra como un 403 inexplicable en otro servicio.
+        if (string.IsNullOrWhiteSpace(userId))
+            throw new ArgumentException("El permiso de step-up necesita un usuario.", nameof(userId));
+
         if (!StepUpOperations.IsKnown(operationKey))
             throw new ArgumentException($"Operación de step-up desconocida: {operationKey}.", nameof(operationKey));
 

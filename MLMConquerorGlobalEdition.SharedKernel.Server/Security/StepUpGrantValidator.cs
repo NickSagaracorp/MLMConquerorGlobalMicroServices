@@ -43,6 +43,11 @@ public sealed class StepUpGrantValidator
         if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(expectedUserId))
             return Invalid();
 
+        // Una operación fuera del catálogo solo puede venir de un atributo mal escrito. Mejor
+        // cerrar que comparar contra una clave que nadie emite y confiar en que nunca coincida.
+        if (string.IsNullOrWhiteSpace(expectedOperationKey) || !StepUpOperations.IsKnown(expectedOperationKey))
+            return Invalid();
+
         var handler = new JwtSecurityTokenHandler { MapInboundClaims = false };
         var parameters = new TokenValidationParameters
         {
