@@ -426,3 +426,41 @@ step-up vigente y sin usar, responden `403 STEP_UP_REQUIRED` y no tocan nada. La
 - Producto: un miembro que confirma su primer teléfono o autenticador espera 24 h antes de
   poder elegir su wallet de cobro.
 
+## 9. Compra de tokens (Plan F)
+
+Qué protege: `api/v1/billing/tokens/*` (Billing) y sus pasos por el BizCenter. Las pruebas en el
+navegador y con `curl` las completa la Tarea 16 del plan F
+(`docs/superpowers/plans/2026-10-15-plan-f-compra-de-tokens.md`); aquí quedan ya las condiciones
+que no pueden esperar a esa tarea.
+
+**Condiciones de despliegue:**
+
+- **BLOQUEANTE — la tarjeta no se enciende en producción.** `Billing:TokenPurchase:CardEnabled`
+  tiene que valer `false` (es el valor de `appsettings.json`) mientras `SpreedlyCardGatewayService`
+  sea un stub: hoy devuelve un éxito simulado (`simulated-spreedly-txn-…`) sin cobrar. Con la
+  tarjeta apagada la pantalla no muestra la pestaña y Billing rechaza la compra con
+  `400 CARD_PAYMENTS_DISABLED` antes de reservar nada. Si alguien la enciende por error, Billing no
+  emite por un id simulado (la compra queda a conciliar con `CARD_SIMULATED_CHARGE` y sale un
+  `Critical` en el log), pero el miembro no paga ni recibe nada: no es un estado aceptable.
+  Encenderla exige el cobro real con Spreedly, sus rechazos explícitos añadidos a
+  `CardChargeOutcomes.ExplicitNoChargeCodes` y una compra de prueba real en sandbox (plan F, R13 y
+  Tarea 16 paso 9).
+- **El barrido de compras atascadas tiene que estar vivo.** En `/hangfire` de Billing debe existir
+  el trabajo recurrente `token-purchase-stale-pending` (cada hora) y
+  `Billing:TokenPurchase:StalePendingMinutes` no puede ser `0`. Es lo que pasa a conciliar una
+  compra con tarjeta o eWallet que se quedó en `Pending` porque el proceso o la base cayeron entre
+  el cobro y la emisión (R5). Nunca libera el cupo: tesorería mira el gateway y la cierra en
+  *Admin → Billing → Token Purchases → To review*.
+- **Revisar el log de Billing por `Critical`** de la compra de tokens tras el despliegue: cada uno
+  lleva el id de una compra cuyo resultado no se pudo guardar y hay que mirar a mano.
+- El orquestador de tarjeta pasa al siguiente gateway ante cualquier fallo (R5b del plan): la compra
+  de tokens lo evita llamando un paso cada vez, pero el cobro recurrente no. Mientras la tarjeta
+  sea un stub no hay dinero en juego; antes de encender el cobro real hay que corregirlo en el
+  orquestador.
+
+| # | Prueba | Resultado esperado | ✔ |
+|---|---|---|---|
+| 9.1 | `POST api/v1/billing/tokens/purchase` con `"paymentMethod":"CreditCard"` y la tarjeta apagada | `400 CARD_PAYMENTS_DISABLED`, sin pedido ni compra | ☐ |
+| 9.2 | Catálogo con la tarjeta apagada | `cardEnabled: false` y sin pestaña de tarjeta | ☐ |
+| 9.3 | Misma clave de idempotencia con otra cantidad | `409 IDEMPOTENCY_KEY_REUSED` | ☐ |
+| 9.4 | `token-purchase-stale-pending` en `/hangfire` | existe, cada hora | ☐ |

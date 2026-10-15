@@ -59,7 +59,8 @@
 
 ## Fuera de alcance
 
-- **3D Secure** (Spreedly): plan posterior. La tarjeta se cobra con tarjetas guardadas por el orquestador existente; en desarrollo lo esperado es `CARD_CHARGE_FAILED` visible.
+- **3D Secure** (Spreedly): plan posterior. La tarjeta se cobra con tarjetas guardadas por el orquestador existente.
+- **Cobro real con Spreedly**: `SpreedlyCardGatewayService` es un stub que devuelve un éxito simulado. Por eso la tarjeta va **apagada** (`Billing:TokenPurchase:CardEnabled = false`, R13) y encenderla es un bloqueante de producción.
 - **Devoluciones**: no reembolsable.
 - **Tipo de cambio cripto**: se muestra el importe en USD; el admin coteja.
 - **Pestaña de tokens del panel admin** (`AdminMemberProfile`, `AdminMemberView`): llama a rutas `api/v1/admin/members/{id}/tokens/*` que no existen. Aquí solo se garantiza que no compra ni distribuye.
@@ -75,13 +76,15 @@
 | R2 | La verificación por saldo puede engañarse si i-Payout acredita (un payout `eWallet_Load`) entre la lectura previa y la posterior: el saldo no baja y una compra cobrada queda a conciliar. | Va al lado seguro (revisión manual, nunca tokens sin cobro). Nuestros débitos del mismo miembro están serializados (D12). |
 | R3 | En desarrollo los `AccountIdentifier` de eWallet son correos sintéticos (`AMB-…@payout.dev`): i-Payout no los reconoce y el saldo falla. | La pantalla muestra el saldo como "—" y el error; probar el débito real exige sandbox de i-Payout con un usuario creado. |
 | R4 | `RecurringBillingProcessor` también debita comisiones sin pasar por el candado de fondos (los pagos sí lo toman, D4). | Documentado; unificar en G o posterior. |
-| R5 | Caída del proceso entre un cobro (tarjeta o eWallet) y la emisión. | La emisión de tarjeta es un solo `SaveChanges` con `CancellationToken.None`; la de eWallet ocurre dentro de la transacción de la fase 2. Si el proceso muere, la compra queda `Pending` con el cobro hecho y la clave devuelve `PURCHASE_IN_PROGRESS`; se resuelve con la misma conciliación (falta un trabajo que la detecte sola). |
+| R5 | Caída del proceso, o de la base, entre un cobro (tarjeta o eWallet) y la emisión. | Ninguna compra queda en `Pending` por un fallo nuestro: lo que falla **antes** de mover dinero (ruteo, candado, lectura del saldo) abandona la compra y suelta el cupo; lo que falla **después** (emitir, guardar, pasar a conciliar) relee la compra con el contexto limpio y la deja `NeedsReconciliation` con `CancellationToken.None`, y si ni eso se guarda queda un `Critical` en el log con el id. Red de seguridad: `TokenPurchaseStalePendingJob` (cada hora) pasa a conciliar las compras con tarjeta o eWallet que llevan `Billing:TokenPurchase:StalePendingMinutes` (30) en `Pending`. **Nunca libera**: el dinero pudo moverse. |
+| R5b | **Contrato del orquestador de tarjeta.** `GatewayChargeOrchestrator` pasa al siguiente gateway ante **cualquier** fallo (incluido un timeout en el que el emisor pudo cargar) y devuelve solo el código del último: con varios pasos de una vez, un timeout en el primero y un cobro en el segundo son **dos cobros**, y un fallo final no dice si hubo cargo. Además no distingue un rechazo del emisor de un resultado desconocido. | La compra de tokens llama al orquestador **un paso cada vez** y solo sigue al siguiente cuando el fallo prueba que no hubo cobro: lista explícita `CardChargeOutcomes.ExplicitNoChargeCodes` (hoy solo comprobaciones previas que no llegan a llamar al gateway: `GATEWAY_NOT_REGISTERED`, `SPREEDLY_MEMBER_TOKEN_MISSING`, `SPREEDLY_CREDENTIAL_MISSING`, `SPREEDLY_CREDENTIAL_INCOMPLETE`, `SPREEDLY_DOWNSTREAM_TOKEN_MISSING`, `SPREEDLY_DOWNSTREAM_TOKEN_NOT_SET`, `CREDENTIAL_NOT_FOUND`, `CREDENTIAL_INACTIVE`, `CREDENTIAL_INCOMPLETE`). Cualquier otro fallo va a conciliar y no libera el cupo. Los demás usuarios del orquestador (cobro recurrente, `DelayedFallbackChargeJob`) siguen expuestos: arreglarlo en el orquestador cuando el cobro con Spreedly sea real, y añadir a la lista sus rechazos explícitos (nunca un timeout ni un 5xx). |
 | R6 | `TokenCodeGenerator` puede repetir (el espacio es pequeño). | Ya usa `RandomNumberGenerator` (impredecible y seguro entre hilos); `TokenIssuer` descarta los que ya existen. |
-| R7 | `TokenBalance` sin control de concurrencia. | Compras serializadas por miembro; confirmación de cripto y conciliación no. Mismo riesgo que `GrantTokens`. |
+| R7 | `TokenBalance` sin control de concurrencia. | Toda emisión de la compra va bajo el candado del miembro: comisiones (una transacción), eWallet (fase 2) y tarjeta (fase 3, con `CancellationToken.None`; si el candado está ocupado la compra, ya cobrada, queda a conciliar). Confirmar una cripto y conciliar **no** lo toman: su `RowVersion` evita emitir dos veces la misma compra, pero el `TokenBalance` se puede pisar con otra emisión simultánea del mismo miembro. Mismo riesgo que `GrantTokens`. |
 | R8 | **Cambiar una dirección de depósito desvía dinero.** El CRUD de parámetros lo pueden usar SuperAdmin y Admin sin segundo factor (el step-up del panel admin no existe todavía) y `GlobalParameter` no guarda historial. | Se registra un aviso en el log con el valor viejo y el nuevo y quién lo cambió; las direcciones se validan por formato. Pedir step-up en el admin queda pendiente. |
 | R9 | La plantilla de código de step-up (Plan E) dice "un cambio sensible, como a dónde se pagan tus comisiones". Para una compra se lee raro pero no es falso. | El diálogo muestra un texto propio por operación (`StepUp.WhyTokenPurchase`). La plantilla de correo no se toca. |
 | R10 | La espera de 24 h tras cambiar un factor (Plan E, `STEP_UP_COOLDOWN`) también bloquea comprar con saldo. | Es lo deseable; tarjeta y cripto siguen disponibles. |
 | R11 | `IsPurchasable` se inicializa por nombre en la migración `CompraDeTokens`; un tipo promocional con un nombre sin marca quedaría vendible. | Tras aplicar la migración en producción, revisar a mano `SELECT Id, Name, IsPurchasable FROM TokenTypes WHERE IsActive = 1` (Tarea 16) y corregir en *Token Types*. |
+| R13 | **BLOQUEANTE DE PRODUCCIÓN — la tarjeta no cobra de verdad.** `SpreedlyCardGatewayService` es un stub: valida credenciales y devuelve `simulated_success` con un id `simulated-spreedly-txn-…` (y `StubGatewayBase` uno `STUB-…`). Además el orquestador no rellena `SpreedlyPaymentMethodToken` ni `DownstreamProcessor` en la petición al gateway. Encender la tarjeta así emitiría tokens sin cobrar. | `Billing:TokenPurchase:CardEnabled` (por defecto `false`): apagada, una compra con tarjeta se rechaza al principio con `CARD_PAYMENTS_DISABLED` (sin reserva ni cobro) y el catálogo y los fondos traen `CardEnabled = false` para que la pantalla no muestre la pestaña. Aunque se encienda por error, un id que empieza por `simulated` (o `STUB-`) nunca emite: la compra queda `NeedsReconciliation` con `CARD_SIMULATED_CHARGE` y un `Critical` en el log. **No encender en producción** hasta que el cobro con Spreedly sea real y probado (Tarea 16, paso 9; `docs/deployment/pruebas-de-seguridad.md`, condiciones de despliegue). |
 | R12 | Una compra en cripto que nadie paga reservaría el cupo para siempre. | D18: el miembro la cancela, un administrador la rechaza o caduca a los `Billing:TokenPurchase:CryptoExpiryDays` días (3 por defecto) con un trabajo recurrente de Hangfire. |
 
 ## Mapa de archivos
@@ -6032,6 +6035,8 @@ git commit -m "Panel de compras de tokens: confirmar las pagadas en cripto y cer
 - Modify: `MLMConquerorGlobalEdition.BizCenter/DTOs/Tokens/TokenBalanceDto.cs`, `Features/Tokens/GetTokenBalances/GetTokenBalancesHandler.cs`
 - Test: `MLMConquerorGlobalEdition.BizCenter.Tests/CompraDeTokensEnElBizCenterTests.cs`
 
+> **Tarjeta apagada y clave reutilizada (revisión de la Tarea 9).** `TokenCatalogDto.CardEnabled` y `TokenPurchaseFundsDto.CardEnabled` viajan tal cual desde Billing (`Billing:TokenPurchase:CardEnabled`, apagada por defecto, R13); el BizCenter no los cambia. Con la tarjeta apagada Billing responde `400 CARD_PAYMENTS_DISABLED` y el BizCenter lo reenvía sin traducirlo. Reusar una clave de idempotencia con otro tipo, cantidad o método es `409 IDEMPOTENCY_KEY_REUSED`: `BillingClient` debe reenviar el 409 con su código (no convertirlo en `BILLING_UNAVAILABLE`, que conservaría la clave). Lo mismo para `PAYMENT_SERVICE_UNAVAILABLE` (400): es un fallo definitivo de esa clave.
+
 > **Step-up por ruta (D13).** El filtro de Plan E es incondicional por acción, así que la condición la pone la ruta: `POST tokens/purchase/balance` lleva `[RequiresStepUp(TokenPurchaseFromBalance)]` y solo acepta comisiones o eWallet; `POST tokens/purchase` no lo lleva y solo acepta tarjeta o cripto. Mandar un método por la ruta que no le toca es `400 PAYMENT_METHOD_WRONG_ENDPOINT`: así no hay forma de pagar con saldo por la ruta sin código. El permiso ya validado (y quemado) se reenvía a Billing en `X-Step-Up-Token`.
 
 - [ ] **Step 1: Escribir las pruebas (fallan: los tipos no existen)**
@@ -6936,6 +6941,8 @@ git commit -m "Distribuir tokens mueve los mismos codigos al destinatario y exig
 ---
 
 ### Task 15: La pantalla de tokens (SharedComponents)
+
+> **Pestaña de tarjeta solo si está encendida (revisión de la Tarea 9, R13).** `PaymentTabs` se filtra: la pestaña `CreditCard` solo aparece si `_catalog.CardEnabled` es `true` (sin catálogo, tampoco). Si la pestaña elegida deja de estar disponible al recargar, se vuelve a la primera. `TokenPurchaseMessages.ErrorKeyFor` añade `CardPaymentsDisabled` → `Tokens.Error.CardDisabled` ("El pago con tarjeta no está disponible por ahora.", en los 9 `.resx`), `IdempotencyKeyReused` → `Tokens.Error.Generic` (y se genera clave nueva) y `PaymentServiceUnavailable` → `Tokens.Error.Unavailable`. `KeepsKey` **no** incluye ninguno de los tres: son fallos definitivos de esa clave. Prueba bUnit: con `cardEnabled: false` en el catálogo no existe `#tokens-tab-CreditCard`; con `true`, sí.
 
 > **Cancelar una cripto sin pagar (D18).** El resultado `AwaitingCryptoConfirmation` muestra, junto a la dirección, un botón "Cancelar esta compra" que llama a `POST tokens/purchases/{purchaseId}/cancel` (Tarea 13) y, si va bien, recarga el catálogo (el cupo vuelve). Los estados `Cancelled`, `Rejected` y `Expired` y el código `TOKEN_PURCHASE_NOT_AWAITING_CRYPTO` necesitan texto en `TokenPurchaseMessages` y en los `.resx`.
 
@@ -8171,7 +8178,7 @@ Expected: una `200` (`AwaitingCryptoConfirmation`, con la dirección USDT y la r
   2. VIP, 1, pestaña Comisiones, Comprar → se abre el diálogo con el texto de compra con saldo ("antes de pagar tokens con tu saldo"); el código llega a MailHog; al confirmarlo aparece el código del token y el saldo baja. En MailHog llega el **recibo** (`Recibo de tu compra de tokens — pedido …`) **sin** el código del token.
   3. Cancelar el diálogo no cobra nada; repetir sin tocar nada reusa la clave.
   4. Pestaña eWallet: si el miembro no tiene wallet eWallet, "No tienes una cuenta de eWallet"; con wallet y sandbox de i-Payout, el saldo real (o "—" si i-Payout no responde: en desarrollo los identificadores son correos sintéticos, R3). Para probar la conciliación sin i-Payout: apuntar el `BaseUrl` de la credencial `EWallet` (Sandbox) a una URL que no responda y comprar → "No pudimos confirmar el cobro…"; la compra queda `NeedsReconciliation` y aparece en AdminWeb → Billing → Token Purchases → *To review*. Marcarla *Not charged* libera el cupo; repetir con otra y marcarla *Charged* emite los tokens y manda el recibo.
-  5. Pestaña Tarjeta: con tarjeta guardada compra o muestra "El pago con tarjeta fue rechazado" (sin credenciales de Spreedly es lo esperado). No pide código.
+  5. Pestaña Tarjeta: con `Billing:TokenPurchase:CardEnabled = false` (lo configurado) **no aparece**, y un `POST` directo con `"paymentMethod":"CreditCard"` da `400 CARD_PAYMENTS_DISABLED` sin crear pedido. Solo en desarrollo y encendiéndola: con tarjeta guardada la compra queda "en revisión" (`NeedsReconciliation`, `CARD_SIMULATED_CHARGE`, sin tokens) porque el gateway es un stub, o muestra "El pago con tarjeta fue rechazado" si faltan credenciales de Spreedly. No pide código. Volver a apagarla.
   6. Pestaña Cripto: muestra la dirección, la red y el importe; una moneda sin dirección no aparece; sin ninguna, "Los pagos en cripto no están disponibles". Tras pedir, el mensaje repite dirección e importe. En AdminWeb → Token Purchases (no en Crypto Signups) aparece la compra; confirmarla emite los tokens y llega el recibo; volver a confirmarla por API da `409`.
   7. Apagar Billing y comprar: "No pudimos contactar el servicio de pagos…". Encenderlo y pulsar de nuevo sin tocar nada: entra una sola vez.
   8. Distribución a un miembro de la línea: los mismos códigos cambian de dueño (`PreviousOwnerMemberId` = quien envió). Fuera del equipo (por API) → `RECIPIENT_NOT_IN_DOWNLINE`. "Copiar" deja el código en el portapapeles.
@@ -8180,7 +8187,7 @@ Expected: una `200` (`AwaitingCryptoConfirmation`, con la dirección USDT y la r
   11. AdminWeb → Tokens → Token Types: desmarcar "For sale" en un tipo vendible lo quita del catálogo del BizCenter al recargar.
 
 - [ ] **Step 8: Actualizar los documentos**
-  - `pruebas-de-seguridad.md`: sección "Compra de tokens" con los pasos 5, 6, 7.3, 7.4 y 7.9 como pruebas (propiedad por token, step-up en las dos capas, idempotencia, tope bajo concurrencia, conciliación, suplantación), y una nota sobre R8 (cambio de direcciones sin segundo factor).
+  - `pruebas-de-seguridad.md`: completar la sección "9. Compra de tokens" (sus condiciones de despliegue ya están) con los pasos 5, 6, 7.3, 7.4, 7.5 y 7.9 como pruebas (propiedad por token, step-up en las dos capas, idempotencia, tope bajo concurrencia, conciliación, tarjeta apagada, suplantación), y una nota sobre R8 (cambio de direcciones sin segundo factor).
   - Matriz de paridad:
     - Fila 64 → `Tokens | Compra con comisiones, eWallet, tarjeta o crypto | tokens/purchase y tokens/purchase/balance (step-up) en Billing vía BizCenter; eWallet con saldo real de i-Payout y conciliación manual de lo dudoso; cripto con dirección configurable y aprobación en Admin; recibo por correo | Cubierto`
     - Fila 65 → `Tokens | Límite de 50 tokens por mes, no reembolsables | Tope por mes calendario con candado por miembro; sin ruta de devolución | Cubierto`
@@ -8188,7 +8195,12 @@ Expected: una `200` (`AwaitingCryptoConfirmation`, con la dirección USDT y la r
     - Resumen (línea 7): 33 cubiertas, 8 parciales, 15 faltan.
     - Brechas: `| ~~Alta~~ Hecho | Compra de tokens | Hecho en el Plan F | BizCenter + Billing |`
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 9: Bloqueantes de producción (no se despliega a producción sin esto)**
+  - **Tarjeta (R13):** `Billing:TokenPurchase:CardEnabled` queda en `false` en producción mientras `SpreedlyCardGatewayService` sea un stub. Encenderla exige el cobro real con Spreedly (petición con `SpreedlyPaymentMethodToken` y `DownstreamProcessor`), sus rechazos explícitos añadidos a `CardChargeOutcomes.ExplicitNoChargeCodes` (R5b) y una compra de prueba real en sandbox que emita y deje un `PaymentHistory` con id de transacción no simulado.
+  - **Barrido de Pending (R5):** comprobar en `/hangfire` que existe `token-purchase-stale-pending` y que `Billing:TokenPurchase:StalePendingMinutes` no es `0`.
+  - Los dos están en `docs/deployment/pruebas-de-seguridad.md`, sección "9. Compra de tokens", **Condiciones de despliegue**.
+
+- [ ] **Step 10: Commit**
 
 ```bash
 git add docs "MWR Life → MLMConqueror SOW BizCenter y matriz de paridad.md"
@@ -8233,3 +8245,22 @@ Las Tareas 1–7 ya están en la rama; el código de sus bloques de arriba es el
 | M8 | `UserNameOfAsync` solo acepta wallets eWallet **aprobadas** y no borradas. | `EWalletFunds` | — |
 | M9 | `TokenPurchases.CreatedBy` pasa a 256 (migración `AmpliaCreadoPorDeCompraDeTokens`). | Repository | La aplica Billing al arrancar. |
 | M10–M11 | `CompraDeTokens` documenta los `UpdateData` vacíos que se quitaron; revisar `IsPurchasable` en producción (R11, Tarea 16 paso 2). | Migraciones, plan | — |
+
+
+## Correcciones tras la revisión de la Tarea 9 (2026-10-15)
+
+La Tarea 9 (servicio de compra) y la 10 (endpoints) ya están en la rama; donde el código de arriba difiera, **manda el repositorio**.
+
+| # | Cambio | Dónde | Efecto en las tareas pendientes |
+|---|---|---|---|
+| I1 | **Tarjeta apagada por defecto** (`Billing:TokenPurchase:CardEnabled`, `TokenPurchaseRules.CardEnabledConfigKey`): apagada, `CARD_PAYMENTS_DISABLED` antes de reservar. `TokenCatalogDto.CardEnabled` y `TokenPurchaseFundsDto.CardEnabled`. Un id de transacción `simulated…`/`STUB-…` nunca emite: `NeedsReconciliation` con `CARD_SIMULATED_CHARGE`. Bloqueante de producción (R13). | Billing, SharedKernel, `appsettings.json` | Tarea 13 reenvía el flag y el código; Tarea 15 oculta la pestaña; Tarea 16, pasos 7.5 y 9. |
+| I2 | Solo un fallo de la lista `CardChargeOutcomes.ExplicitNoChargeCodes` libera el cupo; cualquier otro, conciliación (`CARD_OUTCOME_UNKNOWN`). El orquestador se llama **un paso cada vez** y solo se sigue al siguiente tras un "no cobrado" explícito. | `TokenPurchaseService`, `CardChargeOutcomes` | R5b documenta el contrato del orquestador (cobro doble en los otros caminos). |
+| I3 | Ninguna compra queda en `Pending`: antes del cobro se abandona (`PAYMENT_SERVICE_UNAVAILABLE`, `EWALLET_UNAVAILABLE`, `NO_IMMEDIATE_GATEWAY`); después, se relee y pasa a conciliar (`EWALLET_CHARGED_NOT_ISSUED`, `EWALLET_REJECTED_NOT_SAVED`, `CARD_CHARGED_NOT_ISSUED`); si ni eso, `Critical` con el id. Trabajo `TokenPurchaseStalePendingJob` cada hora (`token-purchase-stale-pending`, a la media) con `Billing:TokenPurchase:StalePendingMinutes` (30): `Pending` de tarjeta o eWallet → `NeedsReconciliation` (`STALE_PENDING`), nunca liberar. | Billing | Tarea 12: las compras `STALE_PENDING` salen en *To review* como las demás; la ayuda dice "mirar el gateway antes de cerrar". |
+| I4 | La fase 3 de la tarjeta (emitir + `TokenBalance`) va bajo el candado del miembro con `CancellationToken.None`; ocupado → a conciliar (`CARD_CHARGED_GATE_BUSY`), nunca falla. | `TokenPurchaseService` | R7 corregido. |
+| I5 | El miembro nunca recibe texto de i-Payout: mensajes fijos por código; el detalle va al log con el usuario enmascarado y a las notas de la compra. `GetFundsAsync` con i-Payout caído devuelve `EWalletBalance = null`, no un 500. | `TokenPurchaseService` | Tarea 15 ya muestra "—" con `null`. |
+| M1 | La conciliación "cobrada" escribe el `PaymentHistory` como los caminos normales (importe a centavos; `eWallet`, o el procesador si lo escribió el orquestador) y, si el pedido ya tiene uno, lo enlaza en vez de duplicarlo. "No cobrada" deja ese `PaymentHistory` en `Failed`. | `ReconcileAsync` | — |
+| M2 | Misma clave con otro tipo, cantidad o método → `409 IDEMPOTENCY_KEY_REUSED`. | Servicio y controlador | Tarea 13 reenvía el 409; Tarea 15 genera clave nueva. |
+| M3 | Un choque con el índice único `(MemberId, IdempotencyKey)` al reservar devuelve la compra ganadora; un choque de `ReferenceId` al confirmar o conciliar se repite una vez con códigos nuevos y, si vuelve, `409 TOKEN_ISSUE_FAILED` sin guardar nada. | `TokenPurchaseService`, controlador | Tarea 12: mostrar `TOKEN_ISSUE_FAILED` como "inténtalo de nuevo". |
+| M5 | Holgura del débito eWallet = `min(0,01; cobro / 2)` (`EWalletFunds.ToleranceFor`). | `EWalletFunds` | — |
+| M8 | Sin `CS8602` en la lectura del resultado del cobro. | `TokenPurchaseService` | — |
+| Pruebas | `SqlServerTokenPurchaseTests` (`[SqlServerFact]`): dos confirmaciones simultáneas de la misma cripto emiten una vez (RowVersion) y dos compras simultáneas con la misma clave cobran y emiten una vez (candado real). Miembro sintético `TST-…` que se borra al terminar. | Billing.Tests | — |
