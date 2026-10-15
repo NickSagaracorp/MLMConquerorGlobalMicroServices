@@ -26,6 +26,10 @@ public static class PayoutServiceCollectionExtensions
     {
         services.AddPayoutGatewayClients();
 
+        // Candado de fondos por miembro (sp_getapplock). Lo comparten el orquestador, el lote CSV y la
+        // compra de tokens: aquí para que AdminAPI, que también ejecuta pagos, lo tenga sin acordarse.
+        services.TryAddScoped<MLMConquerorGlobalEdition.Billing.Services.IMemberFundsGate,
+                              MLMConquerorGlobalEdition.Billing.Services.SqlServerMemberFundsGate>();
         services.AddScoped<IPayoutOrchestrator, PayoutOrchestrator>();
 
         services.AddSingleton<IReceiptPdfRenderer, ITextReceiptPdfRenderer>();

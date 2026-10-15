@@ -56,6 +56,10 @@ public static class PayoutGatewayServiceCollectionExtensions
         services.AddScoped<IEWalletClient, EWalletClient>();
         services.AddHttpClient(EWalletClient.HttpClientName, c =>
         {
+            // Explícito y corto a propósito: la compra de tokens con eWallet llama a i-Payout con el
+            // candado de fondos del miembro tomado y con CancellationToken.None (el dinero puede estar
+            // moviéndose). Sin este tope, un i-Payout colgado retendría el candado los 100 s por defecto
+            // de HttpClient. Al agotarse, el débito queda "no se sabe" y la compra va a conciliación.
             c.Timeout = TimeSpan.FromSeconds(30);
         });
 

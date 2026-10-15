@@ -20,7 +20,7 @@ public class PayoutBatchExportServiceTests
 {
     private static readonly DateTime Now = new(2026, 6, 10, 12, 0, 0, DateTimeKind.Utc);
 
-    private static PayoutBatchExportService Build(AppDbContext db, Mock<IReceiptStorage>? storage = null)
+    private static PayoutBatchExportService Build(AppDbContext db, Mock<IReceiptStorage>? storage = null, IMemberFundsGate? gate = null)
     {
         var dt = new Mock<IDateTimeProvider>();
         dt.Setup(d => d.Now).Returns(Now);
@@ -36,7 +36,7 @@ public class PayoutBatchExportServiceTests
             new IPayoutCsvFormatter[] { new EWalletPayoutCsvAdapter(), new VoletPayoutCsvAdapter() },
             new IPayoutResultCsvParser[] { new EWalletPayoutCsvAdapter(), new VoletPayoutCsvAdapter() });
 
-        return new PayoutBatchExportService(db, resolver, st.Object, dt.Object, user.Object);
+        return new PayoutBatchExportService(db, resolver, st.Object, dt.Object, user.Object, gate ?? new TransactionOnlyGate(db));
     }
 
     private static void Seed(AppDbContext db, string memberId, WalletType wt, decimal amount, decimal min = 20m)
@@ -117,5 +117,71 @@ public class PayoutBatchExportServiceTests
         var result = await Build(db).ExportAsync(WalletType.Crypto, Now);
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be("PAYOUT_CSV_GATEWAY_NOT_SUPPORTED");
+    }
+
+    // ── Candado de fondos por miembro (Plan F) ────────────────────────────────
+
+    /// <summary>Puerta de lote que niega el candado a quien se le diga y anota el orden de petición.</summary>
+    private sealed class PuertaDeLote(AppDbContext db, params string[] ocupados) : IMemberFundsGate
+    {
+        public List<string> Pedidos { get; } = new();
+
+        /// <summary>Lo que "pasa" justo antes de conceder el candado: otra operación que acaba de soltarlo.</summary>
+        public Action<string>? AlConceder { get; init; }
+
+        public Task<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction> EnterAsync(string memberId, CancellationToken ct = default) =>
+            db.Database.BeginTransactionAsync(ct);
+
+        public Task<bool> TryAcquireAsync(string memberId, TimeSpan timeout, CancellationToken ct = default)
+        {
+            Pedidos.Add(memberId);
+            if (ocupados.Contains(memberId)) return Task.FromResult(false);
+            AlConceder?.Invoke(memberId);
+            return Task.FromResult(true);
+        }
+    }
+
+    [Fact]
+    public async Task Export_PideLosCandadosEnOrdenOrdinalYDejaFueraAlMiembroOcupado()
+    {
+        using var db = TestDbContextFactory.Create();
+        Seed(db, "AMB-3", WalletType.eWallet, 50m);
+        Seed(db, "AMB-1", WalletType.eWallet, 40m);
+        Seed(db, "AMB-2", WalletType.eWallet, 30m);
+        var gate = new PuertaDeLote(db, "AMB-2");
+
+        var result = await Build(db, gate: gate).ExportAsync(WalletType.eWallet, Now);
+
+        gate.Pedidos.Should().Equal("AMB-1", "AMB-2", "AMB-3");
+        result.Value!.MemberCount.Should().Be(2);
+        (await db.PayoutAttempts.Select(a => a.MemberId).ToListAsync()).Should().BeEquivalentTo("AMB-1", "AMB-3");
+        // El ocupado no queda reservado: entra en el próximo lote.
+        (await Build(db).ExportAsync(WalletType.eWallet, Now)).Value!.MemberCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Export_NoPagaSiUnDebitoDejoElTotalPorDebajoDelMinimo()
+    {
+        using var db = TestDbContextFactory.Create();
+        Seed(db, "AMB-1", WalletType.eWallet, 50m);
+        // Una compra de tokens con comisiones deja su débito entre la selección de candidatos y el
+        // candado del lote: lo que se relee con el candado ya no llega al mínimo de 20.
+        var gate = new PuertaDeLote(db)
+        {
+            AlConceder = m =>
+            {
+                db.CommissionEarnings.Add(new CommissionEarning
+                {
+                    BeneficiaryMemberId = m, Amount = -40m, Status = CommissionEarningStatus.Pending,
+                    PaymentDate = Now.AddDays(-1), IsDeleted = false, CreationDate = Now, CreatedBy = "s"
+                });
+                db.SaveChanges();
+            }
+        };
+
+        var result = await Build(db, gate: gate).ExportAsync(WalletType.eWallet, Now);
+
+        result.Value!.MemberCount.Should().Be(0);
+        db.PayoutAttemptEarnings.Should().BeEmpty();
     }
 }

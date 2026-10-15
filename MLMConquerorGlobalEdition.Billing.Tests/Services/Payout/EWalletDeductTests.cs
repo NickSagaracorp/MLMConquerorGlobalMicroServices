@@ -102,4 +102,35 @@ public class EWalletDeductTests
 
         d.Status.Should().Be(EWalletDeductionStatus.Unknown);
     }
+
+    [Fact]
+    public async Task Un_timeout_o_una_cancelacion_es_desconocida()
+    {
+        var timeout = await Cliente(new Manejador((_, _) => throw new TaskCanceledException("timeout")))
+            .DeductAsync("AMB-1", 10m, "p", "x");
+        var cancelada = await Cliente(new Manejador((_, _) => throw new OperationCanceledException()))
+            .DeductAsync("AMB-1", 10m, "p", "x");
+
+        timeout.Status.Should().Be(EWalletDeductionStatus.Unknown);
+        cancelada.Status.Should().Be(EWalletDeductionStatus.Unknown);
+    }
+
+    [Fact]
+    public async Task Una_respuesta_no_interpretable_no_arrastra_el_cuerpo()
+    {
+        var d = await Cliente(new Manejador((_, _) => Json(HttpStatusCode.BadGateway, "<html>proxy interno 10.0.0.7</html>")))
+            .DeductAsync("AMB-1", 10m, "p", "x");
+
+        d.Status.Should().Be(EWalletDeductionStatus.Unknown);
+        d.Code.Should().Be("EWALLET_HTTP_502");
+        d.Text.Should().NotContain("10.0.0.7");
+    }
+
+    [Theory]
+    [InlineData("AMB-100001", "AM***01")]
+    [InlineData("ana@x.com", "an***om")]
+    [InlineData("abc", "***")]
+    [InlineData(null, "(none)")]
+    public void El_usuario_se_enmascara_en_los_registros(string? userName, string esperado)
+        => EWalletClient.MaskUserName(userName).Should().Be(esperado);
 }

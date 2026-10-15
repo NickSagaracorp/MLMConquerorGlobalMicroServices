@@ -118,7 +118,7 @@ public class EWalletClient : IEWalletClient
         {
             _logger.LogWarning(
                 "i-Payout created user {UserName} but returned no TransactionRefID; falling back to the requested user name.",
-                request.UserName);
+                MaskUserName(request.UserName));
             assigned = request.UserName;
         }
 
@@ -254,15 +254,24 @@ public class EWalletClient : IEWalletClient
         {
             result = await PostAsync<EWalletCheckoutResponse>(cfg.Value!, payload, "add checkout items", ct);
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
         {
-            _logger.LogError(ex, "i-Payout: sin respuesta al cobrar {Reference} de {UserName}.", merchantReferenceId, userName);
-            return new EWalletDeduction(EWalletDeductionStatus.Unknown, "EWALLET_NO_RESPONSE", ex.Message);
+            // OperationCanceledException cubre el timeout del HttpClient (TaskCanceledException) y también
+            // la cancelación de quien llama: en los dos casos la petición pudo llegar a i-Payout y el
+            // cobro haberse hecho, así que es "no se sabe", nunca "falló".
+            _logger.LogError(ex, "i-Payout: sin respuesta al cobrar {Reference} de {UserName}.",
+                merchantReferenceId, MaskUserName(userName));
+            return new EWalletDeduction(EWalletDeductionStatus.Unknown, "EWALLET_NO_RESPONSE", ex.GetType().Name);
         }
 
-        // HTTP no 2xx, cuerpo vacío o JSON ilegible: i-Payout pudo haber procesado el cobro igual.
+        // HTTP no 2xx, cuerpo vacío o JSON ilegible: i-Payout pudo haber procesado el cobro igual. El
+        // cuerpo crudo no viaja: el detalle acaba en las notas de la compra, que lee tesorería.
         if (!result.IsSuccess)
-            return new EWalletDeduction(EWalletDeductionStatus.Unknown, result.ErrorCode, result.Error);
+        {
+            _logger.LogError("i-Payout: respuesta no interpretable al cobrar {Reference} de {UserName}: {Code}.",
+                merchantReferenceId, MaskUserName(userName), result.ErrorCode);
+            return new EWalletDeduction(EWalletDeductionStatus.Unknown, result.ErrorCode, "Unreadable response from i-Payout.");
+        }
 
         var status = result.Value!.Response;
         if (status is null)
@@ -367,6 +376,17 @@ public class EWalletClient : IEWalletClient
                 "EWALLET_MALFORMED_RESPONSE",
                 $"i-Payout {operation} returned unparseable JSON ({ex.Message}): {Truncate(body)}");
         }
+    }
+
+    /// <summary>
+    /// El UserName de i-Payout identifica la cuenta (y a veces es un correo): en los registros de error
+    /// basta con poder distinguirlo, no con poder copiarlo.
+    /// </summary>
+    public static string MaskUserName(string? userName)
+    {
+        if (string.IsNullOrEmpty(userName)) return "(none)";
+        if (userName.Length <= 4) return new string('*', userName.Length);
+        return $"{userName[..2]}***{userName[^2..]}";
     }
 
     private static string Truncate(string s, int max = 500) =>

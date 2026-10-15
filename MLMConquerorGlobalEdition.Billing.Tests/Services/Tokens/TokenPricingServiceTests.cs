@@ -11,8 +11,9 @@ namespace MLMConquerorGlobalEdition.Billing.Tests.Services.Tokens;
 
 /// <summary>
 /// Precio de un token = suma de lo que el alta cobraría por cada producto otorgado (SetupFee +
-/// MonthlyFee), por QuantityGranted. Se vende si el tipo está marcado como vendible, tiene al menos
-/// un producto otorgado, todos activos, y el total es mayor que cero.
+/// MonthlyFee), una vez cada uno: QuantityGranted no multiplica porque al canjear se entrega uno.
+/// Se vende si el tipo está marcado como vendible, tiene al menos un producto otorgado, todos
+/// activos, y el total es mayor que cero.
 /// </summary>
 public class TokenPricingServiceTests
 {
@@ -72,7 +73,7 @@ public class TokenPricingServiceTests
     [Theory]
     [InlineData(13, 99.99)]   // un producto
     [InlineData(64, 139.99)]  // Ambassador (0 + 40) + VIP (50 + 49.99)
-    [InlineData(40, 199.98)]  // VIP × QuantityGranted 2
+    [InlineData(40, 99.99)]   // VIP con QuantityGranted 2: al canjear se entrega uno, se cobra uno
     public async Task El_precio_es_la_suma_de_los_productos_otorgados(int tipo, double precio)
     {
         var quote = await new TokenPricingService(Catalogo()).QuoteAsync(tipo);

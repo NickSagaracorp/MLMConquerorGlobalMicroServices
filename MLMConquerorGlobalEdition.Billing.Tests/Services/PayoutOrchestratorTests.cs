@@ -23,7 +23,8 @@ public class PayoutOrchestratorTests
 
     private static PayoutOrchestrator Create(
         AppDbContext db,
-        IPayoutGatewayService gateway)
+        IPayoutGatewayService gateway,
+        IMemberFundsGate? gate = null)
     {
         var resolverMock = new Mock<IPayoutGatewayResolver>();
         resolverMock.Setup(r => r.Resolve(It.IsAny<WalletType>()))
@@ -38,7 +39,8 @@ public class PayoutOrchestratorTests
         var receipts = new Mock<IPayoutReceiptService>();
         // IssueReceiptAsync returns Task.CompletedTask by default (no setup needed)
 
-        return new PayoutOrchestrator(db, resolverMock.Object, dt.Object, user.Object, receipts.Object);
+        return new PayoutOrchestrator(db, resolverMock.Object, dt.Object, user.Object, receipts.Object,
+            gate ?? new TransactionOnlyGate(db));
     }
 
     private static void SeedWallet(AppDbContext db, string memberId, WalletType type, string account, bool preferred = true)
@@ -227,5 +229,42 @@ public class PayoutOrchestratorTests
 
         // Nothing new to pay — the only earning is reserved by the open attempt.
         result.Value!.EarningsCount.Should().Be(0);
+    }
+
+    // ── Candado de fondos compartido con la compra de tokens (Plan F) ──────────
+
+    [Fact]
+    public async Task Payout_ReservaLasComisionesConElCandadoDeFondosDelMiembro()
+    {
+        using var db = TestDbContextFactory.Create();
+        SeedWallet(db, "m1", WalletType.eWallet, "wallet@x.com");
+        SeedEarning(db, "m1", 30m, Now.AddDays(-1));
+        await db.SaveChangesAsync();
+        var gate = new TransactionOnlyGate(db);
+
+        var result = await Create(db, GatewayMock().Object, gate).ExecutePayoutAsync("m1", Now);
+
+        result.Value!.Outcome.Should().Be(PayoutOutcome.Success);
+        gate.Entered.Should().Equal("m1");
+    }
+
+    [Fact]
+    public async Task Payout_ConElCandadoOcupado_NoReservaNiLlamaAlGateway()
+    {
+        using var db = TestDbContextFactory.Create();
+        SeedWallet(db, "m1", WalletType.eWallet, "wallet@x.com");
+        SeedEarning(db, "m1", 30m, Now.AddDays(-1));
+        await db.SaveChangesAsync();
+        var gate = new Mock<IMemberFundsGate>();
+        gate.Setup(g => g.EnterAsync("m1", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new MemberFundsBusyException("m1"));
+        var gw = GatewayMock();
+
+        var result = await Create(db, gw.Object, gate.Object).ExecutePayoutAsync("m1", Now);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(PayoutOrchestrator.MemberFundsBusyCode);
+        db.PayoutAttempts.Should().BeEmpty();
+        gw.Verify(g => g.DisburseAsync(It.IsAny<PayoutTransferContext>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

@@ -13,9 +13,23 @@ public interface ITokenMonthlyQuota
 
 /// <inheritdoc cref="ITokenMonthlyQuota"/>
 /// <remarks>
+/// <para>
+/// UNA COMPRA CUENTA EN UN SOLO MES, el de su <c>TokenPurchase.PeriodKey</c>, desde que reserva hasta
+/// que emite. Lo emitido se imputa por el PeriodKey de la compra dueña (TokenTransaction.TokenPurchaseId),
+/// no por la fecha de emisión. Contando por CreationDate, una compra en cripto de 50 reservada el 30
+/// de septiembre y aún sin confirmar no ocupaba octubre: el miembro compraba otros 50 en octubre, el
+/// administrador confirmaba la de septiembre el día 2 y octubre acababa con 100 emitidos.
+/// </para>
+/// <para>
+/// Por eso confirmar una cripto o cerrar una conciliación NO vuelve a comprobar el tope, y menos contra
+/// el mes en curso: el cupo se comprobó al reservar, en su mes, y la emisión solo convierte esa reserva
+/// en tokens del mismo mes.
+/// </para>
+/// <para>
 /// Lo emitido cuenta por OriginalOwnerMemberId: TransferTokenInstance cambia MemberId, y un tope que
-/// se libera regalando tokens no es un tope. Una compra en cripto pedida en septiembre y confirmada en
-/// octubre cuenta en octubre (sus tokens nacen entonces); como reserva solo ocupó septiembre.
+/// se libera regalando tokens no es un tope. Las filas Purchased sin compra (anteriores al Plan F) se
+/// siguen imputando por su CreationDate.
+/// </para>
 /// </remarks>
 public sealed class TokenMonthlyQuota : ITokenMonthlyQuota
 {
@@ -29,10 +43,20 @@ public sealed class TokenMonthlyQuota : ITokenMonthlyQuota
         var end    = start.AddMonths(1);
         var period = TokenPurchaseRules.PeriodKey(now);
 
-        var issued = await _db.TokenTransactions.AsNoTracking()
-            .CountAsync(t => t.TransactionType == TokenTransactionType.Purchased
-                          && t.ReferenceId != null
-                          && t.OriginalOwnerMemberId == memberId
+        var purchased = _db.TokenTransactions.AsNoTracking()
+            .Where(t => t.TransactionType == TokenTransactionType.Purchased
+                     && t.ReferenceId != null
+                     && t.OriginalOwnerMemberId == memberId);
+
+        // IgnoreQueryFilters: una compra borrada lógicamente no devuelve el cupo de lo que ya emitió.
+        var issuedByPurchase = await (
+            from t in purchased
+            join p in _db.TokenPurchases.AsNoTracking().IgnoreQueryFilters() on t.TokenPurchaseId equals p.Id
+            where p.PeriodKey == period
+            select t.Id).CountAsync(ct);
+
+        var issuedWithoutPurchase = await purchased
+            .CountAsync(t => t.TokenPurchaseId == null
                           && t.CreationDate >= start
                           && t.CreationDate < end, ct);
 
@@ -44,6 +68,6 @@ public sealed class TokenMonthlyQuota : ITokenMonthlyQuota
                          || p.Status == TokenPurchaseStatus.NeedsReconciliation))
             .SumAsync(p => (int?)p.Quantity, ct) ?? 0;
 
-        return issued + reserved;
+        return issuedByPurchase + issuedWithoutPurchase + reserved;
     }
 }

@@ -85,9 +85,11 @@ public sealed class TokenPricingService : ITokenPricingService
 
     /// <summary>
     /// Suma de lo que el alta cobraría por cada producto otorgado (SetupFee + MonthlyFee, como
-    /// SelectProductsHandler), por QuantityGranted. Sin precios promo: el token sustituye al cobro
-    /// normal. IsPurchasable va primero: las variantes FREE otorgan los mismos productos que las de
-    /// pago, así que sin el flag se venderían a precio completo.
+    /// SelectProductsHandler). Sin precios promo: el token sustituye al cobro normal. NO se multiplica
+    /// por QuantityGranted: al canjear, el token entrega un producto de cada uno (QuantityGranted no se
+    /// usa al canjear), así que cobrar por cantidad sería cobrar lo que no se entrega.
+    /// IsPurchasable va primero: las variantes FREE otorgan los mismos productos que las de pago, así
+    /// que sin el flag se venderían a precio completo.
     /// </summary>
     private static TokenQuote Price(
         TokenType type, IReadOnlyCollection<TokenTypeProduct> granted, IReadOnlyDictionary<string, Product> products)
@@ -104,7 +106,7 @@ public sealed class TokenPricingService : ITokenPricingService
             if (!products.TryGetValue(link.ProductId, out var product) || !product.IsActive)
                 return NotSold(TokenPurchaseErrors.ProductInactive);
 
-            total += (product.SetupFee + product.MonthlyFee) * Math.Max(1, link.QuantityGranted);
+            total += product.SetupFee + product.MonthlyFee;
         }
 
         if (total <= 0) return NotSold(TokenPurchaseErrors.PriceNotSet);

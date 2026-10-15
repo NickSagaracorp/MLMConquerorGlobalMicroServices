@@ -83,4 +83,65 @@ public class EWalletFundsTests
         (await new EWalletFunds(db, _client.Object).UserNameOfAsync("AMB-1")).Should().Be("ipayout-main");
         (await new EWalletFunds(db, _client.Object).UserNameOfAsync("AMB-404")).Should().BeNull();
     }
+
+    [Theory]
+    [InlineData(400.01, EWalletDebitStatus.Completed)]           // justo en la holgura de un centavo
+    [InlineData(400.02, EWalletDebitStatus.NeedsReconciliation)] // un centavo más allá
+    public async Task La_holgura_es_de_un_centavo_exacto(double saldoDespues, EWalletDebitStatus esperado)
+    {
+        Deduccion(EWalletDeductionStatus.Accepted);
+        SaldoDespues((decimal)saldoDespues);
+
+        (await Sut().DebitAsync("AMB-1", 100m, 500m, "p1", "d")).Status.Should().Be(esperado);
+    }
+
+    [Fact]
+    public async Task Aceptado_y_sin_poder_releer_el_saldo_queda_a_conciliar()
+    {
+        Deduccion(EWalletDeductionStatus.Accepted);
+        _client.Setup(c => c.GetBalanceAsync("AMB-1", "USD", It.IsAny<CancellationToken>()))
+               .ReturnsAsync(Result<decimal>.Failure("EWALLET_HTTP_503", "i-Payout get balance failed (503): <html>cuerpo crudo</html>"));
+
+        var o = await Sut().DebitAsync("AMB-1", 100m, 500m, "p1", "d");
+
+        o.Status.Should().Be(EWalletDebitStatus.NeedsReconciliation);
+        o.Code.Should().Be("EWALLET_BALANCE_UNVERIFIED");
+        o.Detail.Should().Contain("EWALLET_HTTP_503").And.NotContain("<html>", "a las notas no va el cuerpo crudo");
+    }
+
+    [Fact]
+    public async Task Cobra_y_verifica_el_mismo_importe_redondeado_a_centavos()
+    {
+        _client.Setup(c => c.DeductAsync("AMB-1", 100.01m, "p1", "d", It.IsAny<CancellationToken>()))
+               .ReturnsAsync(new EWalletDeduction(EWalletDeductionStatus.Accepted, null, null));
+        SaldoDespues(399.99m);
+
+        var o = await Sut().DebitAsync("AMB-1", 100.005m, 500m, "p1", "d");
+
+        o.Status.Should().Be(EWalletDebitStatus.Completed);
+        _client.Verify(c => c.DeductAsync("AMB-1", 100.01m, "p1", "d", It.IsAny<CancellationToken>()), Times.Once);
+        EWalletFunds.ChargeAmount(99.994m).Should().Be(99.99m);
+        EWalletFunds.ChargeAmount(99.995m).Should().Be(100.00m);
+    }
+
+    [Fact]
+    public async Task Solo_vale_una_eWallet_aprobada()
+    {
+        var db = TestDbContextFactory.Create();
+        MemberProfilesWallet W(string id, bool pref, string acc, WalletStatus status) => new()
+        {
+            Id = id, MemberId = "AMB-1", WalletType = WalletType.eWallet, IsPreferred = pref, AccountIdentifier = acc,
+            Status = status, CreatedBy = "seed", CreationDate = DateTime.Now
+        };
+        db.Wallets.AddRange(W("a", true, "ipayout-pending", WalletStatus.Pending), W("b", false, "ipayout-ok", WalletStatus.Approved));
+        db.Wallets.Add(new MemberProfilesWallet
+        {
+            Id = "c", MemberId = "AMB-2", WalletType = WalletType.eWallet, IsPreferred = true, AccountIdentifier = "rechazada",
+            Status = WalletStatus.Rejected, CreatedBy = "seed", CreationDate = DateTime.Now
+        });
+        await db.SaveChangesAsync();
+
+        (await new EWalletFunds(db, _client.Object).UserNameOfAsync("AMB-1")).Should().Be("ipayout-ok");
+        (await new EWalletFunds(db, _client.Object).UserNameOfAsync("AMB-2")).Should().BeNull();
+    }
 }

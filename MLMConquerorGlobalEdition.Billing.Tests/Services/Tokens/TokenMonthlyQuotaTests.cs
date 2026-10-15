@@ -97,4 +97,61 @@ public class TokenMonthlyQuotaTests
 
         (await Usado(db)).Should().Be(0);
     }
+
+    // ── Una compra cuenta en un solo mes: el de su PeriodKey ───────────────────
+
+    private static readonly DateTime Septiembre = new(2026, 9, 30, 18, 0, 0);
+
+    [Fact]
+    public async Task Cripto_reservada_en_septiembre_y_confirmada_en_octubre_cuenta_solo_en_septiembre()
+    {
+        var db = TestDbContextFactory.Create();
+        var compra = Compra(TokenPurchaseStatus.AwaitingCryptoConfirmation, 50, periodo: 202609);
+        db.TokenPurchases.Add(compra);
+        await db.SaveChangesAsync();
+        var quota = new TokenMonthlyQuota(db);
+
+        // Esperando la transferencia: reserva septiembre, octubre está libre.
+        (await quota.UsedAsync(Yo, Septiembre)).Should().Be(50);
+        (await quota.UsedAsync(Yo, Now)).Should().Be(0);
+
+        // El administrador confirma el 2 de octubre: los tokens nacen en octubre pero son de septiembre.
+        compra.Complete("ph-1", Now, "admin@x.com");
+        var emitidos = Enumerable.Range(0, 50)
+            .Select(i => Instancia($"SEP{i:0000}", new DateTime(2026, 10, 2, 9, 0, 0)))
+            .ToArray();
+        foreach (var t in emitidos) t.TokenPurchaseId = compra.Id;
+        await Sembrar(db, emitidos);
+
+        (await quota.UsedAsync(Yo, Septiembre)).Should().Be(50);
+        (await quota.UsedAsync(Yo, Now)).Should().Be(0, "octubre conserva su cupo entero: 50 más no pasan el tope de ningún mes");
+    }
+
+    [Fact]
+    public async Task Lo_emitido_por_una_compra_de_este_mes_cuenta_aunque_se_haya_regalado()
+    {
+        var db = TestDbContextFactory.Create();
+        var compra = Compra(TokenPurchaseStatus.Completed, 2);
+        db.TokenPurchases.Add(compra);
+        await db.SaveChangesAsync();
+        var a = Instancia("CCC1111", Now.AddDays(-1));
+        var b = Instancia("CCC2222", Now.AddDays(-1), dueño: Otro);
+        a.TokenPurchaseId = b.TokenPurchaseId = compra.Id;
+        await Sembrar(db, a, b);
+
+        (await Usado(db)).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Una_compra_cerrada_sin_emitir_no_cuenta_en_ningun_mes()
+    {
+        var db = TestDbContextFactory.Create();
+        db.TokenPurchases.AddRange(
+            Compra(TokenPurchaseStatus.Cancelled, 5),
+            Compra(TokenPurchaseStatus.Rejected, 5),
+            Compra(TokenPurchaseStatus.Expired, 5));
+        await db.SaveChangesAsync();
+
+        (await Usado(db)).Should().Be(0);
+    }
 }
