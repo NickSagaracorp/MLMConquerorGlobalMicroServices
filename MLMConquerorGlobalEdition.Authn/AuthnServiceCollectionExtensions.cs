@@ -26,9 +26,19 @@ public static class AuthnServiceCollectionExtensions
     /// Registra el challenge firmado. El servicio depende de <c>IConfiguration</c> y de
     /// <c>IDateTimeProvider</c>, que cada host ya registra por su cuenta.
     /// </summary>
+    /// <remarks>
+    /// SINGLETON a propósito: el constructor importa las dos llaves RSA y deriva con HKDF las claves
+    /// de la huella y del antirreplay del TOTP, y como Scoped repetía ese trabajo en cada petición
+    /// que tocaba el segundo factor. Después de construirse el servicio no guarda estado mutable:
+    /// llaves y claves derivadas son de solo lectura y el reloj se consulta en cada llamada.
+    ///
+    /// La condición es que <c>IDateTimeProvider</c> sea también singleton en el anfitrión —lo es en
+    /// todos los que hoy lo registran—. Si un anfitrión lo registrara Scoped, el contenedor lo
+    /// rechazaría al validar ámbitos en lugar de capturar en silencio una instancia de un ámbito.
+    /// </remarks>
     public static IServiceCollection AddAuthnChallengeTokens(this IServiceCollection services)
     {
-        services.AddScoped<IChallengeTokenService, ChallengeTokenService>();
+        services.AddSingleton<IChallengeTokenService, ChallengeTokenService>();
         return services;
     }
 

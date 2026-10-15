@@ -75,13 +75,27 @@ public sealed class ChallengeTokenService : IChallengeTokenService
         // de ella una clave independiente; quien tenga la huella no aprende nada de la llave de
         // firma ni al revés.
         //
+        // La entrada de HKDF es la llave RE-EXPORTADA en PKCS#8, no los bytes tal cual vienen en la
+        // configuración. La misma llave admite más de una codificación —ImportPkcs8PrivateKey
+        // ignora lo que sobre detrás de la estructura, y otra herramienta puede escribir atributos
+        // o la versión 1 del formato—: con los bytes crudos, dos anfitriones con la MISMA llave
+        // escrita de dos maneras derivarían claves distintas, firmarían retos que el otro acepta y
+        // rechazarían como CODE_INVALID cualquier código bueno. La exportación es la forma única
+        // que da .NET para esa llave.
+        //
         // Consecuencia al rotar la llave JWT: las huellas de los retos en vuelo dejan de cuadrar y
         // esos retos fallan con CODE_INVALID. Con 5 minutos de vida es asumible: el usuario pide
         // otro código.
-        var privateKeyBytes = Convert.FromBase64String(privateKeyBase64);
-        _codeMacKey    = DeriveKey(privateKeyBytes, CodeMacInfo);
-        _totpReplayKey = DeriveKey(privateKeyBytes, TotpReplayInfo);
-        CryptographicOperations.ZeroMemory(privateKeyBytes);
+        var canonicalPrivateKey = rsaPrivate.ExportPkcs8PrivateKey();
+        try
+        {
+            _codeMacKey    = DeriveKey(canonicalPrivateKey, CodeMacInfo);
+            _totpReplayKey = DeriveKey(canonicalPrivateKey, TotpReplayInfo);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(canonicalPrivateKey);
+        }
 
         var publicKeyBase64 = JwtKeyGuard.ValidatePublicKey(config["Jwt:PublicKeyBase64"]);
         var rsaPublic = RSA.Create();

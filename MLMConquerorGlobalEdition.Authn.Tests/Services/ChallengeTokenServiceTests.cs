@@ -389,27 +389,74 @@ public class ChallengeTokenServiceTests
         }
 
         encontrado.Should().BeNull("una huella sin clave se invertiría probando los 10^6 códigos");
+
+        // El jti va en claro en el mismo payload, así que el atacante también puede probar la
+        // construcción "con sal pero sin clave": SHA-256(jti + ":" + código). Atar la huella al jti
+        // sin una clave detrás no defendería nada —la sal es pública—, y esto lo comprueba
+        // recorriendo otra vez el millón entero.
+        var jti     = service.Validate(token, TwoFactorPurpose.Login).Value!.Jti;
+        var prefijo = Encoding.UTF8.GetBytes(jti + ":");
+        var salado  = new byte[prefijo.Length + 6];
+        prefijo.CopyTo(salado, 0);
+
+        SHA256.HashData(Encoding.UTF8.GetBytes(jti + ":" + code)).Should().NotEqual(huella);
+
+        for (var n = 0; n < 1_000_000 && encontrado is null; n++)
+        {
+            n.TryFormat(salado.AsSpan(prefijo.Length), out _, "D6");
+            SHA256.HashData(salado, digest);
+            if (digest.AsSpan().SequenceEqual(huella))
+                encontrado = n.ToString("D6");
+        }
+
+        encontrado.Should().BeNull("SHA-256(jti:código) usa una sal pública y se invertiría igual de rápido");
     }
 
     [Fact]
     public void La_huella_es_un_HMAC_con_clave_derivada_de_la_llave_privada_y_atada_al_jti()
     {
-        // Fija la construcción documentada: HKDF-SHA256 sobre los bytes PKCS#8 de la llave privada
-        // con la etiqueta "mlmconqueror/2fa-code-mac/v1", y HMAC-SHA256(clave, jti + ":" + código).
-        // Si alguien cambia la etiqueta o el mensaje sin querer, esto lo dice.
-        var keys    = GenerateKeyPair();
-        var service = BuildService(out _, keys: keys);
+        // Fija la construcción documentada: HKDF-SHA256 sobre la llave privada re-exportada en
+        // PKCS#8 (la forma canónica) con la etiqueta "mlmconqueror/2fa-code-mac/v1", y
+        // HMAC-SHA256(clave, jti + ":" + código). Si alguien cambia la etiqueta, el mensaje o la
+        // entrada de HKDF sin querer, esto lo dice.
+        //
+        // La llave se configura con bytes de más detrás de la estructura PKCS#8: la importación los
+        // ignora, así que es la misma llave con otra codificación. Con los bytes crudos como entrada
+        // la clave derivada cambiaría; con la exportación canónica, no.
+        var keys      = GenerateKeyPair();
+        var canonica  = Convert.FromBase64String(keys.PrivateKeyBase64);
+        var conRelleno = Convert.ToBase64String([.. canonica, 0x00, 0x00, 0x00, 0x00]);
+
+        var service = BuildService(out _, keys: (conRelleno, keys.PublicKeyBase64));
         var token   = service.Issue(
             "user-001", "test@test.com", TwoFactorPurpose.Login, TwoFactorChannel.Email, "123456");
 
         var jti   = service.Validate(token, TwoFactorPurpose.Login).Value!.Jti;
         var clave = HKDF.DeriveKey(
-            HashAlgorithmName.SHA256, Convert.FromBase64String(keys.PrivateKeyBase64), 32,
+            HashAlgorithmName.SHA256, canonica, 32,
             salt: [], info: Encoding.UTF8.GetBytes("mlmconqueror/2fa-code-mac/v1"));
         var esperado = Convert.ToBase64String(
             HMACSHA256.HashData(clave, Encoding.UTF8.GetBytes(jti + ":123456")));
 
         CodeHashClaimOf(token).Should().Be(esperado);
+    }
+
+    [Fact]
+    public void Dos_codificaciones_de_la_misma_llave_verifican_los_retos_de_la_otra()
+    {
+        // Dos anfitriones con la misma llave escrita de dos maneras: lo que uno emite, el otro lo
+        // tiene que verificar. Con HKDF sobre los bytes crudos, el código bueno salía CODE_INVALID.
+        var keys       = GenerateKeyPair();
+        var conRelleno = Convert.ToBase64String([.. Convert.FromBase64String(keys.PrivateKeyBase64), 0x30, 0x00]);
+
+        var emisor    = BuildService(out _, keys: keys);
+        var verificador = BuildService(out _, keys: (conRelleno, keys.PublicKeyBase64));
+
+        var token  = emisor.Issue("user-001", "test@test.com", TwoFactorPurpose.Login, TwoFactorChannel.Email, "123456");
+        var claims = verificador.Validate(token, TwoFactorPurpose.Login).Value!;
+
+        verificador.VerifyCode(claims, "123456").Should().BeTrue();
+        verificador.TotpReplayTag("user-001", "123456").Should().Be(emisor.TotpReplayTag("user-001", "123456"));
     }
 
     [Fact]
