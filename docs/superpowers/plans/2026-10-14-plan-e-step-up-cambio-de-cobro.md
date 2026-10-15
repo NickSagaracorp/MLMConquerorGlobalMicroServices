@@ -14,7 +14,7 @@
 
 | Plan | Alcance | Decisiones tomadas |
 |---|---|---|
-| **E (este)** | OTP / step-up al cambiar el método de cobro | Emite SignupAPI, valida el BizCenter con llave pública. Un permiso, un uso. |
+| **E (este)** | OTP / step-up al cambiar el método de cobro | Emite SignupAPI, valida el BizCenter con llave pública. Un permiso, un uso. 24 h de espera tras cambiar un factor (Tarea 4b). |
 | F | Cobro desde el BizCenter + compra de tokens | Billing es el dueño del dinero; el BizCenter lo llama con el JWT del miembro. Precio del token = producto que otorga (`TokenTypeProduct.Role = Granted` → `Product`). Límite 50/mes, no reembolsable. Cripto por aprobación manual en el Admin, como el alta. |
 | G | Upgrade de membresía | Se cobra el **precio completo** del nivel nuevo. Tarjeta, token de upgrade (`TokenTypeUpgradeValidator`) o cripto con aprobación manual. |
 
@@ -1201,6 +1201,25 @@ Expected: PASS, sin regresiones.
 git add MLMConquerorGlobalEdition.SignupAPI MLMConquerorGlobalEdition.Signups.Tests
 git commit -m "SignupAPI emite el reto de step-up y canjea el codigo por un permiso de un solo uso"
 ```
+
+---
+
+### Task 4b: Endurecer el step-up de SignupAPI (agregada tras la revisión de la Tarea 4)
+
+**Por qué.** La revisión de la Tarea 4 encontró que, con un token de acceso robado (vive hasta 15 min tras revocar), se puede primero reapuntar el canal del código —cambiar el correo (no pide contraseña), enrolar un autenticador propio, o dar de alta y confirmar un teléfono propio y cambiar el canal preferido— y después pedir el step-up, que llega al atacante. Decisión del dueño (2026-10-14): **espera de 24 h** tras cualquier cambio de factor antes de emitir o canjear un step-up, más **aviso al dueño** del cambio. La revisión encontró además una carrera en el canje del reto, que la plantilla del código no dice qué autoriza, y que el step-up comparte el cupo de emisiones del login.
+
+**Requisitos:**
+
+1. **Marca de cambio de factor, centralizada.** Columna nueva `ApplicationUser.SecurityFactorsChangedAt` (`DateTime?`, hora de servidor `Now`, no `UtcNow`) con migración. Se sella en **un solo sitio** que no dependa de que cada handler se acuerde: al guardar un `ApplicationUser` cuyo `Email`/`NormalizedEmail`, `TwoFactorPhoneEncrypted`, `TwoFactorPhoneConfirmed`, `PreferredTwoFactorChannel`, `TwoFactorEnrolledAt` (o la clave del autenticador en `AspNetUserTokens`) cambió. Preferir un `SaveChangesInterceptor` o el override existente de `AppDbContext`. Pruebas que cubran cada propiedad y que un cambio ajeno (p. ej. `LastLoginDate`) no sella.
+2. **Espera.** `IssueStepUpHandler` y `VerifyStepUpHandler` rechazan con `STEP_UP_COOLDOWN` si `SecurityFactorsChangedAt` es posterior a `Now - Auth:StepUp:FactorChangeCooldownHours` (por defecto 24); el mensaje incluye hasta cuándo. `VerifyStepUpHandler` recarga el usuario y comprueba además `IsActive`. La UI (Tarea 6) traduce `STEP_UP_COOLDOWN` con su propia clave.
+3. **Aviso al dueño.** Evento nuevo `SECURITY_FACTOR_CHANGED` (plantilla de correo sembrada por migración en los mismos idiomas que `TWO_FACTOR_CODE`): al correo **anterior** cuando cambia el correo (BizCenter `UpdateEmailHandler`, que hoy no envía correo: agregar `AddNotifications` al BizCenter igual que SignupAPI/AdminAPI) y al correo actual cuando cambia teléfono confirmado, autenticador o canal (handlers de SignupAPI). Un fallo de envío se registra y no revierte el cambio.
+4. **Reto de un solo canje, atómico.** En `TwoFactorService.VerifyAsync`, sustituir el par `IsConsumedAsync`/`MarkConsumedAsync` por `ICacheService.TryClaimOnceAsync` sobre `TwoFactorChallengeConsumed(jti)` **después** de verificar el código: solo quien gana el claim recibe éxito. Mismo tratamiento para el antirreplay TOTP. Prueba de carrera: dos verificaciones simultáneas del mismo reto, una sola gana.
+5. **Plantilla propia.** `NotificationEvents.StepUpCode = "STEP_UP_CODE"`, sembrada (correo y SMS, mismos idiomas) con un texto que diga que el código confirma un cambio sensible en la cuenta, como a dónde se pagan las comisiones, y qué hacer si no lo pidió. `DispatchAsync` elige el evento según el propósito.
+6. **Cupo separado.** El step-up cuenta en una clave propia (`CacheKeys.StepUpIssueWindow(userId)`), para que pedir step-ups no agote los códigos de login del dueño.
+7. **Rastro.** `ILogger` en ambos handlers: emisión, canje, `INVALID_CHALLENGE`, `TOO_MANY_ATTEMPTS`, `STEP_UP_COOLDOWN` (usuario, operación, nunca el código ni el token).
+8. **Pruebas faltantes** de la revisión: usuario inactivo o inexistente al emitir, fallos de `IssueAsync` propagados, el idioma llega a `IssueAsync`, la operación del request llega a `VerifyAsync`, validadores de los dos DTOs.
+
+**Commits:** uno por bloque (marca + espera, aviso, reto atómico + plantilla + cupo).
 
 ---
 
