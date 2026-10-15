@@ -4,11 +4,12 @@
 @inject HttpClient Http
 
 @*
-    Parámetros globales del sistema. Incluye las direcciones de depósito cripto
-    (Crypto.DepositAddress.BTC / ETH / USDT y Crypto.DepositNetwork.*): una moneda sin dirección no
-    se ofrece ni en la compra de tokens ni en el alta. Cambiar una dirección desvía pagos: revisar dos
-    veces. El servidor valida el formato, guarda cada cambio en el historial (AuditTracking) y avisa
-    por correo a todos los SuperAdmin activos cuando cambia una dirección.
+    Parámetros Crypto.*: las direcciones de depósito cripto (Crypto.DepositAddress.BTC / ETH / USDT) y
+    sus redes (Crypto.DepositNetwork.*). Una moneda sin dirección no se ofrece ni en la compra de
+    tokens ni en el alta. Cambiar una dirección o una red desvía pagos: revisar dos veces. El servidor
+    solo admite claves Crypto.* (el resto de parámetros globales tienen su propia pantalla), valida el
+    formato, guarda cada cambio en el historial (AuditTracking) y avisa por correo a todos los
+    SuperAdmin activos cuando cambia una dirección o una red.
 *@
 
 <PageTitle>Global Parameters — Admin</PageTitle>
@@ -24,15 +25,16 @@
 }
 
 <div class="alert alert-info small">
+    This screen only manages <code>Crypto.*</code> parameters; other global parameters are edited on their own settings screens.
     Crypto deposit addresses: <code>Crypto.DepositAddress.BTC</code>, <code>Crypto.DepositAddress.ETH</code>,
     <code>Crypto.DepositAddress.USDT</code>, with an optional network note in <code>Crypto.DepositNetwork.&lt;CURRENCY&gt;</code>
     (e.g. <em>TRC-20</em>). Leave an address empty to stop offering that currency. Every change is recorded,
-    and changing a deposit address emails all active SuperAdmins.
+    and changing a deposit address or network emails all active SuperAdmins.
 </div>
 
 <div class="card border-0 shadow-sm">
     <div class="card-header py-3 d-flex justify-content-between align-items-center">
-        <h5 class="mb-0 fw-bold">Global parameters</h5>
+        <h5 class="mb-0 fw-bold">Crypto deposit parameters</h5>
         <button class="btn btn-sm btn-primary" @onclick="OpenCreate"><i class="ri-add-line"></i> New</button>
     </div>
     <div class="card-body p-0">
@@ -75,15 +77,16 @@
                 </div>
                 <div class="modal-body">
                     <label class="form-label small fw-semibold">Key</label>
-                    <input class="form-control form-control-sm mb-3 font-monospace" @bind="_key" disabled="@(_editId is not null)" maxlength="200" />
+                    <input class="form-control form-control-sm mb-1 font-monospace" @bind="_key" disabled="@(_editId is not null)" maxlength="200" placeholder="Crypto.DepositAddress.USDT" />
+                    <div class="form-text mb-3">Must start with <code>Crypto.</code></div>
                     <label class="form-label small fw-semibold">Value</label>
                     <textarea class="form-control form-control-sm mb-3 font-monospace" rows="2" @bind="_value" maxlength="2000"></textarea>
                     <label class="form-label small fw-semibold">Description</label>
                     <input class="form-control form-control-sm" @bind="_description" maxlength="500" />
-                    @if (_key.StartsWith("Crypto.DepositAddress."))
+                    @if (_key.StartsWith("Crypto.DepositAddress.", StringComparison.OrdinalIgnoreCase) || _key.StartsWith("Crypto.DepositNetwork.", StringComparison.OrdinalIgnoreCase))
                     {
                         <div class="alert alert-warning py-2 small mt-3 mb-0">
-                            Members will send money to this address. Double-check it against the wallet before saving: all SuperAdmins will be notified by email.
+                            Members will send money to this address (and over this network). Double-check it against the wallet before saving: all SuperAdmins will be notified by email.
                         </div>
                     }
                 </div>
@@ -114,7 +117,7 @@
         _loading = true;
         try
         {
-            var resp = await Http.GetFromJsonAsync<ApiResp<List<ParamDto>>>("api/v1/admin/global-parameters");
+            var resp = await Http.GetFromJsonAsync<ApiResp<List<ParamDto>>>("api/v1/admin/global-parameters?prefix=Crypto.");
             _items = resp?.Data ?? new();
         }
         catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }

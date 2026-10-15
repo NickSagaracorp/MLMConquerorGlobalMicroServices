@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.AdminAPI.DTOs.GlobalParameters;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Services.Security;
 using MLMConquerorGlobalEdition.SharedKernel;
@@ -10,11 +11,11 @@ using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 namespace MLMConquerorGlobalEdition.AdminAPI.Services;
 
 /// <summary>
-/// Avisa por correo a todos los SuperAdmin activos de que cambió una dirección de depósito cripto.
+/// Avisa por correo a todos los SuperAdmin activos de que cambió una dirección o una red de depósito cripto.
 /// </summary>
 public interface ICryptoDepositAlertNotifier
 {
-    /// <param name="key">La clave <c>Crypto.DepositAddress.{MONEDA}</c>.</param>
+    /// <param name="key">La clave <c>Crypto.DepositAddress.{MONEDA}</c> o <c>Crypto.DepositNetwork.{MONEDA}</c>.</param>
     /// <param name="oldValue">El valor anterior; null si el parámetro se acaba de crear.</param>
     /// <param name="newValue">El valor guardado (vacío = la moneda deja de ofrecerse).</param>
     /// <param name="actor">Quién lo cambió, como queda en el rastro del parámetro.</param>
@@ -50,8 +51,10 @@ public sealed class CryptoDepositAlertNotifier : ICryptoDepositAlertNotifier
 
     public async Task NotifyAsync(string key, string? oldValue, string newValue, string actor, CancellationToken ct = default)
     {
-        var currency = key.StartsWith(CryptoDepositKeys.AddressPrefix, StringComparison.Ordinal)
-            ? key[CryptoDepositKeys.AddressPrefix.Length..]
+        // La plantilla habla de "la dirección de depósito {{Currency}}"; para un cambio de red se dice
+        // "USDT network" para que el correo no parezca un cambio de dirección.
+        var currency = GlobalParameterRules.CurrencyOf(key) is { } c
+            ? (GlobalParameterRules.IsDepositNetworkKey(key) ? $"{c} network" : c)
             : key;
 
         var variables = new Dictionary<string, string>

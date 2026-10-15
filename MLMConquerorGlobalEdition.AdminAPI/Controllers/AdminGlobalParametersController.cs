@@ -13,8 +13,9 @@ using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 
 /// <summary>
-/// Alta, consulta y edición de <see cref="GlobalParameter"/>. Hasta ahora cada parámetro tenía su
-/// propia pantalla (o ninguna); este es el CRUD genérico. Sin borrado: los parámetros los lee el
+/// Alta, consulta y edición de los <see cref="GlobalParameter"/> <c>Crypto.*</c> (direcciones y redes de
+/// depósito). Las demás claves tienen su propia pantalla, que valida su valor: aquí se rechazan con
+/// 400 <c>GLOBAL_PARAMETER_NOT_MANAGED_HERE</c> en vez de editarse como texto libre. Sin borrado: los parámetros los lee el
 /// código por nombre, y quitar uno es cambiar el comportamiento sin que nadie lo vea. Para "apagar"
 /// una dirección de depósito se deja el valor vacío.
 /// </summary>
@@ -57,7 +58,9 @@ public class AdminGlobalParametersController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> List([FromQuery] string? prefix, CancellationToken ct)
     {
-        var query = _db.GlobalParameters.AsNoTracking();
+        // Solo las claves que gestiona esta pantalla; el prefijo de la consulta estrecha dentro de ellas.
+        var query = _db.GlobalParameters.AsNoTracking()
+            .Where(p => p.Key.StartsWith(GlobalParameterRules.ManagedPrefix));
         if (!string.IsNullOrWhiteSpace(prefix))
             query = query.Where(p => p.Key.StartsWith(prefix));
 
@@ -70,23 +73,32 @@ public class AdminGlobalParametersController : ControllerBase
     public async Task<IActionResult> Get(int id, CancellationToken ct)
     {
         var p = await _db.GlobalParameters.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
-        return p is null
-            ? NotFound(ApiResponse<GlobalParameterDto>.Fail("GLOBAL_PARAMETER_NOT_FOUND", $"Parameter {id} not found."))
-            : Ok(ApiResponse<GlobalParameterDto>.Ok(ToDto(p)));
+        if (p is null)
+            return NotFound(ApiResponse<GlobalParameterDto>.Fail("GLOBAL_PARAMETER_NOT_FOUND", $"Parameter {id} not found."));
+        if (!GlobalParameterRules.IsManagedKey(p.Key))
+            return NotManaged(p.Key);
+
+        return Ok(ApiResponse<GlobalParameterDto>.Ok(ToDto(p)));
     }
 
     /// <summary>POST /api/v1/admin/global-parameters</summary>
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateGlobalParameterRequest request, CancellationToken ct)
     {
-        var key   = request.Key.Trim();
+        // Forma canónica: si se guardara "crypto.depositaddress.btc", el lector (que busca
+        // "Crypto.DepositAddress.BTC") no la vería y la moneda seguiría con la dirección vieja.
+        var key = GlobalParameterRules.Canonicalize(request.Key ?? string.Empty);
+        if (!GlobalParameterRules.IsManagedKey(key))
+            return NotManaged(request.Key);
+
         var value = request.Value?.Trim() ?? string.Empty;
 
         var error = GlobalParameterRules.ValueError(key, value);
         if (error is not null)
             return BadRequest(ApiResponse<GlobalParameterDto>.Fail("GLOBAL_PARAMETER_INVALID", error));
 
-        if (await _db.GlobalParameters.AnyAsync(p => p.Key == key, ct))
+        var keyUpper = key.ToUpperInvariant();
+        if (await _db.GlobalParameters.AnyAsync(p => p.Key.ToUpper() == keyUpper, ct))
             return Conflict(ApiResponse<GlobalParameterDto>.Fail("GLOBAL_PARAMETER_EXISTS", $"Parameter '{key}' already exists."));
 
         var now = _clock.Now;
@@ -124,6 +136,8 @@ public class AdminGlobalParametersController : ControllerBase
         var entity = await _db.GlobalParameters.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (entity is null)
             return NotFound(ApiResponse<GlobalParameterDto>.Fail("GLOBAL_PARAMETER_NOT_FOUND", $"Parameter {id} not found."));
+        if (!GlobalParameterRules.IsManagedKey(entity.Key))
+            return NotManaged(entity.Key);
 
         var value = request.Value?.Trim() ?? string.Empty;
         var error = GlobalParameterRules.ValueError(entity.Key, value);
@@ -172,20 +186,26 @@ public class AdminGlobalParametersController : ControllerBase
     };
 
     /// <summary>
-    /// Registra y avisa solo si cambió a dónde va el dinero: tocar la descripción de una dirección o
-    /// guardarla igual no es un cambio que deba alarmar a nadie.
+    /// Registra y avisa solo si cambió a dónde (dirección) o por dónde (red) va el dinero: cambiar la
+    /// red también desvía, porque un envío por la red equivocada se pierde. Tocar la descripción o
+    /// guardar el mismo valor no alarma a nadie, ni crear una clave vacía (no ofrece nada nuevo).
     /// </summary>
     private async Task AlertIfDepositChanged(string key, string? oldValue, string newValue)
     {
-        if (!GlobalParameterRules.IsDepositAddressKey(key)) return;
+        if (!GlobalParameterRules.IsDepositKey(key)) return;
+        if (oldValue is null && string.IsNullOrEmpty(newValue)) return;
         if (oldValue is not null && string.Equals(oldValue.Trim(), newValue, StringComparison.Ordinal)) return;
 
         _logger.LogWarning(
-            "Dirección de depósito cripto cambiada: {Key} de '{Old}' a '{New}' por {Actor}.",
+            "Depósito cripto cambiado: {Key} de '{Old}' a '{New}' por {Actor}.",
             key, oldValue ?? "(nueva)", newValue, Actor);
 
         await _depositAlert.NotifyAsync(key, oldValue, newValue, Actor);
     }
+
+    private BadRequestObjectResult NotManaged(string? key) =>
+        BadRequest(ApiResponse<GlobalParameterDto>.Fail(GlobalParameterRules.NotManagedErrorCode,
+            $"Only {GlobalParameterRules.ManagedPrefix}* parameters are managed here; '{key}' has its own settings screen."));
 
     private static GlobalParameterDto ToDto(GlobalParameter p) =>
         new(p.Id, p.Key, p.Value, p.Description, p.CreationDate, p.CreatedBy, p.LastUpdateDate, p.LastUpdateBy);

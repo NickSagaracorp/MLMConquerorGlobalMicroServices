@@ -102,10 +102,11 @@ public class AdminGlobalParametersControllerTests
     public async Task Una_clave_repetida_es_409()
     {
         await using var db = InMemoryDbHelper.Create();
-        db.GlobalParameters.Add(new GlobalParameter { Key = "Foo", Value = "1", CreatedBy = "seed", CreationDate = Now });
+        db.GlobalParameters.Add(new GlobalParameter { Key = BtcKey, Value = BtcOld, CreatedBy = "seed", CreationDate = Now });
         await db.SaveChangesAsync();
 
-        var r = await Build(db).Create(new CreateGlobalParameterRequest { Key = "Foo", Value = "2" }, default);
+        // Otra grafía de la misma clave también es repetida: se compara sin mayúsculas.
+        var r = await Build(db).Create(new CreateGlobalParameterRequest { Key = "crypto.depositaddress.btc", Value = BtcNew }, default);
 
         r.Should().BeOfType<ConflictObjectResult>();
     }
@@ -127,16 +128,16 @@ public class AdminGlobalParametersControllerTests
     public async Task Actualizar_cambia_el_valor_y_el_rastro_pero_no_la_clave()
     {
         await using var db = InMemoryDbHelper.Create();
-        var p = new GlobalParameter { Key = "DailyResidualConsolidationMinimum", Value = "100", CreatedBy = "seed", CreationDate = Now.AddDays(-5) };
+        var p = new GlobalParameter { Key = "Crypto.DepositNetwork.USDT", Value = "ERC-20", CreatedBy = "seed", CreationDate = Now.AddDays(-5) };
         db.GlobalParameters.Add(p);
         await db.SaveChangesAsync();
 
-        var r = await Build(db).Update(p.Id, new UpdateGlobalParameterRequest { Value = "150", Description = "subido" }, default);
+        var r = await Build(db).Update(p.Id, new UpdateGlobalParameterRequest { Value = "TRC-20", Description = "Tron" }, default);
 
         r.Should().BeOfType<OkObjectResult>();
         var saved = db.GlobalParameters.Single();
-        saved.Key.Should().Be("DailyResidualConsolidationMinimum");
-        saved.Value.Should().Be("150");
+        saved.Key.Should().Be("Crypto.DepositNetwork.USDT");
+        saved.Value.Should().Be("TRC-20");
         saved.LastUpdateBy.Should().Be("admin@x.com");
         saved.LastUpdateDate.Should().NotBeNull();
         saved.LastUpdateDate!.Value.Should().BeCloseTo(DateTime.Now, TimeSpan.FromMinutes(1));
@@ -182,7 +183,7 @@ public class AdminGlobalParametersControllerTests
     {
         await using var db = InMemoryDbHelper.Create();
 
-        await Build(db).Create(new CreateGlobalParameterRequest { Key = "Foo", Value = "1" }, default);
+        await Build(db).Create(new CreateGlobalParameterRequest { Key = "Crypto.DepositNetwork.USDT", Value = "TRC-20" }, default);
 
         var audit = db.AuditTracking.Single();
         audit.Action.Should().Be("Create");
@@ -231,7 +232,7 @@ public class AdminGlobalParametersControllerTests
     }
 
     [Fact]
-    public async Task Otro_parametro_o_la_misma_direccion_no_avisan()
+    public async Task La_misma_direccion_o_una_clave_vacia_nueva_no_avisan()
     {
         await using var db = InMemoryDbHelper.Create();
         SeedAdmins(db);
@@ -241,7 +242,8 @@ public class AdminGlobalParametersControllerTests
 
         // Solo cambia la descripción: el dinero sigue yendo al mismo sitio.
         await controller.Update(p.Id, new UpdateGlobalParameterRequest { Value = BtcOld, Description = "fría" }, default);
-        await controller.Create(new CreateGlobalParameterRequest { Key = "Foo", Value = "1" }, default);
+        // Crear una clave vacía no ofrece ninguna moneda nueva: no hay nada que vigilar.
+        await controller.Create(new CreateGlobalParameterRequest { Key = "Crypto.DepositAddress.ETH", Value = "" }, default);
 
         email.VerifyNoOtherCalls();
     }
@@ -265,5 +267,98 @@ public class AdminGlobalParametersControllerTests
         // Un buzón que falla no impide avisar a los demás.
         email.Verify(e => e.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
             It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
+    // ── Solo Crypto.* (los demás parámetros tienen su pantalla) ──────────────────
+
+    private static string? CodigoDeError(IActionResult r) =>
+        ((ObjectResult)r).Value.Should().BeOfType<ApiResponse<GlobalParameterDto>>().Which.ErrorCode;
+
+    [Fact]
+    public async Task Una_clave_que_no_es_Crypto_no_se_crea_ni_se_edita_ni_se_lee_aqui()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        var otro = new GlobalParameter { Key = "DailyResidualConsolidationMinimum", Value = "100", CreatedBy = "seed", CreationDate = Now };
+        db.GlobalParameters.Add(otro);
+        await db.SaveChangesAsync();
+        var controller = Build(db);
+
+        var crear      = await controller.Create(new CreateGlobalParameterRequest { Key = "Foo", Value = "1" }, default);
+        var actualizar = await controller.Update(otro.Id, new UpdateGlobalParameterRequest { Value = "0" }, default);
+        var leer       = await controller.Get(otro.Id, default);
+
+        foreach (var r in new[] { crear, actualizar, leer })
+        {
+            r.Should().BeOfType<BadRequestObjectResult>();
+            CodigoDeError(r).Should().Be(GlobalParameterRules.NotManagedErrorCode);
+        }
+        db.GlobalParameters.Single().Value.Should().Be("100");
+        db.AuditTracking.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Listar_sin_prefijo_solo_devuelve_las_claves_Crypto()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        db.GlobalParameters.AddRange(
+            new GlobalParameter { Key = BtcKey, Value = BtcOld, CreatedBy = "seed", CreationDate = Now },
+            new GlobalParameter { Key = "DailyResidualConsolidationMinimum", Value = "100", CreatedBy = "seed", CreationDate = Now });
+        await db.SaveChangesAsync();
+
+        var r = await Build(db).List(null, default);
+
+        ((OkObjectResult)r).Value.Should().BeOfType<ApiResponse<IEnumerable<GlobalParameterDto>>>()
+            .Which.Data!.Select(d => d.Key).Should().Equal(BtcKey);
+    }
+
+    [Fact]
+    public async Task La_clave_se_guarda_en_su_forma_canonica()
+    {
+        await using var db = InMemoryDbHelper.Create();
+
+        var r = await Build(db).Create(new CreateGlobalParameterRequest { Key = " crypto.depositaddress.btc ", Value = BtcOld }, default);
+
+        r.Should().BeOfType<CreatedAtActionResult>();
+        db.GlobalParameters.Single().Key.Should().Be(BtcKey);
+    }
+
+    [Theory]
+    [InlineData("crypto.depositaddress.BTC", true)]
+    [InlineData("CRYPTO.DEPOSITNETWORK.usdt", false)]
+    public void Las_claves_de_deposito_se_reconocen_sin_importar_mayusculas(string key, bool esDireccion)
+    {
+        GlobalParameterRules.IsManagedKey(key).Should().BeTrue();
+        GlobalParameterRules.IsDepositKey(key).Should().BeTrue();
+        GlobalParameterRules.IsDepositAddressKey(key).Should().Be(esDireccion);
+    }
+
+    [Fact]
+    public async Task Una_red_de_moneda_no_admitida_es_400()
+    {
+        await using var db = InMemoryDbHelper.Create();
+
+        var r = await Build(db).Create(new CreateGlobalParameterRequest { Key = "Crypto.DepositNetwork.DOGE", Value = "Dogecoin" }, default);
+
+        r.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task Cambiar_la_red_de_deposito_tambien_avisa()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        SeedAdmins(db);
+        var p = new GlobalParameter { Key = "Crypto.DepositNetwork.USDT", Value = "TRC-20", CreatedBy = "seed", CreationDate = Now };
+        db.GlobalParameters.Add(p);
+        await db.SaveChangesAsync();
+        var email = new Mock<IEmailService>();
+
+        await Build(db, email).Update(p.Id, new UpdateGlobalParameterRequest { Value = "ERC-20" }, default);
+
+        email.Verify(e => e.SendAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            NotificationEvents.CryptoDepositAddressChanged,
+            It.Is<Dictionary<string, string>>(v =>
+                v["Currency"] == "USDT network" && v["OldAddress"] == "TRC-20" && v["NewAddress"] == "ERC-20"),
+            It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 }
