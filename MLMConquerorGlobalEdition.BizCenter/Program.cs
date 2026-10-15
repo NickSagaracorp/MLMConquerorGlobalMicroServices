@@ -220,6 +220,10 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Securit
     builder.Services.AddSingleton(info);
 }
 builder.Services.AddSingleton<ICacheService, CacheService>();
+// Valida el permiso de step-up con la llave pública. El BizCenter no firma nada: el permiso lo
+// emite SignupAPI al verificar el código. Ver StepUpGrant. Singleton porque solo guarda la llave y
+// lee IDateTimeProvider, que aquí también es singleton.
+builder.Services.AddSingleton<MLMConquerorGlobalEdition.SharedKernel.Server.Security.StepUpGrantValidator>();
 
 builder.Services.AddSingleton<IPushNotificationService, FirebasePushNotificationService>();
 
