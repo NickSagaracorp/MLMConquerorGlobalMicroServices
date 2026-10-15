@@ -1304,6 +1304,8 @@ Expected: sin resultados.
 builder.Services.AddSingleton<MLMConquerorGlobalEdition.SharedKernel.Server.Security.StepUpGrantValidator>();
 ```
 
+> El filtro resuelve de DI `StepUpGrantValidator` (esta línea) e `ICacheService` (ya registrado); sin cualquiera de los dos, el atributo revienta al construir el filtro. `IConnectionMultiplexer` ya quedó registrado en `BizCenter/Program.cs` (arreglo de la revisión, igual que AdminAPI): sin él, `TryClaimOnceAsync` marca el permiso solo dentro del proceso y se podría repetir en otra instancia.
+>
 > Singleton: solo guarda la llave y lee `IDateTimeProvider`. Confirmar con `grep -n "IDateTimeProvider" MLMConquerorGlobalEdition.BizCenter/Program.cs` que el de SharedKernel está registrado como singleton; si es scoped, registrar el validador `AddScoped`.
 
 - [ ] **Step 5: Correr todo BizCenter.Tests**

@@ -32,4 +32,13 @@ public interface ICacheService
     /// que no puede provocarlo para saltarse el tope.
     /// </summary>
     Task<long> DecrementAsync(string key, CancellationToken ct = default);
+
+    /// <summary>
+    /// Marca la clave si no existía y devuelve true; false si ya estaba marcada. A diferencia del
+    /// resto de la interfaz NO degrada: si el almacén no responde, lanza. Es para barreras de
+    /// seguridad de un solo uso, donde degradar es abrir.
+    ///
+    /// Con Redis detrás es un SET NX: atómico entre instancias. Sin él, solo dentro del proceso.
+    /// </summary>
+    Task<bool> TryClaimOnceAsync(string key, TimeSpan expiry, CancellationToken ct = default);
 }

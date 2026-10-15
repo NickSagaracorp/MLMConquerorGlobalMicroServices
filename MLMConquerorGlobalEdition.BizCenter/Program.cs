@@ -145,22 +145,41 @@ builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
     var required  = mode.Equals("Required", StringComparison.OrdinalIgnoreCase);
 
     var redisReachable = false;
+    StackExchange.Redis.IConnectionMultiplexer? multiplexer = null;
     try
     {
-        using var probe = StackExchange.Redis.ConnectionMultiplexer.Connect(
+        multiplexer = StackExchange.Redis.ConnectionMultiplexer.Connect(
             new StackExchange.Redis.ConfigurationOptions
             {
                 EndPoints          = { redisConn },
                 ConnectTimeout     = 250,
                 AbortOnConnectFail = false
             });
-        redisReachable = probe.IsConnected;
+        redisReachable = multiplexer.IsConnected;
     }
     catch { redisReachable = false; }
 
     MLMConquerorGlobalEdition.SharedKernel.Services.CacheBackendInfo info;
     if (redisReachable)
     {
+        // CacheService.TryClaimOnceAsync necesita una conexión para SET NX: sin ella, la marca de
+        // "permiso de step-up ya usado" vale solo dentro de este proceso, y el mismo permiso
+        // pasaría una vez por cada instancia del BizCenter. Mismo registro que AdminAPI y
+        // SignupAPI.
+        //
+        // Se abre una conexión propia en vez de reutilizar la del sondeo: aquella lleva
+        // ConnectTimeout=250 para no retrasar el arranque cuando Redis no está, demasiado
+        // agresivo para una conexión de larga vida.
+        multiplexer!.Dispose();
+        builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(_ =>
+            StackExchange.Redis.ConnectionMultiplexer.Connect(
+                new StackExchange.Redis.ConfigurationOptions
+                {
+                    EndPoints          = { redisConn },
+                    ConnectTimeout     = 5000,
+                    ConnectRetry       = 3,
+                    AbortOnConnectFail = false
+                }));
         builder.Services.AddStackExchangeRedisCache(o => o.Configuration = redisConn);
         info = new MLMConquerorGlobalEdition.SharedKernel.Services.CacheBackendInfo
         {
@@ -172,12 +191,14 @@ builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
     }
     else if (required)
     {
+        multiplexer?.Dispose();
         throw new InvalidOperationException(
             $"[Cache] Cache:Mode is 'Required' but Redis at '{redisConn}' is unreachable. " +
             "Refusing to start with in-process memory cache.");
     }
     else
     {
+        multiplexer?.Dispose();
         builder.Services.AddDistributedMemoryCache();
         info = new MLMConquerorGlobalEdition.SharedKernel.Services.CacheBackendInfo
         {

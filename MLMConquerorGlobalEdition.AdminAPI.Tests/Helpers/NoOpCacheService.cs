@@ -23,4 +23,8 @@ public sealed class NoOpCacheService : ICacheService
 
     public Task<long> DecrementAsync(string key, CancellationToken ct = default)
         => Task.FromResult(0L);
+
+    /// <summary>Cada reclamo es el primero, por la misma razón que el incremento.</summary>
+    public Task<bool> TryClaimOnceAsync(string key, TimeSpan expiry, CancellationToken ct = default)
+        => Task.FromResult(true);
 }
