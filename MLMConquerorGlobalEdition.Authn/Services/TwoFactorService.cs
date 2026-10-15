@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using MLMConquerorGlobalEdition.Authn.Abstractions;
 using MLMConquerorGlobalEdition.Authn.Models;
 using MLMConquerorGlobalEdition.Domain.Entities.Security;
@@ -19,8 +21,13 @@ public sealed class TwoFactorService : ITwoFactorService
     private const string CodeInvalid        = "CODE_INVALID";
     private const string InvalidChallenge   = "INVALID_CHALLENGE";
 
+    /// <summary>
+    /// El almacén de marcas de un solo uso no respondió. Se cierra en vez de dar por buena la
+    /// verificación: sin poder marcar el reto como usado, el mismo código serviría otra vez.
+    /// </summary>
+    private const string VerificationUnavailable = "VERIFICATION_UNAVAILABLE";
+
     private const string DefaultLanguage = "en";
-    private const string Marker          = "1";
 
     private readonly IChallengeTokenService       _challenges;
     private readonly UserManager<ApplicationUser> _userManager;
@@ -29,6 +36,7 @@ public sealed class TwoFactorService : ITwoFactorService
     private readonly IEncryptionService           _encryption;
     private readonly ICacheService                _cache;
     private readonly IDateTimeProvider            _dateTime;
+    private readonly ILogger<TwoFactorService>    _logger;
 
     private readonly int      _maxAttemptsPerChallenge;
     private readonly int      _maxIssuesPerWindow;
@@ -43,8 +51,10 @@ public sealed class TwoFactorService : ITwoFactorService
         IEncryptionService           encryption,
         ICacheService                cache,
         IDateTimeProvider            dateTime,
-        IConfiguration               config)
+        IConfiguration               config,
+        ILogger<TwoFactorService>?   logger = null)
     {
+        _logger      = logger ?? NullLogger<TwoFactorService>.Instance;
         _challenges  = challenges;
         _userManager = userManager;
         _email       = email;
@@ -86,8 +96,8 @@ public sealed class TwoFactorService : ITwoFactorService
         // escribir después deja el hueco por el que N peticiones simultáneas leen el mismo
         // valor y pasan todas. El precio es que un despacho fallido gasta cupo, lo que es
         // preferible a que una ráfaga concurrente lo salte entero.
-        var issues = await _cache.IncrementAsync(
-            CacheKeys.TwoFactorIssueWindow(user.Id), _issueWindow, ct);
+        var quotaKey = IssueWindowKey(user.Id, purpose);
+        var issues   = await _cache.IncrementAsync(quotaKey, _issueWindow, ct);
 
         if (issues > _maxIssuesPerWindow)
             return Result<ChallengeIssued>.Failure(
@@ -103,7 +113,7 @@ public sealed class TwoFactorService : ITwoFactorService
 
         try
         {
-            await DispatchAsync(channel, target, code, language, ct);
+            await DispatchAsync(channel, target, code, language, purpose, ct);
         }
         catch (Exception)
         {
@@ -116,7 +126,7 @@ public sealed class TwoFactorService : ITwoFactorService
             // Devolverlo no reabre el hueco que cerró el contador atómico: solo ocurre
             // cuando el mensaje no llegó a salir, y quien ataca no controla que el proveedor
             // se caiga.
-            await _cache.DecrementAsync(CacheKeys.TwoFactorIssueWindow(user.Id), ct);
+            await _cache.DecrementAsync(quotaKey, ct);
 
             // Sin despacho no hay challenge. Devolver uno dejaría al usuario esperando un
             // código que nunca va a llegar, sin manera de saber que el problema es el
@@ -172,11 +182,31 @@ public sealed class TwoFactorService : ITwoFactorService
         _ => null
     };
 
+    /// <summary>
+    /// El cupo de emisiones en el que cuenta este propósito. El step-up va aparte: pedir step-ups
+    /// con una sesión robada no puede dejar al dueño sin códigos para entrar.
+    /// </summary>
+    private static string IssueWindowKey(string userId, TwoFactorPurpose purpose) =>
+        purpose == TwoFactorPurpose.StepUp
+            ? CacheKeys.StepUpIssueWindow(userId)
+            : CacheKeys.TwoFactorIssueWindow(userId);
+
+    /// <summary>
+    /// La plantilla según para qué es el código. El de step-up tiene la suya porque tiene que decir
+    /// qué autoriza: un "tu código de verificación" genérico no le avisa a nadie de que alguien está
+    /// cambiando a dónde se le paga.
+    /// </summary>
+    private static string EventFor(TwoFactorPurpose purpose) =>
+        purpose == TwoFactorPurpose.StepUp ? NotificationEvents.StepUpCode : NotificationEvents.TwoFactorCode;
+
     private async Task DispatchAsync(
-        TwoFactorChannel channel, string target, string? code, string language, CancellationToken ct)
+        TwoFactorChannel channel, string target, string? code, string language,
+        TwoFactorPurpose purpose, CancellationToken ct)
     {
         if (channel == TwoFactorChannel.Authenticator)
             return;
+
+        var eventType = EventFor(purpose);
 
         var variables = new Dictionary<string, string>
         {
@@ -190,7 +220,7 @@ public sealed class TwoFactorService : ITwoFactorService
                 toEmail:      target,
                 toName:       target,
                 languageCode: language,
-                eventType:    NotificationEvents.TwoFactorCode,
+                eventType:    eventType,
                 variables:    variables,
                 ct:           ct);
             return;
@@ -199,7 +229,7 @@ public sealed class TwoFactorService : ITwoFactorService
         await _sms.SendAsync(
             toPhoneE164:  target,
             languageCode: language,
-            eventType:    NotificationEvents.TwoFactorCode,
+            eventType:    eventType,
             variables:    variables,
             ct:           ct);
     }
@@ -238,10 +268,10 @@ public sealed class TwoFactorService : ITwoFactorService
 
         var claims = validation.Value!;
 
-        // Los intentos se miran antes que la marca de consumido: al agotarlos el challenge
-        // se quema, y quien insista tiene que enterarse de que el motivo es el límite y no
-        // un token cualquiera inválido. Además así el sexto intento falla aunque el código
-        // sea el correcto, que es justo lo que impide probar indefinidamente.
+        // Los intentos se miran antes que nada: al agotarlos el challenge se quema, y quien
+        // insista tiene que enterarse de que el motivo es el límite y no un token cualquiera
+        // inválido. Además así el sexto intento falla aunque el código sea el correcto, que es
+        // justo lo que impide probar indefinidamente.
         //
         // El intento se apunta al entrar, no al fallar: comprobar sobre un valor leído y
         // escribirlo después no es un tope, porque entre la lectura y la escritura caben
@@ -257,14 +287,10 @@ public sealed class TwoFactorService : ITwoFactorService
                 TooManyAttempts, "Demasiados intentos fallidos; solicite un código nuevo.");
         }
 
-        if (await IsConsumedAsync(claims.Jti, ct))
-            return Result<ChallengeClaims>.Failure(
-                InvalidChallenge, "Este challenge ya se usó; solicite un código nuevo.");
-
         var codeHash = _challenges.HashCode(code);
 
         var verified = claims.Channel == TwoFactorChannel.Authenticator
-            ? await VerifyAuthenticatorAsync(claims, code, codeHash, ct)
+            ? await VerifyAuthenticatorAsync(claims, code)
             : VerifyStoredHash(claims.CodeHash, codeHash);
 
         if (!verified)
@@ -278,26 +304,69 @@ public sealed class TwoFactorService : ITwoFactorService
             return Result<ChallengeClaims>.Failure(CodeInvalid, "El código introducido no es válido.");
         }
 
-        // Antirreplay del challenge: la firma sigue siendo válida hasta su exp, así que sin
-        // esta marca el mismo token se redimiría dos veces dentro de su ventana de vida.
-        await MarkConsumedAsync(claims, ct);
+        // Antirreplay del challenge: la firma sigue siendo válida hasta su exp, así que sin una
+        // marca el mismo token se redimiría dos veces dentro de su ventana de vida.
+        //
+        // La marca se RECLAMA, no se comprueba y luego se escribe. Con "¿está usado? → verificar →
+        // marcar", dos canjes simultáneos del mismo reto leían los dos "no usado" y salían los dos
+        // con éxito: dos permisos de step-up por un solo código. El SET NX lo gana uno solo. Va
+        // DESPUÉS de verificar el código para que un intento fallido no queme un reto que el
+        // usuario todavía puede completar.
+        var claim = await ClaimOnceAsync(
+            CacheKeys.TwoFactorChallengeConsumed(claims.Jti), RemainingLifetime(claims), claims, "reto", ct);
+        if (claim is not null)
+            return claim;
 
+        // Antirreplay del código TOTP: Identity lo sigue aceptando durante la tolerancia de reloj
+        // (~90 s). En una operación de dinero eso serían dos autorizaciones con el mismo código,
+        // cada una con su challenge distinto —el jti no las relaciona—. Mismo trato: se reclama.
+        // Quien pierde ve CODE_INVALID, como cualquier código que ya no vale.
         if (claims.Channel == TwoFactorChannel.Authenticator)
-            await _cache.SetAsync(
-                CacheKeys.TwoFactorTotpUsed(claims.UserId, codeHash), Marker, _totpReplayWindow, ct);
+        {
+            claim = await ClaimOnceAsync(
+                CacheKeys.TwoFactorTotpUsed(claims.UserId, codeHash), _totpReplayWindow, claims, "código TOTP", ct,
+                lostCode: CodeInvalid, lostMessage: "El código introducido no es válido.");
+            if (claim is not null)
+                return claim;
+        }
 
         return Result<ChallengeClaims>.Success(claims);
     }
 
-    private async Task<bool> VerifyAuthenticatorAsync(
-        ChallengeClaims claims, string code, string codeHash, CancellationToken ct)
+    /// <summary>
+    /// Reclama una marca de un solo uso. Null si se ganó; si no, el fallo que hay que devolver.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="ICacheService.TryClaimOnceAsync"/> lanza en vez de degradar cuando el almacén no
+    /// responde. Aquí se convierte en un fallo —el usuario ve un error, no una excepción— pero
+    /// nunca en un éxito: sin marca, el mismo código valdría otra vez.
+    /// </remarks>
+    private async Task<Result<ChallengeClaims>?> ClaimOnceAsync(
+        string key, TimeSpan expiry, ChallengeClaims claims, string what, CancellationToken ct,
+        string lostCode = InvalidChallenge, string lostMessage = "Este challenge ya se usó; solicite un código nuevo.")
     {
-        // Antirreplay del código TOTP: Identity lo sigue aceptando durante la tolerancia de
-        // reloj (~90 s). En una operación de dinero eso serían dos autorizaciones con el
-        // mismo código, cada una con su challenge distinto — el jti no las relaciona.
-        if (await _cache.GetAsync<string>(CacheKeys.TwoFactorTotpUsed(claims.UserId, codeHash), ct) is not null)
-            return false;
+        try
+        {
+            if (await _cache.TryClaimOnceAsync(key, expiry, ct))
+                return null;
 
+            _logger.LogWarning(
+                "2FA: {What} ya usado para el usuario {UserId} (propósito {Purpose}); se rechaza la repetición.",
+                what, claims.UserId, claims.Purpose);
+            return Result<ChallengeClaims>.Failure(lostCode, lostMessage);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex,
+                "2FA: no se pudo marcar el {What} como usado para el usuario {UserId} (propósito {Purpose}); se rechaza.",
+                what, claims.UserId, claims.Purpose);
+            return Result<ChallengeClaims>.Failure(
+                VerificationUnavailable, "No se pudo completar la verificación; inténtelo de nuevo en unos minutos.");
+        }
+    }
+
+    private async Task<bool> VerifyAuthenticatorAsync(ChallengeClaims claims, string code)
+    {
         var user = await _userManager.FindByIdAsync(claims.UserId);
         if (user is null)
             return false;
@@ -331,15 +400,29 @@ public sealed class TwoFactorService : ITwoFactorService
 
     // ── límites y antirreplay ────────────────────────────────────────────────
 
-    /// <summary>Quema el challenge: agotados los intentos, hay que pedir uno nuevo.</summary>
-    private Task BurnAsync(ChallengeClaims claims, CancellationToken ct) => MarkConsumedAsync(claims, ct);
-
-    private Task MarkConsumedAsync(ChallengeClaims claims, CancellationToken ct) =>
-        _cache.SetAsync(
-            CacheKeys.TwoFactorChallengeConsumed(claims.Jti), Marker, RemainingLifetime(claims), ct);
-
-    private async Task<bool> IsConsumedAsync(string jti, CancellationToken ct) =>
-        await _cache.GetAsync<string>(CacheKeys.TwoFactorChallengeConsumed(jti), ct) is not null;
+    /// <summary>
+    /// Quema el challenge: agotados los intentos, hay que pedir uno nuevo. Se quema RECLAMANDO la
+    /// misma marca que reclama un canje bueno —con Redis, SET NX y las escrituras de
+    /// <c>IDistributedCache</c> no comparten espacio de claves, así que una marca escrita con
+    /// <c>SetAsync</c> no la vería el reclamo—.
+    ///
+    /// Si el almacén falla aquí no pasa nada grave: el contador de intentos ya está por encima del
+    /// tope y rechaza cualquier intento más por sí solo. Por eso se registra y no se propaga.
+    /// </summary>
+    private async Task BurnAsync(ChallengeClaims claims, CancellationToken ct)
+    {
+        try
+        {
+            await _cache.TryClaimOnceAsync(
+                CacheKeys.TwoFactorChallengeConsumed(claims.Jti), RemainingLifetime(claims), ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex,
+                "2FA: no se pudo quemar el reto del usuario {UserId}; el límite de intentos sigue rechazándolo.",
+                claims.UserId);
+        }
+    }
 
     /// <summary>
     /// Lo que le queda de vida al challenge. Se mide con UtcNow, no con Now: <c>exp</c> viene

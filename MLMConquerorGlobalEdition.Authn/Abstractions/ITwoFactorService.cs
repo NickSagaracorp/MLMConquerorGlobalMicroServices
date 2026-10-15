@@ -15,7 +15,9 @@ namespace MLMConquerorGlobalEdition.Authn.Abstractions;
 /// intentos por challenge y el límite de emisiones por usuario.
 ///
 /// Códigos de error: <c>CHANNEL_UNAVAILABLE</c>, <c>TOO_MANY_REQUESTS</c>,
-/// <c>TOO_MANY_ATTEMPTS</c>, <c>CODE_INVALID</c>, más los de
+/// <c>TOO_MANY_ATTEMPTS</c>, <c>CODE_INVALID</c>, <c>VERIFICATION_UNAVAILABLE</c> (el almacén
+/// de marcas de un solo uso no respondió: se cierra en vez de dar por buena la verificación),
+/// más los de
 /// <see cref="IChallengeTokenService"/> (<c>INVALID_CHALLENGE</c>, <c>CODE_EXPIRED</c>).
 /// </summary>
 public interface ITwoFactorService
@@ -25,6 +27,9 @@ public interface ITwoFactorService
     /// devuelve si el despacho tuvo éxito: si el transporte falla, el usuario recibe
     /// <c>CHANNEL_UNAVAILABLE</c> y la interfaz puede ofrecerle otro canal, en vez de dejarlo
     /// esperando un código que nunca va a llegar.
+    ///
+    /// El step-up cuenta en su propio cupo y sale con su propia plantilla (<c>STEP_UP_CODE</c>),
+    /// que dice qué autoriza el código; el resto de propósitos usa <c>TWO_FACTOR_CODE</c>.
     /// </summary>
     /// <param name="forcedChannel">Canal impuesto por quien llama. Si es null se usa el
     /// preferido del usuario.</param>
@@ -49,8 +54,9 @@ public interface ITwoFactorService
     string IssueEnrollmentToken(ApplicationUser user);
 
     /// <summary>
-    /// Comprueba el código contra el challenge. Con éxito, marca el challenge como consumido
-    /// para que no pueda redimirse otra vez dentro de su ventana de vida.
+    /// Comprueba el código contra el challenge. Con éxito, RECLAMA el challenge como consumido
+    /// —un SET NX, después de verificar el código— para que no pueda redimirse otra vez dentro de
+    /// su ventana de vida: de dos canjes simultáneos del mismo reto solo uno tiene éxito.
     /// </summary>
     Task<Result<ChallengeClaims>> VerifyAsync(
         string            challengeToken,

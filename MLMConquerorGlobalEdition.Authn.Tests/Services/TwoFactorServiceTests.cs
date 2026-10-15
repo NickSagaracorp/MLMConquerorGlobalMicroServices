@@ -10,6 +10,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Security;
 using MLMConquerorGlobalEdition.Repository.Identity;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
+using MLMConquerorGlobalEdition.SharedKernel.Security;
 
 namespace MLMConquerorGlobalEdition.Authn.Tests.Services;
 
@@ -44,6 +45,21 @@ public class TwoFactorServiceTests
     /// reescribe en los incrementos siguientes.</summary>
     private readonly Dictionary<string, TimeSpan> _counterExpiries = new();
 
+    /// <summary>Marcas de un solo uso de <c>TryClaimOnceAsync</c>: SET NX, otro espacio más.</summary>
+    private readonly HashSet<string> _claims = new();
+
+    /// <summary>
+    /// Las pruebas de carrera lanzan verificaciones a la vez: el falso Redis tiene que ser atómico
+    /// él mismo, o lo que se probaría sería el diccionario.
+    /// </summary>
+    private readonly object _gate = new();
+
+    /// <summary>
+    /// Si se fija, cada reclamo espera a que se cumpla antes de decidir: así las dos verificaciones
+    /// de la prueba de carrera llegan las dos al reclamo con el código ya validado.
+    /// </summary>
+    private Func<Task>? _beforeClaim;
+
     public TwoFactorServiceTests()
     {
         MoveClockTo(FixedNow);
@@ -60,7 +76,21 @@ public class TwoFactorServiceTests
 
         WireCache<string>();
         WireCounters();
+        WireClaims();
     }
+
+    /// <summary>Simula SET NX: el primero que reclama la clave gana, cualquier otro pierde.</summary>
+    private void WireClaims() =>
+        _cache.Setup(c => c.TryClaimOnceAsync(
+                  It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+              .Returns(async (string key, TimeSpan _, CancellationToken _) =>
+              {
+                  if (_beforeClaim is not null)
+                      await _beforeClaim();
+
+                  lock (_gate)
+                      return _claims.Add(key);
+              });
 
     /// <summary>
     /// Simula INCR + EXPIRE: devuelve el valor nuevo y solo se queda con la expiración de la
@@ -71,12 +101,15 @@ public class TwoFactorServiceTests
                   It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync((string key, TimeSpan expiry, CancellationToken _) =>
               {
-                  if (!_counters.ContainsKey(key))
-                      _counterExpiries[key] = expiry;
+                  lock (_gate)
+                  {
+                      if (!_counters.ContainsKey(key))
+                          _counterExpiries[key] = expiry;
 
-                  var next = _counters.TryGetValue(key, out var current) ? current + 1 : 1;
-                  _counters[key] = next;
-                  return next;
+                      var next = _counters.TryGetValue(key, out var current) ? current + 1 : 1;
+                      _counters[key] = next;
+                      return next;
+                  }
               });
 
     // ── andamiaje ────────────────────────────────────────────────────────────
@@ -732,5 +765,175 @@ public class TwoFactorServiceTests
 
         VerifyNothingDispatched();
         _counters.Should().BeEmpty();
+    }
+
+    // ── canje atómico (Plan E, Tarea 4b) ─────────────────────────────────────
+
+    /// <summary>
+    /// LA CARRERA. Dos canjes del mismo reto con el código bueno, a la vez. Con el par "¿está
+    /// usado? → marcar" los dos leían "no usado" y los dos salían con éxito: dos permisos de step-up
+    /// por un código. Aquí los dos llegan al reclamo con el código ya validado —el reclamo espera a
+    /// que estén los dos— y solo uno puede ganarlo.
+    /// </summary>
+    [Fact]
+    public async Task VerifyAsync_DosCanjesSimultaneosDelMismoReto_SoloUnoGana()
+    {
+        SetupValidate(Token, Claims());
+        var service = BuildService();
+
+        var bothArrived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var arrived     = 0;
+        _beforeClaim = () =>
+        {
+            if (Interlocked.Increment(ref arrived) == 2)
+                bothArrived.SetResult();
+            return bothArrived.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        };
+
+        var results = await Task.WhenAll(
+            Task.Run(() => service.VerifyAsync(Token, Code, TwoFactorPurpose.Login)),
+            Task.Run(() => service.VerifyAsync(Token, Code, TwoFactorPurpose.Login)));
+
+        results.Count(r => r.IsSuccess).Should().Be(1);
+        results.Single(r => !r.IsSuccess).ErrorCode.Should().Be("INVALID_CHALLENGE");
+    }
+
+    [Fact]
+    public async Task VerifyAsync_ReclamaElRetoDespuesDeVerificar_NoAntes()
+    {
+        SetupValidate(Token, Claims());
+        var service = BuildService();
+
+        // Un código malo no puede quemar el reto: el usuario todavía puede teclear el bueno.
+        (await service.VerifyAsync(Token, "654321", TwoFactorPurpose.Login)).ErrorCode.Should().Be("CODE_INVALID");
+        _claims.Should().BeEmpty();
+
+        (await service.VerifyAsync(Token, Code, TwoFactorPurpose.Login)).IsSuccess.Should().BeTrue();
+        _claims.Should().Contain(CacheKeys.TwoFactorChallengeConsumed("jti-1"));
+    }
+
+    [Fact]
+    public async Task VerifyAsync_UsaElReclamoAtomico_NoLeerYEscribir()
+    {
+        SetupValidate(Token, Claims());
+        var service = BuildService();
+        var key     = CacheKeys.TwoFactorChallengeConsumed("jti-1");
+
+        await service.VerifyAsync(Token, Code, TwoFactorPurpose.Login);
+
+        _cache.Verify(c => c.TryClaimOnceAsync(key, TimeSpan.FromMinutes(5), It.IsAny<CancellationToken>()), Times.Once);
+        _cache.Verify(c => c.GetAsync<string>(key, It.IsAny<CancellationToken>()), Times.Never);
+        _cache.Verify(c => c.SetAsync(key, It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task VerifyAsync_SiElAlmacenNoResponde_FallaCerrado_SinLanzar()
+    {
+        SetupValidate(Token, Claims());
+        _cache.Setup(c => c.TryClaimOnceAsync(It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+              .ThrowsAsync(new InvalidOperationException("Redis caído"));
+        var service = BuildService();
+
+        var result = await service.VerifyAsync(Token, Code, TwoFactorPurpose.Login);
+
+        // Sin poder marcar el reto, el mismo código valdría otra vez: no hay éxito posible.
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be("VERIFICATION_UNAVAILABLE");
+    }
+
+    [Fact]
+    public async Task VerifyAsync_TotpReclamaElCodigoTambien()
+    {
+        var user = BuildUser(preferred: TwoFactorChannel.Authenticator);
+        SetupValidate(Token, Claims(TwoFactorChannel.Authenticator));
+        _userManager.Setup(m => m.FindByIdAsync(UserId)).ReturnsAsync(user);
+        _userManager.Setup(m => m.VerifyTwoFactorTokenAsync(user, TokenOptions.DefaultAuthenticatorProvider, Code))
+                    .ReturnsAsync(true);
+        var service = BuildService(BuildConfig(replaySeconds: 90));
+
+        (await service.VerifyAsync(Token, Code, TwoFactorPurpose.Login)).IsSuccess.Should().BeTrue();
+
+        _cache.Verify(c => c.TryClaimOnceAsync(
+            CacheKeys.TwoFactorTotpUsed(UserId, HashOf(Code)), TimeSpan.FromSeconds(90), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task VerifyAsync_AlAgotarLosIntentos_QuemaConElMismoReclamo()
+    {
+        SetupValidate(Token, Claims());
+        var service = BuildService();
+
+        for (var i = 0; i < 5; i++)
+            await service.VerifyAsync(Token, "000000", TwoFactorPurpose.Login);
+
+        // La quema tiene que vivir donde mira el reclamo: con Redis, SetAsync y SET NX no comparten
+        // espacio de claves.
+        _claims.Should().Contain(CacheKeys.TwoFactorChallengeConsumed("jti-1"));
+    }
+
+    // ── plantilla y cupo del step-up ─────────────────────────────────────────
+
+    [Theory]
+    [InlineData(TwoFactorChannel.Email)]
+    [InlineData(TwoFactorChannel.Sms)]
+    public async Task IssueAsync_StepUp_UsaSuPropiaPlantilla(TwoFactorChannel channel)
+    {
+        var user    = BuildUser(preferred: channel);
+        var service = BuildService();
+
+        var result = await service.IssueAsync(user, TwoFactorPurpose.StepUp, StepUpOperations.PayoutMethodChange);
+
+        result.IsSuccess.Should().BeTrue(because: result.Error);
+        if (channel == TwoFactorChannel.Email)
+            _email.Verify(e => e.SendAsync(Email, It.IsAny<string>(), It.IsAny<string>(), NotificationEvents.StepUpCode,
+                It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()), Times.Once);
+        else
+            _sms.Verify(s => s.SendAsync(Phone, It.IsAny<string>(), NotificationEvents.StepUpCode,
+                It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task IssueAsync_Login_SigueConLaPlantillaDeLogin()
+    {
+        var service = BuildService();
+
+        await service.IssueAsync(BuildUser(), TwoFactorPurpose.Login);
+
+        _email.Verify(e => e.SendAsync(Email, It.IsAny<string>(), It.IsAny<string>(), NotificationEvents.StepUpCode,
+            It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task IssueAsync_StepUp_CuentaEnSuPropioCupo_YNoAgotaElDelLogin()
+    {
+        var user    = BuildUser();
+        var service = BuildService(BuildConfig(maxIssues: 3));
+
+        for (var i = 0; i < 3; i++)
+            (await service.IssueAsync(user, TwoFactorPurpose.StepUp, StepUpOperations.PayoutMethodChange)).IsSuccess.Should().BeTrue();
+
+        (await service.IssueAsync(user, TwoFactorPurpose.StepUp, StepUpOperations.PayoutMethodChange))
+            .ErrorCode.Should().Be("TOO_MANY_REQUESTS");
+
+        // El dueño sigue pudiendo entrar: pedir step-ups no gasta los códigos de su login.
+        (await service.IssueAsync(user, TwoFactorPurpose.Login)).IsSuccess.Should().BeTrue();
+
+        _counters[CacheKeys.StepUpIssueWindow(UserId)].Should().Be(4);
+        _counters[CacheKeys.TwoFactorIssueWindow(UserId)].Should().Be(1);
+    }
+
+    [Fact]
+    public async Task IssueAsync_StepUp_SiElTransporteFalla_DevuelveSuPropioCupo()
+    {
+        _email.Setup(e => e.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                  It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()))
+              .ThrowsAsync(new InvalidOperationException("SES caído"));
+        var service = BuildService();
+
+        await service.IssueAsync(BuildUser(), TwoFactorPurpose.StepUp, StepUpOperations.PayoutMethodChange);
+
+        _cache.Verify(c => c.DecrementAsync(CacheKeys.StepUpIssueWindow(UserId), It.IsAny<CancellationToken>()), Times.Once);
+        _cache.Verify(c => c.DecrementAsync(CacheKeys.TwoFactorIssueWindow(UserId), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

@@ -85,6 +85,13 @@ public static class CacheKeys
     public static string TwoFactorIssueWindow(string userId) => $"2fa:user:{userId}:issues";
 
     /// <summary>
+    /// Ventana de emisiones de step-up por usuario, aparte de la del login. Con un solo cupo, quien
+    /// tenga una sesión robada podría agotar a fuerza de pedir step-ups los códigos con los que el
+    /// dueño entra a su cuenta. Mismos límites que <see cref="TwoFactorIssueWindow"/>.
+    /// </summary>
+    public static string StepUpIssueWindow(string userId) => $"stepup:user:{userId}:issues";
+
+    /// <summary>
     /// Marca de código TOTP ya usado, por usuario y hash del código. Identity acepta el
     /// mismo código durante la tolerancia de reloj (~90 s); en una operación de dinero eso
     /// significaría autorizar dos veces con el mismo código.
