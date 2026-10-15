@@ -30,6 +30,7 @@ public class TokenTypeConfiguration : IEntityTypeConfiguration<TokenType>
         builder.Property(x => x.Description).HasMaxLength(500);
         builder.Property(x => x.TemplateUrl).HasMaxLength(1000);
         builder.Property(x => x.Category).HasConversion<int>().HasDefaultValue(TokenCategory.None);
+        builder.Property(x => x.IsPurchasable).HasDefaultValue(false);
 
         builder.HasMany(x => x.ProductLinks)
                .WithOne()

@@ -53,4 +53,10 @@ public class TokenTransaction : AuditChangesLongKey
     /// OrderId of the signup that consumed this token. Only set when Status = Used.
     /// </summary>
     public string? UsedOnOrderId { get; set; }
+
+    /// <summary>
+    /// La compra que emitió esta instancia (Plan F). Null para las emitidas por alta, renovación o
+    /// administración. Permite devolver los mismos códigos cuando una compra se repite con su clave.
+    /// </summary>
+    public string? TokenPurchaseId { get; set; }
 }

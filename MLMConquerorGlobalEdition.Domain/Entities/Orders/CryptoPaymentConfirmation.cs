@@ -39,6 +39,9 @@ public class CryptoPaymentConfirmation : AuditChangesStringKey
     /// <summary>Importe del pedido en el momento del alta. Congelado aquí para el cotejo manual.</summary>
     public decimal AmountDue { get; set; }
 
+    /// <summary>Qué se cobra. Las filas anteriores a la compra de tokens son todas altas.</summary>
+    public CryptoPaymentPurpose Purpose { get; set; } = CryptoPaymentPurpose.Signup;
+
     public CryptoPaymentConfirmationStatus Status { get; set; } = CryptoPaymentConfirmationStatus.AwaitingPayment;
 
     /// <summary>El hash de la transferencia. Se captura AL CONFIRMAR, no al completar el alta.</summary>

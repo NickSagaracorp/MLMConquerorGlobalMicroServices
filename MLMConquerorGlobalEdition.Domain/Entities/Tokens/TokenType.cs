@@ -12,6 +12,14 @@ public class TokenType : AuditChangesIntKey
     public bool IsActive { get; set; } = true;
 
     /// <summary>
+    /// ¿Se vende en el BizCenter? Decisión de negocio por tipo, no derivable de otros datos: las
+    /// variantes FREE / Coupon / SpecialPromo / Help a Friend otorgan los mismos productos, con los
+    /// mismos precios, que las de pago. Por defecto false: un tipo nuevo no se vende hasta que un
+    /// administrador lo decide en Admin → Tokens → Token Types.
+    /// </summary>
+    public bool IsPurchasable { get; set; }
+
+    /// <summary>
     /// Classification used to drive product-relation rules.
     /// See <see cref="Enums.TokenCategory"/> for semantics.
     /// </summary>

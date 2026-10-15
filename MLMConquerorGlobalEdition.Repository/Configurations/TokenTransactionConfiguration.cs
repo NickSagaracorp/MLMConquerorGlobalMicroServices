@@ -32,5 +32,11 @@ public class TokenTransactionConfiguration : IEntityTypeConfiguration<TokenTrans
 
         // Fast lookups for "what tokens does this member currently hold (redeemable)?"
         builder.HasIndex(x => new { x.MemberId, x.Status, x.ReferenceId });
+
+        builder.Property(x => x.TokenPurchaseId).HasMaxLength(36);
+        builder.HasIndex(x => x.TokenPurchaseId).HasFilter("[TokenPurchaseId] IS NOT NULL");
+
+        // El tope de 50 al mes cuenta por dueño original, tipo de movimiento y fecha.
+        builder.HasIndex(x => new { x.OriginalOwnerMemberId, x.TransactionType, x.CreationDate });
     }
 }
