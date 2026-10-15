@@ -408,6 +408,42 @@ public class TokenPurchaseServiceTests
         _db.TokenTransactions.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task Repetir_una_cripto_devuelve_la_direccion_que_se_dio_aunque_cambie_la_configurada()
+    {
+        var primera = (await Buy(Request(TokenPaymentMethods.Crypto, qty: 2, crypto: "USDT", key: "clave-direccion-1"))).Value!;
+
+        var conf = await _db.CryptoPaymentConfirmations.SingleAsync();
+        conf.DepositAddress.Should().Be("TQ5NkEQwK6x9C2iGBDbTj9JxF8tqmL7Ak5");
+        conf.DepositNetwork.Should().Be("TRC-20");
+
+        // Tesorería cambia la dirección y la red en Global Parameters.
+        foreach (var p in _db.GlobalParameters.Where(p => p.Key.Contains("USDT")).ToList())
+            p.Value = p.Key == CryptoDepositKeys.AddressKey("USDT") ? "TNuevaDireccionDeDeposito000000000" : "ERC-20";
+        await _db.SaveChangesAsync();
+
+        var repetida = (await Buy(Request(TokenPaymentMethods.Crypto, qty: 2, crypto: "USDT", key: "clave-direccion-1"))).Value!;
+
+        repetida.PurchaseId.Should().Be(primera.PurchaseId);
+        repetida.CryptoDepositAddress.Should().Be("TQ5NkEQwK6x9C2iGBDbTj9JxF8tqmL7Ak5", "es la dirección a la que el miembro ya pudo transferir");
+        repetida.CryptoNetwork.Should().Be("TRC-20");
+    }
+
+    [Fact]
+    public async Task Repetir_una_cripto_anterior_a_guardar_la_direccion_devuelve_la_configurada()
+    {
+        await Buy(Request(TokenPaymentMethods.Crypto, crypto: "USDT", key: "clave-antigua-1"));
+        var conf = await _db.CryptoPaymentConfirmations.SingleAsync();
+        conf.DepositAddress = null;
+        conf.DepositNetwork = null;
+        await _db.SaveChangesAsync();
+
+        var repetida = (await Buy(Request(TokenPaymentMethods.Crypto, crypto: "USDT", key: "clave-antigua-1"))).Value!;
+
+        repetida.CryptoDepositAddress.Should().Be("TQ5NkEQwK6x9C2iGBDbTj9JxF8tqmL7Ak5");
+        repetida.CryptoNetwork.Should().Be("TRC-20");
+    }
+
     [Theory]
     [InlineData("ETH", TokenPurchaseErrors.CryptoAddressNotConfigured)]
     [InlineData("DOGE", TokenPurchaseErrors.CryptoCurrencyNotSupported)]

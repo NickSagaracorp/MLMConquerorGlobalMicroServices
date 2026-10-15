@@ -19,6 +19,8 @@ public class CryptoPaymentConfirmationConfiguration : IEntityTypeConfiguration<C
         builder.Property(x => x.MemberId).IsRequired().HasMaxLength(50);
         builder.Property(x => x.MemberEmail).IsRequired().HasMaxLength(256);
         builder.Property(x => x.CryptoCurrency).IsRequired().HasMaxLength(20);
+        builder.Property(x => x.DepositAddress).HasMaxLength(512);
+        builder.Property(x => x.DepositNetwork).HasMaxLength(200);
         builder.Property(x => x.AmountDue).HasPrecision(18, 4);
         builder.Property(x => x.CryptoTransactionId).HasMaxLength(128);
         builder.Property(x => x.ConfirmedByUserId).HasMaxLength(450);

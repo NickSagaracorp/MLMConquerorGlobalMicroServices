@@ -619,6 +619,9 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
         _db.CryptoPaymentConfirmations.Add(new CryptoPaymentConfirmation
         {
             OrderId = order.Id, MemberId = d.MemberId, MemberEmail = d.MemberEmail, CryptoCurrency = currency,
+            // La dirección que se le da ahora queda guardada: si cambia en Global Parameters, repetir
+            // esta compra sigue devolviendo la misma.
+            DepositAddress = deposit.Address, DepositNetwork = deposit.Network,
             AmountDue = d.Total, Status = CryptoPaymentConfirmationStatus.AwaitingPayment,
             Purpose = CryptoPaymentPurpose.TokenPurchase, CreatedBy = d.Actor, CreationDate = now, LastUpdateDate = now
         });
@@ -1288,10 +1291,17 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
         CryptoDepositAddressDto? deposit = null;
         if (existing.Status == TokenPurchaseStatus.AwaitingCryptoConfirmation)
         {
-            var currency = await _db.CryptoPaymentConfirmations.AsNoTracking()
-                .Where(c => c.OrderId == existing.OrderId).Select(c => c.CryptoCurrency).FirstOrDefaultAsync(ct);
-            deposit = (await _cryptoAddresses.GetConfiguredAsync(ct)).FirstOrDefault(c => c.Currency == currency)
-                      ?? (currency is null ? null : new CryptoDepositAddressDto { Currency = currency });
+            // La dirección que se dio al crear la compra, no la que esté configurada hoy. Las filas de
+            // antes de guardarla no la tienen: para esas, la configurada (lo que se hacía antes).
+            var given = await _db.CryptoPaymentConfirmations.AsNoTracking()
+                .Where(c => c.OrderId == existing.OrderId)
+                .Select(c => new { c.CryptoCurrency, c.DepositAddress, c.DepositNetwork })
+                .FirstOrDefaultAsync(ct);
+            if (given is { DepositAddress: { Length: > 0 } address })
+                deposit = new CryptoDepositAddressDto { Currency = given.CryptoCurrency, Address = address, Network = given.DepositNetwork };
+            else if (given is not null)
+                deposit = (await _cryptoAddresses.GetConfiguredAsync(ct)).FirstOrDefault(c => c.Currency == given.CryptoCurrency)
+                          ?? new CryptoDepositAddressDto { Currency = given.CryptoCurrency };
         }
 
         return Done(existing, order, codes, used, deposit);

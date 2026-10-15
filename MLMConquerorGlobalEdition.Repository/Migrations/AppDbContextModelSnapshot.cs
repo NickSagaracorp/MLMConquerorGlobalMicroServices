@@ -8663,6 +8663,14 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<string>("DeletedBy")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("DepositAddress")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<string>("DepositNetwork")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
