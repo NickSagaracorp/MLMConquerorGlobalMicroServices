@@ -7,6 +7,10 @@ using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using MLMConquerorGlobalEdition.BizCenter.Controllers;
 using MLMConquerorGlobalEdition.BizCenter.DTOs.Tokens.Validators;
@@ -45,12 +49,21 @@ public class CompraDeTokensEnElBizCenterTests
     private static HttpResponseMessage Json(HttpStatusCode s, string json) =>
         new(s) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
 
-    private static BillingClient Cliente(HttpMessageHandler h)
+    private static BillingClient Cliente(HttpMessageHandler h, ILogger<BillingClient>? log = null)
     {
         var factory = new Mock<IHttpClientFactory>();
         factory.Setup(f => f.CreateClient(BillingClient.HttpClientName))
                .Returns(() => new HttpClient(h, disposeHandler: false) { BaseAddress = new Uri("https://billing.pruebas/") });
-        return new BillingClient(factory.Object, NullLogger<BillingClient>.Instance);
+        return new BillingClient(factory.Object, log ?? NullLogger<BillingClient>.Instance);
+    }
+
+    private sealed class LogEnLista<T> : ILogger<T>
+    {
+        public readonly List<LogLevel> Niveles = new();
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+            Func<TState, Exception?, string> formatter) => Niveles.Add(logLevel);
     }
 
     private static DefaultHttpContext Contexto(string? grant = null, bool suplantando = false)
@@ -196,6 +209,86 @@ public class CompraDeTokensEnElBizCenterTests
 
         r.StatusCode.Should().Be(StatusCodes.Status502BadGateway);
         r.ErrorCode.Should().Be(TokenPurchaseErrors.BillingUnavailable);
+    }
+
+    // Cuerpos reales del Forbidden de Billing antes de la corrección: ApiResponse<bool>.Fail manda
+    // "data":false, que no cabe en ApiResponse<TokenPurchaseResultDto>. El estado y el código tienen
+    // que llegar igual.
+    [Theory]
+    [InlineData(StepUpGrant.RequiredErrorCode)]
+    [InlineData(TokenPurchaseErrors.NotAMember)]
+    [InlineData(TokenPurchaseErrors.Impersonation)]
+    public async Task Un_403_real_de_Billing_con_data_false_llega_tal_cual(string codigo)
+    {
+        var h = new Manejador(_ => Json(HttpStatusCode.Forbidden,
+            $$"""{"success":false,"data":false,"message":null,"errors":["motivo de Billing"],"errorCode":"{{codigo}}","userFriendlyMessage":null,"traceId":"0HN:1","timestamp":"2026-10-15T10:00:00"}"""));
+
+        var r = await Cliente(h).PurchaseTokensAsync(Peticion(TokenPaymentMethods.EWallet), "jwt", "permiso");
+
+        r.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        r.ErrorCode.Should().Be(codigo);
+        r.Error.Should().Be("motivo de Billing");
+    }
+
+    [Fact]
+    public async Task Un_403_con_data_null_tambien_llega_tal_cual()
+    {
+        var h = new Manejador(_ => Json(HttpStatusCode.Forbidden,
+            $$"""{"success":false,"data":null,"errors":["ya usado"],"errorCode":"{{StepUpGrant.InvalidErrorCode}}"}"""));
+
+        var r = await Cliente(h).PurchaseTokensAsync(Peticion(TokenPaymentMethods.EWallet), "jwt", "permiso");
+
+        r.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        r.ErrorCode.Should().Be(StepUpGrant.InvalidErrorCode);
+    }
+
+    [Fact]
+    public async Task Un_401_de_Billing_es_502_BILLING_AUTH_MISMATCH_y_no_saca_al_miembro()
+    {
+        var log = new LogEnLista<BillingClient>();
+        var h = new Manejador(_ => new HttpResponseMessage(HttpStatusCode.Unauthorized));
+
+        var r = await Cliente(h, log).PurchaseTokensAsync(Peticion(TokenPaymentMethods.Crypto), "jwt");
+
+        r.StatusCode.Should().Be(StatusCodes.Status502BadGateway);
+        r.StatusCode.Should().NotBe(StatusCodes.Status401Unauthorized);
+        r.ErrorCode.Should().Be(TokenPurchaseErrors.BillingAuthMismatch);
+        r.Error.Should().NotBeNullOrWhiteSpace();
+        log.Niveles.Should().Contain(LogLevel.Error);
+    }
+
+    [Fact]
+    public async Task Un_401_con_codigo_tampoco_se_devuelve_como_401()
+    {
+        var h = new Manejador(_ => Json(HttpStatusCode.Unauthorized, """{"success":false,"errorCode":"AUTH_TOKEN_INVALID","errors":["x"]}"""));
+
+        var r = await Cliente(h).GetTokenCatalogAsync("jwt");
+
+        r.StatusCode.Should().Be(StatusCodes.Status502BadGateway);
+        r.ErrorCode.Should().Be(TokenPurchaseErrors.BillingAuthMismatch);
+    }
+
+    public static TheoryData<HttpStatusCode, string?> CuatroCientosSinCodigo => new()
+    {
+        { HttpStatusCode.BadRequest, """{"type":"https://tools.ietf.org/html/rfc9110#section-15.5.1","title":"One or more validation errors occurred.","status":400,"errors":{"Quantity":["bad"]}}""" },
+        { HttpStatusCode.NotFound, null },
+        { HttpStatusCode.MethodNotAllowed, null },
+        { HttpStatusCode.UnsupportedMediaType, """{"title":"Unsupported Media Type","status":415}""" },
+        { HttpStatusCode.Forbidden, "<html>forbidden</html>" }
+    };
+
+    [Theory]
+    [MemberData(nameof(CuatroCientosSinCodigo))]
+    public async Task Un_4xx_sin_codigo_es_BILLING_CONTRACT_ERROR_y_no_BILLING_UNAVAILABLE(HttpStatusCode estado, string? cuerpo)
+    {
+        var log = new LogEnLista<BillingClient>();
+        var h = new Manejador(_ => cuerpo is null ? new HttpResponseMessage(estado) : Json(estado, cuerpo));
+
+        var r = await Cliente(h, log).PurchaseTokensAsync(Peticion(TokenPaymentMethods.Crypto), "jwt");
+
+        r.StatusCode.Should().Be(StatusCodes.Status502BadGateway);
+        r.ErrorCode.Should().Be(TokenPurchaseErrors.BillingContractError);
+        log.Niveles.Should().Contain(LogLevel.Error);
     }
 
     [Fact]
@@ -451,5 +544,103 @@ public class CompraDeTokensEnElBizCenterTests
             .ShouldHaveValidationErrorFor(x => x.CreditCardId);
         v.TestValidate(new PurchaseTokensRequest { TokenTypeId = 1, Quantity = 1, PaymentMethod = "Crypto", CryptoCurrency = "DOGE", IdempotencyKey = "k" })
             .ShouldHaveValidationErrorFor(x => x.CryptoCurrency);
+    }
+    // ─── Revisión de la Tarea 13 ─────────────────────────────────────────────
+
+    private static ServiceProvider ConCliente(string? baseUrl, string entorno)
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Services:BillingBaseUrl"] = baseUrl
+        }).Build();
+        var env = new Mock<IHostEnvironment>();
+        env.Setup(e => e.EnvironmentName).Returns(entorno);
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddBillingClient(config, env.Object);
+        return services.BuildServiceProvider();
+    }
+
+    [Fact]
+    public void El_cliente_billing_lleva_su_BaseAddress_con_barra_90_s_y_valida_el_certificado()
+    {
+        using var sp = ConCliente("https://billing.interno:7443/base", Environments.Production);
+
+        var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient(BillingClient.HttpClientName);
+        client.BaseAddress.Should().Be(new Uri("https://billing.interno:7443/base/"));
+        client.Timeout.Should().Be(TimeSpan.FromSeconds(90));
+
+        HttpMessageHandler handler = sp.GetRequiredService<IHttpMessageHandlerFactory>().CreateHandler(BillingClient.HttpClientName);
+        while (handler is DelegatingHandler d) handler = d.InnerHandler!;
+        switch (handler)
+        {
+            case HttpClientHandler h:
+                h.ServerCertificateCustomValidationCallback.Should().BeNull();
+                break;
+            case SocketsHttpHandler s:
+                (s.SslOptions.RemoteCertificateValidationCallback is null).Should().BeTrue();
+                break;
+            default:
+                throw new InvalidOperationException($"Manejador inesperado: {handler.GetType()}");
+        }
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Fuera_de_Development_sin_BillingBaseUrl_no_arranca(string? valor)
+    {
+        var act = () => ConCliente(valor, Environments.Production);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Services:BillingBaseUrl*");
+    }
+
+    [Fact]
+    public void En_Development_sin_BillingBaseUrl_usa_el_puerto_local_de_Billing()
+    {
+        using var sp = ConCliente(null, Environments.Development);
+
+        sp.GetRequiredService<IHttpClientFactory>().CreateClient(BillingClient.HttpClientName)
+          .BaseAddress.Should().Be(new Uri("https://localhost:7007/"));
+    }
+
+    [Fact]
+    public void Cancelar_solo_acepta_un_id_con_formato_de_Guid()
+    {
+        var plantilla = typeof(TokensController).GetMethod(nameof(TokensController.CancelPurchase))!
+            .GetCustomAttribute<HttpPostAttribute>()!.Template;
+
+        plantilla.Should().Be("purchases/{purchaseId:guid}/cancel");
+    }
+
+    [Fact]
+    public void Las_tres_cifras_del_resumen_salen_de_una_sola_consulta_traducible_a_SQL()
+    {
+        using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlServer("Server=nadie;Database=nada;Trusted_Connection=True").Options);
+
+        var sql = GetTokenSummaryHandler.CountsQuery(db, "AMB-1", new DateTime(2026, 10, 15)).ToQueryString();
+
+        sql.Should().Contain("COUNT");
+        // Una sola sentencia y un solo viaje: las tres cifras son COUNT con su CASE dentro del mismo SELECT.
+        System.Text.RegularExpressions.Regex.Matches(sql, @"COUNT\(").Count.Should().Be(3, sql);
+        sql.Should().Contain("GROUP BY");
+    }
+
+    [Fact]
+    public async Task Sin_instancias_el_resumen_es_cero()
+    {
+        await using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        var user = new Mock<ICurrentUserService>();
+        user.Setup(u => u.MemberId).Returns("AMB-1");
+        var clock = new Mock<IDateTimeProvider>();
+        clock.Setup(c => c.Now).Returns(new DateTime(2026, 10, 15));
+
+        var r = await new GetTokenSummaryHandler(db, user.Object, clock.Object).Handle(new GetTokenSummaryQuery(), default);
+
+        r.Value!.TotalTokens.Should().Be(0);
+        r.Value.TotalUsed.Should().Be(0);
+        r.Value.TotalAvailable.Should().Be(0);
     }
 }

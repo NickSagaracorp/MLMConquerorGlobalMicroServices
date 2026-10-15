@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Billing;
 using MLMConquerorGlobalEdition.SharedKernel.Security;
@@ -11,11 +12,20 @@ namespace MLMConquerorGlobalEdition.BizCenter.Services;
 /// SIN REINTENTOS AUTOMÁTICOS: si la compra se corta, reintenta la persona con la MISMA clave de
 /// idempotencia y Billing devuelve la compra que ya hizo.
 ///
-/// QUÉ SE DEVUELVE TAL CUAL. Un 4xx de Billing con su código (400 CARD_PAYMENTS_DISABLED, 409
-/// IDEMPOTENCY_KEY_REUSED, 403 STEP_UP_REQUIRED…): son respuestas definitivas sobre esa clave y la
-/// pantalla las traduce. Lo que NO es una respuesta de Billing (no contestó, se agotó el tiempo, un 5xx,
-/// un 401 o un cuerpo ilegible) es 502 BILLING_UNAVAILABLE: no se sabe si la compra llegó a hacerse y
-/// la pantalla debe reintentar con la misma clave, nunca con una nueva.
+/// CÓMO SE CLASIFICA LO QUE CONTESTA BILLING (la pantalla decide con el código si conserva la clave):
+///   • 2xx con datos: la respuesta.
+///   • 4xx con su código (400 CARD_PAYMENTS_DISABLED, 409 IDEMPOTENCY_KEY_REUSED, 403 STEP_UP_REQUIRED…):
+///     respuesta definitiva sobre esa clave; se devuelve tal cual, estado y código.
+///   • 401: 502 BILLING_AUTH_MISMATCH. El BizCenter ya aceptó el token, así que es un desacuerdo de
+///     configuración entre servicios, no una sesión caducada: un 401 sacaría al miembro de la sesión.
+///   • 4xx sin código (ProblemDetails, 404 de ruta, 405, 415, cuerpo ilegible): 502
+///     BILLING_CONTRACT_ERROR. Billing no ejecutó nada, pero no nos entendemos; reintentar no lo arregla.
+///   • Lo demás (no contestó, se agotó el tiempo, un 5xx, un 2xx ilegible): 502 BILLING_UNAVAILABLE. No
+///     se sabe si la compra llegó a hacerse y la pantalla reintenta con la misma clave, nunca con otra.
+///
+/// EL SOBRE SE LEE SIN EL TIPO DE LOS DATOS. Un error de Billing puede traer en "data" algo que no es
+/// T (el Forbidden mandaba "data":false); leer ApiResponse&lt;T&gt; directamente lanzaba y un 403 con
+/// código acababa en 502. Primero el sobre, y "data" solo se convierte a T cuando es un éxito.
 /// </remarks>
 public sealed class BillingClient : IBillingClient
 {
@@ -68,19 +78,29 @@ public sealed class BillingClient : IBillingClient
                 var status = (int)response.StatusCode;
                 var body   = await TryReadAsync<T>(response, ct);
 
-                if (response.IsSuccessStatusCode && body?.Success == true && body.Data is not null)
+                if (response.IsSuccessStatusCode && body is { Success: true, Data: not null })
                     return BillingResult<T>.Ok(body.Data);
 
-                // 4xx con código: es la respuesta de Billing y se devuelve tal cual. El 401 no: el
-                // BizCenter ya aceptó el token, así que es un desacuerdo entre servicios y no una
-                // sesión caducada (un 401 sacaría al miembro de la sesión).
-                if (status is >= 400 and < 500 && status != StatusCodes.Status401Unauthorized
-                    && !string.IsNullOrWhiteSpace(body?.ErrorCode))
+                if (status == StatusCodes.Status401Unauthorized)
                 {
-                    // ApiResponse.Fail rellena Errors, no Message.
-                    var message = body.Errors?.FirstOrDefault() ?? body.Message ?? $"Billing returned {status}.";
-                    _logger.LogInformation("Billing respondió {Status} {Code} a {Path}.", status, body.ErrorCode, path);
-                    return BillingResult<T>.Fail(status, body.ErrorCode!, message);
+                    _logger.LogError(
+                        "Billing rechazó con 401 un token que el BizCenter aceptó ({Path}, código {Code}). Revisa que llave, emisor y audiencia coincidan.",
+                        path, body?.ErrorCode);
+                    return BillingResult<T>.AuthMismatch();
+                }
+
+                if (status is >= 400 and < 500)
+                {
+                    if (!string.IsNullOrWhiteSpace(body?.ErrorCode))
+                    {
+                        _logger.LogInformation("Billing respondió {Status} {Code} a {Path}.", status, body.ErrorCode, path);
+                        return BillingResult<T>.Fail(status, body.ErrorCode!, body.Message ?? $"Billing returned {status}.");
+                    }
+
+                    _logger.LogError(
+                        "Billing respondió {Status} sin código de error a {Path}: el BizCenter y Billing no comparten contrato (ruta, método, tipo de contenido o validación).",
+                        status, path);
+                    return BillingResult<T>.ContractError();
                 }
 
                 _logger.LogWarning("Respuesta inesperada de Billing: {Status} {Code} a {Path}.", status, body?.ErrorCode, path);
@@ -99,9 +119,32 @@ public sealed class BillingClient : IBillingClient
         }
     }
 
-    private static async Task<ApiResponse<T>?> TryReadAsync<T>(HttpResponseMessage response, CancellationToken ct)
+    /// <summary>Lo que importa del sobre de Billing, con "data" ya convertida a T si era un éxito.</summary>
+    private sealed record Envelope<T>(bool Success, T? Data, string? ErrorCode, string? Message);
+
+    /// <summary>
+    /// Lee el sobre como <c>ApiResponse&lt;JsonElement&gt;</c>: así un "data" de otro tipo (false, null, un
+    /// objeto de otra forma) no impide leer el código. El mensaje sale de Errors (lo que rellena
+    /// ApiResponse.Fail) o, si no hay, de Message. Null si el cuerpo no es un sobre.
+    /// </summary>
+    private static async Task<Envelope<T>?> TryReadAsync<T>(HttpResponseMessage response, CancellationToken ct)
+        where T : class
     {
-        try { return await response.Content.ReadFromJsonAsync<ApiResponse<T>>(cancellationToken: ct); }
+        ApiResponse<JsonElement>? raw;
+        try { raw = await response.Content.ReadFromJsonAsync<ApiResponse<JsonElement>>(JsonOptions, ct); }
         catch (Exception ex) when (ex is not OperationCanceledException) { return null; }
+        if (raw is null) return null;
+
+        T? data = null;
+        if (raw.Success && raw.Data.ValueKind is not (JsonValueKind.Undefined or JsonValueKind.Null))
+        {
+            try { data = raw.Data.Deserialize<T>(JsonOptions); }
+            catch (Exception ex) when (ex is JsonException or NotSupportedException or InvalidOperationException) { data = null; }
+        }
+
+        var message = raw.Errors?.FirstOrDefault(e => !string.IsNullOrWhiteSpace(e)) ?? raw.Message;
+        return new Envelope<T>(raw.Success, data, raw.ErrorCode, message);
     }
+
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 }

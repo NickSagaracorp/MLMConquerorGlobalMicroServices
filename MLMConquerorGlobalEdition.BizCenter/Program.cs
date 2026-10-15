@@ -269,20 +269,9 @@ builder.Services.AddHttpClient("certificates");
 }
 builder.Services.AddScoped<IRankEngineClient, RankEngineClient>();
 
-// Cliente de Billing para la compra de tokens (Plan F): reenvía el JWT del miembro y, en la ruta de
-// pago con saldo, el permiso de step-up. SIN desactivar la validación del certificado: por aquí viaja
-// el token del miembro que autoriza mover su dinero. 90 s porque una compra con tarjeta puede probar
-// varios procesadores y una con eWallet llama dos veces a i-Payout. Sin reintentos automáticos: el
-// reintento lo hace la persona con la misma clave de idempotencia.
-{
-    var billingBaseUrl = builder.Configuration["Services:BillingBaseUrl"] ?? "https://localhost:7007/";
-    builder.Services.AddHttpClient(BillingClient.HttpClientName, c =>
-    {
-        c.BaseAddress = new Uri(billingBaseUrl);
-        c.Timeout     = TimeSpan.FromSeconds(90);
-    });
-}
-builder.Services.AddScoped<IBillingClient, BillingClient>();
+// Cliente de Billing para la compra de tokens (Plan F). Ver BillingClientRegistration: valida el
+// certificado, 90 s, y fuera de Development exige Services:BillingBaseUrl.
+builder.Services.AddBillingClient(builder.Configuration, builder.Environment);
 
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")

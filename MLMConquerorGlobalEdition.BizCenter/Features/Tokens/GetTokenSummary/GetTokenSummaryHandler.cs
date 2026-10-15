@@ -24,17 +24,29 @@ public class GetTokenSummaryHandler : IRequestHandler<GetTokenSummaryQuery, Resu
 
     public async Task<Result<TokenSummaryDto>> Handle(GetTokenSummaryQuery request, CancellationToken ct)
     {
-        var memberId  = _currentUser.MemberId;
-        var now       = _dateTime.Now;
-        var instances = _db.TokenTransactions.AsNoTracking().Where(t => t.MemberId == memberId && t.ReferenceId != null);
+        var counts = await CountsQuery(_db, _currentUser.MemberId, _dateTime.Now).FirstOrDefaultAsync(ct);
 
         return Result<TokenSummaryDto>.Success(new TokenSummaryDto
         {
-            TotalTokens    = await instances.CountAsync(ct),
-            TotalUsed      = await instances.CountAsync(t => t.Status == TokenInstanceStatus.Used, ct),
-            TotalAvailable = await instances.CountAsync(t =>
-                (t.Status == TokenInstanceStatus.Issued || t.Status == TokenInstanceStatus.Distributed)
-                && (t.ExpiresAt == null || t.ExpiresAt > now), ct)
+            TotalTokens    = counts?.Total ?? 0,
+            TotalUsed      = counts?.Used ?? 0,
+            TotalAvailable = counts?.Available ?? 0
         });
     }
+
+    public sealed record SummaryCounts(int Total, int Used, int Available);
+
+    /// <summary>
+    /// Las tres cifras en UNA consulta: se agrupa todo en un solo grupo y cada cifra es un COUNT con su
+    /// condición. Sin instancias no hay grupo y la consulta no devuelve fila (de ahí los ceros).
+    /// </summary>
+    public static IQueryable<SummaryCounts> CountsQuery(AppDbContext db, string? memberId, DateTime now) =>
+        db.TokenTransactions.AsNoTracking()
+            .Where(t => t.MemberId == memberId && t.ReferenceId != null)
+            .GroupBy(_ => 1)
+            .Select(g => new SummaryCounts(
+                g.Count(),
+                g.Count(t => t.Status == TokenInstanceStatus.Used),
+                g.Count(t => (t.Status == TokenInstanceStatus.Issued || t.Status == TokenInstanceStatus.Distributed)
+                             && (t.ExpiresAt == null || t.ExpiresAt > now))));
 }

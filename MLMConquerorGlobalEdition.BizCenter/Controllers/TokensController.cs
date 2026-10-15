@@ -129,7 +129,8 @@ public class TokensController : ControllerBase
     /// <summary>
     /// POST /api/v1/bizcenter/tokens/purchase/balance — compra con comisiones o eWallet. Exige un permiso
     /// de step-up (lo valida y quema el filtro antes de llegar aquí); se reenvía a Billing en
-    /// X-Step-Up-Token, que lo vuelve a validar sin quemarlo.
+    /// X-Step-Up-Token, que lo valida y lo quema con su propia marca. Un reintento tras un 502 necesita
+    /// un permiso nuevo y la misma clave de idempotencia.
     /// </summary>
     [HttpPost("purchase/balance")]
     [RequiresStepUp(StepUpOperations.TokenPurchaseFromBalance)]
@@ -147,8 +148,9 @@ public class TokensController : ControllerBase
     /// <summary>
     /// POST /api/v1/bizcenter/tokens/purchases/{purchaseId}/cancel — el miembro retira una compra en
     /// cripto que no va a pagar y recupera el cupo. Billing comprueba que es suya y que sigue sin pagar.
+    /// El id de TokenPurchase es un Guid en texto: cualquier otra cosa es 404 aquí, sin llamar a Billing.
     /// </summary>
-    [HttpPost("purchases/{purchaseId}/cancel")]
+    [HttpPost("purchases/{purchaseId:guid}/cancel")]
     public async Task<IActionResult> CancelPurchase(string purchaseId, CancellationToken ct)
     {
         if (ImpersonationScope.IsImpersonating(User))
@@ -160,7 +162,9 @@ public class TokensController : ControllerBase
     private IActionResult WrongEndpoint(string message) =>
         BadRequest(ApiResponse<TokenPurchaseResultDto>.Fail(TokenPurchaseErrors.WrongEndpoint, message, HttpContext.TraceIdentifier));
 
-    // Billing también lo rechaza; aquí se corta antes para no quemar nada más ni llamar en vano.
+    // Billing también lo rechaza; aquí se corta antes para no llamar en vano. En la ruta de saldo el
+    // filtro de step-up ya quemó el permiso del BizCenter: bajo suplantación se pierde, y es correcto,
+    // porque ese permiso no debía poder usarse para comprar.
     private IActionResult ImpersonationForbidden() =>
         StatusCode(StatusCodes.Status403Forbidden, ApiResponse<TokenPurchaseResultDto>.Fail(
             TokenPurchaseErrors.Impersonation, "Purchases are not allowed during impersonation.", HttpContext.TraceIdentifier));

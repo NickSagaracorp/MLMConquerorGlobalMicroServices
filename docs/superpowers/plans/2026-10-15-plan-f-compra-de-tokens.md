@@ -8264,3 +8264,26 @@ La Tarea 9 (servicio de compra) y la 10 (endpoints) ya están en la rama; donde 
 | M5 | Holgura del débito eWallet = `min(0,01; cobro / 2)` (`EWalletFunds.ToleranceFor`). | `EWalletFunds` | — |
 | M8 | Sin `CS8602` en la lectura del resultado del cobro. | `TokenPurchaseService` | — |
 | Pruebas | `SqlServerTokenPurchaseTests` (`[SqlServerFact]`): dos confirmaciones simultáneas de la misma cripto emiten una vez (RowVersion) y dos compras simultáneas con la misma clave cobran y emiten una vez (candado real). Miembro sintético `TST-…` que se borra al terminar. | Billing.Tests | — |
+
+
+## Correcciones tras la revisión de la Tarea 13 (2026-10-15)
+
+La Tarea 13 (cliente de Billing y endpoints del BizCenter) ya está en la rama; donde el código de arriba difiera, **manda el repositorio**.
+
+| # | Cambio | Dónde | Efecto en las tareas pendientes |
+|---|---|---|---|
+| I1 | El cliente lee el sobre como `ApiResponse<JsonElement>` y solo convierte `data` a `T` si es un éxito: un 403 con `"data":false` llegaba como 502. El `Forbidden` de Billing pasa a `ApiResponse<object>` (`"data":null`). Pruebas con los cuerpos reales de `STEP_UP_REQUIRED`, `NOT_A_MEMBER` e `IMPERSONATION`. | `BillingClient`, `TokenPurchasesController` (Billing) | Tarea 15 recibe el 403 con su código, no un 502. |
+| I2 | **Billing también quema el permiso de step-up**, con su propia marca (`CacheKeys.BillingStepUpGrantConsumed(jti)` = `stepup:grant:{jti}:consumed:billing`, distinta de la del BizCenter) y `ICacheService.TryClaimOnceAsync`. Orden: validar → si la clave de idempotencia ya tiene compra del miembro (`ITokenPurchaseService.HasPurchaseAsync`), no quemar y devolver la repetición → si no, quemar **antes** de cobrar. Ya usado o caché caída: `403 STEP_UP_INVALID` (falla cerrado). `IStepUpGrantCheck` pasa a `ValidJti` + `TryConsumeAsync`. Billing registra `IConnectionMultiplexer` para que la marca sea atómica entre instancias. | Billing | La repetición con la misma clave pasa aunque el permiso ya esté quemado; el mismo permiso con otra clave se rechaza. |
+| M1 | Un 4xx de Billing **sin** `errorCode` (ProblemDetails, 404 de ruta, 405, 415, cuerpo ilegible) → `502 BILLING_CONTRACT_ERROR` con `LogError`. Billing no ejecutó nada: no es "reintenta con la misma clave". | `BillingClient`, `TokenPurchaseErrors.BillingContractError` | Tarea 15: ver nota. |
+| M2 | Un 401 de Billing → `502 BILLING_AUTH_MISMATCH` con `LogError` y mensaje propio (sigue sin sacar al miembro de la sesión). | `BillingClient`, `TokenPurchaseErrors.BillingAuthMismatch` | Tarea 15: ver nota. |
+| M3 | Comentario de `ImpersonationForbidden` corregido: en la ruta de saldo el filtro ya quemó el permiso del BizCenter. | `TokensController` | — |
+| M4 | El cliente "billing" se registra en `BillingClientRegistration.AddBillingClient`: fuera de Development sin `Services:BillingBaseUrl` el arranque lanza `InvalidOperationException`; la `BaseAddress` siempre acaba en `/`; 90 s; sin tocar la validación del certificado. `appsettings.json` sigue declarando `https://localhost:7007/` (misma convención que `Services:Billing` en AdminAPI): en producción hay que sobrescribirla. | BizCenter | Tarea 16: comprobar `Services:BillingBaseUrl` en cada entorno. |
+| M5 | Cancelar: `purchases/{purchaseId:guid}/cancel` (el id de `TokenPurchase` es un Guid en texto); otra cosa es 404 sin llamar a Billing. | `TokensController` | Tarea 15 manda el `PurchaseId` tal cual lo devolvió Billing. |
+| M6 | El resumen hace **una** consulta (`GroupBy` constante con tres `COUNT(CASE …)`); prueba de que traduce a un solo `SELECT` en SQL Server y de que los números no cambian. | `GetTokenSummaryHandler.CountsQuery` | — |
+| Pruebas | 401 → 502 (no 401); 4xx sin código; cuerpo real del 403 (`data:false` y `data:null`); configuración del cliente "billing"; permiso de Billing: quemar una vez, marca distinta de la del BizCenter, caché caída, repetición con permiso quemado, permiso reutilizado con clave nueva. | BizCenter.Tests, Billing.Tests | — |
+
+**Nota para la Tarea 15 (reintentos en la pantalla):**
+
+- Tras un `502 BILLING_UNAVAILABLE` en la **ruta de saldo**, el reintento necesita un **permiso de step-up nuevo**: el anterior ya lo quemó el filtro del BizCenter (y quizá Billing). La pantalla vuelve a pedir el código y reenvía **el mismo cuerpo con la misma `IdempotencyKey`**; si la compra llegó a hacerse, Billing devuelve la repetición sin quemar el permiso nuevo.
+- Con `BILLING_CONTRACT_ERROR` o `BILLING_AUTH_MISMATCH` **no** se conserva la clave ni se reintenta sola: son fallos de configuración entre servicios. No van en `TokenPurchaseMessages.KeepsKey`; se muestran con un texto de "contacta con soporte" (o `Tokens.Error.Generic`).
+- `STEP_UP_INVALID` en la ruta de saldo (permiso ya usado o caché caída) se trata como `STEP_UP_REQUIRED`: pedir un código nuevo y repetir con la misma clave.

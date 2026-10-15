@@ -45,4 +45,21 @@ public sealed class BillingResult<T> where T : class
     /// </summary>
     public static BillingResult<T> Unavailable(string error) =>
         Fail(StatusCodes.Status502BadGateway, TokenPurchaseErrors.BillingUnavailable, error);
+
+    /// <summary>
+    /// Billing contestó un 4xx sin código: no ejecutó nada, pero no hay acuerdo de contrato entre los dos
+    /// servicios. 502 porque el fallo es de la pasarela, no del miembro; la pantalla NO conserva la clave
+    /// ni reintenta sola.
+    /// </summary>
+    public static BillingResult<T> ContractError() =>
+        Fail(StatusCodes.Status502BadGateway, TokenPurchaseErrors.BillingContractError,
+             "The payment service could not process this request. Please contact support.");
+
+    /// <summary>
+    /// Billing rechazó con 401 el token que el BizCenter aceptó. Nunca se devuelve 401: sacaría al
+    /// miembro de una sesión que es válida. La pantalla NO conserva la clave ni reintenta sola.
+    /// </summary>
+    public static BillingResult<T> AuthMismatch() =>
+        Fail(StatusCodes.Status502BadGateway, TokenPurchaseErrors.BillingAuthMismatch,
+             "The payment service is misconfigured right now. Please contact support.");
 }
