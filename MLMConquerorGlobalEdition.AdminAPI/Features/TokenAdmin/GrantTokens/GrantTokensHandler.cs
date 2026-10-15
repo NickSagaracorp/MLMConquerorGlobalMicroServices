@@ -4,25 +4,36 @@ using MLMConquerorGlobalEdition.AdminAPI.DTOs.TokenAdmin;
 using MLMConquerorGlobalEdition.Domain.Entities.Tokens;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Funds;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Billing;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Features.TokenAdmin.GrantTokens;
 
+/// <summary>
+/// Concede tokens a un miembro. Sube su <see cref="TokenBalance"/>, así que va bajo su candado de
+/// fondos (<see cref="IMemberFundsGate"/>), el mismo de comprar, distribuir y transferir: sin él, una
+/// distribución simultánea podía leer y escribir el agregado a la vez y perder una de las dos sumas.
+/// Ocupado → <see cref="TokenPurchaseErrors.Busy"/> (409) sin escribir nada.
+/// </summary>
 public class GrantTokensHandler : IRequestHandler<GrantTokensCommand, Result<AdminTokenBalanceDto>>
 {
     private readonly AppDbContext _db;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _dateTime;
+    private readonly IMemberFundsGate _gate;
 
     public GrantTokensHandler(
         AppDbContext db,
         ICurrentUserService currentUser,
-        IDateTimeProvider dateTime)
+        IDateTimeProvider dateTime,
+        IMemberFundsGate gate)
     {
         _db = db;
         _currentUser = currentUser;
         _dateTime = dateTime;
+        _gate = gate;
     }
 
     public async Task<Result<AdminTokenBalanceDto>> Handle(
@@ -38,6 +49,24 @@ public class GrantTokensHandler : IRequestHandler<GrantTokensCommand, Result<Adm
             return Result<AdminTokenBalanceDto>.Failure("TOKEN_TYPE_NOT_FOUND", $"Token type '{req.TokenTypeId}' not found.");
 
         var now = _dateTime.Now;
+
+        // El id tal como está guardado nombra el candado (member-funds:{id}); sin perfil, el pedido.
+        var memberId = await _db.MemberProfiles.AsNoTracking()
+            .Where(m => m.MemberId == req.MemberId)
+            .Select(m => m.MemberId)
+            .FirstOrDefaultAsync(cancellationToken) ?? req.MemberId;
+
+        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction tx;
+        try
+        {
+            tx = await _gate.EnterAsync(memberId, cancellationToken);
+        }
+        catch (MemberFundsBusyException)
+        {
+            return Result<AdminTokenBalanceDto>.Failure(TokenPurchaseErrors.Busy,
+                "Another token operation for this member is in progress. Try again in a moment.");
+        }
+        await using var _ = tx;
 
         var balance = await _db.TokenBalances
             .FirstOrDefaultAsync(b => b.MemberId == req.MemberId && b.TokenTypeId == req.TokenTypeId, cancellationToken);
@@ -83,6 +112,7 @@ public class GrantTokensHandler : IRequestHandler<GrantTokensCommand, Result<Adm
         }
 
         await _db.SaveChangesAsync(cancellationToken);
+        await tx.CommitAsync(cancellationToken);
 
         var dto = new AdminTokenBalanceDto
         {

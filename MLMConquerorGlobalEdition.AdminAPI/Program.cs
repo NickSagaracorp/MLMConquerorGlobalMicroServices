@@ -117,6 +117,12 @@ builder.Services.AddScoped<IRecurringBillingPlanner, RecurringBillingPlanner>();
 
 // ── Payout gateway abstraction + orchestrator ─────────────────────────────
 builder.Services.AddPayoutServices();
+// Candado de fondos por miembro (sp_getapplock), el mismo de Billing, el BizCenter y SignupAPI. Ya lo
+// registra AddPayoutServices (TryAdd); se declara aquí también porque conceder tokens y ajustar el
+// saldo (GrantTokensHandler, UpdateTokenBalanceHandler) lo usan y no deben depender de los pagos.
+Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions
+    .TryAddScoped<MLMConquerorGlobalEdition.Repository.Services.Funds.IMemberFundsGate,
+                  MLMConquerorGlobalEdition.Repository.Services.Funds.SqlServerMemberFundsGate>(builder.Services);
 
 builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
 // AdminAPI ya NO tiene puerta de entrada: la única que firma tokens aquí es la impersonación

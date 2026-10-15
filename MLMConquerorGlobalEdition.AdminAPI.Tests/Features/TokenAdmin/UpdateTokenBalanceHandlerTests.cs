@@ -28,7 +28,7 @@ public class UpdateTokenBalanceHandlerTests
     public async Task Handle_WhenTokenBalanceNotFound_ReturnsTokenBalanceNotFoundFailure()
     {
         await using var db = InMemoryDbHelper.Create();
-        var handler = new UpdateTokenBalanceHandler(db, CurrentUser().Object, DateTimeProvider().Object);
+        var handler = new UpdateTokenBalanceHandler(db, CurrentUser().Object, DateTimeProvider().Object, new PuertaDeFondosDePrueba(db));
 
         var result = await handler.Handle(
             new UpdateTokenBalanceCommand("nonexistent-id", new AdminUpdateTokenBalanceRequest { Balance = 10 }),
@@ -54,7 +54,7 @@ public class UpdateTokenBalanceHandlerTests
         await db.TokenBalances.AddAsync(balance);
         await db.SaveChangesAsync();
 
-        var handler = new UpdateTokenBalanceHandler(db, CurrentUser().Object, DateTimeProvider().Object);
+        var handler = new UpdateTokenBalanceHandler(db, CurrentUser().Object, DateTimeProvider().Object, new PuertaDeFondosDePrueba(db));
         var result = await handler.Handle(
             new UpdateTokenBalanceCommand(balance.Id, new AdminUpdateTokenBalanceRequest { Balance = 99 }),
             CancellationToken.None);
@@ -81,7 +81,7 @@ public class UpdateTokenBalanceHandlerTests
         await db.TokenBalances.AddAsync(balance);
         await db.SaveChangesAsync();
 
-        var handler = new UpdateTokenBalanceHandler(db, CurrentUser().Object, DateTimeProvider().Object);
+        var handler = new UpdateTokenBalanceHandler(db, CurrentUser().Object, DateTimeProvider().Object, new PuertaDeFondosDePrueba(db));
         await handler.Handle(
             new UpdateTokenBalanceCommand(balance.Id, new AdminUpdateTokenBalanceRequest { Balance = 20 }),
             CancellationToken.None);

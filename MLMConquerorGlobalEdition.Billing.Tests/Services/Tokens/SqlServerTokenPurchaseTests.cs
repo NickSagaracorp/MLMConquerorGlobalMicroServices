@@ -101,21 +101,6 @@ public class SqlServerTokenPurchaseTests : IAsyncLifetime
         return quote!;
     }
 
-    /// <summary>
-    /// Emite y espera a que las dos confirmaciones hayan llegado aquí antes de guardar: así las dos leen
-    /// la confirmación en AwaitingPayment y la carrera la decide el RowVersion, no el azar.
-    /// </summary>
-    private sealed class BarrierIssuer(ITokenIssuer inner, TaskCompletionSource both, Func<int> arrive) : ITokenIssuer
-    {
-        public async Task<IReadOnlyList<string>> IssueAsync(TokenIssue issue, CancellationToken ct = default)
-        {
-            var codes = await inner.IssueAsync(issue, ct);
-            if (arrive() == 2) both.TrySetResult();
-            await both.Task.WaitAsync(TimeSpan.FromSeconds(15), ct);
-            return codes;
-        }
-    }
-
     [SqlServerFact]
     public async Task Dos_confirmaciones_simultaneas_de_la_misma_cripto_emiten_una_sola_vez()
     {
@@ -151,21 +136,21 @@ public class SqlServerTokenPurchaseTests : IAsyncLifetime
         await using (var read = SqlServerTestDb.Db())
             orderId = await read.TokenPurchases.Where(p => p.MemberId == _member).Select(p => p.OrderId).SingleAsync();
 
-        var both = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var arrived = 0;
-        int Arrive() => Interlocked.Increment(ref arrived);
-
+        // Confirmar toma el candado de fondos del miembro (revisión de la Tarea 14, I2): la segunda espera
+        // a que la primera confirme y, ya dentro, la encuentra confirmada. Antes las dos leían la
+        // confirmación en AwaitingPayment y la carrera la decidía el RowVersion, que sigue como segunda
+        // capa (una barrera dentro del emisor ya no puede juntarlas: se interbloquearía con el candado).
         await using var dbA = SqlServerTestDb.Db();
         await using var dbB = SqlServerTestDb.Db();
-        var svcA = Service(dbA, new BarrierIssuer(new TokenIssuer(dbA), both, Arrive));
-        var svcB = Service(dbB, new BarrierIssuer(new TokenIssuer(dbB), both, Arrive));
+        var svcA = Service(dbA);
+        var svcB = Service(dbB);
         var req = new ConfirmCryptoTokenPurchaseRequest { CryptoTransactionId = "0xsql" };
 
         var results = await Task.WhenAll(
             Task.Run(() => svcA.ConfirmCryptoAsync(orderId, req, "admin-a", "a@x.com")),
             Task.Run(() => svcB.ConfirmCryptoAsync(orderId, req, "admin-b", "b@x.com")));
 
-        results.Count(r => r.IsSuccess).Should().Be(1, "el RowVersion deja pasar a una sola");
+        results.Count(r => r.IsSuccess).Should().Be(1, "el candado (y detrás el RowVersion) deja pasar a una sola");
         results.Single(r => !r.IsSuccess).ErrorCode.Should().Be(TokenPurchaseErrors.CryptoAlreadyConfirmed);
 
         await using var check = SqlServerTestDb.Db();

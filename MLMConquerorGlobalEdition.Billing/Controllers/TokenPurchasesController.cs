@@ -221,7 +221,8 @@ public class TokenPurchasesController : ControllerBase
         {
             TokenPurchaseErrors.CryptoPaymentNotFound or TokenPurchaseErrors.PurchaseNotFound => StatusCodes.Status404NotFound,
             TokenPurchaseErrors.CryptoAlreadyConfirmed or TokenPurchaseErrors.NotUnderReview
-                or TokenPurchaseErrors.NotAwaitingCrypto or TokenPurchaseErrors.IssueFailed => StatusCodes.Status409Conflict,
+                or TokenPurchaseErrors.NotAwaitingCrypto or TokenPurchaseErrors.IssueFailed
+                or TokenPurchaseErrors.Busy                                                 => StatusCodes.Status409Conflict,
             _                                                                                 => StatusCodes.Status400BadRequest
         };
         return StatusCode(status, ApiResponse<TokenPurchaseResultDto>.Fail(result.ErrorCode!, result.Error!, HttpContext.TraceIdentifier));

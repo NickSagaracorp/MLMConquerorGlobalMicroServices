@@ -656,6 +656,14 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
         string orderId, ConfirmCryptoTokenPurchaseRequest request, string confirmedByUserId, string confirmedByEmail,
         CancellationToken ct)
     {
+        // Emitir sube el TokenBalance del miembro: va bajo su candado de fondos, como la compra con saldo,
+        // la tarjeta, distribuir y transferir. El dueño se lee sin seguimiento para nombrar el candado y
+        // todo lo demás se lee ya dentro. Sin compra no hay candado: las comprobaciones de abajo fallan.
+        var (tx, busy) = await EnterGateOfPurchaseAsync(
+            _db.TokenPurchases.AsNoTracking().Where(p => p.OrderId == orderId), ct);
+        if (busy is not null) return busy;
+        await using var _ = tx;
+
         var confirmation = await _db.CryptoPaymentConfirmations
             .FirstOrDefaultAsync(c => c.OrderId == orderId && c.Purpose == CryptoPaymentPurpose.TokenPurchase, ct);
         if (confirmation is null)
@@ -698,6 +706,7 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
             _db.ChangeTracker.Clear();
             return Fail(TokenPurchaseErrors.CryptoAlreadyConfirmed, "This crypto payment has already been confirmed.");
         }
+        if (tx is not null) await tx.CommitAsync(CancellationToken.None);
 
         await AfterIssueAsync(purchase, order, await TokenTypeNameAsync(purchase.TokenTypeId, ct));
         return Done(purchase, order, codes, await _quota.UsedAsync(purchase.MemberId, now, ct));
@@ -724,6 +733,12 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
     private async Task<Result<TokenPurchaseResultDto>> ReconcileOnceAsync(
         string purchaseId, ReconcileTokenPurchaseRequest request, string actor, CancellationToken ct)
     {
+        // "Cobrada" emite y sube el TokenBalance: bajo el candado del miembro, como confirmar cripto.
+        var (tx, busy) = await EnterGateOfPurchaseAsync(
+            _db.TokenPurchases.AsNoTracking().Where(p => p.Id == purchaseId), ct);
+        if (busy is not null) return busy;
+        await using var _ = tx;
+
         var purchase = await _db.TokenPurchases.FirstOrDefaultAsync(p => p.Id == purchaseId, ct);
         if (purchase is null) return Fail(TokenPurchaseErrors.PurchaseNotFound, "Token purchase not found.");
         if (purchase.Status != TokenPurchaseStatus.NeedsReconciliation)
@@ -786,6 +801,7 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
             _db.ChangeTracker.Clear();
             return Fail(TokenPurchaseErrors.NotUnderReview, "This purchase was already reconciled.");
         }
+        if (tx is not null) await tx.CommitAsync(CancellationToken.None);
 
         if (request.Charged)
             await AfterIssueAsync(purchase, order, await TokenTypeNameAsync(purchase.TokenTypeId, ct));
@@ -1129,6 +1145,29 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
         }
 
         return Fail(TokenPurchaseErrors.NeedsReview, message);
+    }
+
+    /// <summary>
+    /// Toma el candado de fondos del dueño de la compra que devuelve <paramref name="purchaseQuery"/>
+    /// (sin seguimiento). Sin compra devuelve (null, null): quien llama sigue sin candado y sus propias
+    /// comprobaciones devuelven "no encontrada". Ocupado → el fallo <see cref="TokenPurchaseErrors.Busy"/>.
+    /// La transacción se suelta (y se deshace si no se confirmó) al salir del <c>await using</c>; si el
+    /// guardado choca con un código repetido, <see cref="WithOneRetryOnCollisionAsync"/> repite desde
+    /// cero ya sin ella.
+    /// </summary>
+    private async Task<(IDbContextTransaction? Tx, Result<TokenPurchaseResultDto>? Busy)> EnterGateOfPurchaseAsync(
+        IQueryable<TokenPurchase> purchaseQuery, CancellationToken ct)
+    {
+        var memberId = await purchaseQuery.Select(p => p.MemberId).FirstOrDefaultAsync(ct);
+        if (memberId is null) return (null, null);
+        try
+        {
+            return (await _gate.EnterAsync(memberId, ct), null);
+        }
+        catch (MemberFundsBusyException)
+        {
+            return (null, Fail(TokenPurchaseErrors.Busy, BusyMessage));
+        }
     }
 
     /// <summary>Deshace y suelta la transacción abierta en el contexto, si la hay, sin lanzar.</summary>

@@ -44,7 +44,7 @@ public class GrantTokensHandlerTests
     public async Task Handle_WhenTokenTypeNotFound_ReturnsTokenTypeNotFoundFailure()
     {
         await using var db = InMemoryDbHelper.Create();
-        var handler = new GrantTokensHandler(db, CurrentUser().Object, DateTimeProvider().Object);
+        var handler = new GrantTokensHandler(db, CurrentUser().Object, DateTimeProvider().Object, new PuertaDeFondosDePrueba(db));
 
         var result = await handler.Handle(
             new GrantTokensCommand(new AdminGrantTokenRequest
@@ -64,7 +64,7 @@ public class GrantTokensHandlerTests
     {
         await using var db = InMemoryDbHelper.Create();
         await SeedTokenType(db, 1);
-        var handler = new GrantTokensHandler(db, CurrentUser().Object, DateTimeProvider().Object);
+        var handler = new GrantTokensHandler(db, CurrentUser().Object, DateTimeProvider().Object, new PuertaDeFondosDePrueba(db));
 
         var result = await handler.Handle(
             new GrantTokensCommand(new AdminGrantTokenRequest
@@ -97,7 +97,7 @@ public class GrantTokensHandlerTests
         });
         await db.SaveChangesAsync();
 
-        var handler = new GrantTokensHandler(db, CurrentUser().Object, DateTimeProvider().Object);
+        var handler = new GrantTokensHandler(db, CurrentUser().Object, DateTimeProvider().Object, new PuertaDeFondosDePrueba(db));
         var result = await handler.Handle(
             new GrantTokensCommand(new AdminGrantTokenRequest
             {
@@ -116,7 +116,7 @@ public class GrantTokensHandlerTests
     {
         await using var db = InMemoryDbHelper.Create();
         await SeedTokenType(db, 1);
-        var handler = new GrantTokensHandler(db, CurrentUser().Object, DateTimeProvider().Object);
+        var handler = new GrantTokensHandler(db, CurrentUser().Object, DateTimeProvider().Object, new PuertaDeFondosDePrueba(db));
 
         await handler.Handle(
             new GrantTokensCommand(new AdminGrantTokenRequest

@@ -617,6 +617,49 @@ public class TokenPurchaseServiceTests
     }
 
     [Fact]
+    public async Task Confirmar_cripto_y_conciliar_emiten_bajo_el_candado_del_miembro()
+    {
+        var orderId = (await Buy(Request(TokenPaymentMethods.Crypto, qty: 2, crypto: "BTC"))).Value!.OrderId;
+        var gate = new TransactionOnlyGate(_db);
+        _gate = gate;
+
+        (await Service().ConfirmCryptoAsync(orderId, new ConfirmCryptoTokenPurchaseRequest { CryptoTransactionId = "0x1" }, "admin-1", "admin@x.com"))
+            .IsSuccess.Should().BeTrue();
+        gate.Entered.Should().Equal(MemberId);
+    }
+
+    [Fact]
+    public async Task Conciliar_como_cobrada_emite_bajo_el_candado_del_miembro()
+    {
+        var id = await CompraAConciliar();
+        var gate = new TransactionOnlyGate(_db);
+        _gate = gate;
+
+        (await Service().ReconcileAsync(id, new ReconcileTokenPurchaseRequest { Charged = true, GatewayReference = "tx-1" }, "tesoreria@x.com"))
+            .IsSuccess.Should().BeTrue();
+        gate.Entered.Should().Equal(MemberId);
+    }
+
+    [Fact]
+    public async Task Con_el_candado_ocupado_confirmar_y_conciliar_no_emiten()
+    {
+        var orderId = (await Buy(Request(TokenPaymentMethods.Crypto, qty: 2, crypto: "BTC"))).Value!.OrderId;
+        var busy = new Mock<IMemberFundsGate>();
+        busy.Setup(g => g.EnterAsync(MemberId, It.IsAny<CancellationToken>())).ThrowsAsync(new MemberFundsBusyException(MemberId));
+        _gate = busy.Object;
+
+        (await Service().ConfirmCryptoAsync(orderId, new ConfirmCryptoTokenPurchaseRequest { CryptoTransactionId = "0x1" }, "admin-1", "admin@x.com"))
+            .ErrorCode.Should().Be(TokenPurchaseErrors.Busy);
+        (await Service().ReconcileAsync((await _db.TokenPurchases.SingleAsync()).Id,
+                new ReconcileTokenPurchaseRequest { Charged = true }, "tesoreria@x.com"))
+            .ErrorCode.Should().Be(TokenPurchaseErrors.Busy);
+
+        _db.ChangeTracker.Clear();
+        _db.TokenTransactions.Count(t => t.ReferenceId != null).Should().Be(0);
+        (await _db.CryptoPaymentConfirmations.SingleAsync()).Status.Should().Be(CryptoPaymentConfirmationStatus.AwaitingPayment);
+    }
+
+    [Fact]
     public async Task eWallet_que_lanza_al_debitar_queda_a_conciliar_y_no_emite()
     {
         EWalletWith(500m, EWalletDebitStatus.Completed);
