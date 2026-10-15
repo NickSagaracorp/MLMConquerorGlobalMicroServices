@@ -1490,12 +1490,12 @@
   <data name="Tokens.Error.NotEnoughTokens" xml:space="preserve"><value>You don't have enough available tokens of that type.</value></data>
   <data name="Tokens.Error.Recipient" xml:space="preserve"><value>The recipient must be a member of your enrollment team.</value></data>
   <data name="Tokens.Error.RecipientNotActive" xml:space="preserve"><value>The recipient's account isn't active, so they can't receive tokens.</value></data>
-  <data name="Tokens.Error.DistributionRepeated" xml:space="preserve"><value>This distribution was already sent. Check your balance before sending it again.</value></data>
+  <data name="Tokens.Error.DistributionRepeated" xml:space="preserve"><value>We don't know whether this transfer went through. Check your balance and history before sending it again.</value></data>
   <data name="Tokens.Error.DistributionBusy" xml:space="preserve"><value>Another token operation is in progress. Wait a moment and try again.</value></data>
   <data name="Tokens.Error.DistributionUnavailable" xml:space="preserve"><value>We couldn't complete the distribution. Try again: your tokens won't be sent twice.</value></data>
   <data name="Tokens.Error.NoEWallet" xml:space="preserve"><value>You don't have an eWallet account to pay with.</value></data>
   <data name="Tokens.Error.EWalletDeclined" xml:space="preserve"><value>The eWallet charge was declined.</value></data>
-  <data name="Tokens.Error.NeedsReview" xml:space="preserve"><value>We couldn't confirm the eWallet charge. Our team will review it and your tokens will be issued if it went through. Don't try again.</value></data>
+  <data name="Tokens.Error.NeedsReview" xml:space="preserve"><value>We couldn't confirm this payment. Our team will review it and your tokens will be issued if it went through. Don't try again.</value></data>
   <data name="Tokens.CryptoAmountDue" xml:space="preserve"><value>Amount due: {0}, payable in {1}.</value></data>
   <data name="Tokens.CryptoAddress" xml:space="preserve"><value>Deposit address</value></data>
   <data name="Tokens.CryptoNetwork" xml:space="preserve"><value>Network: {0}</value></data>
@@ -1509,4 +1509,9 @@
   <data name="Tokens.Status.Cancelled" xml:space="preserve"><value>Purchase cancelled. Those tokens are back in your monthly allowance.</value></data>
   <data name="Tokens.Status.Rejected" xml:space="preserve"><value>This crypto purchase was rejected: we couldn't verify the transfer. No tokens were issued.</value></data>
   <data name="Tokens.Status.Expired" xml:space="preserve"><value>This crypto purchase expired without payment. No tokens were issued.</value></data>
+  <data name="Tokens.Error.SelfRecipient" xml:space="preserve"><value>You can't send tokens to yourself.</value></data>
+  <data name="Tokens.PendingAttempt" xml:space="preserve"><value>There's an unconfirmed purchase. Press Buy now to repeat exactly the same purchase (you won't be charged twice) or check your history. To start a different one, reload the page after checking your history.</value></data>
+  <data name="Tokens.CardExpired" xml:space="preserve"><value>Expired</value></data>
+  <data name="Tokens.PaymentMethodsAria" xml:space="preserve"><value>Payment method</value></data>
+  <data name="Tokens.CopyCode" xml:space="preserve"><value>Copy code {0}</value></data>
 </root>

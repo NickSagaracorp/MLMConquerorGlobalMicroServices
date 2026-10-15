@@ -1387,12 +1387,12 @@
   <data name="Tokens.Error.NotEnoughTokens" xml:space="preserve"><value>Sie haben nicht genügend verfügbare Token dieses Typs.</value></data>
   <data name="Tokens.Error.Recipient" xml:space="preserve"><value>Der Empfänger muss Mitglied Ihres Enrollment-Teams sein.</value></data>
   <data name="Tokens.Error.RecipientNotActive" xml:space="preserve"><value>Das Konto des Empfängers ist nicht aktiv, daher kann er keine Token erhalten.</value></data>
-  <data name="Tokens.Error.DistributionRepeated" xml:space="preserve"><value>Diese Verteilung wurde bereits gesendet. Prüfen Sie Ihr Guthaben, bevor Sie sie erneut senden.</value></data>
+  <data name="Tokens.Error.DistributionRepeated" xml:space="preserve"><value>Wir wissen nicht, ob dieser Versand abgeschlossen wurde. Prüfen Sie Ihr Guthaben und Ihren Verlauf, bevor Sie ihn wiederholen.</value></data>
   <data name="Tokens.Error.DistributionBusy" xml:space="preserve"><value>Ein anderer Token-Vorgang läuft gerade. Warten Sie einen Moment und versuchen Sie es erneut.</value></data>
   <data name="Tokens.Error.DistributionUnavailable" xml:space="preserve"><value>Die Verteilung konnte nicht abgeschlossen werden. Versuchen Sie es erneut: Ihre Token werden nicht doppelt gesendet.</value></data>
   <data name="Tokens.Error.NoEWallet" xml:space="preserve"><value>Sie haben kein eWallet-Konto zum Bezahlen.</value></data>
   <data name="Tokens.Error.EWalletDeclined" xml:space="preserve"><value>Die eWallet-Belastung wurde abgelehnt.</value></data>
-  <data name="Tokens.Error.NeedsReview" xml:space="preserve"><value>Wir konnten die eWallet-Belastung nicht bestätigen. Unser Team prüft sie, und Ihre Token werden ausgegeben, falls sie erfolgt ist. Bitte nicht erneut versuchen.</value></data>
+  <data name="Tokens.Error.NeedsReview" xml:space="preserve"><value>Wir konnten diese Zahlung nicht bestätigen. Unser Team prüft sie, und Ihre Token werden ausgegeben, falls sie erfolgt ist. Bitte nicht erneut versuchen.</value></data>
   <data name="Tokens.CryptoAmountDue" xml:space="preserve"><value>Fälliger Betrag: {0}, zahlbar in {1}.</value></data>
   <data name="Tokens.CryptoAddress" xml:space="preserve"><value>Einzahlungsadresse</value></data>
   <data name="Tokens.CryptoNetwork" xml:space="preserve"><value>Netzwerk: {0}</value></data>
@@ -1406,4 +1406,9 @@
   <data name="Tokens.Status.Cancelled" xml:space="preserve"><value>Kauf storniert. Diese Token stehen wieder in Ihrem Monatskontingent zur Verfügung.</value></data>
   <data name="Tokens.Status.Rejected" xml:space="preserve"><value>Dieser Krypto-Kauf wurde abgelehnt: Wir konnten die Überweisung nicht prüfen. Es wurden keine Token ausgegeben.</value></data>
   <data name="Tokens.Status.Expired" xml:space="preserve"><value>Dieser Krypto-Kauf ist ohne Zahlung abgelaufen. Es wurden keine Token ausgegeben.</value></data>
+  <data name="Tokens.Error.SelfRecipient" xml:space="preserve"><value>Sie können sich selbst keine Token senden.</value></data>
+  <data name="Tokens.PendingAttempt" xml:space="preserve"><value>Ein Kauf ist noch nicht bestätigt. Klicken Sie auf Jetzt kaufen, um genau denselben Kauf zu wiederholen (es wird nicht doppelt abgebucht), oder prüfen Sie Ihren Verlauf. Für einen anderen Kauf laden Sie die Seite neu, nachdem Sie Ihren Verlauf geprüft haben.</value></data>
+  <data name="Tokens.CardExpired" xml:space="preserve"><value>Abgelaufen</value></data>
+  <data name="Tokens.PaymentMethodsAria" xml:space="preserve"><value>Zahlungsmethode</value></data>
+  <data name="Tokens.CopyCode" xml:space="preserve"><value>Code {0} kopieren</value></data>
 </root>

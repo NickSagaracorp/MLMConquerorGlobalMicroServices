@@ -111,7 +111,11 @@ public sealed class BillingClient : IBillingClient
                 _logger.LogError(ex, "No se pudo llamar a Billing ({Path}).", path);
                 return BillingResult<T>.Unavailable("Billing is unavailable.");
             }
-            catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
+            // Tiempo agotado (o cualquier cancelación que no pidió quien llama): no se sabe si Billing
+            // hizo la compra, así que es BILLING_UNAVAILABLE y la pantalla repite con la misma clave.
+            // Si la cancelación es de quien llama (el navegador se fue), sube tal cual: no es un
+            // resultado, ni éxito ni fallo definitivo, y la pantalla conserva su intento.
+            catch (OperationCanceledException ex) when (!ct.IsCancellationRequested)
             {
                 _logger.LogError(ex, "Billing no respondió a tiempo ({Path}).", path);
                 return BillingResult<T>.Unavailable("Billing did not respond in time.");

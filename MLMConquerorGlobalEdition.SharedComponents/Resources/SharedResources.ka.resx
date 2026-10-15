@@ -1318,12 +1318,12 @@
   <data name="Tokens.Error.NotEnoughTokens" xml:space="preserve"><value>ამ ტიპის საკმარისი ხელმისაწვდომი ტოკენი არ გაქვთ.</value></data>
   <data name="Tokens.Error.Recipient" xml:space="preserve"><value>მიმღები უნდა იყოს თქვენი ჩარიცხვის გუნდის წევრი.</value></data>
   <data name="Tokens.Error.RecipientNotActive" xml:space="preserve"><value>მიმღების ანგარიში აქტიური არ არის, ამიტომ ტოკენებს ვერ მიიღებს.</value></data>
-  <data name="Tokens.Error.DistributionRepeated" xml:space="preserve"><value>ეს განაწილება უკვე გაიგზავნა. ხელახლა გაგზავნამდე შეამოწმეთ ბალანსი.</value></data>
+  <data name="Tokens.Error.DistributionRepeated" xml:space="preserve"><value>არ ვიცით, დასრულდა თუ არა გაგზავნა. გამეორებამდე შეამოწმეთ ბალანსი და ისტორია.</value></data>
   <data name="Tokens.Error.DistributionBusy" xml:space="preserve"><value>ტოკენებზე სხვა ოპერაცია მიმდინარეობს. დაელოდეთ და სცადეთ ხელახლა.</value></data>
   <data name="Tokens.Error.DistributionUnavailable" xml:space="preserve"><value>განაწილება ვერ დასრულდა. სცადეთ ხელახლა: თქვენი ტოკენები ორჯერ არ გაიგზავნება.</value></data>
   <data name="Tokens.Error.NoEWallet" xml:space="preserve"><value>გადასახდელად eWallet-ის ანგარიში არ გაქვთ.</value></data>
   <data name="Tokens.Error.EWalletDeclined" xml:space="preserve"><value>eWallet-ით ჩამოჭრა უარყოფილია.</value></data>
-  <data name="Tokens.Error.NeedsReview" xml:space="preserve"><value>eWallet-ით ჩამოჭრის დადასტურება ვერ მოხერხდა. ჩვენი გუნდი გადაამოწმებს და, თუ შესრულდა, ტოკენები გაიცემა. თავიდან ნუ სცდით.</value></data>
+  <data name="Tokens.Error.NeedsReview" xml:space="preserve"><value>ამ გადახდის დადასტურება ვერ მოხერხდა. ჩვენი გუნდი გადაამოწმებს და, თუ შესრულდა, ტოკენები გაიცემა. თავიდან ნუ სცდით.</value></data>
   <data name="Tokens.CryptoAmountDue" xml:space="preserve"><value>გადასახდელი თანხა: {0}, ვალუტა {1}.</value></data>
   <data name="Tokens.CryptoAddress" xml:space="preserve"><value>დეპოზიტის მისამართი</value></data>
   <data name="Tokens.CryptoNetwork" xml:space="preserve"><value>ქსელი: {0}</value></data>
@@ -1337,4 +1337,9 @@
   <data name="Tokens.Status.Cancelled" xml:space="preserve"><value>შენაძენი გაუქმდა. ეს ტოკენები თვიურ ლიმიტს დაუბრუნდა.</value></data>
   <data name="Tokens.Status.Rejected" xml:space="preserve"><value>ეს კრიპტოშენაძენი უარყოფილია: გადარიცხვის გადამოწმება ვერ მოხერხდა. ტოკენები არ გაცემულა.</value></data>
   <data name="Tokens.Status.Expired" xml:space="preserve"><value>ამ კრიპტოშენაძენს ვადა გაუვიდა გადახდის გარეშე. ტოკენები არ გაცემულა.</value></data>
+  <data name="Tokens.Error.SelfRecipient" xml:space="preserve"><value>ტოკენების საკუთარ თავზე გაგზავნა შეუძლებელია.</value></data>
+  <data name="Tokens.PendingAttempt" xml:space="preserve"><value>არსებობს დაუდასტურებელი შენაძენი. დააჭირეთ „ახლავე ყიდვას“ ზუსტად იმავე შენაძენის გასამეორებლად (ორჯერ არ ჩამოგეჭრებათ) ან შეამოწმეთ ისტორია. სხვა შენაძენის დასაწყებად ისტორიის შემოწმების შემდეგ განაახლეთ გვერდი.</value></data>
+  <data name="Tokens.CardExpired" xml:space="preserve"><value>ვადაგასული</value></data>
+  <data name="Tokens.PaymentMethodsAria" xml:space="preserve"><value>გადახდის მეთოდი</value></data>
+  <data name="Tokens.CopyCode" xml:space="preserve"><value>კოდის {0} კოპირება</value></data>
 </root>

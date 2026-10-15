@@ -75,7 +75,7 @@ public class DistributeTokenHandler : IRequestHandler<DistributeTokenCommand, Re
         var now       = _dateTime.Now;
 
         if (string.Equals(callerId, requested, StringComparison.OrdinalIgnoreCase))
-            return Result<bool>.Failure("INVALID_RECIPIENT", "Cannot distribute tokens to yourself.");
+            return Result<bool>.Failure(TokenDistributionErrors.InvalidRecipient, "Cannot distribute tokens to yourself.");
 
         var tokenTypeExists = await _db.TokenTypes.AsNoTracking()
             .AnyAsync(tt => tt.Id == req.TokenTypeId && tt.IsActive, ct);
@@ -86,14 +86,14 @@ public class DistributeTokenHandler : IRequestHandler<DistributeTokenCommand, Re
         // escribe Billing; uno escrito con otras mayúsculas sería otro recurso.
         var found = await TokenCustody.FindRecipientAsync(_db, requested, ct);
         if (found is null)
-            return Result<bool>.Failure("RECIPIENT_NOT_FOUND", "Recipient member not found.");
+            return Result<bool>.Failure(TokenDistributionErrors.RecipientNotFound, "Recipient member not found.");
         var recipient = found.MemberId;
 
         var team = await TokenCustody.IsInEnrollmentTeamAsync(_db, callerId, recipient, ct);
         if (team.SenderId is null)
             return Result<bool>.Failure("SENDER_NOT_IN_TREE", "Sender's enrollment node not found.");
         if (!team.InTeam)
-            return Result<bool>.Failure("RECIPIENT_NOT_IN_DOWNLINE", "Recipient must be a member of your enrollment team.");
+            return Result<bool>.Failure(TokenDistributionErrors.RecipientNotInDownline, "Recipient must be a member of your enrollment team.");
         var senderId = team.SenderId;
 
         if (!found.IsActive)
@@ -119,7 +119,7 @@ public class DistributeTokenHandler : IRequestHandler<DistributeTokenCommand, Re
             if (instances.Count < req.Quantity)
             {
                 await tx.RollbackAsync(CancellationToken.None);
-                return Result<bool>.Failure("INSUFFICIENT_TOKEN_BALANCE",
+                return Result<bool>.Failure(TokenDistributionErrors.InsufficientTokenBalance,
                     $"You only have {instances.Count} available token(s) of this type.");
             }
 

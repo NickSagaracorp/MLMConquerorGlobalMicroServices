@@ -11,6 +11,20 @@ namespace MLMConquerorGlobalEdition.SharedComponents.Components.Tokens;
 /// </summary>
 public static class TokenPurchaseMessages
 {
+    /// <summary>
+    /// Lo que devuelve el BizCenter cuando algo lanza sin código propio (DomainExceptionMiddleware,
+    /// ErrorHandlingBehavior): un 500 del que no se sabe si la compra llegó a hacerse.
+    /// </summary>
+    public const string InternalErrorCode = "INTERNAL_ERROR";
+
+    /// <summary>
+    /// Fallos 5xx que SÍ son definitivos: Billing abandonó la compra antes de cobrar
+    /// (<c>PAYMENT_SERVICE_UNAVAILABLE</c>) o el BizCenter y Billing no se entienden
+    /// (<c>BILLING_CONTRACT_ERROR</c>, <c>BILLING_AUTH_MISMATCH</c>). Cualquier otro 5xx conserva la clave.
+    /// </summary>
+    private static readonly HashSet<string> DefinitiveServerErrors =
+        [BillingContractError, BillingAuthMismatch, PaymentServiceUnavailable];
+
     public static string ErrorKeyFor(string? code) => code switch
     {
         MonthlyLimitReached                                                => "Tokens.Error.MonthlyLimit",
@@ -27,19 +41,20 @@ public static class TokenPurchaseMessages
         CryptoAddressNotConfigured or CryptoCurrencyNotSupported           => "Tokens.CryptoUnavailable",
         NotAwaitingCrypto                                                  => "Tokens.Error.NotAwaitingCrypto",
         InProgress or Busy                                                 => "Tokens.Error.InProgress",
-        Impersonation or "IMPERSONATION_READ_ONLY"                         => "Tokens.Error.Impersonation",
+        Impersonation or ImpersonationScope.ReadOnlyErrorCode              => "Tokens.Error.Impersonation",
         TokenDistributionErrors.Impersonation                              => "Tokens.Error.ImpersonationDistribute",
         MemberInactive                                                     => "Tokens.Error.MemberInactive",
         BillingUnavailable or EWalletUnavailable
-            or PaymentServiceUnavailable                                   => "Tokens.Error.Unavailable",
+            or PaymentServiceUnavailable or InternalErrorCode              => "Tokens.Error.Unavailable",
         BillingContractError or BillingAuthMismatch                        => "Tokens.Error.ContactSupport",
 
         // El permiso ya se usó o la caché no respondió: se pide un código nuevo y se repite.
         StepUpGrant.RequiredErrorCode or StepUpGrant.InvalidErrorCode      => "StepUp.RetryFailed",
 
-        "INSUFFICIENT_TOKEN_BALANCE"                                       => "Tokens.Error.NotEnoughTokens",
-        "RECIPIENT_NOT_IN_DOWNLINE" or "RECIPIENT_NOT_FOUND"
-            or "INVALID_RECIPIENT"                                         => "Tokens.Error.Recipient",
+        TokenDistributionErrors.InsufficientTokenBalance                   => "Tokens.Error.NotEnoughTokens",
+        TokenDistributionErrors.RecipientNotInDownline
+            or TokenDistributionErrors.RecipientNotFound                   => "Tokens.Error.Recipient",
+        TokenDistributionErrors.InvalidRecipient                           => "Tokens.Error.SelfRecipient",
         TokenDistributionErrors.RecipientNotActive                         => "Tokens.Error.RecipientNotActive",
 
         // IDEMPOTENCY_KEY_REUSED, PAYMENT_METHOD_WRONG_ENDPOINT y lo desconocido.
@@ -48,20 +63,21 @@ public static class TokenPurchaseMessages
 
     /// <summary>
     /// ¿Hay que conservar la clave? Sí cuando no se sabe si la compra entró (caída, en curso, ocupado,
-    /// una respuesta 5xx sin código) o cuando quedó en revisión: repetir con la misma clave devuelve lo
-    /// ya hecho, y una clave nueva podría cobrar dos veces. También tras un rechazo del permiso de
-    /// step-up: no se ejecutó nada y la repetición, con un código nuevo, debe ser la misma compra.
+    /// cualquier 5xx que no esté en la lista de definitivos, con o sin código: <c>INTERNAL_ERROR</c>
+    /// incluido) o cuando quedó en revisión: repetir con la misma clave devuelve lo ya hecho, y una clave
+    /// nueva podría cobrar dos veces. También tras un rechazo del permiso de step-up: no se ejecutó nada
+    /// y la repetición, con un código nuevo, debe ser la misma compra.
     /// </summary>
     /// <remarks>
-    /// Un fallo definitivo cierra esa clave: <c>IDEMPOTENCY_KEY_REUSED</c>, <c>CARD_PAYMENTS_DISABLED</c>,
-    /// <c>PAYMENT_SERVICE_UNAVAILABLE</c> (Billing abandonó la compra antes de cobrar) y los fallos de
-    /// configuración entre servicios (<c>BILLING_CONTRACT_ERROR</c>, <c>BILLING_AUTH_MISMATCH</c>), que
-    /// no se reintentan solos.
+    /// Ante la duda, se conserva: un 5xx solo cierra la clave si su código está en
+    /// <see cref="DefinitiveServerErrors"/>. Los 4xx con código son definitivos salvo los de arriba
+    /// (<c>IDEMPOTENCY_KEY_REUSED</c>, <c>CARD_PAYMENTS_DISABLED</c>, el tope…). <c>STEP_UP_COOLDOWN</c>
+    /// no está: el diálogo de step-up ya lo explica y no hay nada que repetir hasta que pase la espera.
     /// </remarks>
     public static bool KeepsKey(string? code, HttpStatusCode status) =>
         code is InProgress or Busy or BillingUnavailable or NeedsReview
-            or StepUpGrant.RequiredErrorCode or StepUpGrant.InvalidErrorCode or StepUpGrant.CooldownErrorCode
-        || (string.IsNullOrEmpty(code) && (int)status >= 500);
+            or StepUpGrant.RequiredErrorCode or StepUpGrant.InvalidErrorCode
+        || ((int)status >= 500 && (string.IsNullOrEmpty(code) || !DefinitiveServerErrors.Contains(code)));
 
     /// <summary>
     /// Texto de un fallo al distribuir. Como <see cref="ErrorKeyFor"/>, salvo lo que en distribuir
@@ -70,21 +86,26 @@ public static class TokenPurchaseMessages
     /// </summary>
     public static string DistributionErrorKeyFor(string? code) => code switch
     {
-        IdempotencyKeyReused                           => "Tokens.Error.DistributionRepeated",
+        // La clave ya reclamada o un 500 sin código propio: el handler pudo haber guardado antes de
+        // fallar, así que no se sabe si el envío se hizo. El texto lo dice tal cual.
+        IdempotencyKeyReused or InternalErrorCode      => "Tokens.Error.DistributionRepeated",
         Busy                                           => "Tokens.Error.DistributionBusy",
+        TokenDistributionErrors.InvalidRecipient       => "Tokens.Error.SelfRecipient",
         TokenDistributionErrors.IdempotencyUnavailable => "Tokens.Error.DistributionUnavailable",
         _                                              => ErrorKeyFor(code)
     };
 
     /// <summary>
     /// ¿Se conserva la clave de la distribución? Sí cuando no se movió nada y se puede repetir lo mismo
-    /// (candado ocupado, caché caída al reclamar la clave) o cuando no se sabe si se hizo (5xx sin
-    /// código; la caída de red la trata la pantalla): repetir con la misma clave no mueve los códigos
-    /// dos veces. Tras un éxito o un fallo definitivo (destinatario, saldo, clave ya usada) se renueva.
+    /// (candado ocupado, caché caída al reclamar la clave) o cuando no se sabe si se hizo (cualquier
+    /// 5xx, con o sin código, como el <c>INTERNAL_ERROR</c> de una excepción en el handler; la caída de
+    /// red la trata la pantalla): repetir con la misma clave no mueve los códigos dos veces (el BizCenter
+    /// la tiene reclamada y contesta IDEMPOTENCY_KEY_REUSED). Tras un éxito o un fallo definitivo
+    /// (destinatario, saldo, clave ya usada) se renueva.
     /// </summary>
     public static bool DistributionKeepsKey(string? code, HttpStatusCode status) =>
         code is Busy or TokenDistributionErrors.IdempotencyUnavailable
-        || (string.IsNullOrEmpty(code) && (int)status >= 500);
+        || (int)status >= 500;
 
     /// <summary>Texto de una compra en cripto que salió sin pagar. Null para los demás estados.</summary>
     public static string? StatusKeyFor(string? status) => status switch

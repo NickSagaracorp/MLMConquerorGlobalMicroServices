@@ -71,13 +71,13 @@ public class TransferTokenInstanceHandler : IRequestHandler<TransferTokenInstanc
 
         if (string.Equals(callerId, requested, StringComparison.OrdinalIgnoreCase))
             return Result<TransferTokenInstanceResponse>.Failure(
-                "INVALID_RECIPIENT", "Cannot transfer a token to yourself.");
+                TokenDistributionErrors.InvalidRecipient, "Cannot transfer a token to yourself.");
 
         // Recipient must exist; keep the id as stored (it names the funds lock).
         var found = await TokenCustody.FindRecipientAsync(_db, requested, ct);
         if (found is null)
             return Result<TransferTokenInstanceResponse>.Failure(
-                "RECIPIENT_NOT_FOUND", "Recipient member not found.");
+                TokenDistributionErrors.RecipientNotFound, "Recipient member not found.");
         var recipient = found.MemberId;
 
         // Recipient must be in the sender's enrollment subtree. From here on the sender is the id as
@@ -92,7 +92,7 @@ public class TransferTokenInstanceHandler : IRequestHandler<TransferTokenInstanc
                 "TransferToken: recipient '{Recipient}' is not in sender '{Sender}' subtree",
                 recipient, team.SenderId);
             return Result<TransferTokenInstanceResponse>.Failure(
-                "RECIPIENT_NOT_IN_DOWNLINE", "Recipient must be a member of your enrollment team.");
+                TokenDistributionErrors.RecipientNotInDownline, "Recipient must be a member of your enrollment team.");
         }
         var senderId = team.SenderId;
 

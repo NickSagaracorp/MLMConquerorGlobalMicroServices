@@ -13,14 +13,24 @@
     panel admin. Los anfitriones del miembro encienden compra y distribución (y las apagan al
     suplantar); el panel no, porque nadie compra con el dinero de otro. Ningún dato de identidad
     viaja en las peticiones. Pagar con saldo pasa por el step-up (StepUpDialog + StepUpHttp); tarjeta
-    y cripto no. La cripto usa el mismo CryptoDepositPicker que el alta. Los errores se ven.
+    y cripto no. La cripto usa el mismo CryptoDepositPicker que el alta, sin su dirección: la que vale
+    es la que devuelve Billing al crear la compra. Los errores se ven. Los importes son USD y se
+    escriben siempre en en-US (Money.Usd), sea cual sea la cultura de quien mira.
+
+    COMPRA SIN RESOLVER. Si un intento acaba sin saber si entró (caída, 5xx, en curso, revisión,
+    permiso de step-up rechazado), se guarda el intento (clave + petición) y la selección se bloquea:
+    el botón repite EXACTAMENTE esa petición, que Billing reconoce por la clave, y un aviso lo explica.
+    Cambiar de pestaña, tipo, cantidad, tarjeta o moneda no está permitido mientras tanto, porque con
+    otra clave se podría cobrar dos veces. Se libera cuando la repetición da un resultado (éxito o
+    fallo definitivo). Para empezar otra compra distinta sin repetirla, se recarga la página (el aviso
+    pide revisar antes el historial). Es lo más simple y seguro: no hay botón de "descartar".
 *@
 
 <StepUpDialog @ref="_stepUp" />
 
 <BreadcrumbNav Items="@_breadcrumb" />
 
-@if (_loadFailed)
+@if (LoadFailed)
 {
     <div class="alert alert-warning" role="alert" id="tokens-load-error">@L["Tokens.Error.LoadFailed"]</div>
 }
@@ -50,13 +60,17 @@
             {
                 <div class="alert alert-danger py-2" role="alert" id="tokens-purchase-error">@L[_purchaseErrorKey]</div>
             }
+            @if (_pending is not null)
+            {
+                <div class="alert alert-warning py-2" role="status" id="tokens-purchase-pending">@L["Tokens.PendingAttempt"]</div>
+            }
             @if (_purchaseResult is { } result)
             {
                 var statusKey = TokenPurchaseMessages.StatusKeyFor(result.Status);
                 if (result.Status == TokenPurchaseStatuses.AwaitingCryptoConfirmation)
                 {
                     <div class="alert alert-info py-2" role="status" id="tokens-purchase-done">
-                        <div>@L["Tokens.PurchaseCryptoPending", result.OrderNo ?? result.OrderId, result.TotalAmount.ToString("C"), result.CryptoCurrency ?? string.Empty]</div>
+                        <div>@L["Tokens.PurchaseCryptoPending", result.OrderNo ?? result.OrderId, Money.Usd(result.TotalAmount), result.CryptoCurrency ?? string.Empty]</div>
                         @if (!string.IsNullOrWhiteSpace(result.CryptoDepositAddress))
                         {
                             <div class="mt-2 small">@L["Tokens.CryptoAddress"]</div>
@@ -68,7 +82,7 @@
                         }
                         <button id="tokens-crypto-cancel" type="button" class="btn btn-sm btn-outline-secondary mt-3"
                                 disabled="@(_purchaseBusy || _cancelBusy)" @onclick="CancelCryptoAsync">
-                            @if (_cancelBusy) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                            @if (_cancelBusy) { @Spinner }
                             @L["Tokens.CancelPurchase"]
                         </button>
                     </div>
@@ -98,7 +112,7 @@
             <div class="row g-3 align-items-end">
                 <div class="col-md-5">
                     <label class="form-label small" for="tokens-purchase-type">@L["Tokens.TokenType"]</label>
-                    <select id="tokens-purchase-type" class="form-select" value="@_purchaseTokenTypeId" @onchange="OnPurchaseTypeChanged">
+                    <select id="tokens-purchase-type" class="form-select" value="@_purchaseTokenTypeId" disabled="@IsLocked" @onchange="OnPurchaseTypeChanged">
                         <option value="">—</option>
                         @foreach (var item in PurchasableItems)
                         {
@@ -108,7 +122,7 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label small" for="tokens-purchase-qty">@L["Tokens.Amount"]</label>
-                    <select id="tokens-purchase-qty" class="form-select" value="@_purchaseAmount" @onchange="OnPurchaseAmountChanged">
+                    <select id="tokens-purchase-qty" class="form-select" value="@_purchaseAmount" disabled="@IsLocked" @onchange="OnPurchaseAmountChanged">
                         @for (var n = 1; n <= MaxPurchasable; n++)
                         {
                             var v = n;
@@ -119,40 +133,42 @@
                 <div class="col-md-4">
                     @if (SelectedItem?.UnitPrice is decimal price)
                     {
-                        <div class="small">@L["Tokens.UnitPrice", price.ToString("C")]</div>
-                        <div class="fw-semibold" id="tokens-total">@L["Tokens.TotalPrice", (price * _purchaseAmount).ToString("C")]</div>
+                        <div class="small" id="tokens-unit-price">@L["Tokens.UnitPrice", Money.Usd(price)]</div>
+                        <div class="fw-semibold" id="tokens-total">@L["Tokens.TotalPrice", Money.Usd(price * _purchaseAmount)]</div>
                     }
                 </div>
             </div>
 
-            <ul class="nav nav-tabs bg-transparent border-bottom gap-2 gap-sm-5 mt-4" role="tablist">
+            <ul class="nav nav-tabs bg-transparent border-bottom gap-2 gap-sm-5 mt-4" role="tablist" aria-label="@L["Tokens.PaymentMethodsAria"]">
                 @foreach (var (method, key) in AvailableTabs)
                 {
                     var m = method;
                     <li class="nav-item" role="presentation">
-                        <button id="tokens-tab-@m" type="button"
+                        <button id="tokens-tab-@m" type="button" role="tab"
+                                aria-selected="@(_payTab == m ? "true" : "false")" aria-controls="tokens-pay-panel"
+                                disabled="@IsLocked"
                                 class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_payTab == m ? "active" : "")"
                                 @onclick="() => SelectTab(m)">@L[key]</button>
                     </li>
                 }
             </ul>
 
-            <div class="pt-4">
+            <div class="pt-4" id="tokens-pay-panel" role="tabpanel" aria-labelledby="tokens-tab-@_payTab">
                 @if (_payTab == TokenPaymentMethods.CommissionBalance)
                 {
                     <span>@L["Tokens.CommissionBalanceLabel"]</span>
-                    <h3 class="fs-20 mt-1 mb-0">@(_funds?.CommissionBalance.ToString("C") ?? "—")</h3>
+                    <h3 class="fs-20 mt-1 mb-0" id="tokens-commission-balance">@Money.Usd(_funds?.CommissionBalance)</h3>
                 }
                 else if (_payTab == TokenPaymentMethods.EWallet)
                 {
                     @if (_funds is { HasEWallet: false })
                     {
-                        <p class="text-muted mb-0">@L["Tokens.Error.NoEWallet"]</p>
+                        <p class="text-muted mb-0" id="tokens-no-ewallet">@L["Tokens.Error.NoEWallet"]</p>
                     }
                     else
                     {
                         <span>@L["Tokens.EWalletBalanceLabel"]</span>
-                        <h3 class="fs-20 mt-1 mb-0">@(_funds?.EWalletBalance?.ToString("C") ?? "—")</h3>
+                        <h3 class="fs-20 mt-1 mb-0" id="tokens-ewallet-balance">@Money.Usd(_funds?.EWalletBalance)</h3>
                     }
                 }
                 else if (_payTab == TokenPaymentMethods.CreditCard)
@@ -168,11 +184,16 @@
                             {
                                 var c = card;
                                 <div class="col-lg-4 col-md-4">
-                                    <button type="button" id="tokens-card-@c.Id" disabled="@c.IsExpired"
+                                    <button type="button" id="tokens-card-@c.Id" disabled="@(c.IsExpired || IsLocked)"
+                                            aria-pressed="@(_selectedCardId == c.Id ? "true" : "false")"
                                             class="btn w-100 text-start p-3 border rounded-3 @(_selectedCardId == c.Id ? "border-primary border-2" : "")"
                                             @onclick="() => SelectCard(c)">
                                         <div class="fw-semibold">@c.CardBrand •••• @c.Last4</div>
                                         <div class="small text-muted">@L["Tokens.CardExpiryPrefix"] @($"{c.ExpiryMonth:00}/{c.ExpiryYear}")</div>
+                                        @if (c.IsExpired)
+                                        {
+                                            <div class="small text-danger fw-semibold tokens-card-expired">@L["Tokens.CardExpired"]</div>
+                                        }
                                     </button>
                                 </div>
                             }
@@ -181,11 +202,15 @@
                 }
                 else if (_payTab == TokenPaymentMethods.Crypto)
                 {
+                    @* Sin la dirección del catálogo: la buena es la que Billing devuelve al crear la compra. *@
                     <CryptoDepositPicker Addresses="@CryptoDeposits" Currency="@_cryptoCurrency"
-                                         CurrencyChanged="OnCryptoChanged" InputId="tokens-crypto">
+                                         CurrencyChanged="OnCryptoChanged" InputId="tokens-crypto"
+                                         ShowAddress="false" Disabled="@IsLocked"
+                                         UnavailableText="@L["Tokens.CryptoUnavailable"]"
+                                         CurrencyLabel="@L["Tokens.CryptoCurrency"]">
                         @if (SelectedItem?.UnitPrice is decimal p && SelectedDeposit is not null)
                         {
-                            <p class="fw-semibold mb-1">@L["Tokens.CryptoAmountDue", (p * _purchaseAmount).ToString("C"), SelectedDeposit.Currency]</p>
+                            <p class="fw-semibold mb-1" id="tokens-crypto-due">@L["Tokens.CryptoAmountDue", Money.Usd(p * _purchaseAmount), SelectedDeposit.Currency]</p>
                         }
                         <p class="text-muted small mb-0">@L["Tokens.CryptoNote"]</p>
                     </CryptoDepositPicker>
@@ -193,7 +218,7 @@
             </div>
 
             <button id="tokens-buy" class="btn btn-primary mt-4" disabled="@(!CanBuy)" @onclick="PurchaseTokensAsync">
-                @if (_purchaseBusy) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                @if (_purchaseBusy) { @Spinner }
                 @L["Tokens.BuyNow"]
             </button>
         </div>
@@ -231,8 +256,9 @@
                                             <span class="font-monospace">@row.TokenCode</span>
                                             @if (!row.IsUsed)
                                             {
-                                                <button type="button" class="btn btn-sm btn-link p-0 ms-2" title="@L["Tokens.Copy"]" @onclick="() => CopyAsync(row.TokenCode!)">
-                                                    <i class="@(_copiedCode == row.TokenCode ? "ri-check-line" : "ri-file-copy-line")"></i>
+                                                <button type="button" class="btn btn-sm btn-link p-0 ms-2 tokens-copy" title="@L["Tokens.Copy"]"
+                                                        aria-label="@L["Tokens.CopyCode", row.TokenCode!]" @onclick="() => CopyAsync(row.TokenCode!)">
+                                                    <i aria-hidden="true" class="@(_copiedCode == row.TokenCode ? "ri-check-line" : "ri-file-copy-line")"></i>
                                                 </button>
                                             }
                                         }
@@ -368,7 +394,7 @@
             <button id="tokens-distribute" class="btn btn-outline-primary mt-3"
                     disabled="@(_distributeBusy || _distributeTokenTypeId is null || _selectedMember is null)"
                     @onclick="DistributeTokensAsync">
-                @if (_distributeBusy) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                @if (_distributeBusy) { @Spinner }
                 <i class="ri-token-swap-fill me-1"></i>@L["Tokens.DistributeButton"]
             </button>
 
@@ -407,7 +433,9 @@
 
     private StepUpDialog _stepUp = default!;
 
-    private bool _loadFailed;
+    // Qué cargas fallaron la última vez: el aviso se apaga cuando todas vuelven a ir bien.
+    private readonly HashSet<string> _failedLoads = new();
+    private bool LoadFailed => _failedLoads.Count > 0;
     private bool _isLoading = true;
     private TokenSummaryDto? _summary;
     private TokenCatalogDto? _catalog;
@@ -423,6 +451,12 @@
     private string? _selectedCardId;
     private string? _cryptoCurrency;
     private string _idempotencyKey = NewKey();
+
+    /// <summary>
+    /// El intento que acabó sin saber si entró: su petición tal cual (con su clave). Mientras exista,
+    /// la selección está bloqueada y comprar repite exactamente esto. Ver el comentario de cabecera.
+    /// </summary>
+    private PurchaseTokensRequest? _pending;
     private bool _purchaseBusy;
     private bool _cancelBusy;
     private string? _purchaseErrorKey;
@@ -467,18 +501,33 @@
 
     private int MaxPurchasable => Math.Clamp(_catalog?.MonthlyRemaining ?? 0, 1, TokenPurchaseRules.MonthlyLimit);
 
+    /// <summary>La selección no se toca mientras se envía o mientras hay un intento sin resolver.</summary>
+    private bool IsLocked => _purchaseBusy || _cancelBusy || _pending is not null;
+
     private bool CanBuy =>
         !_purchaseBusy && !_cancelBusy
-        && SelectedItem is not null
+        && (_pending is not null || CanBuyNew);
+
+    private bool CanBuyNew =>
+        SelectedItem is not null
         && (_catalog?.MonthlyRemaining ?? 0) >= _purchaseAmount
         && AvailableTabs.Any(t => t.Method == _payTab)
         && (_payTab != TokenPaymentMethods.CreditCard || _selectedCardId is not null)
-        && (_payTab != TokenPaymentMethods.Crypto || SelectedDeposit is not null);
+        && (_payTab != TokenPaymentMethods.Crypto || SelectedDeposit is not null)
+        // Sin cuenta eWallet no se paga con ella: el texto de la pestaña lo explica.
+        && (_payTab != TokenPaymentMethods.EWallet || _funds?.HasEWallet != false);
 
     private int MaxDistributable =>
         Math.Max(1, _balances.FirstOrDefault(b => b.TokenTypeId == _distributeTokenTypeId)?.Balance ?? 1);
 
     private static string NewKey() => Guid.NewGuid().ToString("N");
+
+    /// <summary>Spinner decorativo con su texto para lectores de pantalla.</summary>
+    private RenderFragment Spinner => __builder =>
+    {
+        <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+        <span class="visually-hidden">@L["Common.Loading"]</span>
+    };
 
     private RenderFragment StatBox(string icon, string color, string label, int? value) => __builder =>
     {
@@ -506,30 +555,41 @@
         await Task.WhenAll(loads);
     }
 
-    /// <summary>Una carga que falla deja su dato vacío y ENCIENDE el aviso. Nada se calla.</summary>
-    private async Task<T?> GetAsync<T>(string url) where T : class
+    /// <summary>
+    /// Una carga que falla deja su dato vacío y ENCIENDE el aviso; la misma carga, si después va bien,
+    /// lo apaga (si no queda otra fallida). Nada se calla.
+    /// </summary>
+    private async Task<T?> GetAsync<T>(string source, string url) where T : class
     {
         try
         {
             var resp = await Http.GetFromJsonAsync<ApiWrapper<T>>(url);
-            if (resp?.Success == true && resp.Data is not null) return resp.Data;
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _failedLoads.Remove(source);
+                return resp.Data;
+            }
         }
         catch (Exception)
         {
             // Cae al aviso de abajo.
         }
-        _loadFailed = true;
+        _failedLoads.Add(source);
         return null;
     }
 
-    private async Task LoadSummaryAsync()  => _summary  = await GetAsync<TokenSummaryDto>($"{ApiBaseUrl}/tokens/summary");
-    private async Task LoadFundsAsync()    => _funds    = await GetAsync<TokenPurchaseFundsDto>($"{ApiBaseUrl}/wallet/balances");
-    private async Task LoadCardsAsync()    => _cards    = await GetAsync<List<CardItem>>($"{ApiBaseUrl}/billing/credit-cards") ?? new();
-    private async Task LoadBalancesAsync() => _balances = await GetAsync<List<BalanceItem>>($"{ApiBaseUrl}/tokens/balances") ?? new();
+    private async Task LoadSummaryAsync()  => _summary  = await GetAsync<TokenSummaryDto>("summary", $"{ApiBaseUrl}/tokens/summary");
+    private async Task LoadFundsAsync()    => _funds    = await GetAsync<TokenPurchaseFundsDto>("funds", $"{ApiBaseUrl}/wallet/balances");
+    private async Task LoadCardsAsync()    => _cards    = await GetAsync<List<CardItem>>("cards", $"{ApiBaseUrl}/billing/credit-cards") ?? new();
+    private async Task LoadBalancesAsync() => _balances = await GetAsync<List<BalanceItem>>("balances", $"{ApiBaseUrl}/tokens/balances") ?? new();
 
     private async Task LoadCatalogAsync()
     {
-        _catalog = await GetAsync<TokenCatalogDto>($"{ApiBaseUrl}/tokens/types");
+        _catalog = await GetAsync<TokenCatalogDto>("catalog", $"{ApiBaseUrl}/tokens/types");
+
+        // Con un intento sin resolver no se toca la selección: lo que se repite es la petición guardada.
+        if (_pending is not null) return;
+
         if (SelectedDeposit is null) _cryptoCurrency = CryptoDeposits.FirstOrDefault()?.Currency;
 
         // Si la pestaña elegida dejó de estar (la tarjeta se apagó), se vuelve a la primera.
@@ -538,13 +598,20 @@
             _payTab = AvailableTabs[0].Method;
             ResetPurchaseAttempt();
         }
+
+        // El cupo pudo bajar (otra compra, otra pestaña): la cantidad no puede pasar de lo que queda.
+        if (_purchaseAmount > MaxPurchasable)
+        {
+            _purchaseAmount = MaxPurchasable;
+            _idempotencyKey = NewKey();
+        }
     }
 
     private async Task LoadPageAsync(int page)
     {
         _page = page;
         _isLoading = true;
-        var data = await GetAsync<PagedData<TokenItem>>($"{ApiBaseUrl}/tokens?page={page}&pageSize={PageSize}");
+        var data = await GetAsync<PagedData<TokenItem>>("history", $"{ApiBaseUrl}/tokens?page={page}&pageSize={PageSize}");
         _items = data?.Items ?? new();
         _total = data?.TotalCount ?? 0;
         _isLoading = false;
@@ -552,7 +619,10 @@
 
     // ── Compra ────────────────────────────────────────────────────────────────
 
-    /// <summary>Cambiar lo que se compra es otra compra: clave nueva. Repetir sin tocar nada reusa la clave.</summary>
+    /// <summary>
+    /// Cambiar lo que se compra es otra compra: clave nueva. Repetir sin tocar nada reusa la clave. Con
+    /// un intento sin resolver no se llega aquí: la selección está bloqueada.
+    /// </summary>
     private void ResetPurchaseAttempt()
     {
         _idempotencyKey = NewKey();
@@ -561,34 +631,58 @@
 
     private void OnPurchaseTypeChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
+        if (IsLocked) return;
         _purchaseTokenTypeId = int.TryParse(e.Value?.ToString(), out var id) ? id : null;
         ResetPurchaseAttempt();
     }
 
     private void OnPurchaseAmountChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
+        if (IsLocked) return;
         _purchaseAmount = int.TryParse(e.Value?.ToString(), out var n) ? n : 1;
         ResetPurchaseAttempt();
     }
 
     private void SelectTab(string method)
     {
-        if (_payTab == method) return;
+        if (IsLocked || _payTab == method) return;
         _payTab = method;
         ResetPurchaseAttempt();
     }
 
     private void SelectCard(CardItem card)
     {
-        if (card.IsExpired || _selectedCardId == card.Id) return;
+        if (IsLocked || card.IsExpired || _selectedCardId == card.Id) return;
         _selectedCardId = card.Id;
         ResetPurchaseAttempt();
     }
 
     private void OnCryptoChanged(string? currency)
     {
+        if (IsLocked) return;
         _cryptoCurrency = currency;
         ResetPurchaseAttempt();
+    }
+
+    /// <summary>La petición de un intento nuevo, con la selección de la pantalla y su clave.</summary>
+    private PurchaseTokensRequest BuildRequest() => new()
+    {
+        TokenTypeId    = _purchaseTokenTypeId!.Value,
+        Quantity       = _purchaseAmount,
+        PaymentMethod  = _payTab,
+        CreditCardId   = _payTab == TokenPaymentMethods.CreditCard ? _selectedCardId : null,
+        CryptoCurrency = _payTab == TokenPaymentMethods.Crypto ? _cryptoCurrency : null,
+        IdempotencyKey = _idempotencyKey
+    };
+
+    /// <summary>El intento quedó sin resolver: se guarda tal cual y la selección se bloquea.</summary>
+    private void KeepPending(PurchaseTokensRequest request) => _pending = request;
+
+    /// <summary>El intento tuvo un resultado (éxito o fallo definitivo): se libera y la clave se renueva.</summary>
+    private void ClosePending()
+    {
+        _pending = null;
+        _idempotencyKey = NewKey();
     }
 
     private async Task PurchaseTokensAsync()
@@ -599,24 +693,16 @@
         _purchaseBusy = true;
         _purchaseErrorKey = null;
         _purchaseResult = null;
+
+        // Un intento sin resolver se repite EXACTAMENTE (mismo cuerpo, misma clave): Billing devuelve
+        // lo ya hecho si la compra entró. Si no lo hay, la petición sale de la selección.
+        var request = _pending ?? BuildRequest();
         try
         {
-            // El cuerpo se arma con la clave del intento: un reintento tras una caída manda el mismo
-            // cuerpo con la misma clave, y Billing devuelve lo ya hecho si la compra entró.
-            var request = new PurchaseTokensRequest
-            {
-                TokenTypeId    = _purchaseTokenTypeId!.Value,
-                Quantity       = _purchaseAmount,
-                PaymentMethod  = _payTab,
-                CreditCardId   = _payTab == TokenPaymentMethods.CreditCard ? _selectedCardId : null,
-                CryptoCurrency = _payTab == TokenPaymentMethods.Crypto ? _cryptoCurrency : null,
-                IdempotencyKey = _idempotencyKey
-            };
-
             // Pagar con saldo va por la ruta con step-up: cada intento sale sin permiso, la API pide el
             // código y la petición se repite UNA vez con un permiso nuevo (el de un intento anterior ya
             // lo quemó el BizCenter, y quizá Billing). Tarjeta y cripto van directas.
-            var fromBalance = TokenPaymentMethods.IsBalance(_payTab);
+            var fromBalance = TokenPaymentMethods.IsBalance(request.PaymentMethod);
             var url = fromBalance ? $"{ApiBaseUrl}/tokens/purchase/balance" : $"{ApiBaseUrl}/tokens/purchase";
             HttpRequestMessage Build() => new(HttpMethod.Post, url) { Content = JsonContent.Create(request) };
 
@@ -624,7 +710,9 @@
                 ? await StepUpHttp.SendAsync(Http, StepUpOperations.TokenPurchaseFromBalance, Build, _stepUp.RequireAsync)
                 : await Http.SendAsync(Build());
 
-            if (resp is null) return; // canceló el código: no se cobró nada y la clave sigue valiendo
+            // Canceló el código: no se ejecutó nada. La clave sigue valiendo y, si había un intento
+            // sin resolver, sigue ahí.
+            if (resp is null) return;
 
             using (resp)
             {
@@ -635,8 +723,10 @@
 
                     // Pendiente o a conciliar: no se sabe aún si cobró. Repetir con la misma clave
                     // devuelve esta misma compra; una clave nueva podría cobrar otra vez.
-                    if (body.Data.Status is not (TokenPurchaseStatuses.Pending or TokenPurchaseStatuses.NeedsReconciliation))
-                        _idempotencyKey = NewKey();
+                    if (body.Data.Status is TokenPurchaseStatuses.Pending or TokenPurchaseStatuses.NeedsReconciliation)
+                        KeepPending(request);
+                    else
+                        ClosePending();
 
                     await ReloadAfterPurchaseAsync();
                 }
@@ -644,14 +734,17 @@
                 {
                     var code = body?.ErrorCode;
                     _purchaseErrorKey = TokenPurchaseMessages.ErrorKeyFor(code);
-                    if (!TokenPurchaseMessages.KeepsKey(code, resp.StatusCode)) _idempotencyKey = NewKey();
+                    if (TokenPurchaseMessages.KeepsKey(code, resp.StatusCode)) KeepPending(request);
+                    else ClosePending();
                 }
             }
         }
         catch (Exception)
         {
-            // No se sabe si entró: se conserva la clave para que reintentar no cobre dos veces.
+            // No se sabe si entró (caída de red, tiempo agotado en el navegador, cancelación): se
+            // guarda el intento para que reintentar repita la misma compra y no cobre dos veces.
             _purchaseErrorKey = "Tokens.Error.Unavailable";
+            KeepPending(request);
         }
         finally
         {
@@ -773,8 +866,9 @@
                 var code = body?.ErrorCode;
                 _distributeErrorKey = TokenPurchaseMessages.DistributionErrorKeyFor(code);
                 if (!TokenPurchaseMessages.DistributionKeepsKey(code, resp.StatusCode)) _distributeKey = NewKey();
-                // La misma distribución ya se envió: el saldo puede haber cambiado.
-                if (code == TokenPurchaseErrors.IdempotencyKeyReused)
+                // No se sabe si la distribución se hizo (clave ya reclamada o excepción en el BizCenter):
+                // el saldo puede haber cambiado.
+                if (code is TokenPurchaseErrors.IdempotencyKeyReused or TokenPurchaseMessages.InternalErrorCode)
                     await Task.WhenAll(LoadSummaryAsync(), LoadBalancesAsync(), LoadPageAsync(1));
             }
         }

@@ -62,4 +62,50 @@ public class CryptoDepositPickerTests : BunitContext
         elegida.Should().Be("USDT");
         cut.Markup.Should().Contain("TQ5NkEQwK6x9C2iGBDbTj9JxF8tqmL7Ak5");
     }
+
+    [Fact]
+    public void Por_defecto_habla_ingles_y_ensena_la_direccion_como_en_el_alta()
+    {
+        var cut = Render<CryptoDepositPicker>(p => p
+            .Add(c => c.Addresses, Direcciones)
+            .Add(c => c.Currency, "USDT"));
+
+        cut.Find("label").TextContent.Should().Be("Currency");
+        cut.Markup.Should().Contain("Send your payment in <strong>USDT</strong> to:")
+            .And.Contain("TQ5NkEQwK6x9C2iGBDbTj9JxF8tqmL7Ak5");
+    }
+
+    [Fact]
+    public void Los_textos_llegan_por_parametro()
+    {
+        var sinDirecciones = Render<CryptoDepositPicker>(p => p
+            .Add(c => c.Addresses, new List<CryptoDepositAddressDto>())
+            .Add(c => c.UnavailableText, "Cripto no disponible"));
+        sinDirecciones.Markup.Should().Contain("Cripto no disponible").And.NotContain("Crypto payments");
+
+        var cut = Render<CryptoDepositPicker>(p => p
+            .Add(c => c.Addresses, Direcciones)
+            .Add(c => c.Currency, "USDT")
+            .Add(c => c.CurrencyLabel, "Moneda")
+            .Add(c => c.SendToText, "Envía tu pago en {0} a:")
+            .Add(c => c.NetworkText, "Red: {0}"));
+
+        cut.Find("label").TextContent.Should().Be("Moneda");
+        cut.Markup.Should().Contain("Envía tu pago en <strong>USDT</strong> a:").And.Contain("Red: TRC-20");
+    }
+
+    [Fact]
+    public void Sin_ShowAddress_solo_se_elige_la_moneda()
+    {
+        var cut = Render<CryptoDepositPicker>(p => p
+            .Add(c => c.Addresses, Direcciones)
+            .Add(c => c.Currency, "USDT")
+            .Add(c => c.ShowAddress, false)
+            .AddChildContent("<p id='texto'>debajo</p>"));
+
+        cut.FindAll("select").Should().HaveCount(1);
+        cut.Markup.Should().NotContain("TQ5NkEQwK6x9C2iGBDbTj9JxF8tqmL7Ak5", "la dirección buena es la que devuelve Billing al crear la compra")
+            .And.NotContain("TRC-20");
+        cut.Find("#texto").TextContent.Should().Be("debajo");
+    }
 }

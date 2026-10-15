@@ -1387,12 +1387,12 @@
   <data name="Tokens.Error.NotEnoughTokens" xml:space="preserve"><value>Vous n'avez pas assez de jetons disponibles de ce type.</value></data>
   <data name="Tokens.Error.Recipient" xml:space="preserve"><value>Le destinataire doit faire partie de votre équipe d'inscription.</value></data>
   <data name="Tokens.Error.RecipientNotActive" xml:space="preserve"><value>Le compte du destinataire n'est pas actif : il ne peut pas recevoir de jetons.</value></data>
-  <data name="Tokens.Error.DistributionRepeated" xml:space="preserve"><value>Cette distribution a déjà été envoyée. Vérifiez votre solde avant de la renvoyer.</value></data>
+  <data name="Tokens.Error.DistributionRepeated" xml:space="preserve"><value>Nous ne savons pas si cet envoi a abouti. Vérifiez votre solde et votre historique avant de le renvoyer.</value></data>
   <data name="Tokens.Error.DistributionBusy" xml:space="preserve"><value>Une autre opération sur les jetons est en cours. Patientez un instant et réessayez.</value></data>
   <data name="Tokens.Error.DistributionUnavailable" xml:space="preserve"><value>Nous n'avons pas pu terminer la distribution. Réessayez : vos jetons ne seront pas envoyés deux fois.</value></data>
   <data name="Tokens.Error.NoEWallet" xml:space="preserve"><value>Vous n'avez pas de compte eWallet pour payer.</value></data>
   <data name="Tokens.Error.EWalletDeclined" xml:space="preserve"><value>Le débit eWallet a été refusé.</value></data>
-  <data name="Tokens.Error.NeedsReview" xml:space="preserve"><value>Nous n'avons pas pu confirmer le débit eWallet. Notre équipe va le vérifier et vos jetons seront émis s'il a abouti. Ne réessayez pas.</value></data>
+  <data name="Tokens.Error.NeedsReview" xml:space="preserve"><value>Nous n'avons pas pu confirmer ce paiement. Notre équipe va le vérifier et vos jetons seront émis s'il a abouti. Ne réessayez pas.</value></data>
   <data name="Tokens.CryptoAmountDue" xml:space="preserve"><value>Montant dû : {0}, payable en {1}.</value></data>
   <data name="Tokens.CryptoAddress" xml:space="preserve"><value>Adresse de dépôt</value></data>
   <data name="Tokens.CryptoNetwork" xml:space="preserve"><value>Réseau : {0}</value></data>
@@ -1406,4 +1406,9 @@
   <data name="Tokens.Status.Cancelled" xml:space="preserve"><value>Achat annulé. Ces jetons sont de nouveau disponibles dans votre quota mensuel.</value></data>
   <data name="Tokens.Status.Rejected" xml:space="preserve"><value>Cet achat en crypto a été refusé : nous n'avons pas pu vérifier le transfert. Aucun jeton n'a été émis.</value></data>
   <data name="Tokens.Status.Expired" xml:space="preserve"><value>Cet achat en crypto a expiré sans paiement. Aucun jeton n'a été émis.</value></data>
+  <data name="Tokens.Error.SelfRecipient" xml:space="preserve"><value>Vous ne pouvez pas vous envoyer des jetons à vous-même.</value></data>
+  <data name="Tokens.PendingAttempt" xml:space="preserve"><value>Un achat n'est pas encore confirmé. Appuyez sur Acheter pour répéter exactement le même achat (vous ne serez pas débité deux fois) ou consultez votre historique. Pour en commencer un autre, rechargez la page après avoir vérifié votre historique.</value></data>
+  <data name="Tokens.CardExpired" xml:space="preserve"><value>Expirée</value></data>
+  <data name="Tokens.PaymentMethodsAria" xml:space="preserve"><value>Moyen de paiement</value></data>
+  <data name="Tokens.CopyCode" xml:space="preserve"><value>Copier le code {0}</value></data>
 </root>

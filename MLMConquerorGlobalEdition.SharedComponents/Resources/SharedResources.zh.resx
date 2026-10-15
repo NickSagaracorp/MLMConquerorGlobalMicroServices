@@ -1318,12 +1318,12 @@
   <data name="Tokens.Error.NotEnoughTokens" xml:space="preserve"><value>您没有足够的该类型可用代币。</value></data>
   <data name="Tokens.Error.Recipient" xml:space="preserve"><value>接收人必须是您推荐团队的成员。</value></data>
   <data name="Tokens.Error.RecipientNotActive" xml:space="preserve"><value>接收人的账户未激活，无法接收代币。</value></data>
-  <data name="Tokens.Error.DistributionRepeated" xml:space="preserve"><value>此次分发已提交。再次发送前请先查看您的余额。</value></data>
+  <data name="Tokens.Error.DistributionRepeated" xml:space="preserve"><value>我们无法确定此次发送是否已完成。再次发送前请先查看您的余额和记录。</value></data>
   <data name="Tokens.Error.DistributionBusy" xml:space="preserve"><value>另一项代币操作正在进行中。请稍后重试。</value></data>
   <data name="Tokens.Error.DistributionUnavailable" xml:space="preserve"><value>无法完成分发。请重试：您的代币不会被发送两次。</value></data>
   <data name="Tokens.Error.NoEWallet" xml:space="preserve"><value>您没有可用于付款的 eWallet 账户。</value></data>
   <data name="Tokens.Error.EWalletDeclined" xml:space="preserve"><value>eWallet 扣款被拒绝。</value></data>
-  <data name="Tokens.Error.NeedsReview" xml:space="preserve"><value>我们无法确认 eWallet 扣款。我们的团队将进行核查，如扣款成功将发放您的代币。请勿重试。</value></data>
+  <data name="Tokens.Error.NeedsReview" xml:space="preserve"><value>我们无法确认这笔付款。我们的团队将进行核查，如付款成功将发放您的代币。请勿重试。</value></data>
   <data name="Tokens.CryptoAmountDue" xml:space="preserve"><value>应付金额：{0}，以 {1} 支付。</value></data>
   <data name="Tokens.CryptoAddress" xml:space="preserve"><value>充值地址</value></data>
   <data name="Tokens.CryptoNetwork" xml:space="preserve"><value>网络：{0}</value></data>
@@ -1337,4 +1337,9 @@
   <data name="Tokens.Status.Cancelled" xml:space="preserve"><value>购买已取消。这些代币已退回您的本月额度。</value></data>
   <data name="Tokens.Status.Rejected" xml:space="preserve"><value>此加密货币购买已被拒绝：我们无法核实转账。未发放任何代币。</value></data>
   <data name="Tokens.Status.Expired" xml:space="preserve"><value>此加密货币购买已过期且未付款。未发放任何代币。</value></data>
+  <data name="Tokens.Error.SelfRecipient" xml:space="preserve"><value>您不能向自己发送代币。</value></data>
+  <data name="Tokens.PendingAttempt" xml:space="preserve"><value>有一笔购买尚未确认。点击“立即购买”可原样重试该购买（不会重复扣款），或查看您的记录。如需发起其他购买，请在查看记录后刷新页面。</value></data>
+  <data name="Tokens.CardExpired" xml:space="preserve"><value>已过期</value></data>
+  <data name="Tokens.PaymentMethodsAria" xml:space="preserve"><value>付款方式</value></data>
+  <data name="Tokens.CopyCode" xml:space="preserve"><value>复制代码 {0}</value></data>
 </root>

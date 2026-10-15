@@ -171,12 +171,23 @@ public static class TokenPurchaseErrors
 }
 
 /// <summary>
-/// Códigos propios de distribuir o transferir tokens en el BizCenter. Los demás (destinatario, saldo,
-/// candado ocupado) son los de siempre: RECIPIENT_*, INSUFFICIENT_TOKEN_BALANCE y
-/// <see cref="TokenPurchaseErrors.Busy"/>.
+/// Códigos de distribuir o transferir tokens en el BizCenter. El candado ocupado es
+/// <see cref="TokenPurchaseErrors.Busy"/>. Los usan el servidor (handlers, controlador) y la pantalla.
 /// </summary>
 public static class TokenDistributionErrors
 {
+    /// <summary>Quien envía y quien recibe son el mismo miembro (400).</summary>
+    public const string InvalidRecipient = "INVALID_RECIPIENT";
+
+    /// <summary>El destinatario no existe (400).</summary>
+    public const string RecipientNotFound = "RECIPIENT_NOT_FOUND";
+
+    /// <summary>El destinatario no está en el equipo de inscripción de quien envía (400).</summary>
+    public const string RecipientNotInDownline = "RECIPIENT_NOT_IN_DOWNLINE";
+
+    /// <summary>Quien envía no tiene bastantes códigos disponibles de ese tipo (400).</summary>
+    public const string InsufficientTokenBalance = "INSUFFICIENT_TOKEN_BALANCE";
+
     /// <summary>Distribuir o transferir mueve tokens a otra persona: nunca suplantando (403).</summary>
     public const string Impersonation = "IMPERSONATION_CANNOT_DISTRIBUTE";
 

@@ -190,6 +190,26 @@ public class CompraDeTokensEnElBizCenterTests
         r.ErrorCode.Should().Be(TokenPurchaseErrors.BillingUnavailable);
     }
 
+    /// <summary>
+    /// Si quien llama al BizCenter se va (el navegador cancela o agota su tiempo), la cancelación sube
+    /// tal cual: no se convierte en un éxito ni en un fallo definitivo. La pantalla, que es la que se
+    /// fue, trata su propia excepción como "no se sabe si entró" y conserva la clave.
+    /// </summary>
+    [Fact]
+    public async Task Si_quien_llama_cancela_la_cancelacion_sube_y_no_es_un_resultado()
+    {
+        using var cts = new CancellationTokenSource();
+        var h = new Manejador(_ =>
+        {
+            cts.Cancel();
+            throw new TaskCanceledException("el navegador se fue", null, cts.Token);
+        });
+
+        var act = () => Cliente(h).PurchaseTokensAsync(Peticion(TokenPaymentMethods.Crypto), "jwt", null, cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
     [Fact]
     public async Task Un_500_de_Billing_es_502_BILLING_UNAVAILABLE_porque_no_se_sabe_si_cobro()
     {
