@@ -11,8 +11,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.5" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.2" />
   </ItemGroup>
 
   <ItemGroup>
@@ -31,6 +31,12 @@
       MAUI que vienen después.
     -->
     <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel\MLMConquerorGlobalEdition.SharedKernel.csproj" />
+    <!--
+      Componentes unificados (CryptoDepositPicker y los que vengan): se escriben una vez y sirven a
+      cualquier portal. SharedComponents no lleva el framework compartido de ASP.NET Core
+      (SharedComponentsNoServerHostingTests), así que también corre en WebAssembly.
+    -->
+    <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedComponents\MLMConquerorGlobalEdition.SharedComponents.csproj" />
   </ItemGroup>
 
 </Project>

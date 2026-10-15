@@ -1,0 +1,65 @@
+@using MLMConquerorGlobalEdition.SharedKernel.Billing
+@*
+    Elección de moneda y dirección de depósito para pagar en cripto. Una sola pieza para el alta
+    (Signup y MemberJoin) y para la compra de tokens del BizCenter: las direcciones vienen de
+    Admin → Global Parameters y quien la usa decide de dónde leerlas y qué texto va debajo.
+
+    Sin direcciones no se ofrece: mejor decir que no está disponible que mandar a alguien a pagar a
+    una dirección que nadie le va a dar. El botón de pagar de la página debe quedar deshabilitado
+    mientras <see cref="Find"/> devuelva null.
+
+    No inyecta nada a propósito: así se puede usar desde un WebAssembly sin registrar servicios.
+*@
+
+@if (Addresses is null || Addresses.Count == 0)
+{
+    <p class="text-center text-muted small mb-0">Crypto payments aren't available right now. Please choose another payment method.</p>
+}
+else
+{
+    <label class="form-label small" for="@InputId">Currency</label>
+    <select id="@InputId" class="form-select mb-3" value="@Currency" @onchange="OnCurrencyChanged">
+        @foreach (var d in Addresses)
+        {
+            <option value="@d.Currency">@d.Currency</option>
+        }
+    </select>
+    @if (Selected is { } deposit)
+    {
+        <p class="small mb-1">Send your payment in <strong>@deposit.Currency</strong> to:</p>
+        <p class="font-monospace small text-break mb-1">@deposit.Address</p>
+        @if (!string.IsNullOrWhiteSpace(deposit.Network))
+        {
+            <p class="small text-muted mb-1">Network: @deposit.Network</p>
+        }
+    }
+    @ChildContent
+}
+
+@code {
+    /// <summary>Monedas con dirección configurada. Vacía o null = cripto no disponible.</summary>
+    [Parameter] public IReadOnlyList<CryptoDepositAddressDto>? Addresses { get; set; }
+
+    /// <summary>Moneda elegida (<c>@bind-Currency</c>).</summary>
+    [Parameter] public string? Currency { get; set; }
+
+    [Parameter] public EventCallback<string?> CurrencyChanged { get; set; }
+
+    /// <summary>Texto bajo la dirección; cada pantalla explica a su manera qué pasa después.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Id del select, para que la etiqueta apunte a él sin chocar con otro de la página.</summary>
+    [Parameter] public string InputId { get; set; } = "crypto-currency";
+
+    private CryptoDepositAddressDto? Selected => Find(Addresses, Currency);
+
+    /// <summary>La dirección de la moneda elegida, o null si no hay ninguna que ofrecer.</summary>
+    public static CryptoDepositAddressDto? Find(IEnumerable<CryptoDepositAddressDto>? addresses, string? currency)
+        => addresses?.FirstOrDefault(d => d.Currency == currency);
+
+    private Task OnCurrencyChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        Currency = e.Value?.ToString();
+        return CurrencyChanged.InvokeAsync(Currency);
+    }
+}

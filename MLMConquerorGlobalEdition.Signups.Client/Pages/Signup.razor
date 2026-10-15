@@ -798,33 +798,12 @@
                 @if (_paymentTab == "crypto")
                 {
                     <div class="py-4">
-                        @if (_cryptoDeposits.Count == 0)
-                        {
-                            <p class="text-center text-muted small mb-0">Crypto payments aren't available right now. Please choose another payment method.</p>
-                        }
-                        else
-                        {
-                            <label class="form-label small" for="signup-crypto">Currency</label>
-                            <select id="signup-crypto" class="form-select mb-3" @bind="_cryptoCurrency">
-                                @foreach (var d in _cryptoDeposits)
-                                {
-                                    <option value="@d.Currency">@d.Currency</option>
-                                }
-                            </select>
-                            @if (_cryptoDeposit is not null)
-                            {
-                                <p class="small mb-1">Send your payment in <strong>@_cryptoDeposit.Currency</strong> to:</p>
-                                <p class="font-monospace small text-break mb-1">@_cryptoDeposit.Address</p>
-                                @if (!string.IsNullOrWhiteSpace(_cryptoDeposit.Network))
-                                {
-                                    <p class="small text-muted mb-1">Network: @_cryptoDeposit.Network</p>
-                                }
-                            }
+                        <CryptoDepositPicker Addresses="_cryptoDeposits" @bind-Currency="_cryptoCurrency" InputId="signup-crypto">
                             <p class="small text-muted mb-0">
                                 Your spot in the team is reserved right away. Your membership activates once we
                                 confirm the transfer — usually within one business day.
                             </p>
-                        }
+                        </CryptoDepositPicker>
                     </div>
                 }
 
@@ -1197,7 +1176,7 @@
     private List<CryptoDepositAddressDto> _cryptoDeposits = new();
     private string? _cryptoCurrency;
     private CryptoDepositAddressDto? _cryptoDeposit =>
-        _cryptoDeposits.FirstOrDefault(d => d.Currency == _cryptoCurrency);
+        CryptoDepositPicker.Find(_cryptoDeposits, _cryptoCurrency);
     private string _couponCode    = string.Empty;
     private string _couponMsg     = string.Empty;
     private string _couponMsgClass = string.Empty;
@@ -1757,8 +1736,11 @@
             // venían haciendo con token, que sí funciona.
             //
             // El PAN no aparece en este objeto ni en ningún otro que salga de aquí.
+            // El método se fija aquí: si el usuario cambia de pestaña mientras se espera la
+            // respuesta, la pantalla final tiene que hablar del método con el que se pagó.
+            var paymentTab = _paymentTab;
             object payment;
-            if (_paymentTab == "card")
+            if (paymentTab == "card")
             {
                 var cardProblem = CardPayment.Validate(_ccNumber, _ccExpMonth, _ccExpYear, _ccCvv);
                 if (cardProblem is not null) { _error = cardProblem; return; }
@@ -1782,7 +1764,7 @@
             }
             else
             {
-                payment = _paymentTab switch
+                payment = paymentTab switch
                 {
                     "token"  => (object)new { PaymentMethod = "Token",  TokenCode = _payToken },
                     "crypto" => (object)new { PaymentMethod = "Crypto", CryptoCurrency = _cryptoCurrency },
@@ -1794,7 +1776,7 @@
             var b3 = await r3.Content.ReadFromJsonAsync<ApiWrapper<SignupResponseModel>>();
 
             if (b3?.Success == true && b3.Data is not null)
-            { _completedEmail = b3.Data.Email; _completedPendingCrypto = _paymentTab == "crypto"; _success = true; }
+            { _completedEmail = b3.Data.Email; _completedPendingCrypto = paymentTab == "crypto"; _success = true; }
             else
             { _error = b3?.Message ?? b3?.Errors?.FirstOrDefault() ?? "Could not complete enrollment."; }
         }
