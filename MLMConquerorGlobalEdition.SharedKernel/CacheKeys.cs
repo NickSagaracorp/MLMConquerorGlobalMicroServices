@@ -93,6 +93,12 @@ public static class CacheKeys
     public static string TwoFactorTotpUsed(string userId, string codeHash) =>
         $"2fa:user:{userId}:totp:{codeHash}";
 
+    /// <summary>
+    /// Marca de permiso de step-up ya usado. Se incrementa al presentarlo: el primero que llega a 1
+    /// pasa, cualquier otro con el mismo jti es una repetición.
+    /// </summary>
+    public static string StepUpGrantConsumed(string jti) => $"stepup:grant:{jti}:consumed";
+
     public const string RankDefinitions  = "rank:definitions";
     public const string MembershipLevels = "membership:levels";
     public const string CommissionTypes  = "commission:types";
