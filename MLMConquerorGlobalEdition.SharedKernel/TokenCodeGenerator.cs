@@ -1,37 +1,46 @@
+using System.Security.Cryptography;
+
 namespace MLMConquerorGlobalEdition.SharedKernel;
 
+/// <summary>
+/// Código canjeable de un token: 3 letras y <c>maximumNumbers</c> dígitos (4 por defecto) en orden
+/// aleatorio, p. ej. <c>4K7QX29</c>. Es el formato del legado y el que ya llevan los códigos emitidos.
+/// </summary>
+/// <remarks>
+/// Los códigos son al portador: quien adivina uno lo canjea. Por eso sale de
+/// <see cref="RandomNumberGenerator"/> (impredecible y seguro entre hilos) y no de un
+/// <see cref="Random"/> estático, que no es thread-safe (con llamadas concurrentes puede quedarse
+/// devolviendo ceros) y cuya secuencia se puede reconstruir viendo unos cuantos códigos.
+/// El espacio sigue siendo pequeño, así que quien emite debe seguir descartando los repetidos
+/// (TokenIssuer lo hace contra la base).
+/// </remarks>
 public static class TokenCodeGenerator
 {
-    private static readonly Random R = new();
+    /// <summary>Sin I, L ni O, que se confunden con 1 y 0 al leer el código.</summary>
+    public const string Letters = "ABCDEFGHJKMNPQRSTUVWXYZ";
+    public const string Digits  = "0123456789";
+    public const int    LetterCount = 3;
 
     public static string Generate(int maximumNumbers = 4)
     {
-        const string passwordChars = "ABCDEFGHJKMNPQRSTUVWXYZ";
-        const string passwordNumbers = "0123456789";
-        var code = string.Empty;
-        var number = string.Empty;
+        if (maximumNumbers < 0)
+            throw new ArgumentOutOfRangeException(nameof(maximumNumbers));
 
-        for (var i = 1; i <= 3; i++)
+        var chars = new char[LetterCount + maximumNumbers];
+
+        for (var i = 0; i < LetterCount; i++)
+            chars[i] = Letters[RandomNumberGenerator.GetInt32(Letters.Length)];
+
+        for (var i = LetterCount; i < chars.Length; i++)
+            chars[i] = Digits[RandomNumberGenerator.GetInt32(Digits.Length)];
+
+        // Fisher–Yates: cada posición de letras y dígitos es igual de probable.
+        for (var i = chars.Length - 1; i > 0; i--)
         {
-            var pos = R.Next(0, 22);
-            code += passwordChars[pos];
+            var j = RandomNumberGenerator.GetInt32(i + 1);
+            (chars[i], chars[j]) = (chars[j], chars[i]);
         }
 
-        for (var i = 1; i <= maximumNumbers; i++)
-        {
-            var pos = R.Next(0, 9);
-            number += passwordNumbers[pos];
-        }
-
-        var random = new Random();
-        var fullCode = code + number;
-        var resultstring = string.Empty;
-        var randLists = new string[fullCode.Length];
-        for (var i = 0; i < fullCode.Length; i++)
-        {
-            randLists[i] = new string(fullCode.ToCharArray().OrderBy(s => random.Next(0, 25)).ToArray());
-            resultstring = randLists[i];
-        }
-        return resultstring;
+        return new string(chars);
     }
 }

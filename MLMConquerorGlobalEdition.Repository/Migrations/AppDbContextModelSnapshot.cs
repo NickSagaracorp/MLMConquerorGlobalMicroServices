@@ -11569,8 +11569,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
 
                     b.Property<DateTime>("CreationDate")
                         .HasColumnType("datetime2");

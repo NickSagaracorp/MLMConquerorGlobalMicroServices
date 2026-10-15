@@ -18,5 +18,21 @@ public enum TokenPurchaseStatus
     /// No se sabe si el dinero salió (débito eWallet en PROCESSING/PENDING o sin respuesta clara).
     /// Sin tokens, con el cupo reservado, hasta que tesorería la cierre.
     /// </summary>
-    NeedsReconciliation = 5
+    NeedsReconciliation = 5,
+
+    /// <summary>Cripto sin pagar que el propio miembro retiró. Sin tokens; libera el cupo.</summary>
+    Cancelled = 6,
+
+    /// <summary>
+    /// Cripto que un administrador rechazó (no llegó la transferencia, llegó otro importe, era
+    /// fraude). Sin tokens; libera el cupo.
+    /// </summary>
+    Rejected = 7,
+
+    /// <summary>
+    /// Cripto que nadie confirmó dentro del plazo (Billing:TokenPurchase:CryptoExpiryDays). Sin
+    /// tokens; libera el cupo. Si la transferencia llega después, tesorería la trata a mano: la
+    /// compra caducada ya no se puede confirmar.
+    /// </summary>
+    Expired = 8
 }

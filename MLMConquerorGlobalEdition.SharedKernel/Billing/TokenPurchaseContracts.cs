@@ -28,6 +28,14 @@ public static class TokenPurchaseRules
     public static int PeriodKey(DateTime now) => now.Year * 100 + now.Month;
 
     public static DateTime MonthStart(DateTime now) => new(now.Year, now.Month, 1, 0, 0, 0, now.Kind);
+
+    /// <summary>
+    /// Clave de configuración de Billing con los días que una compra en cripto puede esperar la
+    /// transferencia antes de caducar y soltar el cupo.
+    /// </summary>
+    public const string CryptoExpiryDaysConfigKey = "Billing:TokenPurchase:CryptoExpiryDays";
+
+    public const int DefaultCryptoExpiryDays = 3;
 }
 
 /// <summary>Valores de <see cref="PurchaseTokensRequest.PaymentMethod"/>. Coinciden con el enum de dominio.</summary>
@@ -55,6 +63,11 @@ public static class TokenPurchaseStatuses
     public const string Failed                     = "Failed";
     public const string AwaitingCryptoConfirmation = "AwaitingCryptoConfirmation";
     public const string NeedsReconciliation        = "NeedsReconciliation";
+
+    // Salidas de una compra en cripto sin pagar: ninguna emite y las tres liberan el cupo.
+    public const string Cancelled                  = "Cancelled";
+    public const string Rejected                   = "Rejected";
+    public const string Expired                    = "Expired";
 }
 
 /// <summary>Códigos de error de la compra. La pantalla los traduce con <c>TokenPurchaseMessages</c>.</summary>
@@ -97,6 +110,9 @@ public static class TokenPurchaseErrors
     public const string CryptoTransactionIdRequired   = "CRYPTO_TRANSACTION_ID_REQUIRED";
     public const string PurchaseNotFound              = "TOKEN_PURCHASE_NOT_FOUND";
     public const string NotUnderReview                = "TOKEN_PURCHASE_NOT_UNDER_REVIEW";
+
+    /// <summary>Cancelar o rechazar algo que no es una compra en cripto pendiente de confirmar.</summary>
+    public const string NotAwaitingCrypto             = "TOKEN_PURCHASE_NOT_AWAITING_CRYPTO";
 }
 
 /// <summary>
@@ -189,4 +205,11 @@ public sealed class ReconcileTokenPurchaseRequest
     public bool    Charged          { get; set; }
     public string? GatewayReference { get; set; }
     public string? Notes            { get; set; }
+}
+
+/// <summary>Un administrador rechaza una compra en cripto cuya transferencia no llegó o no vale.</summary>
+public sealed class RejectCryptoTokenPurchaseRequest
+{
+    /// <summary>Por qué se rechaza; queda en las notas de la compra y de la confirmación.</summary>
+    public string? Reason { get; set; }
 }

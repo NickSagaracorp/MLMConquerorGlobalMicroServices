@@ -21,9 +21,10 @@ public class TokenPurchaseConfiguration : IEntityTypeConfiguration<TokenPurchase
         builder.Property(x => x.Status).HasConversion<int>();
         builder.Property(x => x.CreditCardId).HasMaxLength(450);
         builder.Property(x => x.PaymentHistoryId).HasMaxLength(450);
-        builder.Property(x => x.FailureCode).HasMaxLength(64);
-        builder.Property(x => x.Notes).HasMaxLength(500);
-        builder.Property(x => x.CreatedBy).IsRequired().HasMaxLength(100);
+        builder.Property(x => x.FailureCode).HasMaxLength(TokenPurchase.FailureCodeMaxLength);
+        builder.Property(x => x.Notes).HasMaxLength(TokenPurchase.NotesMaxLength);
+        // 256, lo que mide un correo: el actor que firma la fila puede ser un email y no solo un id.
+        builder.Property(x => x.CreatedBy).IsRequired().HasMaxLength(256);
         builder.Ignore(x => x.IsReservation);
 
         // La idempotencia vive en la base, no solo en el código.

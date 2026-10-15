@@ -5,7 +5,19 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace MLMConquerorGlobalEdition.Repository.Migrations
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// Compra de tokens (Plan F): TokenPurchases, TokenType.IsPurchasable, TokenTransaction.TokenPurchaseId
+    /// y CryptoPaymentConfirmation.Purpose.
+    /// </summary>
+    /// <remarks>
+    /// Al generarla, EF añadió unos 98 <c>UpdateData</c> sobre TokenTypes, uno por cada fila sembrada
+    /// con HasData, que solo reescribían en ellas los valores que ya tenían. Se quitaron a mano: no
+    /// cambian nada, alargan la migración y, al tocar cada fila sembrada, harían creer que la siembra
+    /// cambió. El snapshot ya refleja las filas tal como quedan, así que no vuelven a aparecer.
+    /// IsPurchasable se inicializa con el UPDATE por nombre del final de Up, no con HasData: tras
+    /// aplicarla en producción conviene revisar a mano qué tipos quedaron vendibles
+    /// (<c>SELECT Id, Name, IsPurchasable FROM TokenTypes WHERE IsActive = 1</c>).
+    /// </remarks>
     public partial class CompraDeTokens : Migration
     {
         /// <inheritdoc />
