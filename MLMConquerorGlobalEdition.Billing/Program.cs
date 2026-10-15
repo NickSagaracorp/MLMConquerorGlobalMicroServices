@@ -105,6 +105,12 @@ builder.Services.AddNotifications(builder.Configuration);
 // ── Payout gateway abstraction + orchestrator ─────────────────────────────
 builder.Services.AddPayoutServices();
 
+// ── Compra de tokens (Plan F) ─────────────────────────────────────────────
+// Después de AddPayoutServices: usa su IEWalletClient y el candado de fondos por miembro
+// (sp_getapplock, compartido con los pagos), que con varias instancias de Billing sigue
+// serializando el dinero del mismo miembro.
+builder.Services.AddTokenPurchaseServices();
+
 builder.Services.AddScoped<MembershipAutoRenewalJob>();
 builder.Services.AddScoped<CommissionPayoutJob>();
 builder.Services.AddScoped<ExchangeRateRefreshJob>();
@@ -321,6 +327,13 @@ RecurringJob.AddOrUpdate<DeferredPayoutAccountJob>(
     "deferred-payout-accounts",
     job => job.ExecuteAsync(CancellationToken.None),
     "*/15 * * * *",
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+// Caduca las compras de tokens en cripto que nadie confirmó (Plan F, D18) y libera su cupo.
+RecurringJob.AddOrUpdate<TokenPurchaseCryptoExpiryJob>(
+    "token-purchase-crypto-expiry",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "0 * * * *",                    // Cada hora
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
 // Auto-payout disabled by business decision: PaymentDate on a CommissionEarning
