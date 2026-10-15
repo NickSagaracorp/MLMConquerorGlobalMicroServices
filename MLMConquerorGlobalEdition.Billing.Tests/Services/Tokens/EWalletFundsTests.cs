@@ -49,6 +49,24 @@ public class EWalletFundsTests
     }
 
     [Fact]
+    public async Task Un_cobro_de_un_centavo_con_el_saldo_igual_no_es_cobrado()
+    {
+        // Con una holgura fija de 0,01, un cobro de 0,01 daba por bueno un saldo que no había bajado.
+        _client.Setup(c => c.DeductAsync("AMB-1", 0.01m, "p1", "d", It.IsAny<CancellationToken>()))
+               .ReturnsAsync(new EWalletDeduction(EWalletDeductionStatus.Accepted, null, null));
+        SaldoDespues(10m);
+
+        (await Sut().DebitAsync("AMB-1", 0.01m, 10m, "p1", "d")).Status.Should().Be(EWalletDebitStatus.NeedsReconciliation);
+    }
+
+    [Theory]
+    [InlineData(100, 0.01)]
+    [InlineData(0.02, 0.01)]
+    [InlineData(0.01, 0.005)]
+    public void La_holgura_es_un_centavo_pero_nunca_mas_de_la_mitad_del_cobro(decimal cobro, decimal holgura)
+        => EWalletFunds.ToleranceFor(cobro).Should().Be(holgura);
+
+    [Fact]
     public async Task Desconocido_queda_a_conciliar_sin_mirar_el_saldo()
     {
         Deduccion(EWalletDeductionStatus.Unknown, "EWALLET_NO_RESPONSE");

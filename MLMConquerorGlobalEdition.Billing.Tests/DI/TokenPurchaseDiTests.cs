@@ -96,6 +96,7 @@ public class TokenPurchaseDiTests
     [InlineData(typeof(StepUpGrantValidator))]
     [InlineData(typeof(MLMConquerorGlobalEdition.SharedKernel.Interfaces.IDateTimeProvider))]
     [InlineData(typeof(TokenPurchaseCryptoExpiryJob))]
+    [InlineData(typeof(TokenPurchaseStalePendingJob))]
     public void Cada_pieza_de_la_compra_se_resuelve(Type servicio)
     {
         using var provider = Proveedor();

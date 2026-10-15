@@ -1,5 +1,8 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using MLMConquerorGlobalEdition.Billing.Services;
@@ -37,7 +40,11 @@ public class TokenPurchaseServiceTests
     private const decimal UnitPrice = 99.99m; // SetupFee 50 + MonthlyFee 49.99
     private static readonly DateTime FixedNow = new(2026, 10, 15, 10, 0, 0);
 
-    private readonly AppDbContext _db = TestDbContextFactory.Create();
+    private readonly string _dbName = Guid.NewGuid().ToString("N");
+    private readonly SaveFaults _faults = new();
+    private readonly AppDbContext _db;
+    private readonly Dictionary<string, string?> _settings = new();
+    private ITokenIssuer? _issuer;
     private readonly Mock<IGatewayRouter> _router = new();
     private readonly Mock<IGatewayChargeOrchestrator> _orchestrator = new();
     private readonly Mock<IEWalletFunds> _eWallet = new();
@@ -46,6 +53,14 @@ public class TokenPurchaseServiceTests
 
     public TokenPurchaseServiceTests()
     {
+        // InMemory con un interceptor que deja hacer fallar guardados concretos: así se prueba cada
+        // punto en que la compra no puede quedar en Pending.
+        _db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(_dbName)
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .AddInterceptors(_faults)
+            .Options);
+
         _db.MemberProfiles.Add(new MemberProfile
         {
             MemberId = MemberId, Email = "amb@example.com", FirstName = "Ana", LastName = "Ruiz",
@@ -86,10 +101,14 @@ public class TokenPurchaseServiceTests
         return new TokenPurchaseService(
             _db, clock.Object,
             new TokenPricingService(_db), new TokenMonthlyQuota(_db), _gate ?? new TransactionOnlyGate(_db),
-            new TokenIssuer(_db), new CommissionBalanceService(_db, clock.Object), _eWallet.Object,
+            _issuer ?? new TokenIssuer(_db), new CommissionBalanceService(_db, clock.Object), _eWallet.Object,
             _router.Object, _orchestrator.Object, brands.Object, new CryptoDepositAddressReader(_db),
-            _receipts.Object, cache.Object, push.Object, NullLogger<TokenPurchaseService>.Instance);
+            _receipts.Object, cache.Object, push.Object, NullLogger<TokenPurchaseService>.Instance,
+            new ConfigurationBuilder().AddInMemoryCollection(_settings).Build());
     }
+
+    /// <summary>La tarjeta está apagada por defecto (stub de Spreedly); las pruebas de tarjeta la encienden.</summary>
+    private void TarjetaEncendida() => _settings[TokenPurchaseRules.CardEnabledConfigKey] = "true";
 
     private static PurchaseTokensRequest Request(
         string method, int qty = 1, string? key = null, string? card = null, string? crypto = null, int type = VipType) => new()
@@ -321,6 +340,7 @@ public class TokenPurchaseServiceTests
     [Fact]
     public async Task Tarjeta_cobra_solo_los_pasos_inmediatos_con_el_token_de_Spreedly_y_emite()
     {
+        TarjetaEncendida();
         SeedCard("card-1", MemberId);
         RouterWithImmediateAndDelayedSteps();
         GatewayRoutingPlan? usado = null;
@@ -343,13 +363,14 @@ public class TokenPurchaseServiceTests
     }
 
     [Fact]
-    public async Task Tarjeta_rechazada_marca_la_compra_fallida_y_libera_el_cupo()
+    public async Task Tarjeta_que_consta_como_no_cobrada_marca_la_compra_fallida_y_libera_el_cupo()
     {
+        TarjetaEncendida();
         SeedCard("card-1", MemberId);
         RouterWithImmediateAndDelayedSteps();
         _orchestrator
             .Setup(o => o.ExecuteAsync(It.IsAny<GatewayRoutingPlan>(), It.IsAny<GatewayRoutingContext>(), It.IsAny<OrchestratorChargeRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<OrchestratorChargeResult>.Failure("DECLINED", "Do not honor"));
+            .ReturnsAsync(Result<OrchestratorChargeResult>.Failure("SPREEDLY_CREDENTIAL_MISSING", "ApiCredential 'Spreedly' is missing"));
 
         (await Buy(Request(TokenPaymentMethods.CreditCard, card: "card-1"))).ErrorCode.Should().Be(TokenPurchaseErrors.CardChargeFailed);
         (await _db.TokenPurchases.SingleAsync()).Status.Should().Be(TokenPurchaseStatus.Failed);
@@ -360,6 +381,7 @@ public class TokenPurchaseServiceTests
     [Fact]
     public async Task La_tarjeta_de_otro_no_se_cobra()
     {
+        TarjetaEncendida();
         SeedCard("card-otro", "AMB-999999");
 
         (await Buy(Request(TokenPaymentMethods.CreditCard, card: "card-otro"))).ErrorCode.Should().Be(TokenPurchaseErrors.CreditCardNotFound);
@@ -609,6 +631,7 @@ public class TokenPurchaseServiceTests
     [Fact]
     public async Task Tarjeta_con_resultado_desconocido_queda_a_conciliar_sin_tokens()
     {
+        TarjetaEncendida();
         SeedCard("card-1", MemberId);
         RouterWithImmediateAndDelayedSteps();
         var tokens = new List<CancellationToken>();
@@ -631,6 +654,7 @@ public class TokenPurchaseServiceTests
     [Fact]
     public async Task Tarjeta_programada_para_despues_no_emite_ni_libera_el_cupo()
     {
+        TarjetaEncendida();
         SeedCard("card-1", MemberId);
         RouterWithImmediateAndDelayedSteps();
         _orchestrator
@@ -667,5 +691,544 @@ public class TokenPurchaseServiceTests
 
         r.IsSuccess.Should().BeTrue("el cupo se reservó al comprar");
         (await new TokenMonthlyQuota(_db).UsedAsync(MemberId, FixedNow)).Should().Be(50);
+    }
+
+    // ── Revisión de la Tarea 9: piezas ───────────────────────────────────────
+
+    private static bool Adds<T>(DbContext c) where T : class =>
+        c.ChangeTracker.Entries<T>().Any(e => e.State == EntityState.Added);
+
+    private static bool MovesTo(DbContext c, TokenPurchaseStatus status) =>
+        c.ChangeTracker.Entries<TokenPurchase>().Any(e => e.State == EntityState.Modified && e.Entity.Status == status);
+
+    private Task<TokenPurchase> LaCompra() => _db.TokenPurchases.AsNoTracking().SingleAsync();
+
+    private Task<int> Usados() => new TokenMonthlyQuota(_db).UsedAsync(MemberId, FixedNow);
+
+    private static Result<OrchestratorChargeResult> Cobrada(string txId = "tx-1", string paymentId = "ph-card") =>
+        Result<OrchestratorChargeResult>.Success(new OrchestratorChargeResult
+        {
+            Status = "Success", PaymentHistoryId = paymentId, GatewayTransactionId = txId,
+            ProcessorUsed = "NmiSpreedly", AmountCharged = UnitPrice
+        });
+
+    private void OrquestadorDevuelve(Result<OrchestratorChargeResult> result) =>
+        _orchestrator
+            .Setup(o => o.ExecuteAsync(It.IsAny<GatewayRoutingPlan>(), It.IsAny<GatewayRoutingContext>(), It.IsAny<OrchestratorChargeRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(result);
+
+    /// <summary>Como el orquestador real: si cobra, deja el PaymentHistory del pedido antes de volver.</summary>
+    private void OrquestadorCobraYEscribeElPago(string txId = "tx-1")
+    {
+        _orchestrator
+            .Setup(o => o.ExecuteAsync(It.IsAny<GatewayRoutingPlan>(), It.IsAny<GatewayRoutingContext>(), It.IsAny<OrchestratorChargeRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<GatewayRoutingPlan, GatewayRoutingContext, OrchestratorChargeRequest, CancellationToken>((_, _, r, _) =>
+            {
+                _db.PaymentHistories.Add(new PaymentHistory
+                {
+                    Id = "ph-card", OrderId = r.OrderId!, MemberId = r.MemberId, Amount = UnitPrice, GatewayName = "NmiSpreedly",
+                    GatewayTransactionId = txId, TransactionStatus = PaymentHistoryTransactionStatus.Captured,
+                    CreatedBy = "billing-engine", CreationDate = FixedNow
+                });
+                _db.SaveChanges();
+            })
+            .ReturnsAsync(Cobrada(txId));
+    }
+
+    private void RouterWithTwoImmediateSteps() =>
+        _router.Setup(r => r.ResolveAsync(It.IsAny<GatewayRoutingContext>(), It.IsAny<CancellationToken>()))
+               .ReturnsAsync(Result<GatewayRoutingPlan>.Success(new GatewayRoutingPlan
+               {
+                   RouteBucketKey = "US-VISA",
+                   Steps = new[]
+                   {
+                       new GatewayAttemptPlan { CardProcessor = CardProcessor.NmiSpreedly, Amount = UnitPrice, FallbackStepIndex = 0 },
+                       new GatewayAttemptPlan { CardProcessor = CardProcessor.NmiDirect, Amount = UnitPrice, FallbackStepIndex = 1 }
+                   }
+               }));
+
+    private Task<Result<TokenPurchaseResultDto>> ComprarConTarjeta()
+    {
+        TarjetaEncendida();
+        if (!_db.CreditCards.Any()) SeedCard("card-1", MemberId);
+        return Buy(Request(TokenPaymentMethods.CreditCard, card: "card-1"));
+    }
+
+    /// <summary>La puerta de pruebas, pero la llamada número <paramref name="failingCall"/> lanza.</summary>
+    private sealed class GateThatFailsOn(AppDbContext db, int failingCall, Exception ex) : IMemberFundsGate
+    {
+        private int _calls;
+
+        public Task<IDbContextTransaction> EnterAsync(string memberId, CancellationToken ct = default) =>
+            ++_calls == failingCall
+                ? Task.FromException<IDbContextTransaction>(ex)
+                : db.Database.BeginTransactionAsync(ct);
+
+        public Task<bool> TryAcquireAsync(string memberId, TimeSpan timeout, CancellationToken ct = default) => Task.FromResult(true);
+    }
+
+    private sealed class IssuerThatThrows : ITokenIssuer
+    {
+        public Task<IReadOnlyList<string>> IssueAsync(TokenIssue issue, CancellationToken ct = default) =>
+            throw new InvalidOperationException("Could not generate unique token codes.");
+    }
+
+    // ── I1: tarjeta apagada y cobros simulados ───────────────────────────────
+
+    [Fact]
+    public async Task Tarjeta_apagada_por_defecto_no_reserva_ni_cobra()
+    {
+        SeedCard("card-1", MemberId);
+        RouterWithImmediateAndDelayedSteps();
+
+        (await Buy(Request(TokenPaymentMethods.CreditCard, card: "card-1"))).ErrorCode
+            .Should().Be(TokenPurchaseErrors.CardPaymentsDisabled);
+
+        _db.Orders.Should().BeEmpty();
+        _db.TokenPurchases.Should().BeEmpty();
+        _router.Verify(r => r.ResolveAsync(It.IsAny<GatewayRoutingContext>(), It.IsAny<CancellationToken>()), Times.Never);
+        _orchestrator.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Catalogo_y_fondos_dicen_si_la_tarjeta_esta_disponible()
+    {
+        (await Service().GetCatalogAsync(MemberId)).CardEnabled.Should().BeFalse("apagada por defecto mientras Spreedly sea un stub");
+        (await Service().GetFundsAsync(MemberId)).CardEnabled.Should().BeFalse();
+
+        TarjetaEncendida();
+
+        (await Service().GetCatalogAsync(MemberId)).CardEnabled.Should().BeTrue();
+        (await Service().GetFundsAsync(MemberId)).CardEnabled.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("simulated-spreedly-txn-0123")]
+    [InlineData("STUB-NmiSpreedly-0123")]
+    public async Task Un_cobro_simulado_no_emite_y_queda_a_conciliar(string txId)
+    {
+        RouterWithImmediateAndDelayedSteps();
+        OrquestadorDevuelve(Cobrada(txId));
+
+        (await ComprarConTarjeta()).ErrorCode.Should().Be(TokenPurchaseErrors.NeedsReview);
+
+        var compra = await LaCompra();
+        compra.Status.Should().Be(TokenPurchaseStatus.NeedsReconciliation);
+        compra.FailureCode.Should().Be(TokenPurchaseErrors.CardSimulatedCharge);
+        _db.TokenTransactions.Should().BeEmpty();
+        (await Usados()).Should().Be(1);
+    }
+
+    // ── I2: solo un "no cobrado" explícito libera el cupo ─────────────────────
+
+    [Theory]
+    [InlineData("DECLINED")]
+    [InlineData("GATEWAY_TIMEOUT")]
+    [InlineData(null)]
+    public async Task Un_fallo_de_tarjeta_que_no_consta_como_no_cobrado_queda_a_conciliar(string? code)
+    {
+        RouterWithImmediateAndDelayedSteps();
+        OrquestadorDevuelve(Result<OrchestratorChargeResult>.Failure(code!, "algo pasó"));
+
+        (await ComprarConTarjeta()).ErrorCode.Should().Be(TokenPurchaseErrors.NeedsReview);
+
+        var compra = await LaCompra();
+        compra.Status.Should().Be(TokenPurchaseStatus.NeedsReconciliation);
+        compra.FailureCode.Should().Be("CARD_OUTCOME_UNKNOWN");
+        (await _db.Orders.AsNoTracking().SingleAsync()).Status.Should().Be(OrderStatus.Processing);
+        (await Usados()).Should().Be(1, "pudo cobrarse: el cupo no se suelta");
+    }
+
+    [Fact]
+    public async Task Con_dos_pasos_sigue_al_segundo_solo_si_el_primero_consta_como_no_cobrado()
+    {
+        RouterWithTwoImmediateSteps();
+        _orchestrator
+            .SetupSequence(o => o.ExecuteAsync(It.IsAny<GatewayRoutingPlan>(), It.IsAny<GatewayRoutingContext>(), It.IsAny<OrchestratorChargeRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<OrchestratorChargeResult>.Failure("SPREEDLY_DOWNSTREAM_TOKEN_NOT_SET", "sin token"))
+            .ReturnsAsync(Cobrada());
+
+        var r = await ComprarConTarjeta();
+
+        r.Value!.Status.Should().Be(TokenPurchaseStatuses.Completed);
+        _orchestrator.Invocations.Select(i => ((GatewayRoutingPlan)i.Arguments[0]).Steps.Single().CardProcessor)
+            .Should().Equal(CardProcessor.NmiSpreedly, CardProcessor.NmiDirect);
+    }
+
+    [Fact]
+    public async Task Con_dos_pasos_un_fallo_dudoso_no_prueba_el_segundo()
+    {
+        RouterWithTwoImmediateSteps();
+        OrquestadorDevuelve(Result<OrchestratorChargeResult>.Failure("GATEWAY_TIMEOUT", "timeout"));
+
+        (await ComprarConTarjeta()).ErrorCode.Should().Be(TokenPurchaseErrors.NeedsReview);
+
+        _orchestrator.Verify(o => o.ExecuteAsync(It.IsAny<GatewayRoutingPlan>(), It.IsAny<GatewayRoutingContext>(),
+            It.IsAny<OrchestratorChargeRequest>(), It.IsAny<CancellationToken>()), Times.Once(),
+            "un timeout en el primero y un cobro en el segundo serían dos cobros");
+    }
+
+    // ── I3: nada se queda en Pending ──────────────────────────────────────────
+
+    [Fact]
+    public async Task eWallet_si_el_candado_falla_antes_del_debito_suelta_la_reserva()
+    {
+        EWalletWith(500m, EWalletDebitStatus.Completed);
+        _gate = new GateThatFailsOn(_db, failingCall: 2, new InvalidOperationException("SQL caído"));
+
+        (await Buy(Request(TokenPaymentMethods.EWallet))).ErrorCode.Should().Be(TokenPurchaseErrors.PaymentServiceUnavailable);
+
+        (await LaCompra()).Status.Should().Be(TokenPurchaseStatus.Failed);
+        (await Usados()).Should().Be(0);
+        _eWallet.Verify(e => e.DebitAsync(It.IsAny<string>(), It.IsAny<decimal>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task eWallet_si_releer_el_saldo_lanza_suelta_la_reserva_sin_debitar()
+    {
+        EWalletWith(500m, EWalletDebitStatus.Completed);
+        _eWallet.SetupSequence(e => e.BalanceAsync("ipayout-1", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Result<decimal>.Success(500m))
+                .ThrowsAsync(new HttpRequestException("i-Payout no responde"));
+
+        (await Buy(Request(TokenPaymentMethods.EWallet))).ErrorCode.Should().Be(TokenPurchaseErrors.EWalletUnavailable);
+
+        (await LaCompra()).Status.Should().Be(TokenPurchaseStatus.Failed);
+        (await Usados()).Should().Be(0);
+        _eWallet.Verify(e => e.DebitAsync(It.IsAny<string>(), It.IsAny<decimal>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Tarjeta_si_el_ruteo_lanza_suelta_la_reserva()
+    {
+        _router.Setup(r => r.ResolveAsync(It.IsAny<GatewayRoutingContext>(), It.IsAny<CancellationToken>()))
+               .ThrowsAsync(new InvalidOperationException("tabla de ruteo ilegible"));
+
+        (await ComprarConTarjeta()).ErrorCode.Should().Be(TokenPurchaseErrors.NoImmediateGateway);
+
+        (await LaCompra()).Status.Should().Be(TokenPurchaseStatus.Failed);
+        (await Usados()).Should().Be(0);
+        _orchestrator.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task eWallet_cobrada_si_la_emision_lanza_queda_a_conciliar()
+    {
+        EWalletWith(500m, EWalletDebitStatus.Completed);
+        _issuer = new IssuerThatThrows();
+
+        (await Buy(Request(TokenPaymentMethods.EWallet))).ErrorCode.Should().Be(TokenPurchaseErrors.NeedsReview);
+
+        var compra = await LaCompra();
+        compra.Status.Should().Be(TokenPurchaseStatus.NeedsReconciliation);
+        compra.FailureCode.Should().Be("EWALLET_CHARGED_NOT_ISSUED");
+        _db.PaymentHistories.Should().BeEmpty();
+        _db.TokenTransactions.Should().BeEmpty();
+        (await Usados()).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task eWallet_cobrada_si_el_guardado_falla_queda_a_conciliar()
+    {
+        EWalletWith(500m, EWalletDebitStatus.Completed);
+        _faults.FailWhen(Adds<TokenTransaction>, times: 1);
+
+        (await Buy(Request(TokenPaymentMethods.EWallet))).ErrorCode.Should().Be(TokenPurchaseErrors.NeedsReview);
+
+        (await LaCompra()).FailureCode.Should().Be("EWALLET_CHARGED_NOT_ISSUED");
+        _db.TokenTransactions.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task eWallet_rechazada_si_el_guardado_falla_queda_a_conciliar_y_no_en_Pending()
+    {
+        EWalletWith(500m, EWalletDebitStatus.Rejected, "EWALLET_ITEM_-5");
+        _faults.FailWhen(c => MovesTo(c, TokenPurchaseStatus.Failed), times: 1);
+
+        (await Buy(Request(TokenPaymentMethods.EWallet))).ErrorCode.Should().Be(TokenPurchaseErrors.NeedsReview);
+
+        (await LaCompra()).FailureCode.Should().Be("EWALLET_REJECTED_NOT_SAVED");
+    }
+
+    [Fact]
+    public async Task Tarjeta_cobrada_si_la_emision_lanza_queda_a_conciliar_y_conciliar_enlaza_su_pago()
+    {
+        RouterWithImmediateAndDelayedSteps();
+        OrquestadorCobraYEscribeElPago();
+        _issuer = new IssuerThatThrows();
+
+        (await ComprarConTarjeta()).ErrorCode.Should().Be(TokenPurchaseErrors.NeedsReview);
+        var compra = await LaCompra();
+        compra.Status.Should().Be(TokenPurchaseStatus.NeedsReconciliation);
+        compra.FailureCode.Should().Be("CARD_CHARGED_NOT_ISSUED");
+
+        _issuer = null;
+        var r = await Service().ReconcileAsync(compra.Id, new ReconcileTokenPurchaseRequest { Charged = true }, "tesoreria@x.com");
+
+        r.Value!.TokenCodes.Should().HaveCount(1);
+        var pago = await _db.PaymentHistories.AsNoTracking().SingleAsync();
+        pago.Id.Should().Be("ph-card", "el cobro ya tenía su PaymentHistory: no se escribe otro");
+        pago.GatewayName.Should().Be("NmiSpreedly");
+        (await LaCompra()).PaymentHistoryId.Should().Be("ph-card");
+    }
+
+    [Fact]
+    public async Task Tarjeta_cobrada_con_el_candado_ocupado_al_emitir_queda_a_conciliar()
+    {
+        RouterWithImmediateAndDelayedSteps();
+        OrquestadorDevuelve(Cobrada());
+        _gate = new GateThatFailsOn(_db, failingCall: 2, new MemberFundsBusyException(MemberId));
+
+        (await ComprarConTarjeta()).ErrorCode.Should().Be(TokenPurchaseErrors.NeedsReview);
+
+        var compra = await LaCompra();
+        compra.Status.Should().Be(TokenPurchaseStatus.NeedsReconciliation, "ya está cobrada: nunca falla ni libera");
+        compra.FailureCode.Should().Be("CARD_CHARGED_GATE_BUSY");
+        (await Usados()).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Tarjeta_emite_bajo_el_candado_del_miembro()
+    {
+        var gate = new TransactionOnlyGate(_db);
+        _gate = gate;
+        RouterWithImmediateAndDelayedSteps();
+        OrquestadorDevuelve(Cobrada());
+
+        (await ComprarConTarjeta()).IsSuccess.Should().BeTrue();
+
+        gate.Entered.Should().Equal(MemberId, MemberId); // reserva y emisión
+    }
+
+    [Fact]
+    public async Task Si_no_se_puede_guardar_la_conciliacion_se_rescata_releyendo_la_compra()
+    {
+        RouterWithImmediateAndDelayedSteps();
+        _orchestrator
+            .Setup(o => o.ExecuteAsync(It.IsAny<GatewayRoutingPlan>(), It.IsAny<GatewayRoutingContext>(), It.IsAny<OrchestratorChargeRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TaskCanceledException("timeout del gateway"));
+        _faults.FailWhen(c => MovesTo(c, TokenPurchaseStatus.NeedsReconciliation), times: 1);
+
+        (await ComprarConTarjeta()).ErrorCode.Should().Be(TokenPurchaseErrors.NeedsReview);
+
+        _faults.Thrown.Should().Be(1);
+        (await LaCompra()).Status.Should().Be(TokenPurchaseStatus.NeedsReconciliation);
+    }
+
+    [Fact]
+    public async Task Si_ni_el_rescate_se_guarda_la_recoge_el_barrido_y_nunca_la_libera()
+    {
+        RouterWithImmediateAndDelayedSteps();
+        _orchestrator
+            .Setup(o => o.ExecuteAsync(It.IsAny<GatewayRoutingPlan>(), It.IsAny<GatewayRoutingContext>(), It.IsAny<OrchestratorChargeRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TaskCanceledException("timeout del gateway"));
+        _faults.FailWhen(c => MovesTo(c, TokenPurchaseStatus.NeedsReconciliation));
+
+        (await ComprarConTarjeta()).ErrorCode.Should().Be(TokenPurchaseErrors.NeedsReview);
+        (await LaCompra()).Status.Should().Be(TokenPurchaseStatus.Pending);
+
+        // La base vuelve; pasa el plazo y corre el barrido.
+        _faults.Stop();
+        _db.ChangeTracker.Clear();
+        var vieja = await _db.TokenPurchases.SingleAsync();
+        vieja.CreationDate = FixedNow.AddMinutes(-31);
+        await _db.SaveChangesAsync();
+
+        (await Service().MoveStalePendingToReconciliationAsync(30, "token-purchase-stale-pending")).Should().Be(1);
+
+        var compra = await LaCompra();
+        compra.Status.Should().Be(TokenPurchaseStatus.NeedsReconciliation);
+        compra.FailureCode.Should().Be("STALE_PENDING");
+        (await Usados()).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task El_barrido_solo_mueve_tarjeta_y_eWallet_pasado_el_plazo()
+    {
+        TokenPurchase P(string id, TokenPaymentMethod m, TokenPurchaseStatus s) => new()
+        {
+            Id = id, MemberId = MemberId, TokenTypeId = VipType, GrantedProductIds = "prod-vip", Quantity = 1,
+            UnitPrice = UnitPrice, TotalAmount = UnitPrice, PaymentMethod = m, Status = s, OrderId = "ord-" + id,
+            IdempotencyKey = "k-" + id, PeriodKey = 202610, CreatedBy = "seed", CreationDate = FixedNow
+        };
+        _db.TokenPurchases.AddRange(
+            P("card-old", TokenPaymentMethod.CreditCard, TokenPurchaseStatus.Pending),
+            P("ew-old", TokenPaymentMethod.EWallet, TokenPurchaseStatus.Pending),
+            P("ew-new", TokenPaymentMethod.EWallet, TokenPurchaseStatus.Pending),
+            P("com-old", TokenPaymentMethod.CommissionBalance, TokenPurchaseStatus.Pending),
+            P("cry-old", TokenPaymentMethod.Crypto, TokenPurchaseStatus.AwaitingCryptoConfirmation));
+        await _db.SaveChangesAsync();
+        foreach (var p in await _db.TokenPurchases.ToListAsync())
+            p.CreationDate = p.Id == "ew-new" ? FixedNow.AddMinutes(-5) : FixedNow.AddHours(-2);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        (await Service().MoveStalePendingToReconciliationAsync(30, "barrido")).Should().Be(2);
+
+        var estados = await _db.TokenPurchases.AsNoTracking().ToDictionaryAsync(p => p.Id, p => p.Status);
+        estados["card-old"].Should().Be(TokenPurchaseStatus.NeedsReconciliation);
+        estados["ew-old"].Should().Be(TokenPurchaseStatus.NeedsReconciliation);
+        estados["ew-new"].Should().Be(TokenPurchaseStatus.Pending);
+        estados["com-old"].Should().Be(TokenPurchaseStatus.Pending);
+        estados["cry-old"].Should().Be(TokenPurchaseStatus.AwaitingCryptoConfirmation);
+        (await Service().MoveStalePendingToReconciliationAsync(0, "barrido")).Should().Be(0, "0 apaga el barrido");
+    }
+
+    // ── I5: el texto de i-Payout no llega al miembro ──────────────────────────
+
+    [Fact]
+    public async Task eWallet_no_devuelve_el_texto_de_iPayout()
+    {
+        EWalletWith(500m, EWalletDebitStatus.Completed);
+        _eWallet.Setup(e => e.BalanceAsync("ipayout-1", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Result<decimal>.Failure("EWALLET_HTTP_500", "i-Payout get balance failed (500): {\"MerchantGUID\":\"secreto\"}"));
+
+        var r = await Buy(Request(TokenPaymentMethods.EWallet));
+
+        r.ErrorCode.Should().Be(TokenPurchaseErrors.EWalletUnavailable);
+        r.Error.Should().NotContain("secreto").And.NotContain("i-Payout");
+        _db.TokenPurchases.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task eWallet_rechazada_no_devuelve_el_texto_de_iPayout()
+    {
+        EWalletWith(500m, EWalletDebitStatus.Rejected, "EWALLET_ITEM_-5");
+
+        var r = await Buy(Request(TokenPaymentMethods.EWallet));
+
+        r.Error.Should().NotContain("detalle");
+        (await LaCompra()).Notes.Should().Contain("detalle", "el detalle queda para tesorería");
+    }
+
+    [Fact]
+    public async Task Fondos_con_iPayout_caido_dan_el_saldo_como_no_disponible()
+    {
+        SeedCommissions(120m);
+        _eWallet.Setup(e => e.UserNameOfAsync(MemberId, It.IsAny<CancellationToken>())).ReturnsAsync("ipayout-1");
+        _eWallet.Setup(e => e.BalanceAsync("ipayout-1", It.IsAny<CancellationToken>())).ThrowsAsync(new HttpRequestException("caído"));
+
+        var f = await Service().GetFundsAsync(MemberId);
+
+        f.HasEWallet.Should().BeTrue();
+        f.EWalletBalance.Should().BeNull();
+        f.CommissionBalance.Should().Be(120m);
+    }
+
+    // ── M1: el pago de la conciliación como el de los caminos normales ────────
+
+    [Fact]
+    public async Task Conciliar_eWallet_cobrada_escribe_el_pago_a_centavos_y_como_eWallet()
+    {
+        var id = await CompraAConciliar();
+
+        await Service().ReconcileAsync(id, new ReconcileTokenPurchaseRequest { Charged = true }, "tesoreria@x.com");
+
+        var pago = await _db.PaymentHistories.AsNoTracking().SingleAsync();
+        pago.GatewayName.Should().Be("eWallet");
+        pago.Amount.Should().Be(EWalletFunds.ChargeAmount(UnitPrice * 2));
+        pago.GatewayTransactionId.Should().Be(id);
+    }
+
+    [Fact]
+    public async Task Conciliar_como_no_cobrado_un_cobro_simulado_deja_su_pago_como_fallido()
+    {
+        RouterWithImmediateAndDelayedSteps();
+        OrquestadorCobraYEscribeElPago("simulated-spreedly-txn-1");
+        await ComprarConTarjeta();
+        var id = (await LaCompra()).Id;
+
+        (await Service().ReconcileAsync(id, new ReconcileTokenPurchaseRequest { Charged = false }, "tesoreria@x.com")).IsSuccess.Should().BeTrue();
+
+        (await _db.PaymentHistories.AsNoTracking().SingleAsync()).TransactionStatus.Should().Be(PaymentHistoryTransactionStatus.Failed);
+        (await Usados()).Should().Be(0);
+    }
+
+    // ── M2 y M3: la clave ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task La_misma_clave_para_otra_compra_es_IDEMPOTENCY_KEY_REUSED()
+    {
+        SeedCommissions(500m);
+        (await Buy(Request(TokenPaymentMethods.CommissionBalance, qty: 1, key: "clave-x"))).IsSuccess.Should().BeTrue();
+
+        (await Buy(Request(TokenPaymentMethods.CommissionBalance, qty: 2, key: "clave-x"))).ErrorCode
+            .Should().Be(TokenPurchaseErrors.IdempotencyKeyReused);
+        (await Buy(Request(TokenPaymentMethods.Crypto, qty: 1, key: "clave-x", crypto: "BTC"))).ErrorCode
+            .Should().Be(TokenPurchaseErrors.IdempotencyKeyReused);
+        (await Buy(Request(TokenPaymentMethods.CommissionBalance, qty: 1, key: "clave-x", type: FreeType))).ErrorCode
+            .Should().Be(TokenPurchaseErrors.IdempotencyKeyReused);
+        _db.TokenPurchases.Should().HaveCount(1);
+        _db.CommissionEarnings.Count(e => e.Amount < 0).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Si_otra_peticion_gana_la_clave_en_la_base_devuelve_la_suya_sin_cobrar()
+    {
+        SeedCommissions(500m);
+        var ganadora = new TokenPurchase
+        {
+            MemberId = MemberId, TokenTypeId = VipType, GrantedProductIds = "prod-vip", Quantity = 1, UnitPrice = UnitPrice,
+            TotalAmount = UnitPrice, PaymentMethod = TokenPaymentMethod.CommissionBalance, Status = TokenPurchaseStatus.Completed,
+            IdempotencyKey = "clave-carrera", PeriodKey = 202610, CreatedBy = "otra", CreationDate = FixedNow
+        };
+        // El índice único (MemberId, IdempotencyKey) no existe en InMemory: se simula que la otra
+        // petición guarda justo antes y la base rechaza esta.
+        _faults.FailWhen(Adds<TokenPurchase>, times: 1, make: _ =>
+        {
+            using var otra = TestDbContextFactory.Create(_dbName);
+            var pedido = new Orders { MemberId = MemberId, OrderNo = "TP-OTRA", Status = OrderStatus.Paid, OrderDate = FixedNow, CreatedBy = "otra", CreationDate = FixedNow };
+            ganadora.OrderId = pedido.Id;
+            otra.Orders.Add(pedido);
+            otra.TokenPurchases.Add(ganadora);
+            otra.SaveChanges();
+            return new DbUpdateException("Cannot insert duplicate key row in object 'dbo.TokenPurchases' with unique index 'IX_TokenPurchases_MemberId_IdempotencyKey'.");
+        });
+
+        var r = await Buy(Request(TokenPaymentMethods.CommissionBalance, key: "clave-carrera"));
+
+        r.IsSuccess.Should().BeTrue();
+        r.Value!.PurchaseId.Should().Be(ganadora.Id);
+        _db.TokenPurchases.Should().HaveCount(1);
+        _db.CommissionEarnings.Count(e => e.Amount < 0).Should().Be(0, "esta petición no cobró");
+    }
+
+    [Fact]
+    public async Task Confirmar_cripto_con_un_codigo_repetido_lo_reintenta_una_vez()
+    {
+        var orderId = (await Buy(Request(TokenPaymentMethods.Crypto, qty: 2, crypto: "BTC"))).Value!.OrderId;
+        _faults.FailWhen(Adds<TokenTransaction>, times: 1);
+
+        var r = await Service().ConfirmCryptoAsync(orderId, new ConfirmCryptoTokenPurchaseRequest { CryptoTransactionId = "0x1" }, "admin-1", "admin@x.com");
+
+        r.Value!.TokenCodes.Should().HaveCount(2);
+        _db.TokenTransactions.Count(t => t.ReferenceId != null).Should().Be(2);
+        (await _db.CryptoPaymentConfirmations.AsNoTracking().SingleAsync()).Status.Should().Be(CryptoPaymentConfirmationStatus.Confirmed);
+    }
+
+    [Fact]
+    public async Task Confirmar_cripto_que_choca_dos_veces_da_un_error_claro_y_no_guarda_nada()
+    {
+        var orderId = (await Buy(Request(TokenPaymentMethods.Crypto, qty: 2, crypto: "BTC"))).Value!.OrderId;
+        _faults.FailWhen(Adds<TokenTransaction>, times: 2);
+
+        (await Service().ConfirmCryptoAsync(orderId, new ConfirmCryptoTokenPurchaseRequest { CryptoTransactionId = "0x1" }, "admin-1", "admin@x.com"))
+            .ErrorCode.Should().Be(TokenPurchaseErrors.IssueFailed);
+
+        _db.TokenTransactions.Should().BeEmpty();
+        (await _db.CryptoPaymentConfirmations.AsNoTracking().SingleAsync()).Status.Should().Be(CryptoPaymentConfirmationStatus.AwaitingPayment);
+        (await LaCompra()).Status.Should().Be(TokenPurchaseStatus.AwaitingCryptoConfirmation);
+    }
+
+    [Fact]
+    public async Task Conciliar_con_un_codigo_repetido_lo_reintenta_una_vez()
+    {
+        var id = await CompraAConciliar();
+        _faults.FailWhen(Adds<TokenTransaction>, times: 1);
+
+        var r = await Service().ReconcileAsync(id, new ReconcileTokenPurchaseRequest { Charged = true }, "tesoreria@x.com");
+
+        r.Value!.TokenCodes.Should().HaveCount(2);
+        _db.PaymentHistories.Should().HaveCount(1);
     }
 }

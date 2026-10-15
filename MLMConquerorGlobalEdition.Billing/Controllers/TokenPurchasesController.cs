@@ -72,9 +72,14 @@ public class TokenPurchasesController : ControllerBase
         var actor  = string.IsNullOrEmpty(userId) ? memberId : userId;
         var result = await _service.PurchaseAsync(new TokenPurchaseInput(memberId, actor, request), ct);
 
-        return result.IsSuccess
-            ? Ok(ApiResponse<TokenPurchaseResultDto>.Ok(result.Value!))
-            : BadRequest(ApiResponse<TokenPurchaseResultDto>.Fail(result.ErrorCode!, result.Error!, HttpContext.TraceIdentifier));
+        if (result.IsSuccess) return Ok(ApiResponse<TokenPurchaseResultDto>.Ok(result.Value!));
+
+        // La clave ya se usó para otra compra: es un conflicto con lo guardado, no una petición mal
+        // formada, y la pantalla debe empezar con una clave nueva.
+        var body = ApiResponse<TokenPurchaseResultDto>.Fail(result.ErrorCode!, result.Error!, HttpContext.TraceIdentifier);
+        return result.ErrorCode == TokenPurchaseErrors.IdempotencyKeyReused
+            ? StatusCode(StatusCodes.Status409Conflict, body)
+            : BadRequest(body);
     }
 
     /// <summary>POST api/v1/billing/tokens/purchases/crypto/{orderId}/confirm — un administrador confirma la transferencia.</summary>
@@ -154,7 +159,7 @@ public class TokenPurchasesController : ControllerBase
         {
             TokenPurchaseErrors.CryptoPaymentNotFound or TokenPurchaseErrors.PurchaseNotFound => StatusCodes.Status404NotFound,
             TokenPurchaseErrors.CryptoAlreadyConfirmed or TokenPurchaseErrors.NotUnderReview
-                or TokenPurchaseErrors.NotAwaitingCrypto                                    => StatusCodes.Status409Conflict,
+                or TokenPurchaseErrors.NotAwaitingCrypto or TokenPurchaseErrors.IssueFailed => StatusCodes.Status409Conflict,
             _                                                                                 => StatusCodes.Status400BadRequest
         };
         return StatusCode(status, ApiResponse<TokenPurchaseResultDto>.Fail(result.ErrorCode!, result.Error!, HttpContext.TraceIdentifier));

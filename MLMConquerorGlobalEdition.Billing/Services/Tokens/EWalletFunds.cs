@@ -33,8 +33,14 @@ public interface IEWalletFunds
 
 public sealed class EWalletFunds : IEWalletFunds
 {
-    /// <summary>Holgura por redondeo de i-Payout.</summary>
+    /// <summary>Holgura máxima por redondeo de i-Payout. La que se aplica es <see cref="ToleranceFor"/>.</summary>
     public const decimal Tolerance = 0.01m;
+
+    /// <summary>
+    /// La holgura para un cobro: un centavo, pero nunca más de la mitad del cobro. Con un centavo fijo,
+    /// un cobro de 0,01 daba por bueno un saldo que no había bajado nada.
+    /// </summary>
+    public static decimal ToleranceFor(decimal charge) => Math.Min(Tolerance, charge / 2);
 
     /// <summary>Lo que cabe de detalle en las notas de la compra: un resumen, no la respuesta cruda.</summary>
     private const int DetailMaxLength = 200;
@@ -103,7 +109,7 @@ public sealed class EWalletFunds : IEWalletFunds
             return new EWalletDebitOutcome(EWalletDebitStatus.NeedsReconciliation,
                 "EWALLET_BALANCE_UNVERIFIED", Summary($"Charge accepted; balance re-read failed ({after.ErrorCode})."));
 
-        if (after.Value <= balanceBefore - charge + Tolerance)
+        if (after.Value <= balanceBefore - charge + ToleranceFor(charge))
             return new EWalletDebitOutcome(EWalletDebitStatus.Completed, null, Summary(deduction.Text));
 
         return new EWalletDebitOutcome(EWalletDebitStatus.NeedsReconciliation, "EWALLET_DEBIT_PENDING",

@@ -36,6 +36,21 @@ public static class TokenPurchaseRules
     public const string CryptoExpiryDaysConfigKey = "Billing:TokenPurchase:CryptoExpiryDays";
 
     public const int DefaultCryptoExpiryDays = 3;
+
+    /// <summary>
+    /// ¿Se acepta tarjeta? Apagado por defecto: el gateway de Spreedly es todavía un stub que devuelve
+    /// un éxito simulado, y encenderlo emitiría tokens sin cobrar. Se enciende solo cuando el cobro con
+    /// tarjeta sea real (bloqueante de producción, ver el plan F).
+    /// </summary>
+    public const string CardEnabledConfigKey = "Billing:TokenPurchase:CardEnabled";
+
+    /// <summary>
+    /// Minutos que una compra con tarjeta o eWallet puede seguir en Pending antes de que el barrido la
+    /// pase a conciliar (el proceso murió entre el cobro y la emisión).
+    /// </summary>
+    public const string StalePendingMinutesConfigKey = "Billing:TokenPurchase:StalePendingMinutes";
+
+    public const int DefaultStalePendingMinutes = 30;
 }
 
 /// <summary>Valores de <see cref="PurchaseTokensRequest.PaymentMethod"/>. Coinciden con el enum de dominio.</summary>
@@ -113,6 +128,30 @@ public static class TokenPurchaseErrors
 
     /// <summary>Cancelar o rechazar algo que no es una compra en cripto pendiente de confirmar.</summary>
     public const string NotAwaitingCrypto             = "TOKEN_PURCHASE_NOT_AWAITING_CRYPTO";
+
+    /// <summary>El pago con tarjeta está apagado (Billing:TokenPurchase:CardEnabled = false).</summary>
+    public const string CardPaymentsDisabled          = "CARD_PAYMENTS_DISABLED";
+
+    /// <summary>
+    /// Motivo de conciliación (no se devuelve al miembro): el gateway contestó con un id de transacción
+    /// simulado. No hubo cobro real y no se emite.
+    /// </summary>
+    public const string CardSimulatedCharge           = "CARD_SIMULATED_CHARGE";
+
+    /// <summary>La misma clave de idempotencia con otro tipo, cantidad o método: no es un reintento.</summary>
+    public const string IdempotencyKeyReused          = "IDEMPOTENCY_KEY_REUSED";
+
+    /// <summary>
+    /// Billing no pudo empezar el cobro (base de datos, candado o ruteo fallaron antes de mover dinero).
+    /// La compra queda fallida y se puede volver a intentar con otra clave.
+    /// </summary>
+    public const string PaymentServiceUnavailable     = "PAYMENT_SERVICE_UNAVAILABLE";
+
+    /// <summary>
+    /// Confirmar o conciliar no pudo emitir (colisión de códigos dos veces seguidas). No se guardó nada;
+    /// se puede repetir.
+    /// </summary>
+    public const string IssueFailed                   = "TOKEN_ISSUE_FAILED";
 }
 
 /// <summary>
@@ -158,6 +197,12 @@ public sealed class TokenCatalogDto
 
     /// <summary>Monedas con dirección configurada. Vacío = no se ofrece cripto.</summary>
     public List<CryptoDepositAddressDto> CryptoDeposits { get; set; } = new();
+
+    /// <summary>
+    /// False si el pago con tarjeta está apagado en Billing: la pantalla no muestra la pestaña. Billing
+    /// lo rechaza igualmente (CARD_PAYMENTS_DISABLED) si alguien lo pide.
+    /// </summary>
+    public bool CardEnabled { get; set; }
 }
 
 public sealed class TokenCatalogItemDto
@@ -180,6 +225,9 @@ public sealed class TokenPurchaseFundsDto
 
     /// <summary>False si el miembro no tiene cuenta eWallet registrada: no puede pagar con ella.</summary>
     public bool     HasEWallet        { get; set; }
+
+    /// <summary>Igual que <see cref="TokenCatalogDto.CardEnabled"/>, para quien solo pide los fondos.</summary>
+    public bool     CardEnabled       { get; set; }
 }
 
 public sealed class TokenSummaryDto

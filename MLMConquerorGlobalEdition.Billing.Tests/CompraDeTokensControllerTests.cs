@@ -140,6 +140,32 @@ public class CompraDeTokensControllerTests
     }
 
     [Fact]
+    public async Task Reusar_la_clave_para_otra_compra_es_409()
+    {
+        var ctl = Controlador(Miembro());
+        _svc.Setup(s => s.PurchaseAsync(It.IsAny<TokenPurchaseInput>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<TokenPurchaseResultDto>.Failure(TokenPurchaseErrors.IdempotencyKeyReused, "otra compra"));
+
+        var r = await ctl.Purchase(Pedido(TokenPaymentMethods.Crypto), default);
+
+        var obj = r.Should().BeOfType<ObjectResult>().Subject;
+        obj.StatusCode.Should().Be(StatusCodes.Status409Conflict);
+        obj.Value.Should().BeOfType<ApiResponse<TokenPurchaseResultDto>>().Which.ErrorCode.Should().Be(TokenPurchaseErrors.IdempotencyKeyReused);
+    }
+
+    [Fact]
+    public async Task Confirmar_sin_poder_emitir_es_409_para_reintentar()
+    {
+        _svc.Setup(s => s.ConfirmCryptoAsync("ord-1", It.IsAny<ConfirmCryptoTokenPurchaseRequest>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<TokenPurchaseResultDto>.Failure(TokenPurchaseErrors.IssueFailed, "choque"));
+        var admin = Usuario(new Claim(ClaimTypes.NameIdentifier, "admin-1"), new Claim(ClaimTypes.Role, AppRoles.BillingManager));
+
+        var r = await Controlador(admin).ConfirmCrypto("ord-1", new ConfirmCryptoTokenPurchaseRequest(), default);
+
+        r.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status409Conflict);
+    }
+
+    [Fact]
     public async Task Catalogo_y_fondos_son_del_miembro_del_token_y_el_personal_no_los_ve()
     {
         _svc.Setup(s => s.GetCatalogAsync("AMB-100001", It.IsAny<CancellationToken>())).ReturnsAsync(new TokenCatalogDto());

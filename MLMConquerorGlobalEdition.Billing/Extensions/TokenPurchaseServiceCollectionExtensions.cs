@@ -11,7 +11,8 @@ public static class TokenPurchaseServiceCollectionExtensions
 {
     /// <summary>
     /// Registra la compra de tokens (Plan F): precio, cupo, emisor, fondos eWallet, recibos, comprobación
-    /// de step-up, direcciones de depósito cripto, el servicio de compra y su trabajo de caducidad.
+    /// de step-up, direcciones de depósito cripto, el servicio de compra y sus dos trabajos: la caducidad
+    /// de la cripto sin pagar y el barrido de las Pending olvidadas.
     /// </summary>
     /// <remarks>
     /// Va en un método y no suelto en Program.cs para que la prueba de DI ejercite este mismo registro.
@@ -39,6 +40,7 @@ public static class TokenPurchaseServiceCollectionExtensions
         services.AddScoped<ITokenPurchaseService, TokenPurchaseService>();
 
         services.AddScoped<TokenPurchaseCryptoExpiryJob>();
+        services.AddScoped<TokenPurchaseStalePendingJob>();
         return services;
     }
 }

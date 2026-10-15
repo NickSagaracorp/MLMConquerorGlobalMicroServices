@@ -336,6 +336,14 @@ RecurringJob.AddOrUpdate<TokenPurchaseCryptoExpiryJob>(
     "0 * * * *",                    // Cada hora
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
+// Pasa a conciliar las compras de tokens con tarjeta o eWallet que se quedaron en Pending (el proceso
+// murió entre el cobro y la emisión). Nunca las libera: el dinero pudo moverse.
+RecurringJob.AddOrUpdate<TokenPurchaseStalePendingJob>(
+    "token-purchase-stale-pending",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "30 * * * *",                   // Cada hora, a la media para no coincidir con la caducidad
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
 // Auto-payout disabled by business decision: PaymentDate on a CommissionEarning
 // is purely informational (= EarnedDate + N days for "when it becomes payable")
 // and must NOT trigger automatic status flips to Paid. Commission payment is
