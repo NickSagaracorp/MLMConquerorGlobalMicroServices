@@ -16,6 +16,7 @@ using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.RefreshToken;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.ResendTwoFactor;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.ResetPassword;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.SetPassword;
+using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.StepUp;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.TwoFactorSettings;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.VerifyTwoFactor;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Queries.AccountStatus;
@@ -396,6 +397,41 @@ public class AuthController : ControllerBase
         return result.IsSuccess
             ? Ok(ApiResponse<bool>.Ok(true, "Phone removed successfully."))
             : BadRequest(ApiResponse<bool>.Fail(result.ErrorCode!, result.Error!));
+    }
+
+    /// <summary>
+    /// Manda un código de step-up para <c>OperationKey</c> por el canal preferido del usuario.
+    /// </summary>
+    /// <remarks>Autenticado: el usuario sale de las claims, nunca del cuerpo.</remarks>
+    [HttpPost("step-up/challenge")]
+    [Authorize]
+    public async Task<IActionResult> StepUpChallenge(
+        [FromBody] StepUpChallengeRequest request,
+        CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                  ?? User.FindFirstValue("sub")
+                  ?? string.Empty;
+        var result = await _mediator.Send(new IssueStepUpCommand(userId, request), ct);
+        return result.IsSuccess
+            ? Ok(ApiResponse<StepUpChallengeResponse>.Ok(result.Value!))
+            : BadRequest(ApiResponse<StepUpChallengeResponse>.Fail(result.ErrorCode!, result.Error!));
+    }
+
+    /// <summary>Canjea el código por el permiso que va en <c>X-Step-Up-Token</c>.</summary>
+    [HttpPost("step-up/verify")]
+    [Authorize]
+    public async Task<IActionResult> StepUpVerify(
+        [FromBody] StepUpVerifyRequest request,
+        CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                  ?? User.FindFirstValue("sub")
+                  ?? string.Empty;
+        var result = await _mediator.Send(new VerifyStepUpCommand(userId, request), ct);
+        return result.IsSuccess
+            ? Ok(ApiResponse<StepUpGrantResponse>.Ok(result.Value!))
+            : BadRequest(ApiResponse<StepUpGrantResponse>.Fail(result.ErrorCode!, result.Error!));
     }
 
 

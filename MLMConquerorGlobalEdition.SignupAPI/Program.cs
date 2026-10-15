@@ -132,6 +132,7 @@ builder.Services.AddAuthnAccessTokens();
 builder.Services.AddAuthnChallengeTokens();
 builder.Services.AddAuthnTotpEnrollment();
 builder.Services.AddAuthnTwoFactor();
+builder.Services.AddAuthnStepUpGrants();
 
 // Email/SMS transport — provider selected by Notifications:Email:Provider /
 // Notifications:Sms:Provider config. Defaults to Null (log-only) when unset.
