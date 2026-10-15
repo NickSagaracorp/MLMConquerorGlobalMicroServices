@@ -1282,6 +1282,8 @@
   <data name="StepUp.Confirm" xml:space="preserve"><value>确认</value></data>
   <data name="StepUp.Cancel" xml:space="preserve"><value>取消</value></data>
   <data name="StepUp.Resend" xml:space="preserve"><value>重新发送验证码</value></data>
+  <data name="StepUp.ChallengeInvalid" xml:space="preserve"><value>此验证码已失效。请点击“重新发送验证码”获取新的验证码。</value></data>
+  <data name="StepUp.ImpersonationNotAllowed" xml:space="preserve"><value>在以他人身份查看账户（代理登录）期间无法使用验证码确认。请让会员本人进行此更改。</value></data>
   <data name="StepUp.Cooldown" xml:space="preserve"><value>出于安全考虑，您最近更改了登录相关信息；自 {0} 起方可更改收款方式。</value></data>
   <data name="StepUp.CooldownGeneric" xml:space="preserve"><value>出于安全考虑，您最近更改了登录相关信息；稍后方可更改收款方式。</value></data>
   <data name="StepUp.RetryFailed" xml:space="preserve"><value>无法确认验证，请重试。</value></data>

@@ -1,8 +1,10 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
+using MLMConquerorGlobalEdition.SharedKernel.Security;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs.Auth;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.AccountEnrollment;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.ChangePassword;
@@ -409,6 +411,13 @@ public class AuthController : ControllerBase
         [FromBody] StepUpChallengeRequest request,
         CancellationToken ct)
     {
+        // Ni la suplantación completa: el código viajaría al canal del miembro y el segundo factor
+        // dejaría de ser suyo. Se corta antes de tocar al mediador, que enviaría el código.
+        if (ImpersonationScope.IsImpersonating(User))
+            return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<StepUpChallengeResponse>.Fail(
+                StepUpGrant.ImpersonationNotAllowedErrorCode,
+                "El step-up no está disponible durante una sesión de suplantación."));
+
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
                   ?? User.FindFirstValue("sub")
                   ?? string.Empty;
@@ -425,6 +434,13 @@ public class AuthController : ControllerBase
         [FromBody] StepUpVerifyRequest request,
         CancellationToken ct)
     {
+        // Ni la suplantación completa: el código viajaría al canal del miembro y el segundo factor
+        // dejaría de ser suyo. Se corta antes de tocar al mediador, que enviaría el código.
+        if (ImpersonationScope.IsImpersonating(User))
+            return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<StepUpGrantResponse>.Fail(
+                StepUpGrant.ImpersonationNotAllowedErrorCode,
+                "El step-up no está disponible durante una sesión de suplantación."));
+
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
                   ?? User.FindFirstValue("sub")
                   ?? string.Empty;

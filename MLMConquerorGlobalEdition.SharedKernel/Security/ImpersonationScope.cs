@@ -52,6 +52,12 @@ public static class ImpersonationScope
     /// </summary>
     public const string ReadOnlyValue = "true";
 
+    /// <summary>
+    /// El claim que lleva el id de quien suplanta. Lo escribe <c>JwtService.GenerateAccessToken</c>
+    /// en TODO token de suplantación, también en el completo (no restringido a lectura).
+    /// </summary>
+    public const string ImpersonatedByClaim = "impersonatedBy";
+
     /// <summary>Métodos que solo leen. Todo lo demás escribe.</summary>
     private static readonly string[] SafeMethods = ["GET", "HEAD", "OPTIONS"];
 
@@ -59,6 +65,14 @@ public static class ImpersonationScope
     public static bool IsReadOnly(ClaimsPrincipal? user) =>
         user?.FindFirst(ReadOnlyClaim)?.Value is { } value &&
         string.Equals(value, ReadOnlyValue, StringComparison.Ordinal);
+
+    /// <summary>
+    /// ¿Este token es de suplantación, restringido o no? A diferencia de <see cref="IsReadOnly"/>,
+    /// para las operaciones que ni el suplantador completo debe hacer porque actúan sobre un
+    /// secreto del miembro (su segundo factor).
+    /// </summary>
+    public static bool IsImpersonating(ClaimsPrincipal? user) =>
+        !string.IsNullOrWhiteSpace(user?.FindFirst(ImpersonatedByClaim)?.Value);
 
     /// <summary>¿Este método HTTP solo lee?</summary>
     public static bool IsSafeMethod(string? method) =>

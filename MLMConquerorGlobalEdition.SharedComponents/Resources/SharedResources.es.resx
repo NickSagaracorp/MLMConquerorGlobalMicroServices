@@ -1387,6 +1387,8 @@
   <data name="StepUp.Confirm" xml:space="preserve"><value>Confirmar</value></data>
   <data name="StepUp.Cancel" xml:space="preserve"><value>Cancelar</value></data>
   <data name="StepUp.Resend" xml:space="preserve"><value>Enviar otro código</value></data>
+  <data name="StepUp.ChallengeInvalid" xml:space="preserve"><value>Este código ya no es válido. Pide uno nuevo con «Enviar otro código».</value></data>
+  <data name="StepUp.ImpersonationNotAllowed" xml:space="preserve"><value>La confirmación por código no está disponible mientras ves la cuenta como otra persona (suplantación). Pide al miembro que haga este cambio.</value></data>
   <data name="StepUp.Cooldown" xml:space="preserve"><value>Por seguridad, cambiaste un dato de acceso hace poco; podrás cambiar el método de cobro a partir de {0}.</value></data>
   <data name="StepUp.CooldownGeneric" xml:space="preserve"><value>Por seguridad, cambiaste un dato de acceso hace poco; podrás cambiar el método de cobro más adelante.</value></data>
   <data name="StepUp.RetryFailed" xml:space="preserve"><value>No se pudo confirmar la verificación; inténtalo de nuevo.</value></data>

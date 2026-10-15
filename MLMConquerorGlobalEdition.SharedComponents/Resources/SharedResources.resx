@@ -1454,6 +1454,8 @@
   <data name="StepUp.Confirm" xml:space="preserve"><value>Confirm</value></data>
   <data name="StepUp.Cancel" xml:space="preserve"><value>Cancel</value></data>
   <data name="StepUp.Resend" xml:space="preserve"><value>Send a new code</value></data>
+  <data name="StepUp.ChallengeInvalid" xml:space="preserve"><value>This code is no longer valid. Request a new one with “Send a new code”.</value></data>
+  <data name="StepUp.ImpersonationNotAllowed" xml:space="preserve"><value>Step-up is not available while you are viewing the account as another user (impersonation). Ask the member to make this change.</value></data>
   <data name="StepUp.Cooldown" xml:space="preserve"><value>For your security, you recently changed a sign-in detail; you will be able to change your payout method from {0}.</value></data>
   <data name="StepUp.CooldownGeneric" xml:space="preserve"><value>For your security, you recently changed a sign-in detail; you will be able to change your payout method later.</value></data>
   <data name="StepUp.RetryFailed" xml:space="preserve"><value>We could not confirm the verification; please try again.</value></data>

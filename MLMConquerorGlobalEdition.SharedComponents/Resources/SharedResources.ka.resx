@@ -1282,6 +1282,8 @@
   <data name="StepUp.Confirm" xml:space="preserve"><value>დადასტურება</value></data>
   <data name="StepUp.Cancel" xml:space="preserve"><value>გაუქმება</value></data>
   <data name="StepUp.Resend" xml:space="preserve"><value>ახალი კოდის გაგზავნა</value></data>
+  <data name="StepUp.ChallengeInvalid" xml:space="preserve"><value>ეს კოდი აღარ არის მოქმედი. მოითხოვეთ ახალი ღილაკით „ახალი კოდის გაგზავნა“.</value></data>
+  <data name="StepUp.ImpersonationNotAllowed" xml:space="preserve"><value>კოდით დადასტურება მიუწვდომელია, სანამ ანგარიშს სხვა პირის სახელით ნახულობთ (იმიტაცია). სთხოვეთ წევრს ეს ცვლილება თავად შეიტანოს.</value></data>
   <data name="StepUp.Cooldown" xml:space="preserve"><value>უსაფრთხოებისთვის, ახლახან შეცვალეთ შესვლის მონაცემი; გადახდის მეთოდის შეცვლა შეძლებთ {0}-დან.</value></data>
   <data name="StepUp.CooldownGeneric" xml:space="preserve"><value>უსაფრთხოებისთვის, ახლახან შეცვალეთ შესვლის მონაცემი; გადახდის მეთოდის შეცვლა მოგვიანებით შეძლებთ.</value></data>
   <data name="StepUp.RetryFailed" xml:space="preserve"><value>დადასტურების დასრულება ვერ მოხერხდა; სცადეთ თავიდან.</value></data>

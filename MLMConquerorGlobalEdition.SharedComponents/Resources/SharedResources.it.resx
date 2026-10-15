@@ -1351,6 +1351,8 @@
   <data name="StepUp.Confirm" xml:space="preserve"><value>Conferma</value></data>
   <data name="StepUp.Cancel" xml:space="preserve"><value>Annulla</value></data>
   <data name="StepUp.Resend" xml:space="preserve"><value>Invia un nuovo codice</value></data>
+  <data name="StepUp.ChallengeInvalid" xml:space="preserve"><value>Questo codice non è più valido. Richiedine uno nuovo con «Invia un nuovo codice».</value></data>
+  <data name="StepUp.ImpersonationNotAllowed" xml:space="preserve"><value>La conferma tramite codice non è disponibile mentre visualizzi l’account come un’altra persona (impersonificazione). Chiedi al membro di effettuare questa modifica.</value></data>
   <data name="StepUp.Cooldown" xml:space="preserve"><value>Per sicurezza, hai modificato da poco un dato di accesso; potrai cambiare il metodo di pagamento a partire da {0}.</value></data>
   <data name="StepUp.CooldownGeneric" xml:space="preserve"><value>Per sicurezza, hai modificato da poco un dato di accesso; potrai cambiare il metodo di pagamento più avanti.</value></data>
   <data name="StepUp.RetryFailed" xml:space="preserve"><value>Non è stato possibile confermare la verifica; riprova.</value></data>

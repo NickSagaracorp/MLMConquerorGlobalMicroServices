@@ -30,6 +30,14 @@ public static class StepUpGrant
     public const string CooldownErrorCode = "STEP_UP_COOLDOWN";
 
     /// <summary>
+    /// SignupAPI no emite ni canjea un step-up con un token de suplantación, ni siquiera el
+    /// completo. El código lo pediría quien suplanta, pero llegaría al canal DEL MIEMBRO (su
+    /// correo, su teléfono, su autenticador): o el soporte no puede teclearlo y la pantalla se
+    /// queda muerta, o lo consigue por otra vía y el segundo factor del miembro deja de ser suyo.
+    /// </summary>
+    public const string ImpersonationNotAllowedErrorCode = "IMPERSONATION_NOT_ALLOWED";
+
+    /// <summary>
     /// Corta a propósito: el permiso se pide justo antes de reintentar la acción, y dentro de su
     /// vida no se puede revocar. Un solo uso lo garantiza el validador, no la vida.
     /// </summary>

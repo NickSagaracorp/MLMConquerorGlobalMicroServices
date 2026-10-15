@@ -1351,6 +1351,8 @@
   <data name="StepUp.Confirm" xml:space="preserve"><value>Confirmer</value></data>
   <data name="StepUp.Cancel" xml:space="preserve"><value>Annuler</value></data>
   <data name="StepUp.Resend" xml:space="preserve"><value>Envoyer un nouveau code</value></data>
+  <data name="StepUp.ChallengeInvalid" xml:space="preserve"><value>Ce code n’est plus valide. Demandez-en un nouveau avec « Envoyer un nouveau code ».</value></data>
+  <data name="StepUp.ImpersonationNotAllowed" xml:space="preserve"><value>La confirmation par code n’est pas disponible lorsque vous consultez le compte en tant qu’un autre utilisateur (usurpation). Demandez au membre d’effectuer ce changement.</value></data>
   <data name="StepUp.Cooldown" xml:space="preserve"><value>Pour votre sécurité, vous avez récemment modifié une information d'accès ; vous pourrez changer votre mode de versement à partir du {0}.</value></data>
   <data name="StepUp.CooldownGeneric" xml:space="preserve"><value>Pour votre sécurité, vous avez récemment modifié une information d'accès ; vous pourrez changer votre mode de versement plus tard.</value></data>
   <data name="StepUp.RetryFailed" xml:space="preserve"><value>La vérification n'a pas pu être confirmée ; veuillez réessayer.</value></data>

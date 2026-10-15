@@ -182,6 +182,36 @@ public class StepUpDialogTests : BunitContext
         espera.IsCompleted.Should().BeFalse("con un código malo el modal sigue abierto para reintentar");
     }
 
+    [Theory]
+    [InlineData("INVALID_CHALLENGE")]
+    [InlineData("CODE_EXPIRED")]
+    [InlineData("TOO_MANY_ATTEMPTS")]
+    public async Task Un_reto_caducado_o_quemado_manda_a_pedir_otro_codigo_y_no_a_iniciar_sesion(string codigo)
+    {
+        _cliente.Canje = new(false, codigo, null);
+        var (dialogo, _) = Abrir();
+
+        Teclear(dialogo, "000000");
+        await dialogo.Find(".stepup-confirm").ClickAsync(new());
+
+        // El texto compartido de TwoFactor dice "vuelve a iniciar sesión"; aquí la persona ya tiene
+        // sesión y la salida es el botón de reenvío.
+        dialogo.Find(".stepup-error").TextContent.Should().Be("StepUp.ChallengeInvalid");
+        dialogo.Find(".stepup-resend").HasAttribute("disabled").Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Una_sesion_suplantada_ve_su_propio_aviso()
+    {
+        _cliente.Canje = new(false, "IMPERSONATION_NOT_ALLOWED", null);
+        var (dialogo, _) = Abrir();
+
+        Teclear(dialogo, "000000");
+        await dialogo.Find(".stepup-confirm").ClickAsync(new());
+
+        dialogo.Find(".stepup-error").TextContent.Should().Be("StepUp.ImpersonationNotAllowed");
+    }
+
     [Fact]
     public async Task VERIFICATION_UNAVAILABLE_tiene_su_propio_texto()
     {

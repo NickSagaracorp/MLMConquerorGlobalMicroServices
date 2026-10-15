@@ -168,7 +168,7 @@
 
     private void SetError(string? errorCode, string? message)
     {
-        _errorKey = TwoFactorMessages.ErrorKeyFor(errorCode);
+        _errorKey = StepUpMessages.ErrorKeyFor(errorCode);
         _errorArgs = [];
 
         // La espera tras un cambio de factor es el único error que trae un dato (hasta cuándo):
