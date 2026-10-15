@@ -30,6 +30,7 @@ using CacheService              = MLMConquerorGlobalEdition.SharedKernel.Server.
 using IErrorTrackingService     = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IErrorTrackingService;
 
 using MLMConquerorGlobalEdition.Repository.Services.Payout;
+using MLMConquerorGlobalEdition.Notifications;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -133,6 +134,14 @@ builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 builder.Services.AddSingleton<MLMConquerorGlobalEdition.SharedKernel.Interfaces.IDateTimeProvider>(
     sp => sp.GetRequiredService<IDateTimeProvider>());
 builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
+
+// Email/SMS transport — provider selected by Notifications:Email:Provider /
+// Notifications:Sms:Provider config. Defaults to Null (log-only) when unset.
+// El BizCenter lo necesita para avisar al dueño cuando cambia el correo de la cuenta: el aviso va
+// al correo ANTERIOR, el único que quien robó la sesión no controla.
+builder.Services.AddNotifications(builder.Configuration);
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Security.ISecurityFactorNotifier,
+                           MLMConquerorGlobalEdition.Repository.Services.Security.SecurityFactorNotifier>();
 
 // Cache backend — probe Redis at startup. Cache:Mode controls behavior on
 // failure: "Required" (production) → throw, refuse to start with memory

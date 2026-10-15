@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using MLMConquerorGlobalEdition.Authn.Abstractions;
 using MLMConquerorGlobalEdition.Domain.Entities.Security;
 using MLMConquerorGlobalEdition.Repository.Identity;
+using MLMConquerorGlobalEdition.Repository.Services.Security;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs.Auth;
 
@@ -30,11 +31,16 @@ public class VerifyPhoneHandler : IRequestHandler<VerifyPhoneCommand, Result<boo
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ITwoFactorService            _twoFactor;
+    private readonly ISecurityFactorNotifier      _notifier;
 
-    public VerifyPhoneHandler(UserManager<ApplicationUser> userManager, ITwoFactorService twoFactor)
+    public VerifyPhoneHandler(
+        UserManager<ApplicationUser> userManager,
+        ITwoFactorService            twoFactor,
+        ISecurityFactorNotifier      notifier)
     {
         _userManager = userManager;
         _twoFactor   = twoFactor;
+        _notifier    = notifier;
     }
 
     public async Task<Result<bool>> Handle(VerifyPhoneCommand command, CancellationToken ct)
@@ -76,6 +82,10 @@ public class VerifyPhoneHandler : IRequestHandler<VerifyPhoneCommand, Result<boo
         user.TwoFactorPhoneConfirmed = true;
         user.RevokeLiveSessions();
         await _userManager.UpdateAsync(user);
+
+        // A partir de aquí los códigos pueden llegar a este número: el dueño tiene que saberlo por
+        // el correo, que es el canal que no cambió.
+        await _notifier.NotifyAsync(user, SecurityFactorChange.Phone, ct: ct);
 
         return Result<bool>.Success(true);
     }

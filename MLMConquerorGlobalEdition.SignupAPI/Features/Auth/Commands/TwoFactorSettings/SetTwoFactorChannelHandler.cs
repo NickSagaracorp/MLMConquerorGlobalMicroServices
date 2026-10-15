@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 using MLMConquerorGlobalEdition.Repository.Identity;
+using MLMConquerorGlobalEdition.Repository.Services.Security;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.TwoFactorSettings;
@@ -24,9 +25,13 @@ namespace MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.TwoFactorSe
 public class SetTwoFactorChannelHandler : IRequestHandler<SetTwoFactorChannelCommand, Result<bool>>
 {
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ISecurityFactorNotifier      _notifier;
 
-    public SetTwoFactorChannelHandler(UserManager<ApplicationUser> userManager)
-        => _userManager = userManager;
+    public SetTwoFactorChannelHandler(UserManager<ApplicationUser> userManager, ISecurityFactorNotifier notifier)
+    {
+        _userManager = userManager;
+        _notifier    = notifier;
+    }
 
     public async Task<Result<bool>> Handle(SetTwoFactorChannelCommand command, CancellationToken ct)
     {
@@ -44,8 +49,14 @@ public class SetTwoFactorChannelHandler : IRequestHandler<SetTwoFactorChannelCom
                 "CHANNEL_UNAVAILABLE",
                 "That two-factor channel has no destination for this account.");
 
+        var changed = user.PreferredTwoFactorChannel != channel;
+
         user.PreferredTwoFactorChannel = channel;
         await _userManager.UpdateAsync(user);
+
+        // Elegir el canal que ya se tenía no es un cambio y no merece un correo.
+        if (changed)
+            await _notifier.NotifyAsync(user, SecurityFactorChange.Channel, ct: ct);
 
         return Result<bool>.Success(true);
     }

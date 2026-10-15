@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Identity;
 using MLMConquerorGlobalEdition.Authn.Abstractions;
 using MLMConquerorGlobalEdition.Repository.Identity;
+using MLMConquerorGlobalEdition.Repository.Services.Security;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.AccountEnrollment;
@@ -33,13 +34,16 @@ public class ConfirmAccountEnrollmentHandler
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ITotpEnrollmentService       _enrollment;
+    private readonly ISecurityFactorNotifier      _notifier;
 
     public ConfirmAccountEnrollmentHandler(
         UserManager<ApplicationUser> userManager,
-        ITotpEnrollmentService       enrollment)
+        ITotpEnrollmentService       enrollment,
+        ISecurityFactorNotifier      notifier)
     {
         _userManager = userManager;
         _enrollment  = enrollment;
+        _notifier    = notifier;
     }
 
     public async Task<Result<bool>> Handle(
@@ -56,6 +60,8 @@ public class ConfirmAccountEnrollmentHandler
         // DESPUÉS de confirmar y nunca antes: un código inválido no toca nada, así que tampoco
         // puede servirle a nadie para tirar la sesión de otro.
         await _userManager.RevokeLiveSessionsAsync(user);
+
+        await _notifier.NotifyAsync(user, SecurityFactorChange.Authenticator, ct: ct);
 
         return Result<bool>.Success(true);
     }

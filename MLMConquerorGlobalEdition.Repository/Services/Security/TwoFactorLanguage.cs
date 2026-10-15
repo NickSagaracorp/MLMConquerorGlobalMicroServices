@@ -2,11 +2,14 @@ using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Identity;
 
-namespace MLMConquerorGlobalEdition.SignupAPI.Services;
+namespace MLMConquerorGlobalEdition.Repository.Services.Security;
 
 /// <summary>
-/// Idioma de la plantilla del código. El personal no tiene MemberProfile: devuelve null y la
-/// librería cae a "en".
+/// Idioma de las plantillas de seguridad (código de 2FA, step-up, aviso de cambio de factor). El
+/// personal no tiene MemberProfile: devuelve null y el transporte cae a "en".
+///
+/// Vive en Repository y no en SignupAPI porque el BizCenter también avisa al dueño cuando cambia su
+/// correo, y el idioma de ese aviso tiene que salir de la misma regla.
 /// </summary>
 public static class TwoFactorLanguage
 {

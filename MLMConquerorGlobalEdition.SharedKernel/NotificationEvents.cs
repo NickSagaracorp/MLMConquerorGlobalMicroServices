@@ -32,4 +32,11 @@ public static class NotificationEvents
 
     /// <summary>Sent by the forgot-password flow so the user can set a new password. Variables: { ResetUrl, ExpiresInMinutes }.</summary>
     public const string PasswordReset        = "PASSWORD_RESET";
+
+    /// <summary>
+    /// Sent to the account owner when a channel that receives verification codes changes (email —to the
+    /// PREVIOUS address—, confirmed phone, authenticator, preferred channel, 2FA turned off). Variables:
+    /// { Change, ChangedAt }. Sending failures are logged and never undo the change.
+    /// </summary>
+    public const string SecurityFactorChanged = "SECURITY_FACTOR_CHANGED";
 }

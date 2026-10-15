@@ -4,6 +4,7 @@ using MLMConquerorGlobalEdition.Repository.Identity;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs.Auth;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.TwoFactorSettings;
 using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
+using MLMConquerorGlobalEdition.Repository.Services.Security;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Features.Auth;
 
@@ -50,7 +51,7 @@ public class SetTwoFactorChannelHandlerTests
 
     private static Task<MLMConquerorGlobalEdition.SharedKernel.Result<bool>> Run(
         Mock<UserManager<ApplicationUser>> userManager, TwoFactorChannel channel)
-        => new SetTwoFactorChannelHandler(userManager.Object).Handle(
+        => new SetTwoFactorChannelHandler(userManager.Object, Mock.Of<ISecurityFactorNotifier>()).Handle(
             new SetTwoFactorChannelCommand(UserId, new SetTwoFactorChannelRequest { Channel = channel }),
             CancellationToken.None);
 

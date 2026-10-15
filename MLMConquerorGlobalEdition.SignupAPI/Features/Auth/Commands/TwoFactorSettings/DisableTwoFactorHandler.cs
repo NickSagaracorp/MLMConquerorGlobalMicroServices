@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using MLMConquerorGlobalEdition.Authn.Abstractions;
 using MLMConquerorGlobalEdition.Domain.Entities.Security;
 using MLMConquerorGlobalEdition.Repository.Identity;
+using MLMConquerorGlobalEdition.Repository.Services.Security;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.TwoFactorSettings;
@@ -39,15 +40,18 @@ public class DisableTwoFactorHandler : IRequestHandler<DisableTwoFactorCommand, 
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ITotpEnrollmentService       _enrollment;
     private readonly IConfiguration               _config;
+    private readonly ISecurityFactorNotifier      _notifier;
 
     public DisableTwoFactorHandler(
         UserManager<ApplicationUser> userManager,
         ITotpEnrollmentService       enrollment,
-        IConfiguration               config)
+        IConfiguration               config,
+        ISecurityFactorNotifier      notifier)
     {
         _userManager = userManager;
         _enrollment  = enrollment;
         _config      = config;
+        _notifier    = notifier;
     }
 
     public async Task<Result<bool>> Handle(DisableTwoFactorCommand command, CancellationToken ct)
@@ -85,6 +89,8 @@ public class DisableTwoFactorHandler : IRequestHandler<DisableTwoFactorCommand, 
         // salga o no el canal por esa rama.
         user.RevokeLiveSessions();
         await _userManager.UpdateAsync(user);
+
+        await _notifier.NotifyAsync(user, SecurityFactorChange.TwoFactorDisabled, ct: ct);
 
         return Result<bool>.Success(true);
     }

@@ -7,6 +7,7 @@ using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs.Auth;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.AccountEnrollment;
 using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
+using MLMConquerorGlobalEdition.Repository.Services.Security;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Features.Auth;
 
@@ -180,7 +181,7 @@ public class AccountEnrollmentHandlerTests
                    .Callback(() => user.TwoFactorEnabled = true)
                    .ReturnsAsync(IdentityResult.Success);
 
-        var handler = new ConfirmAccountEnrollmentHandler(userManager.Object, RealEnrollment(userManager));
+        var handler = new ConfirmAccountEnrollmentHandler(userManager.Object, RealEnrollment(userManager), Mock.Of<ISecurityFactorNotifier>());
 
         var result = await handler.Handle(
             new ConfirmAccountEnrollmentCommand(UserId, new ConfirmAccountEnrollmentRequest { Code = "123456" }),
@@ -204,7 +205,7 @@ public class AccountEnrollmentHandlerTests
                        user, TokenOptions.DefaultAuthenticatorProvider, "000000"))
                    .ReturnsAsync(false);
 
-        var handler = new ConfirmAccountEnrollmentHandler(userManager.Object, RealEnrollment(userManager));
+        var handler = new ConfirmAccountEnrollmentHandler(userManager.Object, RealEnrollment(userManager), Mock.Of<ISecurityFactorNotifier>());
 
         var result = await handler.Handle(
             new ConfirmAccountEnrollmentCommand(UserId, new ConfirmAccountEnrollmentRequest { Code = "000000" }),
@@ -224,7 +225,7 @@ public class AccountEnrollmentHandlerTests
     public async Task Confirm_WhenUserNotFound_ReturnsUserNotFound()
     {
         var userManager = ManagerFor(null);
-        var handler     = new ConfirmAccountEnrollmentHandler(userManager.Object, RealEnrollment(userManager));
+        var handler     = new ConfirmAccountEnrollmentHandler(userManager.Object, RealEnrollment(userManager), Mock.Of<ISecurityFactorNotifier>());
 
         var result = await handler.Handle(
             new ConfirmAccountEnrollmentCommand(UserId, new ConfirmAccountEnrollmentRequest { Code = "123456" }),

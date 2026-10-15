@@ -19,6 +19,7 @@ using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.ResetPassword;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.SetPassword;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.TwoFactorSettings;
 using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
+using MLMConquerorGlobalEdition.Repository.Services.Security;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Features.Auth;
 
@@ -81,7 +82,7 @@ public class RevocacionDeSesionesTests
                     .ReturnsAsync(Result<bool>.Success(true));
 
         var resultado = await new ConfirmAccountEnrollmentHandler(
-                userManager.Object, enrolamiento.Object)
+                userManager.Object, enrolamiento.Object, Mock.Of<ISecurityFactorNotifier>())
             .Handle(new ConfirmAccountEnrollmentCommand(
                 UserId, new ConfirmAccountEnrollmentRequest { Code = "123456" }), default);
 
@@ -105,7 +106,7 @@ public class RevocacionDeSesionesTests
                     .ReturnsAsync(Result<bool>.Failure("CODE_INVALID", "no vale"));
 
         var resultado = await new ConfirmAccountEnrollmentHandler(
-                userManager.Object, enrolamiento.Object)
+                userManager.Object, enrolamiento.Object, Mock.Of<ISecurityFactorNotifier>())
             .Handle(new ConfirmAccountEnrollmentCommand(
                 UserId, new ConfirmAccountEnrollmentRequest { Code = "999999" }), default);
 
@@ -125,7 +126,7 @@ public class RevocacionDeSesionesTests
                     .ReturnsAsync(Result<bool>.Success(true));
 
         var resultado = await new DisableTwoFactorHandler(
-                userManager.Object, enrolamiento.Object, SinRolesObligatorios())
+                userManager.Object, enrolamiento.Object, SinRolesObligatorios(), Mock.Of<ISecurityFactorNotifier>())
             .Handle(new DisableTwoFactorCommand(UserId), default);
 
         resultado.IsSuccess.Should().BeTrue(because: resultado.Error);
@@ -144,7 +145,7 @@ public class RevocacionDeSesionesTests
         var userManager = Gestor(user, "Admin");
 
         var resultado = await new DisableTwoFactorHandler(
-                userManager.Object, new Mock<ITotpEnrollmentService>().Object, ConRolObligatorio("Admin"))
+                userManager.Object, new Mock<ITotpEnrollmentService>().Object, ConRolObligatorio("Admin"), Mock.Of<ISecurityFactorNotifier>())
             .Handle(new DisableTwoFactorCommand(UserId), default);
 
         resultado.ErrorCode.Should().Be("TWO_FACTOR_REQUIRED");
@@ -175,7 +176,7 @@ public class RevocacionDeSesionesTests
                        Channel: TwoFactorChannel.Sms, CodeHash: "hash",
                        IssuedAt: Ahora, ExpiresAt: Ahora.AddMinutes(5))));
 
-        var resultado = await new VerifyPhoneHandler(userManager.Object, dosFactores.Object)
+        var resultado = await new VerifyPhoneHandler(userManager.Object, dosFactores.Object, Mock.Of<ISecurityFactorNotifier>())
             .Handle(new VerifyPhoneCommand(UserId, new VerifyPhoneRequest
             {
                 ChallengeToken = "reto",
@@ -196,7 +197,7 @@ public class RevocacionDeSesionesTests
 
         var userManager = Gestor(user);
 
-        var resultado = await new RemovePhoneHandler(userManager.Object)
+        var resultado = await new RemovePhoneHandler(userManager.Object, Mock.Of<ISecurityFactorNotifier>())
             .Handle(new RemovePhoneCommand(UserId), default);
 
         resultado.IsSuccess.Should().BeTrue(because: resultado.Error);
@@ -318,7 +319,7 @@ public class RevocacionDeSesionesTests
 
         var userManager = Gestor(user);
 
-        var resultado = await new SetTwoFactorChannelHandler(userManager.Object)
+        var resultado = await new SetTwoFactorChannelHandler(userManager.Object, Mock.Of<ISecurityFactorNotifier>())
             .Handle(new SetTwoFactorChannelCommand(
                 UserId, new SetTwoFactorChannelRequest { Channel = TwoFactorChannel.Sms }), default);
 
@@ -420,7 +421,7 @@ public class RevocacionDeSesionesTests
                        ExpiresAt:      Ahora.AddMinutes(5))));
 
         return (new AddPhoneHandler(
-                    userManager.Object, cifrado.Object, dosFactores.Object, BaseDeDatos()),
+                    userManager.Object, cifrado.Object, dosFactores.Object, BaseDeDatos(), Mock.Of<ISecurityFactorNotifier>()),
                 userManager);
     }
 

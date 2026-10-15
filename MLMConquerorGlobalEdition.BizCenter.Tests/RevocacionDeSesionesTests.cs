@@ -7,6 +7,7 @@ using MLMConquerorGlobalEdition.BizCenter.Features.Profile.UpdatePassword;
 using MLMConquerorGlobalEdition.BizCenter.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Identity;
+using MLMConquerorGlobalEdition.Repository.Services.Security;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Tests;
 
@@ -50,7 +51,7 @@ public class RevocacionDeSesionesTests
                    .ReturnsAsync(IdentityResult.Success);
 
         var resultado = await new UpdateEmailHandler(
-                db, UsuarioActual(), Reloj(), userManager.Object, SinContexto())
+                db, UsuarioActual(), Reloj(), userManager.Object, SinContexto(), Mock.Of<ISecurityFactorNotifier>())
             .Handle(new UpdateEmailCommand(
                 new UpdateEmailRequest { NewEmail = "nuevo@dominio.com" }), default);
 
@@ -79,7 +80,7 @@ public class RevocacionDeSesionesTests
         var userManager = Gestor(db, user, otro);
 
         var resultado = await new UpdateEmailHandler(
-                db, UsuarioActual(), Reloj(), userManager.Object, SinContexto())
+                db, UsuarioActual(), Reloj(), userManager.Object, SinContexto(), Mock.Of<ISecurityFactorNotifier>())
             .Handle(new UpdateEmailCommand(
                 new UpdateEmailRequest { NewEmail = "nuevo@dominio.com" }), default);
 
@@ -134,6 +135,58 @@ public class RevocacionDeSesionesTests
 
         resultado.ErrorCode.Should().Be("PASSWORD_CHANGE_REJECTED");
         NoDebeHaberRevocado(user);
+    }
+
+    // ===============================================================================================
+    //  Aviso al dueño (Plan E, Tarea 4b)
+    // ===============================================================================================
+
+    /// <summary>
+    /// El aviso va al correo ANTERIOR: el nuevo puede ser el de quien robó la sesión, y es el anterior
+    /// el que tiene que enterarse durante la espera del step-up.
+    /// </summary>
+    [Fact]
+    public async Task CambiarElCorreo_AvisaAlCorreoAnterior()
+    {
+        var user = Usuario();
+        using var db = BaseDeDatos();
+
+        var userManager = Gestor(db, user);
+        userManager.Setup(m => m.SetEmailAsync(user, It.IsAny<string>()))
+                   .Callback((ApplicationUser u, string? e) => u.Email = e)
+                   .ReturnsAsync(IdentityResult.Success);
+        userManager.Setup(m => m.SetUserNameAsync(user, It.IsAny<string>()))
+                   .ReturnsAsync(IdentityResult.Success);
+        var aviso = new Mock<ISecurityFactorNotifier>();
+
+        var resultado = await new UpdateEmailHandler(
+                db, UsuarioActual(), Reloj(), userManager.Object, SinContexto(), aviso.Object)
+            .Handle(new UpdateEmailCommand(
+                new UpdateEmailRequest { NewEmail = "nuevo@dominio.com" }), default);
+
+        resultado.IsSuccess.Should().BeTrue(because: resultado.Error);
+        aviso.Verify(a => a.NotifyAsync(user, SecurityFactorChange.Email, CorreoOld, It.IsAny<CancellationToken>()),
+                     Times.Once);
+    }
+
+    [Fact]
+    public async Task CorreoYaOcupado_NoAvisa()
+    {
+        var user = Usuario();
+        var otro = new ApplicationUser
+        {
+            Id = "user-002", Email = "nuevo@dominio.com", NormalizedEmail = "NUEVO@DOMINIO.COM", UserName = "nuevo@dominio.com"
+        };
+        using var db = BaseDeDatos();
+        var userManager = Gestor(db, user, otro);
+        var aviso = new Mock<ISecurityFactorNotifier>();
+
+        await new UpdateEmailHandler(
+                db, UsuarioActual(), Reloj(), userManager.Object, SinContexto(), aviso.Object)
+            .Handle(new UpdateEmailCommand(
+                new UpdateEmailRequest { NewEmail = "nuevo@dominio.com" }), default);
+
+        aviso.VerifyNoOtherCalls();
     }
 
     // ===============================================================================================

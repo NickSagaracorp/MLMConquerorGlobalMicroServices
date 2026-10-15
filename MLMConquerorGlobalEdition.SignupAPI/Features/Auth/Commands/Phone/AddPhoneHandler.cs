@@ -4,6 +4,7 @@ using MLMConquerorGlobalEdition.Authn.Abstractions;
 using MLMConquerorGlobalEdition.Domain.Entities.Security;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Identity;
+using MLMConquerorGlobalEdition.Repository.Services.Security;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs.Auth;
 using MLMConquerorGlobalEdition.SignupAPI.Services;
@@ -30,17 +31,20 @@ public class AddPhoneHandler : IRequestHandler<AddPhoneCommand, Result<PhoneChal
     private readonly IEncryptionService           _encryption;
     private readonly ITwoFactorService            _twoFactor;
     private readonly AppDbContext                 _db;
+    private readonly ISecurityFactorNotifier      _notifier;
 
     public AddPhoneHandler(
         UserManager<ApplicationUser> userManager,
         IEncryptionService           encryption,
         ITwoFactorService            twoFactor,
-        AppDbContext                 db)
+        AppDbContext                 db,
+        ISecurityFactorNotifier      notifier)
     {
         _userManager = userManager;
         _encryption  = encryption;
         _twoFactor   = twoFactor;
         _db          = db;
+        _notifier    = notifier;
     }
 
     public async Task<Result<PhoneChallengeResponse>> Handle(AddPhoneCommand command, CancellationToken ct)
@@ -86,6 +90,12 @@ public class AddPhoneHandler : IRequestHandler<AddPhoneCommand, Result<PhoneChal
             user.RevokeLiveSessions();
 
         await _userManager.UpdateAsync(user);
+
+        // Sustituir un teléfono confirmado retira un factor que existía: se avisa ya, aunque el
+        // número nuevo no llegue a confirmarse nunca. Uno que se da de alta sin haber otro
+        // confirmado se avisa al confirmarlo (VerifyPhoneHandler).
+        if (replacedConfirmedPhone)
+            await _notifier.NotifyAsync(user, SecurityFactorChange.Phone, ct: ct);
 
         var languageCode = await TwoFactorLanguage.ResolveAsync(_db, user, ct);
 

@@ -140,6 +140,10 @@ builder.Services.AddAuthnStepUpGrants();
 // request a "TWO_FACTOR_CODE" email.
 builder.Services.AddNotifications(builder.Configuration);
 
+// Aviso al dueño cuando cambia un canal de sus códigos (teléfono, autenticador, canal preferido).
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Security.ISecurityFactorNotifier,
+                           MLMConquerorGlobalEdition.Repository.Services.Security.SecurityFactorNotifier>();
+
 // Error Tracking
 builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
 
