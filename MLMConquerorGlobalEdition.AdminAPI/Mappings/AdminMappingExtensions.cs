@@ -206,22 +206,24 @@ public static class AdminMappingExtensions
 
     public static TokenTypeDto ToDto(this TokenType entity) => new()
     {
-        Id          = entity.Id,
-        Name        = entity.Name,
-        Description = entity.Description,
-        IsGuestPass = entity.IsGuestPass,
-        TemplateUrl = entity.TemplateUrl,
-        IsActive    = entity.IsActive,
-        Category    = entity.Category
+        Id            = entity.Id,
+        Name          = entity.Name,
+        Description   = entity.Description,
+        IsGuestPass   = entity.IsGuestPass,
+        TemplateUrl   = entity.TemplateUrl,
+        IsActive      = entity.IsActive,
+        Category      = entity.Category,
+        IsPurchasable = entity.IsPurchasable
     };
 
     public static TokenType ToNewEntity(this CreateTokenTypeDto dto) => new()
     {
-        Name        = dto.Name,
-        Description = dto.Description,
-        IsGuestPass = dto.IsGuestPass,
-        TemplateUrl = dto.TemplateUrl,
-        Category    = dto.Category
+        Name          = dto.Name,
+        Description   = dto.Description,
+        IsGuestPass   = dto.IsGuestPass,
+        TemplateUrl   = dto.TemplateUrl,
+        Category      = dto.Category,
+        IsPurchasable = dto.IsPurchasable
     };
 
     public static void ApplyTo(this UpdateTokenTypeDto dto, TokenType entity)
@@ -232,6 +234,10 @@ public static class AdminMappingExtensions
         entity.TemplateUrl = dto.TemplateUrl;
         entity.IsActive    = dto.IsActive;
         entity.Category    = dto.Category;
+
+        // Solo si viene: un PUT sin el campo no puede dejar de vender (o empezar a vender) un tipo.
+        if (dto.IsPurchasable.HasValue)
+            entity.IsPurchasable = dto.IsPurchasable.Value;
     }
 
     // ─── CommissionCategory ──────────────────────────────────────────────────

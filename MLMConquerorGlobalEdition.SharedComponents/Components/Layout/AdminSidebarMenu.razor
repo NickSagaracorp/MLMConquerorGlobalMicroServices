@@ -322,6 +322,15 @@
                         <span class="title">Crypto Signups</span>
                     </a>
                 </li>
+                @* Compras de tokens (Plan F): mismos cuatro roles para la cripto; la sección de
+                   conciliación de dentro solo la ve tesorería. *@
+                <li class="menu-item @(IsActive("/admin/billing/token-purchases") == "active" ? "active" : "")">
+                    <a href="/admin/billing/token-purchases"
+                       class="menu-link @IsActive("/admin/billing/token-purchases")">
+                        <i class="ri-coins-line menu-icon"></i>
+                        <span class="title">Token Purchases</span>
+                    </a>
+                </li>
             </Authorized>
         </AuthorizeView>
 

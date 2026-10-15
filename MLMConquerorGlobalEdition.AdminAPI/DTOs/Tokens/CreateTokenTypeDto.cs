@@ -9,4 +9,7 @@ public class CreateTokenTypeDto
     public bool IsGuestPass { get; set; }
     public string? TemplateUrl { get; set; }
     public TokenCategory Category { get; set; } = TokenCategory.None;
+
+    /// <summary>Por defecto false: un tipo nuevo no se vende hasta que alguien lo decide (Plan F, D1).</summary>
+    public bool IsPurchasable { get; set; }
 }

@@ -53,6 +53,13 @@
                             else { <span class="text-muted">—</span> }
                         </Template>
                     </GridColumn>
+                    <GridColumn HeaderText="For sale" Width="100" TextAlign="TextAlign.Center">
+                        <Template>
+                            @if (((TokenTypeDto)context).IsPurchasable)
+                            { <span class="badge bg-success"><i class="ri-shopping-cart-line me-1"></i>Yes</span> }
+                            else { <span class="text-muted">—</span> }
+                        </Template>
+                    </GridColumn>
                     <GridColumn HeaderText="Template" Width="100" TextAlign="TextAlign.Center">
                         <Template>
                             @if (!string.IsNullOrWhiteSpace(((TokenTypeDto)context).TemplateUrl))
@@ -100,6 +107,13 @@
                     </div>
                     <div class="mb-3"><label class="form-label fw-semibold">Template URL</label><input class="form-control" @bind="_form.TemplateUrl" placeholder="https://..."/></div>
                     <div class="form-check"><input class="form-check-input" type="checkbox" id="igp" @bind="_form.IsGuestPass"/><label class="form-check-label" for="igp">Is Guest Pass</label></div>
+                    @* Plan F, D1: nada en los datos distingue una variante gratuita o promocional de la de
+                       pago salvo este flag. Un tipo nuevo nace sin vender. *@
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" id="ipur" @bind="_form.IsPurchasable"/>
+                        <label class="form-check-label" for="ipur">For sale in the Biz Center (members can buy it)</label>
+                        <div class="form-text small">Leave unchecked for free, promotional or upgrade tokens. The price is the sum of the granted products.</div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
@@ -277,7 +291,7 @@
         _form = new TokenTypeFormModel
         {
             Name = t.Name, Description = t.Description, TemplateUrl = t.TemplateUrl,
-            IsGuestPass = t.IsGuestPass, Category = t.Category
+            IsGuestPass = t.IsGuestPass, Category = t.Category, IsPurchasable = t.IsPurchasable
         };
         _showForm = true;
     }
@@ -300,7 +314,7 @@
                 response = await Http.PutAsJsonAsync($"api/v1/admin/token-types/{_editId}", new
                 {
                     _form.Name, _form.Description, _form.TemplateUrl, _form.IsGuestPass,
-                    _form.Category, IsActive = _editIsActive
+                    _form.Category, IsActive = _editIsActive, _form.IsPurchasable
                 });
             }
             if (response.IsSuccessStatusCode) { _alertMsg = _editId is null ? "Token type created." : "Token type updated."; _alertIsError = false; CloseForm(); await LoadAsync(); }
@@ -418,6 +432,7 @@
         public string? TemplateUrl { get; set; }
         public bool IsGuestPass { get; set; }
         public string Category { get; set; } = "None";
+        public bool IsPurchasable { get; set; }
     }
 
     private class TokenTypeProductsPayload
@@ -439,7 +454,7 @@
         _            => "bg-light text-muted"
     };
 
-    private record TokenTypeDto(int Id, string Name, string? Description, bool IsGuestPass, string? TemplateUrl, bool IsActive, string Category);
+    private record TokenTypeDto(int Id, string Name, string? Description, bool IsGuestPass, string? TemplateUrl, bool IsActive, string Category, bool IsPurchasable);
     private record ProductRow(string Id, string Name);
     private record TokenTypeProductRow(int Id, int TokenTypeId, string ProductId, string? ProductName, string Role, int QuantityGranted);
     private record PagedResult<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize);

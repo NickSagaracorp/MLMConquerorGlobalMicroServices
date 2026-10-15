@@ -295,6 +295,15 @@ builder.Services.AddHttpClient("SignupApi", client =>
     ServerCertificateCustomValidationCallback = (_, _, _, _) => true
 });
 
+// Billing confirma o rechaza las compras de tokens en cripto y cierra las que quedaron a conciliar
+// (Plan F); AdminTokenPurchasesController le reenvía el Bearer del administrador. SIN desactivar la
+// validación del certificado, a diferencia del cliente de arriba: por aquí viaja un token de admin
+// que autoriza emitir tokens, y en desarrollo el certificado de localhost ya es de confianza.
+builder.Services.AddHttpClient("BillingApi", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:Billing"] ?? "https://localhost:7007");
+});
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
