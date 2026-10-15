@@ -918,7 +918,7 @@
   <data name="Tokens.TotalTokens" xml:space="preserve"><value>Jetons Totaux</value></data>
   <data name="Tokens.TotalUsed" xml:space="preserve"><value>Total Utilisés</value></data>
   <data name="Tokens.TotalAvailable" xml:space="preserve"><value>Total Disponibles</value></data>
-  <data name="Tokens.PurchaseNote" xml:space="preserve"><value>Note : Les jetons peuvent être utilisés pour payer les inscriptions, les frais Biz Center et Travel Advantage™. Une fois achetés, vous pouvez distribuer des jetons à votre équipe. Les achats de jetons sont limités à 10 par mois et non remboursables.</value></data>
+  <data name="Tokens.PurchaseNote" xml:space="preserve"><value>Note : Les jetons peuvent être utilisés pour payer les inscriptions, les frais Biz Center et Travel Advantage™. Une fois achetés, vous pouvez distribuer des jetons à votre équipe. Les achats de jetons sont limités à 50 par mois et non remboursables.</value></data>
   <data name="Tokens.Amount" xml:space="preserve"><value>Quantité :</value></data>
   <data name="Tokens.TokensSuffix" xml:space="preserve"><value>Jetons</value></data>
   <data name="Tokens.TokenType" xml:space="preserve"><value>Type de Jeton</value></data>
@@ -932,7 +932,6 @@
   <data name="Tokens.CreditCard" xml:space="preserve"><value>Carte de Crédit</value></data>
   <data name="Tokens.AddNewCard" xml:space="preserve"><value>Ajouter une Nouvelle Carte</value></data>
   <data name="Tokens.NoCreditCards" xml:space="preserve"><value>Aucune carte de crédit enregistrée.</value></data>
-  <data name="Tokens.PoweredByNowPayments" xml:space="preserve"><value>Propulsé par NowPayments</value></data>
   <data name="Tokens.ColDate" xml:space="preserve"><value>Date</value></data>
   <data name="Tokens.ColOwner" xml:space="preserve"><value>Propriétaire</value></data>
   <data name="Tokens.ColTokenCode" xml:space="preserve"><value>Code de Jeton</value></data>
@@ -1360,4 +1359,47 @@
   <data name="TwoFactor.Error.Locked" xml:space="preserve"><value>Trop de codes incorrects ont été saisis. Pour votre sécurité, la vérification est bloquée pendant 24 heures au maximum. Si ce n'était pas vous, changez votre mot de passe.</value></data>
   <data name="StepUp.Unavailable" xml:space="preserve"><value>La vérification par code n'est pas disponible dans cette application pour le moment ; le mode de versement ne peut donc pas être modifié ici. Utilisez le portail web.</value></data>
   <data name="Commissions.FrequencySavedWalletKept" xml:space="preserve"><value>Fréquence enregistrée ; le mode de versement n'a pas changé.</value></data>
+  <data name="Tokens.MonthlyRemaining" xml:space="preserve"><value>Vous pouvez encore acheter {0} jetons ce mois-ci.</value></data>
+  <data name="Tokens.UnitPrice" xml:space="preserve"><value>Prix par jeton : {0}</value></data>
+  <data name="Tokens.TotalPrice" xml:space="preserve"><value>Total : {0}</value></data>
+  <data name="Tokens.NoPurchasableTypes" xml:space="preserve"><value>Aucun type de jeton n'est disponible à l'achat pour le moment.</value></data>
+  <data name="Tokens.CryptoCurrency" xml:space="preserve"><value>Devise</value></data>
+  <data name="Tokens.CryptoNote" xml:space="preserve"><value>Les paiements en crypto sont confirmés manuellement. Vos jetons sont émis dès que notre équipe a vérifié le transfert.</value></data>
+  <data name="Tokens.PurchaseDone" xml:space="preserve"><value>{0} jeton(s) ajouté(s) à votre compte.</value></data>
+  <data name="Tokens.PurchaseCryptoPending" xml:space="preserve"><value>La commande {0} attend votre transfert de {1} en {2}. Vos jetons seront émis dès que nous l'aurons confirmé.</value></data>
+  <data name="Tokens.DistributeDone" xml:space="preserve"><value>Jetons envoyés.</value></data>
+  <data name="Tokens.ColTransaction" xml:space="preserve"><value>Opération</value></data>
+  <data name="Tokens.StatusUsed" xml:space="preserve"><value>Utilisé</value></data>
+  <data name="Tokens.Copy" xml:space="preserve"><value>Copier</value></data>
+  <data name="Tokens.ExternalShareNote" xml:space="preserve"><value>Pour offrir un jeton à une personne extérieure à votre équipe, copiez un code disponible et partagez-le : elle le saisira lors de son inscription.</value></data>
+  <data name="Tokens.Error.LoadFailed" xml:space="preserve"><value>Impossible de charger ces informations. Actualisez la page pour réessayer.</value></data>
+  <data name="Tokens.Error.Generic" xml:space="preserve"><value>L'opération n'a pas pu être effectuée.</value></data>
+  <data name="Tokens.Error.MonthlyLimit" xml:space="preserve"><value>Vous avez atteint la limite de 50 jetons par mois.</value></data>
+  <data name="Tokens.Error.InsufficientCommissions" xml:space="preserve"><value>Votre solde de commissions est insuffisant pour cet achat.</value></data>
+  <data name="Tokens.Error.InsufficientEWallet" xml:space="preserve"><value>Le solde de votre eWallet est insuffisant pour cet achat.</value></data>
+  <data name="Tokens.Error.NotPurchasable" xml:space="preserve"><value>Ce type de jeton ne peut pas être acheté.</value></data>
+  <data name="Tokens.Error.Card" xml:space="preserve"><value>Cette carte ne peut pas être utilisée. Vérifiez-la dans vos paramètres de facturation.</value></data>
+  <data name="Tokens.Error.CardDeclined" xml:space="preserve"><value>Le paiement par carte a été refusé.</value></data>
+  <data name="Tokens.Error.InProgress" xml:space="preserve"><value>Un achat est déjà en cours. Patientez un instant puis réessayez.</value></data>
+  <data name="Tokens.Error.Impersonation" xml:space="preserve"><value>Les achats ne sont pas autorisés lorsque vous consultez un compte au nom d'une autre personne.</value></data>
+  <data name="Tokens.Error.MemberInactive" xml:space="preserve"><value>Votre compte doit être actif pour acheter des jetons.</value></data>
+  <data name="Tokens.Error.Unavailable" xml:space="preserve"><value>Impossible de joindre le service de paiement. Réessayez : vous ne serez pas débité deux fois.</value></data>
+  <data name="Tokens.Error.NotEnoughTokens" xml:space="preserve"><value>Vous n'avez pas assez de jetons disponibles de ce type.</value></data>
+  <data name="Tokens.Error.Recipient" xml:space="preserve"><value>Le destinataire doit faire partie de votre équipe d'inscription.</value></data>
+  <data name="Tokens.Error.NoEWallet" xml:space="preserve"><value>Vous n'avez pas de compte eWallet pour payer.</value></data>
+  <data name="Tokens.Error.EWalletDeclined" xml:space="preserve"><value>Le débit eWallet a été refusé.</value></data>
+  <data name="Tokens.Error.NeedsReview" xml:space="preserve"><value>Nous n'avons pas pu confirmer le débit eWallet. Notre équipe va le vérifier et vos jetons seront émis s'il a abouti. Ne réessayez pas.</value></data>
+  <data name="Tokens.CryptoAmountDue" xml:space="preserve"><value>Montant dû : {0}, payable en {1}.</value></data>
+  <data name="Tokens.CryptoAddress" xml:space="preserve"><value>Adresse de dépôt</value></data>
+  <data name="Tokens.CryptoNetwork" xml:space="preserve"><value>Réseau : {0}</value></data>
+  <data name="Tokens.CryptoUnavailable" xml:space="preserve"><value>Les paiements en crypto ne sont pas disponibles pour le moment.</value></data>
+  <data name="StepUp.WhyTokenPurchase" xml:space="preserve"><value>Pour votre sécurité, saisissez un code de vérification avant de payer des jetons avec votre solde.</value></data>
+  <data name="Tokens.Error.CardDisabled" xml:space="preserve"><value>Le paiement par carte n'est pas disponible pour le moment.</value></data>
+  <data name="Tokens.Error.NotAwaitingCrypto" xml:space="preserve"><value>Cet achat ne peut plus être annulé : il a déjà été confirmé, annulé ou a expiré.</value></data>
+  <data name="Tokens.Error.ContactSupport" xml:space="preserve"><value>Le service de paiement ne répond pas comme prévu. Contactez le support si le problème persiste.</value></data>
+  <data name="Tokens.Error.ImpersonationDistribute" xml:space="preserve"><value>Les jetons ne peuvent pas être distribués lorsque vous consultez un compte au nom d'une autre personne.</value></data>
+  <data name="Tokens.CancelPurchase" xml:space="preserve"><value>Annuler cet achat</value></data>
+  <data name="Tokens.Status.Cancelled" xml:space="preserve"><value>Achat annulé. Ces jetons sont de nouveau disponibles dans votre quota mensuel.</value></data>
+  <data name="Tokens.Status.Rejected" xml:space="preserve"><value>Cet achat en crypto a été refusé : nous n'avons pas pu vérifier le transfert. Aucun jeton n'a été émis.</value></data>
+  <data name="Tokens.Status.Expired" xml:space="preserve"><value>Cet achat en crypto a expiré sans paiement. Aucun jeton n'a été émis.</value></data>
 </root>

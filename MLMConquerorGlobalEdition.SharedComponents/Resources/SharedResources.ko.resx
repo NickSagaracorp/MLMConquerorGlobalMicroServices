@@ -918,7 +918,7 @@
   <data name="Tokens.TotalTokens" xml:space="preserve"><value>총 토큰</value></data>
   <data name="Tokens.TotalUsed" xml:space="preserve"><value>총 사용</value></data>
   <data name="Tokens.TotalAvailable" xml:space="preserve"><value>총 사용 가능</value></data>
-  <data name="Tokens.PurchaseNote" xml:space="preserve"><value>참고: 토큰은 등록, Biz Center 수수료 및 Travel Advantage™ 결제에 사용할 수 있습니다. 구매 후에는 팀에 토큰을 배포할 수 있습니다. 토큰 구매는 월 10개로 제한되며 환불되지 않습니다.</value></data>
+  <data name="Tokens.PurchaseNote" xml:space="preserve"><value>참고: 토큰은 등록, Biz Center 수수료 및 Travel Advantage™ 결제에 사용할 수 있습니다. 구매 후에는 팀에 토큰을 배포할 수 있습니다. 토큰 구매는 월 50개로 제한되며 환불되지 않습니다.</value></data>
   <data name="Tokens.Amount" xml:space="preserve"><value>수량:</value></data>
   <data name="Tokens.TokensSuffix" xml:space="preserve"><value>토큰</value></data>
   <data name="Tokens.TokenType" xml:space="preserve"><value>토큰 유형</value></data>
@@ -932,7 +932,6 @@
   <data name="Tokens.CreditCard" xml:space="preserve"><value>신용카드</value></data>
   <data name="Tokens.AddNewCard" xml:space="preserve"><value>새 카드 추가</value></data>
   <data name="Tokens.NoCreditCards" xml:space="preserve"><value>등록된 신용카드가 없습니다.</value></data>
-  <data name="Tokens.PoweredByNowPayments" xml:space="preserve"><value>NowPayments 제공</value></data>
   <data name="Tokens.ColDate" xml:space="preserve"><value>날짜</value></data>
   <data name="Tokens.ColOwner" xml:space="preserve"><value>소유자</value></data>
   <data name="Tokens.ColTokenCode" xml:space="preserve"><value>토큰 코드</value></data>
@@ -1360,4 +1359,47 @@
   <data name="TwoFactor.Error.Locked" xml:space="preserve"><value>잘못된 코드가 너무 많이 입력되었습니다. 보안을 위해 최대 24시간 동안 인증이 차단됩니다. 본인이 아니라면 비밀번호를 변경하세요.</value></data>
   <data name="StepUp.Unavailable" xml:space="preserve"><value>현재 이 앱에서는 코드 인증을 사용할 수 없어 여기서 지급 방법을 변경할 수 없습니다. 웹 포털을 이용해 주세요.</value></data>
   <data name="Commissions.FrequencySavedWalletKept" xml:space="preserve"><value>지급 주기가 저장되었습니다. 지급 방법은 변경되지 않았습니다.</value></data>
+  <data name="Tokens.MonthlyRemaining" xml:space="preserve"><value>이번 달에 토큰을 {0}개 더 구매할 수 있습니다.</value></data>
+  <data name="Tokens.UnitPrice" xml:space="preserve"><value>토큰당 가격: {0}</value></data>
+  <data name="Tokens.TotalPrice" xml:space="preserve"><value>합계: {0}</value></data>
+  <data name="Tokens.NoPurchasableTypes" xml:space="preserve"><value>현재 구매할 수 있는 토큰 유형이 없습니다.</value></data>
+  <data name="Tokens.CryptoCurrency" xml:space="preserve"><value>통화</value></data>
+  <data name="Tokens.CryptoNote" xml:space="preserve"><value>암호화폐 결제는 수동으로 확인됩니다. 팀이 송금을 확인하면 토큰이 발급됩니다.</value></data>
+  <data name="Tokens.PurchaseDone" xml:space="preserve"><value>계정에 토큰 {0}개가 추가되었습니다.</value></data>
+  <data name="Tokens.PurchaseCryptoPending" xml:space="preserve"><value>주문 {0}이(가) {2}(으)로 {1} 송금을 기다리고 있습니다. 확인되면 토큰이 발급됩니다.</value></data>
+  <data name="Tokens.DistributeDone" xml:space="preserve"><value>토큰을 보냈습니다.</value></data>
+  <data name="Tokens.ColTransaction" xml:space="preserve"><value>거래</value></data>
+  <data name="Tokens.StatusUsed" xml:space="preserve"><value>사용됨</value></data>
+  <data name="Tokens.Copy" xml:space="preserve"><value>복사</value></data>
+  <data name="Tokens.ExternalShareNote" xml:space="preserve"><value>팀 외부 사람에게 토큰을 주려면 사용 가능한 코드를 복사해 공유하세요. 가입할 때 입력하면 됩니다.</value></data>
+  <data name="Tokens.Error.LoadFailed" xml:space="preserve"><value>정보를 불러오지 못했습니다. 페이지를 새로고침하여 다시 시도하세요.</value></data>
+  <data name="Tokens.Error.Generic" xml:space="preserve"><value>작업을 완료할 수 없습니다.</value></data>
+  <data name="Tokens.Error.MonthlyLimit" xml:space="preserve"><value>월 50개 토큰 한도에 도달했습니다.</value></data>
+  <data name="Tokens.Error.InsufficientCommissions" xml:space="preserve"><value>커미션 잔액이 이 구매에 부족합니다.</value></data>
+  <data name="Tokens.Error.InsufficientEWallet" xml:space="preserve"><value>eWallet 잔액이 이 구매에 부족합니다.</value></data>
+  <data name="Tokens.Error.NotPurchasable" xml:space="preserve"><value>이 토큰 유형은 구매할 수 없습니다.</value></data>
+  <data name="Tokens.Error.Card" xml:space="preserve"><value>해당 카드는 사용할 수 없습니다. 결제 설정에서 확인하세요.</value></data>
+  <data name="Tokens.Error.CardDeclined" xml:space="preserve"><value>카드 결제가 거절되었습니다.</value></data>
+  <data name="Tokens.Error.InProgress" xml:space="preserve"><value>이미 구매가 처리 중입니다. 잠시 후 다시 시도하세요.</value></data>
+  <data name="Tokens.Error.Impersonation" xml:space="preserve"><value>다른 사람을 대신해 계정을 보는 동안에는 구매할 수 없습니다.</value></data>
+  <data name="Tokens.Error.MemberInactive" xml:space="preserve"><value>토큰을 구매하려면 계정이 활성 상태여야 합니다.</value></data>
+  <data name="Tokens.Error.Unavailable" xml:space="preserve"><value>결제 서비스에 연결할 수 없습니다. 다시 시도하세요. 중복 청구되지 않습니다.</value></data>
+  <data name="Tokens.Error.NotEnoughTokens" xml:space="preserve"><value>해당 유형의 사용 가능한 토큰이 부족합니다.</value></data>
+  <data name="Tokens.Error.Recipient" xml:space="preserve"><value>받는 사람은 귀하의 등록 팀 구성원이어야 합니다.</value></data>
+  <data name="Tokens.Error.NoEWallet" xml:space="preserve"><value>결제에 사용할 eWallet 계정이 없습니다.</value></data>
+  <data name="Tokens.Error.EWalletDeclined" xml:space="preserve"><value>eWallet 결제가 거절되었습니다.</value></data>
+  <data name="Tokens.Error.NeedsReview" xml:space="preserve"><value>eWallet 결제를 확인하지 못했습니다. 팀이 검토하여 결제가 완료되었다면 토큰이 발급됩니다. 다시 시도하지 마세요.</value></data>
+  <data name="Tokens.CryptoAmountDue" xml:space="preserve"><value>결제 금액: {0}, {1}(으)로 지불</value></data>
+  <data name="Tokens.CryptoAddress" xml:space="preserve"><value>입금 주소</value></data>
+  <data name="Tokens.CryptoNetwork" xml:space="preserve"><value>네트워크: {0}</value></data>
+  <data name="Tokens.CryptoUnavailable" xml:space="preserve"><value>현재 암호화폐 결제를 사용할 수 없습니다.</value></data>
+  <data name="StepUp.WhyTokenPurchase" xml:space="preserve"><value>보안을 위해 잔액으로 토큰을 결제하기 전에 인증 코드를 입력하세요.</value></data>
+  <data name="Tokens.Error.CardDisabled" xml:space="preserve"><value>현재 카드 결제를 사용할 수 없습니다.</value></data>
+  <data name="Tokens.Error.NotAwaitingCrypto" xml:space="preserve"><value>이 구매는 더 이상 취소할 수 없습니다. 이미 확인, 취소 또는 만료되었습니다.</value></data>
+  <data name="Tokens.Error.ContactSupport" xml:space="preserve"><value>결제 서비스가 정상적으로 응답하지 않습니다. 계속 발생하면 고객 지원에 문의하세요.</value></data>
+  <data name="Tokens.Error.ImpersonationDistribute" xml:space="preserve"><value>다른 사람을 대신해 계정을 보는 동안에는 토큰을 배포할 수 없습니다.</value></data>
+  <data name="Tokens.CancelPurchase" xml:space="preserve"><value>이 구매 취소</value></data>
+  <data name="Tokens.Status.Cancelled" xml:space="preserve"><value>구매가 취소되었습니다. 해당 토큰은 이번 달 한도로 돌아갑니다.</value></data>
+  <data name="Tokens.Status.Rejected" xml:space="preserve"><value>이 암호화폐 구매는 거절되었습니다. 송금을 확인할 수 없었습니다. 발급된 토큰은 없습니다.</value></data>
+  <data name="Tokens.Status.Expired" xml:space="preserve"><value>이 암호화폐 구매는 결제 없이 만료되었습니다. 발급된 토큰은 없습니다.</value></data>
 </root>

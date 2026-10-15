@@ -1,261 +1,207 @@
+@using System.Net
+@using System.Net.Http.Json
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Account.StepUp
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Payments
+@using MLMConquerorGlobalEdition.SharedKernel.Billing
+@using MLMConquerorGlobalEdition.SharedKernel.Security
 @inject HttpClient Http
 @inject IStringLocalizer<SharedResources> L
-@using System.Net.Http.Json
+@inject IJSRuntime JS
+
+@*
+    Pantalla de tokens compartida (componentes unificados): la montan BizCenterWeb, BizCenterApp y el
+    panel admin. Los anfitriones del miembro encienden compra y distribución (y las apagan al
+    suplantar); el panel no, porque nadie compra con el dinero de otro. Ningún dato de identidad
+    viaja en las peticiones. Pagar con saldo pasa por el step-up (StepUpDialog + StepUpHttp); tarjeta
+    y cripto no. La cripto usa el mismo CryptoDepositPicker que el alta. Los errores se ven.
+*@
+
+<StepUpDialog @ref="_stepUp" />
 
 <BreadcrumbNav Items="@_breadcrumb" />
 
-<!-- Tokens Resume -->
-<div class="row justify-content-center">
-    <div class="col-xxl-12 col-lg-12">
-        <div class="card bg-white border-0 rounded-3 mb-4">
-            <div class="card-body p-4" style="padding-bottom: 0 !important;">
-                <div class="mb-3 mb-lg-4">
-                    <h3 class="mb-0">@L["Tokens.Resume"]</h3>
-                </div>
-                <div class="row">
-                    <div class="col-xxl-4 col-xl-4 col-sm-4">
-                        <div class="card bg-primary bg-opacity-10 border-primary border-opacity-10 rounded-3 mb-4 stats-box style-three">
-                            <div class="card-body p-4">
-                                <div class="d-flex align-items-center">
-                                    <div class="flex-shrink-0">
-                                        <i class="material-symbols-outlined fs-40 text-primary">content_paste</i>
-                                    </div>
-                                    <div class="flex-grow-1 ms-2">
-                                        <span>@L["Tokens.TotalTokens"]</span>
-                                        @if (_summaryLoading) { <span class="placeholder col-6 d-block mt-1"></span> }
-                                        else { <h3 class="fs-20 mt-1 mb-0">@_totalTokens</h3> }
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-xxl-4 col-xl-4 col-sm-4">
-                        <div class="card bg-info bg-opacity-10 border-info border-opacity-10 rounded-3 mb-4 stats-box style-three">
-                            <div class="card-body p-4">
-                                <div class="d-flex align-items-center">
-                                    <div class="flex-shrink-0">
-                                        <i class="material-symbols-outlined fs-40 text-info">done_all</i>
-                                    </div>
-                                    <div class="flex-grow-1 ms-2">
-                                        <span>@L["Tokens.TotalUsed"]</span>
-                                        @if (_summaryLoading) { <span class="placeholder col-6 d-block mt-1"></span> }
-                                        else { <h3 class="fs-20 mt-1 mb-0">@_totalUsed</h3> }
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-xxl-4 col-xl-4 col-sm-4">
-                        <div class="card bg-success bg-opacity-10 border-success border-opacity-10 rounded-3 mb-4 stats-box style-three">
-                            <div class="card-body p-4">
-                                <div class="d-flex align-items-center">
-                                    <div class="flex-shrink-0">
-                                        <i class="material-symbols-outlined fs-40 text-success">lock_open_right</i>
-                                    </div>
-                                    <div class="flex-grow-1 ms-2">
-                                        <span>@L["Tokens.TotalAvailable"]</span>
-                                        @if (_summaryLoading) { <span class="placeholder col-6 d-block mt-1"></span> }
-                                        else { <h3 class="fs-20 mt-1 mb-0">@_totalAvailable</h3> }
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+@if (_loadFailed)
+{
+    <div class="alert alert-warning" role="alert" id="tokens-load-error">@L["Tokens.Error.LoadFailed"]</div>
+}
+
+<div class="card bg-white border-0 rounded-3 mb-4">
+    <div class="card-body p-4">
+        <h3 class="mb-3">@L["Tokens.Resume"]</h3>
+        <div class="row">
+            @StatBox("content_paste", "primary", L["Tokens.TotalTokens"], _summary?.TotalTokens)
+            @StatBox("done_all", "info", L["Tokens.TotalUsed"], _summary?.TotalUsed)
+            @StatBox("lock_open_right", "success", L["Tokens.TotalAvailable"], _summary?.TotalAvailable)
         </div>
     </div>
 </div>
 
-<!-- Purchase -->
-<div class="card bg-white border-0 rounded-3 mb-4">
-    <div class="card-body p-0">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
-            <div class="mb-4" style="width: 100% !important;">
-                <h4 class="fs-14 mb-0">@L["Tokens.PurchaseNote"]</h4>
-            </div>
-            <div>
-                <div class="dropdown d-inline-block">
-                    <button class="btn btn-primary text-white py-2 px-3 dropdown-toggle" type="button"
-                            data-bs-toggle="dropdown" aria-expanded="false">
-                        @L["Tokens.Amount"] <span>@_purchaseAmount @L["Tokens.TokensSuffix"]</span>
-                    </button>
-                    <ul class="dropdown-menu bg-primary">
-                        @for (var n = 1; n <= 10; n++)
-                        {
-                            var amount = n;
-                            <li><a class="dropdown-item text-white" href="javascript:void(0);" @onclick="() => _purchaseAmount = amount">@amount</a></li>
-                        }
-                    </ul>
-                </div>
+@if (PurchaseEnabled)
+{
+    <div class="card bg-white border-0 rounded-3 mb-4">
+        <div class="card-body p-4">
+            <h4 class="fs-14 mb-2">@L["Tokens.PurchaseNote"]</h4>
+            @if (_catalog is not null)
+            {
+                <p class="text-muted small mb-3" id="tokens-remaining">@L["Tokens.MonthlyRemaining", _catalog.MonthlyRemaining]</p>
+            }
 
-                <div class="dropdown d-inline-block">
-                    <button class="btn btn-primary text-white py-2 px-3 dropdown-toggle" type="button"
-                            data-bs-toggle="dropdown" aria-expanded="false">
-                        @(_purchaseTokenTypeId == null ? L["Tokens.TokenType"].Value : _purchaseTokenTypeName)
-                    </button>
-                    <ul class="dropdown-menu bg-primary">
-                        @foreach (var tt in _tokenTypes)
+            @if (_purchaseErrorKey is not null)
+            {
+                <div class="alert alert-danger py-2" role="alert" id="tokens-purchase-error">@L[_purchaseErrorKey]</div>
+            }
+            @if (_purchaseResult is { } result)
+            {
+                var statusKey = TokenPurchaseMessages.StatusKeyFor(result.Status);
+                if (result.Status == TokenPurchaseStatuses.AwaitingCryptoConfirmation)
+                {
+                    <div class="alert alert-info py-2" role="status" id="tokens-purchase-done">
+                        <div>@L["Tokens.PurchaseCryptoPending", result.OrderNo ?? result.OrderId, result.TotalAmount.ToString("C"), result.CryptoCurrency ?? string.Empty]</div>
+                        @if (!string.IsNullOrWhiteSpace(result.CryptoDepositAddress))
                         {
-                            <li><a class="dropdown-item text-white" href="javascript:void(0);" @onclick="() => SelectPurchaseType(tt)">@tt.Name</a></li>
+                            <div class="mt-2 small">@L["Tokens.CryptoAddress"]</div>
+                            <div class="font-monospace text-break" id="tokens-crypto-address">@result.CryptoDepositAddress</div>
+                            @if (!string.IsNullOrWhiteSpace(result.CryptoNetwork))
+                            {
+                                <div class="small" id="tokens-crypto-network">@L["Tokens.CryptoNetwork", result.CryptoNetwork]</div>
+                            }
                         }
-                    </ul>
+                        <button id="tokens-crypto-cancel" type="button" class="btn btn-sm btn-outline-secondary mt-3"
+                                disabled="@(_purchaseBusy || _cancelBusy)" @onclick="CancelCryptoAsync">
+                            @if (_cancelBusy) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                            @L["Tokens.CancelPurchase"]
+                        </button>
+                    </div>
+                }
+                else if (statusKey is not null)
+                {
+                    <div class="alert alert-secondary py-2" role="status" id="tokens-purchase-status">@L[statusKey]</div>
+                }
+                else if (result.Status == TokenPurchaseStatuses.Completed)
+                {
+                    <div class="alert alert-success py-2" role="status" id="tokens-purchase-done">
+                        @L["Tokens.PurchaseDone", result.Quantity]
+                        <div class="mt-1 font-monospace">@string.Join(", ", result.TokenCodes)</div>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-warning py-2" role="status" id="tokens-purchase-status">@L["Tokens.Error.NeedsReview"]</div>
+                }
+            }
+
+            @if (_catalog is not null && !PurchasableItems.Any())
+            {
+                <p class="text-muted">@L["Tokens.NoPurchasableTypes"]</p>
+            }
+
+            <div class="row g-3 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label small" for="tokens-purchase-type">@L["Tokens.TokenType"]</label>
+                    <select id="tokens-purchase-type" class="form-select" value="@_purchaseTokenTypeId" @onchange="OnPurchaseTypeChanged">
+                        <option value="">—</option>
+                        @foreach (var item in PurchasableItems)
+                        {
+                            <option value="@item.TokenTypeId">@item.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small" for="tokens-purchase-qty">@L["Tokens.Amount"]</label>
+                    <select id="tokens-purchase-qty" class="form-select" value="@_purchaseAmount" @onchange="OnPurchaseAmountChanged">
+                        @for (var n = 1; n <= MaxPurchasable; n++)
+                        {
+                            var v = n;
+                            <option value="@v">@v</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    @if (SelectedItem?.UnitPrice is decimal price)
+                    {
+                        <div class="small">@L["Tokens.UnitPrice", price.ToString("C")]</div>
+                        <div class="fw-semibold" id="tokens-total">@L["Tokens.TotalPrice", (price * _purchaseAmount).ToString("C")]</div>
+                    }
                 </div>
             </div>
 
-            <button class="btn btn-outline-primary d-flex align-items-center gap-1 hover-bg" @onclick="PurchaseTokensAsync">
-                <i class="ri-coins-fill fw-medium fs-18 me-1"></i>
-                <span>@L["Tokens.BuyNow"]</span>
+            <ul class="nav nav-tabs bg-transparent border-bottom gap-2 gap-sm-5 mt-4" role="tablist">
+                @foreach (var (method, key) in AvailableTabs)
+                {
+                    var m = method;
+                    <li class="nav-item" role="presentation">
+                        <button id="tokens-tab-@m" type="button"
+                                class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_payTab == m ? "active" : "")"
+                                @onclick="() => SelectTab(m)">@L[key]</button>
+                    </li>
+                }
+            </ul>
+
+            <div class="pt-4">
+                @if (_payTab == TokenPaymentMethods.CommissionBalance)
+                {
+                    <span>@L["Tokens.CommissionBalanceLabel"]</span>
+                    <h3 class="fs-20 mt-1 mb-0">@(_funds?.CommissionBalance.ToString("C") ?? "—")</h3>
+                }
+                else if (_payTab == TokenPaymentMethods.EWallet)
+                {
+                    @if (_funds is { HasEWallet: false })
+                    {
+                        <p class="text-muted mb-0">@L["Tokens.Error.NoEWallet"]</p>
+                    }
+                    else
+                    {
+                        <span>@L["Tokens.EWalletBalanceLabel"]</span>
+                        <h3 class="fs-20 mt-1 mb-0">@(_funds?.EWalletBalance?.ToString("C") ?? "—")</h3>
+                    }
+                }
+                else if (_payTab == TokenPaymentMethods.CreditCard)
+                {
+                    @if (_cards.Count == 0)
+                    {
+                        <p class="text-muted text-center py-3">@L["Tokens.NoCreditCards"]</p>
+                    }
+                    else
+                    {
+                        <div class="row g-3">
+                            @foreach (var card in _cards)
+                            {
+                                var c = card;
+                                <div class="col-lg-4 col-md-4">
+                                    <button type="button" id="tokens-card-@c.Id" disabled="@c.IsExpired"
+                                            class="btn w-100 text-start p-3 border rounded-3 @(_selectedCardId == c.Id ? "border-primary border-2" : "")"
+                                            @onclick="() => SelectCard(c)">
+                                        <div class="fw-semibold">@c.CardBrand •••• @c.Last4</div>
+                                        <div class="small text-muted">@L["Tokens.CardExpiryPrefix"] @($"{c.ExpiryMonth:00}/{c.ExpiryYear}")</div>
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    }
+                }
+                else if (_payTab == TokenPaymentMethods.Crypto)
+                {
+                    <CryptoDepositPicker Addresses="@CryptoDeposits" Currency="@_cryptoCurrency"
+                                         CurrencyChanged="OnCryptoChanged" InputId="tokens-crypto">
+                        @if (SelectedItem?.UnitPrice is decimal p && SelectedDeposit is not null)
+                        {
+                            <p class="fw-semibold mb-1">@L["Tokens.CryptoAmountDue", (p * _purchaseAmount).ToString("C"), SelectedDeposit.Currency]</p>
+                        }
+                        <p class="text-muted small mb-0">@L["Tokens.CryptoNote"]</p>
+                    </CryptoDepositPicker>
+                }
+            </div>
+
+            <button id="tokens-buy" class="btn btn-primary mt-4" disabled="@(!CanBuy)" @onclick="PurchaseTokensAsync">
+                @if (_purchaseBusy) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                @L["Tokens.BuyNow"]
             </button>
         </div>
-
-        <ul class="nav nav-tabs bg-transparent border-bottom gap-2 gap-sm-5 p-4" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_payTab == "commissions" ? "active" : "")"
-                        type="button" @onclick='() => _payTab = "commissions"'>@L["Tokens.TabCommissions"]</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_payTab == "ewallet" ? "active" : "")"
-                        type="button" @onclick='() => _payTab = "ewallet"'>@L["Tokens.TabEWallet"]</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_payTab == "creditcard" ? "active" : "")"
-                        type="button" @onclick='() => _payTab = "creditcard"'>@L["Tokens.TabCreditCard"]</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link p-0 bg-transparent border-0 fs-12 fw-medium text-body @(_payTab == "crypto" ? "active" : "")"
-                        type="button" @onclick='() => _payTab = "crypto"'>@L["Tokens.TabCrypto"]</button>
-            </li>
-        </ul>
-
-        <div class="tab-content p-4 pt-0">
-            @if (_payTab == "commissions")
-            {
-                <div class="col-xxl-12 col-xl-12 col-sm-12 pt-4">
-                    <div class="card bg-danger bg-opacity-10 border-danger border-opacity-10 rounded-3 mb-4 stats-box style-three">
-                        <div class="card-body p-4">
-                            <div class="d-flex align-items-center">
-                                <div class="flex-shrink-0">
-                                    <i class="material-symbols-outlined fs-40 text-danger">paid</i>
-                                </div>
-                                <div class="flex-grow-1 ms-2">
-                                    <span>@L["Tokens.CommissionBalanceLabel"]</span>
-                                    @if (_balanceLoading) { <span class="placeholder col-6 d-block mt-1"></span> }
-                                    else { <h3 class="fs-20 mt-1 mb-0">@_commissionBalance.ToString("C")</h3> }
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            }
-            @if (_payTab == "ewallet")
-            {
-                <div class="col-xxl-12 col-xl-12 col-sm-12 pt-4">
-                    <div class="card bg-success bg-opacity-10 border-success border-opacity-10 rounded-3 mb-4 stats-box style-three">
-                        <div class="card-body p-4">
-                            <div class="d-flex align-items-center">
-                                <div class="flex-shrink-0">
-                                    <i class="material-symbols-outlined fs-40 text-success">paid</i>
-                                </div>
-                                <div class="flex-grow-1 ms-2">
-                                    <span>@L["Tokens.EWalletBalanceLabel"]</span>
-                                    @if (_balanceLoading) { <span class="placeholder col-6 d-block mt-1"></span> }
-                                    else { <h3 class="fs-20 mt-1 mb-0">@_eWalletBalance.ToString("C")</h3> }
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            }
-            @if (_payTab == "creditcard")
-            {
-                <div class="col-xxl-12 col-xl-12 col-sm-12 pt-4">
-                    <div class="card bg-white border-0 rounded-3 mb-4 stats-box style-three">
-                        <div class="card-body p-4">
-                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom pb-4 mb-4">
-                                <h4 class="fs-18 mb-0">@L["Tokens.CreditCard"]</h4>
-                                <button class="btn btn-outline-primary d-flex align-items-center gap-1 hover-bg">
-                                    <i class="ri-add-fill fw-medium fs-18 me-1"></i>
-                                    <span>@L["Tokens.AddNewCard"]</span>
-                                </button>
-                            </div>
-                            @if (_cardsLoading)
-                            {
-                                <LoadingSpinner IsLoading="true" />
-                            }
-                            else if (!_creditCards.Any())
-                            {
-                                <p class="text-muted text-center py-3">@L["Tokens.NoCreditCards"]</p>
-                            }
-                            else
-                            {
-                                <div class="row g-4">
-                                    @foreach (var card in _creditCards)
-                                    {
-                                        <div class="col-lg-4 col-md-4">
-                                            <div class="bg-img p-4 rounded-3 @(_selectedCardId == card.Id ? "is-selected" : "")"
-                                                 style="background-image: url(_content/MLMConquerorGlobalEdition.SharedComponents/img/debit-card-2.jpg); cursor:pointer;"
-                                                 tabindex="0" @onclick="() => _selectedCardId = card.Id">
-                                                <div class="d-flex align-content-center justify-content-between">
-                                                    <div>
-                                                        <span class="text-white fs-12 fw-medium d-block mb-12">@L["Tokens.CreditCard"]</span>
-                                                    </div>
-                                                    <i class="ri-visa-fill fs-35 text-white lh-1"></i>
-                                                </div>
-                                                <h3 class="fw-semibold text-white mb-12 d-flex gap-1 lh-1" style="margin-top: 40px;">
-                                                    <span>****</span><span>****</span><span>****</span><span>@card.LastFour</span>
-                                                </h3>
-                                                <div class="d-flex align-content-center justify-content-between">
-                                                    <span class="text-white">@card.HolderName</span>
-                                                    <span class="text-white fs-12">@L["Tokens.CardExpiryPrefix"] @card.ExpiryDisplay</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
-                            }
-                        </div>
-                    </div>
-                </div>
-            }
-            @if (_payTab == "crypto")
-            {
-                <div class="col-xxl-12 col-xl-12 col-sm-12 pt-4">
-                    <div class="card bg-opacity-10 border-white border-opacity-10 rounded-3 mb-4 stats-box style-three" style="background-color: #53647B;">
-                        <div class="card-body p-4">
-                            <div class="d-flex align-items-center text-center">
-                                <span class="text-white fw-semibold fs-16">@L["Tokens.PoweredByNowPayments"]</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            }
-        </div>
     </div>
-</div>
+}
 
-<!-- Tokens Table -->
 <div class="card bg-white border-0 rounded-3 mb-4">
     <div class="card-body p-0">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
-            <form class="position-relative table-src-form me-0">
-                <input type="text" class="form-control" placeholder="@L["Reports.SearchPlaceholder"]"
-                       value="@_search"
-                       @oninput="OnSearchInput" />
-                <i class="material-symbols-outlined position-absolute top-50 start-0 translate-middle-y">search</i>
-            </form>
-            <div class="d-flex gap-2">
-                <input class="form-control" style="max-width:140px"
-                       type="date"
-                       value="@(_from?.ToString("yyyy-MM-dd"))"
-                       @onchange="OnFromChange" />
-                <input class="form-control" style="max-width:140px"
-                       type="date"
-                       value="@(_to?.ToString("yyyy-MM-dd"))"
-                       @onchange="OnToChange" />
-            </div>
-        </div>
-
         <LoadingSpinner IsLoading="@_isLoading" />
         @if (!_isLoading)
         {
@@ -265,7 +211,7 @@
                         <thead>
                             <tr>
                                 <th scope="col">@L["Tokens.ColDate"]</th>
-                                <th scope="col">@L["Tokens.ColOwner"]</th>
+                                <th scope="col">@L["Tokens.ColTransaction"]</th>
                                 <th scope="col">@L["Tokens.ColTokenCode"]</th>
                                 <th scope="col">@L["Tokens.ColType"]</th>
                                 <th scope="col">@L["Tokens.ColUseDate"]</th>
@@ -275,58 +221,38 @@
                         <tbody>
                             @foreach (var item in _items)
                             {
+                                var row = item;
                                 <tr>
-                                    <td class="text-body">@item.OccurredAt.ToString("MM/dd/yyyy")</td>
+                                    <td class="text-body">@row.OccurredAt.ToString("MM/dd/yyyy")</td>
+                                    <td class="text-body">@row.TransactionType</td>
                                     <td class="text-body">
-                                        @if (!string.IsNullOrWhiteSpace(item.OwnerAvatarUrl))
+                                        @if (!string.IsNullOrWhiteSpace(row.TokenCode))
                                         {
-                                            <img src="@item.OwnerAvatarUrl" class="wh-34 lh-34 rounded-circle border border-1 border-color-white" alt="user" />
-                                        }
-                                        else
-                                        {
-                                            <span class="wh-34 lh-34 rounded-circle bg-primary d-inline-flex align-items-center justify-content-center text-white fs-12 fw-medium me-1">@(item.OwnerName?.FirstOrDefault())</span>
-                                        }
-                                        @item.OwnerName
-                                    </td>
-                                    <td class="text-body">
-                                        @if (!string.IsNullOrWhiteSpace(item.TokenCode))
-                                        {
-                                            <span class="font-monospace">@item.TokenCode</span>
+                                            <span class="font-monospace">@row.TokenCode</span>
+                                            @if (!row.IsUsed)
+                                            {
+                                                <button type="button" class="btn btn-sm btn-link p-0 ms-2" title="@L["Tokens.Copy"]" @onclick="() => CopyAsync(row.TokenCode!)">
+                                                    <i class="@(_copiedCode == row.TokenCode ? "ri-check-line" : "ri-file-copy-line")"></i>
+                                                </button>
+                                            }
                                         }
                                         else
                                         {
                                             <span class="text-muted">—</span>
                                         }
                                     </td>
-                                    <td class="text-body">@item.TokenTypeName</td>
+                                    <td class="text-body">@row.TokenTypeName</td>
                                     <td>
-                                        @if (item.UsedAt.HasValue)
+                                        @if (row.IsUsed)
                                         {
-                                            <span class="badge bg-primary bg-opacity-10 text-primary p-2 fs-12 fw-normal">@item.UsedAt.Value.ToString("MM/dd/yyyy")</span>
+                                            <span class="badge bg-primary bg-opacity-10 text-primary p-2 fs-12 fw-normal">@L["Tokens.StatusUsed"]</span>
                                         }
-                                        else
+                                        else if (!string.IsNullOrWhiteSpace(row.TokenCode))
                                         {
                                             <span class="badge bg-success bg-opacity-10 text-success p-2 fs-12 fw-normal">@L["Tokens.StatusAvailable"]</span>
                                         }
                                     </td>
-                                    <td>
-                                        @if (!string.IsNullOrWhiteSpace(item.UsedByName))
-                                        {
-                                            @if (!string.IsNullOrWhiteSpace(item.UsedByAvatarUrl))
-                                            {
-                                                <img src="@item.UsedByAvatarUrl" class="wh-34 lh-34 rounded-circle border border-1 border-color-white" alt="user" />
-                                            }
-                                            else
-                                            {
-                                                <span class="wh-34 lh-34 rounded-circle bg-success d-inline-flex align-items-center justify-content-center text-white fs-12 fw-medium me-1">@(item.UsedByName.FirstOrDefault())</span>
-                                            }
-                                            @item.UsedByName
-                                        }
-                                        else if (item.DistributedCount > 0)
-                                        {
-                                            <a href="javascript:void(0);" class="wh-34 lh-34 rounded-circle bg-success d-inline-block text-center text-decoration-none text-white fs-12 fw-medium border border-1 border-color-white" style="line-height:34px;">+@item.DistributedCount</a>
-                                        }
-                                    </td>
+                                    <td class="text-body">@row.UsedByMemberName</td>
                                 </tr>
                             }
                             @if (!_items.Any())
@@ -339,9 +265,9 @@
                 <div class="p-4 pt-lg-4">
                     <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
                         <span class="fs-12 fw-medium">@L["Reports.Showing"] @_items.Count @L["Common.Of"] @_total @L["Reports.Results"]</span>
-                        @if (_total > _pageSize)
+                        @if (_total > PageSize)
                         {
-                            var totalPages = (int)Math.Ceiling((double)_total / _pageSize);
+                            var totalPages = (int)Math.Ceiling((double)_total / PageSize);
                             <nav aria-label="@L["Tokens.PaginationAria"]">
                                 <ul class="pagination mb-0 justify-content-center">
                                     <li class="page-item @(_page <= 1 ? "disabled" : "")">
@@ -371,145 +297,146 @@
     </div>
 </div>
 
-<!-- Distribution -->
-<div class="card bg-white border-0 rounded-3 mb-4">
-    <div class="card-body p-0">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
-            <h4 class="fs-18 mb-0">@L["Tokens.Distribution"]</h4>
+@if (DistributionEnabled)
+{
+    <div class="card bg-white border-0 rounded-3 mb-4">
+        <div class="card-body p-4">
+            <h4 class="fs-18 mb-2">@L["Tokens.Distribution"]</h4>
+            <p class="fs-14 mb-3">@L["Tokens.DistributionNote"]</p>
 
-            <button class="btn btn-outline-primary d-flex align-items-center gap-1 hover-bg" @onclick="DistributeTokensAsync">
-                <i class="ri-token-swap-fill fw-medium fs-18 me-1"></i>
-                <span>@L["Tokens.DistributeButton"]</span>
+            @if (_distributeErrorKey is not null)
+            {
+                <div class="alert alert-danger py-2" role="alert" id="tokens-distribute-error">@L[_distributeErrorKey]</div>
+            }
+            @if (_distributeDone)
+            {
+                <div class="alert alert-success py-2" role="status">@L["Tokens.DistributeDone"]</div>
+            }
+
+            <div class="row g-3 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label small" for="tokens-distribute-type">@L["Tokens.TokenType"]</label>
+                    <select id="tokens-distribute-type" class="form-select" value="@_distributeTokenTypeId" @onchange="OnDistributeTypeChanged">
+                        <option value="">—</option>
+                        @foreach (var b in _balances.Where(b => b.TokenTypeId > 0 && b.Balance > 0))
+                        {
+                            <option value="@b.TokenTypeId">@b.TokenTypeName (@b.Balance)</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small" for="tokens-distribute-qty">@L["Tokens.Amount"]</label>
+                    <select id="tokens-distribute-qty" class="form-select" value="@_distributeAmount" @onchange="OnDistributeAmountChanged">
+                        @for (var n = 1; n <= MaxDistributable; n++)
+                        {
+                            var v = n;
+                            <option value="@v">@v</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <div class="position-relative mt-3">
+                <label class="form-label small mb-1" for="tokens-member-search">@L["Tokens.Member"]</label>
+                @if (_selectedMember is null)
+                {
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="ri-search-line"></i></span>
+                        <input id="tokens-member-search" type="text" class="form-control" placeholder="@L["Tokens.SearchMemberPlaceholder"]"
+                               autocomplete="off" value="@_memberSearchInput" @oninput="OnMemberSearchInput" />
+                    </div>
+                    @if (_memberResults.Any())
+                    {
+                        <div class="dropdown-menu w-100 shadow mt-1 show" style="max-height:260px; overflow:auto; z-index:1060;">
+                            @foreach (var m in _memberResults)
+                            {
+                                var member = m;
+                                <button type="button" class="dropdown-item tokens-member-option" @onclick="() => SelectMember(member)">@member.FullName</button>
+                            }
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="mt-2">
+                        <span class="chip">@_selectedMember.FullName</span>
+                        <button type="button" class="btn btn-sm btn-link text-secondary ms-1 p-0" @onclick="ClearMember">@L["Tokens.Clear"]</button>
+                    </div>
+                }
+            </div>
+
+            <button id="tokens-distribute" class="btn btn-outline-primary mt-3"
+                    disabled="@(_distributeBusy || _distributeTokenTypeId is null || _selectedMember is null)"
+                    @onclick="DistributeTokensAsync">
+                @if (_distributeBusy) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                <i class="ri-token-swap-fill me-1"></i>@L["Tokens.DistributeButton"]
             </button>
 
-            <div class="mb-4" style="width: 100% !important;">
-                <h4 class="fs-14 mb-0">@L["Tokens.DistributionNote"]</h4>
-            </div>
-
-            <div class="col-xxl-12 col-xl-12 col-lg-12 col-md-12 col-sm-12">
-                <div class="dropdown d-inline-block" style="float: left;">
-                    <button class="btn btn-primary text-white py-2 px-3 dropdown-toggle" type="button"
-                            data-bs-toggle="dropdown" aria-expanded="false">
-                        @L["Tokens.Amount"] <span>@_distributeAmount @L["Tokens.TokensSuffix"]</span>
-                    </button>
-                    <ul class="dropdown-menu bg-primary">
-                        @for (var n = 1; n <= 10; n++)
-                        {
-                            var amount = n;
-                            <li><a class="dropdown-item text-white" href="javascript:void(0);" @onclick="() => _distributeAmount = amount">@amount</a></li>
-                        }
-                    </ul>
-                </div>
-
-                <div class="dropdown d-inline-block" style="float: right;">
-                    <button class="btn btn-primary text-white py-2 px-3 dropdown-toggle" type="button"
-                            data-bs-toggle="dropdown" aria-expanded="false">
-                        @(_distributeTokenTypeId == null ? L["Tokens.TokenType"].Value : _distributeTokenTypeName)
-                    </button>
-                    <ul class="dropdown-menu bg-primary">
-                        @foreach (var tt in _tokenTypes)
-                        {
-                            <li><a class="dropdown-item text-white" href="javascript:void(0);" @onclick="() => SelectDistributeType(tt)">@tt.Name</a></li>
-                        }
-                    </ul>
-                </div>
-            </div>
-
-            <div class="col-xxl-12 col-xl-12 col-lg-12 col-md-12 col-sm-12" style="clear:both;">
-                <div class="position-relative" style="width: 100%;">
-                    <label class="form-label small mb-1">@L["Tokens.Member"]</label>
-                    @if (_selectedMember is null)
-                    {
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="ri-search-line"></i></span>
-                            <input type="text" class="form-control" placeholder="@L["Tokens.SearchMemberPlaceholder"]"
-                                   autocomplete="off"
-                                   value="@_memberSearchInput"
-                                   @oninput="OnMemberSearchInput" />
-                        </div>
-                        @if (_memberResults.Any())
-                        {
-                            <div class="dropdown-menu w-100 shadow mt-1 show" style="max-height:260px; overflow:auto; z-index:1060;">
-                                @foreach (var m in _memberResults)
-                                {
-                                    <button type="button" class="dropdown-item d-flex align-items-center gap-2" @onclick="() => SelectMember(m)">
-                                        <span class="wh-34 lh-34 rounded-circle bg-primary d-inline-flex align-items-center justify-content-center text-white fs-12 fw-medium flex-shrink-0">@(m.FullName.FirstOrDefault())</span>
-                                        <span>@m.FullName</span>
-                                    </button>
-                                }
-                            </div>
-                        }
-                    }
-                    else
-                    {
-                        <div class="mt-2">
-                            <span class="chip">
-                                <span style="width:22px;height:22px;border-radius:50%;background:#e2e8f0;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;margin-right:.35rem;">@(_selectedMember.FullName.FirstOrDefault())</span>
-                                <span>@_selectedMember.FullName</span>
-                            </span>
-                            <button type="button" class="btn btn-sm btn-link text-secondary ms-1 p-0" @onclick="ClearMember">@L["Tokens.Clear"]</button>
-                        </div>
-                    }
-                </div>
-            </div>
+            <p class="text-muted small mt-3 mb-0">@L["Tokens.ExternalShareNote"]</p>
         </div>
     </div>
-</div>
+}
 
 <style>
     .chip {
-        display: inline-flex;
-        align-items: center;
-        padding: .35rem .55rem;
-        border-radius: 999px;
-        background: #f1f5f9;
-        margin: .2rem;
-        font-size: .85rem;
-        font-weight: 600;
-        color: #334155;
+        display: inline-flex; align-items: center; padding: .35rem .55rem; border-radius: 999px;
+        background: #f1f5f9; margin: .2rem; font-size: .85rem; font-weight: 600; color: #334155;
     }
-    .nav-tabs .nav-link.active {
-        color: #4936F5 !important;
-    }
-    #creditcard .bg-img.is-selected {
-        transform: translateY(-2px);
-        border: 2px solid #4936F5;
-        box-shadow: 0 8px 22px rgba(73,54,245,.25);
-    }
+    .nav-tabs .nav-link.active { color: #4936F5 !important; }
 </style>
 
 @code {
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
     [Parameter] public string ApiBaseUrl { get; set; } = "api/v1/bizcenter";
 
-    private bool _summaryLoading = true;
-    private bool _balanceLoading = true;
-    private bool _cardsLoading   = true;
-    private bool _isLoading      = true;
+    /// <summary>Lo enciende el anfitrión del miembro, y lo apaga al suplantar. Apagado por defecto: el panel admin no compra.</summary>
+    [Parameter] public bool PurchaseEnabled { get; set; }
 
-    private int     _totalTokens, _totalUsed, _totalAvailable;
-    private decimal _commissionBalance, _eWalletBalance;
-    private int     _page = 1, _pageSize = 20, _total;
-    private string  _search = string.Empty;
-    private DateTime? _from, _to;
-    private string  _payTab = "commissions";
+    /// <summary>Lo enciende el anfitrión del miembro, y lo apaga al suplantar. Apagado por defecto.</summary>
+    [Parameter] public bool DistributionEnabled { get; set; }
 
-    private int     _purchaseAmount  = 1;
-    private string? _purchaseTokenTypeId;
-    private string  _purchaseTokenTypeName = string.Empty;
+    private const int PageSize = 20;
 
-    private int     _distributeAmount  = 1;
-    private string? _distributeTokenTypeId;
-    private string  _distributeTokenTypeName = string.Empty;
+    private static readonly (string Method, string Key)[] PaymentTabs =
+    [
+        (TokenPaymentMethods.CommissionBalance, "Tokens.TabCommissions"),
+        (TokenPaymentMethods.EWallet,           "Tokens.TabEWallet"),
+        (TokenPaymentMethods.CreditCard,        "Tokens.TabCreditCard"),
+        (TokenPaymentMethods.Crypto,            "Tokens.TabCrypto")
+    ];
 
-    private string  _memberSearchInput = string.Empty;
+    private StepUpDialog _stepUp = default!;
+
+    private bool _loadFailed;
+    private bool _isLoading = true;
+    private TokenSummaryDto? _summary;
+    private TokenCatalogDto? _catalog;
+    private TokenPurchaseFundsDto? _funds;
+    private List<CardItem> _cards = new();
+    private List<BalanceItem> _balances = new();
+    private List<TokenItem> _items = new();
+    private int _page = 1, _total;
+
+    private string _payTab = TokenPaymentMethods.CommissionBalance;
+    private int? _purchaseTokenTypeId;
+    private int _purchaseAmount = 1;
     private string? _selectedCardId;
+    private string? _cryptoCurrency;
+    private string _idempotencyKey = NewKey();
+    private bool _purchaseBusy;
+    private bool _cancelBusy;
+    private string? _purchaseErrorKey;
+    private TokenPurchaseResultDto? _purchaseResult;
 
-    private List<TokenItem>    _items       = new();
-    private List<CreditCard>   _creditCards = new();
-    private List<TokenType>    _tokenTypes  = new();
+    private int? _distributeTokenTypeId;
+    private int _distributeAmount = 1;
+    private string _memberSearchInput = string.Empty;
     private List<MemberResult> _memberResults = new();
-    private MemberResult?      _selectedMember;
+    private MemberResult? _selectedMember;
+    private bool _distributeBusy;
+    private string? _distributeErrorKey;
+    private bool _distributeDone;
+    private string? _copiedCode;
 
     private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
     {
@@ -517,34 +444,266 @@
         new(L["Nav.Tokens"].Value)
     };
 
+    /// <summary>
+    /// La tarjeta solo se ofrece si Billing la acepta (sin catálogo, tampoco): el gateway todavía es
+    /// simulado y Billing la rechaza con CARD_PAYMENTS_DISABLED mientras esté apagada.
+    /// </summary>
+    private IReadOnlyList<(string Method, string Key)> AvailableTabs =>
+        PaymentTabs.Where(t => t.Method != TokenPaymentMethods.CreditCard || _catalog?.CardEnabled == true).ToList();
+
+    private IEnumerable<TokenCatalogItemDto> PurchasableItems =>
+        _catalog?.Items.Where(i => i.Purchasable) ?? Enumerable.Empty<TokenCatalogItemDto>();
+
+    private TokenCatalogItemDto? SelectedItem => PurchasableItems.FirstOrDefault(i => i.TokenTypeId == _purchaseTokenTypeId);
+
+    private List<CryptoDepositAddressDto> CryptoDeposits => _catalog?.CryptoDeposits ?? new();
+
+    private CryptoDepositAddressDto? SelectedDeposit => CryptoDepositPicker.Find(CryptoDeposits, _cryptoCurrency);
+
+    private int MaxPurchasable => Math.Clamp(_catalog?.MonthlyRemaining ?? 0, 1, TokenPurchaseRules.MonthlyLimit);
+
+    private bool CanBuy =>
+        !_purchaseBusy && !_cancelBusy
+        && SelectedItem is not null
+        && (_catalog?.MonthlyRemaining ?? 0) >= _purchaseAmount
+        && AvailableTabs.Any(t => t.Method == _payTab)
+        && (_payTab != TokenPaymentMethods.CreditCard || _selectedCardId is not null)
+        && (_payTab != TokenPaymentMethods.Crypto || SelectedDeposit is not null);
+
+    private int MaxDistributable =>
+        Math.Max(1, _balances.FirstOrDefault(b => b.TokenTypeId == _distributeTokenTypeId)?.Balance ?? 1);
+
+    private static string NewKey() => Guid.NewGuid().ToString("N");
+
+    private RenderFragment StatBox(string icon, string color, string label, int? value) => __builder =>
+    {
+        <div class="col-xxl-4 col-xl-4 col-sm-4">
+            <div class="card bg-@color bg-opacity-10 border-@color border-opacity-10 rounded-3 mb-4 stats-box style-three">
+                <div class="card-body p-4 d-flex align-items-center">
+                    <i class="material-symbols-outlined fs-40 text-@color flex-shrink-0">@icon</i>
+                    <div class="flex-grow-1 ms-2">
+                        <span>@label</span>
+                        @if (value is null) { <span class="placeholder col-6 d-block mt-1"></span> }
+                        else { <h3 class="fs-20 mt-1 mb-0">@value</h3> }
+                    </div>
+                </div>
+            </div>
+        </div>
+    };
+
     protected override async Task OnParametersSetAsync()
     {
         if (string.IsNullOrEmpty(MemberProfileId)) return;
-        await Task.WhenAll(
-            LoadSummaryAsync(),
-            LoadBalancesAsync(),
-            LoadCreditCardsAsync(),
-            LoadTokenTypesAsync(),
-            LoadPageAsync(1));
+
+        var loads = new List<Task> { LoadSummaryAsync(), LoadPageAsync(1) };
+        if (PurchaseEnabled) loads.AddRange([LoadCatalogAsync(), LoadFundsAsync(), LoadCardsAsync()]);
+        if (DistributionEnabled) loads.Add(LoadBalancesAsync());
+        await Task.WhenAll(loads);
     }
 
-    private void OnSearchInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    /// <summary>Una carga que falla deja su dato vacío y ENCIENDE el aviso. Nada se calla.</summary>
+    private async Task<T?> GetAsync<T>(string url) where T : class
     {
-        _search = e.Value?.ToString() ?? string.Empty;
-        _page   = 1;
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<T>>(url);
+            if (resp?.Success == true && resp.Data is not null) return resp.Data;
+        }
+        catch (Exception)
+        {
+            // Cae al aviso de abajo.
+        }
+        _loadFailed = true;
+        return null;
     }
 
-    private async Task OnFromChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    private async Task LoadSummaryAsync()  => _summary  = await GetAsync<TokenSummaryDto>($"{ApiBaseUrl}/tokens/summary");
+    private async Task LoadFundsAsync()    => _funds    = await GetAsync<TokenPurchaseFundsDto>($"{ApiBaseUrl}/wallet/balances");
+    private async Task LoadCardsAsync()    => _cards    = await GetAsync<List<CardItem>>($"{ApiBaseUrl}/billing/credit-cards") ?? new();
+    private async Task LoadBalancesAsync() => _balances = await GetAsync<List<BalanceItem>>($"{ApiBaseUrl}/tokens/balances") ?? new();
+
+    private async Task LoadCatalogAsync()
     {
-        _from = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : (DateTime?)null;
-        await LoadPageAsync(1);
+        _catalog = await GetAsync<TokenCatalogDto>($"{ApiBaseUrl}/tokens/types");
+        if (SelectedDeposit is null) _cryptoCurrency = CryptoDeposits.FirstOrDefault()?.Currency;
+
+        // Si la pestaña elegida dejó de estar (la tarjeta se apagó), se vuelve a la primera.
+        if (!AvailableTabs.Any(t => t.Method == _payTab))
+        {
+            _payTab = AvailableTabs[0].Method;
+            ResetPurchaseAttempt();
+        }
     }
 
-    private async Task OnToChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    private async Task LoadPageAsync(int page)
     {
-        _to = DateTime.TryParse(e.Value?.ToString(), out var d) ? d : (DateTime?)null;
-        await LoadPageAsync(1);
+        _page = page;
+        _isLoading = true;
+        var data = await GetAsync<PagedData<TokenItem>>($"{ApiBaseUrl}/tokens?page={page}&pageSize={PageSize}");
+        _items = data?.Items ?? new();
+        _total = data?.TotalCount ?? 0;
+        _isLoading = false;
     }
+
+    // ── Compra ────────────────────────────────────────────────────────────────
+
+    /// <summary>Cambiar lo que se compra es otra compra: clave nueva. Repetir sin tocar nada reusa la clave.</summary>
+    private void ResetPurchaseAttempt()
+    {
+        _idempotencyKey = NewKey();
+        _purchaseErrorKey = null;
+    }
+
+    private void OnPurchaseTypeChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _purchaseTokenTypeId = int.TryParse(e.Value?.ToString(), out var id) ? id : null;
+        ResetPurchaseAttempt();
+    }
+
+    private void OnPurchaseAmountChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _purchaseAmount = int.TryParse(e.Value?.ToString(), out var n) ? n : 1;
+        ResetPurchaseAttempt();
+    }
+
+    private void SelectTab(string method)
+    {
+        if (_payTab == method) return;
+        _payTab = method;
+        ResetPurchaseAttempt();
+    }
+
+    private void SelectCard(CardItem card)
+    {
+        if (card.IsExpired || _selectedCardId == card.Id) return;
+        _selectedCardId = card.Id;
+        ResetPurchaseAttempt();
+    }
+
+    private void OnCryptoChanged(string? currency)
+    {
+        _cryptoCurrency = currency;
+        ResetPurchaseAttempt();
+    }
+
+    private async Task PurchaseTokensAsync()
+    {
+        // La guarda va antes del primer await: un segundo clic llega con _purchaseBusy ya encendido.
+        if (!CanBuy) return;
+
+        _purchaseBusy = true;
+        _purchaseErrorKey = null;
+        _purchaseResult = null;
+        try
+        {
+            // El cuerpo se arma con la clave del intento: un reintento tras una caída manda el mismo
+            // cuerpo con la misma clave, y Billing devuelve lo ya hecho si la compra entró.
+            var request = new PurchaseTokensRequest
+            {
+                TokenTypeId    = _purchaseTokenTypeId!.Value,
+                Quantity       = _purchaseAmount,
+                PaymentMethod  = _payTab,
+                CreditCardId   = _payTab == TokenPaymentMethods.CreditCard ? _selectedCardId : null,
+                CryptoCurrency = _payTab == TokenPaymentMethods.Crypto ? _cryptoCurrency : null,
+                IdempotencyKey = _idempotencyKey
+            };
+
+            // Pagar con saldo va por la ruta con step-up: cada intento sale sin permiso, la API pide el
+            // código y la petición se repite UNA vez con un permiso nuevo (el de un intento anterior ya
+            // lo quemó el BizCenter, y quizá Billing). Tarjeta y cripto van directas.
+            var fromBalance = TokenPaymentMethods.IsBalance(_payTab);
+            var url = fromBalance ? $"{ApiBaseUrl}/tokens/purchase/balance" : $"{ApiBaseUrl}/tokens/purchase";
+            HttpRequestMessage Build() => new(HttpMethod.Post, url) { Content = JsonContent.Create(request) };
+
+            var resp = fromBalance
+                ? await StepUpHttp.SendAsync(Http, StepUpOperations.TokenPurchaseFromBalance, Build, _stepUp.RequireAsync)
+                : await Http.SendAsync(Build());
+
+            if (resp is null) return; // canceló el código: no se cobró nada y la clave sigue valiendo
+
+            using (resp)
+            {
+                var body = await ReadAsync<TokenPurchaseResultDto>(resp);
+                if (resp.IsSuccessStatusCode && body?.Success == true && body.Data is not null)
+                {
+                    _purchaseResult = body.Data;
+
+                    // Pendiente o a conciliar: no se sabe aún si cobró. Repetir con la misma clave
+                    // devuelve esta misma compra; una clave nueva podría cobrar otra vez.
+                    if (body.Data.Status is not (TokenPurchaseStatuses.Pending or TokenPurchaseStatuses.NeedsReconciliation))
+                        _idempotencyKey = NewKey();
+
+                    await ReloadAfterPurchaseAsync();
+                }
+                else
+                {
+                    var code = body?.ErrorCode;
+                    _purchaseErrorKey = TokenPurchaseMessages.ErrorKeyFor(code);
+                    if (!TokenPurchaseMessages.KeepsKey(code, resp.StatusCode)) _idempotencyKey = NewKey();
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // No se sabe si entró: se conserva la clave para que reintentar no cobre dos veces.
+            _purchaseErrorKey = "Tokens.Error.Unavailable";
+        }
+        finally
+        {
+            _purchaseBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// Retira una compra en cripto propia que no se va a pagar. Billing comprueba que es del miembro
+    /// y que sigue esperando la transferencia; si va bien, el cupo vuelve.
+    /// </summary>
+    private async Task CancelCryptoAsync()
+    {
+        if (_cancelBusy || _purchaseBusy || _purchaseResult is not { Status: TokenPurchaseStatuses.AwaitingCryptoConfirmation } pending)
+            return;
+
+        _cancelBusy = true;
+        _purchaseErrorKey = null;
+        try
+        {
+            using var resp = await Http.PostAsync(
+                $"{ApiBaseUrl}/tokens/purchases/{Uri.EscapeDataString(pending.PurchaseId)}/cancel", content: null);
+            var body = await ReadAsync<TokenPurchaseResultDto>(resp);
+            if (resp.IsSuccessStatusCode && body?.Success == true && body.Data is not null)
+            {
+                _purchaseResult = body.Data;
+                await Task.WhenAll(LoadCatalogAsync(), LoadFundsAsync());
+            }
+            else
+            {
+                _purchaseErrorKey = TokenPurchaseMessages.ErrorKeyFor(body?.ErrorCode);
+            }
+        }
+        catch (Exception)
+        {
+            _purchaseErrorKey = "Tokens.Error.Unavailable";
+        }
+        finally
+        {
+            _cancelBusy = false;
+        }
+    }
+
+    private Task ReloadAfterPurchaseAsync() =>
+        Task.WhenAll(LoadSummaryAsync(), LoadCatalogAsync(), LoadFundsAsync(), LoadPageAsync(1),
+                     DistributionEnabled ? LoadBalancesAsync() : Task.CompletedTask);
+
+    // ── Distribución ──────────────────────────────────────────────────────────
+
+    private void OnDistributeTypeChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _distributeTokenTypeId = int.TryParse(e.Value?.ToString(), out var id) ? id : null;
+        _distributeAmount = 1;
+    }
+
+    private void OnDistributeAmountChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e) =>
+        _distributeAmount = int.TryParse(e.Value?.ToString(), out var qty) ? qty : 1;
 
     private async Task OnMemberSearchInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
@@ -552,176 +711,120 @@
         if (_memberSearchInput.Length < 2) { _memberResults.Clear(); return; }
         try
         {
-            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<MemberResult>>>(
-                $"{ApiBaseUrl}/team/members?search={Uri.EscapeDataString(_memberSearchInput)}&pageSize=10");
-            _memberResults = resp?.Success == true && resp.Data is not null ? resp.Data : new();
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<PagedData<MemberResult>>>(
+                $"{ApiBaseUrl}/team/enrollment/my-team?search={Uri.EscapeDataString(_memberSearchInput)}&pageSize=10");
+            _memberResults = resp?.Data?.Items ?? new();
         }
-        catch { _memberResults.Clear(); }
+        catch (Exception)
+        {
+            _memberResults.Clear();
+            _distributeErrorKey = "Tokens.Error.LoadFailed";
+        }
     }
 
     private void SelectMember(MemberResult m)
     {
-        _selectedMember    = m;
+        _selectedMember = m;
         _memberSearchInput = string.Empty;
         _memberResults.Clear();
     }
 
     private void ClearMember()
     {
-        _selectedMember    = null;
+        _selectedMember = null;
         _memberSearchInput = string.Empty;
         _memberResults.Clear();
     }
 
-    private void SelectPurchaseType(TokenType tt)
-    {
-        _purchaseTokenTypeId   = tt.Id;
-        _purchaseTokenTypeName = tt.Name;
-    }
-
-    private void SelectDistributeType(TokenType tt)
-    {
-        _distributeTokenTypeId   = tt.Id;
-        _distributeTokenTypeName = tt.Name;
-    }
-
-    private async Task LoadSummaryAsync()
-    {
-        _summaryLoading = true;
-        try
-        {
-            var resp = await Http.GetFromJsonAsync<ApiWrapper<TokenSummary>>($"{ApiBaseUrl}/tokens/summary");
-            if (resp?.Success == true && resp.Data is not null)
-            {
-                _totalTokens    = resp.Data.TotalTokens;
-                _totalUsed      = resp.Data.TotalUsed;
-                _totalAvailable = resp.Data.TotalAvailable;
-            }
-        }
-        catch { /* silently degrade */ }
-        finally { _summaryLoading = false; }
-    }
-
-    private async Task LoadBalancesAsync()
-    {
-        _balanceLoading = true;
-        try
-        {
-            var resp = await Http.GetFromJsonAsync<ApiWrapper<BalancesDto>>($"{ApiBaseUrl}/wallet/balances");
-            if (resp?.Success == true && resp.Data is not null)
-            {
-                _commissionBalance = resp.Data.CommissionBalance;
-                _eWalletBalance    = resp.Data.EWalletBalance;
-            }
-        }
-        catch { /* silently degrade */ }
-        finally { _balanceLoading = false; }
-    }
-
-    private async Task LoadCreditCardsAsync()
-    {
-        _cardsLoading = true;
-        try
-        {
-            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<CreditCard>>>($"{ApiBaseUrl}/billing/credit-cards");
-            if (resp?.Success == true && resp.Data is not null)
-                _creditCards = resp.Data;
-        }
-        catch { /* silently degrade */ }
-        finally { _cardsLoading = false; }
-    }
-
-    private async Task LoadTokenTypesAsync()
-    {
-        try
-        {
-            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<TokenType>>>($"{ApiBaseUrl}/tokens/types");
-            if (resp?.Success == true && resp.Data is not null)
-                _tokenTypes = resp.Data;
-        }
-        catch { /* silently degrade */ }
-    }
-
-    private async Task LoadPageAsync(int page)
-    {
-        _page = page; _isLoading = true; StateHasChanged();
-        try
-        {
-            var url = $"{ApiBaseUrl}/tokens?page={page}&pageSize={_pageSize}";
-            if (!string.IsNullOrWhiteSpace(_search)) url += $"&search={Uri.EscapeDataString(_search)}";
-            if (_from.HasValue) url += $"&from={_from.Value:yyyy-MM-dd}";
-            if (_to.HasValue)   url += $"&to={_to.Value:yyyy-MM-dd}";
-            var resp = await Http.GetFromJsonAsync<ApiWrapper<PagedData<TokenItem>>>(url);
-            if (resp?.Success == true && resp.Data is not null)
-            {
-                _items = resp.Data.Items;
-                _total = resp.Data.TotalCount;
-            }
-        }
-        catch { /* silently degrade */ }
-        finally { _isLoading = false; }
-    }
-
-    private async Task PurchaseTokensAsync()
-    {
-        if (_purchaseTokenTypeId is null) return;
-        try
-        {
-            var payload = new { TokenTypeId = _purchaseTokenTypeId, Amount = _purchaseAmount, PaymentMethod = _payTab, CreditCardId = _selectedCardId };
-            await Http.PostAsJsonAsync($"{ApiBaseUrl}/tokens/purchase", payload);
-            await Task.WhenAll(LoadSummaryAsync(), LoadPageAsync(1));
-        }
-        catch { /* silently degrade */ }
-    }
-
     private async Task DistributeTokensAsync()
     {
-        if (_distributeTokenTypeId is null || _selectedMember is null) return;
+        if (_distributeBusy || _distributeTokenTypeId is null || _selectedMember is null) return;
+
+        _distributeBusy = true;
+        _distributeErrorKey = null;
+        _distributeDone = false;
         try
         {
-            var payload = new { TokenTypeId = _distributeTokenTypeId, Amount = _distributeAmount, TargetMemberId = _selectedMember.Id };
-            await Http.PostAsJsonAsync($"{ApiBaseUrl}/tokens/distribute", payload);
-            ClearMember();
-            await Task.WhenAll(LoadSummaryAsync(), LoadPageAsync(1));
+            var payload = new { TokenTypeId = _distributeTokenTypeId.Value, RecipientMemberId = _selectedMember.MemberId, Quantity = _distributeAmount };
+            using var resp = await Http.PostAsJsonAsync($"{ApiBaseUrl}/tokens/distribute", payload);
+            var body = await ReadAsync<object>(resp);
+
+            if (resp.IsSuccessStatusCode && body?.Success == true)
+            {
+                _distributeDone = true;
+                ClearMember();
+                _distributeTokenTypeId = null;
+                _distributeAmount = 1;
+                await Task.WhenAll(LoadSummaryAsync(), LoadBalancesAsync(), LoadPageAsync(1));
+            }
+            else
+            {
+                _distributeErrorKey = TokenPurchaseMessages.ErrorKeyFor(body?.ErrorCode);
+            }
         }
-        catch { /* silently degrade */ }
+        catch (Exception)
+        {
+            _distributeErrorKey = "Tokens.Error.Generic";
+        }
+        finally
+        {
+            _distributeBusy = false;
+        }
     }
 
-    private class ApiWrapper<T> { public bool Success { get; set; } public T? Data { get; set; } }
-    private class PagedData<T>  { public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
-    private class TokenSummary  { public int TotalTokens { get; set; } public int TotalUsed { get; set; } public int TotalAvailable { get; set; } }
-    private class BalancesDto   { public decimal CommissionBalance { get; set; } public decimal EWalletBalance { get; set; } }
-
-    private class TokenType
+    private async Task CopyAsync(string code)
     {
-        public string Id   { get; set; } = string.Empty;
-        public string Name { get; set; } = string.Empty;
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", code);
+            _copiedCode = code;
+        }
+        catch (JSException)
+        {
+            _copiedCode = null;
+        }
     }
 
-    private class CreditCard
+    private static async Task<ApiWrapper<T>?> ReadAsync<T>(HttpResponseMessage resp)
     {
-        public string Id            { get; set; } = string.Empty;
-        public string LastFour      { get; set; } = string.Empty;
-        public string HolderName    { get; set; } = string.Empty;
-        public string ExpiryDisplay { get; set; } = string.Empty;
+        try { return await resp.Content.ReadFromJsonAsync<ApiWrapper<T>>(); }
+        catch { return null; }
     }
 
-    private class MemberResult
+    // Contratos locales de lo que no está en SharedKernel (historial, tarjetas, saldos, equipo).
+    private sealed class ApiWrapper<T> { public bool Success { get; set; } public T? Data { get; set; } public string? ErrorCode { get; set; } }
+    private sealed class PagedData<T> { public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
+
+    private sealed class CardItem
     {
-        public string Id       { get; set; } = string.Empty;
+        public string Id { get; set; } = string.Empty;
+        public string Last4 { get; set; } = string.Empty;
+        public string CardBrand { get; set; } = string.Empty;
+        public int ExpiryMonth { get; set; }
+        public int ExpiryYear { get; set; }
+        public bool IsExpired { get; set; }
+    }
+
+    private sealed class BalanceItem
+    {
+        public int TokenTypeId { get; set; }
+        public string TokenTypeName { get; set; } = string.Empty;
+        public int Balance { get; set; }
+    }
+
+    private sealed class MemberResult
+    {
+        public string MemberId { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
     }
 
-    private class TokenItem
+    private sealed class TokenItem
     {
-        public string    TokenTypeName    { get; set; } = string.Empty;
-        public string?   TokenCode        { get; set; }
-        public string?   OwnerName        { get; set; }
-        public string?   OwnerAvatarUrl   { get; set; }
-        public string?   UsedByName       { get; set; }
-        public string?   UsedByAvatarUrl  { get; set; }
-        public int       DistributedCount { get; set; }
-        public DateTime  OccurredAt       { get; set; }
-        public DateTime? UsedAt           { get; set; }
+        public string TokenTypeName { get; set; } = string.Empty;
+        public string TransactionType { get; set; } = string.Empty;
+        public string? TokenCode { get; set; }
+        public bool IsUsed { get; set; }
+        public string? UsedByMemberName { get; set; }
+        public DateTime OccurredAt { get; set; }
     }
 }

@@ -918,7 +918,7 @@
   <data name="Tokens.TotalTokens" xml:space="preserve"><value>Tokens Gesamt</value></data>
   <data name="Tokens.TotalUsed" xml:space="preserve"><value>Verwendet Gesamt</value></data>
   <data name="Tokens.TotalAvailable" xml:space="preserve"><value>Verfügbar Gesamt</value></data>
-  <data name="Tokens.PurchaseNote" xml:space="preserve"><value>Hinweis: Tokens können zur Bezahlung von Anmeldungen, Biz Center-Gebühren und Travel Advantage™ verwendet werden. Nach dem Kauf können Sie Tokens an Ihr Team verteilen. Token-Käufe sind auf 10 pro Monat begrenzt und nicht erstattbar.</value></data>
+  <data name="Tokens.PurchaseNote" xml:space="preserve"><value>Hinweis: Tokens können zur Bezahlung von Anmeldungen, Biz Center-Gebühren und Travel Advantage™ verwendet werden. Nach dem Kauf können Sie Tokens an Ihr Team verteilen. Token-Käufe sind auf 50 pro Monat begrenzt und nicht erstattbar.</value></data>
   <data name="Tokens.Amount" xml:space="preserve"><value>Menge:</value></data>
   <data name="Tokens.TokensSuffix" xml:space="preserve"><value>Tokens</value></data>
   <data name="Tokens.TokenType" xml:space="preserve"><value>Token-Typ</value></data>
@@ -932,7 +932,6 @@
   <data name="Tokens.CreditCard" xml:space="preserve"><value>Kreditkarte</value></data>
   <data name="Tokens.AddNewCard" xml:space="preserve"><value>Neue Karte Hinzufügen</value></data>
   <data name="Tokens.NoCreditCards" xml:space="preserve"><value>Keine Kreditkarten hinterlegt.</value></data>
-  <data name="Tokens.PoweredByNowPayments" xml:space="preserve"><value>Bereitgestellt von NowPayments</value></data>
   <data name="Tokens.ColDate" xml:space="preserve"><value>Datum</value></data>
   <data name="Tokens.ColOwner" xml:space="preserve"><value>Besitzer</value></data>
   <data name="Tokens.ColTokenCode" xml:space="preserve"><value>Token-Code</value></data>
@@ -1360,4 +1359,47 @@
   <data name="TwoFactor.Error.Locked" xml:space="preserve"><value>Es wurden zu viele falsche Codes eingegeben. Zu Ihrem Schutz ist die Überprüfung für bis zu 24 Stunden gesperrt. Wenn Sie das nicht waren, ändern Sie Ihr Passwort.</value></data>
   <data name="StepUp.Unavailable" xml:space="preserve"><value>Die Code-Bestätigung ist in dieser App derzeit nicht verfügbar, daher kann die Auszahlungsmethode hier nicht geändert werden. Nutzen Sie das Webportal.</value></data>
   <data name="Commissions.FrequencySavedWalletKept" xml:space="preserve"><value>Auszahlungshäufigkeit gespeichert; die Auszahlungsmethode wurde nicht geändert.</value></data>
+  <data name="Tokens.MonthlyRemaining" xml:space="preserve"><value>Sie können diesen Monat noch {0} Token kaufen.</value></data>
+  <data name="Tokens.UnitPrice" xml:space="preserve"><value>Preis pro Token: {0}</value></data>
+  <data name="Tokens.TotalPrice" xml:space="preserve"><value>Gesamt: {0}</value></data>
+  <data name="Tokens.NoPurchasableTypes" xml:space="preserve"><value>Derzeit können keine Token-Typen gekauft werden.</value></data>
+  <data name="Tokens.CryptoCurrency" xml:space="preserve"><value>Währung</value></data>
+  <data name="Tokens.CryptoNote" xml:space="preserve"><value>Krypto-Zahlungen werden manuell bestätigt. Ihre Token werden ausgegeben, sobald unser Team die Überweisung geprüft hat.</value></data>
+  <data name="Tokens.PurchaseDone" xml:space="preserve"><value>{0} Token wurden Ihrem Konto gutgeschrieben.</value></data>
+  <data name="Tokens.PurchaseCryptoPending" xml:space="preserve"><value>Bestellung {0} wartet auf Ihre Überweisung von {1} in {2}. Ihre Token werden ausgegeben, sobald wir sie bestätigt haben.</value></data>
+  <data name="Tokens.DistributeDone" xml:space="preserve"><value>Token gesendet.</value></data>
+  <data name="Tokens.ColTransaction" xml:space="preserve"><value>Vorgang</value></data>
+  <data name="Tokens.StatusUsed" xml:space="preserve"><value>Verwendet</value></data>
+  <data name="Tokens.Copy" xml:space="preserve"><value>Kopieren</value></data>
+  <data name="Tokens.ExternalShareNote" xml:space="preserve"><value>Um jemandem außerhalb Ihres Teams einen Token zu geben, kopieren Sie einen verfügbaren Code und teilen Sie ihn: Er wird bei der Anmeldung eingegeben.</value></data>
+  <data name="Tokens.Error.LoadFailed" xml:space="preserve"><value>Diese Informationen konnten nicht geladen werden. Laden Sie die Seite neu, um es erneut zu versuchen.</value></data>
+  <data name="Tokens.Error.Generic" xml:space="preserve"><value>Der Vorgang konnte nicht abgeschlossen werden.</value></data>
+  <data name="Tokens.Error.MonthlyLimit" xml:space="preserve"><value>Sie haben das Limit von 50 Token pro Monat erreicht.</value></data>
+  <data name="Tokens.Error.InsufficientCommissions" xml:space="preserve"><value>Ihr Provisionsguthaben reicht für diesen Kauf nicht aus.</value></data>
+  <data name="Tokens.Error.InsufficientEWallet" xml:space="preserve"><value>Ihr eWallet-Guthaben reicht für diesen Kauf nicht aus.</value></data>
+  <data name="Tokens.Error.NotPurchasable" xml:space="preserve"><value>Dieser Token-Typ kann nicht gekauft werden.</value></data>
+  <data name="Tokens.Error.Card" xml:space="preserve"><value>Diese Karte kann nicht verwendet werden. Prüfen Sie sie in Ihren Zahlungseinstellungen.</value></data>
+  <data name="Tokens.Error.CardDeclined" xml:space="preserve"><value>Die Kartenzahlung wurde abgelehnt.</value></data>
+  <data name="Tokens.Error.InProgress" xml:space="preserve"><value>Ein Kauf wird bereits verarbeitet. Warten Sie einen Moment und versuchen Sie es erneut.</value></data>
+  <data name="Tokens.Error.Impersonation" xml:space="preserve"><value>Käufe sind nicht erlaubt, während Sie ein Konto im Namen einer anderen Person ansehen.</value></data>
+  <data name="Tokens.Error.MemberInactive" xml:space="preserve"><value>Ihr Konto muss aktiv sein, um Token zu kaufen.</value></data>
+  <data name="Tokens.Error.Unavailable" xml:space="preserve"><value>Der Zahlungsdienst ist nicht erreichbar. Versuchen Sie es erneut – Sie werden nicht doppelt belastet.</value></data>
+  <data name="Tokens.Error.NotEnoughTokens" xml:space="preserve"><value>Sie haben nicht genügend verfügbare Token dieses Typs.</value></data>
+  <data name="Tokens.Error.Recipient" xml:space="preserve"><value>Der Empfänger muss Mitglied Ihres Enrollment-Teams sein.</value></data>
+  <data name="Tokens.Error.NoEWallet" xml:space="preserve"><value>Sie haben kein eWallet-Konto zum Bezahlen.</value></data>
+  <data name="Tokens.Error.EWalletDeclined" xml:space="preserve"><value>Die eWallet-Belastung wurde abgelehnt.</value></data>
+  <data name="Tokens.Error.NeedsReview" xml:space="preserve"><value>Wir konnten die eWallet-Belastung nicht bestätigen. Unser Team prüft sie, und Ihre Token werden ausgegeben, falls sie erfolgt ist. Bitte nicht erneut versuchen.</value></data>
+  <data name="Tokens.CryptoAmountDue" xml:space="preserve"><value>Fälliger Betrag: {0}, zahlbar in {1}.</value></data>
+  <data name="Tokens.CryptoAddress" xml:space="preserve"><value>Einzahlungsadresse</value></data>
+  <data name="Tokens.CryptoNetwork" xml:space="preserve"><value>Netzwerk: {0}</value></data>
+  <data name="Tokens.CryptoUnavailable" xml:space="preserve"><value>Krypto-Zahlungen sind derzeit nicht verfügbar.</value></data>
+  <data name="StepUp.WhyTokenPurchase" xml:space="preserve"><value>Geben Sie zu Ihrer Sicherheit einen Bestätigungscode ein, bevor Sie Token mit Ihrem Guthaben bezahlen.</value></data>
+  <data name="Tokens.Error.CardDisabled" xml:space="preserve"><value>Kartenzahlung ist derzeit nicht verfügbar.</value></data>
+  <data name="Tokens.Error.NotAwaitingCrypto" xml:space="preserve"><value>Dieser Kauf kann nicht mehr storniert werden: Er wurde bereits bestätigt, storniert oder ist abgelaufen.</value></data>
+  <data name="Tokens.Error.ContactSupport" xml:space="preserve"><value>Der Zahlungsdienst antwortet nicht wie erwartet. Wenden Sie sich an den Support, wenn das weiterhin passiert.</value></data>
+  <data name="Tokens.Error.ImpersonationDistribute" xml:space="preserve"><value>Token können nicht verteilt werden, während Sie ein Konto im Namen einer anderen Person ansehen.</value></data>
+  <data name="Tokens.CancelPurchase" xml:space="preserve"><value>Diesen Kauf stornieren</value></data>
+  <data name="Tokens.Status.Cancelled" xml:space="preserve"><value>Kauf storniert. Diese Token stehen wieder in Ihrem Monatskontingent zur Verfügung.</value></data>
+  <data name="Tokens.Status.Rejected" xml:space="preserve"><value>Dieser Krypto-Kauf wurde abgelehnt: Wir konnten die Überweisung nicht prüfen. Es wurden keine Token ausgegeben.</value></data>
+  <data name="Tokens.Status.Expired" xml:space="preserve"><value>Dieser Krypto-Kauf ist ohne Zahlung abgelaufen. Es wurden keine Token ausgegeben.</value></data>
 </root>
