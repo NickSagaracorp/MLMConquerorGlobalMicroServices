@@ -46,6 +46,9 @@
          hosts ya llaman AddStackExchangeRedisCache, así que esto ya venía como dependencia
          transitiva en todos: declararlo aquí no añade nada a ningún despliegue. -->
     <PackageReference Include="StackExchange.Redis" Version="2.7.27" />
+    <!-- StepUpGrantValidator: valida el permiso de step-up con la llave pública. Misma versión
+         que usa Authn para firmarlo. -->
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.22.0" />
   </ItemGroup>
 
   <ItemGroup>

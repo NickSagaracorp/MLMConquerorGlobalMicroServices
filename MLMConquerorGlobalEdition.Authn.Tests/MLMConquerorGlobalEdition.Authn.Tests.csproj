@@ -41,6 +41,7 @@
     <ProjectReference Include="..\MLMConquerorGlobalEdition.Domain\MLMConquerorGlobalEdition.Domain.csproj" />
     <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel\MLMConquerorGlobalEdition.SharedKernel.csproj" />
     <ProjectReference Include="..\MLMConquerorGlobalEdition.Repository\MLMConquerorGlobalEdition.Repository.csproj" />
+    <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel.Server\MLMConquerorGlobalEdition.SharedKernel.Server.csproj" />
   </ItemGroup>
 
 </Project>

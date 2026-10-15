@@ -33,6 +33,16 @@ public static class AuthnServiceCollectionExtensions
     }
 
     /// <summary>
+    /// Registra el firmante del permiso de step-up. Solo en el anfitrión que verifica códigos: es
+    /// el único que puede afirmar que el usuario acaba de demostrar el segundo factor.
+    /// </summary>
+    public static IServiceCollection AddAuthnStepUpGrants(this IServiceCollection services)
+    {
+        services.AddScoped<IStepUpGrantService, StepUpGrantService>();
+        return services;
+    }
+
+    /// <summary>
     /// Registra el enrolamiento TOTP. Depende de <c>UserManager&lt;ApplicationUser&gt;</c>,
     /// <c>IConfiguration</c> y <c>IDateTimeProvider</c>, que cada host ya registra por su cuenta.
     /// </summary>
