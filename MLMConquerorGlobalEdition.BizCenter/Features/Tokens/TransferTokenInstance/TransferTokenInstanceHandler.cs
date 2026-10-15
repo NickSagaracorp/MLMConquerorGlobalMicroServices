@@ -4,9 +4,10 @@ using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.BizCenter.Services;
 using MLMConquerorGlobalEdition.Domain.Entities.Tokens;
 using MLMConquerorGlobalEdition.Domain.Enums;
-using MLMConquerorGlobalEdition.Domain.Exceptions;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Funds;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Billing;
 using ICacheService          = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
 using IPushNotificationService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IPushNotificationService;
 
@@ -16,15 +17,19 @@ namespace MLMConquerorGlobalEdition.BizCenter.Features.Tokens.TransferTokenInsta
 /// Transfers a SINGLE token instance (identified by its TokenCode) from the current owner
 /// to a recipient who must be in the current owner's enrollment subtree.
 ///
-/// Differs from <see cref="DistributeToken.DistributeTokenHandler"/> (which distributes by
-/// quantity and mints fresh codes for the recipient) — here the same code travels to the
-/// recipient, preserving end-to-end chain-of-custody for fraud audits.
+/// Same rules as <see cref="DistributeToken.DistributeTokenHandler"/> (which moves N codes of a type
+/// at once, oldest first): the same code travels to the recipient, preserving end-to-end
+/// chain-of-custody for fraud audits.
 ///
 /// Effects on success:
 ///   • TokenTransaction(ReferenceId=code): MemberId ← recipient, PreviousOwnerMemberId ← sender, Status = Distributed
 ///   • New ledger TokenTransaction (no ReferenceId): TransactionType=Distributed, MemberId=sender, DistributedToMemberId=recipient
 ///   • TokenBalance: -1 sender, +1 recipient (caches updated to keep BizCenter widgets accurate)
 ///   • Push notification to recipient
+///
+/// The instance is read and moved under the funds lock of both members
+/// (<see cref="IMemberFundsGate"/>, see DistributeTokenHandler): a transfer and a distribution of
+/// the same owner cannot both move the same code. Busy → <see cref="TokenPurchaseErrors.Busy"/>.
 /// </summary>
 public class TransferTokenInstanceHandler : IRequestHandler<TransferTokenInstanceCommand, Result<TransferTokenInstanceResponse>>
 {
@@ -34,6 +39,7 @@ public class TransferTokenInstanceHandler : IRequestHandler<TransferTokenInstanc
     private readonly ICacheService _cache;
     private readonly IPushNotificationService _push;
     private readonly ILogger<TransferTokenInstanceHandler> _logger;
+    private readonly IMemberFundsGate _gate;
 
     public TransferTokenInstanceHandler(
         AppDbContext db,
@@ -41,7 +47,8 @@ public class TransferTokenInstanceHandler : IRequestHandler<TransferTokenInstanc
         IDateTimeProvider dateTime,
         ICacheService cache,
         IPushNotificationService push,
-        ILogger<TransferTokenInstanceHandler> logger)
+        ILogger<TransferTokenInstanceHandler> logger,
+        IMemberFundsGate gate)
     {
         _db          = db;
         _currentUser = currentUser;
@@ -49,43 +56,36 @@ public class TransferTokenInstanceHandler : IRequestHandler<TransferTokenInstanc
         _cache       = cache;
         _push        = push;
         _logger      = logger;
+        _gate        = gate;
     }
 
     public async Task<Result<TransferTokenInstanceResponse>> Handle(
         TransferTokenInstanceCommand command, CancellationToken ct)
     {
         var senderId  = _currentUser.MemberId;
-        var recipient = command.RecipientMemberId.Trim();
+        var requested = command.RecipientMemberId.Trim();
         var code      = command.TokenCode.Trim().ToUpperInvariant();
-        var now       = _dateTime.UtcNow;
+        var now       = _dateTime.Now;
 
-        if (string.Equals(senderId, recipient, StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(senderId, requested, StringComparison.OrdinalIgnoreCase))
             return Result<TransferTokenInstanceResponse>.Failure(
                 "INVALID_RECIPIENT", "Cannot transfer a token to yourself.");
 
-        // Recipient must exist as an active member.
-        var recipientExists = await _db.MemberProfiles
-            .AnyAsync(m => m.MemberId == recipient, ct);
-        if (!recipientExists)
+        // Recipient must exist; keep the id as stored (it names the funds lock).
+        var recipient = await _db.MemberProfiles.AsNoTracking()
+            .Where(m => m.MemberId == requested)
+            .Select(m => m.MemberId)
+            .FirstOrDefaultAsync(ct);
+        if (recipient is null)
             return Result<TransferTokenInstanceResponse>.Failure(
                 "RECIPIENT_NOT_FOUND", "Recipient member not found.");
 
         // Recipient must be in the sender's enrollment subtree.
-        // HierarchyPath of every descendant starts with the sender's path.
-        var senderNode = await _db.GenealogyTree
-            .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.MemberId == senderId, ct);
-        if (senderNode is null)
+        var inTeam = await TokenCustody.IsInEnrollmentTeamAsync(_db, senderId, recipient, ct);
+        if (inTeam is null)
             return Result<TransferTokenInstanceResponse>.Failure(
                 "SENDER_NOT_IN_TREE", "Sender's enrollment node not found.");
-
-        var senderPath  = senderNode.HierarchyPath;
-        var inDownline  = await _db.GenealogyTree
-            .AsNoTracking()
-            .AnyAsync(g => g.MemberId == recipient
-                        && g.MemberId != senderId
-                        && g.HierarchyPath.StartsWith(senderPath), ct);
-        if (!inDownline)
+        if (inTeam == false)
         {
             _logger.LogInformation(
                 "TransferToken: recipient '{Recipient}' is not in sender '{Sender}' subtree",
@@ -94,12 +94,74 @@ public class TransferTokenInstanceHandler : IRequestHandler<TransferTokenInstanc
                 "RECIPIENT_NOT_IN_DOWNLINE", "Recipient must be a member of your enrollment team.");
         }
 
-        // Locate the redeemable instance.
-        var instance = await _db.TokenTransactions
-            .FirstOrDefaultAsync(t => t.ReferenceId == code, ct);
+        var tx = await TokenCustody.EnterBothAsync(_gate, senderId, recipient, ct);
+        if (tx is null)
+            return Result<TransferTokenInstanceResponse>.Failure(TokenPurchaseErrors.Busy,
+                "Another token operation is in progress. Please try again in a moment.");
+
+        await using (tx)
+        {
+            // Read under the lock: whatever another operation committed while we waited is visible here.
+            var instance = await _db.TokenTransactions
+                .FirstOrDefaultAsync(t => t.ReferenceId == code, ct);
+            var failure = Check(instance, senderId, code, now);
+            if (failure is not null)
+            {
+                await tx.RollbackAsync(CancellationToken.None);
+                return failure;
+            }
+
+            instance!.PreviousOwnerMemberId = instance.MemberId;
+            instance.MemberId               = recipient;
+            instance.Status                 = TokenInstanceStatus.Distributed;
+
+            // Ledger row capturing the transfer event (no ReferenceId so it doesn't appear as a redeemable instance).
+            _db.TokenTransactions.Add(new TokenTransaction
+            {
+                MemberId              = senderId,
+                TokenTypeId           = instance.TokenTypeId,
+                TransactionType       = TokenTransactionType.Distributed,
+                Quantity              = 1,
+                DistributedToMemberId = recipient,
+                ReferenceId           = null,
+                OriginalOwnerMemberId = instance.OriginalOwnerMemberId,
+                PreviousOwnerMemberId = senderId,
+                Status                = TokenInstanceStatus.Distributed,
+                CreatedBy             = senderId,
+                CreationDate          = now,
+                Notes                 = string.IsNullOrWhiteSpace(command.Notes)
+                                            ? $"Token {code} transferred to {recipient}"
+                                            : command.Notes
+            });
+
+            await TokenCustody.MoveBalanceAsync(_db, senderId, recipient, instance.TokenTypeId, 1,
+                now, _currentUser.UserId, ct);
+
+            await _db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+        }
+
+        // Best-effort cache invalidation + push notification.
+        await Task.WhenAll(
+            _cache.RemoveAsync(CacheKeys.MemberTokenBalances(senderId), ct),
+            _cache.RemoveAsync(CacheKeys.MemberTokenBalances(recipient), ct));
+
+        _ = _push.SendAsync(
+            recipient,
+            NotificationEvents.TokenReceived,
+            "Token Received",
+            "You have received a token from your sponsor.",
+            ct);
+
+        return Result<TransferTokenInstanceResponse>.Success(
+            new TransferTokenInstanceResponse(code, recipient, now));
+    }
+
+    private Result<TransferTokenInstanceResponse>? Check(
+        TokenTransaction? instance, string senderId, string code, DateTime now)
+    {
         if (instance is null)
-            return Result<TransferTokenInstanceResponse>.Failure(
-                "TOKEN_NOT_FOUND", "Token code not found.");
+            return Result<TransferTokenInstanceResponse>.Failure("TOKEN_NOT_FOUND", "Token code not found.");
 
         // Sender must be the current owner.
         if (!string.Equals(instance.MemberId, senderId, StringComparison.OrdinalIgnoreCase))
@@ -111,79 +173,12 @@ public class TransferTokenInstanceHandler : IRequestHandler<TransferTokenInstanc
                 "TOKEN_NOT_OWNED", "You are not the current owner of this token.");
         }
 
-        // Status must allow transfer.
-        if (instance.Status is not (TokenInstanceStatus.Issued or TokenInstanceStatus.Distributed))
+        // Status and expiry must allow transfer (same rule as distribution).
+        if (instance.Status is not (TokenInstanceStatus.Issued or TokenInstanceStatus.Distributed)
+            || (instance.ExpiresAt is not null && instance.ExpiresAt <= now))
             return Result<TransferTokenInstanceResponse>.Failure(
                 "TOKEN_NOT_TRANSFERABLE", "This token can no longer be transferred.");
 
-        // Mutate the instance: ownership shifts to recipient.
-        instance.PreviousOwnerMemberId = instance.MemberId;
-        instance.MemberId              = recipient;
-        instance.Status                = TokenInstanceStatus.Distributed;
-
-        // Ledger row capturing the transfer event (no ReferenceId so it doesn't appear as a redeemable instance).
-        await _db.TokenTransactions.AddAsync(new TokenTransaction
-        {
-            MemberId              = senderId,
-            TokenTypeId           = instance.TokenTypeId,
-            TransactionType       = TokenTransactionType.Distributed,
-            Quantity              = 1,
-            DistributedToMemberId = recipient,
-            ReferenceId           = null,
-            OriginalOwnerMemberId = instance.OriginalOwnerMemberId,
-            PreviousOwnerMemberId = senderId,
-            Status                = TokenInstanceStatus.Distributed,
-            CreatedBy             = senderId,
-            CreationDate          = now,
-            Notes                 = string.IsNullOrWhiteSpace(command.Notes)
-                                        ? $"Token {code} transferred to {recipient}"
-                                        : command.Notes
-        }, ct);
-
-        // Aggregate balance caches: decrement sender, increment recipient.
-        var senderBalance = await _db.TokenBalances
-            .FirstOrDefaultAsync(tb => tb.MemberId == senderId && tb.TokenTypeId == instance.TokenTypeId, ct);
-        if (senderBalance is not null && senderBalance.Balance > 0)
-        {
-            senderBalance.Balance       -= 1;
-            senderBalance.LastUpdateDate = now;
-            senderBalance.LastUpdateBy   = _currentUser.UserId;
-        }
-
-        var recipientBalance = await _db.TokenBalances
-            .FirstOrDefaultAsync(tb => tb.MemberId == recipient && tb.TokenTypeId == instance.TokenTypeId, ct);
-        if (recipientBalance is null)
-        {
-            recipientBalance = new TokenBalance
-            {
-                Id           = Guid.NewGuid().ToString(),
-                MemberId     = recipient,
-                TokenTypeId  = instance.TokenTypeId,
-                Balance      = 0,
-                CreatedBy    = _currentUser.UserId,
-                CreationDate = now
-            };
-            _db.TokenBalances.Add(recipientBalance);
-        }
-        recipientBalance.Add(1);
-        recipientBalance.LastUpdateDate = now;
-        recipientBalance.LastUpdateBy   = _currentUser.UserId;
-
-        await _db.SaveChangesAsync(ct);
-
-        // Best-effort cache invalidation + push notification.
-        await Task.WhenAll(
-            _cache.RemoveAsync(CacheKeys.MemberTokenBalances(senderId), ct),
-            _cache.RemoveAsync(CacheKeys.MemberTokenBalances(recipient), ct));
-
-        _ = _push.SendAsync(
-            recipient,
-            NotificationEvents.TokenReceived,
-            "Token Received",
-            $"You have received a token from your sponsor.",
-            ct);
-
-        return Result<TransferTokenInstanceResponse>.Success(
-            new TransferTokenInstanceResponse(code, recipient, now));
+        return null;
     }
 }

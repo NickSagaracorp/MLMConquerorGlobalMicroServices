@@ -2,13 +2,17 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using MLMConquerorGlobalEdition.Repository.Context;
 
-namespace MLMConquerorGlobalEdition.Billing.Services;
+namespace MLMConquerorGlobalEdition.Repository.Services.Funds;
 
 /// <summary>
-/// Serializa todo lo que mueve el dinero de UN miembro desde Billing: comprar tokens (con comisiones
-/// o eWallet) y reservar sus comisiones para un pago. Lo de miembros distintos no se espera.
+/// Serializa todo lo que mueve el dinero o los tokens de UN miembro: comprar tokens (con comisiones
+/// o eWallet) y reservar sus comisiones para un pago en Billing, y distribuir o transferir códigos de
+/// token en el BizCenter. Lo de miembros distintos no se espera.
 /// </summary>
 /// <remarks>
+/// Vive en Repository porque lo usan varios servicios (Billing, AdminAPI vía AddPayoutServices y el
+/// BizCenter) y el nombre del recurso tiene que ser uno solo para que se excluyan entre sí.
+///
 /// Sin un candado compartido, un pago (PayoutOrchestrator o el lote CSV) podía leer las comisiones
 /// pendientes, la compra calcular el saldo gastable con esas mismas comisiones aún sin reservar y
 /// debitar, y el pago reservarlas después: el miembro cobraba dos veces el mismo dinero.

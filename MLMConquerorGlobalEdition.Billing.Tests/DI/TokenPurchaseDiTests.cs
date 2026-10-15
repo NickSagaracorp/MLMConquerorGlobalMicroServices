@@ -15,6 +15,7 @@ using MLMConquerorGlobalEdition.Billing.Services.Routing;
 using MLMConquerorGlobalEdition.Billing.Services.Tokens;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Services.Crypto;
+using MLMConquerorGlobalEdition.Repository.Services.Funds;
 using MLMConquerorGlobalEdition.SharedKernel.Server.Security;
 
 namespace MLMConquerorGlobalEdition.Billing.Tests.DI;

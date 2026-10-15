@@ -79,6 +79,10 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 // DownlineGuard: la regla sigue siendo CallerIdentity.CanActOnMember, con la descendencia del que
 // llama como sujeto añadido para las pantallas que recorren el árbol hacia abajo.
 builder.Services.AddScoped<IDownlineGuard, DownlineGuard>();
+// Candado de fondos por miembro (sp_getapplock), el mismo de Billing: distribuir y transferir tokens
+// no se cruzan entre sí ni con la emisión de una compra.
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Funds.IMemberFundsGate,
+                           MLMConquerorGlobalEdition.Repository.Services.Funds.SqlServerMemberFundsGate>();
 // Registers all rank services in one call:
 //   IEnrollmentTeamPointsService, IPersonalCustomerPointsService,
 //   IRankQualificationService, IRankComputationService.

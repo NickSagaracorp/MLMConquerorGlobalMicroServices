@@ -1,8 +1,8 @@
 using FluentAssertions;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using MLMConquerorGlobalEdition.Billing.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Funds;
 
 namespace MLMConquerorGlobalEdition.Billing.Tests.Services;
 

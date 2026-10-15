@@ -171,6 +171,17 @@ public static class TokenPurchaseErrors
 }
 
 /// <summary>
+/// Códigos propios de distribuir o transferir tokens en el BizCenter. Los demás (destinatario, saldo,
+/// candado ocupado) son los de siempre: RECIPIENT_*, INSUFFICIENT_TOKEN_BALANCE y
+/// <see cref="TokenPurchaseErrors.Busy"/>.
+/// </summary>
+public static class TokenDistributionErrors
+{
+    /// <summary>Distribuir o transferir mueve tokens a otra persona: nunca suplantando (403).</summary>
+    public const string Impersonation = "IMPERSONATION_CANNOT_DISTRIBUTE";
+}
+
+/// <summary>
 /// Lo que manda la pantalla. NO lleva MemberId: el comprador sale del token en el BizCenter y otra
 /// vez en Billing. Un campo que no existe no se puede falsificar.
 /// </summary>

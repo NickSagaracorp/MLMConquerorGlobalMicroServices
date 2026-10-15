@@ -8287,3 +8287,16 @@ La Tarea 13 (cliente de Billing y endpoints del BizCenter) ya está en la rama; 
 - Tras un `502 BILLING_UNAVAILABLE` en la **ruta de saldo**, el reintento necesita un **permiso de step-up nuevo**: el anterior ya lo quemó el filtro del BizCenter (y quizá Billing). La pantalla vuelve a pedir el código y reenvía **el mismo cuerpo con la misma `IdempotencyKey`**; si la compra llegó a hacerse, Billing devuelve la repetición sin quemar el permiso nuevo.
 - Con `BILLING_CONTRACT_ERROR` o `BILLING_AUTH_MISMATCH` **no** se conserva la clave ni se reintenta sola: son fallos de configuración entre servicios. No van en `TokenPurchaseMessages.KeepsKey`; se muestran con un texto de "contacta con soporte" (o `Tokens.Error.Generic`).
 - `STEP_UP_INVALID` en la ruta de saldo (permiso ya usado o caché caída) se trata como `STEP_UP_REQUIRED`: pedir un código nuevo y repetir con la misma clave.
+
+
+## Correcciones al ejecutar la Tarea 14 (2026-10-15)
+
+La Tarea 14 ya está en la rama; donde el código de arriba difiera, **manda el repositorio**.
+
+| # | Cambio | Dónde | Efecto en las tareas pendientes |
+|---|---|---|---|
+| C1 | El candado de fondos (`IMemberFundsGate`, `SqlServerMemberFundsGate`, `MemberFundsBusyException`, `MemberFundsLock`) pasa de Billing a `Repository/Services/Funds` (namespace `MLMConquerorGlobalEdition.Repository.Services.Funds`), sin cambiar su comportamiento. El BizCenter lo registra. | Repository, Billing, BizCenter | — |
+| C2 | Distribuir y transferir eligen y mueven los códigos **bajo el candado `member-funds:{id}` de los dos miembros**, tomados en orden ordinal y leyendo después de tomarlo: dos distribuciones a la vez no mueven el mismo código ni dejan saldo negativo, y no se cruzan con la emisión de una compra (que sube `TokenBalance` bajo el mismo candado). Ocupado → `PURCHASE_BUSY` (`TokenPurchaseErrors.Busy`) sin escribir nada. Sin migración: `TokenTransaction` no tiene RowVersion. | `DistributeTokenHandler`, `TransferTokenInstanceHandler`, `Features/Tokens/TokenCustody.cs` | Tarea 15 ya traduce `Busy` a "en curso". |
+| C3 | Transferir también usa hora de servidor (`Now`), rechaza un código vencido (`TOKEN_NOT_TRANSFERABLE`) y usa el id del destinatario tal como está guardado. `TokenTransaction` no tiene `LastUpdateDate/LastUpdateBy` (el bloque de arriba los asignaba). | `TransferTokenInstanceHandler` | — |
+| C4 | Ni distribuir ni transferir bajo suplantación: `403` con `data:null` y código `IMPERSONATION_CANNOT_DISTRIBUTE` (`TokenDistributionErrors.Impersonation`). | `TokensController`, SharedKernel | **Tarea 15:** añadir `TokenDistributionErrors.Impersonation` a `TokenPurchaseMessages.ErrorKeyFor` (texto propio de distribución, no el de compras). |
+| R | Pendiente fuera de esta tarea: canjear un token en el alta (`TokenRedemptionService`) no toma el candado ni comprueba el estado al guardar; un canje y una distribución simultáneos del mismo código podrían pisarse (el último en guardar gana). Cerrarlo pide un token de concurrencia en `TokenTransaction.Status` (migración) o el candado del dueño en SignupAPI. | SignupAPI | Decidir en la ronda de altas. |

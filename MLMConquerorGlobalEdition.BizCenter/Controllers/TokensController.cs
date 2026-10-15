@@ -61,10 +61,16 @@ public class TokensController : ControllerBase
         return Ok(ApiResponse<IEnumerable<TokenBalanceDto>>.Ok(result.Value!));
     }
 
-    /// <summary>POST /api/v1/bizcenter/tokens/distribute — distribute tokens to a downline member</summary>
+    /// <summary>
+    /// POST /api/v1/bizcenter/tokens/distribute — moves N of the caller's own codes (oldest first) to a
+    /// member of their enrollment team. Never while impersonating.
+    /// </summary>
     [HttpPost("distribute")]
     public async Task<IActionResult> DistributeToken([FromBody] DistributeTokenRequest request, CancellationToken ct)
     {
+        if (ImpersonationScope.IsImpersonating(User))
+            return DistributionImpersonationForbidden();
+
         var result = await _mediator.Send(new DistributeTokenCommand(request), ct);
         if (!result.IsSuccess)
             return BadRequest(ApiResponse<bool>.Fail(result.ErrorCode!, result.Error!));
@@ -79,6 +85,9 @@ public class TokensController : ControllerBase
     public async Task<IActionResult> TransferInstance(
         [FromBody] TransferTokenInstanceRequest request, CancellationToken ct)
     {
+        if (ImpersonationScope.IsImpersonating(User))
+            return DistributionImpersonationForbidden();
+
         var result = await _mediator.Send(
             new TransferTokenInstanceCommand(request.TokenCode, request.RecipientMemberId, request.Notes), ct);
 
@@ -165,6 +174,12 @@ public class TokensController : ControllerBase
     // Billing también lo rechaza; aquí se corta antes para no llamar en vano. En la ruta de saldo el
     // filtro de step-up ya quemó el permiso del BizCenter: bajo suplantación se pierde, y es correcto,
     // porque ese permiso no debía poder usarse para comprar.
+    // Distribuir o transferir da tokens a otra persona: igual que comprar, nunca suplantando (la
+    // pantalla ya lo apaga; esto es la puerta de verdad). Data null, como los 403 de compra.
+    private IActionResult DistributionImpersonationForbidden() =>
+        StatusCode(StatusCodes.Status403Forbidden, ApiResponse<object>.Fail(
+            TokenDistributionErrors.Impersonation, "Tokens cannot be distributed during impersonation.", HttpContext.TraceIdentifier));
+
     private IActionResult ImpersonationForbidden() =>
         StatusCode(StatusCodes.Status403Forbidden, ApiResponse<TokenPurchaseResultDto>.Fail(
             TokenPurchaseErrors.Impersonation, "Purchases are not allowed during impersonation.", HttpContext.TraceIdentifier));

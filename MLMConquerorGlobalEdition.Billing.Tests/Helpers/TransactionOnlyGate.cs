@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore.Storage;
-using MLMConquerorGlobalEdition.Billing.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Funds;
 
 namespace MLMConquerorGlobalEdition.Billing.Tests.Helpers;
 
