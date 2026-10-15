@@ -1386,6 +1386,10 @@
   <data name="Tokens.Error.Unavailable" xml:space="preserve"><value>Der Zahlungsdienst ist nicht erreichbar. Versuchen Sie es erneut – Sie werden nicht doppelt belastet.</value></data>
   <data name="Tokens.Error.NotEnoughTokens" xml:space="preserve"><value>Sie haben nicht genügend verfügbare Token dieses Typs.</value></data>
   <data name="Tokens.Error.Recipient" xml:space="preserve"><value>Der Empfänger muss Mitglied Ihres Enrollment-Teams sein.</value></data>
+  <data name="Tokens.Error.RecipientNotActive" xml:space="preserve"><value>Das Konto des Empfängers ist nicht aktiv, daher kann er keine Token erhalten.</value></data>
+  <data name="Tokens.Error.DistributionRepeated" xml:space="preserve"><value>Diese Verteilung wurde bereits gesendet. Prüfen Sie Ihr Guthaben, bevor Sie sie erneut senden.</value></data>
+  <data name="Tokens.Error.DistributionBusy" xml:space="preserve"><value>Ein anderer Token-Vorgang läuft gerade. Warten Sie einen Moment und versuchen Sie es erneut.</value></data>
+  <data name="Tokens.Error.DistributionUnavailable" xml:space="preserve"><value>Die Verteilung konnte nicht abgeschlossen werden. Versuchen Sie es erneut: Ihre Token werden nicht doppelt gesendet.</value></data>
   <data name="Tokens.Error.NoEWallet" xml:space="preserve"><value>Sie haben kein eWallet-Konto zum Bezahlen.</value></data>
   <data name="Tokens.Error.EWalletDeclined" xml:space="preserve"><value>Die eWallet-Belastung wurde abgelehnt.</value></data>
   <data name="Tokens.Error.NeedsReview" xml:space="preserve"><value>Wir konnten die eWallet-Belastung nicht bestätigen. Unser Team prüft sie, und Ihre Token werden ausgegeben, falls sie erfolgt ist. Bitte nicht erneut versuchen.</value></data>

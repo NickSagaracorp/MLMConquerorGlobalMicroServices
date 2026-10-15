@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Tokens;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Services.Funds;
@@ -15,23 +16,76 @@ internal static class TokenCustody
 {
     /// <summary>
     /// ¿Cuelga <paramref name="recipientId"/> del que envía en el árbol de inscripción (patrocinio)?
-    /// Se mira por <c>HierarchyPath</c>, que termina en barra: <c>/A/</c> no es prefijo de <c>/AB/</c>.
-    /// Null si el que envía no tiene nodo (falla cerrado: quien llama lo rechaza).
+    /// Se mira por <c>HierarchyPath</c>, que termina en barra (se normaliza si no): <c>/S/</c> no es
+    /// prefijo de <c>/S2/</c>. Si el que envía tuviera más de un nodo, manda el más reciente.
+    /// Devuelve el MemberId del que envía TAL COMO ESTÁ GUARDADO (el que viene del token puede diferir
+    /// en mayúsculas): es el que nombra su candado y el que deben usar las consultas y los asientos.
+    /// <c>SenderId</c> null si el que envía no tiene nodo (falla cerrado: quien llama lo rechaza).
     /// </summary>
-    public static async Task<bool?> IsInEnrollmentTeamAsync(
+    public static async Task<TeamCheck> IsInEnrollmentTeamAsync(
         AppDbContext db, string senderId, string recipientId, CancellationToken ct)
     {
-        var senderPath = await db.GenealogyTree.AsNoTracking()
+        var sender = await db.GenealogyTree.AsNoTracking()
             .Where(g => g.MemberId == senderId)
-            .Select(g => g.HierarchyPath)
+            .OrderByDescending(g => g.CreationDate)
+            .Select(g => new { g.MemberId, g.HierarchyPath })
             .FirstOrDefaultAsync(ct);
-        if (string.IsNullOrEmpty(senderPath))
-            return null;
+        if (sender is null || string.IsNullOrEmpty(sender.HierarchyPath))
+            return new TeamCheck(null, false);
 
-        return await db.GenealogyTree.AsNoTracking()
+        var senderPath = sender.HierarchyPath.EndsWith('/') ? sender.HierarchyPath : sender.HierarchyPath + "/";
+        var storedSender = sender.MemberId;
+
+        var inTeam = await db.GenealogyTree.AsNoTracking()
             .AnyAsync(g => g.MemberId == recipientId
-                        && g.MemberId != senderId
+                        && g.MemberId != storedSender
                         && g.HierarchyPath.StartsWith(senderPath), ct);
+        return new TeamCheck(storedSender, inTeam);
+    }
+
+    /// <summary>Resultado de <see cref="IsInEnrollmentTeamAsync"/>.</summary>
+    public readonly record struct TeamCheck(string? SenderId, bool InTeam);
+
+    /// <summary>
+    /// El destinatario tal como está guardado (su id nombra su candado y es el que escribe Billing; uno
+    /// escrito con otras mayúsculas sería otro recurso) y si su cuenta está activa. Null si no existe o
+    /// está borrado.
+    /// </summary>
+    public static async Task<Recipient?> FindRecipientAsync(AppDbContext db, string requested, CancellationToken ct)
+    {
+        var found = await db.MemberProfiles.AsNoTracking()
+            .Where(m => m.MemberId == requested && !m.IsDeleted)
+            .Select(m => new { m.MemberId, m.Status })
+            .FirstOrDefaultAsync(ct);
+        return found is null ? null : new Recipient(found.MemberId, found.Status == MemberAccountStatus.Active);
+    }
+
+    /// <summary>Resultado de <see cref="FindRecipientAsync"/>.</summary>
+    public sealed record Recipient(string MemberId, bool IsActive);
+
+    /// <summary>
+    /// Guarda y confirma la transacción del candado. Si el guardado choca con los tokens de
+    /// concurrencia de <see cref="TokenTransaction"/> (dueño y estado: otro proceso que no toma este
+    /// candado, como un canje en el alta con el dueño de antes, cambió un código entre la lectura y el
+    /// guardado), deshace, vacía el contexto y devuelve false: quien llama responde
+    /// <c>PURCHASE_BUSY</c>, que se puede repetir.
+    /// </summary>
+    public static async Task<bool> SaveAndCommitAsync(AppDbContext db, IDbContextTransaction tx, CancellationToken ct)
+    {
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            db.ChangeTracker.Clear();
+            try { await tx.RollbackAsync(CancellationToken.None); }
+            catch { /* SQL Server descarta la transacción por su cuenta */ }
+            return false;
+        }
+
+        await tx.CommitAsync(ct);
+        return true;
     }
 
     /// <summary>

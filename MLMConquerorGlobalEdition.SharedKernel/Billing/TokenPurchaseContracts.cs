@@ -179,6 +179,27 @@ public static class TokenDistributionErrors
 {
     /// <summary>Distribuir o transferir mueve tokens a otra persona: nunca suplantando (403).</summary>
     public const string Impersonation = "IMPERSONATION_CANNOT_DISTRIBUTE";
+
+    /// <summary>
+    /// El destinatario existe y es del equipo, pero su cuenta no está activa (inactiva, suspendida,
+    /// terminada o pendiente de activar): no se le dan tokens que no podría usar (400).
+    /// </summary>
+    public const string RecipientNotActive = "RECIPIENT_NOT_ACTIVE";
+
+    /// <summary>
+    /// No se pudo reclamar la clave de idempotencia de la distribución (la caché no respondió). Falla
+    /// cerrado: no se distribuyó nada y se puede repetir con la misma clave (503).
+    /// </summary>
+    public const string IdempotencyUnavailable = "IDEMPOTENCY_UNAVAILABLE";
+
+    /// <summary>Cabecera con la clave de idempotencia de la distribución (un GUID sin guiones por intento).</summary>
+    public const string IdempotencyHeader = "Idempotency-Key";
+
+    /// <summary>Cuánto dura reclamada una clave de distribución.</summary>
+    public static readonly TimeSpan IdempotencyKeyTtl = TimeSpan.FromHours(24);
+
+    /// <summary>Clave en la caché de la reclamación de una distribución.</summary>
+    public static string IdempotencyCacheKey(string memberId, string key) => $"dist:{memberId}:{key}";
 }
 
 /// <summary>

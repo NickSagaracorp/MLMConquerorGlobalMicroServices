@@ -1317,6 +1317,10 @@
   <data name="Tokens.Error.Unavailable" xml:space="preserve"><value>无法连接支付服务。请重试：不会重复扣款。</value></data>
   <data name="Tokens.Error.NotEnoughTokens" xml:space="preserve"><value>您没有足够的该类型可用代币。</value></data>
   <data name="Tokens.Error.Recipient" xml:space="preserve"><value>接收人必须是您推荐团队的成员。</value></data>
+  <data name="Tokens.Error.RecipientNotActive" xml:space="preserve"><value>接收人的账户未激活，无法接收代币。</value></data>
+  <data name="Tokens.Error.DistributionRepeated" xml:space="preserve"><value>此次分发已提交。再次发送前请先查看您的余额。</value></data>
+  <data name="Tokens.Error.DistributionBusy" xml:space="preserve"><value>另一项代币操作正在进行中。请稍后重试。</value></data>
+  <data name="Tokens.Error.DistributionUnavailable" xml:space="preserve"><value>无法完成分发。请重试：您的代币不会被发送两次。</value></data>
   <data name="Tokens.Error.NoEWallet" xml:space="preserve"><value>您没有可用于付款的 eWallet 账户。</value></data>
   <data name="Tokens.Error.EWalletDeclined" xml:space="preserve"><value>eWallet 扣款被拒绝。</value></data>
   <data name="Tokens.Error.NeedsReview" xml:space="preserve"><value>我们无法确认 eWallet 扣款。我们的团队将进行核查，如扣款成功将发放您的代币。请勿重试。</value></data>

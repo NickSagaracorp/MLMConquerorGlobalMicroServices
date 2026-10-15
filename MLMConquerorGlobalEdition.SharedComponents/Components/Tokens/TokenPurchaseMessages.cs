@@ -40,6 +40,7 @@ public static class TokenPurchaseMessages
         "INSUFFICIENT_TOKEN_BALANCE"                                       => "Tokens.Error.NotEnoughTokens",
         "RECIPIENT_NOT_IN_DOWNLINE" or "RECIPIENT_NOT_FOUND"
             or "INVALID_RECIPIENT"                                         => "Tokens.Error.Recipient",
+        TokenDistributionErrors.RecipientNotActive                         => "Tokens.Error.RecipientNotActive",
 
         // IDEMPOTENCY_KEY_REUSED, PAYMENT_METHOD_WRONG_ENDPOINT y lo desconocido.
         _                                                                  => "Tokens.Error.Generic"
@@ -60,6 +61,29 @@ public static class TokenPurchaseMessages
     public static bool KeepsKey(string? code, HttpStatusCode status) =>
         code is InProgress or Busy or BillingUnavailable or NeedsReview
             or StepUpGrant.RequiredErrorCode or StepUpGrant.InvalidErrorCode or StepUpGrant.CooldownErrorCode
+        || (string.IsNullOrEmpty(code) && (int)status >= 500);
+
+    /// <summary>
+    /// Texto de un fallo al distribuir. Como <see cref="ErrorKeyFor"/>, salvo lo que en distribuir
+    /// significa otra cosa: la clave ya usada es "esa distribución ya se envió" (quizá se hizo), y
+    /// ocupado o caché caída tienen su texto propio (los de compra hablan de pagos).
+    /// </summary>
+    public static string DistributionErrorKeyFor(string? code) => code switch
+    {
+        IdempotencyKeyReused                           => "Tokens.Error.DistributionRepeated",
+        Busy                                           => "Tokens.Error.DistributionBusy",
+        TokenDistributionErrors.IdempotencyUnavailable => "Tokens.Error.DistributionUnavailable",
+        _                                              => ErrorKeyFor(code)
+    };
+
+    /// <summary>
+    /// ¿Se conserva la clave de la distribución? Sí cuando no se movió nada y se puede repetir lo mismo
+    /// (candado ocupado, caché caída al reclamar la clave) o cuando no se sabe si se hizo (5xx sin
+    /// código; la caída de red la trata la pantalla): repetir con la misma clave no mueve los códigos
+    /// dos veces. Tras un éxito o un fallo definitivo (destinatario, saldo, clave ya usada) se renueva.
+    /// </summary>
+    public static bool DistributionKeepsKey(string? code, HttpStatusCode status) =>
+        code is Busy or TokenDistributionErrors.IdempotencyUnavailable
         || (string.IsNullOrEmpty(code) && (int)status >= 500);
 
     /// <summary>Texto de una compra en cripto que salió sin pagar. Null para los demás estados.</summary>

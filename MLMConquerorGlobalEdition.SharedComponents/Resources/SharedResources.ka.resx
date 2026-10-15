@@ -1317,6 +1317,10 @@
   <data name="Tokens.Error.Unavailable" xml:space="preserve"><value>გადახდის სერვისთან დაკავშირება ვერ მოხერხდა. სცადეთ თავიდან: ორჯერ არ ჩამოგეჭრებათ.</value></data>
   <data name="Tokens.Error.NotEnoughTokens" xml:space="preserve"><value>ამ ტიპის საკმარისი ხელმისაწვდომი ტოკენი არ გაქვთ.</value></data>
   <data name="Tokens.Error.Recipient" xml:space="preserve"><value>მიმღები უნდა იყოს თქვენი ჩარიცხვის გუნდის წევრი.</value></data>
+  <data name="Tokens.Error.RecipientNotActive" xml:space="preserve"><value>მიმღების ანგარიში აქტიური არ არის, ამიტომ ტოკენებს ვერ მიიღებს.</value></data>
+  <data name="Tokens.Error.DistributionRepeated" xml:space="preserve"><value>ეს განაწილება უკვე გაიგზავნა. ხელახლა გაგზავნამდე შეამოწმეთ ბალანსი.</value></data>
+  <data name="Tokens.Error.DistributionBusy" xml:space="preserve"><value>ტოკენებზე სხვა ოპერაცია მიმდინარეობს. დაელოდეთ და სცადეთ ხელახლა.</value></data>
+  <data name="Tokens.Error.DistributionUnavailable" xml:space="preserve"><value>განაწილება ვერ დასრულდა. სცადეთ ხელახლა: თქვენი ტოკენები ორჯერ არ გაიგზავნება.</value></data>
   <data name="Tokens.Error.NoEWallet" xml:space="preserve"><value>გადასახდელად eWallet-ის ანგარიში არ გაქვთ.</value></data>
   <data name="Tokens.Error.EWalletDeclined" xml:space="preserve"><value>eWallet-ით ჩამოჭრა უარყოფილია.</value></data>
   <data name="Tokens.Error.NeedsReview" xml:space="preserve"><value>eWallet-ით ჩამოჭრის დადასტურება ვერ მოხერხდა. ჩვენი გუნდი გადაამოწმებს და, თუ შესრულდა, ტოკენები გაიცემა. თავიდან ნუ სცდით.</value></data>

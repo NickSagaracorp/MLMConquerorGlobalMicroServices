@@ -511,4 +511,110 @@ public class PantallaDeTokensTests : BunitContext
         StepUpMessages.WhyKeyFor(StepUpOperations.TokenPurchaseFromBalance).Should().Be("StepUp.WhyTokenPurchase");
         StepUpMessages.WhyKeyFor(StepUpOperations.PayoutMethodChange).Should().Be("StepUp.Why");
     }
+
+    // ── Distribuir: clave de idempotencia por intento (revisión de la Tarea 14, I3) ──
+
+    /// <summary>
+    /// Monta la pantalla con saldo de VIP y un miembro del equipo, y responde a cada POST de distribuir
+    /// con lo que diga <paramref name="distribuir"/> (que anota la clave de la cabecera).
+    /// </summary>
+    private IRenderedComponent<TokensPage> MontarDistribucion(List<string?> claves, Func<int, HttpResponseMessage> distribuir)
+    {
+        return Montar(r =>
+        {
+            var path = r.RequestUri!.AbsolutePath;
+            if (r.Method == HttpMethod.Post && path.EndsWith("/tokens/distribute"))
+            {
+                claves.Add(r.Headers.TryGetValues(TokenDistributionErrors.IdempotencyHeader, out var v) ? v.Single() : null);
+                return Task.FromResult(distribuir(claves.Count));
+            }
+            if (path.EndsWith("/tokens/balances"))
+                return Task.FromResult(Json(HttpStatusCode.OK, """{"success":true,"data":[{"tokenTypeId":13,"tokenTypeName":"VIP Member","balance":3}]}"""));
+            if (path.EndsWith("/team/enrollment/my-team"))
+                return Task.FromResult(Json(HttpStatusCode.OK, """{"success":true,"data":{"items":[{"memberId":"AMB-2","fullName":"Ana"}],"totalCount":1}}"""));
+            return Task.FromResult(Get(r));
+        });
+    }
+
+    private static void PrepararDistribucion(IRenderedComponent<TokensPage> page)
+    {
+        page.WaitForAssertion(() => page.Find("#tokens-distribute-type option[value='13']"));
+        page.Find("#tokens-distribute-type").Change("13");
+        page.Find("#tokens-member-search").Input("An");
+        page.WaitForAssertion(() => page.Find(".tokens-member-option"));
+        page.Find(".tokens-member-option").Click();
+    }
+
+    private static void Distribuir(IRenderedComponent<TokensPage> page, int intento)
+    {
+        page.WaitForAssertion(() => page.Find("#tokens-distribute").HasAttribute("disabled").Should().BeFalse());
+        page.Find("#tokens-distribute").Click();
+    }
+
+    [Fact]
+    public void Distribuir_conserva_la_clave_tras_una_caida_y_la_renueva_tras_un_fallo_definitivo()
+    {
+        var claves = new List<string?>();
+        var page = MontarDistribucion(claves, n => n switch
+        {
+            1 => throw new HttpRequestException("red caída"),
+            2 => Error(HttpStatusCode.Conflict, TokenPurchaseErrors.Busy),
+            3 => Error(HttpStatusCode.BadRequest, "RECIPIENT_NOT_IN_DOWNLINE"),
+            _ => Json(HttpStatusCode.OK, """{"success":true,"data":true}""")
+        });
+        PrepararDistribucion(page);
+
+        Distribuir(page, 1);
+        page.WaitForAssertion(() => page.Find("#tokens-distribute-error").TextContent.Should().Contain("Tokens.Error.DistributionUnavailable"));
+        Distribuir(page, 2);
+        page.WaitForAssertion(() => page.Find("#tokens-distribute-error").TextContent.Should().Contain("Tokens.Error.DistributionBusy"));
+        Distribuir(page, 3);
+        page.WaitForAssertion(() => page.Find("#tokens-distribute-error").TextContent.Should().Contain("Tokens.Error.Recipient"));
+        Distribuir(page, 4);
+        page.WaitForAssertion(() => claves.Should().HaveCount(4));
+
+        claves.Should().OnlyContain(c => TokenPurchaseRules.IsValidIdempotencyKey(c));
+        claves[1].Should().Be(claves[0], "tras una caída no se sabe si entró: se repite con la misma clave");
+        claves[2].Should().Be(claves[1], "ocupado no movió nada: la misma clave sirve");
+        claves[3].Should().NotBe(claves[2], "un fallo definitivo cierra la clave");
+    }
+
+    [Fact]
+    public void Distribuir_con_exito_renueva_la_clave_y_una_repetida_tiene_su_texto()
+    {
+        var claves = new List<string?>();
+        var page = MontarDistribucion(claves, n => n == 1
+            ? Json(HttpStatusCode.OK, """{"success":true,"data":true}""")
+            : Error(HttpStatusCode.Conflict, TokenPurchaseErrors.IdempotencyKeyReused));
+        PrepararDistribucion(page);
+
+        Distribuir(page, 1);
+        page.WaitForAssertion(() => page.Markup.Should().Contain("Tokens.DistributeDone"));
+        PrepararDistribucion(page);
+        Distribuir(page, 2);
+
+        page.WaitForAssertion(() => page.Find("#tokens-distribute-error").TextContent.Should().Contain("Tokens.Error.DistributionRepeated"));
+        claves[1].Should().NotBe(claves[0], "tras un éxito, otra distribución es otra clave");
+    }
+
+    [Theory]
+    [InlineData(TokenPurchaseErrors.IdempotencyKeyReused,              "Tokens.Error.DistributionRepeated")]
+    [InlineData(TokenPurchaseErrors.Busy,                              "Tokens.Error.DistributionBusy")]
+    [InlineData(TokenDistributionErrors.IdempotencyUnavailable,        "Tokens.Error.DistributionUnavailable")]
+    [InlineData(TokenDistributionErrors.RecipientNotActive,            "Tokens.Error.RecipientNotActive")]
+    [InlineData(TokenDistributionErrors.Impersonation,                 "Tokens.Error.ImpersonationDistribute")]
+    [InlineData("INSUFFICIENT_TOKEN_BALANCE",                          "Tokens.Error.NotEnoughTokens")]
+    public void Cada_codigo_de_distribucion_tiene_su_texto(string codigo, string clave) =>
+        TokenPurchaseMessages.DistributionErrorKeyFor(codigo).Should().Be(clave);
+
+    [Theory]
+    [InlineData(TokenPurchaseErrors.Busy,                       HttpStatusCode.Conflict,            true)]
+    [InlineData(TokenDistributionErrors.IdempotencyUnavailable, HttpStatusCode.ServiceUnavailable,  true)]
+    [InlineData(null,                                           HttpStatusCode.InternalServerError, true)]
+    [InlineData(TokenPurchaseErrors.IdempotencyKeyReused,       HttpStatusCode.Conflict,            false)]
+    [InlineData(TokenDistributionErrors.RecipientNotActive,     HttpStatusCode.BadRequest,          false)]
+    [InlineData("INSUFFICIENT_TOKEN_BALANCE",                   HttpStatusCode.BadRequest,          false)]
+    [InlineData(null,                                           HttpStatusCode.BadRequest,          false)]
+    public void La_clave_de_distribucion_solo_se_conserva_si_se_puede_repetir(string? codigo, HttpStatusCode estado, bool conserva) =>
+        TokenPurchaseMessages.DistributionKeepsKey(codigo, estado).Should().Be(conserva);
 }

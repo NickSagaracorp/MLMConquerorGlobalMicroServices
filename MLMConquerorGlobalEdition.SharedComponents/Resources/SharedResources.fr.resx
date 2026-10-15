@@ -1386,6 +1386,10 @@
   <data name="Tokens.Error.Unavailable" xml:space="preserve"><value>Impossible de joindre le service de paiement. Réessayez : vous ne serez pas débité deux fois.</value></data>
   <data name="Tokens.Error.NotEnoughTokens" xml:space="preserve"><value>Vous n'avez pas assez de jetons disponibles de ce type.</value></data>
   <data name="Tokens.Error.Recipient" xml:space="preserve"><value>Le destinataire doit faire partie de votre équipe d'inscription.</value></data>
+  <data name="Tokens.Error.RecipientNotActive" xml:space="preserve"><value>Le compte du destinataire n'est pas actif : il ne peut pas recevoir de jetons.</value></data>
+  <data name="Tokens.Error.DistributionRepeated" xml:space="preserve"><value>Cette distribution a déjà été envoyée. Vérifiez votre solde avant de la renvoyer.</value></data>
+  <data name="Tokens.Error.DistributionBusy" xml:space="preserve"><value>Une autre opération sur les jetons est en cours. Patientez un instant et réessayez.</value></data>
+  <data name="Tokens.Error.DistributionUnavailable" xml:space="preserve"><value>Nous n'avons pas pu terminer la distribution. Réessayez : vos jetons ne seront pas envoyés deux fois.</value></data>
   <data name="Tokens.Error.NoEWallet" xml:space="preserve"><value>Vous n'avez pas de compte eWallet pour payer.</value></data>
   <data name="Tokens.Error.EWalletDeclined" xml:space="preserve"><value>Le débit eWallet a été refusé.</value></data>
   <data name="Tokens.Error.NeedsReview" xml:space="preserve"><value>Nous n'avons pas pu confirmer le débit eWallet. Notre équipe va le vérifier et vos jetons seront émis s'il a abouti. Ne réessayez pas.</value></data>

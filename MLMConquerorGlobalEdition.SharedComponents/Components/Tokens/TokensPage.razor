@@ -434,6 +434,11 @@
     private List<MemberResult> _memberResults = new();
     private MemberResult? _selectedMember;
     private bool _distributeBusy;
+
+    // Una clave por intento de distribución: se conserva mientras no se sepa si entró (caída, 5xx,
+    // ocupado) para que repetir no mueva los códigos dos veces, y se renueva tras un éxito o un fallo
+    // definitivo. El BizCenter la reclama en la caché y una repetida es IDEMPOTENCY_KEY_REUSED.
+    private string _distributeKey = NewKey();
     private string? _distributeErrorKey;
     private bool _distributeDone;
     private string? _copiedCode;
@@ -746,11 +751,17 @@
         try
         {
             var payload = new { TokenTypeId = _distributeTokenTypeId.Value, RecipientMemberId = _selectedMember.MemberId, Quantity = _distributeAmount };
-            using var resp = await Http.PostAsJsonAsync($"{ApiBaseUrl}/tokens/distribute", payload);
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"{ApiBaseUrl}/tokens/distribute")
+            {
+                Content = JsonContent.Create(payload)
+            };
+            request.Headers.Add(TokenDistributionErrors.IdempotencyHeader, _distributeKey);
+            using var resp = await Http.SendAsync(request);
             var body = await ReadAsync<object>(resp);
 
             if (resp.IsSuccessStatusCode && body?.Success == true)
             {
+                _distributeKey = NewKey();
                 _distributeDone = true;
                 ClearMember();
                 _distributeTokenTypeId = null;
@@ -759,12 +770,18 @@
             }
             else
             {
-                _distributeErrorKey = TokenPurchaseMessages.ErrorKeyFor(body?.ErrorCode);
+                var code = body?.ErrorCode;
+                _distributeErrorKey = TokenPurchaseMessages.DistributionErrorKeyFor(code);
+                if (!TokenPurchaseMessages.DistributionKeepsKey(code, resp.StatusCode)) _distributeKey = NewKey();
+                // La misma distribución ya se envió: el saldo puede haber cambiado.
+                if (code == TokenPurchaseErrors.IdempotencyKeyReused)
+                    await Task.WhenAll(LoadSummaryAsync(), LoadBalancesAsync(), LoadPageAsync(1));
             }
         }
         catch (Exception)
         {
-            _distributeErrorKey = "Tokens.Error.Generic";
+            // No se sabe si entró: se conserva la clave para que reintentar no mueva los códigos dos veces.
+            _distributeErrorKey = "Tokens.Error.DistributionUnavailable";
         }
         finally
         {

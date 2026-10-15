@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,6 +14,7 @@ using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Billing;
 using MLMConquerorGlobalEdition.SharedKernel.Security;
 using MLMConquerorGlobalEdition.SharedKernel.Server.Security;
+using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Controllers;
 
@@ -65,15 +67,54 @@ public class TokensController : ControllerBase
     /// POST /api/v1/bizcenter/tokens/distribute — moves N of the caller's own codes (oldest first) to a
     /// member of their enrollment team. Never while impersonating.
     /// </summary>
+    /// <remarks>
+    /// IDEMPOTENCIA. Exige la cabecera <c>Idempotency-Key</c> (una por intento, la genera la pantalla;
+    /// mismo formato que la clave de compra) y la reclama en la caché como <c>dist:{memberId}:{key}</c>
+    /// durante 24 h ANTES de tomar el candado: un reenvío (doble clic, reintento tras una caída) con la
+    /// misma clave es <c>409 IDEMPOTENCY_KEY_REUSED</c> y no mueve nada otra vez. Si la distribución
+    /// falla con un código (no movió nada: destinatario, saldo, ocupado), la reclamación se suelta para
+    /// poder repetir con la misma clave; si lanza, se queda (no se sabe si guardó). Caché caída: falla
+    /// cerrado, <c>503 IDEMPOTENCY_UNAVAILABLE</c>, sin distribuir.
+    /// </remarks>
     [HttpPost("distribute")]
-    public async Task<IActionResult> DistributeToken([FromBody] DistributeTokenRequest request, CancellationToken ct)
+    public async Task<IActionResult> DistributeToken(
+        [FromBody] DistributeTokenRequest request, [FromServices] ICacheService cache, CancellationToken ct)
     {
         if (ImpersonationScope.IsImpersonating(User))
             return DistributionImpersonationForbidden();
 
+        var key = SingleHeader(TokenDistributionErrors.IdempotencyHeader);
+        if (!TokenPurchaseRules.IsValidIdempotencyKey(key))
+            return BadRequest(ApiResponse<bool>.Fail(TokenPurchaseErrors.IdempotencyKeyRequired,
+                "An Idempotency-Key header (letters, digits or '-', up to 64) is required.", HttpContext.TraceIdentifier));
+
+        var memberId = User.FindFirstValue("memberId") ?? string.Empty;
+        var claimKey = TokenDistributionErrors.IdempotencyCacheKey(memberId, key!);
+        bool claimed;
+        try
+        {
+            claimed = await cache.TryClaimOnceAsync(claimKey, TokenDistributionErrors.IdempotencyKeyTtl, ct);
+        }
+        catch (Exception) when (!ct.IsCancellationRequested)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, ApiResponse<bool>.Fail(
+                TokenDistributionErrors.IdempotencyUnavailable,
+                "The distribution could not be started. Nothing was moved; try again.", HttpContext.TraceIdentifier));
+        }
+        if (!claimed)
+            return Conflict(ApiResponse<bool>.Fail(TokenPurchaseErrors.IdempotencyKeyReused,
+                "This distribution was already submitted.", HttpContext.TraceIdentifier));
+
         var result = await _mediator.Send(new DistributeTokenCommand(request), ct);
         if (!result.IsSuccess)
-            return BadRequest(ApiResponse<bool>.Fail(result.ErrorCode!, result.Error!));
+        {
+            // Un fallo con código no movió nada: la misma clave debe poder repetirse.
+            // Si la caché no responde, la clave queda reclamada y el reintento recibe IDEMPOTENCY_KEY_REUSED:
+            // lado seguro (la pantalla pide revisar el saldo y empieza con otra clave).
+            try { await cache.RemoveAsync(claimKey, CancellationToken.None); }
+            catch (Exception) { /* lado seguro */ }
+            return DistributionFailure(result.ErrorCode!, result.Error!);
+        }
         return Ok(ApiResponse<bool>.Ok(true, "Tokens distributed successfully."));
     }
 
@@ -92,7 +133,7 @@ public class TokensController : ControllerBase
             new TransferTokenInstanceCommand(request.TokenCode, request.RecipientMemberId, request.Notes), ct);
 
         if (!result.IsSuccess)
-            return BadRequest(ApiResponse<TransferTokenInstanceResponse>.Fail(result.ErrorCode!, result.Error!));
+            return DistributionFailure(result.ErrorCode!, result.Error!);
 
         return Ok(ApiResponse<TransferTokenInstanceResponse>.Ok(result.Value!, "Token transferred successfully."));
     }
@@ -166,6 +207,22 @@ public class TokensController : ControllerBase
             return ImpersonationForbidden();
 
         return this.ToActionResult(await _billing.CancelTokenPurchaseAsync(purchaseId, BearerToken.From(Request), ct));
+    }
+
+    // Candado ocupado (o un guardado que chocó con otro): no se movió nada y se puede repetir → 409.
+    // Lo demás es una petición que no vale como está → 400. Data null: es el mismo sobre para los dos.
+    private IActionResult DistributionFailure(string code, string message)
+    {
+        var body = ApiResponse<object>.Fail(code, message, HttpContext.TraceIdentifier);
+        return code == TokenPurchaseErrors.Busy
+            ? Conflict(body)
+            : BadRequest(body);
+    }
+
+    private string? SingleHeader(string name)
+    {
+        var values = Request.Headers[name];
+        return values.Count == 1 ? values[0] : null;
     }
 
     private IActionResult WrongEndpoint(string message) =>

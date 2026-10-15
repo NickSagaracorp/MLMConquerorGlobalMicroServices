@@ -1422,6 +1422,10 @@
   <data name="Tokens.Error.Unavailable" xml:space="preserve"><value>No pudimos contactar el servicio de pagos. Inténtalo de nuevo: no se te cobrará dos veces.</value></data>
   <data name="Tokens.Error.NotEnoughTokens" xml:space="preserve"><value>No tienes suficientes tokens disponibles de ese tipo.</value></data>
   <data name="Tokens.Error.Recipient" xml:space="preserve"><value>El destinatario debe ser miembro de tu equipo de inscripción.</value></data>
+  <data name="Tokens.Error.RecipientNotActive" xml:space="preserve"><value>La cuenta del destinatario no está activa, así que no puede recibir tokens.</value></data>
+  <data name="Tokens.Error.DistributionRepeated" xml:space="preserve"><value>Esta distribución ya se envió. Revisa tu saldo antes de enviarla otra vez.</value></data>
+  <data name="Tokens.Error.DistributionBusy" xml:space="preserve"><value>Hay otra operación con tokens en curso. Espera un momento e inténtalo de nuevo.</value></data>
+  <data name="Tokens.Error.DistributionUnavailable" xml:space="preserve"><value>No pudimos completar la distribución. Inténtalo de nuevo: tus tokens no se enviarán dos veces.</value></data>
   <data name="Tokens.Error.NoEWallet" xml:space="preserve"><value>No tienes una cuenta de eWallet con la que pagar.</value></data>
   <data name="Tokens.Error.EWalletDeclined" xml:space="preserve"><value>El cobro en eWallet fue rechazado.</value></data>
   <data name="Tokens.Error.NeedsReview" xml:space="preserve"><value>No pudimos confirmar el cobro en eWallet. Nuestro equipo lo revisará y, si entró, se emitirán tus tokens. No lo intentes de nuevo.</value></data>

@@ -1386,6 +1386,10 @@
   <data name="Tokens.Error.Unavailable" xml:space="preserve"><value>Impossibile raggiungere il servizio di pagamento. Riprova: non ti verrà addebitato due volte.</value></data>
   <data name="Tokens.Error.NotEnoughTokens" xml:space="preserve"><value>Non hai abbastanza token disponibili di quel tipo.</value></data>
   <data name="Tokens.Error.Recipient" xml:space="preserve"><value>Il destinatario deve far parte del tuo team di iscrizione.</value></data>
+  <data name="Tokens.Error.RecipientNotActive" xml:space="preserve"><value>L'account del destinatario non è attivo, quindi non può ricevere token.</value></data>
+  <data name="Tokens.Error.DistributionRepeated" xml:space="preserve"><value>Questa distribuzione è già stata inviata. Controlla il tuo saldo prima di inviarla di nuovo.</value></data>
+  <data name="Tokens.Error.DistributionBusy" xml:space="preserve"><value>È in corso un'altra operazione sui token. Attendi un momento e riprova.</value></data>
+  <data name="Tokens.Error.DistributionUnavailable" xml:space="preserve"><value>Non siamo riusciti a completare la distribuzione. Riprova: i tuoi token non verranno inviati due volte.</value></data>
   <data name="Tokens.Error.NoEWallet" xml:space="preserve"><value>Non hai un account eWallet con cui pagare.</value></data>
   <data name="Tokens.Error.EWalletDeclined" xml:space="preserve"><value>L'addebito eWallet è stato rifiutato.</value></data>
   <data name="Tokens.Error.NeedsReview" xml:space="preserve"><value>Non siamo riusciti a confermare l'addebito eWallet. Il nostro team lo verificherà e, se è andato a buon fine, i tuoi token verranno emessi. Non riprovare.</value></data>
