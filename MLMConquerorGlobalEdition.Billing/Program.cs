@@ -45,11 +45,24 @@ builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 
 builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
 
-builder.Services.AddStackExchangeRedisCache(options =>
 {
-    options.Configuration = builder.Configuration.GetConnectionString("Redis")
-        ?? "localhost:6379";
-});
+    var redisConn = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+    builder.Services.AddStackExchangeRedisCache(options => options.Configuration = redisConn);
+
+    // CacheService.TryClaimOnceAsync necesita una conexión para SET NX: con ella, la marca de "permiso
+    // de step-up ya usado en Billing" (compra de tokens con saldo) vale entre todas las instancias; sin
+    // ella valdría solo dentro de cada proceso. AbortOnConnectFail=false: arrancar no depende de Redis,
+    // y si Redis no responde la marca lanza y la compra con saldo se rechaza (falla cerrado). Mismo
+    // registro que BizCenter, AdminAPI y SignupAPI.
+    builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(_ =>
+    {
+        var options = StackExchange.Redis.ConfigurationOptions.Parse(redisConn);
+        options.AbortOnConnectFail = false;
+        options.ConnectTimeout     = 5000;
+        options.ConnectRetry       = 3;
+        return StackExchange.Redis.ConnectionMultiplexer.Connect(options);
+    });
+}
 builder.Services.AddSingleton<ICacheService, CacheService>();
 
 builder.Services.AddSingleton<IPushNotificationService, FirebasePushNotificationService>();

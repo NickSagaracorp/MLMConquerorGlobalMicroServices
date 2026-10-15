@@ -24,6 +24,13 @@ public interface ITokenPurchaseService
     Task<TokenCatalogDto> GetCatalogAsync(string memberId, CancellationToken ct = default);
     Task<TokenPurchaseFundsDto> GetFundsAsync(string memberId, CancellationToken ct = default);
     Task<Result<TokenPurchaseResultDto>> PurchaseAsync(TokenPurchaseInput input, CancellationToken ct = default);
+
+    /// <summary>
+    /// ¿Esta clave de idempotencia ya tiene una compra de este miembro, en el estado que sea? Con ella,
+    /// <see cref="PurchaseAsync"/> solo devuelve lo que ya pasó (o IDEMPOTENCY_KEY_REUSED) y no mueve
+    /// dinero; el controlador lo usa para no exigir un permiso de step-up sin quemar en una repetición.
+    /// </summary>
+    Task<bool> HasPurchaseAsync(string memberId, string? idempotencyKey, CancellationToken ct = default);
     Task<Result<TokenPurchaseResultDto>> ConfirmCryptoAsync(
         string orderId, ConfirmCryptoTokenPurchaseRequest request, string confirmedByUserId, string confirmedByEmail,
         CancellationToken ct = default);
@@ -189,6 +196,12 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
         public decimal Total => Quote.UnitPrice!.Value * Quantity;
         public Intent Intent => new(Quote.TokenTypeId, Quantity, Method);
     }
+
+    public Task<bool> HasPurchaseAsync(string memberId, string? idempotencyKey, CancellationToken ct = default) =>
+        string.IsNullOrWhiteSpace(memberId) || string.IsNullOrWhiteSpace(idempotencyKey)
+            ? Task.FromResult(false)
+            : _db.TokenPurchases.AsNoTracking()
+                 .AnyAsync(p => p.MemberId == memberId && p.IdempotencyKey == idempotencyKey, ct);
 
     public async Task<Result<TokenPurchaseResultDto>> PurchaseAsync(TokenPurchaseInput input, CancellationToken ct = default)
     {

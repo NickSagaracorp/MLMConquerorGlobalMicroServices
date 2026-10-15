@@ -124,6 +124,18 @@ public static class TokenPurchaseErrors
     public const string InProgress                    = "PURCHASE_IN_PROGRESS";
     public const string Busy                          = "PURCHASE_BUSY";
     public const string BillingUnavailable            = "BILLING_UNAVAILABLE";
+
+    /// <summary>
+    /// Billing contestó un 4xx sin código (ProblemDetails, 404 de ruta, 405, 415): no ejecutó nada, pero
+    /// el BizCenter y Billing no se entienden. No se reintenta con la misma clave: es un fallo nuestro.
+    /// </summary>
+    public const string BillingContractError          = "BILLING_CONTRACT_ERROR";
+
+    /// <summary>
+    /// Billing rechazó con 401 el token que el BizCenter ya había aceptado: desacuerdo de configuración
+    /// entre servicios (llave, emisor, audiencia), no una sesión caducada. No se reintenta solo.
+    /// </summary>
+    public const string BillingAuthMismatch           = "BILLING_AUTH_MISMATCH";
     public const string CryptoPaymentNotFound         = "CRYPTO_PAYMENT_NOT_FOUND";
     public const string CryptoAlreadyConfirmed        = "CRYPTO_PAYMENT_ALREADY_CONFIRMED";
     public const string CryptoTransactionIdRequired   = "CRYPTO_TRANSACTION_ID_REQUIRED";

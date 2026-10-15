@@ -13,8 +13,10 @@ namespace MLMConquerorGlobalEdition.Billing.Controllers;
 /// <remarks>
 /// EL COMPRADOR ES EL DEL TOKEN. El contrato no lleva MemberId. El personal (sin memberId) no compra
 /// por nadie; una suplantación tampoco, sea o no de solo lectura. Pagar con saldo exige el permiso de
-/// step-up (el BizCenter ya lo quemó; aquí solo se valida) para que llamar directamente a Billing no
-/// se salte el código.
+/// step-up para que llamar directamente a Billing no se salte el código; ver AuthorizeBalanceAsync.
+///
+/// Los errores van como ApiResponse&lt;object&gt; ("data":null) o con el tipo de la respuesta, nunca con
+/// "data":false: el BizCenter lee el sobre y un dato de otro tipo no debe estorbar al código.
 /// </remarks>
 [ApiController]
 [Route("api/v1/billing/tokens")]
@@ -25,11 +27,14 @@ public class TokenPurchasesController : ControllerBase
 
     private readonly ITokenPurchaseService _service;
     private readonly IStepUpGrantCheck _stepUp;
+    private readonly ILogger<TokenPurchasesController> _logger;
 
-    public TokenPurchasesController(ITokenPurchaseService service, IStepUpGrantCheck stepUp)
+    public TokenPurchasesController(
+        ITokenPurchaseService service, IStepUpGrantCheck stepUp, ILogger<TokenPurchasesController> logger)
     {
         _service = service;
         _stepUp  = stepUp;
+        _logger  = logger;
     }
 
     /// <summary>GET api/v1/billing/tokens/catalog — tipos con precio, cupo del mes y monedas cripto disponibles.</summary>
@@ -65,9 +70,11 @@ public class TokenPurchasesController : ControllerBase
             return Forbidden(TokenPurchaseErrors.Impersonation, "Purchases are not allowed during impersonation.");
 
         var userId = CallerIdentity.UserIdOf(User) ?? string.Empty;
-        if (TokenPaymentMethods.IsBalance(request.PaymentMethod)
-            && !_stepUp.IsValid(SingleGrantHeader(), userId, StepUpOperations.TokenPurchaseFromBalance))
-            return Forbidden(StepUpGrant.RequiredErrorCode, "Paying with your balance requires a verification code.");
+        if (TokenPaymentMethods.IsBalance(request.PaymentMethod))
+        {
+            var refusal = await AuthorizeBalanceAsync(memberId, userId, request.IdempotencyKey, ct);
+            if (refusal is not null) return refusal;
+        }
 
         var actor  = string.IsNullOrEmpty(userId) ? memberId : userId;
         var result = await _service.PurchaseAsync(new TokenPurchaseInput(memberId, actor, request), ct);
@@ -142,6 +149,61 @@ public class TokenPurchasesController : ControllerBase
     }
 
     /// <summary>
+    /// Pagar con saldo: null si puede seguir, o el 403 con que se rechaza.
+    /// </summary>
+    /// <remarks>
+    /// ORDEN: (1) validar el permiso (firma, vigencia, usuario, operación); sin él, 403 STEP_UP_REQUIRED y
+    /// no se toca la caché. (2) Si la clave de idempotencia ya tiene compra de este miembro, NO se quema:
+    /// el servicio solo devolverá lo que ya pasó (o IDEMPOTENCY_KEY_REUSED) y no mueve dinero, así que una
+    /// repetición pasa con un permiso válido aunque ya esté quemado. (3) Si no, se quema con la marca de
+    /// Billing ANTES de cobrar; ya usado, 403 STEP_UP_INVALID. Con eso el mismo permiso no vale para una
+    /// segunda compra (clave nueva) llamando a Billing directamente.
+    ///
+    /// Dos peticiones simultáneas con el mismo permiso y la misma clave nueva: una quema y compra; la otra
+    /// choca con la marca (403) o, si llega cuando la compra ya está guardada, recibe la repetición. Nunca
+    /// cobran las dos.
+    ///
+    /// FALLA CERRADO: si la caché no responde, 403 STEP_UP_INVALID, igual que StepUpAuthorizationFilter.
+    /// </remarks>
+    private async Task<IActionResult?> AuthorizeBalanceAsync(
+        string memberId, string userId, string? idempotencyKey, CancellationToken ct)
+    {
+        var jti = _stepUp.ValidJti(SingleGrantHeader(), userId, StepUpOperations.TokenPurchaseFromBalance);
+        if (jti is null)
+            return Forbidden(StepUpGrant.RequiredErrorCode, "Paying with your balance requires a verification code.");
+
+        if (await _service.HasPurchaseAsync(memberId, idempotencyKey, ct))
+            return null;
+
+        bool claimed;
+        try
+        {
+            claimed = await _stepUp.TryConsumeAsync(jti, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Compra con saldo rechazada: no se pudo marcar el permiso de step-up como usado. Usuario {UserId}, TraceId {TraceId}.",
+                userId, HttpContext.TraceIdentifier);
+            return Forbidden(StepUpGrant.InvalidErrorCode, "The verification could not be checked. Try again.");
+        }
+
+        if (!claimed)
+        {
+            _logger.LogWarning(
+                "Compra con saldo rechazada: permiso de step-up repetido. Usuario {UserId}, jti {Jti}, TraceId {TraceId}.",
+                userId, jti, HttpContext.TraceIdentifier);
+            return Forbidden(StepUpGrant.InvalidErrorCode, "This verification was already used. Request a new code.");
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// El permiso solo si viene una vez. Dos cabeceras no son "una de las dos": no hay forma correcta de
     /// elegir, igual que en StepUpAuthorizationFilter.
     /// </summary>
@@ -169,5 +231,5 @@ public class TokenPurchasesController : ControllerBase
         user.FindFirstValue(ClaimTypes.Email) ?? user.FindFirstValue("email") ?? string.Empty;
 
     private IActionResult Forbidden(string code, string message) =>
-        StatusCode(StatusCodes.Status403Forbidden, ApiResponse<bool>.Fail(code, message, HttpContext.TraceIdentifier));
+        StatusCode(StatusCodes.Status403Forbidden, ApiResponse<object>.Fail(code, message, HttpContext.TraceIdentifier));
 }

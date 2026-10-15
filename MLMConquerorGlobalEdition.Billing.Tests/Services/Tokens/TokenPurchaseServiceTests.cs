@@ -1231,4 +1231,16 @@ public class TokenPurchaseServiceTests
         r.Value!.TokenCodes.Should().HaveCount(2);
         _db.PaymentHistories.Should().HaveCount(1);
     }
+    [Fact]
+    public async Task HasPurchase_dice_si_la_clave_ya_tiene_compra_de_ese_miembro()
+    {
+        SeedCommissions(500m);
+        (await Buy(Request(TokenPaymentMethods.CommissionBalance, key: "clave-hecha"))).IsSuccess.Should().BeTrue();
+
+        (await Service().HasPurchaseAsync(MemberId, "clave-hecha")).Should().BeTrue();
+        (await Service().HasPurchaseAsync(MemberId, "otra-clave")).Should().BeFalse();
+        (await Service().HasPurchaseAsync("AMB-999999", "clave-hecha")).Should().BeFalse();
+        (await Service().HasPurchaseAsync(MemberId, "")).Should().BeFalse();
+        (await Service().HasPurchaseAsync(MemberId, null)).Should().BeFalse();
+    }
 }

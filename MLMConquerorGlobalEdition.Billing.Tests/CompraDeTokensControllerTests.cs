@@ -4,6 +4,7 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using MLMConquerorGlobalEdition.Billing.Controllers;
 using MLMConquerorGlobalEdition.Billing.Services.Tokens;
@@ -16,7 +17,9 @@ namespace MLMConquerorGlobalEdition.Billing.Tests;
 
 /// <summary>
 /// EL COMPRADOR SALE DEL TOKEN. El personal no compra por nadie, una suplantación tampoco, y pagar
-/// con saldo exige el permiso de step-up también aquí, para que no se salte llamando a Billing.
+/// con saldo exige el permiso de step-up también aquí, para que no se salte llamando a Billing: se
+/// valida, y si la clave aún no tiene compra se quema con la marca de Billing antes de cobrar. Los 403
+/// van con "data":null (ApiResponse&lt;object&gt;), no con "data":false.
 /// </summary>
 public class CompraDeTokensControllerTests
 {
@@ -43,7 +46,7 @@ public class CompraDeTokensControllerTests
             .ReturnsAsync(Result<TokenPurchaseResultDto>.Success(new TokenPurchaseResultDto { PurchaseId = "p1" }));
         var ctx = new DefaultHttpContext { User = user };
         if (grants.Length > 0) ctx.Request.Headers[StepUpGrant.HeaderName] = grants;
-        return new TokenPurchasesController(_svc.Object, _stepUp.Object) { ControllerContext = new ControllerContext { HttpContext = ctx } };
+        return new TokenPurchasesController(_svc.Object, _stepUp.Object, NullLogger<TokenPurchasesController>.Instance) { ControllerContext = new ControllerContext { HttpContext = ctx } };
     }
 
     private static PurchaseTokensRequest Pedido(string method) => new() { PaymentMethod = method };
@@ -70,36 +73,101 @@ public class CompraDeTokensControllerTests
 
         var obj = r.Should().BeOfType<ObjectResult>().Subject;
         obj.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
-        obj.Value.Should().BeOfType<ApiResponse<bool>>().Which.ErrorCode.Should().Be(StepUpGrant.RequiredErrorCode);
+        obj.Value.Should().BeOfType<ApiResponse<object>>().Which.ErrorCode.Should().Be(StepUpGrant.RequiredErrorCode);
         _svc.Verify(s => s.PurchaseAsync(It.IsAny<TokenPurchaseInput>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public async Task Con_saldo_y_permiso_valido_compra()
     {
-        _stepUp.Setup(s => s.IsValid("permiso", "user-001", StepUpOperations.TokenPurchaseFromBalance)).Returns(true);
+        PermisoBueno();
 
         var r = await Controlador(Miembro(), "permiso").Purchase(Pedido(TokenPaymentMethods.EWallet), default);
 
         r.Should().BeOfType<OkObjectResult>();
         _svc.Verify(s => s.PurchaseAsync(It.IsAny<TokenPurchaseInput>(), It.IsAny<CancellationToken>()), Times.Once);
+        _stepUp.Verify(s => s.TryConsumeAsync("jti-1", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    private void PermisoBueno(bool sinQuemar = true)
+    {
+        _stepUp.Setup(s => s.ValidJti("permiso", "user-001", StepUpOperations.TokenPurchaseFromBalance)).Returns("jti-1");
+        _stepUp.Setup(s => s.TryConsumeAsync("jti-1", It.IsAny<CancellationToken>())).ReturnsAsync(sinQuemar);
+    }
+
+    private static PurchaseTokensRequest ConSaldo(string clave = "clave-1") =>
+        new() { PaymentMethod = TokenPaymentMethods.EWallet, IdempotencyKey = clave };
+
+    [Fact]
+    public async Task Con_saldo_y_permiso_ya_quemado_en_Billing_es_403_STEP_UP_INVALID_y_no_compra()
+    {
+        PermisoBueno(sinQuemar: false);
+
+        var r = await Controlador(Miembro(), "permiso").Purchase(ConSaldo(), default);
+
+        var obj = r.Should().BeOfType<ObjectResult>().Subject;
+        obj.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        obj.Value.Should().BeOfType<ApiResponse<object>>().Which.ErrorCode.Should().Be(StepUpGrant.InvalidErrorCode);
+        _svc.Verify(s => s.PurchaseAsync(It.IsAny<TokenPurchaseInput>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task Con_saldo_y_permiso_invalido_es_403_y_no_compra()
+    public async Task Si_la_cache_no_responde_falla_cerrado_con_403_STEP_UP_INVALID()
     {
-        _stepUp.Setup(s => s.IsValid(It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<string>())).Returns(false);
+        _stepUp.Setup(s => s.ValidJti("permiso", "user-001", StepUpOperations.TokenPurchaseFromBalance)).Returns("jti-1");
+        _stepUp.Setup(s => s.TryConsumeAsync("jti-1", It.IsAny<CancellationToken>()))
+               .ThrowsAsync(new InvalidOperationException("redis caído"));
 
-        var r = await Controlador(Miembro(), "caducado").Purchase(Pedido(TokenPaymentMethods.CommissionBalance), default);
+        var r = await Controlador(Miembro(), "permiso").Purchase(ConSaldo(), default);
+
+        var obj = r.Should().BeOfType<ObjectResult>().Subject;
+        obj.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        obj.Value.Should().BeOfType<ApiResponse<object>>().Which.ErrorCode.Should().Be(StepUpGrant.InvalidErrorCode);
+        _svc.Verify(s => s.PurchaseAsync(It.IsAny<TokenPurchaseInput>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Repetir_una_clave_que_ya_tiene_compra_no_quema_el_permiso_y_devuelve_lo_hecho()
+    {
+        _stepUp.Setup(s => s.ValidJti("permiso", "user-001", StepUpOperations.TokenPurchaseFromBalance)).Returns("jti-1");
+        _svc.Setup(s => s.HasPurchaseAsync("AMB-100001", "clave-1", It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var r = await Controlador(Miembro(), "permiso").Purchase(ConSaldo(), default);
+
+        r.Should().BeOfType<OkObjectResult>();
+        _stepUp.Verify(s => s.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _svc.Verify(s => s.PurchaseAsync(It.IsAny<TokenPurchaseInput>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task La_repeticion_tambien_exige_un_permiso_valido()
+    {
+        _stepUp.Setup(s => s.ValidJti(It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<string>())).Returns((string?)null);
+        _svc.Setup(s => s.HasPurchaseAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var r = await Controlador(Miembro(), "caducado").Purchase(ConSaldo(), default);
 
         r.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
         _svc.Verify(s => s.PurchaseAsync(It.IsAny<TokenPurchaseInput>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
+    public async Task Con_saldo_y_permiso_invalido_es_403_y_no_compra()
+    {
+        _stepUp.Setup(s => s.ValidJti(It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<string>())).Returns((string?)null);
+
+        var r = await Controlador(Miembro(), "caducado").Purchase(Pedido(TokenPaymentMethods.CommissionBalance), default);
+
+        r.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        _svc.Verify(s => s.PurchaseAsync(It.IsAny<TokenPurchaseInput>(), It.IsAny<CancellationToken>()), Times.Never);
+        // Sin permiso válido no se toca la caché: quemar va después de validar.
+        _stepUp.Verify(s => s.TryConsumeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Dos_cabeceras_de_permiso_no_valen_aunque_una_sea_buena()
     {
-        _stepUp.Setup(s => s.IsValid("permiso", "user-001", StepUpOperations.TokenPurchaseFromBalance)).Returns(true);
+        PermisoBueno();
 
         var r = await Controlador(Miembro(), "permiso", "otro").Purchase(Pedido(TokenPaymentMethods.EWallet), default);
 
@@ -123,7 +191,7 @@ public class CompraDeTokensControllerTests
 
         var r = await Controlador(suplantado).Purchase(Pedido(TokenPaymentMethods.CreditCard), default);
 
-        r.Should().BeOfType<ObjectResult>().Which.Value.Should().BeOfType<ApiResponse<bool>>()
+        r.Should().BeOfType<ObjectResult>().Which.Value.Should().BeOfType<ApiResponse<object>>()
          .Which.ErrorCode.Should().Be(TokenPurchaseErrors.Impersonation);
         _svc.Verify(s => s.PurchaseAsync(It.IsAny<TokenPurchaseInput>(), It.IsAny<CancellationToken>()), Times.Never);
     }
