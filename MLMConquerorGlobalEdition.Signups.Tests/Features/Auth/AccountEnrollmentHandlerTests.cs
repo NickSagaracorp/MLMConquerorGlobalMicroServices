@@ -7,6 +7,7 @@ using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs.Auth;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.AccountEnrollment;
 using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
+using MLMConquerorGlobalEdition.Repository.Services.Security;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Features.Auth;
 
@@ -98,7 +99,7 @@ public class AccountEnrollmentHandlerTests
         var userManager = ManagerFor(user);
         WireKeyStore(userManager, user, initialKey: FirstKey);
 
-        var handler = new BeginAccountEnrollmentHandler(userManager.Object, RealEnrollment(userManager));
+        var handler = new BeginAccountEnrollmentHandler(userManager.Object, RealEnrollment(userManager), Mock.Of<ISecurityFactorNotifier>());
 
         var result = await handler.Handle(new BeginAccountEnrollmentCommand(UserId), CancellationToken.None);
 
@@ -120,7 +121,7 @@ public class AccountEnrollmentHandlerTests
         var userManager = ManagerFor(user);
         WireKeyStore(userManager, user, initialKey: FirstKey, keysAfterReset: SecondKey);
 
-        var handler = new BeginAccountEnrollmentHandler(userManager.Object, RealEnrollment(userManager));
+        var handler = new BeginAccountEnrollmentHandler(userManager.Object, RealEnrollment(userManager), Mock.Of<ISecurityFactorNotifier>());
 
         var first  = await handler.Handle(new BeginAccountEnrollmentCommand(UserId), CancellationToken.None);
         var second = await handler.Handle(new BeginAccountEnrollmentCommand(UserId), CancellationToken.None);
@@ -143,7 +144,7 @@ public class AccountEnrollmentHandlerTests
         var userManager = ManagerFor(user);
         WireKeyStore(userManager, user, initialKey: FirstKey, keysAfterReset: SecondKey);
 
-        var handler = new BeginAccountEnrollmentHandler(userManager.Object, RealEnrollment(userManager));
+        var handler = new BeginAccountEnrollmentHandler(userManager.Object, RealEnrollment(userManager), Mock.Of<ISecurityFactorNotifier>());
 
         var result = await handler.Handle(new BeginAccountEnrollmentCommand(UserId), CancellationToken.None);
 
@@ -157,7 +158,7 @@ public class AccountEnrollmentHandlerTests
     public async Task Begin_WhenUserNotFound_ReturnsUserNotFound()
     {
         var userManager = ManagerFor(null);
-        var handler     = new BeginAccountEnrollmentHandler(userManager.Object, RealEnrollment(userManager));
+        var handler     = new BeginAccountEnrollmentHandler(userManager.Object, RealEnrollment(userManager), Mock.Of<ISecurityFactorNotifier>());
 
         var result = await handler.Handle(new BeginAccountEnrollmentCommand(UserId), CancellationToken.None);
 
@@ -180,7 +181,7 @@ public class AccountEnrollmentHandlerTests
                    .Callback(() => user.TwoFactorEnabled = true)
                    .ReturnsAsync(IdentityResult.Success);
 
-        var handler = new ConfirmAccountEnrollmentHandler(userManager.Object, RealEnrollment(userManager));
+        var handler = new ConfirmAccountEnrollmentHandler(userManager.Object, RealEnrollment(userManager), Mock.Of<ISecurityFactorNotifier>());
 
         var result = await handler.Handle(
             new ConfirmAccountEnrollmentCommand(UserId, new ConfirmAccountEnrollmentRequest { Code = "123456" }),
@@ -204,7 +205,7 @@ public class AccountEnrollmentHandlerTests
                        user, TokenOptions.DefaultAuthenticatorProvider, "000000"))
                    .ReturnsAsync(false);
 
-        var handler = new ConfirmAccountEnrollmentHandler(userManager.Object, RealEnrollment(userManager));
+        var handler = new ConfirmAccountEnrollmentHandler(userManager.Object, RealEnrollment(userManager), Mock.Of<ISecurityFactorNotifier>());
 
         var result = await handler.Handle(
             new ConfirmAccountEnrollmentCommand(UserId, new ConfirmAccountEnrollmentRequest { Code = "000000" }),
@@ -224,7 +225,7 @@ public class AccountEnrollmentHandlerTests
     public async Task Confirm_WhenUserNotFound_ReturnsUserNotFound()
     {
         var userManager = ManagerFor(null);
-        var handler     = new ConfirmAccountEnrollmentHandler(userManager.Object, RealEnrollment(userManager));
+        var handler     = new ConfirmAccountEnrollmentHandler(userManager.Object, RealEnrollment(userManager), Mock.Of<ISecurityFactorNotifier>());
 
         var result = await handler.Handle(
             new ConfirmAccountEnrollmentCommand(UserId, new ConfirmAccountEnrollmentRequest { Code = "123456" }),
@@ -232,5 +233,45 @@ public class AccountEnrollmentHandlerTests
 
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be("USER_NOT_FOUND");
+    }
+
+    // ── aviso al re-enrolar ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// Re-enrolar sobre un autenticador vivo invalida el que el dueño lleva en el móvil: es un
+    /// cambio de canal de sus códigos y se le avisa, como al cambiar el teléfono.
+    /// </summary>
+    [Fact]
+    public async Task Begin_WhenAlreadyEnrolled_NotifiesTheOwner()
+    {
+        var user        = User(enrolledAt: Enrolled);
+        var userManager = ManagerFor(user);
+        WireKeyStore(userManager, user, initialKey: FirstKey, keysAfterReset: SecondKey);
+        var notifier    = new Mock<ISecurityFactorNotifier>();
+
+        var handler = new BeginAccountEnrollmentHandler(userManager.Object, RealEnrollment(userManager), notifier.Object);
+
+        (await handler.Handle(new BeginAccountEnrollmentCommand(UserId), CancellationToken.None))
+            .IsSuccess.Should().BeTrue();
+
+        notifier.Verify(n => n.NotifyAsync(user, SecurityFactorChange.Authenticator, null, It.IsAny<CancellationToken>()),
+                        Times.Once);
+    }
+
+    /// <summary>En un alta primera no se pierde nada, así que no hay de qué avisar.</summary>
+    [Fact]
+    public async Task Begin_FirstEnrollment_DoesNotNotify()
+    {
+        var user        = User(enrolledAt: null);
+        var userManager = ManagerFor(user);
+        WireKeyStore(userManager, user, initialKey: null, keysAfterReset: FirstKey);
+        var notifier    = new Mock<ISecurityFactorNotifier>();
+
+        var handler = new BeginAccountEnrollmentHandler(userManager.Object, RealEnrollment(userManager), notifier.Object);
+
+        (await handler.Handle(new BeginAccountEnrollmentCommand(UserId), CancellationToken.None))
+            .IsSuccess.Should().BeTrue();
+
+        notifier.VerifyNoOtherCalls();
     }
 }

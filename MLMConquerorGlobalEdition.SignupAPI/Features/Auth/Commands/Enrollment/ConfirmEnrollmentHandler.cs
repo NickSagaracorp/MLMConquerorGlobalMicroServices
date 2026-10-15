@@ -5,6 +5,7 @@ using MLMConquerorGlobalEdition.Authn.Abstractions;
 using MLMConquerorGlobalEdition.Domain.Entities.Security;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Identity;
+using MLMConquerorGlobalEdition.Repository.Services.Security;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs.Auth;
@@ -25,6 +26,7 @@ public class ConfirmEnrollmentHandler : IRequestHandler<ConfirmEnrollmentCommand
     private readonly AppDbContext                   _db;
     private readonly IChallengeTokenService         _challenges;
     private readonly ITotpEnrollmentService         _enrollment;
+    private readonly ISecurityFactorNotifier        _notifier;
 
     public ConfirmEnrollmentHandler(
         UserManager<ApplicationUser> userManager,
@@ -32,8 +34,10 @@ public class ConfirmEnrollmentHandler : IRequestHandler<ConfirmEnrollmentCommand
         IDateTimeProvider            dateTime,
         AppDbContext                 db,
         IChallengeTokenService       challenges,
-        ITotpEnrollmentService       enrollment)
+        ITotpEnrollmentService       enrollment,
+        ISecurityFactorNotifier      notifier)
     {
+        _notifier    = notifier;
         _userManager = userManager;
         _jwt         = jwt;
         _dateTime    = dateTime;
@@ -62,6 +66,8 @@ public class ConfirmEnrollmentHandler : IRequestHandler<ConfirmEnrollmentCommand
         var confirmed = await _enrollment.ConfirmAsync(user, req.Code, ct);
         if (!confirmed.IsSuccess)
             return Result<AuthResponse>.Failure(confirmed.ErrorCode!, confirmed.Error!);
+
+        await _notifier.NotifyAsync(user, SecurityFactorChange.Authenticator, ct: ct);
 
         var roles      = await _userManager.GetRolesAsync(user);
         var memberId   = user.MemberProfileId ?? string.Empty;

@@ -26,9 +26,36 @@ public static class AuthnServiceCollectionExtensions
     /// Registra el challenge firmado. El servicio depende de <c>IConfiguration</c> y de
     /// <c>IDateTimeProvider</c>, que cada host ya registra por su cuenta.
     /// </summary>
+    /// <remarks>
+    /// SINGLETON a propósito: el constructor importa las dos llaves RSA y deriva con HKDF las claves
+    /// de la huella y del antirreplay del TOTP, y como Scoped repetía ese trabajo en cada petición
+    /// que tocaba el segundo factor. Después de construirse el servicio no guarda estado mutable:
+    /// llaves y claves derivadas son de solo lectura y el reloj se consulta en cada llamada.
+    ///
+    /// La condición es que <c>IDateTimeProvider</c> sea también singleton en el anfitrión —lo es en
+    /// todos los que hoy lo registran—. Si un anfitrión lo registrara Scoped, el contenedor lo
+    /// rechazaría al validar ámbitos en lugar de capturar en silencio una instancia de un ámbito.
+    /// </remarks>
     public static IServiceCollection AddAuthnChallengeTokens(this IServiceCollection services)
     {
-        services.AddScoped<IChallengeTokenService, ChallengeTokenService>();
+        services.AddSingleton<IChallengeTokenService, ChallengeTokenService>();
+        return services;
+    }
+
+    /// <summary>
+    /// Registra el firmante del permiso de step-up. Solo en el anfitrión que verifica códigos: es
+    /// el único que puede afirmar que el usuario acaba de demostrar el segundo factor.
+    /// </summary>
+    /// <remarks>
+    /// SINGLETON por la misma razón que <see cref="AddAuthnChallengeTokens"/>: el constructor lee y
+    /// valida la llave privada y la importa como RSA, y como Scoped eso se repetía en cada canje.
+    /// La llave importada queda en un campo de solo lectura y <c>Issue</c> no guarda estado: solo
+    /// consulta el reloj. Depende de <c>IConfiguration</c> e <c>IDateTimeProvider</c>, singleton en
+    /// SignupAPI —el único anfitrión que lo registra—.
+    /// </remarks>
+    public static IServiceCollection AddAuthnStepUpGrants(this IServiceCollection services)
+    {
+        services.AddSingleton<IStepUpGrantService, StepUpGrantService>();
         return services;
     }
 

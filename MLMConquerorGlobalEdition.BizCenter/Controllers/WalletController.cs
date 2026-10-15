@@ -10,10 +10,11 @@ using MLMConquerorGlobalEdition.BizCenter.Features.Billing.GetCreditCards;
 using MLMConquerorGlobalEdition.BizCenter.Features.Billing.ReorderCreditCards;
 using MLMConquerorGlobalEdition.BizCenter.Features.Billing.SetDefaultCreditCard;
 using MLMConquerorGlobalEdition.BizCenter.Features.Wallet.GetWallet;
-using MLMConquerorGlobalEdition.BizCenter.Features.Wallet.UpdateWallet;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Services.Wallets;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Security;
+using MLMConquerorGlobalEdition.SharedKernel.Server.Security;
 using ICurrentUserService = MLMConquerorGlobalEdition.BizCenter.Services.ICurrentUserService;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Controllers;
@@ -34,16 +35,6 @@ public class WalletController : ControllerBase
         var result = await _mediator.Send(new GetWalletQuery(), ct);
         if (!result.IsSuccess)
             return NotFound(ApiResponse<WalletDto>.Fail(result.ErrorCode!, result.Error!));
-        return Ok(ApiResponse<WalletDto>.Ok(result.Value!));
-    }
-
-    /// <summary>PUT /api/v1/bizcenter/wallet</summary>
-    [HttpPut("wallet")]
-    public async Task<IActionResult> UpdateWallet([FromBody] UpdateWalletRequest request, CancellationToken ct)
-    {
-        var result = await _mediator.Send(new UpdateWalletCommand(request), ct);
-        if (!result.IsSuccess)
-            return BadRequest(ApiResponse<WalletDto>.Fail(result.ErrorCode!, result.Error!));
         return Ok(ApiResponse<WalletDto>.Ok(result.Value!));
     }
 
@@ -124,7 +115,9 @@ public class WalletController : ControllerBase
     }
 
     /// <summary>PUT /api/v1/bizcenter/wallets/{walletType} — create/update an account for that gateway.</summary>
+    /// <remarks>Exige step-up: cambia la cuenta a la que se pagan las comisiones.</remarks>
     [HttpPut("wallets/{walletType}")]
+    [RequiresStepUp(StepUpOperations.PayoutMethodChange)]
     public async Task<IActionResult> SaveWallet(
         WalletType walletType,
         [FromBody] SaveWalletPayload payload,
@@ -146,7 +139,9 @@ public class WalletController : ControllerBase
     }
 
     /// <summary>PUT /api/v1/bizcenter/wallets/{walletType}/default — mark this gateway as default.</summary>
+    /// <remarks>Exige step-up: cambia a dónde se pagan las comisiones y, si la wallet no existe, la crea.</remarks>
     [HttpPut("wallets/{walletType}/default")]
+    [RequiresStepUp(StepUpOperations.PayoutMethodChange)]
     public async Task<IActionResult> SetDefault(
         WalletType walletType,
         [FromServices] IMemberWalletService svc,

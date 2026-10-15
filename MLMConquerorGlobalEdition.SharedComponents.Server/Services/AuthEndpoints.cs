@@ -439,6 +439,15 @@ public static class AuthEndpoints
             return Failure(portal.LoginPage, SessionExpiredCode);
         }
 
+        // Tope diario de códigos fallidos: el reto tampoco sirve ya, pero aquí el motivo SÍ se
+        // enseña. Con "sesión caducada" el usuario volvería a entrar, pediría otro código y se
+        // toparía con el mismo bloqueo sin saber por qué; el login sabe traducir este código.
+        if (code == LoginErrorMessages.TwoFactorLocked)
+        {
+            ChallengeCookies.Delete(httpContext, cookieName);
+            return Failure(portal.LoginPage, code);
+        }
+
         return Failure(screenPage, code);
     }
 

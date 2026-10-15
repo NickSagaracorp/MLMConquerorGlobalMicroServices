@@ -185,6 +185,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        optionsBuilder.AddInterceptors(new AuditInterceptor());
+        // SecurityFactorsInterceptor va aquí y no en el registro de cada anfitrión por la misma
+        // razón que existe: un anfitrión que se olvidara de añadirlo cambiaría factores sin sellar.
+        optionsBuilder.AddInterceptors(new AuditInterceptor(), new SecurityFactorsInterceptor());
     }
 }

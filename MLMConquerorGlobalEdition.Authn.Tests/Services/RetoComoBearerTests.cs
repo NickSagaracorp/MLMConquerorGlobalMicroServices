@@ -330,7 +330,7 @@ public class RetoComoBearerTests : IAsyncLifetime
             email:        Email,
             purpose:      proposito,
             channel:      TwoFactorChannel.Authenticator,
-            codeHash:     null,
+            code:         null,
             operationKey: operacion);
 
     /// <summary>

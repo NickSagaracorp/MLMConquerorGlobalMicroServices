@@ -9,6 +9,7 @@ using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs.Auth;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Enrollment;
 using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
+using MLMConquerorGlobalEdition.Repository.Services.Security;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Features.Auth;
 
@@ -112,7 +113,8 @@ public class ConfirmEnrollmentHandlerTests
             DateTimeProvider().Object,
             db  ?? InMemoryDbHelper.Create(),
             (challenges ?? CreateChallengeService()).Object,
-            (enrollment ?? CreateEnrollmentService()).Object);
+            (enrollment ?? CreateEnrollmentService()).Object,
+            Mock.Of<ISecurityFactorNotifier>());
 
     /// <summary>
     /// Confirmado el enrolamiento, el usuario queda dentro: acaba de demostrar los dos factores

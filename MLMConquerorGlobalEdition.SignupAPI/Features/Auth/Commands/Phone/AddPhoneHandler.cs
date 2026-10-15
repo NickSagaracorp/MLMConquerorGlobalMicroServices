@@ -1,12 +1,13 @@
 using MediatR;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Authn.Abstractions;
 using MLMConquerorGlobalEdition.Domain.Entities.Security;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Identity;
+using MLMConquerorGlobalEdition.Repository.Services.Security;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs.Auth;
+using MLMConquerorGlobalEdition.SignupAPI.Services;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Phone;
 
@@ -30,17 +31,20 @@ public class AddPhoneHandler : IRequestHandler<AddPhoneCommand, Result<PhoneChal
     private readonly IEncryptionService           _encryption;
     private readonly ITwoFactorService            _twoFactor;
     private readonly AppDbContext                 _db;
+    private readonly ISecurityFactorNotifier      _notifier;
 
     public AddPhoneHandler(
         UserManager<ApplicationUser> userManager,
         IEncryptionService           encryption,
         ITwoFactorService            twoFactor,
-        AppDbContext                 db)
+        AppDbContext                 db,
+        ISecurityFactorNotifier      notifier)
     {
         _userManager = userManager;
         _encryption  = encryption;
         _twoFactor   = twoFactor;
         _db          = db;
+        _notifier    = notifier;
     }
 
     public async Task<Result<PhoneChallengeResponse>> Handle(AddPhoneCommand command, CancellationToken ct)
@@ -87,7 +91,13 @@ public class AddPhoneHandler : IRequestHandler<AddPhoneCommand, Result<PhoneChal
 
         await _userManager.UpdateAsync(user);
 
-        var languageCode = await ResolveLanguageAsync(user, ct);
+        // Sustituir un teléfono confirmado retira un factor que existía: se avisa ya, aunque el
+        // número nuevo no llegue a confirmarse nunca. Uno que se da de alta sin haber otro
+        // confirmado se avisa al confirmarlo (VerifyPhoneHandler).
+        if (replacedConfirmedPhone)
+            await _notifier.NotifyAsync(user, SecurityFactorChange.Phone, ct: ct);
+
+        var languageCode = await TwoFactorLanguage.ResolveAsync(_db, user, ct);
 
         // Canal forzado a SMS: lo que hay que verificar es este teléfono, no el canal que el
         // usuario prefiera. Propósito Enrollment: es el único con el que la librería resuelve un
@@ -113,22 +123,5 @@ public class AddPhoneHandler : IRequestHandler<AddPhoneCommand, Result<PhoneChal
             MaskedTarget   = issued.Value.MaskedTarget,
             ExpiresAt      = issued.Value.ExpiresAt
         });
-    }
-
-    /// <summary>
-    /// Idioma de la plantilla del SMS. El personal no tiene MemberProfile: devuelve null y la
-    /// librería cae a "en".
-    /// </summary>
-    private async Task<string?> ResolveLanguageAsync(ApplicationUser user, CancellationToken ct)
-    {
-        if (string.IsNullOrEmpty(user.MemberProfileId))
-            return null;
-
-        var language = await _db.MemberProfiles.AsNoTracking()
-            .Where(m => m.MemberId == user.MemberProfileId)
-            .Select(m => m.DefaultLanguage)
-            .FirstOrDefaultAsync(ct);
-
-        return string.IsNullOrWhiteSpace(language) ? null : language;
     }
 }

@@ -132,6 +132,8 @@
     {
         "ACCOUNT_LOCKED"       => "Cuenta bloqueada temporalmente por intentos fallidos. Prueba en unos minutos.",
         "TOO_MANY_REQUESTS"    => "Demasiados intentos. Espera un momento antes de volver a probar.",
+        // Solo llega con la contraseña ya acertada: no dice nada de una cuenta que no se tenga.
+        "TWO_FACTOR_LOCKED"    => "Demasiados códigos incorrectos. La verificación queda bloqueada hasta 24 horas.",
         AuthApiGateway.Unreachable => "No se pudo contactar con el servicio de autenticación.",
         _                      => "Correo o contraseña incorrectos."
     };

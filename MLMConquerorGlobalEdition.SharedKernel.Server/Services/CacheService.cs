@@ -15,10 +15,13 @@ namespace MLMConquerorGlobalEdition.SharedKernel.Server.Services;
 /// Register as Singleton after calling AddStackExchangeRedisCache (or
 /// AddDistributedMemoryCache for tests).
 ///
-/// El <see cref="IConnectionMultiplexer"/> es opcional y solo lo usa
-/// <see cref="IncrementAsync"/>: IDistributedCache no expone INCR, así que sin él un contador
-/// solo puede simularse con leer-modificar-escribir. Los hosts que alojan límites de seguridad
-/// (SignupAPI, AdminAPI) lo registran; el resto se queda con el respaldo por proceso.
+/// El <see cref="IConnectionMultiplexer"/> es opcional y solo lo usan los contadores y
+/// <see cref="TryClaimOnceAsync"/>: IDistributedCache no expone INCR ni SET NX, así que sin él
+/// solo pueden simularse con leer-modificar-escribir. Los hosts que alojan límites o barreras de
+/// seguridad (SignupAPI, AdminAPI, BizCenter) lo registran; el resto se queda con el respaldo
+/// por proceso.
+///
+/// <see cref="TryClaimOnceAsync"/> es la excepción a "nunca lanza": ver su documentación.
 /// </summary>
 public class CacheService : ICacheService
 {
@@ -40,7 +43,7 @@ public class CacheService : ICacheService
     private static readonly SemaphoreSlim[] _stripes =
         Enumerable.Range(0, 64).Select(_ => new SemaphoreSlim(1, 1)).ToArray();
 
-    /// <summary>0 mientras no se haya avisado de que el incremento no es atómico entre instancias.</summary>
+    /// <summary>0 mientras no se haya avisado de que contadores y marcas no son atómicos entre instancias.</summary>
     private int _nonAtomicWarningIssued;
 
     public CacheService(
@@ -121,16 +124,101 @@ public class CacheService : ICacheService
                     ex, "Cache IncrementAsync via Redis failed for key {Key}; falling back to in-process counter.", key);
             }
         }
-        else if (Interlocked.Exchange(ref _nonAtomicWarningIssued, 1) == 0)
+        else
         {
-            _logger?.LogWarning(
-                "CacheService has no IConnectionMultiplexer registered: IncrementAsync is atomic only " +
-                "within this process. Any counter used as a security limit (2FA attempts, issue windows) " +
-                "can be exceeded when more than one instance is running. Register IConnectionMultiplexer " +
-                "as a singleton to get Redis INCR.");
+            WarnNonAtomicOnce();
         }
 
         return await IncrementInProcessAsync(key, expiry, ct);
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Aquí no hay try/catch a propósito. El resto de la clase convierte un fallo en "no hay
+    /// caché", que para un contador o una lectura es inofensivo; para una marca de un solo uso
+    /// "no pude comprobarlo" no puede convertirse en "no estaba marcada", porque eso deja pasar
+    /// la repetición justo cuando Redis falla. Quien llama decide cerrar.
+    /// </remarks>
+    public async Task<bool> TryClaimOnceAsync(string key, TimeSpan expiry, CancellationToken ct = default)
+    {
+        if (_multiplexer is not null)
+        {
+            // SET NX con vencimiento en una sola orden: atómico entre todas las instancias.
+            ct.ThrowIfCancellationRequested();
+            return await _multiplexer.GetDatabase().StringSetAsync(key, "1", expiry, When.NotExists);
+        }
+
+        WarnNonAtomicOnce();
+        return await ClaimInProcessAsync(key, expiry, ct);
+    }
+
+    /// <summary>
+    /// Respaldo sin Redis para <see cref="TryClaimOnceAsync"/>: leer y escribir bajo el cerrojo de
+    /// la franja, de modo que dentro del proceso sí es atómico. A diferencia de los contadores, los
+    /// errores de lectura o escritura se propagan.
+    /// </summary>
+    private async Task<bool> ClaimInProcessAsync(string key, TimeSpan expiry, CancellationToken ct)
+    {
+        var gate = _stripes[(uint)StringComparer.Ordinal.GetHashCode(key) % _stripes.Length];
+
+        await gate.WaitAsync(ct);
+        try
+        {
+            if (await _cache.GetAsync(key, ct) is not null)
+                return false;
+
+            await _cache.SetAsync(
+                key,
+                "1"u8.ToArray(),
+                new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = expiry },
+                ct);
+            return true;
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    /// <summary>
+    /// Avisa una sola vez por instancia de que, sin <see cref="IConnectionMultiplexer"/>, los
+    /// contadores y las marcas de un solo uso valen solo dentro de este proceso.
+    /// </summary>
+    private void WarnNonAtomicOnce()
+    {
+        if (Interlocked.Exchange(ref _nonAtomicWarningIssued, 1) != 0) return;
+
+        _logger?.LogWarning(
+            "CacheService has no IConnectionMultiplexer registered: IncrementAsync and TryClaimOnceAsync " +
+            "are atomic only within this process. Any counter used as a security limit (2FA attempts, " +
+            "issue windows) can be exceeded, and any single-use mark (step-up grants) can be replayed, " +
+            "when more than one instance is running. Register IConnectionMultiplexer as a singleton to " +
+            "get Redis INCR and SET NX.");
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Sin try/catch, como <see cref="TryClaimOnceAsync"/>: lo usan barreras de seguridad que
+    /// tienen que cerrar si no pueden leer el tope. Con Redis lee el entero que deja INCR; sin él,
+    /// el formato <c>"cuenta|vencimiento"</c> del respaldo por proceso.
+    /// </remarks>
+    public async Task<long> GetCounterAsync(string key, CancellationToken ct = default)
+    {
+        if (_multiplexer is not null)
+        {
+            ct.ThrowIfCancellationRequested();
+            var value = await _multiplexer.GetDatabase().StringGetAsync(key);
+            return value.IsNullOrEmpty ? 0 : (long)value;
+        }
+
+        WarnNonAtomicOnce();
+
+        var bytes = await _cache.GetAsync(key, ct);
+        return bytes is not null
+               && TryParseCounter(bytes, out var count, out var expiresAt)
+               && expiresAt > DateTimeOffset.UtcNow
+            ? count
+            : 0;
     }
 
     /// <inheritdoc/>

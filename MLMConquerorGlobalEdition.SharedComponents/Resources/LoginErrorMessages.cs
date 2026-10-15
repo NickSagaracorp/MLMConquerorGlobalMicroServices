@@ -84,8 +84,25 @@ public static class LoginErrorMessages
     /// interfaz, que es la única que sabe qué códigos tiene traducidos. Lo que no esté aquí sale
     /// como <see cref="Invalid"/>, que es el valor seguro.
     /// </remarks>
+    /// <summary>
+    /// Misma familia otra vez: la contraseña era buena, pero el segundo factor de la cuenta está
+    /// bloqueado por demasiados códigos fallidos en el día y no se emite ninguno más.
+    /// </summary>
+    /// <remarks>
+    /// Tampoco abre un oráculo: solo sale tras acertar la contraseña. Llega también desde la
+    /// pantalla del código, cuando el fallo que alcanza el tope deja el reto inservible.
+    /// </remarks>
+    public const string TwoFactorLocked = "TWO_FACTOR_LOCKED";
+
+    /// <summary>
+    /// El almacén que lleva los límites del segundo factor no respondió y el servidor se negó a
+    /// emitir (falla cerrado). Las credenciales eran buenas: decir lo contrario manda a revisar lo
+    /// único que estaba bien.
+    /// </summary>
+    public const string VerificationUnavailable = "VERIFICATION_UNAVAILABLE";
+
     public static readonly IReadOnlyCollection<string> PropagatedFromLogin =
-        [ServiceUnavailable, TooManyRequests, ChannelUnavailable];
+        [ServiceUnavailable, TooManyRequests, ChannelUnavailable, TwoFactorLocked, VerificationUnavailable];
 
     // -------------------------------------------------------------------------------------------
     //  El mapa
@@ -119,6 +136,11 @@ public static class LoginErrorMessages
             // ninguna otra parte. Es el mismo criterio con el que AccountMessages reutiliza estas
             // claves para la gestión de cuenta.
             [ChannelUnavailable] = new("TwoFactor.Error.ChannelUnavailable", "alert-warning"),
+
+            // Mismo criterio: el texto del segundo factor dice exactamente lo que pasó. El bloqueo
+            // va en alert-danger porque, si no fue el usuario, alguien está probando sus códigos.
+            [TwoFactorLocked]         = new("TwoFactor.Error.Locked",                  "alert-danger"),
+            [VerificationUnavailable] = new("TwoFactor.Error.VerificationUnavailable", "alert-warning"),
         };
 
     /// <summary>Todos los códigos que las pantallas de login saben enseñar.</summary>

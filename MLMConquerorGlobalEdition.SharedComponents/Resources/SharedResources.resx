@@ -1446,4 +1446,21 @@
   <data name="PaymentMethod.AddAccountFirstTooltip" xml:space="preserve">
     <value>This method needs details only you can provide. Use Add account first.</value>
   </data>
+  <data name="StepUp.Title" xml:space="preserve"><value>Confirm it's you</value></data>
+  <data name="StepUp.Why" xml:space="preserve"><value>For your security, enter a verification code before changing where your commissions are paid.</value></data>
+  <data name="StepUp.SentTo" xml:space="preserve"><value>We sent a code to {0}.</value></data>
+  <data name="StepUp.AuthenticatorPrompt" xml:space="preserve"><value>Enter the code from your authenticator app.</value></data>
+  <data name="StepUp.CodeLabel" xml:space="preserve"><value>Verification code</value></data>
+  <data name="StepUp.Confirm" xml:space="preserve"><value>Confirm</value></data>
+  <data name="StepUp.Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="StepUp.Resend" xml:space="preserve"><value>Send a new code</value></data>
+  <data name="StepUp.ChallengeInvalid" xml:space="preserve"><value>This code is no longer valid. Request a new one with “Send a new code”.</value></data>
+  <data name="StepUp.ImpersonationNotAllowed" xml:space="preserve"><value>Step-up is not available while you are viewing the account as another user (impersonation). Ask the member to make this change.</value></data>
+  <data name="StepUp.Cooldown" xml:space="preserve"><value>For your security, you recently changed a sign-in detail; you will be able to change your payout method from {0}.</value></data>
+  <data name="StepUp.CooldownGeneric" xml:space="preserve"><value>For your security, you recently changed a sign-in detail; you will be able to change your payout method later.</value></data>
+  <data name="StepUp.RetryFailed" xml:space="preserve"><value>We could not confirm the verification; please try again.</value></data>
+  <data name="TwoFactor.Error.VerificationUnavailable" xml:space="preserve"><value>We cannot verify codes right now. Please try again in a few minutes.</value></data>
+  <data name="TwoFactor.Error.Locked" xml:space="preserve"><value>Too many incorrect codes have been entered. For your protection, verification is blocked for up to 24 hours. If it wasn't you, change your password.</value></data>
+  <data name="StepUp.Unavailable" xml:space="preserve"><value>Code verification is not available in this app right now, so the payout method cannot be changed from here. Use the web portal.</value></data>
+  <data name="Commissions.FrequencySavedWalletKept" xml:space="preserve"><value>Payout frequency saved; the payout method did not change.</value></data>
 </root>

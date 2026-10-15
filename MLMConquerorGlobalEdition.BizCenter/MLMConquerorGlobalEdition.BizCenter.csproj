@@ -5,6 +5,9 @@
     <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel\MLMConquerorGlobalEdition.SharedKernel.csproj" />
     <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel.Server\MLMConquerorGlobalEdition.SharedKernel.Server.csproj" />
     <ProjectReference Include="..\MLMConquerorGlobalEdition.Repository\MLMConquerorGlobalEdition.Repository.csproj" />
+    <!-- Transporte de correo: el BizCenter avisa al correo ANTERIOR cuando el miembro cambia el suyo
+         (SECURITY_FACTOR_CHANGED). Mismo registro que SignupAPI y AdminAPI. -->
+    <ProjectReference Include="..\MLMConquerorGlobalEdition.Notifications\MLMConquerorGlobalEdition.Notifications.csproj" />
   </ItemGroup>
 
   <ItemGroup>

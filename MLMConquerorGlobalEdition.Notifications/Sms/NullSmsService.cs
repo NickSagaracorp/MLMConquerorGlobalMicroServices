@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
+using MLMConquerorGlobalEdition.SharedKernel.Services;
 
 namespace MLMConquerorGlobalEdition.Notifications.Sms;
 
@@ -21,10 +22,13 @@ public class NullSmsService : ISmsService
         Dictionary<string, string> variables,
         CancellationToken ct = default)
     {
+        // Nunca los valores: este transporte se elige solo cuando faltan las credenciales de Twilio,
+        // también fuera de desarrollo, y lo que viaja por SMS son códigos de 2FA y de step-up.
+        // Ver NotificationLogRedaction.
         _logger.LogInformation(
             "NullSmsService: would send '{EventType}' SMS to {ToPhone} [{Lang}]. Variables: {Vars}",
-            eventType, toPhoneE164, languageCode,
-            string.Join(", ", variables.Select(kv => $"{kv.Key}={kv.Value}")));
+            eventType, NotificationLogRedaction.MaskPhone(toPhoneE164), languageCode,
+            NotificationLogRedaction.DescribeVariables(variables));
 
         return Task.CompletedTask;
     }

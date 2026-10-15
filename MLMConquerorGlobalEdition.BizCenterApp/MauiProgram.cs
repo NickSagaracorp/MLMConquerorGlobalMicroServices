@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.BizCenterApp.Services;
+using MLMConquerorGlobalEdition.SharedComponents.Components.Account.StepUp;
 using MLMConquerorGlobalEdition.SharedComponents.Extensions;
 
 namespace MLMConquerorGlobalEdition.BizCenterApp;
@@ -48,6 +49,18 @@ public static class MauiProgram
         }).AddHttpMessageHandler(sp => sp.GetRequiredService<BizCenterAuthHandler>());
         builder.Services.AddScoped(sp =>
             sp.GetRequiredService<IHttpClientFactory>().CreateClient("bizcenter"));
+
+        // Cliente del step-up (código antes de cambiar la wallet de cobro). Va a SignupAPI, no a la
+        // API del BizCenter, con el mismo JWT del miembro; cookies apagadas como en el resto de
+        // clientes de autenticación (el manejador primario se comparte entre usuarios). Sin esto el
+        // diálogo del código avisaba de que no hay verificación disponible y el cambio no se hacía.
+        builder.Services.AddHttpClient(StepUpClient.HttpClientName, client =>
+        {
+            client.BaseAddress = new Uri(builder.Configuration["AuthApiBaseUrl"] ?? "https://localhost:7005");
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseCookies = false })
+        .AddHttpMessageHandler(sp => sp.GetRequiredService<BizCenterAuthHandler>());
+        builder.Services.AddScoped<IStepUpClient, StepUpClient>();
 
         // Typed client for explicit BizCenterApiClient usage
         builder.Services.AddHttpClient<BizCenterApiClient>(client =>

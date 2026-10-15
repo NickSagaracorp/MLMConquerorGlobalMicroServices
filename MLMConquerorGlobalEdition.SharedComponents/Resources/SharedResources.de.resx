@@ -1343,4 +1343,21 @@
   <data name="PaymentMethod.AddAccountFirstTooltip" xml:space="preserve">
     <value>Diese Methode benoetigt Angaben, die nur Sie machen koennen. Nutzen Sie zuerst Konto hinzufuegen.</value>
   </data>
+  <data name="StepUp.Title" xml:space="preserve"><value>Bestätigen Sie, dass Sie es sind</value></data>
+  <data name="StepUp.Why" xml:space="preserve"><value>Geben Sie zu Ihrer Sicherheit einen Bestätigungscode ein, bevor Sie ändern, wohin Ihre Provisionen ausgezahlt werden.</value></data>
+  <data name="StepUp.SentTo" xml:space="preserve"><value>Wir haben einen Code an {0} gesendet.</value></data>
+  <data name="StepUp.AuthenticatorPrompt" xml:space="preserve"><value>Geben Sie den Code aus Ihrer Authenticator-App ein.</value></data>
+  <data name="StepUp.CodeLabel" xml:space="preserve"><value>Bestätigungscode</value></data>
+  <data name="StepUp.Confirm" xml:space="preserve"><value>Bestätigen</value></data>
+  <data name="StepUp.Cancel" xml:space="preserve"><value>Abbrechen</value></data>
+  <data name="StepUp.Resend" xml:space="preserve"><value>Neuen Code senden</value></data>
+  <data name="StepUp.ChallengeInvalid" xml:space="preserve"><value>Dieser Code ist nicht mehr gültig. Fordere mit „Neuen Code senden“ einen neuen an.</value></data>
+  <data name="StepUp.ImpersonationNotAllowed" xml:space="preserve"><value>Die Code-Bestätigung ist nicht verfügbar, solange du das Konto als andere Person ansiehst (Impersonation). Bitte das Mitglied, diese Änderung selbst vorzunehmen.</value></data>
+  <data name="StepUp.Cooldown" xml:space="preserve"><value>Aus Sicherheitsgründen haben Sie vor Kurzem eine Zugangsangabe geändert; Sie können Ihre Auszahlungsmethode ab {0} ändern.</value></data>
+  <data name="StepUp.CooldownGeneric" xml:space="preserve"><value>Aus Sicherheitsgründen haben Sie vor Kurzem eine Zugangsangabe geändert; Sie können Ihre Auszahlungsmethode später ändern.</value></data>
+  <data name="StepUp.RetryFailed" xml:space="preserve"><value>Die Bestätigung konnte nicht abgeschlossen werden; bitte versuchen Sie es erneut.</value></data>
+  <data name="TwoFactor.Error.VerificationUnavailable" xml:space="preserve"><value>Codes können derzeit nicht überprüft werden. Bitte versuchen Sie es in einigen Minuten erneut.</value></data>
+  <data name="TwoFactor.Error.Locked" xml:space="preserve"><value>Es wurden zu viele falsche Codes eingegeben. Zu Ihrem Schutz ist die Überprüfung für bis zu 24 Stunden gesperrt. Wenn Sie das nicht waren, ändern Sie Ihr Passwort.</value></data>
+  <data name="StepUp.Unavailable" xml:space="preserve"><value>Die Code-Bestätigung ist in dieser App derzeit nicht verfügbar, daher kann die Auszahlungsmethode hier nicht geändert werden. Nutzen Sie das Webportal.</value></data>
+  <data name="Commissions.FrequencySavedWalletKept" xml:space="preserve"><value>Auszahlungshäufigkeit gespeichert; die Auszahlungsmethode wurde nicht geändert.</value></data>
 </root>

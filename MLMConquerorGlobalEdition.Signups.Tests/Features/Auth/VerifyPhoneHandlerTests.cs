@@ -7,6 +7,7 @@ using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs.Auth;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Phone;
 using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
+using MLMConquerorGlobalEdition.Repository.Services.Security;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Features.Auth;
 
@@ -74,7 +75,7 @@ public class VerifyPhoneHandlerTests
     }
 
     private VerifyPhoneHandler BuildHandler(Mock<UserManager<ApplicationUser>> userManager)
-        => new(userManager.Object, _twoFactor.Object);
+        => new(userManager.Object, _twoFactor.Object, Mock.Of<ISecurityFactorNotifier>());
 
     private static VerifyPhoneCommand Command(string code = Code) =>
         new(UserId, new VerifyPhoneRequest { ChallengeToken = Token, Code = code });

@@ -7,6 +7,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Identity;
+using MLMConquerorGlobalEdition.Repository.Services.Security;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Features.Profile.UpdateEmail;
@@ -36,19 +37,22 @@ public class UpdateEmailHandler : IRequestHandler<UpdateEmailCommand, Result<boo
     private readonly IDateTimeProvider            _dateTime;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IHttpContextAccessor         _httpContext;
+    private readonly ISecurityFactorNotifier      _notifier;
 
     public UpdateEmailHandler(
         AppDbContext                 db,
         ICurrentUserService          currentUser,
         IDateTimeProvider            dateTime,
         UserManager<ApplicationUser> userManager,
-        IHttpContextAccessor         httpContext)
+        IHttpContextAccessor         httpContext,
+        ISecurityFactorNotifier      notifier)
     {
         _db          = db;
         _currentUser = currentUser;
         _dateTime    = dateTime;
         _userManager = userManager;
         _httpContext = httpContext;
+        _notifier    = notifier;
     }
 
     public async Task<Result<bool>> Handle(UpdateEmailCommand command, CancellationToken ct)
@@ -110,6 +114,12 @@ public class UpdateEmailHandler : IRequestHandler<UpdateEmailCommand, Result<boo
         });
 
         await _db.SaveChangesAsync(ct);
+
+        // Al correo ANTERIOR: el nuevo puede ser el de quien robó la sesión. Es el aviso que le da
+        // al dueño las horas de espera del step-up para reaccionar antes de que se reapunte el
+        // cobro. Después de guardar y sin poder revertir nada: ver SecurityFactorNotifier.
+        await _notifier.NotifyAsync(user, SecurityFactorChange.Email, toEmail: oldEmail, ct: ct);
+
         return Result<bool>.Success(true);
     }
 }

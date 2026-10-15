@@ -8,6 +8,7 @@ using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.TwoFactorSettings;
 using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
+using MLMConquerorGlobalEdition.Repository.Services.Security;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Features.Auth;
 
@@ -73,7 +74,7 @@ public class DisableTwoFactorHandlerTests
         Mock<UserManager<ApplicationUser>> userManager,
         Mock<ITotpEnrollmentService>       enrollment,
         IConfiguration                     config)
-        => new DisableTwoFactorHandler(userManager.Object, enrollment.Object, config)
+        => new DisableTwoFactorHandler(userManager.Object, enrollment.Object, config, Mock.Of<ISecurityFactorNotifier>())
             .Handle(new DisableTwoFactorCommand(UserId), CancellationToken.None);
 
     [Fact]
@@ -167,7 +168,7 @@ public class DisableTwoFactorHandlerTests
         var enrollment = new TotpEnrollmentService(
             userManager.Object, clock.Object, new ConfigurationBuilder().Build());
 
-        var handler = new DisableTwoFactorHandler(userManager.Object, enrollment, Config("Admin"));
+        var handler = new DisableTwoFactorHandler(userManager.Object, enrollment, Config("Admin"), Mock.Of<ISecurityFactorNotifier>());
 
         var result = await handler.Handle(new DisableTwoFactorCommand(UserId), CancellationToken.None);
 

@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Identity;
 using MLMConquerorGlobalEdition.Domain.Entities.Security;
 using MLMConquerorGlobalEdition.Repository.Identity;
+using MLMConquerorGlobalEdition.Repository.Services.Security;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Phone;
@@ -17,15 +18,23 @@ namespace MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Phone;
 public class RemovePhoneHandler : IRequestHandler<RemovePhoneCommand, Result<bool>>
 {
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ISecurityFactorNotifier      _notifier;
 
-    public RemovePhoneHandler(UserManager<ApplicationUser> userManager)
-        => _userManager = userManager;
+    public RemovePhoneHandler(UserManager<ApplicationUser> userManager, ISecurityFactorNotifier notifier)
+    {
+        _userManager = userManager;
+        _notifier    = notifier;
+    }
 
     public async Task<Result<bool>> Handle(RemovePhoneCommand command, CancellationToken ct)
     {
         var user = await _userManager.FindByIdAsync(command.UserId);
         if (user is null || !user.IsActive)
             return Result<bool>.Failure("USER_NOT_FOUND", "User not found.");
+
+        // Solo se avisa si el número era un factor: quitar uno que nunca se confirmó no cambia por
+        // dónde llegan los códigos.
+        var wasConfirmed = user.TwoFactorPhoneConfirmed;
 
         // Los tres campos van juntos. Dejar el cifrado sin la marca —o al revés— deja un teléfono
         // a medio borrar: PII que ya nadie usa y un estado que ningún camino del 2FA sabe leer.
@@ -44,6 +53,9 @@ public class RemovePhoneHandler : IRequestHandler<RemovePhoneCommand, Result<boo
 
         user.RevokeLiveSessions();
         await _userManager.UpdateAsync(user);
+
+        if (wasConfirmed)
+            await _notifier.NotifyAsync(user, SecurityFactorChange.Phone, ct: ct);
 
         return Result<bool>.Success(true);
     }

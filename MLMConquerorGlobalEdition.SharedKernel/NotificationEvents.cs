@@ -24,6 +24,13 @@ public static class NotificationEvents
     /// <summary>Sent during login when the user has two-factor authentication enabled. Variables: { Code, ExpiresInMinutes }.</summary>
     public const string TwoFactorCode        = "TWO_FACTOR_CODE";
 
+    /// <summary>
+    /// Sent when a step-up code is requested to confirm a sensitive change (e.g. where commissions are
+    /// paid). Its own template so the message says WHAT the code authorizes, unlike the login code.
+    /// Variables: { Code, ExpiresInMinutes }.
+    /// </summary>
+    public const string StepUpCode           = "STEP_UP_CODE";
+
     /// <summary>Sent to an ambassador when a payout receipt is issued. Variables: { FullName, AmountUsd, Gateway, ProcessDate, ReceiptUrl }.</summary>
     public const string PayoutReceiptIssued  = "PAYOUT_RECEIPT_ISSUED";
 
@@ -32,4 +39,18 @@ public static class NotificationEvents
 
     /// <summary>Sent by the forgot-password flow so the user can set a new password. Variables: { ResetUrl, ExpiresInMinutes }.</summary>
     public const string PasswordReset        = "PASSWORD_RESET";
+
+    /// <summary>
+    /// Sent to the account owner when a channel that receives verification codes changes (email —to the
+    /// PREVIOUS address—, confirmed phone, authenticator, preferred channel, 2FA turned off). Variables:
+    /// { Change, ChangedAt }. Sending failures are logged and never undo the change.
+    /// </summary>
+    public const string SecurityFactorChanged = "SECURITY_FACTOR_CHANGED";
+
+    /// <summary>
+    /// Sent once to the account owner when the daily cap of wrong verification codes is reached and
+    /// that kind of verification (sign-in or step-up) is blocked for the rest of the 24 h window.
+    /// Variables: { Action, LockedAt }. Sending failures are logged and never undo the lock.
+    /// </summary>
+    public const string TwoFactorLocked = "TWO_FACTOR_LOCKED";
 }

@@ -10,7 +10,6 @@ using MLMConquerorGlobalEdition.BizCenter.DTOs.Tickets.Validators;
 using MLMConquerorGlobalEdition.BizCenter.DTOs.Tokens;
 using MLMConquerorGlobalEdition.BizCenter.DTOs.Tokens.Validators;
 using MLMConquerorGlobalEdition.BizCenter.DTOs.Wallet;
-using MLMConquerorGlobalEdition.BizCenter.DTOs.Wallet.Validators;
 using MLMConquerorGlobalEdition.Domain.Entities.Support;
 using MLMConquerorGlobalEdition.Domain.Enums;
 
@@ -140,26 +139,6 @@ public class UpdatePhotoRequestValidatorTests
             Base64Image = "<not-base64>",
             ContentType = "image/png",
         }).ShouldHaveValidationErrorFor(x => x.Base64Image);
-}
-
-public class UpdateWalletRequestValidatorTests
-{
-    private readonly UpdateWalletRequestValidator _v = new();
-
-    [Fact]
-    public void Validate_WhenValid_Passes()
-        => _v.TestValidate(new UpdateWalletRequest { WalletType = WalletType.Paypal, AccountIdentifier = "user@example.com" })
-            .ShouldNotHaveAnyValidationErrors();
-
-    [Fact]
-    public void Validate_WhenAccountIdInjection_Fails()
-        => _v.TestValidate(new UpdateWalletRequest { WalletType = WalletType.Paypal, AccountIdentifier = "<script>" })
-            .ShouldHaveValidationErrorFor(x => x.AccountIdentifier);
-
-    [Fact]
-    public void Validate_WhenWalletTypeOutOfEnum_Fails()
-        => _v.TestValidate(new UpdateWalletRequest { WalletType = (WalletType)999 })
-            .ShouldHaveValidationErrorFor(x => x.WalletType);
 }
 
 public class AddCreditCardRequestValidatorTests

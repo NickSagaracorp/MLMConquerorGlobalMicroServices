@@ -1,3 +1,5 @@
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Account.StepUp
+@using MLMConquerorGlobalEdition.SharedKernel.Security
 @inject HttpClient Http
 @inject IStringLocalizer<SharedResources> L
 @inject IViewContextService ViewContext
@@ -143,6 +145,9 @@
     </div>
 </div>
 
+@* Al final y con z-index propio, para quedar siempre por encima de cualquier otro modal. *@
+<StepUpDialog @ref="_stepUp" />
+
 @code {
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
     [Parameter] public bool CanEdit { get; set; }
@@ -229,9 +234,12 @@
         _alert = null;
     }
 
+    private StepUpDialog _stepUp = default!;
+
     private async Task SaveAsync()
     {
         _busy = true; _alert = null; StateHasChanged();
+        var frequencySaved = false;
         try
         {
             // 1) Persist payout frequency via PUT /profile (full payload required).
@@ -251,17 +259,34 @@
                     _alertOk = false;
                     return;
                 }
+                frequencySaved = true;
             }
 
             // 2) Update preferred wallet if it changed.
             if (_editWalletType != 0 && _editWalletType != _initialWalletType)
             {
-                var walletResp = await Http.PutAsync(
-                    $"{WalletsBase}/{_editWalletType}/default", null);
+                var walletResp = await StepUpHttp.SendAsync(Http, StepUpOperations.PayoutMethodChange,
+                    () => new HttpRequestMessage(HttpMethod.Put, $"{WalletsBase}/{_editWalletType}/default"),
+                    _stepUp.RequireAsync);
+                if (walletResp is null)
+                {
+                    // Canceló el código. Si la frecuencia ya se guardó en el paso 1, hay que decirlo:
+                    // si no, la pantalla parecería no haber hecho nada y la persona repetiría.
+                    if (frequencySaved)
+                    {
+                        _initialFrequency = _editFrequency;
+                        _alert = L["Commissions.FrequencySavedWalletKept"].Value;
+                        _alertOk = true;
+                        await OnSaved.InvokeAsync();
+                    }
+                    return; // la edición sigue abierta
+                }
                 if (!walletResp.IsSuccessStatusCode)
                 {
                     var body = await walletResp.Content.ReadAsStringAsync();
-                    _alert = $"{L["Commissions.SaveFailedPrefix"]} {body}";
+                    _alert = await StepUpHttp.IsGrantRejectedAsync(walletResp)
+                        ? L["StepUp.RetryFailed"].Value
+                        : $"{L["Commissions.SaveFailedPrefix"]} {body}";
                     _alertOk = false;
                     return;
                 }

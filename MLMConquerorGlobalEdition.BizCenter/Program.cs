@@ -30,6 +30,7 @@ using CacheService              = MLMConquerorGlobalEdition.SharedKernel.Server.
 using IErrorTrackingService     = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IErrorTrackingService;
 
 using MLMConquerorGlobalEdition.Repository.Services.Payout;
+using MLMConquerorGlobalEdition.Notifications;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -134,6 +135,14 @@ builder.Services.AddSingleton<MLMConquerorGlobalEdition.SharedKernel.Interfaces.
     sp => sp.GetRequiredService<IDateTimeProvider>());
 builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
 
+// Email/SMS transport — provider selected by Notifications:Email:Provider /
+// Notifications:Sms:Provider config. Defaults to Null (log-only) when unset.
+// El BizCenter lo necesita para avisar al dueño cuando cambia el correo de la cuenta: el aviso va
+// al correo ANTERIOR, el único que quien robó la sesión no controla.
+builder.Services.AddNotifications(builder.Configuration);
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Security.ISecurityFactorNotifier,
+                           MLMConquerorGlobalEdition.Repository.Services.Security.SecurityFactorNotifier>();
+
 // Cache backend — probe Redis at startup. Cache:Mode controls behavior on
 // failure: "Required" (production) → throw, refuse to start with memory
 // cache that wouldn't be safe across multiple instances. "Optional" (dev)
@@ -145,22 +154,41 @@ builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
     var required  = mode.Equals("Required", StringComparison.OrdinalIgnoreCase);
 
     var redisReachable = false;
+    StackExchange.Redis.IConnectionMultiplexer? multiplexer = null;
     try
     {
-        using var probe = StackExchange.Redis.ConnectionMultiplexer.Connect(
+        multiplexer = StackExchange.Redis.ConnectionMultiplexer.Connect(
             new StackExchange.Redis.ConfigurationOptions
             {
                 EndPoints          = { redisConn },
                 ConnectTimeout     = 250,
                 AbortOnConnectFail = false
             });
-        redisReachable = probe.IsConnected;
+        redisReachable = multiplexer.IsConnected;
     }
     catch { redisReachable = false; }
 
     MLMConquerorGlobalEdition.SharedKernel.Services.CacheBackendInfo info;
     if (redisReachable)
     {
+        // CacheService.TryClaimOnceAsync necesita una conexión para SET NX: sin ella, la marca de
+        // "permiso de step-up ya usado" vale solo dentro de este proceso, y el mismo permiso
+        // pasaría una vez por cada instancia del BizCenter. Mismo registro que AdminAPI y
+        // SignupAPI.
+        //
+        // Se abre una conexión propia en vez de reutilizar la del sondeo: aquella lleva
+        // ConnectTimeout=250 para no retrasar el arranque cuando Redis no está, demasiado
+        // agresivo para una conexión de larga vida.
+        multiplexer!.Dispose();
+        builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(_ =>
+            StackExchange.Redis.ConnectionMultiplexer.Connect(
+                new StackExchange.Redis.ConfigurationOptions
+                {
+                    EndPoints          = { redisConn },
+                    ConnectTimeout     = 5000,
+                    ConnectRetry       = 3,
+                    AbortOnConnectFail = false
+                }));
         builder.Services.AddStackExchangeRedisCache(o => o.Configuration = redisConn);
         info = new MLMConquerorGlobalEdition.SharedKernel.Services.CacheBackendInfo
         {
@@ -172,12 +200,14 @@ builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
     }
     else if (required)
     {
+        multiplexer?.Dispose();
         throw new InvalidOperationException(
             $"[Cache] Cache:Mode is 'Required' but Redis at '{redisConn}' is unreachable. " +
             "Refusing to start with in-process memory cache.");
     }
     else
     {
+        multiplexer?.Dispose();
         builder.Services.AddDistributedMemoryCache();
         info = new MLMConquerorGlobalEdition.SharedKernel.Services.CacheBackendInfo
         {
@@ -190,6 +220,10 @@ builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
     builder.Services.AddSingleton(info);
 }
 builder.Services.AddSingleton<ICacheService, CacheService>();
+// Valida el permiso de step-up con la llave pública. El BizCenter no firma nada: el permiso lo
+// emite SignupAPI al verificar el código. Ver StepUpGrant. Singleton porque solo guarda la llave y
+// lee IDateTimeProvider, que aquí también es singleton.
+builder.Services.AddSingleton<MLMConquerorGlobalEdition.SharedKernel.Server.Security.StepUpGrantValidator>();
 
 builder.Services.AddSingleton<IPushNotificationService, FirebasePushNotificationService>();
 

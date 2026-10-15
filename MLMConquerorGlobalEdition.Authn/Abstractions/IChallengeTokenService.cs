@@ -5,9 +5,17 @@ using MLMConquerorGlobalEdition.SharedKernel;
 namespace MLMConquerorGlobalEdition.Authn.Abstractions;
 
 /// <summary>
-/// Emite y valida el "challenge": un JWT de corta vida que lleva dentro el SHA-256 del código
+/// Emite y valida el "challenge": un JWT de corta vida que lleva dentro una huella del código
 /// de 6 dígitos que se envió al usuario. Es stateless — no hay tabla de códigos pendientes:
-/// el código vuelve del cliente y se compara contra el hash que viaja firmado en el token.
+/// el código vuelve del cliente y se compara contra la huella que viaja firmada en el token.
+///
+/// La huella es un HMAC con clave del servidor, atado al <c>jti</c> del propio reto, y no un
+/// hash sin clave. El JWT va firmado pero NO cifrado: quien tiene el reto (el que acaba de
+/// escribir la contraseña, o quien robó un token de acceso y pidió un step-up) lee el payload
+/// con un simple base64. Con un SHA-256 a secas, probar el millón de códigos posibles fuera de
+/// línea lleva milisegundos y el límite de intentos no sirve de nada porque no se intenta
+/// contra el servidor. Sin la clave la huella no dice nada del código, y atada al jti la de un
+/// reto no vale para otro.
 ///
 /// El challenge se firma con el mismo par RSA que los tokens de acceso, pero el claim
 /// <c>purpose</c> lo separa de ellos y, sobre todo, separa unos challenges de otros: un código
@@ -31,14 +39,13 @@ public interface IChallengeTokenService
     /// <summary>Genera un código numérico de 6 dígitos, criptográficamente aleatorio.</summary>
     string GenerateCode();
 
-    /// <summary>SHA-256 del código, en base64.</summary>
-    string HashCode(string code);
-
     /// <summary>
     /// Emite un challenge para el usuario, el propósito y el canal dados.
     /// </summary>
-    /// <param name="codeHash">
-    /// Hash del código que se envió. Obligatorio para <see cref="TwoFactorChannel.Email"/> y
+    /// <param name="code">
+    /// El código en claro que se envió. Recibe el código y no una huella ya calculada porque la
+    /// huella depende del <c>jti</c>, que nace aquí: así no hay forma de emitir un reto con una
+    /// huella que no esté atada a él. Obligatorio para <see cref="TwoFactorChannel.Email"/> y
     /// <see cref="TwoFactorChannel.Sms"/>; se ignora para <see cref="TwoFactorChannel.Authenticator"/>,
     /// donde el código lo genera la aplicación del usuario y lo verifica Identity.
     /// </param>
@@ -51,8 +58,22 @@ public interface IChallengeTokenService
         string           email,
         TwoFactorPurpose purpose,
         TwoFactorChannel channel,
-        string?          codeHash,
+        string?          code,
         string?          operationKey = null);
+
+    /// <summary>
+    /// Si <paramref name="code"/> es el que se envió para este reto: recalcula la huella con el
+    /// <c>jti</c> del reto presentado y la compara en tiempo constante. Falso para un reto de
+    /// Authenticator, que no lleva huella (ese código lo verifica Identity).
+    /// </summary>
+    bool VerifyCode(ChallengeClaims claims, string code);
+
+    /// <summary>
+    /// Etiqueta con clave para la marca antirreplay de un código TOTP ya usado. Va con clave por
+    /// la misma razón que la huella del reto: la clave de caché no puede llevar un hash sin clave
+    /// de un código de 6 dígitos, que se invierte con un millón de intentos.
+    /// </summary>
+    string TotpReplayTag(string userId, string code);
 
     /// <summary>
     /// Valida firma, vigencia y que el propósito y la operación coincidan con lo esperado.

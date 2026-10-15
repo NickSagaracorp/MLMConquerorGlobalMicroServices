@@ -3,6 +3,7 @@ using MLMConquerorGlobalEdition.Authn.Abstractions;
 using MLMConquerorGlobalEdition.Authn.Models;
 using MLMConquerorGlobalEdition.Domain.Entities.Security;
 using MLMConquerorGlobalEdition.Repository.Identity;
+using MLMConquerorGlobalEdition.Repository.Services.Security;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs.Auth;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Enrollment;
@@ -58,7 +59,8 @@ public class BeginEnrollmentHandlerTests
         return m;
     }
 
-    private static Mock<UserManager<ApplicationUser>> UserManagerWithUser(bool isActive = true)
+    private static Mock<UserManager<ApplicationUser>> UserManagerWithUser(
+        bool isActive = true, DateTime? enrolledAt = null)
     {
         var userManager = UserManagerHelper.Create();
         userManager.Setup(m => m.FindByIdAsync("user-adm"))
@@ -66,7 +68,8 @@ public class BeginEnrollmentHandlerTests
                    {
                        Id       = "user-adm",
                        Email    = "admin@test.com",
-                       IsActive = isActive
+                       IsActive = isActive,
+                       TwoFactorEnrolledAt = enrolledAt
                    });
         return userManager;
     }
@@ -74,11 +77,13 @@ public class BeginEnrollmentHandlerTests
     private static BeginEnrollmentHandler BuildHandler(
         Mock<UserManager<ApplicationUser>> userManager,
         Mock<IChallengeTokenService>? challenges = null,
-        Mock<ITotpEnrollmentService>? enrollment = null)
+        Mock<ITotpEnrollmentService>? enrollment = null,
+        Mock<ISecurityFactorNotifier>? notifier = null)
         => new(
             userManager.Object,
             (challenges ?? CreateChallengeService()).Object,
-            (enrollment ?? CreateEnrollmentService()).Object);
+            (enrollment ?? CreateEnrollmentService()).Object,
+            (notifier ?? new Mock<ISecurityFactorNotifier>()).Object);
 
     [Fact]
     public async Task Handle_WhenTokenIsValid_ReturnsSharedKeyUriAndQr()
@@ -157,5 +162,35 @@ public class BeginEnrollmentHandlerTests
 
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be("ENROLLMENT_FAILED");
+    }
+
+    // ── aviso al re-enrolar ──────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Handle_WhenUserAlreadyEnrolled_NotifiesTheOwner()
+    {
+        var notifier = new Mock<ISecurityFactorNotifier>();
+        var handler  = BuildHandler(UserManagerWithUser(enrolledAt: FixedNow.AddDays(-30)), notifier: notifier);
+
+        (await handler.Handle(
+            new BeginEnrollmentCommand(new BeginEnrollmentRequest { EnrollmentToken = EnrollmentJwt }),
+            CancellationToken.None)).IsSuccess.Should().BeTrue();
+
+        notifier.Verify(n => n.NotifyAsync(
+            It.Is<ApplicationUser>(u => u.Id == "user-adm"), SecurityFactorChange.Authenticator, null,
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_FirstEnrollment_DoesNotNotify()
+    {
+        var notifier = new Mock<ISecurityFactorNotifier>();
+        var handler  = BuildHandler(UserManagerWithUser(), notifier: notifier);
+
+        (await handler.Handle(
+            new BeginEnrollmentCommand(new BeginEnrollmentRequest { EnrollmentToken = EnrollmentJwt }),
+            CancellationToken.None)).IsSuccess.Should().BeTrue();
+
+        notifier.VerifyNoOtherCalls();
     }
 }

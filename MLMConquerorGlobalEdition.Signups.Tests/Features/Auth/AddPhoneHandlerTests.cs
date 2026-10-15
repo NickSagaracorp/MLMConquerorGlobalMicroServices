@@ -9,6 +9,7 @@ using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs.Auth;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Phone;
 using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
+using MLMConquerorGlobalEdition.Repository.Services.Security;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Features.Auth;
 
@@ -68,7 +69,8 @@ public class AddPhoneHandlerTests
 
     private AddPhoneHandler BuildHandler(
         Mock<UserManager<ApplicationUser>> userManager, AppDbContext? db = null)
-        => new(userManager.Object, _encryption.Object, _twoFactor.Object, db ?? InMemoryDbHelper.Create());
+        => new(userManager.Object, _encryption.Object, _twoFactor.Object, db ?? InMemoryDbHelper.Create(),
+              Mock.Of<ISecurityFactorNotifier>());
 
     private static AddPhoneCommand Command(string phone = Phone) =>
         new(UserId, new AddPhoneRequest { PhoneE164 = phone });

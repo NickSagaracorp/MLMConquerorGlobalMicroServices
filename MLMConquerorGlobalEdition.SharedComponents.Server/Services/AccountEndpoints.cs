@@ -268,8 +268,9 @@ public static class AccountEndpoints
         }
 
         // Un reto inválido o agotado ya no sirve para nada: fuera la cookie, y de vuelta al alta.
+        // Con el segundo factor bloqueado por el tope diario de fallos, tampoco.
         var code = outcome.ErrorCodeOr("CODE_INVALID");
-        if (code is "INVALID_CHALLENGE" or "CODE_EXPIRED" or "TOO_MANY_ATTEMPTS")
+        if (code is "INVALID_CHALLENGE" or "CODE_EXPIRED" or "TOO_MANY_ATTEMPTS" or "TWO_FACTOR_LOCKED")
         {
             ChallengeCookies.Delete(httpContext, challengeCookies.Phone);
             return Failure(routes.PhonePage, code);

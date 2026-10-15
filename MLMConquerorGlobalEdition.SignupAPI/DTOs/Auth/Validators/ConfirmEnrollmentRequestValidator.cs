@@ -16,7 +16,7 @@ public class ConfirmEnrollmentRequestValidator : AbstractValidator<ConfirmEnroll
         // otpauth:// que emite el enrolamiento).
         RuleFor(x => x.Code)
             .NotEmpty()
-            .Matches(@"^\d{6}$")
+            .Matches(TwoFactorCodeFormat.Pattern)
                 .WithMessage("Verification code must be exactly 6 digits.");
     }
 }

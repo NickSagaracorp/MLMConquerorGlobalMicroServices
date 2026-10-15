@@ -15,7 +15,7 @@ public class VerifyTwoFactorRequestValidator : AbstractValidator<VerifyTwoFactor
         // 2FA code — exactly 6 digits, el formato que emite la librería Authn
         RuleFor(x => x.Code)
             .NotEmpty()
-            .Matches(@"^\d{6}$")
+            .Matches(TwoFactorCodeFormat.Pattern)
                 .WithMessage("Verification code must be exactly 6 digits.");
     }
 }

@@ -1361,4 +1361,21 @@
   <data name="PaymentMethod.AddAccountFirstTooltip" xml:space="preserve">
     <value>Este metodo precisa de dados que so voce pode fornecer. Use Adicionar conta primeiro.</value>
   </data>
+  <data name="StepUp.Title" xml:space="preserve"><value>Confirme que é você</value></data>
+  <data name="StepUp.Why" xml:space="preserve"><value>Por segurança, digite um código de verificação antes de alterar onde suas comissões são pagas.</value></data>
+  <data name="StepUp.SentTo" xml:space="preserve"><value>Enviamos um código para {0}.</value></data>
+  <data name="StepUp.AuthenticatorPrompt" xml:space="preserve"><value>Digite o código do seu aplicativo autenticador.</value></data>
+  <data name="StepUp.CodeLabel" xml:space="preserve"><value>Código de verificação</value></data>
+  <data name="StepUp.Confirm" xml:space="preserve"><value>Confirmar</value></data>
+  <data name="StepUp.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="StepUp.Resend" xml:space="preserve"><value>Enviar novo código</value></data>
+  <data name="StepUp.ChallengeInvalid" xml:space="preserve"><value>Este código já não é válido. Peça um novo com «Enviar novo código».</value></data>
+  <data name="StepUp.ImpersonationNotAllowed" xml:space="preserve"><value>A confirmação por código não está disponível enquanto vê a conta como outra pessoa (personificação). Peça ao membro que faça esta alteração.</value></data>
+  <data name="StepUp.Cooldown" xml:space="preserve"><value>Por segurança, você alterou um dado de acesso recentemente; poderá alterar o método de recebimento a partir de {0}.</value></data>
+  <data name="StepUp.CooldownGeneric" xml:space="preserve"><value>Por segurança, você alterou um dado de acesso recentemente; poderá alterar o método de recebimento mais tarde.</value></data>
+  <data name="StepUp.RetryFailed" xml:space="preserve"><value>Não foi possível confirmar a verificação; tente novamente.</value></data>
+  <data name="TwoFactor.Error.VerificationUnavailable" xml:space="preserve"><value>No momento não é possível verificar códigos. Tente novamente em alguns minutos.</value></data>
+  <data name="TwoFactor.Error.Locked" xml:space="preserve"><value>Foram inseridos códigos incorretos demais. Para sua proteção, a verificação fica bloqueada por até 24 horas. Se não foi você, altere sua senha.</value></data>
+  <data name="StepUp.Unavailable" xml:space="preserve"><value>A verificação por código não está disponível neste aplicativo no momento, então o método de recebimento não pode ser alterado aqui. Use o portal web.</value></data>
+  <data name="Commissions.FrequencySavedWalletKept" xml:space="preserve"><value>Frequência salva; o método de recebimento não foi alterado.</value></data>
 </root>

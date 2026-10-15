@@ -1274,4 +1274,21 @@
   <data name="PaymentMethod.AddAccountFirstTooltip" xml:space="preserve">
     <value>此方式需要只有您能提供的信息。请先使用“添加账户”。</value>
   </data>
+  <data name="StepUp.Title" xml:space="preserve"><value>确认是您本人</value></data>
+  <data name="StepUp.Why" xml:space="preserve"><value>为了您的安全，更改佣金收款方式前请输入验证码。</value></data>
+  <data name="StepUp.SentTo" xml:space="preserve"><value>我们已将验证码发送至 {0}。</value></data>
+  <data name="StepUp.AuthenticatorPrompt" xml:space="preserve"><value>请输入身份验证器应用中的验证码。</value></data>
+  <data name="StepUp.CodeLabel" xml:space="preserve"><value>验证码</value></data>
+  <data name="StepUp.Confirm" xml:space="preserve"><value>确认</value></data>
+  <data name="StepUp.Cancel" xml:space="preserve"><value>取消</value></data>
+  <data name="StepUp.Resend" xml:space="preserve"><value>重新发送验证码</value></data>
+  <data name="StepUp.ChallengeInvalid" xml:space="preserve"><value>此验证码已失效。请点击“重新发送验证码”获取新的验证码。</value></data>
+  <data name="StepUp.ImpersonationNotAllowed" xml:space="preserve"><value>在以他人身份查看账户（代理登录）期间无法使用验证码确认。请让会员本人进行此更改。</value></data>
+  <data name="StepUp.Cooldown" xml:space="preserve"><value>出于安全考虑，您最近更改了登录相关信息；自 {0} 起方可更改收款方式。</value></data>
+  <data name="StepUp.CooldownGeneric" xml:space="preserve"><value>出于安全考虑，您最近更改了登录相关信息；稍后方可更改收款方式。</value></data>
+  <data name="StepUp.RetryFailed" xml:space="preserve"><value>无法确认验证，请重试。</value></data>
+  <data name="TwoFactor.Error.VerificationUnavailable" xml:space="preserve"><value>目前无法验证验证码，请几分钟后重试。</value></data>
+  <data name="TwoFactor.Error.Locked" xml:space="preserve"><value>输入错误的验证码次数过多。为保护您的账户，验证已被锁定，最长 24 小时。如果不是您本人操作，请更改密码。</value></data>
+  <data name="StepUp.Unavailable" xml:space="preserve"><value>此应用目前无法使用验证码验证，因此无法在此更改收款方式。请使用网页门户。</value></data>
+  <data name="Commissions.FrequencySavedWalletKept" xml:space="preserve"><value>付款频率已保存；收款方式未更改。</value></data>
 </root>

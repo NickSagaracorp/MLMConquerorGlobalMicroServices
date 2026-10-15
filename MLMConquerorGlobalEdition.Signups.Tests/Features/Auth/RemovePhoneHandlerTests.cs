@@ -3,6 +3,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Security;
 using MLMConquerorGlobalEdition.Repository.Identity;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Auth.Commands.Phone;
 using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
+using MLMConquerorGlobalEdition.Repository.Services.Security;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Features.Auth;
 
@@ -43,7 +44,7 @@ public class RemovePhoneHandlerTests
     public async Task RemovePhone_ClearsAllThreeFields()
     {
         var userManager = UserManagerWithUser(out var user);
-        var handler     = new RemovePhoneHandler(userManager.Object);
+        var handler     = new RemovePhoneHandler(userManager.Object, Mock.Of<ISecurityFactorNotifier>());
 
         var result = await handler.Handle(new RemovePhoneCommand(UserId), CancellationToken.None);
 
@@ -66,7 +67,7 @@ public class RemovePhoneHandlerTests
     public async Task RemovePhone_WhenPreferredChannelWasSms_FallsBackToEmail()
     {
         var userManager = UserManagerWithUser(out var user, preferred: TwoFactorChannel.Sms);
-        var handler     = new RemovePhoneHandler(userManager.Object);
+        var handler     = new RemovePhoneHandler(userManager.Object, Mock.Of<ISecurityFactorNotifier>());
 
         var result = await handler.Handle(new RemovePhoneCommand(UserId), CancellationToken.None);
 
@@ -82,7 +83,7 @@ public class RemovePhoneHandlerTests
     public async Task RemovePhone_WhenPreferredChannelWasAuthenticator_KeepsIt()
     {
         var userManager = UserManagerWithUser(out var user, preferred: TwoFactorChannel.Authenticator);
-        var handler     = new RemovePhoneHandler(userManager.Object);
+        var handler     = new RemovePhoneHandler(userManager.Object, Mock.Of<ISecurityFactorNotifier>());
 
         var result = await handler.Handle(new RemovePhoneCommand(UserId), CancellationToken.None);
 
@@ -96,7 +97,7 @@ public class RemovePhoneHandlerTests
         var userManager = UserManagerHelper.Create();
         userManager.Setup(m => m.FindByIdAsync(It.IsAny<string>())).ReturnsAsync((ApplicationUser?)null);
 
-        var handler = new RemovePhoneHandler(userManager.Object);
+        var handler = new RemovePhoneHandler(userManager.Object, Mock.Of<ISecurityFactorNotifier>());
 
         var result = await handler.Handle(new RemovePhoneCommand(UserId), CancellationToken.None);
 

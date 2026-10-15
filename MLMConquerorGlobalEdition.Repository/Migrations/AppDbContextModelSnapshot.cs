@@ -16120,6 +16120,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<DateTime?>("RefreshTokenExpiry")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("SecurityFactorsChangedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
 
