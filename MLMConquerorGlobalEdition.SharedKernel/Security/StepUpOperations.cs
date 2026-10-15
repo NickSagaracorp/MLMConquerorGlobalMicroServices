@@ -14,9 +14,13 @@ public static class StepUpOperations
     /// <summary>Cambiar a dónde se pagan las comisiones: alta o edición de una wallet, o cambio de la preferida.</summary>
     public const string PayoutMethodChange = "member.payout-method.change";
 
+    /// <summary>Pagar tokens con saldo propio: comisiones o eWallet. Tarjeta y cripto no lo piden.</summary>
+    public const string TokenPurchaseFromBalance = "member.tokens.purchase-from-balance";
+
     private static readonly HashSet<string> Known = new(StringComparer.Ordinal)
     {
-        PayoutMethodChange
+        PayoutMethodChange,
+        TokenPurchaseFromBalance
     };
 
     public static bool IsKnown(string? operationKey) =>
