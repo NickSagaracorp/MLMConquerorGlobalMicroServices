@@ -155,6 +155,10 @@
                     <button type="button" class="btn-close" @onclick="CloseModal" disabled="@_saving"></button>
                 </div>
                 <div class="modal-body">
+                    @if (_modalError is not null)
+                    {
+                        <div class="alert alert-danger py-2 small">@_modalError</div>
+                    }
                     @if (_confirmTarget is not null)
                     {
                         <p class="mb-2"><strong>@_confirmTarget.FullName</strong> — @_confirmTarget.Quantity × @_confirmTarget.TokenTypeName, @_confirmTarget.AmountDue.ToString("C", Usd) in @_confirmTarget.CryptoCurrency</p>
@@ -177,7 +181,9 @@
                                 ? "The money was taken: the tokens will be issued to the member."
                                 : "The money was not taken: the purchase is closed and the monthly quota released. No tokens are issued.")
                         </div>
-                        <label class="form-label small fw-semibold" for="tp-ref">Gateway reference @(_charged ? "" : "(optional)")</label>
+                        <label class="form-label small fw-semibold" for="tp-ref">Gateway reference
+                            @if (_charged) { <span class="text-danger">*</span> } else { <span>(optional)</span> }
+                        </label>
                         <input id="tp-ref" class="form-control form-control-sm mb-3" @bind="_reference" @bind:event="oninput" maxlength="128" />
                         <label class="form-label small fw-semibold" for="tp-notes">Notes (optional)</label>
                     }
@@ -208,7 +214,7 @@
     private List<CryptoDto> _crypto = new();
     private List<ReviewDto> _review = new();
     private bool _loading = true, _saving, _alertIsError, _charged, _isTreasury;
-    private string? _alertMsg, _notes;
+    private string? _alertMsg, _notes, _modalError;
     private string _reference = string.Empty;
     private CryptoDto? _confirmTarget;
     private CryptoDto? _rejectTarget;
@@ -253,7 +259,9 @@
     private bool CanSubmit =>
         !_saving
         && (_confirmTarget is null || !string.IsNullOrWhiteSpace(_reference))
-        && (_rejectTarget is null || !string.IsNullOrWhiteSpace(_notes));
+        && (_rejectTarget is null || !string.IsNullOrWhiteSpace(_notes))
+        // Marcar como cobrada emite los tokens: tiene que quedar a qué movimiento del gateway responde.
+        && (_reconcileTarget is null || !_charged || !string.IsNullOrWhiteSpace(_reference));
 
     private void OpenConfirm(CryptoDto dto) { Reset(); _confirmTarget = dto; }
     private void OpenReject(CryptoDto dto) { Reset(); _rejectTarget = dto; }
@@ -263,13 +271,14 @@
     private void Reset()
     {
         _confirmTarget = null; _rejectTarget = null; _reconcileTarget = null;
-        _reference = string.Empty; _notes = null;
+        _reference = string.Empty; _notes = null; _modalError = null;
     }
 
     private async Task SubmitAsync()
     {
         if (!CanSubmit) return;
         _saving = true;
+        _modalError = null;
         try
         {
             var notes     = string.IsNullOrWhiteSpace(_notes) ? null : _notes!.Trim();
@@ -309,10 +318,21 @@
             }
             else
             {
-                _alertMsg = await ErrorTextAsync(resp);
-                _alertIsError = true;
-                // Si otra persona ya la cerró, la lista que se ve está vieja.
-                if ((int)resp.StatusCode is 404 or 409) { Reset(); await LoadAsync(); }
+                var (code, text) = await ErrorTextAsync(resp);
+                if (code == "TOKEN_ISSUE_FAILED")
+                {
+                    // No se guardó nada y se puede reintentar: el modal sigue abierto con lo que se
+                    // escribió (referencia, notas) y solo se refresca la lista de detrás.
+                    _modalError = text;
+                    await LoadAsync();
+                }
+                else
+                {
+                    _alertMsg = text;
+                    _alertIsError = true;
+                    // Si otra persona ya la cerró, la lista que se ve está vieja.
+                    if ((int)resp.StatusCode is 404 or 409) { Reset(); await LoadAsync(); }
+                }
             }
         }
         catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
@@ -323,20 +343,20 @@
     /// Los códigos que piden algo distinto de leer el mensaje tienen su texto; el resto, el mensaje de
     /// Billing o AdminAPI tal cual.
     /// </summary>
-    private static async Task<string> ErrorTextAsync(HttpResponseMessage resp)
+    private static async Task<(string? Code, string Text)> ErrorTextAsync(HttpResponseMessage resp)
     {
         ApiResp<object>? payload = null;
         try { payload = await resp.Content.ReadFromJsonAsync<ApiResp<object>>(); } catch { /* cuerpo no JSON */ }
 
-        return payload?.ErrorCode switch
+        return (payload?.ErrorCode, payload?.ErrorCode switch
         {
             "TOKEN_ISSUE_FAILED"               => "The tokens could not be issued this time and nothing was saved. Please try again.",
             "CRYPTO_PAYMENT_ALREADY_CONFIRMED" => "This payment was already confirmed by someone else.",
             "TOKEN_PURCHASE_NOT_AWAITING_CRYPTO" => "This purchase is no longer waiting for payment (cancelled, rejected or expired).",
-            "TOKEN_PURCHASE_NOT_UNDER_REVIEW"  => "This purchase was already closed by someone else.",
+            "TOKEN_PURCHASE_NOT_UNDER_REVIEW"  => "This purchase is no longer awaiting reconciliation. Refresh to see its current state.",
             "BILLING_UNAVAILABLE"              => "Billing did not respond. Refresh the list and try again.",
             _ => payload?.Errors?.FirstOrDefault() ?? payload?.Message ?? $"The action failed ({(int)resp.StatusCode})."
-        };
+        });
     }
 
     // AdminWeb no referencia AdminAPI a propósito —habla con él por HTTP—, así que el contrato se

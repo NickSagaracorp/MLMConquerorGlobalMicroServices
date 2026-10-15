@@ -45,20 +45,25 @@ public class AdminTokenPurchasesController : ControllerBase
     {
         // Las dos condiciones: la confirmación sin pagar Y la compra esperándola. Cancelar, rechazar o
         // caducar mueven las dos, pero si alguna vez divergen es mejor no ofrecer un "Confirmar" que
-        // Billing va a rechazar.
+        // Billing va a rechazar. Pedido, perfil y tipo van con left join: una compra pendiente no
+        // puede desaparecer de la lista porque falte un dato de presentación.
         var rows = await (
             from c in _db.CryptoPaymentConfirmations.AsNoTracking()
             where c.Purpose == CryptoPaymentPurpose.TokenPurchase
                && c.Status  == CryptoPaymentConfirmationStatus.AwaitingPayment
             join p in _db.TokenPurchases.AsNoTracking() on c.OrderId equals p.OrderId
             where p.Status == TokenPurchaseStatus.AwaitingCryptoConfirmation
-            join o in _db.Orders.AsNoTracking() on c.OrderId equals o.Id
-            join m in _db.MemberProfiles.AsNoTracking() on c.MemberId equals m.MemberId
-            join t in _db.TokenTypes.AsNoTracking() on p.TokenTypeId equals t.Id
+            join o0 in _db.Orders.AsNoTracking() on c.OrderId equals o0.Id into os
+            from o in os.DefaultIfEmpty()
+            join m0 in _db.MemberProfiles.AsNoTracking() on c.MemberId equals m0.MemberId into ms
+            from m in ms.DefaultIfEmpty()
+            join t0 in _db.TokenTypes.AsNoTracking() on p.TokenTypeId equals t0.Id into ts
+            from t in ts.DefaultIfEmpty()
             orderby c.CreationDate descending
             select new PendingCryptoTokenPurchaseDto(
-                c.OrderId, p.Id, o.OrderNo, c.MemberId, (m.FirstName + " " + m.LastName).Trim(), c.MemberEmail,
-                t.Name, p.Quantity, c.CryptoCurrency, c.AmountDue, c.CreationDate)
+                c.OrderId, p.Id, o == null ? null : o.OrderNo, c.MemberId,
+                m == null ? ProfileNotFound : (m.FirstName + " " + m.LastName).Trim(), c.MemberEmail,
+                t == null ? TokenTypeNotFound : t.Name, p.Quantity, c.CryptoCurrency, c.AmountDue, c.CreationDate)
         ).ToListAsync(ct);
 
         return Ok(ApiResponse<IEnumerable<PendingCryptoTokenPurchaseDto>>.Ok(rows));
@@ -101,16 +106,23 @@ public class AdminTokenPurchasesController : ControllerBase
     public async Task<IActionResult> ListToReview(CancellationToken ct = default)
     {
         // Las más antiguas primero: son las que más tiempo llevan con el cupo del miembro ocupado.
+        // Left join: una compra a conciliar tiene dinero en juego y no puede desaparecer de la lista
+        // porque falte el pedido, el perfil o el tipo de token.
         var rows = await (
             from p in _db.TokenPurchases.AsNoTracking()
             where p.Status == TokenPurchaseStatus.NeedsReconciliation
-            join o in _db.Orders.AsNoTracking() on p.OrderId equals o.Id
-            join m in _db.MemberProfiles.AsNoTracking() on p.MemberId equals m.MemberId
-            join t in _db.TokenTypes.AsNoTracking() on p.TokenTypeId equals t.Id
+            join o0 in _db.Orders.AsNoTracking() on p.OrderId equals o0.Id into os
+            from o in os.DefaultIfEmpty()
+            join m0 in _db.MemberProfiles.AsNoTracking() on p.MemberId equals m0.MemberId into ms
+            from m in ms.DefaultIfEmpty()
+            join t0 in _db.TokenTypes.AsNoTracking() on p.TokenTypeId equals t0.Id into ts
+            from t in ts.DefaultIfEmpty()
             orderby p.CreationDate
             select new TokenPurchaseToReviewDto(
-                p.Id, o.OrderNo, p.MemberId, (m.FirstName + " " + m.LastName).Trim(), m.Email,
-                t.Name, p.Quantity, p.TotalAmount, p.PaymentMethod.ToString(), p.FailureCode, p.Notes, p.CreationDate)
+                p.Id, o == null ? null : o.OrderNo, p.MemberId,
+                m == null ? ProfileNotFound : (m.FirstName + " " + m.LastName).Trim(), m == null ? "" : m.Email,
+                t == null ? TokenTypeNotFound : t.Name, p.Quantity, p.TotalAmount, p.PaymentMethod.ToString(),
+                p.FailureCode, p.Notes, p.CreationDate)
         ).ToListAsync(ct);
 
         return Ok(ApiResponse<IEnumerable<TokenPurchaseToReviewDto>>.Ok(rows));
@@ -140,27 +152,33 @@ public class AdminTokenPurchasesController : ControllerBase
         _db.CryptoPaymentConfirmations.AsNoTracking()
             .AnyAsync(c => c.OrderId == orderId && c.Purpose == CryptoPaymentPurpose.TokenPurchase, ct);
 
+    // Aquí no se mira el estado: eso lo decide Billing (y su 409 llega tal cual a la pantalla).
     private NotFoundObjectResult CryptoNotFound() =>
         NotFound(ApiResponse<object>.Fail(
-            TokenPurchaseErrors.CryptoPaymentNotFound, "No crypto token purchase awaiting confirmation was found for that order."));
+            TokenPurchaseErrors.CryptoPaymentNotFound, "No crypto token purchase was found for that order."));
+
+    private const string ProfileNotFound   = "(profile not found)";
+    private const string TokenTypeNotFound = "(token type not found)";
 
     /// <summary>
-    /// Reenvía a Billing con el Bearer del administrador y devuelve su respuesta tal cual (estado y
-    /// cuerpo): los códigos de error de Billing (409 TOKEN_ISSUE_FAILED, CRYPTO_PAYMENT_ALREADY_CONFIRMED…)
-    /// son los que la pantalla sabe leer.
+    /// Reenvía a Billing con el Bearer del administrador y devuelve su respuesta tal cual (estado,
+    /// tipo de contenido y cuerpo): los códigos de error de Billing (409 TOKEN_ISSUE_FAILED,
+    /// CRYPTO_PAYMENT_ALREADY_CONFIRMED…) son los que la pantalla sabe leer. El Bearer va en la
+    /// petición, no en el cliente, para no dejarlo en cabeceras que otro pudiera reutilizar.
     /// </summary>
     private async Task<IActionResult> ForwardAsync<TBody>(string path, TBody body, CancellationToken ct)
     {
         var http = _httpFactory.CreateClient("BillingApi");
 
+        using var request = new HttpRequestMessage(HttpMethod.Post, path) { Content = JsonContent.Create(body) };
         var bearer = Request.Headers.Authorization.ToString();
         if (!string.IsNullOrWhiteSpace(bearer) && AuthenticationHeaderValue.TryParse(bearer, out var parsed))
-            http.DefaultRequestHeaders.Authorization = parsed;
+            request.Headers.Authorization = parsed;
 
         HttpResponseMessage resp;
         try
         {
-            resp = await http.PostAsJsonAsync(path, body, ct);
+            resp = await http.SendAsync(request, ct);
         }
         catch (Exception ex) when (ex is HttpRequestException
                                    || (ex is TaskCanceledException && !ct.IsCancellationRequested))
@@ -176,7 +194,7 @@ public class AdminTokenPurchasesController : ControllerBase
             return new ContentResult
             {
                 Content     = await resp.Content.ReadAsStringAsync(ct),
-                ContentType = "application/json",
+                ContentType = resp.Content.Headers.ContentType?.ToString() ?? "application/json",
                 StatusCode  = (int)resp.StatusCode
             };
         }

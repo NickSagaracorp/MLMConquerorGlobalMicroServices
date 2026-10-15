@@ -299,10 +299,19 @@ builder.Services.AddHttpClient("SignupApi", client =>
 // (Plan F); AdminTokenPurchasesController le reenvía el Bearer del administrador. SIN desactivar la
 // validación del certificado, a diferencia del cliente de arriba: por aquí viaja un token de admin
 // que autoriza emitir tokens, y en desarrollo el certificado de localhost ya es de confianza.
-builder.Services.AddHttpClient("BillingApi", client =>
+// Fuera de Development no hay valor por defecto: sin Services:Billing el arranque falla con un
+// mensaje claro en vez de mandar el token del administrador a localhost.
 {
-    client.BaseAddress = new Uri(builder.Configuration["Services:Billing"] ?? "https://localhost:7007");
-});
+    var billingUrl = builder.Configuration["Services:Billing"];
+    if (string.IsNullOrWhiteSpace(billingUrl))
+    {
+        if (!builder.Environment.IsDevelopment())
+            throw new InvalidOperationException(
+                "Services:Billing is not configured. AdminAPI forwards token purchase actions to Billing and needs its URL.");
+        billingUrl = "https://localhost:7007";
+    }
+    builder.Services.AddHttpClient("BillingApi", client => client.BaseAddress = new Uri(billingUrl));
+}
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>

@@ -28,6 +28,7 @@ public class AdminTokenPurchasesControllerTests
         public HttpRequestMessage? Peticion;
         public string? Cuerpo;
         public HttpStatusCode Respuesta = HttpStatusCode.OK;
+        public string TipoDeContenido = "application/json";
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage r, CancellationToken ct)
         {
@@ -35,9 +36,24 @@ public class AdminTokenPurchasesControllerTests
             Cuerpo   = r.Content is null ? null : await r.Content.ReadAsStringAsync(ct);
             return new HttpResponseMessage(Respuesta)
             {
-                Content = new StringContent("{\"success\":true}", System.Text.Encoding.UTF8, "application/json")
+                Content = new StringContent("{\"success\":true}", System.Text.Encoding.UTF8, TipoDeContenido)
             };
         }
+    }
+
+    /// <summary>Billing que no responde: la llamada lanza en vez de devolver.</summary>
+    private sealed class Caido(Exception error) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage r, CancellationToken ct)
+            => Task.FromException<HttpResponseMessage>(error);
+    }
+
+    private static Mock<IHttpClientFactory> BillingCaido(Exception error)
+    {
+        var factory = new Mock<IHttpClientFactory>();
+        factory.Setup(f => f.CreateClient("BillingApi"))
+               .Returns(new HttpClient(new Caido(error)) { BaseAddress = new Uri("https://billing.pruebas/") });
+        return factory;
     }
 
     private static async Task SeedAsync(AppDbContext db, string orderId, TokenPurchaseStatus status,
@@ -162,6 +178,63 @@ public class AdminTokenPurchasesControllerTests
         fila.PaymentMethod.Should().Be("EWallet");
     }
 
+    [Fact]
+    public async Task A_revisar_no_pierde_una_compra_sin_perfil_pedido_ni_tipo()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        db.TokenPurchases.Add(new TokenPurchase
+        {
+            Id = "p-huerfana", MemberId = "AMB-BORRADO", TokenTypeId = 99, GrantedProductIds = "x", Quantity = 2,
+            UnitPrice = 10m, TotalAmount = 20m, PaymentMethod = TokenPaymentMethod.CreditCard,
+            Status = TokenPurchaseStatus.NeedsReconciliation, OrderId = "ORD-NO-EXISTE", IdempotencyKey = "k",
+            PeriodKey = 202610, FailureCode = "CARD_CHARGED_NOT_ISSUED", CreatedBy = "seed", CreationDate = Now
+        });
+        await db.SaveChangesAsync();
+
+        var r = await Build(db).ListToReview();
+
+        var fila = ((OkObjectResult)r).Value.Should()
+            .BeOfType<ApiResponse<IEnumerable<AdminTokenPurchasesController.TokenPurchaseToReviewDto>>>()
+            .Which.Data!.Should().ContainSingle("una compra a conciliar tiene dinero en juego: no puede desaparecer de la lista.")
+            .Subject;
+        fila.PurchaseId.Should().Be("p-huerfana");
+        fila.OrderNo.Should().BeNull();
+        fila.FullName.Should().Be("(profile not found)");
+        fila.Email.Should().BeEmpty();
+        fila.TokenTypeName.Should().Be("(token type not found)");
+    }
+
+    [Fact]
+    public async Task Cripto_pendiente_no_pierde_una_compra_sin_perfil_pedido_ni_tipo()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        db.CryptoPaymentConfirmations.Add(new CryptoPaymentConfirmation
+        {
+            OrderId = "ORD-NO-EXISTE", MemberId = "AMB-BORRADO", MemberEmail = "b@x.com", CryptoCurrency = "BTC",
+            AmountDue = 20m, Purpose = CryptoPaymentPurpose.TokenPurchase,
+            Status = CryptoPaymentConfirmationStatus.AwaitingPayment, CreatedBy = "seed", CreationDate = Now
+        });
+        db.TokenPurchases.Add(new TokenPurchase
+        {
+            Id = "p-huerfana", MemberId = "AMB-BORRADO", TokenTypeId = 99, GrantedProductIds = "x", Quantity = 2,
+            UnitPrice = 10m, TotalAmount = 20m, PaymentMethod = TokenPaymentMethod.Crypto,
+            Status = TokenPurchaseStatus.AwaitingCryptoConfirmation, OrderId = "ORD-NO-EXISTE", IdempotencyKey = "k",
+            PeriodKey = 202610, CreatedBy = "seed", CreationDate = Now
+        });
+        await db.SaveChangesAsync();
+
+        var r = await Build(db).ListCryptoPending();
+
+        var fila = ((OkObjectResult)r).Value.Should()
+            .BeOfType<ApiResponse<IEnumerable<AdminTokenPurchasesController.PendingCryptoTokenPurchaseDto>>>()
+            .Which.Data!.Should().ContainSingle().Subject;
+        fila.PurchaseId.Should().Be("p-huerfana");
+        fila.OrderNo.Should().BeNull();
+        fila.FullName.Should().Be("(profile not found)");
+        fila.Email.Should().Be("b@x.com");
+        fila.TokenTypeName.Should().Be("(token type not found)");
+    }
+
     // ── Reenvío a Billing ───────────────────────────────────────────────────────
 
     [Fact]
@@ -274,5 +347,80 @@ public class AdminTokenPurchasesControllerTests
             .ConfirmCrypto("A/../B", new AdminTokenPurchasesController.ConfirmCryptoRequest("0x1", null));
 
         captura.Peticion!.RequestUri!.AbsolutePath.Should().Be("/api/v1/billing/tokens/purchases/crypto/A%2F..%2FB/confirm");
+    }
+
+    // ── Billing que no responde, respuestas y cabeceras ─────────────────────────
+
+    [Fact]
+    public async Task Billing_caido_da_502()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await SeedAsync(db, "ORD-TOKENS", TokenPurchaseStatus.AwaitingCryptoConfirmation);
+
+        var r = await Build(db, BillingCaido(new HttpRequestException("connection refused")).Object, "Bearer admin.jwt")
+            .ConfirmCrypto("ORD-TOKENS", new AdminTokenPurchasesController.ConfirmCryptoRequest("0xabc", null));
+
+        r.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status502BadGateway);
+        ((ObjectResult)r).Value.Should().BeOfType<ApiResponse<object>>()
+            .Which.ErrorCode.Should().Be(MLMConquerorGlobalEdition.SharedKernel.Billing.TokenPurchaseErrors.BillingUnavailable);
+    }
+
+    [Fact]
+    public async Task Billing_que_agota_el_tiempo_da_502()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await SeedAsync(db, "ORD-EW", TokenPurchaseStatus.NeedsReconciliation, crypto: null);
+
+        var r = await Build(db, BillingCaido(new TaskCanceledException("timeout")).Object, "Bearer admin.jwt")
+            .Reconcile("p-ORD-EW", new AdminTokenPurchasesController.ReconcileRequest(false, null, null));
+
+        r.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status502BadGateway);
+    }
+
+    [Fact]
+    public async Task Confirmar_una_compra_ya_confirmada_se_reenvia_y_llega_el_409_de_Billing()
+    {
+        // AdminAPI no mira el estado (lo decide Billing, que tiene el RowVersion): la segunda
+        // confirmación se reenvía y la pantalla recibe el 409 de Billing.
+        await using var db = InMemoryDbHelper.Create();
+        await SeedAsync(db, "ORD-OK", TokenPurchaseStatus.Completed, cryptoStatus: CryptoPaymentConfirmationStatus.Confirmed);
+        var (factory, captura) = Billing(HttpStatusCode.Conflict);
+
+        var r = await Build(db, factory.Object, "Bearer admin.jwt")
+            .ConfirmCrypto("ORD-OK", new AdminTokenPurchasesController.ConfirmCryptoRequest("0xabc", null));
+
+        captura.Peticion.Should().NotBeNull();
+        r.Should().BeOfType<ContentResult>().Which.StatusCode.Should().Be(409);
+    }
+
+    [Fact]
+    public async Task El_tipo_de_contenido_de_Billing_llega_tal_cual()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await SeedAsync(db, "ORD-TOKENS", TokenPurchaseStatus.AwaitingCryptoConfirmation);
+        var (factory, captura) = Billing(HttpStatusCode.BadRequest);
+        captura.TipoDeContenido = "application/problem+json";
+
+        var r = await Build(db, factory.Object, "Bearer admin.jwt")
+            .ConfirmCrypto("ORD-TOKENS", new AdminTokenPurchasesController.ConfirmCryptoRequest("0xabc", null));
+
+        r.Should().BeOfType<ContentResult>().Which.ContentType.Should().StartWith("application/problem+json");
+    }
+
+    [Fact]
+    public async Task El_Bearer_va_en_la_peticion_y_no_en_el_cliente_compartido()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await SeedAsync(db, "ORD-TOKENS", TokenPurchaseStatus.AwaitingCryptoConfirmation);
+        var captura = new Captura();
+        var cliente = new HttpClient(captura) { BaseAddress = new Uri("https://billing.pruebas/") };
+        var factory = new Mock<IHttpClientFactory>();
+        factory.Setup(f => f.CreateClient("BillingApi")).Returns(cliente);
+
+        await Build(db, factory.Object, "Bearer admin.jwt")
+            .ConfirmCrypto("ORD-TOKENS", new AdminTokenPurchasesController.ConfirmCryptoRequest("0xabc", null));
+
+        captura.Peticion!.Headers.Authorization!.ToString().Should().Be("Bearer admin.jwt");
+        cliente.DefaultRequestHeaders.Authorization.Should().BeNull();
     }
 }
