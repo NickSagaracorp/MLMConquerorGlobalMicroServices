@@ -1,8 +1,8 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.BizCenter.Services;
-using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Tokens;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Billing;
 
@@ -34,19 +34,10 @@ public class GetTokenSummaryHandler : IRequestHandler<GetTokenSummaryQuery, Resu
         });
     }
 
-    public sealed record SummaryCounts(int Total, int Used, int Available);
-
     /// <summary>
-    /// Las tres cifras en UNA consulta: se agrupa todo en un solo grupo y cada cifra es un COUNT con su
-    /// condición. Sin instancias no hay grupo y la consulta no devuelve fila (de ahí los ceros).
+    /// Las tres cifras en UNA consulta. Vive en <see cref="MemberTokenQueries.Counts"/> porque AdminAPI
+    /// enseña el mismo resumen en la ficha del miembro.
     /// </summary>
-    public static IQueryable<SummaryCounts> CountsQuery(AppDbContext db, string? memberId, DateTime now) =>
-        db.TokenTransactions.AsNoTracking()
-            .Where(t => t.MemberId == memberId && t.ReferenceId != null)
-            .GroupBy(_ => 1)
-            .Select(g => new SummaryCounts(
-                g.Count(),
-                g.Count(t => t.Status == TokenInstanceStatus.Used),
-                g.Count(t => (t.Status == TokenInstanceStatus.Issued || t.Status == TokenInstanceStatus.Distributed)
-                             && (t.ExpiresAt == null || t.ExpiresAt > now))));
+    public static IQueryable<MemberTokenQueries.SummaryCounts> CountsQuery(AppDbContext db, string? memberId, DateTime now) =>
+        MemberTokenQueries.Counts(db, memberId, now);
 }
