@@ -65,9 +65,13 @@ public static class TokenPaymentMethods
     /// Pagar con saldo propio (comisiones o eWallet) exige step-up: es dinero que ya es del miembro y
     /// sale sin que nadie más lo autorice. Tarjeta (emisor) y cripto (admin) tienen su propio control.
     /// </summary>
+    /// <remarks>
+    /// Recorta los espacios igual que el servicio de Billing al leer el método: si no, " EWallet"
+    /// no contaría como saldo aquí (sin step-up) y sí como eWallet al cobrar.
+    /// </remarks>
     public static bool IsBalance(string? method) =>
-        string.Equals(method, CommissionBalance, StringComparison.OrdinalIgnoreCase)
-        || string.Equals(method, EWallet, StringComparison.OrdinalIgnoreCase);
+        string.Equals(method?.Trim(), CommissionBalance, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(method?.Trim(), EWallet, StringComparison.OrdinalIgnoreCase);
 }
 
 /// <summary>Valores de <see cref="TokenPurchaseResultDto.Status"/>.</summary>

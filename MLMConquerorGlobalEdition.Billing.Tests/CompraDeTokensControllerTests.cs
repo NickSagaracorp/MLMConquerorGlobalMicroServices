@@ -62,6 +62,8 @@ public class CompraDeTokensControllerTests
     [InlineData(TokenPaymentMethods.CommissionBalance)]
     [InlineData(TokenPaymentMethods.EWallet)]
     [InlineData("ewallet")]
+    [InlineData(" EWallet ")]
+    [InlineData("CommissionBalance\t")]
     public async Task Con_saldo_y_sin_permiso_es_403_STEP_UP_REQUIRED(string metodo)
     {
         var r = await Controlador(Miembro()).Purchase(Pedido(metodo), default);

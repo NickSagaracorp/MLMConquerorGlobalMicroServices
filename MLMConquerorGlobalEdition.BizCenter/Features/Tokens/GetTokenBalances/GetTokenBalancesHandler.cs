@@ -40,6 +40,7 @@ public class GetTokenBalancesHandler : IRequestHandler<GetTokenBalancesQuery, Re
                 tt => tt.Id,
                 (tb, tt) => new TokenBalanceDto
                 {
+                    TokenTypeId   = tt.Id,
                     TokenTypeName = tt.Name,
                     IsGuestPass   = tt.IsGuestPass,
                     Balance       = tb.Balance
