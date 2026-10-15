@@ -32,6 +32,42 @@ public class NotificationsServiceCollectionExtensionsTests
 
     // ── correo ───────────────────────────────────────────────────────────────
 
+    [Theory]
+    [InlineData("ASPNETCORE_ENVIRONMENT", "Production")]
+    [InlineData("ASPNETCORE_ENVIRONMENT", "Staging")]
+    [InlineData("DOTNET_ENVIRONMENT", "Production")]
+    [InlineData("environment", "Production")]
+    [InlineData("", "")]            // sin entorno declarado ASP.NET asume Production: se cierra
+    public void AddNotifications_WhenProviderIsSmtpOutsideDevelopment_ThrowsAtStartup(string key, string value)
+    {
+        var values = new Dictionary<string, string?> { ["Notifications:Email:Provider"] = "Smtp" };
+        if (key.Length > 0) values[key] = value;
+
+        var act = () => BuildProvider(values);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Smtp*Development*");
+    }
+
+    [Theory]
+    [InlineData("ASPNETCORE_ENVIRONMENT")]
+    [InlineData("DOTNET_ENVIRONMENT")]
+    public void AddNotifications_WhenProviderIsSmtpInDevelopment_ResolvesSesEmailService(string key)
+    {
+        using var provider = BuildProvider(new Dictionary<string, string?>
+        {
+            ["Notifications:Email:Provider"]        = "Smtp",
+            ["Notifications:Email:Ses:FromAddress"] = "no-reply@mlmconqueror.com",
+            ["Notifications:Email:Ses:FromName"]    = "MLM Conqueror",
+            ["Notifications:Email:Smtp:Host"]       = "localhost",
+            ["Notifications:Email:Smtp:Port"]       = "1025",
+            [key]                                   = "Development"
+        });
+
+        using var scope = provider.CreateScope();
+        scope.ServiceProvider.GetRequiredService<IEmailService>().Should().BeOfType<SesEmailService>();
+        scope.ServiceProvider.GetRequiredService<IEmailSender>().Should().BeOfType<SmtpEmailSender>();
+    }
+
     [Fact]
     public void AddNotifications_WhenEmailProviderIsSes_ResolvesSesEmailService()
     {

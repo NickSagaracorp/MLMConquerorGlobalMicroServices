@@ -408,10 +408,17 @@ step-up vigente y sin usar, responden `403 STEP_UP_REQUIRED` y no tocan nada. La
 
 **Condiciones de despliegue:**
 
+- **No desplegar el BizCenter con el Plan E a producción antes de que SES (y Twilio, para quien
+  use SMS) entregue de verdad.** Mientras los transportes sean los nulos, los códigos no van a
+  ningún sitio y los miembros cuyo canal es correo o SMS no pueden cambiar su wallet de cobro. Se
+  suma al requisito ya existente de purgar las cuentas SuperAdmin con buzón de yopmail.
 - `Cache:Mode=Required` con Redis en cada host que use `[RequiresStepUp]`; sin Redis el uso
   único solo vale dentro de un proceso.
-- Todos los contenedores en la **misma zona horaria**: la espera compara la hora local del
-  BizCenter (que sella el cambio de correo) con la de SignupAPI.
+- Todos los contenedores en la **misma zona horaria** y con los **relojes sincronizados por NTP**:
+  la espera compara la hora local del BizCenter (que sella el cambio de correo) con la de
+  SignupAPI, y el permiso lo firma SignupAPI y lo valida el BizCenter. El validador tolera hasta
+  30 s de deriva en `nbf` (permiso emitido "en el futuro" para el reloj del BizCenter) y ninguna
+  en `exp`; una deriva mayor rechaza permisos recién emitidos.
 - SES configurado también en el **BizCenter**: es quien avisa al correo anterior cuando cambia
   el correo.
 - Al desplegar, los retos emitidos en los 5 minutos anteriores dejan de valer (cambió la huella

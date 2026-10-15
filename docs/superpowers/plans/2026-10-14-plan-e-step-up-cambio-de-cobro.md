@@ -57,7 +57,7 @@ F y G se escriben cuando E esté integrado: comparten la pieza de cobro y convie
 - Create: `MLMConquerorGlobalEdition.SharedKernel/Security/StepUpGrant.cs`
 - Modify: `MLMConquerorGlobalEdition.SharedKernel/CacheKeys.cs` (junto a las claves `TwoFactor*`, ~línea 93)
 
-- [ ] **Step 1: Crear `StepUpOperations.cs`**
+- [x] **Step 1: Crear `StepUpOperations.cs`**
 
 ```csharp
 namespace MLMConquerorGlobalEdition.SharedKernel.Security;
@@ -86,7 +86,7 @@ public static class StepUpOperations
 }
 ```
 
-- [ ] **Step 2: Crear `StepUpGrant.cs`**
+- [x] **Step 2: Crear `StepUpGrant.cs`**
 
 ```csharp
 using MLMConquerorGlobalEdition.SharedKernel.Configuration;
@@ -125,7 +125,7 @@ public static class StepUpGrant
 }
 ```
 
-- [ ] **Step 3: Agregar la clave de caché en `CacheKeys.cs`**, después de `TwoFactorTotpUsed`:
+- [x] **Step 3: Agregar la clave de caché en `CacheKeys.cs`**, después de `TwoFactorTotpUsed`:
 
 ```csharp
     /// <summary>
@@ -135,12 +135,12 @@ public static class StepUpGrant
     public static string StepUpGrantConsumed(string jti) => $"stepup:grant:{jti}:consumed";
 ```
 
-- [ ] **Step 4: Compilar**
+- [x] **Step 4: Compilar**
 
 Run: `dotnet build MLMConquerorGlobalEdition.SharedKernel -v q -nologo`
 Expected: `0 Error(s)`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add MLMConquerorGlobalEdition.SharedKernel
@@ -160,7 +160,7 @@ git commit -m "Contrato del permiso de step-up y catalogo de operaciones protegi
 - Modify: `MLMConquerorGlobalEdition.Authn.Tests/MLMConquerorGlobalEdition.Authn.Tests.csproj` (ProjectReference a SharedKernel.Server)
 - Test: `MLMConquerorGlobalEdition.Authn.Tests/Services/StepUpGrantServiceTests.cs`
 
-- [ ] **Step 1: Escribir la prueba de ida y vuelta (falla: los tipos no existen)**
+- [x] **Step 1: Escribir la prueba de ida y vuelta (falla: los tipos no existen)**
 
 ```csharp
 using System.IdentityModel.Tokens.Jwt;
@@ -282,7 +282,7 @@ public class StepUpGrantServiceTests
 }
 ```
 
-- [ ] **Step 2: Agregar la referencia de prueba y correr (debe fallar al compilar)**
+- [x] **Step 2: Agregar la referencia de prueba y correr (debe fallar al compilar)**
 
 En `MLMConquerorGlobalEdition.Authn.Tests.csproj`, dentro del `ItemGroup` de `ProjectReference`:
 
@@ -293,7 +293,7 @@ En `MLMConquerorGlobalEdition.Authn.Tests.csproj`, dentro del `ItemGroup` de `Pr
 Run: `dotnet test MLMConquerorGlobalEdition.Authn.Tests --filter StepUpGrantServiceTests -nologo`
 Expected: FAIL — `StepUpGrantService` / `StepUpGrantValidator` no existen.
 
-- [ ] **Step 3: Crear `IStepUpGrantService.cs`**
+- [x] **Step 3: Crear `IStepUpGrantService.cs`**
 
 ```csharp
 namespace MLMConquerorGlobalEdition.Authn.Abstractions;
@@ -309,7 +309,7 @@ public interface IStepUpGrantService
 }
 ```
 
-- [ ] **Step 4: Crear `StepUpGrantService.cs`**
+- [x] **Step 4: Crear `StepUpGrantService.cs`**
 
 ```csharp
 using System.IdentityModel.Tokens.Jwt;
@@ -374,7 +374,7 @@ public sealed class StepUpGrantService : IStepUpGrantService
 
 > `JwtKeyGuard` es el mismo que usa `ChallengeTokenService`; confirmar su namespace con `grep -rn "class JwtKeyGuard"` y ajustar el `using` si no está en `SharedKernel.Configuration`.
 
-- [ ] **Step 5: Registrar en `AuthnServiceCollectionExtensions.cs`**, después de `AddAuthnChallengeTokens`:
+- [x] **Step 5: Registrar en `AuthnServiceCollectionExtensions.cs`**, después de `AddAuthnChallengeTokens`:
 
 ```csharp
     /// <summary>
@@ -388,7 +388,7 @@ public sealed class StepUpGrantService : IStepUpGrantService
     }
 ```
 
-- [ ] **Step 6: Agregar el paquete a SharedKernel.Server**
+- [x] **Step 6: Agregar el paquete a SharedKernel.Server**
 
 En `MLMConquerorGlobalEdition.SharedKernel.Server.csproj`, junto a los demás `PackageReference`:
 
@@ -396,7 +396,7 @@ En `MLMConquerorGlobalEdition.SharedKernel.Server.csproj`, junto a los demás `P
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.22.0" />
 ```
 
-- [ ] **Step 7: Crear `SharedKernel.Server/Security/StepUpGrantValidator.cs`**
+- [x] **Step 7: Crear `SharedKernel.Server/Security/StepUpGrantValidator.cs`**
 
 ```csharp
 using System.IdentityModel.Tokens.Jwt;
@@ -486,12 +486,12 @@ public sealed class StepUpGrantValidator
 }
 ```
 
-- [ ] **Step 8: Correr las pruebas**
+- [x] **Step 8: Correr las pruebas**
 
 Run: `dotnet test MLMConquerorGlobalEdition.Authn.Tests --filter StepUpGrantServiceTests -nologo`
 Expected: PASS (6 pruebas).
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add MLMConquerorGlobalEdition.Authn MLMConquerorGlobalEdition.SharedKernel.Server MLMConquerorGlobalEdition.Authn.Tests
@@ -507,7 +507,7 @@ git commit -m "Permiso de step-up firmado: lo emite Authn y lo valida cualquier 
 - Create: `MLMConquerorGlobalEdition.SharedKernel.Server/Security/StepUpAuthorizationFilter.cs`
 - Test: `MLMConquerorGlobalEdition.BizCenter.Tests/StepUpAuthorizationFilterTests.cs`
 
-- [ ] **Step 1: Escribir las pruebas (fallan: el filtro no existe)**
+- [x] **Step 1: Escribir las pruebas (fallan: el filtro no existe)**
 
 ```csharp
 using System.IdentityModel.Tokens.Jwt;
@@ -670,7 +670,7 @@ public class StepUpAuthorizationFilterTests
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter StepUpAuthorizationFilterTests -nologo`
 Expected: FAIL al compilar — `StepUpAuthorizationFilter` / `StepUpRequiredData` no existen.
 
-- [ ] **Step 2: Crear `RequiresStepUpAttribute.cs`**
+- [x] **Step 2: Crear `RequiresStepUpAttribute.cs`**
 
 ```csharp
 using Microsoft.AspNetCore.Mvc;
@@ -694,7 +694,7 @@ public sealed class RequiresStepUpAttribute : TypeFilterAttribute
 }
 ```
 
-- [ ] **Step 3: Crear `StepUpAuthorizationFilter.cs`**
+- [x] **Step 3: Crear `StepUpAuthorizationFilter.cs`**
 
 ```csharp
 using System.Security.Claims;
@@ -779,12 +779,12 @@ public sealed class StepUpAuthorizationFilter : IAsyncAuthorizationFilter
 
 > `StatusCodes` está en `Microsoft.AspNetCore.Http`; agregar ese `using` si el compilador lo pide.
 
-- [ ] **Step 4: Correr las pruebas**
+- [x] **Step 4: Correr las pruebas**
 
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter StepUpAuthorizationFilterTests -nologo`
 Expected: PASS (7 pruebas).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add MLMConquerorGlobalEdition.SharedKernel.Server MLMConquerorGlobalEdition.BizCenter.Tests/StepUpAuthorizationFilterTests.cs
@@ -804,7 +804,7 @@ git commit -m "Filtro RequiresStepUp: sin permiso valido y sin usar, la accion n
 - Modify: `MLMConquerorGlobalEdition.SignupAPI/Program.cs:134` (`AddAuthnStepUpGrants()`)
 - Test: `MLMConquerorGlobalEdition.Signups.Tests/Features/Auth/StepUpHandlersTests.cs`
 
-- [ ] **Step 1: Escribir las pruebas (fallan: los tipos no existen)**
+- [x] **Step 1: Escribir las pruebas (fallan: los tipos no existen)**
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -942,7 +942,7 @@ public class StepUpHandlersTests : IDisposable
 Run: `dotnet test MLMConquerorGlobalEdition.Signups.Tests --filter StepUpHandlersTests -nologo`
 Expected: FAIL al compilar.
 
-- [ ] **Step 2: Extraer `TwoFactorLanguage.cs`** (mismo cuerpo que `AddPhoneHandler.ResolveLanguageAsync`)
+- [x] **Step 2: Extraer `TwoFactorLanguage.cs`** (mismo cuerpo que `AddPhoneHandler.ResolveLanguageAsync`)
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -974,7 +974,7 @@ public static class TwoFactorLanguage
 
 En `AddPhoneHandler.cs`: borrar el método privado `ResolveLanguageAsync` y cambiar la llamada a `var languageCode = await TwoFactorLanguage.ResolveAsync(_db, user, ct);` (con `using MLMConquerorGlobalEdition.SignupAPI.Services;`).
 
-- [ ] **Step 3: Crear los DTOs** (`DTOs/Auth/`)
+- [x] **Step 3: Crear los DTOs** (`DTOs/Auth/`)
 
 ```csharp
 // StepUpChallengeRequest.cs
@@ -1015,7 +1015,7 @@ public class StepUpGrantResponse
 
 (Un archivo por clase, como el resto de `DTOs/Auth`.)
 
-- [ ] **Step 4: Crear comandos y handlers** (`Features/Auth/Commands/StepUp/`)
+- [x] **Step 4: Crear comandos y handlers** (`Features/Auth/Commands/StepUp/`)
 
 ```csharp
 // IssueStepUpCommand.cs
@@ -1145,7 +1145,7 @@ public class VerifyStepUpHandler : IRequestHandler<VerifyStepUpCommand, Result<S
 }
 ```
 
-- [ ] **Step 5: Endpoints en `AuthController.cs`**, después de `RemovePhone` (y `using ...Features.Auth.Commands.StepUp;`):
+- [x] **Step 5: Endpoints en `AuthController.cs`**, después de `RemovePhone` (y `using ...Features.Auth.Commands.StepUp;`):
 
 ```csharp
     /// <summary>
@@ -1184,18 +1184,18 @@ public class VerifyStepUpHandler : IRequestHandler<VerifyStepUpCommand, Result<S
     }
 ```
 
-- [ ] **Step 6: Registrar en `SignupAPI/Program.cs`**, después de `builder.Services.AddAuthnTwoFactor();`:
+- [x] **Step 6: Registrar en `SignupAPI/Program.cs`**, después de `builder.Services.AddAuthnTwoFactor();`:
 
 ```csharp
 builder.Services.AddAuthnStepUpGrants();
 ```
 
-- [ ] **Step 7: Correr las pruebas de SignupAPI completas** (incluye `AddPhoneHandlerTests`, que cubre la extracción del idioma)
+- [x] **Step 7: Correr las pruebas de SignupAPI completas** (incluye `AddPhoneHandlerTests`, que cubre la extracción del idioma)
 
 Run: `dotnet test MLMConquerorGlobalEdition.Signups.Tests -nologo`
 Expected: PASS, sin regresiones.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add MLMConquerorGlobalEdition.SignupAPI MLMConquerorGlobalEdition.Signups.Tests
@@ -1233,7 +1233,7 @@ git commit -m "SignupAPI emite el reto de step-up y canjea el codigo por un perm
 - Modify: `MLMConquerorGlobalEdition.BizCenter/Program.cs` (registrar `StepUpGrantValidator`)
 - Test: `MLMConquerorGlobalEdition.BizCenter.Tests/PuertasDeLaWalletTests.cs`
 
-- [ ] **Step 1: Prueba de inventario (falla: las acciones no llevan el atributo y `UpdateWallet` existe)**
+- [x] **Step 1: Prueba de inventario (falla: las acciones no llevan el atributo y `UpdateWallet` existe)**
 
 ```csharp
 using System.Reflection;
@@ -1284,7 +1284,7 @@ public class PuertasDeLaWalletTests
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter PuertasDeLaWalletTests -nologo`
 Expected: FAIL (`Toda_accion...` y `La_ruta_vieja...`).
 
-- [ ] **Step 2: Borrar la ruta vieja**
+- [x] **Step 2: Borrar la ruta vieja**
 
 ```bash
 git rm -r MLMConquerorGlobalEdition.BizCenter/Features/Wallet/UpdateWallet
@@ -1297,7 +1297,7 @@ Confirmar que nadie más los usa:
 Run: `grep -rn "UpdateWalletRequest\|UpdateWalletCommand\|UpdateWalletHandler" --include=*.cs --include=*.razor . | grep -v /obj/`
 Expected: sin resultados.
 
-- [ ] **Step 3: Poner el atributo en las dos puertas** (`using MLMConquerorGlobalEdition.SharedKernel.Security; using MLMConquerorGlobalEdition.SharedKernel.Server.Security;`)
+- [x] **Step 3: Poner el atributo en las dos puertas** (`using MLMConquerorGlobalEdition.SharedKernel.Security; using MLMConquerorGlobalEdition.SharedKernel.Server.Security;`)
 
 ```csharp
     /// <summary>PUT /api/v1/bizcenter/wallets/{walletType} — create/update an account for that gateway.</summary>
@@ -1315,7 +1315,7 @@ Expected: sin resultados.
     public async Task<IActionResult> SetDefault(
 ```
 
-- [ ] **Step 4: Registrar el validador en `BizCenter/Program.cs`**, junto a las demás líneas `AddSingleton/AddScoped` de servicios (después de `ICacheService`, ~:192):
+- [x] **Step 4: Registrar el validador en `BizCenter/Program.cs`**, junto a las demás líneas `AddSingleton/AddScoped` de servicios (después de `ICacheService`, ~:192):
 
 ```csharp
 // Valida el permiso de step-up con la llave pública. El BizCenter no firma nada: el permiso lo
@@ -1327,12 +1327,12 @@ builder.Services.AddSingleton<MLMConquerorGlobalEdition.SharedKernel.Server.Secu
 >
 > Singleton: solo guarda la llave y lee `IDateTimeProvider`. Confirmar con `grep -n "IDateTimeProvider" MLMConquerorGlobalEdition.BizCenter/Program.cs` que el de SharedKernel está registrado como singleton; si es scoped, registrar el validador `AddScoped`.
 
-- [ ] **Step 5: Correr todo BizCenter.Tests**
+- [x] **Step 5: Correr todo BizCenter.Tests**
 
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests -nologo`
 Expected: PASS, sin regresiones.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A MLMConquerorGlobalEdition.BizCenter MLMConquerorGlobalEdition.BizCenter.Tests
@@ -1354,7 +1354,7 @@ git commit -m "Cambiar la wallet de cobro exige step-up, y se borra la ruta viej
 - Modify: los 9 `SharedResources*.resx`
 - Test: `MLMConquerorGlobalEdition.BizCenter.Tests/StepUpHttpTests.cs`
 
-- [ ] **Step 1: Prueba de la detección (falla: `StepUpHttp` no existe)**
+- [x] **Step 1: Prueba de la detección (falla: `StepUpHttp` no existe)**
 
 ```csharp
 using System.Net;
@@ -1401,7 +1401,7 @@ public class StepUpHttpTests
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter StepUpHttpTests -nologo`
 Expected: FAIL al compilar.
 
-- [ ] **Step 2: Crear `StepUpHttp.cs`**
+- [x] **Step 2: Crear `StepUpHttp.cs`**
 
 ```csharp
 using System.Net;
@@ -1437,7 +1437,7 @@ public static class StepUpHttp
 }
 ```
 
-- [ ] **Step 3: Crear `StepUpClient.cs`**
+- [x] **Step 3: Crear `StepUpClient.cs`**
 
 ```csharp
 using System.Net.Http.Json;
@@ -1493,7 +1493,7 @@ public sealed class StepUpClient
 }
 ```
 
-- [ ] **Step 4: Crear `StepUpDialog.razor`**
+- [x] **Step 4: Crear `StepUpDialog.razor`**
 
 ```razor
 @namespace MLMConquerorGlobalEdition.SharedComponents.Components.Account.StepUp
@@ -1598,7 +1598,7 @@ public sealed class StepUpClient
 
 > Confirmar que `SharedResources` resuelve sin `using` extra (lo usan los demás componentes de `Components/Account`); si no, agregar `@using MLMConquerorGlobalEdition.SharedComponents.Resources`.
 
-- [ ] **Step 5: Crear `StepUpClientRegistration.cs`** (SharedComponents.Server)
+- [x] **Step 5: Crear `StepUpClientRegistration.cs`** (SharedComponents.Server)
 
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
@@ -1625,7 +1625,7 @@ public static class StepUpClientRegistration
 }
 ```
 
-- [ ] **Step 6: Registrar en `BizCenterWeb/Program.cs`**, después de `builder.Services.AddAuthApiClient(...)`:
+- [x] **Step 6: Registrar en `BizCenterWeb/Program.cs`**, después de `builder.Services.AddAuthApiClient(...)`:
 
 ```csharp
 // Cliente del step-up: el modal que pide el código antes de cambiar la wallet de cobro.
@@ -1633,7 +1633,7 @@ builder.Services.AddStepUpClient(
     builder.Configuration["AuthApiBaseUrl"] ?? "https://localhost:7005");
 ```
 
-- [ ] **Step 7: Integrar en `WalletPanel.razor`**
+- [x] **Step 7: Integrar en `WalletPanel.razor`**
 
 Arriba del markup (junto al alert de :11-12) montar el modal, y agregar `@using MLMConquerorGlobalEdition.SharedComponents.Components.Account.StepUp` y `@using MLMConquerorGlobalEdition.SharedKernel.Security`:
 
@@ -1680,7 +1680,7 @@ En `SetDefaultAsync`, reemplazar `var resp = await Http.PutAsync($"{ListUrl}/{wa
 
 (`JsonContent` está en `System.Net.Http.Json`; agregar el `@using` si falta.)
 
-- [ ] **Step 8: Integrar en `CommissionsCard.razor`** — mismo `<StepUpDialog @ref="_stepUp" />`, mismos `@using`, mismo helper `SendWithStepUpAsync` (con `Http` del componente), y en `SaveAsync` paso 2:
+- [x] **Step 8: Integrar en `CommissionsCard.razor`** — mismo `<StepUpDialog @ref="_stepUp" />`, mismos `@using`, mismo helper `SendWithStepUpAsync` (con `Http` del componente), y en `SaveAsync` paso 2:
 
 ```csharp
                 var walletResp = await SendWithStepUpAsync(() =>
@@ -1690,7 +1690,7 @@ En `SetDefaultAsync`, reemplazar `var resp = await Http.PutAsync($"{ListUrl}/{wa
 
 > El helper queda duplicado en dos componentes. Si aparece un tercero, subirlo a un método de extensión sobre `HttpClient` en `StepUpHttp` que reciba el `StepUpDialog`.
 
-- [ ] **Step 9: Textos en los 9 `.resx`** — agregar estas claves `StepUp.*` en cada archivo (`<data name="..." xml:space="preserve"><value>...</value></data>`):
+- [x] **Step 9: Textos en los 9 `.resx`** — agregar estas claves `StepUp.*` en cada archivo (`<data name="..." xml:space="preserve"><value>...</value></data>`):
 
 | Clave | en (`SharedResources.resx`) | es | fr | de | it | pt | ko | ka | zh |
 |---|---|---|---|---|---|---|---|---|---|
@@ -1707,12 +1707,12 @@ Verificar que las 8 claves están en los 9 archivos:
 Run: `for f in MLMConquerorGlobalEdition.SharedComponents/Resources/SharedResources*.resx; do echo "$f $(grep -c 'name="StepUp\.' $f)"; done`
 Expected: `8` en cada línea.
 
-- [ ] **Step 10: Correr pruebas y compilar la solución**
+- [x] **Step 10: Correr pruebas y compilar la solución**
 
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests -nologo` → PASS.
 Run: `dotnet build MLMConquerorGlobalEdition.slnx -v q -nologo` → `0 Error(s)` (incluye AdminWeb y las MAUI, que comparten los componentes).
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add MLMConquerorGlobalEdition.SharedComponents MLMConquerorGlobalEdition.SharedComponents.Server MLMConquerorGlobalEdition.BizCenterWeb MLMConquerorGlobalEdition.BizCenter.Tests
@@ -1727,9 +1727,9 @@ git commit -m "El BizCenter pide el codigo de verificacion antes de cambiar la w
 - Modify: `docs/deployment/pruebas-de-seguridad.md` (~:341, donde step-up figura como "sin construir")
 - Modify: `MWR Life → MLMConqueror SOW BizCenter y matriz de paridad.md:78` (estado → Cubierto)
 
-- [ ] **Step 1: Reiniciar SignupAPI, BizCenter API y BizCenterWeb** con el código nuevo (los demás servicios pueden seguir).
+- [x] **Step 1: Reiniciar SignupAPI, BizCenter API y BizCenterWeb** con el código nuevo (los demás servicios pueden seguir).
 
-- [ ] **Step 2: Probar con `curl` que la puerta está cerrada** (token de acceso de un miembro de prueba en `$T`):
+- [x] **Step 2: Probar con `curl` que la puerta está cerrada** (token de acceso de un miembro de prueba en `$T`):
 
 ```bash
 curl -sk -X PUT https://localhost:7003/api/v1/bizcenter/wallets/6/default -H "Authorization: Bearer $T" -w "\n%{http_code}\n"
@@ -1741,13 +1741,35 @@ curl -sk -X PUT https://localhost:7003/api/v1/bizcenter/wallet -H "Authorization
 ```
 Expected: `404` / `405` — la ruta vieja ya no existe.
 
-- [ ] **Step 3: Recorrido en el navegador** (https://localhost:7004, miembro de prueba): Perfil → Wallets → editar una cuenta → Guardar. Debe abrirse el modal, llegar el código al correo (en desarrollo, revisar el log de SignupAPI o el buzón configurado), y al confirmarlo guardarse el cambio. Repetir con "cambiar preferida" desde la tarjeta de Comisiones. Cancelar el modal no debe guardar nada. Un código malo muestra el error traducido.
+- [x] **Step 3: Recorrido en el navegador** (https://localhost:7004, miembro de prueba): Perfil → Wallets → editar una cuenta → Guardar. Debe abrirse el modal, llegar el código al correo (en desarrollo, revisar el log de SignupAPI o el buzón configurado), y al confirmarlo guardarse el cambio. Repetir con "cambiar preferida" desde la tarjeta de Comisiones. Cancelar el modal no debe guardar nada. Un código malo muestra el error traducido.
 
-- [ ] **Step 4: Actualizar los documentos** — en `pruebas-de-seguridad.md` cambiar "sin construir" por la descripción del step-up del BizCenter y los pasos 2-3 como prueba; en la matriz de paridad, fila 78: `SaveWallet y SetDefault exigen step-up (código por correo, SMS o autenticador) | Cubierto`, y ajustar el conteo del resumen (Cubierto 30, Falta 16).
+- [x] **Step 4: Actualizar los documentos** — en `pruebas-de-seguridad.md` cambiar "sin construir" por la descripción del step-up del BizCenter y los pasos 2-3 como prueba; en la matriz de paridad, fila 78: `SaveWallet y SetDefault exigen step-up (código por correo, SMS o autenticador) | Cubierto`, y ajustar el conteo del resumen (Cubierto 30, Falta 16).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add docs "MWR Life → MLMConqueror SOW BizCenter y matriz de paridad.md"
 git commit -m "Documenta el step-up del cambio de cobro y lo marca cubierto en la matriz de paridad"
 ```
+
+## Estado final
+
+Las Tareas 1 a 7 están hechas. Además del alcance original, la rama incluye:
+
+- **Tarea 4b, endurecimiento del step-up**: espera de 24 h tras cambiar un factor
+  (`STEP_UP_COOLDOWN`, `SecurityFactorsChangedAt` sellado por interceptor), aviso al dueño con
+  `SECURITY_FACTOR_CHANGED` (también al re-enrolar el autenticador) y canje del reto de un solo uso
+  y atómico con `TryClaimOnceAsync`, fallando cerrado.
+- **Corrección de la huella del código**: HMAC-SHA256 con clave derivada por HKDF de la llave
+  privada JWT y atada al jti, en lugar de un SHA-256 sin clave invertible fuera de línea; el
+  servicio de retos pasa a Singleton y deriva sus claves de la llave canónica.
+- **Tope diario de códigos fallidos** por usuario (`TWO_FACTOR_LOCKED`; 15 en login y 10 en
+  step-up por 24 h) con aviso al dueño y código de exactamente seis dígitos ASCII.
+- **Redacción de los logs de los transportes nulos**: ya no escriben códigos ni enlaces, solo el
+  evento, el destino enmascarado y los nombres de las variables.
+- **Proveedor SMTP para MailHog** en desarrollo (y, en la revisión final, rechazado fuera de
+  Development).
+- **Revisión final**: tolerancia de 30 s en `nbf` del permiso, texto propio del diálogo tras
+  `INVALID_CHALLENGE`/`CODE_EXPIRED`/`TOO_MANY_ATTEMPTS`, step-up rechazado bajo suplantación
+  (`IMPERSONATION_NOT_ALLOWED`), firmante del permiso como Singleton y las condiciones de
+  despliegue (SES/Twilio reales antes de producción, NTP) en `docs/deployment/pruebas-de-seguridad.md`.
