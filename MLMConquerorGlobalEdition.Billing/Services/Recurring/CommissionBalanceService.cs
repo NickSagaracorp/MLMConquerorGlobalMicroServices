@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.Domain.Constants;
 using MLMConquerorGlobalEdition.Domain.Entities.Billing;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
@@ -6,6 +7,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Tokens;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Billing;
 
 namespace MLMConquerorGlobalEdition.Billing.Services.Recurring;
 
@@ -248,6 +250,89 @@ public class CommissionBalanceService : ICommissionBalanceService
             PaymentHistoryId         = paymentHistory.Id,
             ConsolidatedEarningId    = consolidatedEarningId
         });
+    }
+
+    // ── Compra de tokens (Plan F) ─────────────────────────────────────────────
+
+    public async Task<decimal> GetSpendableAsync(string memberId, CancellationToken ct = default)
+    {
+        var now     = _dateTime.Now;
+        var minimum = await GetConsolidationMinimumAsync(ct);
+
+        // Las comisiones que ya están dentro de un pago no fallido son de ese pago, no de esta compra.
+        var reservedIds = _db.PayoutAttemptEarnings
+            .Where(pae => _db.PayoutAttempts.Any(a => a.Id == pae.PayoutAttemptId && a.Outcome != PayoutOutcome.Failed))
+            .Select(pae => pae.CommissionEarningId);
+
+        var payable = await _db.CommissionEarnings.AsNoTracking()
+            .Where(e => e.BeneficiaryMemberId == memberId
+                     && e.Status == CommissionEarningStatus.Pending
+                     && !e.IsDeleted
+                     && e.PaymentDate <= now
+                     && !reservedIds.Contains(e.Id))
+            .SumAsync(e => (decimal?)e.Amount, ct) ?? 0m;
+
+        var dailyResidual = await _db.DailyResidualEarnings.AsNoTracking()
+            .Where(e => e.BeneficiaryMemberId == memberId && e.Status == CommissionEarningStatus.Pending)
+            .SumAsync(e => (decimal?)e.Amount, ct) ?? 0m;
+
+        var eligibleResidual = dailyResidual >= minimum ? dailyResidual : 0m;
+        return Math.Max(0m, payable + eligibleResidual);
+    }
+
+    public async Task<Result<string>> FundTokenPurchaseAsync(
+        string memberId, decimal amount, string orderId, string actor, CancellationToken ct = default)
+    {
+        if (amount <= 0)
+            return Result<string>.Failure("INVALID_AMOUNT", "Amount must be positive.");
+
+        var spendable = await GetSpendableAsync(memberId, ct);
+        if (spendable < amount)
+            return Result<string>.Failure(TokenPurchaseErrors.InsufficientCommissionBalance,
+                $"Commission balance {spendable:F2} is below {amount:F2}.");
+
+        var now = _dateTime.Now;
+
+        await ConsolidateCoreAsync(memberId, actor,
+            paymentComment: $"Consolidated to fund token purchase order #{orderId}", ct);
+
+        var debit = new CommissionEarning
+        {
+            BeneficiaryMemberId = memberId,
+            CommissionTypeId    = await GetDailyResidualCommissionTypeIdAsync(ct),
+            Amount              = -amount,
+            Status              = CommissionEarningStatus.Pending,
+            EarnedDate          = now,
+            PaymentDate         = now,
+            SourceOrderId       = orderId,
+            Notes               = $"Token purchase debit — {amount:F2} — Order {orderId}",
+            IsManualEntry       = false,
+            CreatedBy           = actor,
+            CreationDate        = now,
+            LastUpdateDate      = now
+        };
+        _db.CommissionEarnings.Add(debit);
+
+        // El Id del débito ya existe (lo asigna la entidad al construirse), así que el pago puede
+        // apuntarle sin un SaveChanges intermedio: débito y pago se escriben juntos.
+        var payment = new PaymentHistory
+        {
+            OrderId              = orderId,
+            MemberId             = memberId,
+            Amount               = amount,
+            GatewayName          = "CommissionBalance",
+            GatewayTransactionId = debit.Id,
+            TransactionStatus    = PaymentHistoryTransactionStatus.Captured,
+            ProcessedAt          = now,
+            CreationDate         = now,
+            CreatedBy            = actor,
+            LastUpdateDate       = now,
+            LastUpdateBy         = actor
+        };
+        _db.PaymentHistories.Add(payment);
+
+        await _db.SaveChangesAsync(ct);
+        return Result<string>.Success(payment.Id);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
