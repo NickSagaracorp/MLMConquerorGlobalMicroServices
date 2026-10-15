@@ -24,6 +24,13 @@ public static class NotificationsServiceCollectionExtensions
             services.AddScoped<IEmailSender, SesEmailSender>();
             services.AddScoped<IEmailService, SesEmailService>();
         }
+        else if (emailProvider.Equals("Smtp", StringComparison.OrdinalIgnoreCase))
+        {
+            // Desarrollo contra un buzón de captura (MailHog). Mismo armado que SES —plantilla,
+            // idioma, remitente de Notifications:Email:Ses— y solo cambia el transporte.
+            services.AddScoped<IEmailSender, SmtpEmailSender>();
+            services.AddScoped<IEmailService, SesEmailService>();
+        }
         else
         {
             services.AddTransient<IEmailService, NullEmailService>();
