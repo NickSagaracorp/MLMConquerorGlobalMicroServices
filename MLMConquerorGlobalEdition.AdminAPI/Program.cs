@@ -124,6 +124,8 @@ builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
 // SignupAPI, que es donde vive el segundo factor.
 builder.Services.AddAuthnAccessTokens();
 builder.Services.AddScoped<IS3StorageService, S3StorageService>();
+// Aviso a los SuperAdmin cuando cambia una dirección de depósito cripto (Parámetros globales).
+builder.Services.AddScoped<ICryptoDepositAlertNotifier, CryptoDepositAlertNotifier>();
 
 // Cache backend — probe Redis at startup. Cache:Mode controls behavior on
 // failure: "Required" (production) → throw. "Optional" (dev) → fall back

@@ -98,6 +98,12 @@
 
         <AuthorizeView Roles="SuperAdmin,Admin">
             <Authorized>
+                <li class="menu-item @(IsActive("/admin/settings/global-parameters") == "active" ? "active" : "")">
+                    <a href="/admin/settings/global-parameters" class="menu-link @IsActive("/admin/settings/global-parameters")">
+                        <i class="ri-settings-4-line menu-icon"></i>
+                        <span class="title">Global Parameters</span>
+                    </a>
+                </li>
                 @* ── Rank Reports ── *@
                 <li class="menu-item @(IsSection("/admin/ranks/first-achievements","/admin/ranks/seniority") ? "open active" : "")">
                     <a href="javascript:void(0);" class="menu-link menu-toggle">

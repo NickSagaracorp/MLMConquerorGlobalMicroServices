@@ -1,0 +1,157 @@
+@page "/admin/settings/global-parameters"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin,Admin")]
+@inject HttpClient Http
+
+@*
+    Parámetros globales del sistema. Incluye las direcciones de depósito cripto
+    (Crypto.DepositAddress.BTC / ETH / USDT y Crypto.DepositNetwork.*): una moneda sin dirección no
+    se ofrece ni en la compra de tokens ni en el alta. Cambiar una dirección desvía pagos: revisar dos
+    veces. El servidor valida el formato, guarda cada cambio en el historial (AuditTracking) y avisa
+    por correo a todos los SuperAdmin activos cuando cambia una dirección.
+*@
+
+<PageTitle>Global Parameters — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> {
+    new("Admin Dashboard", "/admin"), new("Settings"), new("Global Parameters") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="alert alert-info small">
+    Crypto deposit addresses: <code>Crypto.DepositAddress.BTC</code>, <code>Crypto.DepositAddress.ETH</code>,
+    <code>Crypto.DepositAddress.USDT</code>, with an optional network note in <code>Crypto.DepositNetwork.&lt;CURRENCY&gt;</code>
+    (e.g. <em>TRC-20</em>). Leave an address empty to stop offering that currency. Every change is recorded,
+    and changing a deposit address emails all active SuperAdmins.
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold">Global parameters</h5>
+        <button class="btn btn-sm btn-primary" @onclick="OpenCreate"><i class="ri-add-line"></i> New</button>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead><tr><th>Key</th><th>Value</th><th>Description</th><th>Last update</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var p in _items)
+                        {
+                            var row = p;
+                            <tr>
+                                <td class="font-monospace small">@row.Key</td>
+                                <td class="font-monospace small text-break">@row.Value</td>
+                                <td class="small">@row.Description</td>
+                                <td class="small text-muted">@((row.LastUpdateDate ?? row.CreationDate).ToString("yyyy-MM-dd HH:mm")) · @(row.LastUpdateBy ?? row.CreatedBy)</td>
+                                <td><button class="btn btn-sm btn-outline-secondary py-0" @onclick="() => OpenEdit(row)">Edit</button></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@if (_showForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_editId is null ? "New parameter" : "Edit parameter")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseForm" disabled="@_saving"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label small fw-semibold">Key</label>
+                    <input class="form-control form-control-sm mb-3 font-monospace" @bind="_key" disabled="@(_editId is not null)" maxlength="200" />
+                    <label class="form-label small fw-semibold">Value</label>
+                    <textarea class="form-control form-control-sm mb-3 font-monospace" rows="2" @bind="_value" maxlength="2000"></textarea>
+                    <label class="form-label small fw-semibold">Description</label>
+                    <input class="form-control form-control-sm" @bind="_description" maxlength="500" />
+                    @if (_key.StartsWith("Crypto.DepositAddress."))
+                    {
+                        <div class="alert alert-warning py-2 small mt-3 mb-0">
+                            Members will send money to this address. Double-check it against the wallet before saving: all SuperAdmins will be notified by email.
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm" disabled="@_saving">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SaveAsync" disabled="@(_saving || string.IsNullOrWhiteSpace(_key))">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<ParamDto> _items = new();
+    private bool _loading = true, _saving, _showForm, _alertIsError;
+    private string? _alertMsg;
+    private int? _editId;
+    private string _key = string.Empty, _value = string.Empty;
+    private string? _description;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiResp<List<ParamDto>>>("api/v1/admin/global-parameters");
+            _items = resp?.Data ?? new();
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _loading = false; }
+    }
+
+    private void OpenCreate() { _editId = null; _key = string.Empty; _value = string.Empty; _description = null; _showForm = true; }
+    private void OpenEdit(ParamDto p) { _editId = p.Id; _key = p.Key; _value = p.Value; _description = p.Description; _showForm = true; }
+    private void CloseForm() => _showForm = false;
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        try
+        {
+            var resp = _editId is null
+                ? await Http.PostAsJsonAsync("api/v1/admin/global-parameters", new { Key = _key.Trim(), Value = _value, Description = _description })
+                : await Http.PutAsJsonAsync($"api/v1/admin/global-parameters/{_editId}", new { Value = _value, Description = _description });
+
+            if (resp.IsSuccessStatusCode)
+            {
+                _alertMsg = "Parameter saved."; _alertIsError = false;
+                CloseForm();
+                await LoadAsync();
+            }
+            else
+            {
+                var body = await resp.Content.ReadFromJsonAsync<ApiResp<object>>();
+                _alertMsg = body?.Errors?.FirstOrDefault() ?? body?.Message ?? $"Save failed ({(int)resp.StatusCode}).";
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex) { _alertMsg = $"Error: {ex.Message}"; _alertIsError = true; }
+        finally { _saving = false; }
+    }
+
+    private record ApiResp<T>(bool Success, T? Data, string? Message, IEnumerable<string>? Errors);
+    private record ParamDto(int Id, string Key, string Value, string? Description,
+        DateTime CreationDate, string CreatedBy, DateTime? LastUpdateDate, string? LastUpdateBy);
+}

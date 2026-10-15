@@ -60,4 +60,12 @@ public static class NotificationEvents
     /// PurchaseDate, PurchaseId, OrderNo }. Un fallo de envío se registra y no deshace la compra.
     /// </summary>
     public const string TokenPurchaseReceipt = "TOKEN_PURCHASE_RECEIPT";
+
+    /// <summary>
+    /// Aviso a cada SuperAdmin activo cuando alguien crea o cambia una dirección de depósito cripto
+    /// (<c>Crypto.DepositAddress.*</c>): cambiarla desvía los pagos de los miembros a otra cartera.
+    /// Variables: { Currency, OldAddress, NewAddress, ChangedBy, ChangedAt }. Un fallo de envío se
+    /// registra y no deshace el cambio.
+    /// </summary>
+    public const string CryptoDepositAddressChanged = "CRYPTO_DEPOSIT_ADDRESS_CHANGED";
 }
