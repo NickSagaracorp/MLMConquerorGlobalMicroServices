@@ -79,10 +79,26 @@
         {
             <div class="section-card">
                 <div class="section-body text-center py-5">
-                    <i class="ri-checkbox-circle-fill success-check"></i>
-                    <h3 class="mt-3 mb-2">Welcome, @_completedEmail!</h3>
-                    <p class="text-muted mb-4">Your membership is active. Enjoy your exclusive benefits.</p>
-                    <a href="/login" class="btn btn-enroll px-5">Access My Account</a>
+                    @* Igual que en Signup.razor: la vía de cripto NO deja la cuenta activa hasta que
+                       alguien confirma la transferencia. Decir "tu membresía está activa" y mandarla
+                       al login la lleva a un acceso que la va a rechazar. *@
+                    @if (_completedPendingCrypto)
+                    {
+                        <i class="ri-time-line success-check"></i>
+                        <h3 class="mt-3 mb-2">Thank you, @_completedEmail!</h3>
+                        <p class="text-muted mb-1">Your enrollment is registered.</p>
+                        <p class="text-muted mb-4">
+                            Your membership activates as soon as we confirm your crypto transfer.
+                            We'll email you at <strong>@_completedEmail</strong> the moment it's done.
+                        </p>
+                    }
+                    else
+                    {
+                        <i class="ri-checkbox-circle-fill success-check"></i>
+                        <h3 class="mt-3 mb-2">Welcome, @_completedEmail!</h3>
+                        <p class="text-muted mb-4">Your membership is active. Enjoy your exclusive benefits.</p>
+                        <a href="/login" class="btn btn-enroll px-5">Access My Account</a>
+                    }
                 </div>
             </div>
         }
@@ -594,11 +610,38 @@
                     </div>
                 }
 
+                @* No hay pasarela de cripto: el cobro llega por fuera y alguien de la casa lo confirma
+                   a mano. El texto de antes prometía una redirección a una pasarela que no existe;
+                   ahora se muestra la dirección configurada en el admin (Plan F), como en Signup.razor. *@
                 @if (_paymentTab == "crypto")
                 {
-                    <div class="text-center py-4 text-muted">
-                        <i class="ri-bit-coin-line" style="font-size:3rem;opacity:.5"></i>
-                        <p class="mt-2 mb-0 small">You'll be redirected to our crypto gateway after clicking Join Now.</p>
+                    <div class="py-4">
+                        @if (_cryptoDeposits.Count == 0)
+                        {
+                            <p class="text-center text-muted small mb-0">Crypto payments aren't available right now. Please choose another payment method.</p>
+                        }
+                        else
+                        {
+                            <label class="form-label small" for="member-crypto">Currency</label>
+                            <select id="member-crypto" class="form-select mb-3" @bind="_cryptoCurrency">
+                                @foreach (var d in _cryptoDeposits)
+                                {
+                                    <option value="@d.Currency">@d.Currency</option>
+                                }
+                            </select>
+                            @if (_cryptoDeposit is not null)
+                            {
+                                <p class="small mb-1">Send your payment in <strong>@_cryptoDeposit.Currency</strong> to:</p>
+                                <p class="font-monospace small text-break mb-1">@_cryptoDeposit.Address</p>
+                                @if (!string.IsNullOrWhiteSpace(_cryptoDeposit.Network))
+                                {
+                                    <p class="small text-muted mb-1">Network: @_cryptoDeposit.Network</p>
+                                }
+                            }
+                            <p class="small text-muted mb-0">
+                                Your membership activates once we confirm the transfer — usually within one business day.
+                            </p>
+                        }
                     </div>
                 }
 
@@ -621,7 +664,7 @@
 
                 <div class="d-grid">
                     <button type="button" class="btn btn-enroll"
-                            disabled="@(!_agreedTerms || _busy || (_paymentTab == "token" && !_tokenValid))"
+                            disabled="@(!_agreedTerms || _busy || (_paymentTab == "token" && !_tokenValid) || (_paymentTab == "crypto" && _cryptoDeposit is null))"
                             @onclick="HandleJoinNow">
                         @if (_busy)
                         {
@@ -841,6 +884,7 @@
     private bool    _busy;
     private string  _error         = string.Empty;
     private bool    _success;
+    private bool    _completedPendingCrypto;
     private string? _completedEmail;
     private string? _signupId;
 
@@ -886,6 +930,12 @@
 
     // ── Payment ───────────────────────────────────────────────────────────────
     private string _paymentTab     = "card";
+
+    // Direcciones de depósito configuradas en Admin → Global Parameters (Plan F). Vacío = sin cripto.
+    private List<CryptoDepositAddressDto> _cryptoDeposits = new();
+    private string? _cryptoCurrency;
+    private CryptoDepositAddressDto? _cryptoDeposit =>
+        _cryptoDeposits.FirstOrDefault(d => d.Currency == _cryptoCurrency);
     private string _couponCode     = string.Empty;
     private string _couponMsg      = string.Empty;
     private string _couponMsgClass = string.Empty;
@@ -976,6 +1026,16 @@
     protected override async Task OnInitializedAsync()
     {
         var api = HttpFactory.CreateClient("SignupsInternal");
+
+        // Si la lectura falla, la pestaña de cripto dice que no está disponible: el resto del alta sigue.
+        try
+        {
+            var cd = await api.GetFromJsonAsync<ApiWrapper<List<CryptoDepositAddressDto>>>(
+                "api/v1/signups/crypto-deposit-addresses");
+            _cryptoDeposits = cd?.Data ?? new();
+            _cryptoCurrency = _cryptoDeposits.FirstOrDefault()?.Currency;
+        }
+        catch { _cryptoDeposits = new(); }
 
         // Load active countries first
         try
@@ -1391,7 +1451,7 @@
                 payment = _paymentTab switch
                 {
                     "token"  => (object)new { PaymentMethod = "Token",  TokenCode = _payToken },
-                    "crypto" => (object)new { PaymentMethod = "Crypto", CryptoCurrency = "BTC" },
+                    "crypto" => (object)new { PaymentMethod = "Crypto", CryptoCurrency = _cryptoCurrency },
                     _        => (object)new { PaymentMethod = "CreditCard" }
                 };
             }
@@ -1400,7 +1460,7 @@
             var b3 = await r3.Content.ReadFromJsonAsync<ApiWrapper<SignupResponseModel>>();
 
             if (b3?.Success == true && b3.Data is not null)
-            { _completedEmail = b3.Data.Email; _success = true; }
+            { _completedEmail = b3.Data.Email; _completedPendingCrypto = _paymentTab == "crypto"; _success = true; }
             else
             { _error = b3?.Message ?? b3?.Errors?.FirstOrDefault() ?? "Could not complete enrollment."; }
         }

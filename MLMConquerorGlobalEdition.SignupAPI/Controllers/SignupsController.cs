@@ -3,7 +3,9 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MLMConquerorGlobalEdition.Domain.Enums;
+using MLMConquerorGlobalEdition.Repository.Services.Crypto;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Billing;
 using MLMConquerorGlobalEdition.SharedKernel.Constants;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Commands.CompleteSignup;
@@ -236,4 +238,15 @@ public class SignupsController : ControllerBase
         var result = await _mediator.Send(new GetCountriesQuery(), ct);
         return Ok(ApiResponse<List<CountryLookupDto>>.Ok(result.Value!));
     }
+
+    /// <summary>
+    /// GET api/v1/signups/crypto-deposit-addresses — monedas con dirección de depósito configurada en
+    /// Admin → Global Parameters. Anónimo: lo pide el alta antes de que exista la cuenta, y una
+    /// dirección de depósito no es un secreto (se le enseña a cualquiera que vaya a pagar).
+    /// </summary>
+    [HttpGet("crypto-deposit-addresses")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetCryptoDepositAddresses(
+        [FromServices] ICryptoDepositAddressReader reader, CancellationToken ct)
+        => Ok(ApiResponse<IReadOnlyList<CryptoDepositAddressDto>>.Ok(await reader.GetConfiguredAsync(ct)));
 }

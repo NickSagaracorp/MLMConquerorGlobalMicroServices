@@ -43,7 +43,8 @@ public class AdminCryptoSignupsController : ControllerBase
     {
         var rows = await (
             from c in _db.CryptoPaymentConfirmations.AsNoTracking()
-            where c.Status == CryptoPaymentConfirmationStatus.AwaitingPayment
+            // Solo altas: las compras de tokens en cripto las confirma Billing (Plan F).
+            where c.Status == CryptoPaymentConfirmationStatus.AwaitingPayment && c.Purpose == CryptoPaymentPurpose.Signup
             join m in _db.MemberProfiles.AsNoTracking() on c.MemberId equals m.MemberId
             join o in _db.Orders.AsNoTracking() on c.OrderId equals o.Id
             orderby c.CreationDate descending
@@ -75,7 +76,7 @@ public class AdminCryptoSignupsController : ControllerBase
 
         var rows = await (
             from c in _db.CryptoPaymentConfirmations.AsNoTracking()
-            where c.Status == CryptoPaymentConfirmationStatus.Confirmed
+            where c.Status == CryptoPaymentConfirmationStatus.Confirmed && c.Purpose == CryptoPaymentPurpose.Signup
             join m in _db.MemberProfiles.AsNoTracking() on c.MemberId equals m.MemberId
             orderby c.ConfirmedAt descending
             select new ConfirmedCryptoSignupDto(
@@ -111,7 +112,7 @@ public class AdminCryptoSignupsController : ControllerBase
         string orderId, [FromBody] ConfirmCryptoRequest request, CancellationToken ct = default)
     {
         var exists = await _db.CryptoPaymentConfirmations.AsNoTracking()
-            .AnyAsync(c => c.OrderId == orderId, ct);
+            .AnyAsync(c => c.OrderId == orderId && c.Purpose == CryptoPaymentPurpose.Signup, ct);
 
         if (!exists)
             return NotFound(ApiResponse<object>.Fail(

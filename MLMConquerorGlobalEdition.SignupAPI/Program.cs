@@ -110,6 +110,9 @@ builder.Services.AddScoped<IFastStartBonusService, FastStartBonusService>();
 // Lo usan las dos vías que cobran — la inmediata (tarjeta, token, descuento) al completar, y la
 // de cripto al confirmar el cobro a mano — para que no existan dos versiones de lo mismo.
 builder.Services.AddScoped<ISignupActivationService, SignupActivationService>();
+// Direcciones de depósito cripto configuradas en el admin: el alta las muestra (Plan F).
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Crypto.ICryptoDepositAddressReader,
+                           MLMConquerorGlobalEdition.Repository.Services.Crypto.CryptoDepositAddressReader>();
 builder.Services.AddScoped<ITokenRedemptionService, TokenRedemptionService>();
 builder.Services.AddScoped<IFraudFingerprintService, FraudFingerprintService>();
 builder.Services.AddScoped<IEncryptionService, EncryptionService>();

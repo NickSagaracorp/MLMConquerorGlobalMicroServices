@@ -793,18 +793,38 @@
 
                 @* No hay pasarela de cripto integrada y no la va a haber: el cobro llega por fuera
                    y alguien de la casa lo confirma a mano. El texto de antes prometía una
-                   redirección a una pasarela que no existe. *@
+                   redirección a una pasarela que no existe, y luego un correo con la dirección que
+                   nadie mandaba: ahora se muestra la dirección configurada en el admin (Plan F). *@
                 @if (_paymentTab == "crypto")
                 {
-                    <div class="text-center py-4 text-muted">
-                        <i class="ri-bit-coin-line" style="font-size:3rem;opacity:.5"></i>
-                        <p class="mt-3 mb-1 small">
-                            Send your payment to the wallet address our team will email you, then click Join Now.
-                        </p>
-                        <p class="mb-0 small">
-                            Your spot in the team is reserved right away. Your membership activates once we
-                            confirm the transfer — usually within one business day.
-                        </p>
+                    <div class="py-4">
+                        @if (_cryptoDeposits.Count == 0)
+                        {
+                            <p class="text-center text-muted small mb-0">Crypto payments aren't available right now. Please choose another payment method.</p>
+                        }
+                        else
+                        {
+                            <label class="form-label small" for="signup-crypto">Currency</label>
+                            <select id="signup-crypto" class="form-select mb-3" @bind="_cryptoCurrency">
+                                @foreach (var d in _cryptoDeposits)
+                                {
+                                    <option value="@d.Currency">@d.Currency</option>
+                                }
+                            </select>
+                            @if (_cryptoDeposit is not null)
+                            {
+                                <p class="small mb-1">Send your payment in <strong>@_cryptoDeposit.Currency</strong> to:</p>
+                                <p class="font-monospace small text-break mb-1">@_cryptoDeposit.Address</p>
+                                @if (!string.IsNullOrWhiteSpace(_cryptoDeposit.Network))
+                                {
+                                    <p class="small text-muted mb-1">Network: @_cryptoDeposit.Network</p>
+                                }
+                            }
+                            <p class="small text-muted mb-0">
+                                Your spot in the team is reserved right away. Your membership activates once we
+                                confirm the transfer — usually within one business day.
+                            </p>
+                        }
                     </div>
                 }
 
@@ -827,7 +847,7 @@
 
                 <div class="d-grid">
                     <button type="button" class="btn btn-enroll"
-                            disabled="@(!_agreedTerms || _busy || (_paymentTab == "token" && !_tokenValid))"
+                            disabled="@(!_agreedTerms || _busy || (_paymentTab == "token" && !_tokenValid) || (_paymentTab == "crypto" && _cryptoDeposit is null))"
                             @onclick="HandleJoinNow">
                         @if (_busy)
                         {
@@ -1171,6 +1191,13 @@
 
     // ── Payment ───────────────────────────────────────────────────────────────
     private string _paymentTab    = "card";
+
+    // Direcciones de depósito configuradas en Admin → Global Parameters (Plan F). Vacío = sin cripto:
+    // mejor no ofrecerla que mandar a alguien a pagar a una dirección que nadie le va a dar.
+    private List<CryptoDepositAddressDto> _cryptoDeposits = new();
+    private string? _cryptoCurrency;
+    private CryptoDepositAddressDto? _cryptoDeposit =>
+        _cryptoDeposits.FirstOrDefault(d => d.Currency == _cryptoCurrency);
     private string _couponCode    = string.Empty;
     private string _couponMsg     = string.Empty;
     private string _couponMsgClass = string.Empty;
@@ -1273,6 +1300,16 @@
     protected override async Task OnInitializedAsync()
     {
         var api = HttpFactory.CreateClient("SignupsInternal");
+
+        // Si la lectura falla, la pestaña de cripto dice que no está disponible: el resto del alta sigue.
+        try
+        {
+            var cd = await api.GetFromJsonAsync<ApiWrapper<List<CryptoDepositAddressDto>>>(
+                "api/v1/signups/crypto-deposit-addresses");
+            _cryptoDeposits = cd?.Data ?? new();
+            _cryptoCurrency = _cryptoDeposits.FirstOrDefault()?.Currency;
+        }
+        catch { _cryptoDeposits = new(); }
 
         // Load countries first (needed to populate dropdowns)
         try
@@ -1748,7 +1785,7 @@
                 payment = _paymentTab switch
                 {
                     "token"  => (object)new { PaymentMethod = "Token",  TokenCode = _payToken },
-                    "crypto" => (object)new { PaymentMethod = "Crypto", CryptoCurrency = "BTC" },
+                    "crypto" => (object)new { PaymentMethod = "Crypto", CryptoCurrency = _cryptoCurrency },
                     _        => (object)new { PaymentMethod = "CreditCard" }
                 };
             }
