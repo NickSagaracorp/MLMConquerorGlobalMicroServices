@@ -88,7 +88,7 @@ public class AltaPorCriptoTests
         var m = new Mock<ITokenRedemptionService>();
         m.Setup(s => s.RedeemForSignupAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
-                It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
          .ReturnsAsync(MLMConquerorGlobalEdition.SharedKernel.Result<bool>.Success(true));
         return m;
     }
@@ -284,7 +284,8 @@ public class AltaPorCriptoTests
         IRecurringBillingEnrollmentService recurring)
         => new(db, Clock(FixedNow).Object, S3().Object, userMgr.Object, Jwt().Object,
                Encryption().Object, TokenRedemption().Object,
-               new SignupActivationService(db, sponsor, fsb, recurring), Addresses());
+               new SignupActivationService(db, sponsor, fsb, recurring), Addresses(),
+               new PuertaDeFondosDePrueba(db));
 
     private static ConfirmCryptoPaymentHandler BuildConfirmHandler(
         AppDbContext db,

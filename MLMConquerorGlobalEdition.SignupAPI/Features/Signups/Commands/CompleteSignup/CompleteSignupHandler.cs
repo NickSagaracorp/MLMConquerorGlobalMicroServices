@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
@@ -9,6 +10,7 @@ using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Identity;
 using MLMConquerorGlobalEdition.Repository.Services.Crypto;
+using MLMConquerorGlobalEdition.Repository.Services.Funds;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Billing;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
@@ -31,6 +33,13 @@ namespace MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Commands.Complete
 ///
 /// La razón de no adelantar las comisiones la dio el dueño del producto: nadie cobra sobre dinero
 /// no recibido, y si la transferencia nunca llega no hay comisiones que revertir.
+///
+/// CON TOKEN, el canje va bajo el candado de fondos del dueño del código (<see cref="IMemberFundsGate"/>,
+/// el mismo con el que el BizCenter distribuye y transfiere): se lee el dueño sin seguimiento, se toma
+/// su candado, el servicio de canje relee el código y comprueba que sigue siendo suyo, y activar,
+/// guardar y confirmar ocurren dentro. Así un canje y una distribución simultáneos del mismo código
+/// no se pisan. Si aun así el guardado choca con los tokens de concurrencia de <c>TokenTransaction</c>
+/// (dueño y estado), el alta falla con TOKEN_NOT_VALID y no se guarda nada.
 /// </summary>
 public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Result<SignupResponse>>
 {
@@ -43,6 +52,12 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
     private readonly ITokenRedemptionService      _tokenRedemption;
     private readonly ISignupActivationService     _activation;
     private readonly ICryptoDepositAddressReader  _cryptoAddresses;
+    private readonly IMemberFundsGate             _gate;
+
+    /// <summary>El candado del dueño del token está ocupado: no se hizo nada y se puede repetir.</summary>
+    public const string TokenBusyCode = "TOKEN_BUSY";
+
+    private const string TokenNotValidMessage = "This token is not valid for this signup.";
 
     public CompleteSignupHandler(
         AppDbContext db,
@@ -53,7 +68,8 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
         IEncryptionService encryption,
         ITokenRedemptionService tokenRedemption,
         ISignupActivationService activation,
-        ICryptoDepositAddressReader cryptoAddresses)
+        ICryptoDepositAddressReader cryptoAddresses,
+        IMemberFundsGate gate)
     {
         _db              = db;
         _dateTime        = dateTime;
@@ -64,6 +80,7 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
         _tokenRedemption = tokenRedemption;
         _activation      = activation;
         _cryptoAddresses = cryptoAddresses;
+        _gate            = gate;
     }
 
     public async Task<Result<SignupResponse>> Handle(CompleteSignupCommand command, CancellationToken ct)
@@ -122,30 +139,8 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
             return Result<SignupResponse>.Failure(
                 "USER_NOT_FOUND", "Pending user account not found for this signup.");
 
-        // Token-based payment: validate, then consume the token instance.
-        // Token always covers the full order amount — no other payment processing happens.
-        if (req.PaymentMethod == PaymentMethodType.Token)
-        {
-            // Selected products on the pending order — the validator needs this to enforce
-            // that the user can only pick products covered by the TokenType.
-            var selectedProductIds = await _db.OrderDetails
-                .AsNoTracking()
-                .Where(od => od.OrderId == order.Id)
-                .Select(od => od.ProductId)
-                .ToListAsync(ct);
-
-            var redemption = await _tokenRedemption.RedeemForSignupAsync(
-                tokenCode:           req.TokenCode ?? string.Empty,
-                newMemberId:         member.MemberId,
-                orderId:             order.Id,
-                selectedProductIds:  selectedProductIds,
-                now:                 now,
-                ct:                  ct);
-
-            if (!redemption.IsSuccess)
-                return Result<SignupResponse>.Failure(redemption.ErrorCode!, redemption.Error!);
-        }
-
+        // La captura se sube ANTES del canje: es red hacia S3 y no debe ir dentro del candado del dueño
+        // del token. Si luego el canje falla, el objeto queda huérfano en S3 (el pedido no se guarda).
         if (!string.IsNullOrEmpty(req.CheckoutScreenshotBase64))
         {
             var screenshotBytes = Convert.FromBase64String(req.CheckoutScreenshotBase64);
@@ -157,104 +152,178 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
                 s3Key, stream, req.CheckoutScreenshotContentType, ct);
         }
 
-        if (req.PaymentMethod == PaymentMethodType.CreditCard && req.CreditCard is not null)
+        IDbContextTransaction? tokenLock = null;
+        try
         {
-            var cc = req.CreditCard;
-            await _db.CreditCards.AddAsync(new MemberCreditCard
+            // Token-based payment: validate, then consume the token instance.
+            // Token always covers the full order amount — no other payment processing happens.
+            if (req.PaymentMethod == PaymentMethodType.Token)
+            {
+                // El dueño guardado, sin seguimiento: nombra el candado (member-funds:{id}). El servicio de
+                // canje relee el código ya bajo el candado y comprueba que sigue siendo de este dueño.
+                var code = (req.TokenCode ?? string.Empty).Trim().ToUpperInvariant();
+                var owner = code.Length == 0
+                    ? null
+                    : await _db.TokenTransactions.AsNoTracking()
+                        .Where(t => t.ReferenceId == code)
+                        .Select(t => t.MemberId)
+                        .FirstOrDefaultAsync(ct);
+
+                if (owner is not null)
+                {
+                    try
+                    {
+                        tokenLock = await _gate.EnterAsync(owner, ct);
+                    }
+                    catch (MemberFundsBusyException)
+                    {
+                        return Result<SignupResponse>.Failure(TokenBusyCode,
+                            "This token is being used in another operation. Please try again in a moment.");
+                    }
+                }
+
+                // Selected products on the pending order — the validator needs this to enforce
+                // that the user can only pick products covered by the TokenType.
+                var selectedProductIds = await _db.OrderDetails
+                    .AsNoTracking()
+                    .Where(od => od.OrderId == order.Id)
+                    .Select(od => od.ProductId)
+                    .ToListAsync(ct);
+
+                // Sin dueño (código inexistente) el servicio devuelve TOKEN_NOT_VALID.
+                var redemption = await _tokenRedemption.RedeemForSignupAsync(
+                    tokenCode:             req.TokenCode ?? string.Empty,
+                    newMemberId:           member.MemberId,
+                    orderId:               order.Id,
+                    selectedProductIds:    selectedProductIds,
+                    expectedOwnerMemberId: owner,
+                    now:                   now,
+                    ct:                    ct);
+
+                if (!redemption.IsSuccess)
+                    return Result<SignupResponse>.Failure(redemption.ErrorCode!, redemption.Error!);
+            }
+
+            if (req.PaymentMethod == PaymentMethodType.CreditCard && req.CreditCard is not null)
+            {
+                var cc = req.CreditCard;
+                await _db.CreditCards.AddAsync(new MemberCreditCard
+                {
+                    MemberId         = member.MemberId,
+                    Last4            = cc.Last4,
+                    First6           = cc.First6,
+                    MaskedCardNumber = BuildMaskedCardNumber(cc.First6, cc.Last4),
+                    CardBrand        = cc.CardBrand,
+                    EncryptedExpiry  = _encryption.Encrypt($"{cc.ExpiryMonth:00}/{cc.ExpiryYear:0000}"),
+                    EncryptedCvv     = null, // signup flow does not capture CVV — gateway already tokenized
+                    Gateway          = cc.Gateway,
+                    GatewayToken     = cc.GatewayToken,
+                    CardToken        = cc.CardToken,
+                    IsDefault        = true,
+                    IsExpired        = false,
+                    CreatedBy        = member.Email,
+                    CreationDate     = now,
+                    LastUpdateDate   = now
+                }, ct);
+            }
+
+            var totalQualPoints = await _db.OrderDetails
+                .AsNoTracking()
+                .Where(od => od.OrderId == order.Id)
+                .Join(_db.Products.AsNoTracking(), od => od.ProductId, p => p.Id, (od, p) => p.QualificationPoins)
+                .SumAsync(ct);
+
+            // EnrollmentPoints is the sum of personal points across the downline INCLUDING this
+            // member's own — so a brand-new leaf must seed with its own PersonalPoints. Each
+            // ancestor row will be incremented separately below as we walk the upline.
+            //
+            // Sprint-15 Bug A: the new leaf's own stat row never races (member just created)
+            // so we can still use AddAsync here. Ancestor rows DO race — see below.
+            await _db.MemberStatistics.AddAsync(new MemberStatisticEntity
             {
                 MemberId         = member.MemberId,
-                Last4            = cc.Last4,
-                First6           = cc.First6,
-                MaskedCardNumber = BuildMaskedCardNumber(cc.First6, cc.Last4),
-                CardBrand        = cc.CardBrand,
-                EncryptedExpiry  = _encryption.Encrypt($"{cc.ExpiryMonth:00}/{cc.ExpiryYear:0000}"),
-                EncryptedCvv     = null, // signup flow does not capture CVV — gateway already tokenized
-                Gateway          = cc.Gateway,
-                GatewayToken     = cc.GatewayToken,
-                CardToken        = cc.CardToken,
-                IsDefault        = true,
-                IsExpired        = false,
+                PersonalPoints   = totalQualPoints,
+                EnrollmentPoints = totalQualPoints,
                 CreatedBy        = member.Email,
-                CreationDate     = now,
-                LastUpdateDate   = now
-            }, ct);
-        }
-
-        var totalQualPoints = await _db.OrderDetails
-            .AsNoTracking()
-            .Where(od => od.OrderId == order.Id)
-            .Join(_db.Products.AsNoTracking(), od => od.ProductId, p => p.Id, (od, p) => p.QualificationPoins)
-            .SumAsync(ct);
-
-        // EnrollmentPoints is the sum of personal points across the downline INCLUDING this
-        // member's own — so a brand-new leaf must seed with its own PersonalPoints. Each
-        // ancestor row will be incremented separately below as we walk the upline.
-        //
-        // Sprint-15 Bug A: the new leaf's own stat row never races (member just created)
-        // so we can still use AddAsync here. Ancestor rows DO race — see below.
-        await _db.MemberStatistics.AddAsync(new MemberStatisticEntity
-        {
-            MemberId         = member.MemberId,
-            PersonalPoints   = totalQualPoints,
-            EnrollmentPoints = totalQualPoints,
-            CreatedBy        = member.Email,
-            CreationDate     = now
-        }, ct);
-
-        if (req.PaymentMethod == PaymentMethodType.Crypto)
-        {
-            // El pedido queda EN PROCESO, no completado: el dinero está anunciado pero no
-            // recibido. Y es lo que impide que esta misma llamada se repita —CompleteSignup solo
-            // encuentra pedidos en Pending— y que la herramienta de altas zombis
-            // (AdminSignupsController.RetryComplete, que también filtra por Pending) active por
-            // detrás un alta que está esperando cobro.
-            order.Status         = OrderStatus.Processing;
-            order.LastUpdateDate = now;
-            order.LastUpdateBy   = member.Email;
-
-            // El miembro se queda en Pending, que es donde lo dejó la fase 1. Pending, y no
-            // Inactive, porque en esta base Inactive significa "estuvo activo y dejó de estarlo":
-            // lo escriben CancelMembershipHandler y ProcessScheduledCancellationsJob al dar de
-            // baja. Pending significa "dado de alta, todavía no activado", que es exactamente
-            // esto. Marcarlo Inactive lo contaría como bajas en GetMemberStatsHandler y en el
-            // panel del CEO, y ensuciaría la métrica de cancelaciones con gente que nunca llegó
-            // a entrar. La suscripción, por lo mismo, sigue en MembershipStatus.Pending.
-            member.LastUpdateDate = now;
-            member.LastUpdateBy   = member.Email;
-
-            await _db.CryptoPaymentConfirmations.AddAsync(new CryptoPaymentConfirmation
-            {
-                OrderId        = order.Id,
-                MemberId       = member.MemberId,
-                MemberEmail    = member.Email,
-                CryptoCurrency = cryptoCurrency!,
-                AmountDue      = order.TotalAmount,
-                Status         = CryptoPaymentConfirmationStatus.AwaitingPayment,
-                // CryptoTransactionId se queda a null a propósito: el identificador de la
-                // transferencia lo captura quien confirma el cobro, no el aspirante.
-                CreatedBy      = member.Email,
-                CreationDate   = now,
-                LastUpdateDate = now
+                CreationDate     = now
             }, ct);
 
-            await _db.SaveChangesAsync(ct);
-
-            // Ni IsActive ni EmailConfirmed ni tokens: la cuenta no puede entrar al portal hasta
-            // que el cobro esté confirmado. LoginHandler rechaza a los usuarios con IsActive=false.
-            return Result<SignupResponse>.Success(new SignupResponse
+            if (req.PaymentMethod == PaymentMethodType.Crypto)
             {
-                SignupId   = order.Id,
-                MemberId   = member.MemberId,
-                Email      = member.Email,
-                MemberType = member.MemberType.ToString(),
-                EnrollDate = member.EnrollDate
-            });
+                // El pedido queda EN PROCESO, no completado: el dinero está anunciado pero no
+                // recibido. Y es lo que impide que esta misma llamada se repita —CompleteSignup solo
+                // encuentra pedidos en Pending— y que la herramienta de altas zombis
+                // (AdminSignupsController.RetryComplete, que también filtra por Pending) active por
+                // detrás un alta que está esperando cobro.
+                order.Status         = OrderStatus.Processing;
+                order.LastUpdateDate = now;
+                order.LastUpdateBy   = member.Email;
+
+                // El miembro se queda en Pending, que es donde lo dejó la fase 1. Pending, y no
+                // Inactive, porque en esta base Inactive significa "estuvo activo y dejó de estarlo":
+                // lo escriben CancelMembershipHandler y ProcessScheduledCancellationsJob al dar de
+                // baja. Pending significa "dado de alta, todavía no activado", que es exactamente
+                // esto. Marcarlo Inactive lo contaría como bajas en GetMemberStatsHandler y en el
+                // panel del CEO, y ensuciaría la métrica de cancelaciones con gente que nunca llegó
+                // a entrar. La suscripción, por lo mismo, sigue en MembershipStatus.Pending.
+                member.LastUpdateDate = now;
+                member.LastUpdateBy   = member.Email;
+
+                await _db.CryptoPaymentConfirmations.AddAsync(new CryptoPaymentConfirmation
+                {
+                    OrderId        = order.Id,
+                    MemberId       = member.MemberId,
+                    MemberEmail    = member.Email,
+                    CryptoCurrency = cryptoCurrency!,
+                    AmountDue      = order.TotalAmount,
+                    Status         = CryptoPaymentConfirmationStatus.AwaitingPayment,
+                    // CryptoTransactionId se queda a null a propósito: el identificador de la
+                    // transferencia lo captura quien confirma el cobro, no el aspirante.
+                    CreatedBy      = member.Email,
+                    CreationDate   = now,
+                    LastUpdateDate = now
+                }, ct);
+
+                await _db.SaveChangesAsync(ct);
+
+                // Ni IsActive ni EmailConfirmed ni tokens: la cuenta no puede entrar al portal hasta
+                // que el cobro esté confirmado. LoginHandler rechaza a los usuarios con IsActive=false.
+                return Result<SignupResponse>.Success(new SignupResponse
+                {
+                    SignupId   = order.Id,
+                    MemberId   = member.MemberId,
+                    Email      = member.Email,
+                    MemberType = member.MemberType.ToString(),
+                    EnrollDate = member.EnrollDate
+                });
+            }
+
+            // Activar puede guardar por su cuenta (el alta en la facturación recurrente): por eso el choque de
+            // concurrencia se recoge de las dos llamadas. Con token, todo va en la transacción del candado y
+            // se deshace al soltarla; sin token, ningún guardado toca un código.
+            try
+            {
+                await _activation.ActivateAsync(
+                    order, member, subscription, totalQualPoints, now, member.Email, ct);
+
+                await _db.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateConcurrencyException) when (req.PaymentMethod == PaymentMethodType.Token)
+            {
+                // Otro proceso canjeó o movió el código entre la lectura y el guardado.
+                _db.ChangeTracker.Clear();
+                return Result<SignupResponse>.Failure("TOKEN_NOT_VALID", TokenNotValidMessage);
+            }
+
+            if (tokenLock is not null)
+                await tokenLock.CommitAsync(ct);
         }
-
-        await _activation.ActivateAsync(
-            order, member, subscription, totalQualPoints, now, member.Email, ct);
-
-        await _db.SaveChangesAsync(ct);
+        finally
+        {
+            // Sin confirmar, soltar la transacción la deshace (y suelta el candado).
+            if (tokenLock is not null)
+                await tokenLock.DisposeAsync();
+        }
 
         appUser.IsActive       = true;
         appUser.EmailConfirmed = true;

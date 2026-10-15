@@ -114,6 +114,10 @@ builder.Services.AddScoped<ISignupActivationService, SignupActivationService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Crypto.ICryptoDepositAddressReader,
                            MLMConquerorGlobalEdition.Repository.Services.Crypto.CryptoDepositAddressReader>();
 builder.Services.AddScoped<ITokenRedemptionService, TokenRedemptionService>();
+// Candado de fondos por miembro (sp_getapplock), el mismo de Billing y el BizCenter: canjear un token en
+// el alta toma el del dueño del código, así que no se cruza con distribuirlo o transferirlo.
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Funds.IMemberFundsGate,
+                           MLMConquerorGlobalEdition.Repository.Services.Funds.SqlServerMemberFundsGate>();
 builder.Services.AddScoped<IFraudFingerprintService, FraudFingerprintService>();
 builder.Services.AddScoped<IEncryptionService, EncryptionService>();
 

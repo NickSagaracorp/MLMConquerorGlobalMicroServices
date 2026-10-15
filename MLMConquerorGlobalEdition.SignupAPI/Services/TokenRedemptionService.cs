@@ -26,6 +26,7 @@ public class TokenRedemptionService : ITokenRedemptionService
         string newMemberId,
         string orderId,
         IReadOnlyCollection<string> selectedProductIds,
+        string? expectedOwnerMemberId,
         DateTime now,
         CancellationToken ct)
     {
@@ -41,6 +42,15 @@ public class TokenRedemptionService : ITokenRedemptionService
         if (instance is null)
         {
             _logger.LogInformation("RedeemToken: code '{Code}' not found", code);
+            return Result<bool>.Failure("TOKEN_NOT_VALID", GenericMessage);
+        }
+
+        // Leído bajo el candado del dueño que se vio antes de tomarlo: si ya no es suyo, otra operación
+        // (distribuir, transferir) lo movió mientras tanto y el candado que se tiene no es el bueno.
+        if (expectedOwnerMemberId is not null
+            && !string.Equals(instance.MemberId, expectedOwnerMemberId, StringComparison.Ordinal))
+        {
+            _logger.LogInformation("RedeemToken: code '{Code}' changed owner while waiting for the lock", code);
             return Result<bool>.Failure("TOKEN_NOT_VALID", GenericMessage);
         }
 

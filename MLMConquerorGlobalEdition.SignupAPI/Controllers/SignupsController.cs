@@ -106,7 +106,13 @@ public class SignupsController : ControllerBase
     {
         var result = await _mediator.Send(new CompleteSignupCommand(signupId, request), ct);
         if (!result.IsSuccess)
-            return BadRequest(ApiResponse<SignupResponse>.Fail(result.ErrorCode!, result.Error!));
+        {
+            // Candado del dueño del token ocupado: no se hizo nada y se puede repetir tal cual.
+            var body = ApiResponse<SignupResponse>.Fail(result.ErrorCode!, result.Error!);
+            return result.ErrorCode == CompleteSignupHandler.TokenBusyCode
+                ? Conflict(body)
+                : BadRequest(body);
+        }
         return Ok(ApiResponse<SignupResponse>.Ok(result.Value!));
     }
 

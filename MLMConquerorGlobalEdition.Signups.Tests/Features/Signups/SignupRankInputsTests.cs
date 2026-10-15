@@ -102,7 +102,7 @@ public class SignupRankInputsTests
         var m = new Mock<ITokenRedemptionService>();
         m.Setup(s => s.RedeemForSignupAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
-                It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<DateTime>(),
+                It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<string?>(), It.IsAny<DateTime>(),
                 It.IsAny<CancellationToken>()))
          .ReturnsAsync(MLMConquerorGlobalEdition.SharedKernel.Result<bool>.Success(true));
         return m;
@@ -268,7 +268,8 @@ public class SignupRankInputsTests
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
             BuildTokenRedemptionMock().Object, BuildActivation(db),
-            Mock.Of<MLMConquerorGlobalEdition.Repository.Services.Crypto.ICryptoDepositAddressReader>());
+            Mock.Of<MLMConquerorGlobalEdition.Repository.Services.Crypto.ICryptoDepositAddressReader>(),
+            new PuertaDeFondosDePrueba(db));
     }
 
     // ── Tests ────────────────────────────────────────────────────────────────

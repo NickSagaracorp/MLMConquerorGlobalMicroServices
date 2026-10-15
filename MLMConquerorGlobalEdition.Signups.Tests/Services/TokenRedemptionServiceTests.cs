@@ -34,9 +34,10 @@ public class TokenRedemptionServiceTests
         TokenCategory category     = TokenCategory.Enrollment,
         DateTime? expiresAt        = null,
         string grantedProductId    = VipId,
-        int initialBalance         = 1)
+        int initialBalance         = 1,
+        string? dbName             = null)
     {
-        var db = InMemoryDbHelper.Create();
+        var db = InMemoryDbHelper.Create(dbName);
 
         await db.TokenTypes.AddAsync(new TokenType
         {
@@ -115,7 +116,7 @@ public class TokenRedemptionServiceTests
 
         var result = await svc.RedeemForSignupAsync(
             "X4P2A9N", NewMember, OrderId,
-            new[] { VipId }, FixedNow, CancellationToken.None);
+            new[] { VipId }, null, FixedNow, CancellationToken.None);
 
         await db.SaveChangesAsync();
 
@@ -149,7 +150,7 @@ public class TokenRedemptionServiceTests
 
         var result = await svc.RedeemForSignupAsync(
             "BADCODE", NewMember, OrderId,
-            new[] { VipId }, FixedNow, CancellationToken.None);
+            new[] { VipId }, null, FixedNow, CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be("TOKEN_NOT_VALID");
@@ -164,7 +165,7 @@ public class TokenRedemptionServiceTests
 
         var result = await svc.RedeemForSignupAsync(
             "X4P2A9N", NewMember, OrderId,
-            new[] { VipId }, FixedNow, CancellationToken.None);
+            new[] { VipId }, null, FixedNow, CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be("TOKEN_NOT_VALID");
@@ -181,7 +182,7 @@ public class TokenRedemptionServiceTests
 
         var result = await svc.RedeemForSignupAsync(
             "X4P2A9N", NewMember, OrderId,
-            new[] { VipId }, FixedNow, CancellationToken.None);
+            new[] { VipId }, null, FixedNow, CancellationToken.None);
 
         await db.SaveChangesAsync();
 
@@ -211,7 +212,7 @@ public class TokenRedemptionServiceTests
 
         var result = await svc.RedeemForSignupAsync(
             "X4P2A9N", NewMember, OrderId,
-            new[] { EliteId }, FixedNow, CancellationToken.None);
+            new[] { EliteId }, null, FixedNow, CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be("TOKEN_PRODUCT_MISMATCH");
@@ -227,7 +228,7 @@ public class TokenRedemptionServiceTests
 
         var result = await svc.RedeemForSignupAsync(
             "X4P2A9N", NewMember, OrderId,
-            new[] { VipId }, FixedNow, CancellationToken.None);
+            new[] { VipId }, null, FixedNow, CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be("TOKEN_NOT_VALID");
@@ -242,7 +243,7 @@ public class TokenRedemptionServiceTests
 
         var first = await svc.RedeemForSignupAsync(
             "X4P2A9N", NewMember, OrderId,
-            new[] { VipId }, FixedNow, CancellationToken.None);
+            new[] { VipId }, null, FixedNow, CancellationToken.None);
 
         await db.SaveChangesAsync();
         first.IsSuccess.Should().BeTrue();
@@ -250,7 +251,7 @@ public class TokenRedemptionServiceTests
         // Second call should now see Status=Used and reject.
         var second = await svc.RedeemForSignupAsync(
             "X4P2A9N", "AMB-NEW0002", "order-002",
-            new[] { VipId }, FixedNow, CancellationToken.None);
+            new[] { VipId }, null, FixedNow, CancellationToken.None);
 
         second.IsSuccess.Should().BeFalse();
         second.ErrorCode.Should().Be("TOKEN_NOT_VALID");
@@ -264,9 +265,67 @@ public class TokenRedemptionServiceTests
 
         var result = await svc.RedeemForSignupAsync(
             "  ", NewMember, OrderId,
-            new[] { VipId }, FixedNow, CancellationToken.None);
+            new[] { VipId }, null, FixedNow, CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be("TOKEN_NOT_VALID");
+    }
+
+    // ─── Canje frente a distribuir (revisión de la Tarea 14, I1) ─────────────
+
+    [Fact]
+    public async Task RedeemForSignup_CuandoElDuenoCambioMientrasSeEsperabaElCandado_NoCanjea()
+    {
+        // El alta leyó el dueño Sponsor y tomó su candado; entretanto, una distribución ya lo movió a Other.
+        await using var db = await SeedAsync(ownerId: Other);
+        var svc = MakeService(db);
+
+        var result = await svc.RedeemForSignupAsync(
+            "X4P2A9N", NewMember, OrderId,
+            new[] { VipId }, Sponsor, FixedNow, CancellationToken.None);
+
+        result.ErrorCode.Should().Be("TOKEN_NOT_VALID");
+        db.ChangeTracker.Entries<TokenTransaction>()
+          .Should().OnlyContain(e => e.State == EntityState.Unchanged, "no se tocó nada");
+    }
+
+    [Fact]
+    public async Task RedeemForSignup_ConElDuenoEsperado_Canjea()
+    {
+        await using var db = await SeedAsync();
+        var svc = MakeService(db);
+
+        var result = await svc.RedeemForSignupAsync(
+            "X4P2A9N", NewMember, OrderId,
+            new[] { VipId }, Sponsor, FixedNow, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RedeemForSignup_SiOtroLoMovioAntesDeGuardar_ElGuardadoChocaPorConcurrencia()
+    {
+        // Sin candado (o con el de otro dueño): el token de concurrencia en MemberId/Status impide
+        // guardar un canje sobre un código que otra operación ya movió.
+        var name = Guid.NewGuid().ToString();
+        await using var db = await SeedAsync(dbName: name);
+        var svc = MakeService(db);
+
+        var result = await svc.RedeemForSignupAsync(
+            "X4P2A9N", NewMember, OrderId,
+            new[] { VipId }, null, FixedNow, CancellationToken.None);
+        result.IsSuccess.Should().BeTrue();
+
+        // Otra operación (otro contexto, misma base) movió el código entre la lectura y el guardado.
+        await using (var otra = InMemoryDbHelper.Create(name))
+        {
+            var x = await otra.TokenTransactions.SingleAsync(t => t.ReferenceId == "X4P2A9N");
+            x.MemberId = Other;
+            x.Status   = TokenInstanceStatus.Distributed;
+            await otra.SaveChangesAsync();
+        }
+
+        var save = () => db.SaveChangesAsync();
+        await save.Should().ThrowAsync<DbUpdateConcurrencyException>();
     }
 }

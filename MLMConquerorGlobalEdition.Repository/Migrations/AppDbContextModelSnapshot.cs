@@ -11695,6 +11695,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("MemberId")
+                        .IsConcurrencyToken()
                         .IsRequired()
                         .HasMaxLength(36)
                         .HasColumnType("nvarchar(36)");
@@ -11718,6 +11719,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasColumnType("nvarchar(20)");
 
                     b.Property<int>("Status")
+                        .IsConcurrencyToken()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(0);
