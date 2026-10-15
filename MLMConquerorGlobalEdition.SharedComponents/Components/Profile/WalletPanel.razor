@@ -1,8 +1,11 @@
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Account.StepUp
 @inject HttpClient Http
 @inject IViewContextService ViewContext
 @inject IStringLocalizer<SharedResources> L
 
 <LoadingSpinner IsLoading="@_isLoading" />
+
+<StepUpDialog @ref="_stepUp" />
 
 @if (!_isLoading)
 {
@@ -398,6 +401,7 @@
     private bool   _historyLoading;
     private bool   _apiLogsLoading;
     private bool   _busy;
+    private StepUpDialog _stepUp = default!;
     private string? _alertMsg;
     private bool   _alertIsError;
     private long   _expandedLogId  = -1;
@@ -541,7 +545,11 @@
                 notes                     = _editNotes,
                 eWalletPasswordEncrypted  = string.IsNullOrEmpty(_editPassword) ? null : $"ENC:{_editPassword}"
             };
-            var resp = await Http.PutAsJsonAsync(url, payload);
+            // Si la API pide step-up, StepUpHttp pide el código y reintenta una vez; null = canceló.
+            var resp = await StepUpHttp.SendAsync(Http,
+                () => new HttpRequestMessage(HttpMethod.Put, url) { Content = JsonContent.Create(payload) },
+                _stepUp.RequireAsync);
+            if (resp is null) return; // canceló el código: el modal de edición sigue abierto
             if (resp.IsSuccessStatusCode)
             {
                 _alertMsg = $"{_editing.Label} {L["PaymentMethod.WalletUpdatedSuffix"]}"; _alertIsError = false;
@@ -554,7 +562,9 @@
             {
                 // Try to extract a clean error message from the API response envelope.
                 var body = await resp.Content.ReadAsStringAsync();
-                var msg = TryExtractApiError(body) ?? body;
+                var msg = await StepUpHttp.IsGrantRejectedAsync(resp)
+                    ? L["StepUp.RetryFailed"].Value
+                    : TryExtractApiError(body) ?? body;
                 _alertMsg = msg; _alertIsError = true;
             }
         }
@@ -623,7 +633,10 @@
         _busy = true; StateHasChanged();
         try
         {
-            var resp = await Http.PutAsync($"{ListUrl}/{walletType}/default", null);
+            var resp = await StepUpHttp.SendAsync(Http,
+                () => new HttpRequestMessage(HttpMethod.Put, $"{ListUrl}/{walletType}/default"),
+                _stepUp.RequireAsync);
+            if (resp is null) return;
             if (resp.IsSuccessStatusCode)
             {
                 _alertMsg = L["PaymentMethod.DefaultWalletUpdated"]; _alertIsError = false;
@@ -632,8 +645,10 @@
             }
             else
             {
-                var err = await resp.Content.ReadAsStringAsync();
-                _alertMsg = $"{L["PaymentMethod.CouldNotSetWalletDefaultPrefix"]} {err}"; _alertIsError = true;
+                _alertMsg = await StepUpHttp.IsGrantRejectedAsync(resp)
+                    ? L["StepUp.RetryFailed"].Value
+                    : $"{L["PaymentMethod.CouldNotSetWalletDefaultPrefix"]} {await resp.Content.ReadAsStringAsync()}";
+                _alertIsError = true;
             }
         }
         catch (Exception ex) { _alertMsg = $"{L["PaymentMethod.ErrorPrefix"]} {ex.Message}"; _alertIsError = true; }

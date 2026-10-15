@@ -148,6 +148,10 @@ builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().Cre
 builder.Services.AddAuthApiClient(
     builder.Configuration["AuthApiBaseUrl"] ?? "https://localhost:7005");
 
+// Cliente del step-up: el modal que pide el código antes de cambiar la wallet de cobro.
+builder.Services.AddStepUpClient(
+    builder.Configuration["AuthApiBaseUrl"] ?? "https://localhost:7005");
+
 // Aquí vivía el cliente "SignupsApi", que solo usaba la pantalla de alta de este portal. Esa
 // pantalla era una copia atrasada del asistente de verdad —mandaba SponsorMemberId, un campo que
 // AmbassadorSignupRequest no tiene, así que el patrocinador se perdía en silencio— y se ha borrado:

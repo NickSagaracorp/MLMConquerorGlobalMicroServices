@@ -1379,4 +1379,16 @@
   <data name="PaymentMethod.AddAccountFirstTooltip" xml:space="preserve">
     <value>Este metodo necesita datos que solo vos podes aportar. Usa Agregar cuenta primero.</value>
   </data>
+  <data name="StepUp.Title" xml:space="preserve"><value>Confirma que eres tú</value></data>
+  <data name="StepUp.Why" xml:space="preserve"><value>Por seguridad, ingresa un código de verificación antes de cambiar a dónde se pagan tus comisiones.</value></data>
+  <data name="StepUp.SentTo" xml:space="preserve"><value>Te enviamos un código a {0}.</value></data>
+  <data name="StepUp.AuthenticatorPrompt" xml:space="preserve"><value>Ingresa el código de tu aplicación de autenticación.</value></data>
+  <data name="StepUp.CodeLabel" xml:space="preserve"><value>Código de verificación</value></data>
+  <data name="StepUp.Confirm" xml:space="preserve"><value>Confirmar</value></data>
+  <data name="StepUp.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="StepUp.Resend" xml:space="preserve"><value>Enviar otro código</value></data>
+  <data name="StepUp.Cooldown" xml:space="preserve"><value>Por seguridad, cambiaste un dato de acceso hace poco; podrás cambiar el método de cobro a partir de {0}.</value></data>
+  <data name="StepUp.CooldownGeneric" xml:space="preserve"><value>Por seguridad, cambiaste un dato de acceso hace poco; podrás cambiar el método de cobro más adelante.</value></data>
+  <data name="StepUp.RetryFailed" xml:space="preserve"><value>No se pudo confirmar la verificación; inténtalo de nuevo.</value></data>
+  <data name="TwoFactor.Error.VerificationUnavailable" xml:space="preserve"><value>No podemos verificar códigos en este momento. Inténtalo de nuevo en unos minutos.</value></data>
 </root>

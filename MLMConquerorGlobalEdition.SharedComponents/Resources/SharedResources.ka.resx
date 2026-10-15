@@ -1274,4 +1274,16 @@
   <data name="PaymentMethod.AddAccountFirstTooltip" xml:space="preserve">
     <value>ეს მეთოდი ითხოვს მონაცემებს, რომელსაც მხოლოდ თქვენ იქნებით.</value>
   </data>
+  <data name="StepUp.Title" xml:space="preserve"><value>დაადასტურეთ, რომ თქვენ ხართ</value></data>
+  <data name="StepUp.Why" xml:space="preserve"><value>უსაფრთხოებისთვის, საკომისიოს გადახდის ადგილის შეცვლამდე შეიყვანეთ დამადასტურებელი კოდი.</value></data>
+  <data name="StepUp.SentTo" xml:space="preserve"><value>კოდი გაიგზავნა: {0}.</value></data>
+  <data name="StepUp.AuthenticatorPrompt" xml:space="preserve"><value>შეიყვანეთ კოდი ავთენტიფიკატორის აპიდან.</value></data>
+  <data name="StepUp.CodeLabel" xml:space="preserve"><value>დამადასტურებელი კოდი</value></data>
+  <data name="StepUp.Confirm" xml:space="preserve"><value>დადასტურება</value></data>
+  <data name="StepUp.Cancel" xml:space="preserve"><value>გაუქმება</value></data>
+  <data name="StepUp.Resend" xml:space="preserve"><value>ახალი კოდის გაგზავნა</value></data>
+  <data name="StepUp.Cooldown" xml:space="preserve"><value>უსაფრთხოებისთვის, ახლახან შეცვალეთ შესვლის მონაცემი; გადახდის მეთოდის შეცვლა შეძლებთ {0}-დან.</value></data>
+  <data name="StepUp.CooldownGeneric" xml:space="preserve"><value>უსაფრთხოებისთვის, ახლახან შეცვალეთ შესვლის მონაცემი; გადახდის მეთოდის შეცვლა მოგვიანებით შეძლებთ.</value></data>
+  <data name="StepUp.RetryFailed" xml:space="preserve"><value>დადასტურების დასრულება ვერ მოხერხდა; სცადეთ თავიდან.</value></data>
+  <data name="TwoFactor.Error.VerificationUnavailable" xml:space="preserve"><value>ამჟამად კოდების გადამოწმება ვერ ხერხდება. სცადეთ რამდენიმე წუთში.</value></data>
 </root>

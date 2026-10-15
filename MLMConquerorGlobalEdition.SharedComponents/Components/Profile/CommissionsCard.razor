@@ -1,3 +1,4 @@
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Account.StepUp
 @inject HttpClient Http
 @inject IStringLocalizer<SharedResources> L
 @inject IViewContextService ViewContext
@@ -13,6 +14,8 @@
     correct preferred gateway and account identifier without forcing the
     parent page to know about the wallet shape.
 *@
+
+<StepUpDialog @ref="_stepUp" />
 
 <div class="card border-0 shadow-sm rounded-3 mb-4">
     <div class="card-body p-4">
@@ -229,6 +232,8 @@
         _alert = null;
     }
 
+    private StepUpDialog _stepUp = default!;
+
     private async Task SaveAsync()
     {
         _busy = true; _alert = null; StateHasChanged();
@@ -256,12 +261,16 @@
             // 2) Update preferred wallet if it changed.
             if (_editWalletType != 0 && _editWalletType != _initialWalletType)
             {
-                var walletResp = await Http.PutAsync(
-                    $"{WalletsBase}/{_editWalletType}/default", null);
+                var walletResp = await StepUpHttp.SendAsync(Http,
+                    () => new HttpRequestMessage(HttpMethod.Put, $"{WalletsBase}/{_editWalletType}/default"),
+                    _stepUp.RequireAsync);
+                if (walletResp is null) return; // canceló el código: la edición sigue abierta
                 if (!walletResp.IsSuccessStatusCode)
                 {
                     var body = await walletResp.Content.ReadAsStringAsync();
-                    _alert = $"{L["Commissions.SaveFailedPrefix"]} {body}";
+                    _alert = await StepUpHttp.IsGrantRejectedAsync(walletResp)
+                        ? L["StepUp.RetryFailed"].Value
+                        : $"{L["Commissions.SaveFailedPrefix"]} {body}";
                     _alertOk = false;
                     return;
                 }

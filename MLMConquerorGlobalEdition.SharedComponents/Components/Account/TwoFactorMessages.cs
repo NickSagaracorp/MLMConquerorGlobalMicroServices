@@ -25,6 +25,12 @@ public static class TwoFactorMessages
             "TOO_MANY_ATTEMPTS"   => "TwoFactor.Error.TooManyAttempts",
             "TOO_MANY_REQUESTS"   => "TwoFactor.Error.TooManyRequests",
             "CHANNEL_UNAVAILABLE" => "TwoFactor.Error.ChannelUnavailable",
+            // El almacén que valida el código no respondió (el servidor falla cerrado): no es culpa
+            // del código tecleado, y decir "código inválido" mandaría a la persona a probar otro.
+            "VERIFICATION_UNAVAILABLE" => "TwoFactor.Error.VerificationUnavailable",
+            // Espera tras cambiar un factor. Sin la fecha (que solo viaja en el mensaje) este es el
+            // texto; el diálogo de step-up usa StepUp.Cooldown cuando la consigue leer.
+            "STEP_UP_COOLDOWN"    => "StepUp.CooldownGeneric",
             _                     => "TwoFactor.Error.Generic"
         };
 
