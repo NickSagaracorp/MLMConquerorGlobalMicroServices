@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using MLMConquerorGlobalEdition.Billing.Services.Recurring;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
+using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Identity;
@@ -93,6 +94,22 @@ public class UnPedidoSeActivaUnaVezTests
         order.Status.Should().Be(OrderStatus.Processing);
         (await db.MemberProfiles.SingleAsync()).Status.Should().Be(MemberAccountStatus.Pending);
         sponsor.Invocations.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task El_que_pierde_recibe_ORDER_ALREADY_SETTLED_aunque_el_ganador_ya_activara_la_suscripcion()
+    {
+        // El ganador confirmó: la suscripción ya no está Pending. Si el pedido no se reclamara primero,
+        // el perdedor vería SUBSCRIPTION_NOT_FOUND y lo trataría como otro fallo.
+        await using var db = InMemoryDbHelper.Create();
+        await EscenarioEntrax.SembrarAltaAsync(db, OrderStatus.Processing);
+        (await db.MembershipSubscriptions.SingleAsync()).SubscriptionStatus = MembershipStatus.Active;
+        await db.SaveChangesAsync();
+
+        var r = await Activacion(db, new CarreraPerdida())
+            .ActivatePendingSignupAsync(await db.Orders.SingleAsync(), EscenarioEntrax.Ahora, default);
+
+        r.ErrorCode.Should().Be(SignupOrderClaim.AlreadySettledCode);
     }
 
     [Fact]

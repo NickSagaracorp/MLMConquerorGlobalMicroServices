@@ -126,6 +126,14 @@ public class SignupActivationService : ISignupActivationService
         if (member is null)
             return Result<MemberProfile>.Failure("MEMBER_NOT_FOUND", "Associated member not found.");
 
+        // El pedido pasa a Completed de forma atómica ANTES de leer la suscripción y de tocar nada más:
+        // si otro pago (cripto, otro QR de Entrax, el mismo pago por otro camino) lo activó entre tanto,
+        // este no activa nada y recibe ORDER_ALREADY_SETTLED, no SUBSCRIPTION_NOT_FOUND (el ganador ya
+        // la activó). Si algo de lo que sigue falla, quien llama deshace su transacción y el reclamo.
+        if (!await _orderClaim.TryCompleteAsync(order, now, member.Email, ct))
+            return Result<MemberProfile>.Failure(SignupOrderClaim.AlreadySettledCode,
+                "This signup was already activated by another payment.");
+
         var subscription = await _db.MembershipSubscriptions.FirstOrDefaultAsync(
             s => s.MemberId == member.MemberId && s.SubscriptionStatus == MembershipStatus.Pending, ct);
         if (subscription is null)
@@ -136,13 +144,6 @@ public class SignupActivationService : ISignupActivationService
             .Where(od => od.OrderId == order.Id)
             .Join(_db.Products.AsNoTracking(), od => od.ProductId, p => p.Id, (od, p) => p.QualificationPoins)
             .SumAsync(ct);
-
-        // El pedido pasa a Completed de forma atómica ANTES de tocar nada más: si otro pago (cripto,
-        // otro QR de Entrax) lo activó entre tanto, este no activa nada y quien llama lo trata como
-        // doble cobro.
-        if (!await _orderClaim.TryCompleteAsync(order, now, member.Email, ct))
-            return Result<MemberProfile>.Failure(SignupOrderClaim.AlreadySettledCode,
-                "This signup was already activated by another payment.");
 
         await ActivateAsync(order, member, subscription, totalQualPoints, now, member.Email, ct);
         return Result<MemberProfile>.Success(member);
