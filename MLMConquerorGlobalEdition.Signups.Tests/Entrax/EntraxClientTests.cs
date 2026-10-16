@@ -275,4 +275,15 @@ public class EntraxClientTests
         if (cuerpo.Length > 0)
             aviso.Should().NotContain("nginx", "el cuerpo de un proxy no va al log.");
     }
+
+    [Fact]
+    public async Task Si_cancela_quien_llama_es_CANCELLED_y_no_TRANSPORT()
+    {
+        using var cts = new CancellationTokenSource();
+        var h = new Manejador((_, _) => { cts.Cancel(); throw new TaskCanceledException("cancelado", null, cts.Token); });
+
+        var r = await Cliente(h).GetPaymentAsync(PaymentId, cts.Token);
+
+        r.ErrorCode.Should().Be(EntraxErrorCodes.Cancelled, "un timeout de Entrax y una petición abandonada no son lo mismo.");
+    }
 }

@@ -120,6 +120,11 @@ public sealed class EntraxClient : IEntraxClient
                 throw;
             }
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Abandonó quien llamaba; un timeout del HttpClient (sin ct cancelado) sigue siendo TRANSPORT.
+            return EntraxCall<TOut>.Fail(0, EntraxErrorCodes.Cancelled, null, sw.ElapsedMilliseconds);
+        }
         catch (Exception ex)
         {
             _logger.LogWarning("Entrax {Method} {Path}: sin respuesta ({Error}).", method.Method, path, ex.GetType().Name);

@@ -48,6 +48,9 @@ public static class EntraxErrorCodes
     /// <summary>Sin respuesta: timeout, DNS, conexión rechazada.</summary>
     public const string Transport        = "TRANSPORT";
 
+    /// <summary>Canceló quien llamaba (la petición del navegador se cerró): no es un fallo de Entrax.</summary>
+    public const string Cancelled        = "CANCELLED";
+
     /// <summary>Respuesta que no es el sobre esperado o le faltan campos.</summary>
     public const string BadResponse      = "BAD_RESPONSE";
 
