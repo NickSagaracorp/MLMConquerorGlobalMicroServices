@@ -273,7 +273,8 @@ builder.Services.AddHangfireServer(options =>
 });
 
 // Controllers only — no Blazor
-builder.Services.AddControllers()
+// El traceId de la petición en toda ApiResponse de error que un controlador arme sin él.
+builder.Services.AddControllers(options => options.Filters.Add<ApiResponseTraceIdFilter>())
     .AddJsonOptions(opts =>
         opts.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
