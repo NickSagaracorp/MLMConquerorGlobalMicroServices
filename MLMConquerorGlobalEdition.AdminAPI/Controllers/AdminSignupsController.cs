@@ -68,7 +68,7 @@ public class AdminSignupsController : ControllerBase
             return NotFound(ApiResponse<object>.Fail("ORDER_NOT_FOUND",
                 "No pending order found for that id."));
 
-        var http = _httpFactory.CreateClient("SignupApi");
+        var http = _httpFactory.CreateClient(MLMConquerorGlobalEdition.AdminAPI.Services.SignupApiRegistration.HttpClientName);
         // PaymentMethod = 1 = CreditCard. We pass no card body so the handler
         // skips the credit-card insert (and just flips statuses to Active).
         var payload = new { paymentMethod = 1 };

@@ -235,4 +235,43 @@ public class AdminCryptoSignupsControllerTests
         result.Should().BeOfType<NotFoundObjectResult>();
         factory.Verify(f => f.CreateClient(It.IsAny<string>()), Times.Never);
     }
+
+    private sealed class CapturaConfirmacion : HttpMessageHandler
+    {
+        public HttpRequestMessage? Peticion;
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage r, CancellationToken ct)
+        {
+            Peticion = r;
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                Content = new StringContent("{\"success\":true}", System.Text.Encoding.UTF8, "application/json")
+            });
+        }
+    }
+
+    [Fact]
+    public async Task Confirm_lleva_el_Bearer_en_la_peticion_y_no_en_el_cliente()
+    {
+        // El cliente sale de la fábrica y su manejador se reutiliza: un Bearer en DefaultRequestHeaders
+        // de un cliente compartido podría salir en la petición de otro administrador.
+        await using var db = InMemoryDbHelper.Create();
+        await SeedAsync(db, "ORD-A", "AMB-A", CryptoPaymentConfirmationStatus.AwaitingPayment);
+        var captura = new CapturaConfirmacion();
+        var cliente = new HttpClient(captura) { BaseAddress = new Uri("https://signup.pruebas/") };
+        var factory = new Mock<IHttpClientFactory>();
+        factory.Setup(f => f.CreateClient("SignupApi")).Returns(cliente);
+        var ctx = new Microsoft.AspNetCore.Http.DefaultHttpContext();
+        ctx.Request.Headers.Authorization = "Bearer token-admin";
+        var controller = new AdminCryptoSignupsController(db, factory.Object)
+        {
+            ControllerContext = new ControllerContext { HttpContext = ctx }
+        };
+
+        await controller.Confirm("ORD-A", new AdminCryptoSignupsController.ConfirmCryptoRequest("abc123", null));
+
+        captura.Peticion!.Headers.Authorization!.ToString().Should().Be("Bearer token-admin");
+        captura.Peticion.RequestUri!.AbsolutePath.Should().Be("/api/v1/signups/ORD-A/confirm-crypto-payment");
+        cliente.DefaultRequestHeaders.Authorization.Should().BeNull();
+    }
 }
