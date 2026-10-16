@@ -150,6 +150,25 @@ public class CommissionsController : ControllerBase
         return Ok(ApiResponse<List<MLMConquerorGlobalEdition.Repository.Services.Commissions.MonthlyAmountView>>.Ok(data));
     }
 
+    /// <summary>
+    /// GET /api/v1/bizcenter/commissions/dual-residual/daily?year=&amp;month=&amp;page=&amp;pageSize= —
+    /// historial de residuales diarios (DailyResidualEarnings) del miembro del token, con totales
+    /// del periodo. Sin año, el del reloj del servidor; sin mes, el año entero.
+    /// </summary>
+    [HttpGet("dual-residual/daily")]
+    public async Task<IActionResult> GetDailyResiduals(
+        [FromServices] MLMConquerorGlobalEdition.Repository.Services.Commissions.IDailyResidualReportService service,
+        [FromServices] ICurrentUserService currentUser,
+        [FromQuery] int? year     = null,
+        [FromQuery] int? month    = null,
+        [FromQuery] int  page     = 1,
+        [FromQuery] int  pageSize = 10,
+        CancellationToken ct = default)
+    {
+        var data = await service.GetHistoryAsync(currentUser.MemberId, year, month, page, pageSize, ct);
+        return Ok(ApiResponse<MLMConquerorGlobalEdition.Repository.Services.Commissions.DailyResidualHistoryView>.Ok(data));
+    }
+
     /// <summary>GET /api/v1/bizcenter/commissions/fast-start-bonus — paged earnings</summary>
     [HttpGet("fast-start-bonus")]
     public async Task<IActionResult> GetFastStartBonus(

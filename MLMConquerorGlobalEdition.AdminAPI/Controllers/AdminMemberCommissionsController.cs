@@ -100,6 +100,20 @@ public class AdminMemberCommissionsController : ControllerBase
         => Ok(ApiResponse<List<MLMConquerorGlobalEdition.Repository.Services.Commissions.MonthlyAmountView>>.Ok(
             await _service.GetDualResidualChartAsync(memberId, months, ct)));
 
+    /// <summary>GET /api/v1/admin/members/{memberId}/commissions/dual-residual/daily — el mismo
+    /// historial que ve el miembro (DailyResidualEarnings), para la pestaña de residuales del perfil.</summary>
+    [HttpGet("dual-residual/daily")]
+    public async Task<IActionResult> GetDailyResiduals(
+        string memberId,
+        [FromServices] IDailyResidualReportService residuals,
+        [FromQuery] int? year     = null,
+        [FromQuery] int? month    = null,
+        [FromQuery] int  page     = 1,
+        [FromQuery] int  pageSize = 10,
+        CancellationToken ct = default)
+        => Ok(ApiResponse<DailyResidualHistoryView>.Ok(
+            await residuals.GetHistoryAsync(memberId, year, month, page, pageSize, ct)));
+
     // ─── Fast Start Bonus ─────────────────────────────────────────────────
 
     [HttpGet("fast-start-bonus/summary")]

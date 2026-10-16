@@ -14,6 +14,7 @@ public class MiembroDelTokenTests
     public static IEnumerable<object[]> Acciones() => new (Type Controlador, string Accion)[]
     {
         (typeof(MyLinksController), nameof(MyLinksController.Get)),
+        (typeof(CommissionsController), nameof(CommissionsController.GetDailyResiduals)),
         // (acciones de los bloques siguientes)
     }.Select(a => new object[] { a.Controlador, a.Accion });
 

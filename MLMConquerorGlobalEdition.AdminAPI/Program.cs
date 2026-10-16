@@ -83,6 +83,8 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.I
                             MLMConquerorGlobalEdition.Repository.Services.Teams.EnrollmentTeamService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Commissions.ICommissionsService,
                             MLMConquerorGlobalEdition.Repository.Services.Commissions.CommissionsService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Commissions.IDailyResidualReportService,
+                            MLMConquerorGlobalEdition.Repository.Services.Commissions.DailyResidualReportService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Wallets.IMemberWalletService,
                             MLMConquerorGlobalEdition.Repository.Services.Wallets.MemberWalletService>();
 builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
