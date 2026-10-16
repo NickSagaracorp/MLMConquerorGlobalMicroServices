@@ -200,12 +200,9 @@
         return string.Equals(path, href.TrimEnd('/'), StringComparison.OrdinalIgnoreCase) ? "active" : string.Empty;
     }
 
-    private bool IsEnrollmentActive()
-        => Nav.Uri.Contains("/team/enrollment", StringComparison.OrdinalIgnoreCase);
+    private bool IsEnrollmentActive() => SidebarRoutes.IsEnrollmentTeam(Nav.Uri);
 
-    private bool IsDualTeamActive()
-        => Nav.Uri.Contains("/team/dual", StringComparison.OrdinalIgnoreCase);
+    private bool IsDualTeamActive() => SidebarRoutes.IsDualTeam(Nav.Uri);
 
-    private bool IsCommissionsActive()
-        => Nav.Uri.Contains("/commissions", StringComparison.OrdinalIgnoreCase);
+    private bool IsCommissionsActive() => SidebarRoutes.IsCommissions(Nav.Uri);
 }
