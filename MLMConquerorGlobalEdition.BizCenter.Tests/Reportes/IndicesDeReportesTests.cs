@@ -45,5 +45,9 @@ public class IndicesDeReportesTests
             .GetMaxLength().Should().Be(20);
     }
 
+    [Fact]
+    public void Perfiles_por_fecha_de_alta()
+        => TieneIndice(typeof(MemberProfile), "EnrollDate").Should().BeTrue();
+
     // (índices de los bloques siguientes)
 }

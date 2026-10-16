@@ -18,6 +18,8 @@ public class MemberProfileConfiguration : IEntityTypeConfiguration<MemberProfile
         // clientes personales y la actividad por patrocinador. nvarchar(max) no podía ser clave.
         builder.Property(x => x.SponsorMemberId).HasMaxLength(20);
         builder.HasIndex(x => new { x.SponsorMemberId, x.EnrollDate });
+        // Plan J: la actividad por fechas reduce primero por fecha de alta, sin patrocinador concreto.
+        builder.HasIndex(x => x.EnrollDate);
 
         builder.Property(x => x.UserId).IsRequired();
         builder.HasIndex(x => x.UserId).IsUnique();

@@ -8054,6 +8054,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .IsUnique()
                         .HasFilter("[BinaryNodeId] IS NOT NULL");
 
+                    b.HasIndex("EnrollDate");
+
                     b.HasIndex("EnrollmentNodeId")
                         .IsUnique()
                         .HasFilter("[EnrollmentNodeId] IS NOT NULL");
