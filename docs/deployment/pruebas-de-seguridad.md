@@ -469,10 +469,12 @@ que no pueden esperar a esa tarea.
 
 | # | Prueba | Resultado esperado | ✔ |
 |---|---|---|---|
-| 9.1 | `POST api/v1/billing/tokens/purchase` con `"paymentMethod":"CreditCard"` y la tarjeta apagada | `400 CARD_PAYMENTS_DISABLED`, sin pedido ni compra | ☐ |
-| 9.2 | Catálogo con la tarjeta apagada | `cardEnabled: false` y sin pestaña de tarjeta | ☐ |
-| 9.3 | Misma clave de idempotencia con otra cantidad | `409 IDEMPOTENCY_KEY_REUSED` | ☐ |
+| 9.1 | `POST api/v1/billing/tokens/purchase` con `"paymentMethod":"CreditCard"` y la tarjeta apagada | `400 CARD_PAYMENTS_DISABLED`, sin pedido ni compra | ✔ (2026-10-15, por API) |
+| 9.2 | Catálogo con la tarjeta apagada | `cardEnabled: false` y sin pestaña de tarjeta | ✔ (2026-10-15, por API) |
+| 9.3 | Misma clave de idempotencia con otra cantidad | `409 IDEMPOTENCY_KEY_REUSED` | ✔ (2026-10-15, por API) |
 | 9.4 | `token-purchase-stale-pending` en `/hangfire` | existe, cada hora | ☐ |
 | 9.5 | Ficha de un miembro en AdminWeb → pestaña Tokens, con un usuario SupportLevel1 | los códigos salen como `ABC****` (también dentro de las notas); con Admin, enteros | ☐ |
 | 9.6 | Confirmar una cripto o conciliar una compra desde AdminWeb, mirando la respuesta en las herramientas del navegador | `tokenCodes: []` | ☐ |
 | 9.7 | *Reopen & confirm* sobre una compra cancelada o rechazada (por API) | `409 TOKEN_PURCHASE_NOT_EXPIRED`, sin emitir | ☐ |
+| 9.8 | Dos compras cripto simultáneas que juntas pasan el cupo | una 200 y otra `409 TOKEN_MONTHLY_LIMIT_REACHED` | ✔ (2026-10-15, por API) |
+| 9.9 | Pagar con comisiones sin step-up, también llamando a Billing directo con `" EWallet "` | `403 STEP_UP_REQUIRED` | ✔ (2026-10-15, por API) |
