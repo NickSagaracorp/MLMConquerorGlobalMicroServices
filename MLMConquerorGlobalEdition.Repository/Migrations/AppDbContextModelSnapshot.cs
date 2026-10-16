@@ -5604,6 +5604,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("EarnedDate");
 
+                    b.HasIndex("BeneficiaryMemberId", "EarnedDate");
+
                     b.HasIndex("BeneficiaryMemberId", "Status");
 
                     b.ToTable("DailyResidualEarnings");

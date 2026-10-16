@@ -33,5 +33,9 @@ public class DailyResidualEarningConfiguration : IEntityTypeConfiguration<DailyR
         // Spec: indexes on BeneficiaryMemberId + Status, and EarnedDate
         builder.HasIndex(x => new { x.BeneficiaryMemberId, x.Status });
         builder.HasIndex(x => x.EarnedDate);
+
+        // Plan J: el historial de residuales del BizCenter y su gráfico leen por beneficiario y
+        // rango de fechas; con (BeneficiaryMemberId, Status) había que recorrer todas sus filas.
+        builder.HasIndex(x => new { x.BeneficiaryMemberId, x.EarnedDate });
     }
 }
