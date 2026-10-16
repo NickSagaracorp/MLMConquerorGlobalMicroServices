@@ -38,7 +38,10 @@ public class EntraxSignupsController : ControllerBase
         _logger     = logger;
     }
 
-    /// <summary>GET api/v1/signups/payment-options — países donde se ofrece pagar en rublos.</summary>
+    /// <summary>
+    /// GET api/v1/signups/payment-options — países donde se ofrece pagar en rublos y si se ofrece la
+    /// tarjeta (Signup:CardEnabled). Solo informa a la pantalla: CompleteSignup lo vuelve a comprobar.
+    /// </summary>
     [HttpGet("payment-options")]
     [AllowAnonymous]
     public IActionResult GetPaymentOptions()

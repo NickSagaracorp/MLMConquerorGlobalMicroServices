@@ -4,6 +4,7 @@ using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Services.Entrax;
 using MLMConquerorGlobalEdition.SharedKernel.Billing;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
+using MLMConquerorGlobalEdition.SignupAPI.Services;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Services.Entrax;
 
@@ -28,16 +29,20 @@ public sealed class EntraxSignupStatusService : IEntraxSignupStatusService
     private readonly EntraxOptions                        _options;
     private readonly IDateTimeProvider                    _clock;
     private readonly ILogger<EntraxSignupStatusService>   _logger;
+    private readonly IConfiguration?                      _configuration;
 
     public EntraxSignupStatusService(
         AppDbContext db, IEntraxSignupSettlement settlement, EntraxOptions options,
-        IDateTimeProvider clock, ILogger<EntraxSignupStatusService> logger)
+        IDateTimeProvider clock, ILogger<EntraxSignupStatusService> logger,
+        // Sin configuración la tarjeta se anuncia apagada. El contenedor inyecta IConfiguration.
+        IConfiguration? configuration = null)
     {
         _db         = db;
         _settlement = settlement;
         _options    = options;
         _clock      = clock;
         _logger     = logger;
+        _configuration = configuration;
     }
 
     public async Task<EntraxSignupStatusDto?> GetAsync(string signupId, string? paymentRef, CancellationToken ct)
@@ -109,7 +114,11 @@ public sealed class EntraxSignupStatusService : IEntraxSignupStatusService
     }
 
     public SignupPaymentOptionsDto GetPaymentOptions()
-        => new() { EntraxCountries = _options.Enabled ? _options.EffectiveCountries : [] };
+        => new()
+        {
+            EntraxCountries = _options.Enabled ? _options.EffectiveCountries : [],
+            CardEnabled     = SignupCardPayments.IsEnabled(_configuration)
+        };
 
     private Task<EntraxPayment?> ReadAsync(string signupId, string paymentRef, CancellationToken ct)
         => _db.EntraxPayments.AsNoTracking()

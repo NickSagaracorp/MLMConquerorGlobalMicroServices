@@ -114,9 +114,11 @@ public class SignupsController : ControllerBase
             // Candado del token ocupado u otro QR en creación: no se hizo nada y se puede repetir.
             // Alta ya activada por otro pago (Entrax tardío, cripto): 409, esta llamada no activó nada.
             // Entrax sin QR usable: 502, el aspirante reintenta o elige otro método.
+            // Tarjeta apagada (Signup:CardEnabled): 400 definitivo, el pedido sigue en Pending para otro método.
             var body = ApiResponse<SignupResponse>.Fail(result.ErrorCode!, result.Error!);
             return result.ErrorCode switch
             {
+                CompleteSignupHandler.CardPaymentsDisabledCode => BadRequest(body),
                 CompleteSignupHandler.TokenBusyCode or EntraxSignupErrors.InProgress
                     or EntraxSignupErrors.QrAlreadyActive or EntraxSignupErrors.PaymentConfirming
                     or CompleteSignupHandler.SignupAlreadySettledCode => Conflict(body),

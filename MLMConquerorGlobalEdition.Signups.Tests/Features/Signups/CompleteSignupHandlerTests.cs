@@ -571,7 +571,9 @@ public class CompleteSignupHandlerTests
             userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
             BuildTokenRedemptionMock().Object, BuildActivation(db),
             Mock.Of<MLMConquerorGlobalEdition.Repository.Services.Crypto.ICryptoDepositAddressReader>(),
-            new PuertaDeFondosDePrueba(db));
+            new PuertaDeFondosDePrueba(db),
+            // La tarjeta del alta va apagada por defecto (Signup:CardEnabled): esta prueba la enciende.
+            configuration: TarjetaDelAlta.Encendida());
 
         var ccRequest = new CompleteSignupRequest
         {

@@ -63,4 +63,10 @@ public sealed class SignupPaymentOptionsDto
 {
     /// <summary>Países (ISO2) en los que se ofrece pagar en rublos por SBP. Vacío = apagado.</summary>
     public IReadOnlyList<string> EntraxCountries { get; set; } = [];
+
+    /// <summary>
+    /// Si se ofrece pagar con tarjeta (Signup:CardEnabled). Falso por defecto: la pantalla oculta la pestaña
+    /// si es falso o si no llega. Aunque la muestre, SignupAPI rechaza la tarjeta apagada con CARD_PAYMENTS_DISABLED.
+    /// </summary>
+    public bool CardEnabled { get; set; }
 }

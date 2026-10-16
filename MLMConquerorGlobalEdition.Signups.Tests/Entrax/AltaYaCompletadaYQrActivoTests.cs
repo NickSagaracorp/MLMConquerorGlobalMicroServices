@@ -35,7 +35,10 @@ public class AltaYaCompletadaYQrActivoTests
                new SignupActivationService(db, Mock.Of<ISponsorBonusService>(), Mock.Of<IFastStartBonusService>(),
                    Mock.Of<IRecurringBillingEnrollmentService>()),
                Direcciones(), new PuertaDeFondosDePrueba(db),
-               entraxCheckout: checkout);
+               entraxCheckout: checkout,
+               // Encendida a propósito: estas pruebas miran qué pasa con el pedido, no el interruptor
+               // de la tarjeta (TarjetaApagadaEnElAltaTests).
+               configuration: TarjetaDelAlta.Encendida());
 
     /// <summary>Direcciones de cripto configuradas: sin ellas el alta con cripto se rechaza antes de mirar el pedido.</summary>
     private static ICryptoDepositAddressReader Direcciones()
