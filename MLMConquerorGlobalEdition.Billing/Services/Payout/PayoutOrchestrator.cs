@@ -7,6 +7,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 using MLMConquerorGlobalEdition.Domain.Entities.Wallet;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Funds;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.Repository.Services.Payout;
 
@@ -19,19 +20,25 @@ public class PayoutOrchestrator : IPayoutOrchestrator
     private readonly IDateTimeProvider _dateTime;
     private readonly ICurrentUserService _currentUser;
     private readonly IPayoutReceiptService _receipts;
+    private readonly IMemberFundsGate _fundsGate;
+
+    /// <summary>El candado de fondos del miembro estaba tomado (p. ej. comprando tokens con comisiones).</summary>
+    public const string MemberFundsBusyCode = "MEMBER_FUNDS_BUSY";
 
     public PayoutOrchestrator(
         AppDbContext db,
         IPayoutGatewayResolver resolver,
         IDateTimeProvider dateTime,
         ICurrentUserService currentUser,
-        IPayoutReceiptService receipts)
+        IPayoutReceiptService receipts,
+        IMemberFundsGate fundsGate)
     {
         _db = db;
         _resolver = resolver;
         _dateTime = dateTime;
         _currentUser = currentUser;
         _receipts = receipts;
+        _fundsGate = fundsGate;
     }
 
     public async Task<Result<PayoutResult>> ExecutePayoutAsync(string memberId, DateTime processDate, CancellationToken ct = default)
@@ -56,53 +63,71 @@ public class PayoutOrchestrator : IPayoutOrchestrator
             return Result<PayoutResult>.Failure(gatewayResult.ErrorCode!, gatewayResult.Error!);
         var gateway = gatewayResult.Value!;
 
-        // 2. Candidate earnings due on/before processDate, excluding already-reserved ones.
-        var reservedEarningIds = _db.PayoutAttemptEarnings
-            .Where(pae => _db.PayoutAttempts.Any(a => a.Id == pae.PayoutAttemptId && a.Outcome != PayoutOutcome.Failed))
-            .Select(pae => pae.CommissionEarningId);
-
-        var earnings = await _db.CommissionEarnings
-            .Where(e => e.BeneficiaryMemberId == memberId
-                        && e.Status == CommissionEarningStatus.Pending
-                        && e.PaymentDate <= processDate
-                        && !e.IsDeleted
-                        && !reservedEarningIds.Contains(e.Id))
-            .OrderBy(e => e.PaymentDate)
-            .ToListAsync(ct);
-
-        if (earnings.Count == 0)
-            return Result<PayoutResult>.Success(new PayoutResult
-            {
-                MemberId = memberId, Outcome = PayoutOutcome.Pending, AmountUsd = 0m, EarningsCount = 0
-            });
-
-        var amount = earnings.Sum(e => e.Amount);
-
-        // 3. Create the immutable attempt (snapshot frozen now) + reserve earnings.
-        var attempt = new PayoutAttempt
+        // 2–3. Leer las comisiones y reservarlas con el candado de fondos del miembro tomado: una
+        // compra de tokens con saldo de comisiones toma el mismo candado, así que no puede gastar lo
+        // que este pago está a punto de reservar ni al revés. El candado dura solo la lectura y la
+        // reserva (dos SaveChanges); las llamadas al gateway van fuera, con la reserva ya visible.
+        List<CommissionEarning> earnings;
+        PayoutAttempt attempt;
+        decimal amount;
+        try
         {
-            MemberId = memberId,
-            WalletTypeSnapshot = wallet.WalletType,
-            PayoutAccountSnapshot = wallet.AccountIdentifier!,
-            AmountUsd = amount,
-            ProcessDateUtc = processDate,
-            Outcome = PayoutOutcome.Pending,
-            AttemptedAtUtc = now,
-            EarningsCount = earnings.Count,
-            DisbursementMode = DisbursementMode.Online,
-            CreationDate = now,
-            CreatedBy = actor
-        };
-        _db.PayoutAttempts.Add(attempt);
-        await _db.SaveChangesAsync(ct); // get attempt.Id
+            await using var tx = await _fundsGate.EnterAsync(memberId, ct);
 
-        foreach (var e in earnings)
-            _db.PayoutAttemptEarnings.Add(new PayoutAttemptEarning
+            var reservedEarningIds = _db.PayoutAttemptEarnings
+                .Where(pae => _db.PayoutAttempts.Any(a => a.Id == pae.PayoutAttemptId && a.Outcome != PayoutOutcome.Failed))
+                .Select(pae => pae.CommissionEarningId);
+
+            earnings = await _db.CommissionEarnings
+                .Where(e => e.BeneficiaryMemberId == memberId
+                            && e.Status == CommissionEarningStatus.Pending
+                            && (e.Amount < 0 || e.PaymentDate <= processDate)
+                            && !e.IsDeleted
+                            && !reservedEarningIds.Contains(e.Id))
+                .OrderBy(e => e.PaymentDate)
+                .ToListAsync(ct);
+
+            if (earnings.Count == 0)
+                return Result<PayoutResult>.Success(new PayoutResult
+                {
+                    MemberId = memberId, Outcome = PayoutOutcome.Pending, AmountUsd = 0m, EarningsCount = 0
+                });
+
+            amount = earnings.Sum(e => e.Amount);
+
+            // 3. Create the immutable attempt (snapshot frozen now) + reserve earnings.
+            attempt = new PayoutAttempt
             {
-                PayoutAttemptId = attempt.Id, CommissionEarningId = e.Id, Amount = e.Amount,
-                CreationDate = now, CreatedBy = actor
-            });
-        await _db.SaveChangesAsync(ct);
+                MemberId = memberId,
+                WalletTypeSnapshot = wallet.WalletType,
+                PayoutAccountSnapshot = wallet.AccountIdentifier!,
+                AmountUsd = amount,
+                ProcessDateUtc = processDate,
+                Outcome = PayoutOutcome.Pending,
+                AttemptedAtUtc = now,
+                EarningsCount = earnings.Count,
+                DisbursementMode = DisbursementMode.Online,
+                CreationDate = now,
+                CreatedBy = actor
+            };
+            _db.PayoutAttempts.Add(attempt);
+            await _db.SaveChangesAsync(ct); // get attempt.Id
+
+            foreach (var e in earnings)
+                _db.PayoutAttemptEarnings.Add(new PayoutAttemptEarning
+                {
+                    PayoutAttemptId = attempt.Id, CommissionEarningId = e.Id, Amount = e.Amount,
+                    CreationDate = now, CreatedBy = actor
+                });
+            await _db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+        }
+        catch (MemberFundsBusyException)
+        {
+            // Nada escrito: el miembro está comprando con sus comisiones. Se reintenta en cuanto termine.
+            return Result<PayoutResult>.Failure(MemberFundsBusyCode,
+                $"Member {memberId} has another operation on their funds in progress; try again shortly.");
+        }
 
         var accountCtx = new PayoutAccountContext
         {

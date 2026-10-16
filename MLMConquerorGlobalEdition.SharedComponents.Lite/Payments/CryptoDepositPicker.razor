@@ -1,0 +1,97 @@
+@using MLMConquerorGlobalEdition.SharedKernel.Billing
+@*
+    Elección de moneda y dirección de depósito para pagar en cripto. Una sola pieza para el alta
+    (Signup y MemberJoin) y para la compra de tokens del BizCenter: las direcciones vienen de
+    Admin → Global Parameters y quien la usa decide de dónde leerlas y qué texto va debajo.
+
+    Sin direcciones no se ofrece: mejor decir que no está disponible que mandar a alguien a pagar a
+    una dirección que nadie le va a dar. El botón de pagar de la página debe quedar deshabilitado
+    mientras <see cref="Find"/> devuelva null.
+
+    Vive en SharedComponents.Lite, no en SharedComponents: el alta pública lo descarga en el navegador
+    y no debe arrastrar Syncfusion ni el resto de componentes de los portales.
+
+    No inyecta nada a propósito: así se puede usar desde un WebAssembly sin registrar servicios. Por
+    eso los textos llegan por parámetro (en inglés por defecto, que es lo que usa el alta) y la página
+    que tenga localizador pasa los suyos.
+
+    ShowAddress = false: solo se elige la moneda. La compra de tokens enseña la dirección que devuelve
+    Billing al crear la compra, no la del catálogo, que puede cambiar entre una y otra.
+*@
+
+@if (Addresses is null || Addresses.Count == 0)
+{
+    <p class="text-center text-muted small mb-0">@UnavailableText</p>
+}
+else
+{
+    <label class="form-label small" for="@InputId">@CurrencyLabel</label>
+    <select id="@InputId" class="form-select mb-3" value="@Currency" disabled="@Disabled" @onchange="OnCurrencyChanged">
+        @foreach (var d in Addresses)
+        {
+            <option value="@d.Currency">@d.Currency</option>
+        }
+    </select>
+    @if (ShowAddress && Selected is { } deposit)
+    {
+        var (before, after) = SplitOnCurrency(SendToText);
+        <p class="small mb-1">@before<strong>@deposit.Currency</strong>@after</p>
+        <p class="font-monospace small text-break mb-1">@deposit.Address</p>
+        @if (!string.IsNullOrWhiteSpace(deposit.Network))
+        {
+            <p class="small text-muted mb-1">@string.Format(NetworkText, deposit.Network)</p>
+        }
+    }
+    @ChildContent
+}
+
+@code {
+    /// <summary>Monedas con dirección configurada. Vacía o null = cripto no disponible.</summary>
+    [Parameter] public IReadOnlyList<CryptoDepositAddressDto>? Addresses { get; set; }
+
+    /// <summary>Moneda elegida (<c>@bind-Currency</c>).</summary>
+    [Parameter] public string? Currency { get; set; }
+
+    [Parameter] public EventCallback<string?> CurrencyChanged { get; set; }
+
+    /// <summary>Texto bajo la dirección; cada pantalla explica a su manera qué pasa después.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Id del select, para que la etiqueta apunte a él sin chocar con otro de la página.</summary>
+    [Parameter] public string InputId { get; set; } = "crypto-currency";
+
+    /// <summary>¿Se enseña la dirección de la moneda elegida? Sí por defecto (el alta).</summary>
+    [Parameter] public bool ShowAddress { get; set; } = true;
+
+    /// <summary>Deshabilita el select (p. ej. mientras la página tiene una compra sin resolver).</summary>
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string UnavailableText { get; set; } = "Crypto payments aren't available right now. Please choose another payment method.";
+
+    [Parameter] public string CurrencyLabel { get; set; } = "Currency";
+
+    /// <summary>Frase antes de la dirección; <c>{0}</c> es la moneda, que va en negrita.</summary>
+    [Parameter] public string SendToText { get; set; } = "Send your payment in {0} to:";
+
+    /// <summary>Línea de la red; <c>{0}</c> es la red.</summary>
+    [Parameter] public string NetworkText { get; set; } = "Network: {0}";
+
+    private CryptoDepositAddressDto? Selected => Find(Addresses, Currency);
+
+    /// <summary>La dirección de la moneda elegida, o null si no hay ninguna que ofrecer.</summary>
+    public static CryptoDepositAddressDto? Find(IEnumerable<CryptoDepositAddressDto>? addresses, string? currency)
+        => addresses?.FirstOrDefault(d => d.Currency == currency);
+
+    private static (string Before, string After) SplitOnCurrency(string format)
+    {
+        var i = format.IndexOf("{0}", StringComparison.Ordinal);
+        return i < 0 ? (format + " ", string.Empty) : (format[..i], format[(i + 3)..]);
+    }
+
+    private Task OnCurrencyChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        if (Disabled) return Task.CompletedTask;
+        Currency = e.Value?.ToString();
+        return CurrencyChanged.InvokeAsync(Currency);
+    }
+}

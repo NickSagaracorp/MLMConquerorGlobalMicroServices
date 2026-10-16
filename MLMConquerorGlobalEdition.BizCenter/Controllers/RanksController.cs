@@ -1,12 +1,12 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Net.Http.Headers;
 using MLMConquerorGlobalEdition.BizCenter.DTOs.Ranks;
 using MLMConquerorGlobalEdition.BizCenter.Features.Ranks.DownloadCertificate;
 using MLMConquerorGlobalEdition.BizCenter.Features.Ranks.GenerateCertificateOnDemand;
 using MLMConquerorGlobalEdition.BizCenter.Features.Ranks.GetRankDashboard;
 using MLMConquerorGlobalEdition.BizCenter.Features.Ranks.GetRankHistory;
+using MLMConquerorGlobalEdition.BizCenter.Services;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Controllers;
@@ -129,15 +129,5 @@ public class RanksController : ControllerBase
     /// can be relayed to RankEngine. Returns an empty string when no Bearer token
     /// is present — callers treat that as a soft failure.
     /// </summary>
-    private string ExtractBearerToken()
-    {
-        if (!Request.Headers.TryGetValue(HeaderNames.Authorization, out var values))
-            return string.Empty;
-
-        var raw = values.ToString();
-        const string prefix = "Bearer ";
-        return raw.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
-            ? raw.Substring(prefix.Length).Trim()
-            : string.Empty;
-    }
+    private string ExtractBearerToken() => BearerToken.From(Request);
 }

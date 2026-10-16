@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <!--
+    Componentes unificados LIGEROS: los que también usa el alta pública (Signups.Client, WebAssembly).
+
+    Todo lo que va aquí se descarga en el navegador de quien se da de alta, así que esta biblioteca
+    NO lleva Syncfusion ni nada que no necesite el componente: solo el motor de componentes con su
+    enlace al DOM y SharedKernel (los contratos). SharedComponents la referencia y sigue siendo la de
+    los portales (BizCenter y Admin, web y MAUI); un componente pasa aquí solo si el alta lo usa.
+
+    Igual que SharedComponents, sin <FrameworkReference Include="Microsoft.AspNetCore.App" />: corre
+    en WebAssembly y en MAUI. Lo vigilan SignupsClientLigeroTests (Signups.Tests).
+  -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel\MLMConquerorGlobalEdition.SharedKernel.csproj" />
+  </ItemGroup>
+</Project>

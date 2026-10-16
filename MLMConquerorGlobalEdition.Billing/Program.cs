@@ -45,11 +45,24 @@ builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 
 builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
 
-builder.Services.AddStackExchangeRedisCache(options =>
 {
-    options.Configuration = builder.Configuration.GetConnectionString("Redis")
-        ?? "localhost:6379";
-});
+    var redisConn = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+    builder.Services.AddStackExchangeRedisCache(options => options.Configuration = redisConn);
+
+    // CacheService.TryClaimOnceAsync necesita una conexión para SET NX: con ella, la marca de "permiso
+    // de step-up ya usado en Billing" (compra de tokens con saldo) vale entre todas las instancias; sin
+    // ella valdría solo dentro de cada proceso. AbortOnConnectFail=false: arrancar no depende de Redis,
+    // y si Redis no responde la marca lanza y la compra con saldo se rechaza (falla cerrado). Mismo
+    // registro que BizCenter, AdminAPI y SignupAPI.
+    builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(_ =>
+    {
+        var options = StackExchange.Redis.ConfigurationOptions.Parse(redisConn);
+        options.AbortOnConnectFail = false;
+        options.ConnectTimeout     = 5000;
+        options.ConnectRetry       = 3;
+        return StackExchange.Redis.ConnectionMultiplexer.Connect(options);
+    });
+}
 builder.Services.AddSingleton<ICacheService, CacheService>();
 
 builder.Services.AddSingleton<IPushNotificationService, FirebasePushNotificationService>();
@@ -104,6 +117,12 @@ builder.Services.AddNotifications(builder.Configuration);
 
 // ── Payout gateway abstraction + orchestrator ─────────────────────────────
 builder.Services.AddPayoutServices();
+
+// ── Compra de tokens (Plan F) ─────────────────────────────────────────────
+// Después de AddPayoutServices: usa su IEWalletClient y el candado de fondos por miembro
+// (sp_getapplock, compartido con los pagos), que con varias instancias de Billing sigue
+// serializando el dinero del mismo miembro.
+builder.Services.AddTokenPurchaseServices();
 
 builder.Services.AddScoped<MembershipAutoRenewalJob>();
 builder.Services.AddScoped<CommissionPayoutJob>();
@@ -321,6 +340,21 @@ RecurringJob.AddOrUpdate<DeferredPayoutAccountJob>(
     "deferred-payout-accounts",
     job => job.ExecuteAsync(CancellationToken.None),
     "*/15 * * * *",
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+// Caduca las compras de tokens en cripto que nadie confirmó (Plan F, D18) y libera su cupo.
+RecurringJob.AddOrUpdate<TokenPurchaseCryptoExpiryJob>(
+    "token-purchase-crypto-expiry",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "0 * * * *",                    // Cada hora
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+// Pasa a conciliar las compras de tokens con tarjeta o eWallet que se quedaron en Pending (el proceso
+// murió entre el cobro y la emisión). Nunca las libera: el dinero pudo moverse.
+RecurringJob.AddOrUpdate<TokenPurchaseStalePendingJob>(
+    "token-purchase-stale-pending",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "30 * * * *",                   // Cada hora, a la media para no coincidir con la caducidad
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
 // Auto-payout disabled by business decision: PaymentDate on a CommissionEarning

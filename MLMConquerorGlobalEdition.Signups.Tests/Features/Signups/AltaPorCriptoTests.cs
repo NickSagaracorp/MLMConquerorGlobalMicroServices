@@ -9,6 +9,8 @@ using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Identity;
+using MLMConquerorGlobalEdition.Repository.Services.Crypto;
+using MLMConquerorGlobalEdition.SharedKernel.Billing;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Commands.CompleteSignup;
@@ -86,7 +88,7 @@ public class AltaPorCriptoTests
         var m = new Mock<ITokenRedemptionService>();
         m.Setup(s => s.RedeemForSignupAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
-                It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
          .ReturnsAsync(MLMConquerorGlobalEdition.SharedKernel.Result<bool>.Success(true));
         return m;
     }
@@ -265,6 +267,15 @@ public class AltaPorCriptoTests
         // CryptoTransactionId a null a propósito: nadie puede producirlo en este momento.
     };
 
+    /// <summary>Solo BTC tiene dirección configurada: ETH es candidata pero está sin dirección.</summary>
+    private static ICryptoDepositAddressReader Addresses()
+    {
+        var m = new Mock<ICryptoDepositAddressReader>();
+        m.Setup(r => r.GetConfiguredAsync(It.IsAny<CancellationToken>()))
+         .ReturnsAsync(new[] { new CryptoDepositAddressDto { Currency = "BTC", Address = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh" } });
+        return m.Object;
+    }
+
     private static CompleteSignupHandler BuildCompleteHandler(
         AppDbContext db,
         Mock<UserManager<ApplicationUser>> userMgr,
@@ -273,7 +284,8 @@ public class AltaPorCriptoTests
         IRecurringBillingEnrollmentService recurring)
         => new(db, Clock(FixedNow).Object, S3().Object, userMgr.Object, Jwt().Object,
                Encryption().Object, TokenRedemption().Object,
-               new SignupActivationService(db, sponsor, fsb, recurring));
+               new SignupActivationService(db, sponsor, fsb, recurring), Addresses(),
+               new PuertaDeFondosDePrueba(db));
 
     private static ConfirmCryptoPaymentHandler BuildConfirmHandler(
         AppDbContext db,
@@ -439,6 +451,48 @@ public class AltaPorCriptoTests
 
         (await db.CryptoPaymentConfirmations.CountAsync()).Should().Be(1,
             "el pedido pasa a Processing y CompleteSignup solo mira los que están en Pending.");
+    }
+
+    [Theory]
+    [InlineData("DOGE", TokenPurchaseErrors.CryptoCurrencyNotSupported)]
+    [InlineData("ETH",  TokenPurchaseErrors.CryptoAddressNotConfigured)]
+    [InlineData(" eth ", TokenPurchaseErrors.CryptoAddressNotConfigured)]
+    [InlineData(null,   TokenPurchaseErrors.CryptoCurrencyNotSupported)]
+    public async Task Completar_PorCripto_EnUnaMonedaSinDireccion_SeRechazaSinTocarNada(string? currency, string expected)
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await SeedAsync(db);
+
+        var handler = BuildCompleteHandler(db, UserMgr(BuildInactiveUser()),
+            SponsorBonus().Object, FastStartBonus().Object, RecurringBilling().Object);
+
+        var result = await handler.Handle(new CompleteSignupCommand(OrderId,
+            new CompleteSignupRequest { PaymentMethod = PaymentMethodType.Crypto, CryptoCurrency = currency }),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse("nadie puede pagar a una dirección que no existe.");
+        result.ErrorCode.Should().Be(expected);
+        (await db.CryptoPaymentConfirmations.CountAsync()).Should().Be(0);
+        (await db.MemberStatistics.CountAsync()).Should().Be(0);
+        (await db.Orders.SingleAsync(o => o.Id == OrderId)).Status.Should().Be(OrderStatus.Pending,
+            "el alta sigue en Pending para que el aspirante elija otra moneda.");
+    }
+
+    [Fact]
+    public async Task Completar_PorCripto_NormalizaLaMoneda()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await SeedAsync(db);
+
+        var handler = BuildCompleteHandler(db, UserMgr(BuildInactiveUser()),
+            SponsorBonus().Object, FastStartBonus().Object, RecurringBilling().Object);
+
+        var result = await handler.Handle(new CompleteSignupCommand(OrderId,
+            new CompleteSignupRequest { PaymentMethod = PaymentMethodType.Crypto, CryptoCurrency = " btc " }),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        (await db.CryptoPaymentConfirmations.SingleAsync()).CryptoCurrency.Should().Be("BTC");
     }
 
     // ── 2. Confirmar el cobro ───────────────────────────────────────────────────

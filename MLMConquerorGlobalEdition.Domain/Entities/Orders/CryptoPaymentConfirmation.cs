@@ -36,8 +36,21 @@ public class CryptoPaymentConfirmation : AuditChangesStringKey
     /// <summary>Lo que el aspirante eligió pagar: BTC, ETH, USDT…</summary>
     public string CryptoCurrency { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Dirección de depósito que se le dio al pagador al crear el cobro, congelada aquí: la de Global
+    /// Parameters puede cambiar después, y repetir la compra (misma clave) debe devolver la misma. Null
+    /// en las filas anteriores a guardarla y en las altas.
+    /// </summary>
+    public string? DepositAddress { get; set; }
+
+    /// <summary>Red que acompañaba a <see cref="DepositAddress"/> (p. ej. "TRC-20"), si había.</summary>
+    public string? DepositNetwork { get; set; }
+
     /// <summary>Importe del pedido en el momento del alta. Congelado aquí para el cotejo manual.</summary>
     public decimal AmountDue { get; set; }
+
+    /// <summary>Qué se cobra. Las filas anteriores a la compra de tokens son todas altas.</summary>
+    public CryptoPaymentPurpose Purpose { get; set; } = CryptoPaymentPurpose.Signup;
 
     public CryptoPaymentConfirmationStatus Status { get; set; } = CryptoPaymentConfirmationStatus.AwaitingPayment;
 

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.BizCenter.DTOs.Tokens;
 using MLMConquerorGlobalEdition.BizCenter.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Tokens;
 using MLMConquerorGlobalEdition.SharedKernel;
 using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
 
@@ -31,19 +32,14 @@ public class GetTokenBalancesHandler : IRequestHandler<GetTokenBalancesQuery, Re
         if (cached is not null)
             return Result<IEnumerable<TokenBalanceDto>>.Success(cached);
 
-        var balances = await _db.TokenBalances
-            .AsNoTracking()
-            .Where(tb => tb.MemberId == memberId)
-            .Join(
-                _db.TokenTypes,
-                tb => tb.TokenTypeId,
-                tt => tt.Id,
-                (tb, tt) => new TokenBalanceDto
-                {
-                    TokenTypeName = tt.Name,
-                    IsGuestPass   = tt.IsGuestPass,
-                    Balance       = tb.Balance
-                })
+        var balances = await MemberTokenQueries.Balances(_db, memberId)
+            .Select(b => new TokenBalanceDto
+            {
+                TokenTypeId   = b.TokenTypeId,
+                TokenTypeName = b.TokenTypeName,
+                IsGuestPass   = b.IsGuestPass,
+                Balance       = b.Balance
+            })
             .ToListAsync(ct);
 
         await _cache.SetAsync(cacheKey, balances, CacheKeys.MemberTokenBalancesTtl, ct);

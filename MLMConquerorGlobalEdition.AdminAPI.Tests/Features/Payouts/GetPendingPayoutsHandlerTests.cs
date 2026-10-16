@@ -104,6 +104,24 @@ public class GetPendingPayoutsHandlerTests
     }
 
     [Fact]
+    public async Task UnDebitoPendienteCuentaAunqueSuFechaSeaPosterior()
+    {
+        // Lo mismo que paga el orquestador: el débito de una compra de tokens (negativo) siempre resta.
+        await using var db = InMemoryDbHelper.Create();
+        SeedMember(db, "AMB-1", "Ana", "Diaz");
+        SeedWallet(db, "AMB-1", WalletType.eWallet);
+        SeedSetting(db, WalletType.eWallet, 20m);
+        SeedEarning(db, "AMB-1", 100m, ProcessDate.AddDays(-9));
+        SeedEarning(db, "AMB-1", -60m, ProcessDate.AddDays(1));
+        await db.SaveChangesAsync();
+
+        var result = await new GetPendingPayoutsHandler(db).Handle(
+            new GetPendingPayoutsQuery(ProcessDate), CancellationToken.None);
+
+        result.Value!.Items.Single().PendingAmount.Should().Be(40m);
+    }
+
+    [Fact]
     public async Task ReservedEarnings_AreExcluded()
     {
         await using var db = InMemoryDbHelper.Create();

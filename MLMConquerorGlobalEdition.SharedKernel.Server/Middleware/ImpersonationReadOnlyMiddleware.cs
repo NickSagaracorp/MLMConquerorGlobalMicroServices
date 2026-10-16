@@ -68,7 +68,7 @@ public sealed class ImpersonationReadOnlyMiddleware
         context.Response.ContentType = "application/json";
 
         var cuerpo = ApiResponse<bool>.Fail(
-            "IMPERSONATION_READ_ONLY",
+            ImpersonationScope.ReadOnlyErrorCode,
             "Esta sesión de suplantación es de solo lectura y no puede modificar datos.",
             context.TraceIdentifier);
 

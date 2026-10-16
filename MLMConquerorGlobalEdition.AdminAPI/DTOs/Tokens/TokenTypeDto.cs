@@ -11,4 +11,7 @@ public class TokenTypeDto
     public string? TemplateUrl { get; set; }
     public bool IsActive { get; set; }
     public TokenCategory Category { get; set; }
+
+    /// <summary>Se vende en el BizCenter (Plan F, D1).</summary>
+    public bool IsPurchasable { get; set; }
 }

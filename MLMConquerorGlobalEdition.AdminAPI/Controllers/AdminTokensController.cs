@@ -7,6 +7,7 @@ using MLMConquerorGlobalEdition.AdminAPI.Features.TokenAdmin.GetTokenCodes;
 using MLMConquerorGlobalEdition.AdminAPI.Features.TokenAdmin.GrantTokens;
 using MLMConquerorGlobalEdition.AdminAPI.Features.TokenAdmin.UpdateTokenBalance;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Billing;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 
@@ -43,7 +44,7 @@ public class AdminTokensController : ControllerBase
         var result = await _mediator.Send(new GrantTokensCommand(request), ct);
 
         if (!result.IsSuccess)
-            return BadRequest(ApiResponse<AdminTokenBalanceDto>.Fail(result.ErrorCode!, result.Error!));
+            return Failure(result);
 
         return Ok(ApiResponse<AdminTokenBalanceDto>.Ok(result.Value!));
     }
@@ -75,8 +76,15 @@ public class AdminTokensController : ControllerBase
         var result = await _mediator.Send(new UpdateTokenBalanceCommand(tokenId, request), ct);
 
         if (!result.IsSuccess)
-            return BadRequest(ApiResponse<AdminTokenBalanceDto>.Fail(result.ErrorCode!, result.Error!));
+            return Failure(result);
 
         return Ok(ApiResponse<AdminTokenBalanceDto>.Ok(result.Value!));
+    }
+
+    // El candado de fondos del miembro estaba ocupado: no se escribió nada y se puede repetir → 409.
+    private IActionResult Failure(Result<AdminTokenBalanceDto> result)
+    {
+        var body = ApiResponse<AdminTokenBalanceDto>.Fail(result.ErrorCode!, result.Error!);
+        return result.ErrorCode == TokenPurchaseErrors.Busy ? Conflict(body) : BadRequest(body);
     }
 }

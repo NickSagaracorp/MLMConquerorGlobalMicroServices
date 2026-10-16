@@ -38,7 +38,8 @@ public class PayoutReconciliationServiceTests
 
         var receipts = new Mock<IPayoutReceiptService>();
 
-        var orchestrator = new PayoutOrchestrator(db, resolverMock.Object, dt.Object, user.Object, receipts.Object);
+        var orchestrator = new PayoutOrchestrator(db, resolverMock.Object, dt.Object, user.Object, receipts.Object,
+            new TransactionOnlyGate(db));
         return new PayoutReconciliationService(db, resolverMock.Object, orchestrator, dt.Object);
     }
 

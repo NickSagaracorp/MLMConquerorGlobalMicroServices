@@ -31,6 +31,13 @@
       MAUI que vienen después.
     -->
     <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel\MLMConquerorGlobalEdition.SharedKernel.csproj" />
+    <!--
+      Componentes unificados que usa el alta (CryptoDepositPicker): se escriben una vez y sirven a
+      cualquier portal. La librería LIGERA, no SharedComponents: todo lo referenciado aquí se descarga
+      en el navegador de quien se da de alta, y SharedComponents arrastra Syncfusion y los
+      componentes de los portales. Lo vigila SignupsClientLigeroTests (Signups.Tests).
+    -->
+    <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedComponents.Lite\MLMConquerorGlobalEdition.SharedComponents.Lite.csproj" />
   </ItemGroup>
 
 </Project>

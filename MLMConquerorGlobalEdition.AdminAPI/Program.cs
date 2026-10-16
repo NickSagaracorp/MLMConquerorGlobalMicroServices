@@ -117,6 +117,12 @@ builder.Services.AddScoped<IRecurringBillingPlanner, RecurringBillingPlanner>();
 
 // ── Payout gateway abstraction + orchestrator ─────────────────────────────
 builder.Services.AddPayoutServices();
+// Candado de fondos por miembro (sp_getapplock), el mismo de Billing, el BizCenter y SignupAPI. Ya lo
+// registra AddPayoutServices (TryAdd); se declara aquí también porque conceder tokens y ajustar el
+// saldo (GrantTokensHandler, UpdateTokenBalanceHandler) lo usan y no deben depender de los pagos.
+Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions
+    .TryAddScoped<MLMConquerorGlobalEdition.Repository.Services.Funds.IMemberFundsGate,
+                  MLMConquerorGlobalEdition.Repository.Services.Funds.SqlServerMemberFundsGate>(builder.Services);
 
 builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
 // AdminAPI ya NO tiene puerta de entrada: la única que firma tokens aquí es la impersonación
@@ -124,6 +130,8 @@ builder.Services.AddSingleton<IErrorTrackingService, ErrorTrackingService>();
 // SignupAPI, que es donde vive el segundo factor.
 builder.Services.AddAuthnAccessTokens();
 builder.Services.AddScoped<IS3StorageService, S3StorageService>();
+// Aviso a los SuperAdmin cuando cambia una dirección de depósito cripto (Parámetros globales).
+builder.Services.AddScoped<ICryptoDepositAlertNotifier, CryptoDepositAlertNotifier>();
 
 // Cache backend — probe Redis at startup. Cache:Mode controls behavior on
 // failure: "Required" (production) → throw. "Optional" (dev) → fall back
@@ -292,6 +300,12 @@ builder.Services.AddHttpClient("SignupApi", client =>
 {
     ServerCertificateCustomValidationCallback = (_, _, _, _) => true
 });
+
+// Billing confirma, rechaza o reabre las compras de tokens en cripto y cierra las que quedaron a
+// conciliar (Plan F); AdminTokenPurchasesController le reenvía el Bearer del administrador. Sin
+// desactivar la validación del certificado, a diferencia del cliente de arriba. Fuera de Development
+// exige Services:BillingBaseUrl (no está en el appsettings.json base): ver BillingApiRegistration.
+builder.Services.AddBillingApiClient(builder.Configuration, builder.Environment);
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>

@@ -8663,6 +8663,14 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<string>("DeletedBy")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("DepositAddress")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<string>("DepositNetwork")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
@@ -8691,6 +8699,11 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<int>("Purpose")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -8707,6 +8720,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .IsUnique();
 
                     b.HasIndex("Status", "CreationDate");
+
+                    b.HasIndex("Purpose", "Status", "CreationDate");
 
                     b.ToTable("CryptoPaymentConfirmations");
                 });
@@ -11552,6 +11567,116 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.ToTable("TokenBalances");
                 });
 
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Tokens.TokenPurchase", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreditCardId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FailureCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("GrantedProductIds")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LastUpdateBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("LastUpdateDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("MemberId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("OrderId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("PaymentHistoryId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("PaymentMethod")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PeriodKey")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TokenTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("MemberId", "IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("MemberId", "PeriodKey", "Status");
+
+                    b.ToTable("TokenPurchases");
+                });
+
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Tokens.TokenTransaction", b =>
                 {
                     b.Property<long>("Id")
@@ -11578,6 +11703,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("MemberId")
+                        .IsConcurrencyToken()
                         .IsRequired()
                         .HasMaxLength(36)
                         .HasColumnType("nvarchar(36)");
@@ -11601,9 +11727,14 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasColumnType("nvarchar(20)");
 
                     b.Property<int>("Status")
+                        .IsConcurrencyToken()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(0);
+
+                    b.Property<string>("TokenPurchaseId")
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
 
                     b.Property<int>("TokenTypeId")
                         .HasColumnType("int");
@@ -11628,9 +11759,14 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .IsUnique()
                         .HasFilter("[ReferenceId] IS NOT NULL");
 
+                    b.HasIndex("TokenPurchaseId")
+                        .HasFilter("[TokenPurchaseId] IS NOT NULL");
+
                     b.HasIndex("MemberId", "CreationDate");
 
                     b.HasIndex("MemberId", "Status", "ReferenceId");
+
+                    b.HasIndex("OriginalOwnerMemberId", "TransactionType", "CreationDate");
 
                     b.ToTable("TokenTransactions");
                 });
@@ -11665,6 +11801,11 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<bool>("IsGuestPass")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsPurchasable")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("LastUpdateBy")
                         .HasColumnType("nvarchar(max)");
 
@@ -11693,6 +11834,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Pro"
                         },
                         new
@@ -11703,6 +11845,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = true,
+                            IsPurchasable = false,
                             Name = "Guest Member"
                         },
                         new
@@ -11713,6 +11856,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Elite"
                         },
                         new
@@ -11723,6 +11867,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador"
                         },
                         new
@@ -11733,6 +11878,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Elite + Event"
                         },
                         new
@@ -11743,6 +11889,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Pro + Event"
                         },
                         new
@@ -11753,6 +11900,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Elite180"
                         },
                         new
@@ -11763,6 +11911,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Elite180 + Event"
                         },
                         new
@@ -11773,6 +11922,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Pro180"
                         },
                         new
@@ -11783,6 +11933,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Pro180 + Event"
                         },
                         new
@@ -11793,6 +11944,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Plus180"
                         },
                         new
@@ -11803,6 +11955,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Plus180 + Event"
                         },
                         new
@@ -11813,6 +11966,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Plus"
                         },
                         new
@@ -11823,6 +11977,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Plus + Event"
                         },
                         new
@@ -11833,6 +11988,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + VIP"
                         },
                         new
@@ -11843,6 +11999,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + VIP + Event"
                         },
                         new
@@ -11853,6 +12010,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + VIP 365"
                         },
                         new
@@ -11863,6 +12021,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + VIP 365 + Event"
                         },
                         new
@@ -11873,6 +12032,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + VIP 180"
                         },
                         new
@@ -11883,6 +12043,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + VIP 180 + Event"
                         },
                         new
@@ -11893,6 +12054,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Elite + TURBO"
                         },
                         new
@@ -11903,6 +12065,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Elite + Event + TURBO"
                         },
                         new
@@ -11913,6 +12076,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Elite (Coupon)"
                         },
                         new
@@ -11923,6 +12087,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Elite + Event (Coupon)"
                         },
                         new
@@ -11933,6 +12098,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Elite + Event + TURBO (Coupon)"
                         },
                         new
@@ -11943,6 +12109,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Elite + TURBO (Coupon)"
                         },
                         new
@@ -11953,6 +12120,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Elite Member + TURBO"
                         },
                         new
@@ -11963,6 +12131,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: VIP Member"
                         },
                         new
@@ -11973,6 +12142,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Pro Member"
                         },
                         new
@@ -11983,6 +12153,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Elite Member"
                         },
                         new
@@ -11993,6 +12164,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Elite Special"
                         },
                         new
@@ -12003,6 +12175,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Elite180 Member"
                         },
                         new
@@ -12013,6 +12186,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Pro180 Member"
                         },
                         new
@@ -12023,6 +12197,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Plus180 Member"
                         },
                         new
@@ -12033,6 +12208,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Plus Member"
                         },
                         new
@@ -12043,6 +12219,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: VIP 180 Member"
                         },
                         new
@@ -12053,6 +12230,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment Pro ($99.97 cost / no commission)"
                         },
                         new
@@ -12063,6 +12241,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Elite FREE"
                         },
                         new
@@ -12073,6 +12252,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Elite (Coupon) FREE"
                         },
                         new
@@ -12083,6 +12263,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Elite + TURBO FREE"
                         },
                         new
@@ -12093,6 +12274,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Elite + TURBO (Coupon) FREE"
                         },
                         new
@@ -12103,6 +12285,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Plus FREE"
                         },
                         new
@@ -12113,6 +12296,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + VIP FREE"
                         },
                         new
@@ -12123,6 +12307,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + VIP 180 FREE"
                         },
                         new
@@ -12133,6 +12318,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador FREE"
                         },
                         new
@@ -12143,6 +12329,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Elite Member FREE"
                         },
                         new
@@ -12153,6 +12340,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Elite Member + TURBO FREE"
                         },
                         new
@@ -12163,6 +12351,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Plus Member FREE"
                         },
                         new
@@ -12173,6 +12362,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: VIP Member FREE"
                         },
                         new
@@ -12183,6 +12373,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: VIP 180 FREE"
                         },
                         new
@@ -12193,6 +12384,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Elite Ambassador SpecialPromo"
                         },
                         new
@@ -12203,6 +12395,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Plus Ambassador SpecialPromo"
                         },
                         new
@@ -12213,6 +12406,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Turbo Ambassador SpecialPromo"
                         },
                         new
@@ -12223,6 +12417,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Plus (Help a Friend)"
                         },
                         new
@@ -12233,6 +12428,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Elite (Help a Friend)"
                         },
                         new
@@ -12243,6 +12439,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Enrollment: Ambassador + Elite + TURBO (Help a Friend)"
                         },
                         new
@@ -12253,6 +12450,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Monthly: Elite"
                         },
                         new
@@ -12263,6 +12461,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Monthly: VIP"
                         },
                         new
@@ -12273,6 +12472,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Monthly: Pro"
                         },
                         new
@@ -12283,6 +12483,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Monthly: Elite180 Level 2 (79.97)"
                         },
                         new
@@ -12293,6 +12494,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Monthly: Elite180 Level 3 (39.97)"
                         },
                         new
@@ -12303,6 +12505,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Monthly: Pro180 Level 2"
                         },
                         new
@@ -12313,6 +12516,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Monthly: Pro180 Level 3"
                         },
                         new
@@ -12323,6 +12527,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Monthly: Plus180"
                         },
                         new
@@ -12333,6 +12538,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Monthly: Plus"
                         },
                         new
@@ -12343,6 +12549,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Monthly: Elite180 (59.97)"
                         },
                         new
@@ -12353,6 +12560,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Monthly: Mall"
                         },
                         new
@@ -12363,6 +12571,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Annual: VIP 365"
                         },
                         new
@@ -12373,6 +12582,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Annual: Biz Center"
                         },
                         new
@@ -12383,6 +12593,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Recurring: VIP 180"
                         },
                         new
@@ -12393,6 +12604,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Upgrade: Guest to VIP"
                         },
                         new
@@ -12403,6 +12615,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Upgrade: Guest to VIP 365"
                         },
                         new
@@ -12413,6 +12626,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Upgrade: Guest to Plus"
                         },
                         new
@@ -12423,6 +12637,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Upgrade: Guest to Elite"
                         },
                         new
@@ -12433,6 +12648,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Upgrade: Guest to Elite180"
                         },
                         new
@@ -12443,6 +12659,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Upgrade: Guest to VIP 180"
                         },
                         new
@@ -12453,6 +12670,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Upgrade: Pro to Elite"
                         },
                         new
@@ -12463,6 +12681,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Upgrade: Plus180 to Pro"
                         },
                         new
@@ -12473,6 +12692,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Upgrade: Plus180 to Pro180"
                         },
                         new
@@ -12483,6 +12703,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Upgrade: Plus180 to Elite"
                         },
                         new
@@ -12493,6 +12714,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Upgrade: Plus180 to Elite180"
                         },
                         new
@@ -12503,6 +12725,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Upgrade: Pro to Pro180"
                         },
                         new
@@ -12513,6 +12736,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Upgrade: Pro to Elite180"
                         },
                         new
@@ -12523,6 +12747,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Upgrade: Pro180 to Elite"
                         },
                         new
@@ -12533,6 +12758,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Upgrade: Pro180 to Elite180"
                         },
                         new
@@ -12543,6 +12769,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Upgrade: Elite to Elite180"
                         },
                         new
@@ -12553,6 +12780,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Upgrade: Plus to Elite"
                         },
                         new
@@ -12563,6 +12791,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Upgrade: Plus to Elite180"
                         },
                         new
@@ -12573,6 +12802,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Upgrade: VIP to Plus"
                         },
                         new
@@ -12583,6 +12813,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Upgrade: VIP to Elite"
                         },
                         new
@@ -12593,6 +12824,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Upgrade: VIP to Elite180"
                         },
                         new
@@ -12603,6 +12835,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Upgrade: Elite to Turbo"
                         },
                         new
@@ -12613,6 +12846,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Travel Advantage Elite (Signup)"
                         },
                         new
@@ -12623,6 +12857,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Travel Advantage Lite"
                         },
                         new
@@ -12633,6 +12868,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Annual Fee"
                         },
                         new
@@ -12643,6 +12879,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Mobile App"
                         },
                         new
@@ -12653,6 +12890,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "Legacy Biz Center Fee"
                         },
                         new
@@ -12663,6 +12901,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                             CreationDate = new DateTime(2026, 3, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = false,
                             IsGuestPass = false,
+                            IsPurchasable = false,
                             Name = "--Available--"
                         });
                 });

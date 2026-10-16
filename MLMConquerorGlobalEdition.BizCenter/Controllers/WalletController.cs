@@ -15,6 +15,8 @@ using MLMConquerorGlobalEdition.Repository.Services.Wallets;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Security;
 using MLMConquerorGlobalEdition.SharedKernel.Server.Security;
+using BearerToken = MLMConquerorGlobalEdition.BizCenter.Services.BearerToken;
+using IBillingClient = MLMConquerorGlobalEdition.BizCenter.Services.IBillingClient;
 using ICurrentUserService = MLMConquerorGlobalEdition.BizCenter.Services.ICurrentUserService;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Controllers;
@@ -37,6 +39,14 @@ public class WalletController : ControllerBase
             return NotFound(ApiResponse<WalletDto>.Fail(result.ErrorCode!, result.Error!));
         return Ok(ApiResponse<WalletDto>.Ok(result.Value!));
     }
+
+    /// <summary>
+    /// GET /api/v1/bizcenter/wallet/balances — con cuánto puede pagar tokens: comisiones gastables,
+    /// saldo real de i-Payout y si se acepta tarjeta. Lo calcula Billing.
+    /// </summary>
+    [HttpGet("wallet/balances")]
+    public async Task<IActionResult> GetPurchaseBalances([FromServices] IBillingClient billing, CancellationToken ct) =>
+        this.ToActionResult(await billing.GetPurchaseFundsAsync(BearerToken.From(Request), ct));
 
     /// <summary>GET /api/v1/bizcenter/billing/history — paginated order history</summary>
     [HttpGet("billing/history")]

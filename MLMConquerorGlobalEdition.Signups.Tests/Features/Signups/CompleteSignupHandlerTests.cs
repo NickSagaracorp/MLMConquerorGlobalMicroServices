@@ -104,14 +104,14 @@ public class CompleteSignupHandlerTests
         {
             m.Setup(s => s.RedeemForSignupAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
-                It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync(MLMConquerorGlobalEdition.SharedKernel.Result<bool>.Success(true));
         }
         else
         {
             m.Setup(s => s.RedeemForSignupAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
-                It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync(MLMConquerorGlobalEdition.SharedKernel.Result<bool>.Failure(errorCode ?? "TOKEN_NOT_VALID", error ?? "This token is not valid for this signup."));
         }
         return m;
@@ -219,7 +219,9 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildActivation(db));
+            BuildTokenRedemptionMock().Object, BuildActivation(db),
+            Mock.Of<MLMConquerorGlobalEdition.Repository.Services.Crypto.ICryptoDepositAddressReader>(),
+            new PuertaDeFondosDePrueba(db));
 
         var result = await handler.Handle(
             new CompleteSignupCommand("NON-EXISTENT", BuildRequest()), CancellationToken.None);
@@ -244,7 +246,9 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildActivation(db));
+            BuildTokenRedemptionMock().Object, BuildActivation(db),
+            Mock.Of<MLMConquerorGlobalEdition.Repository.Services.Crypto.ICryptoDepositAddressReader>(),
+            new PuertaDeFondosDePrueba(db));
 
         var result = await handler.Handle(
             new CompleteSignupCommand("ORD-001", BuildRequest()), CancellationToken.None);
@@ -282,7 +286,9 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildActivation(db));
+            BuildTokenRedemptionMock().Object, BuildActivation(db),
+            Mock.Of<MLMConquerorGlobalEdition.Repository.Services.Crypto.ICryptoDepositAddressReader>(),
+            new PuertaDeFondosDePrueba(db));
 
         var result = await handler.Handle(
             new CompleteSignupCommand("ORD-002", BuildRequest()), CancellationToken.None);
@@ -305,7 +311,9 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildActivation(db));
+            BuildTokenRedemptionMock().Object, BuildActivation(db),
+            Mock.Of<MLMConquerorGlobalEdition.Repository.Services.Crypto.ICryptoDepositAddressReader>(),
+            new PuertaDeFondosDePrueba(db));
 
         var result = await handler.Handle(
             new CompleteSignupCommand("ORD-003", BuildRequest()), CancellationToken.None);
@@ -337,7 +345,9 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildActivation(db));
+            BuildTokenRedemptionMock().Object, BuildActivation(db),
+            Mock.Of<MLMConquerorGlobalEdition.Repository.Services.Crypto.ICryptoDepositAddressReader>(),
+            new PuertaDeFondosDePrueba(db));
 
         var result = await handler.Handle(
             new CompleteSignupCommand("ORD-004", BuildRequest()), CancellationToken.None);
@@ -373,7 +383,9 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildActivation(db));
+            BuildTokenRedemptionMock().Object, BuildActivation(db),
+            Mock.Of<MLMConquerorGlobalEdition.Repository.Services.Crypto.ICryptoDepositAddressReader>(),
+            new PuertaDeFondosDePrueba(db));
 
         var result = await handler.Handle(
             new CompleteSignupCommand("ORD-010", BuildRequest()), CancellationToken.None);
@@ -410,7 +422,9 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildActivation(db));
+            BuildTokenRedemptionMock().Object, BuildActivation(db),
+            Mock.Of<MLMConquerorGlobalEdition.Repository.Services.Crypto.ICryptoDepositAddressReader>(),
+            new PuertaDeFondosDePrueba(db));
 
         await handler.Handle(new CompleteSignupCommand("ORD-011", BuildRequest()), CancellationToken.None);
 
@@ -444,7 +458,9 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildActivation(db));
+            BuildTokenRedemptionMock().Object, BuildActivation(db),
+            Mock.Of<MLMConquerorGlobalEdition.Repository.Services.Crypto.ICryptoDepositAddressReader>(),
+            new PuertaDeFondosDePrueba(db));
 
         await handler.Handle(new CompleteSignupCommand("ORD-012", BuildRequest()), CancellationToken.None);
 
@@ -478,7 +494,9 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildActivation(db));
+            BuildTokenRedemptionMock().Object, BuildActivation(db),
+            Mock.Of<MLMConquerorGlobalEdition.Repository.Services.Crypto.ICryptoDepositAddressReader>(),
+            new PuertaDeFondosDePrueba(db));
 
         await handler.Handle(new CompleteSignupCommand("ORD-013", BuildRequest()), CancellationToken.None);
 
@@ -512,7 +530,9 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildActivation(db));
+            BuildTokenRedemptionMock().Object, BuildActivation(db),
+            Mock.Of<MLMConquerorGlobalEdition.Repository.Services.Crypto.ICryptoDepositAddressReader>(),
+            new PuertaDeFondosDePrueba(db));
 
         var result = await handler.Handle(
             new CompleteSignupCommand("ORD-014", BuildRequest()), CancellationToken.None);
@@ -549,7 +569,9 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildActivation(db));
+            BuildTokenRedemptionMock().Object, BuildActivation(db),
+            Mock.Of<MLMConquerorGlobalEdition.Repository.Services.Crypto.ICryptoDepositAddressReader>(),
+            new PuertaDeFondosDePrueba(db));
 
         var ccRequest = new CompleteSignupRequest
         {
@@ -602,7 +624,9 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildActivation(db));
+            BuildTokenRedemptionMock().Object, BuildActivation(db),
+            Mock.Of<MLMConquerorGlobalEdition.Repository.Services.Crypto.ICryptoDepositAddressReader>(),
+            new PuertaDeFondosDePrueba(db));
 
         var result = await handler.Handle(
             new CompleteSignupCommand("ORD-016", BuildRequest()), CancellationToken.None);
@@ -690,7 +714,9 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildActivation(db));
+            BuildTokenRedemptionMock().Object, BuildActivation(db),
+            Mock.Of<MLMConquerorGlobalEdition.Repository.Services.Crypto.ICryptoDepositAddressReader>(),
+            new PuertaDeFondosDePrueba(db));
 
         var r1 = await handler.Handle(new CompleteSignupCommand("ORD-C1", BuildRequest()), CancellationToken.None);
         var r2 = await handler.Handle(new CompleteSignupCommand("ORD-C2", BuildRequest()), CancellationToken.None);
@@ -776,7 +802,9 @@ public class CompleteSignupHandlerTests
         var handler = new CompleteSignupHandler(
             db, BuildDateTimeMock().Object, BuildS3Mock().Object,
             userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
-            BuildTokenRedemptionMock().Object, BuildActivation(db));
+            BuildTokenRedemptionMock().Object, BuildActivation(db),
+            Mock.Of<MLMConquerorGlobalEdition.Repository.Services.Crypto.ICryptoDepositAddressReader>(),
+            new PuertaDeFondosDePrueba(db));
 
         var result = await handler.Handle(
             new CompleteSignupCommand("ORD-LEAF", BuildRequest()), CancellationToken.None);

@@ -2,4 +2,6 @@
 @attribute [Authorize(Roles = "Ambassador")]
 @inject IViewContextService ViewContext
 
-<TokensPage MemberProfileId="@ViewContext.ViewingMemberId" />
+<TokensPage MemberProfileId="@ViewContext.ViewingMemberId"
+            PurchaseEnabled="@(!ViewContext.IsImpersonating)"
+            DistributionEnabled="@(!ViewContext.IsImpersonating)" />

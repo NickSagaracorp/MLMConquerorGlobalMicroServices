@@ -47,6 +47,8 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel\MLMConquerorGlobalEdition.SharedKernel.csproj" />
+    <!-- Los componentes que también usa el alta pública (CryptoDepositPicker), sin Syncfusion. -->
+    <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedComponents.Lite\MLMConquerorGlobalEdition.SharedComponents.Lite.csproj" />
     <!-- AuthApiGateway y su IAccessTokenProvider. Viven en un proyecto sin ASP.NET Core para que
          las aplicaciones MAUI puedan usarlos. -->
     <ProjectReference Include="..\MLMConquerorGlobalEdition.ClientCore\MLMConquerorGlobalEdition.ClientCore.csproj" />

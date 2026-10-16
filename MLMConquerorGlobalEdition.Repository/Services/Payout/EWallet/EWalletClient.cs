@@ -16,6 +16,14 @@ public interface IEWalletClient
     Task<Result<bool>>    UserExistsAsync(string userName, CancellationToken ct = default);
     Task<Result<decimal>> GetBalanceAsync(string userName, string currency, CancellationToken ct = default);
     Task<Result<string>>  LoadAsync(string userName, decimal amount, string merchantReferenceId, string? comments, CancellationToken ct = default);
+
+    /// <summary>
+    /// Cobra <paramref name="amount"/> USD de la cuenta. No lanza: un fallo de red, un 5xx o un JSON
+    /// ilegible vuelven como <see cref="EWalletDeductionStatus.Unknown"/>, porque no prueban que el
+    /// cobro no ocurriera.
+    /// </summary>
+    Task<EWalletDeduction> DeductAsync(
+        string userName, decimal amount, string merchantReferenceId, string description, CancellationToken ct = default);
 }
 
 public sealed class EWalletCreateUserRequest
@@ -110,7 +118,7 @@ public class EWalletClient : IEWalletClient
         {
             _logger.LogWarning(
                 "i-Payout created user {UserName} but returned no TransactionRefID; falling back to the requested user name.",
-                request.UserName);
+                MaskUserName(request.UserName));
             assigned = request.UserName;
         }
 
@@ -215,6 +223,74 @@ public class EWalletClient : IEWalletClient
         return Result<string>.Success(item?.TransactionRefId ?? merchantReferenceId);
     }
 
+    public async Task<EWalletDeduction> DeductAsync(
+        string userName, decimal amount, string merchantReferenceId, string description, CancellationToken ct = default)
+    {
+        var cfg = await ResolveAsync(ct);
+        if (!cfg.IsSuccess)
+            return new EWalletDeduction(EWalletDeductionStatus.Rejected, cfg.ErrorCode, cfg.Error);
+
+        var payload = new Dictionary<string, object?>
+        {
+            ["fn"]                = EWalletFunctions.AddCheckoutItems,
+            ["MerchantGUID"]      = cfg.Value!.MerchantGuid,
+            ["MerchantPassword"]  = cfg.Value!.MerchantPassword,
+            ["UserName"]          = userName,
+            ["AutoChargeAccount"] = "true",
+            ["arrItems"]          = new[]
+            {
+                new EWalletCheckoutItem
+                {
+                    Amount              = amount,
+                    CurrencyCode        = "USD",
+                    ItemDescription     = description,
+                    MerchantReferenceId = merchantReferenceId
+                }
+            }
+        };
+
+        Result<EWalletCheckoutResponse> result;
+        try
+        {
+            result = await PostAsync<EWalletCheckoutResponse>(cfg.Value!, payload, "add checkout items", ct);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+        {
+            // OperationCanceledException cubre el timeout del HttpClient (TaskCanceledException) y también
+            // la cancelación de quien llama: en los dos casos la petición pudo llegar a i-Payout y el
+            // cobro haberse hecho, así que es "no se sabe", nunca "falló".
+            _logger.LogError(ex, "i-Payout: sin respuesta al cobrar {Reference} de {UserName}.",
+                merchantReferenceId, MaskUserName(userName));
+            return new EWalletDeduction(EWalletDeductionStatus.Unknown, "EWALLET_NO_RESPONSE", ex.GetType().Name);
+        }
+
+        // HTTP no 2xx, cuerpo vacío o JSON ilegible: i-Payout pudo haber procesado el cobro igual. El
+        // cuerpo crudo no viaja: el detalle acaba en las notas de la compra, que lee tesorería.
+        if (!result.IsSuccess)
+        {
+            _logger.LogError("i-Payout: respuesta no interpretable al cobrar {Reference} de {UserName}: {Code}.",
+                merchantReferenceId, MaskUserName(userName), result.ErrorCode);
+            return new EWalletDeduction(EWalletDeductionStatus.Unknown, result.ErrorCode, "Unreadable response from i-Payout.");
+        }
+
+        var status = result.Value!.Response;
+        if (status is null)
+            return new EWalletDeduction(EWalletDeductionStatus.Unknown, "EWALLET_NO_ENVELOPE", null);
+        if (status.Code < 0)
+            return new EWalletDeduction(EWalletDeductionStatus.Rejected, $"EWALLET_{status.Code}", status.Text);
+
+        var items = result.Value!.Items;
+        if (items is null || items.Count == 0)
+            return new EWalletDeduction(EWalletDeductionStatus.Unknown, "EWALLET_NO_ITEMS", status.Text);
+
+        var rejected = items.FirstOrDefault(i => i.Code < 0);
+        if (rejected is not null)
+            return new EWalletDeduction(EWalletDeductionStatus.Rejected, $"EWALLET_ITEM_{rejected.Code}", rejected.Text);
+
+        return new EWalletDeduction(EWalletDeductionStatus.Accepted, null,
+            string.Join(" | ", items.Select(i => i.Text).Where(t => !string.IsNullOrWhiteSpace(t))));
+    }
+
     // ── plomería ────────────────────────────────────────────────────────────
 
     private sealed record EWalletConfig(string BaseUrl, string MerchantGuid, string MerchantPassword);
@@ -300,6 +376,17 @@ public class EWalletClient : IEWalletClient
                 "EWALLET_MALFORMED_RESPONSE",
                 $"i-Payout {operation} returned unparseable JSON ({ex.Message}): {Truncate(body)}");
         }
+    }
+
+    /// <summary>
+    /// El UserName de i-Payout identifica la cuenta (y a veces es un correo): en los registros de error
+    /// basta con poder distinguirlo, no con poder copiarlo.
+    /// </summary>
+    public static string MaskUserName(string? userName)
+    {
+        if (string.IsNullOrEmpty(userName)) return "(none)";
+        if (userName.Length <= 4) return new string('*', userName.Length);
+        return $"{userName[..2]}***{userName[^2..]}";
     }
 
     private static string Truncate(string s, int max = 500) =>

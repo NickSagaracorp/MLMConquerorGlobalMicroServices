@@ -12,6 +12,14 @@ public static class CacheKeys
     public static string MemberTokenBalances(string memberId)=> $"member:{memberId}:token-balances";
 
     /// <summary>
+    /// Saldo de i-Payout que enseña la pantalla de compra de tokens (Billing, GetFundsAsync). Caché corta
+    /// (<see cref="MemberEWalletBalanceTtl"/>) para no llamar a i-Payout en cada recarga; la compra con
+    /// eWallet la invalida y NUNCA la usa: el débito relee el saldo real bajo el candado.
+    /// </summary>
+    public static string MemberEWalletBalance(string memberId) => $"member:{memberId}:ewallet-balance";
+    public static readonly TimeSpan MemberEWalletBalanceTtl = TimeSpan.FromSeconds(30);
+
+    /// <summary>
     /// Dual-team "My Team" page snapshot, keyed by member + page + page size +
     /// search/from/to fingerprint so different filters don't collide. The
     /// downline shape is expensive to compute; team membership rarely changes
@@ -118,6 +126,13 @@ public static class CacheKeys
     /// filtro cierra: nunca se asume "no usado".
     /// </summary>
     public static string StepUpGrantConsumed(string jti) => $"stepup:grant:{jti}:consumed";
+
+    /// <summary>
+    /// La marca de Billing para el mismo permiso. Distinta de <see cref="StepUpGrantConsumed"/>: el
+    /// BizCenter quema la suya antes de reenviar, y si Billing usara la misma, la llamada legítima
+    /// chocaría con ella. Con dos marcas el permiso vale una vez en cada servicio, no una vez en total.
+    /// </summary>
+    public static string BillingStepUpGrantConsumed(string jti) => $"stepup:grant:{jti}:consumed:billing";
 
     public const string RankDefinitions  = "rank:definitions";
     public const string MembershipLevels = "membership:levels";

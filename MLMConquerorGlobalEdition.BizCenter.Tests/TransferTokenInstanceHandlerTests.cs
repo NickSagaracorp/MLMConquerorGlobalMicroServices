@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using MLMConquerorGlobalEdition.BizCenter.Features.Tokens.TransferTokenInstance;
 using MLMConquerorGlobalEdition.BizCenter.Services;
@@ -7,6 +8,8 @@ using MLMConquerorGlobalEdition.Domain.Entities.Tokens;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Funds;
+using MLMConquerorGlobalEdition.SharedKernel.Billing;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using ICurrentUserService = MLMConquerorGlobalEdition.BizCenter.Services.ICurrentUserService;
 using IDateTimeProvider   = MLMConquerorGlobalEdition.BizCenter.Services.IDateTimeProvider;
@@ -26,18 +29,20 @@ public class TransferTokenInstanceHandlerTests : IDisposable
     private const int    TokenTypeId      = 13;
     private const string TokenCode        = "X4P2A9N";
 
-    private static readonly DateTime FixedNow = new(2026, 5, 5, 12, 0, 0, DateTimeKind.Utc);
+    private static readonly DateTime FixedNow = new(2026, 5, 5, 12, 0, 0);
 
     private readonly AppDbContext _db;
     private readonly Mock<ICurrentUserService> _currentUser;
     private readonly Mock<ICacheService> _cache;
     private readonly Mock<IPushNotificationService> _push;
     private readonly Mock<IDateTimeProvider> _dateTime;
+    private PuertaDeFondosDePrueba _gate;
 
     public TransferTokenInstanceHandlerTests()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options;
         _db = new AppDbContext(options);
 
@@ -56,7 +61,8 @@ public class TransferTokenInstanceHandlerTests : IDisposable
               .Returns(Task.CompletedTask);
 
         _dateTime = new Mock<IDateTimeProvider>();
-        _dateTime.Setup(x => x.UtcNow).Returns(FixedNow);
+        _dateTime.Setup(x => x.Now).Returns(FixedNow);
+        _gate = new PuertaDeFondosDePrueba(_db);
     }
 
     public void Dispose() => _db.Dispose();
@@ -64,11 +70,12 @@ public class TransferTokenInstanceHandlerTests : IDisposable
     private TransferTokenInstanceHandler MakeHandler() => new(
         _db, _currentUser.Object, _dateTime.Object,
         _cache.Object, _push.Object,
-        NullLogger<TransferTokenInstanceHandler>.Instance);
+        NullLogger<TransferTokenInstanceHandler>.Instance, _gate);
 
     private async Task SeedAsync(
         string ownerId         = SenderId,
         TokenInstanceStatus status = TokenInstanceStatus.Issued,
+        DateTime? expiresAt    = null,
         bool addDownlineNode   = true,
         int senderBalance      = 1)
     {
@@ -133,6 +140,7 @@ public class TransferTokenInstanceHandlerTests : IDisposable
             Quantity              = 1,
             ReferenceId           = TokenCode,
             Status                = status,
+            ExpiresAt             = expiresAt,
             OriginalOwnerMemberId = ownerId,
             CreatedBy             = "seed",
             CreationDate          = FixedNow.AddDays(-1)
@@ -276,5 +284,66 @@ public class TransferTokenInstanceHandlerTests : IDisposable
 
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be("RECIPIENT_NOT_FOUND");
+    }
+
+    [Fact]
+    public async Task Transfer_WhenTokenExpired_ReturnsTokenNotTransferable()
+    {
+        await SeedAsync(expiresAt: FixedNow.AddMinutes(-1));
+
+        var result = await MakeHandler().Handle(
+            new TransferTokenInstanceCommand(TokenCode, DownlineMemberId), CancellationToken.None);
+
+        result.ErrorCode.Should().Be("TOKEN_NOT_TRANSFERABLE");
+        (await _db.TokenTransactions.AsNoTracking().SingleAsync()).MemberId.Should().Be(SenderId);
+    }
+
+    [Fact]
+    public async Task Transfer_TakesBothFundsLocksInOrdinalOrder_AndUsesServerTime()
+    {
+        await SeedAsync();
+
+        var result = await MakeHandler().Handle(
+            new TransferTokenInstanceCommand(TokenCode, DownlineMemberId), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.TransferredAt.Should().Be(FixedNow);
+        _gate.Entrados.Should().Equal(DownlineMemberId, SenderId);
+    }
+
+    [Theory]
+    [InlineData(SenderId)]
+    [InlineData(DownlineMemberId)]
+    public async Task Transfer_WhenFundsLockBusy_ReturnsBusyAndMovesNothing(string busy)
+    {
+        await SeedAsync();
+        _gate = new PuertaDeFondosDePrueba(_db, busy);
+
+        var result = await MakeHandler().Handle(
+            new TransferTokenInstanceCommand(TokenCode, DownlineMemberId), CancellationToken.None);
+
+        result.ErrorCode.Should().Be(TokenPurchaseErrors.Busy);
+        _db.ChangeTracker.Clear();
+        (await _db.TokenTransactions.AsNoTracking().SingleAsync()).MemberId.Should().Be(SenderId);
+        (await _db.TokenBalances.AsNoTracking().SingleAsync()).Balance.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Transfer_ReadsTheInstanceAfterTakingTheLock()
+    {
+        // Mientras esperaba el candado, otra operación del dueño movió el código.
+        await SeedAsync();
+        _gate.AlEntrar = async () =>
+        {
+            var x = await _db.TokenTransactions.SingleAsync(t => t.ReferenceId == TokenCode);
+            x.MemberId = OutsiderMemberId;
+            await _db.SaveChangesAsync();
+            _db.ChangeTracker.Clear();
+        };
+
+        var result = await MakeHandler().Handle(
+            new TransferTokenInstanceCommand(TokenCode, DownlineMemberId), CancellationToken.None);
+
+        result.ErrorCode.Should().Be("TOKEN_NOT_OWNED");
     }
 }

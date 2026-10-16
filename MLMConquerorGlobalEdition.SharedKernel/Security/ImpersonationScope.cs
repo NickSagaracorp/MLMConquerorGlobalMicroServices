@@ -58,6 +58,12 @@ public static class ImpersonationScope
     /// </summary>
     public const string ImpersonatedByClaim = "impersonatedBy";
 
+    /// <summary>
+    /// Código del 403 con que <c>ImpersonationReadOnlyMiddleware</c> rechaza una escritura bajo una
+    /// suplantación de solo lectura. Las pantallas lo traducen.
+    /// </summary>
+    public const string ReadOnlyErrorCode = "IMPERSONATION_READ_ONLY";
+
     /// <summary>Métodos que solo leen. Todo lo demás escribe.</summary>
     private static readonly string[] SafeMethods = ["GET", "HEAD", "OPTIONS"];
 

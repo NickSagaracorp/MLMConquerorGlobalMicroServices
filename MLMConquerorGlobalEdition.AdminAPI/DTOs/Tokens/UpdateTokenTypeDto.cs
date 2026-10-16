@@ -10,4 +10,7 @@ public class UpdateTokenTypeDto
     public string? TemplateUrl { get; set; }
     public bool IsActive { get; set; }
     public TokenCategory Category { get; set; } = TokenCategory.None;
+
+    /// <summary>Null = no se toca. Así un PUT que no lo conoce (pantallas viejas, scripts) no lo pone a false.</summary>
+    public bool? IsPurchasable { get; set; }
 }

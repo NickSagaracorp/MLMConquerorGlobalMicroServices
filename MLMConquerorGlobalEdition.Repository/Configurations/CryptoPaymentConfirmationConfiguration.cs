@@ -19,12 +19,20 @@ public class CryptoPaymentConfirmationConfiguration : IEntityTypeConfiguration<C
         builder.Property(x => x.MemberId).IsRequired().HasMaxLength(50);
         builder.Property(x => x.MemberEmail).IsRequired().HasMaxLength(256);
         builder.Property(x => x.CryptoCurrency).IsRequired().HasMaxLength(20);
+        builder.Property(x => x.DepositAddress).HasMaxLength(512);
+        builder.Property(x => x.DepositNetwork).HasMaxLength(200);
         builder.Property(x => x.AmountDue).HasPrecision(18, 4);
         builder.Property(x => x.CryptoTransactionId).HasMaxLength(128);
         builder.Property(x => x.ConfirmedByUserId).HasMaxLength(450);
         builder.Property(x => x.ConfirmedByEmail).HasMaxLength(256);
         builder.Property(x => x.Notes).HasMaxLength(500);
         builder.Property(x => x.CreatedBy).IsRequired().HasMaxLength(100);
+
+        // Las filas que ya existen son altas: el valor por defecto de la columna las deja así.
+        builder.Property(x => x.Purpose)
+               .HasConversion<int>()
+               .HasDefaultValue(CryptoPaymentPurpose.Signup);
+        builder.HasIndex(x => new { x.Purpose, x.Status, x.CreationDate });
 
         // La red es la última defensa contra la doble aprobación: un pedido tiene como mucho una
         // fila de confirmación, y esa fila solo pasa de AwaitingPayment a Confirmed una vez.

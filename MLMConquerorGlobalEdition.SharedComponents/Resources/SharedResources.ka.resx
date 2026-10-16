@@ -842,7 +842,7 @@
   <data name="Tokens.TotalTokens" xml:space="preserve"><value>სულ ტოკენი</value></data>
   <data name="Tokens.TotalUsed" xml:space="preserve"><value>სულ გამოყენებული</value></data>
   <data name="Tokens.TotalAvailable" xml:space="preserve"><value>სულ ხელმისაწვდომი</value></data>
-  <data name="Tokens.PurchaseNote" xml:space="preserve"><value>შენიშვნა: ტოკენები შეიძლება გამოყენებულ იქნას რეგისტრაციისთვის, Biz Center-ის საფასურისთვის და Travel Advantage™-ისთვის. შეძენის შემდეგ შეგიძლიათ ტოკენების განაწილება თქვენს გუნდში. ტოკენების შეძენა შეზღუდულია 10-მდე თვეში და არ ექვემდებარება დაბრუნებას.</value></data>
+  <data name="Tokens.PurchaseNote" xml:space="preserve"><value>შენიშვნა: ტოკენები შეიძლება გამოყენებულ იქნას რეგისტრაციისთვის, Biz Center-ის საფასურისთვის და Travel Advantage™-ისთვის. შეძენის შემდეგ შეგიძლიათ ტოკენების განაწილება თქვენს გუნდში. ტოკენების შეძენა შეზღუდულია 50-მდე თვეში და არ ექვემდებარება დაბრუნებას.</value></data>
   <data name="Tokens.Amount" xml:space="preserve"><value>რაოდენობა:</value></data>
   <data name="Tokens.TokensSuffix" xml:space="preserve"><value>ტოკენი</value></data>
   <data name="Tokens.TokenType" xml:space="preserve"><value>ტოკენის ტიპი</value></data>
@@ -856,7 +856,6 @@
   <data name="Tokens.CreditCard" xml:space="preserve"><value>საკრედიტო ბარათი</value></data>
   <data name="Tokens.AddNewCard" xml:space="preserve"><value>ახალი ბარათის დამატება</value></data>
   <data name="Tokens.NoCreditCards" xml:space="preserve"><value>საკრედიტო ბარათები არ არის შენახული.</value></data>
-  <data name="Tokens.PoweredByNowPayments" xml:space="preserve"><value>Powered by NowPayments</value></data>
   <data name="Tokens.ColDate" xml:space="preserve"><value>თარიღი</value></data>
   <data name="Tokens.ColOwner" xml:space="preserve"><value>მფლობელი</value></data>
   <data name="Tokens.ColTokenCode" xml:space="preserve"><value>ტოკენის კოდი</value></data>
@@ -1291,4 +1290,56 @@
   <data name="TwoFactor.Error.Locked" xml:space="preserve"><value>შეყვანილია ძალიან ბევრი არასწორი კოდი. თქვენი უსაფრთხოებისთვის დადასტურება დაბლოკილია 24 საათამდე. თუ ეს თქვენ არ იყავით, შეცვალეთ პაროლი.</value></data>
   <data name="StepUp.Unavailable" xml:space="preserve"><value>კოდით დადასტურება ამ აპლიკაციაში ამჟამად მიუწვდომელია, ამიტომ გადახდის მეთოდის შეცვლა აქედან ვერ ხერხდება. გამოიყენეთ ვებ-პორტალი.</value></data>
   <data name="Commissions.FrequencySavedWalletKept" xml:space="preserve"><value>სიხშირე შენახულია; გადახდის მეთოდი არ შეცვლილა.</value></data>
+  <data name="Tokens.MonthlyRemaining" xml:space="preserve"><value>ამ თვეში კიდევ {0} ტოკენის ყიდვა შეგიძლიათ.</value></data>
+  <data name="Tokens.UnitPrice" xml:space="preserve"><value>ერთი ტოკენის ფასი: {0}</value></data>
+  <data name="Tokens.TotalPrice" xml:space="preserve"><value>სულ: {0}</value></data>
+  <data name="Tokens.NoPurchasableTypes" xml:space="preserve"><value>ამჟამად შესაძენად ხელმისაწვდომი ტოკენის ტიპი არ არის.</value></data>
+  <data name="Tokens.CryptoCurrency" xml:space="preserve"><value>ვალუტა</value></data>
+  <data name="Tokens.CryptoNote" xml:space="preserve"><value>კრიპტოგადახდები ხელით დასტურდება. ტოკენები გაიცემა, როცა ჩვენი გუნდი გადარიცხვას გადაამოწმებს.</value></data>
+  <data name="Tokens.PurchaseDone" xml:space="preserve"><value>თქვენს ანგარიშს დაემატა {0} ტოკენი.</value></data>
+  <data name="Tokens.PurchaseCryptoPending" xml:space="preserve"><value>შეკვეთა {0} ელოდება თქვენს გადარიცხვას: {1}, ვალუტა {2}. ტოკენები გაიცემა დადასტურების შემდეგ.</value></data>
+  <data name="Tokens.DistributeDone" xml:space="preserve"><value>ტოკენები გაიგზავნა.</value></data>
+  <data name="Tokens.ColTransaction" xml:space="preserve"><value>ოპერაცია</value></data>
+  <data name="Tokens.StatusUsed" xml:space="preserve"><value>გამოყენებული</value></data>
+  <data name="Tokens.Copy" xml:space="preserve"><value>კოპირება</value></data>
+  <data name="Tokens.ExternalShareNote" xml:space="preserve"><value>გუნდის გარეთ ვინმესთვის ტოკენის გადასაცემად დააკოპირეთ ხელმისაწვდომი კოდი და გაუზიარეთ: რეგისტრაციისას შეიყვანს.</value></data>
+  <data name="Tokens.Error.LoadFailed" xml:space="preserve"><value>ინფორმაციის ჩატვირთვა ვერ მოხერხდა. სცადეთ გვერდის განახლება.</value></data>
+  <data name="Tokens.Error.Generic" xml:space="preserve"><value>ოპერაციის დასრულება ვერ მოხერხდა.</value></data>
+  <data name="Tokens.Error.MonthlyLimit" xml:space="preserve"><value>მიაღწიეთ თვეში 50 ტოკენის ლიმიტს.</value></data>
+  <data name="Tokens.Error.InsufficientCommissions" xml:space="preserve"><value>საკომისიოს ნაშთი ამ შენაძენისთვის არ კმარა.</value></data>
+  <data name="Tokens.Error.InsufficientEWallet" xml:space="preserve"><value>eWallet-ის ნაშთი ამ შენაძენისთვის არ კმარა.</value></data>
+  <data name="Tokens.Error.NotPurchasable" xml:space="preserve"><value>ამ ტიპის ტოკენის ყიდვა შეუძლებელია.</value></data>
+  <data name="Tokens.Error.Card" xml:space="preserve"><value>ამ ბარათის გამოყენება შეუძლებელია. შეამოწმეთ გადახდის პარამეტრებში.</value></data>
+  <data name="Tokens.Error.CardDeclined" xml:space="preserve"><value>ბარათით გადახდა უარყოფილია.</value></data>
+  <data name="Tokens.Error.InProgress" xml:space="preserve"><value>შენაძენი უკვე მუშავდება. მოიცადეთ და სცადეთ თავიდან.</value></data>
+  <data name="Tokens.Error.Impersonation" xml:space="preserve"><value>სხვისი სახელით ანგარიშის ნახვისას ყიდვა დაუშვებელია.</value></data>
+  <data name="Tokens.Error.MemberInactive" xml:space="preserve"><value>ტოკენების საყიდლად ანგარიში აქტიური უნდა იყოს.</value></data>
+  <data name="Tokens.Error.Unavailable" xml:space="preserve"><value>გადახდის სერვისთან დაკავშირება ვერ მოხერხდა. სცადეთ თავიდან: ორჯერ არ ჩამოგეჭრებათ.</value></data>
+  <data name="Tokens.Error.NotEnoughTokens" xml:space="preserve"><value>ამ ტიპის საკმარისი ხელმისაწვდომი ტოკენი არ გაქვთ.</value></data>
+  <data name="Tokens.Error.Recipient" xml:space="preserve"><value>მიმღები უნდა იყოს თქვენი ჩარიცხვის გუნდის წევრი.</value></data>
+  <data name="Tokens.Error.RecipientNotActive" xml:space="preserve"><value>მიმღების ანგარიში აქტიური არ არის, ამიტომ ტოკენებს ვერ მიიღებს.</value></data>
+  <data name="Tokens.Error.DistributionRepeated" xml:space="preserve"><value>არ ვიცით, დასრულდა თუ არა გაგზავნა. გამეორებამდე შეამოწმეთ ბალანსი და ისტორია.</value></data>
+  <data name="Tokens.Error.DistributionBusy" xml:space="preserve"><value>ტოკენებზე სხვა ოპერაცია მიმდინარეობს. დაელოდეთ და სცადეთ ხელახლა.</value></data>
+  <data name="Tokens.Error.DistributionUnavailable" xml:space="preserve"><value>განაწილება ვერ დასრულდა. სცადეთ ხელახლა: თქვენი ტოკენები ორჯერ არ გაიგზავნება.</value></data>
+  <data name="Tokens.Error.NoEWallet" xml:space="preserve"><value>გადასახდელად eWallet-ის ანგარიში არ გაქვთ.</value></data>
+  <data name="Tokens.Error.EWalletDeclined" xml:space="preserve"><value>eWallet-ით ჩამოჭრა უარყოფილია.</value></data>
+  <data name="Tokens.Error.NeedsReview" xml:space="preserve"><value>ამ გადახდის დადასტურება ვერ მოხერხდა. ჩვენი გუნდი გადაამოწმებს და, თუ შესრულდა, ტოკენები გაიცემა. თავიდან ნუ სცდით.</value></data>
+  <data name="Tokens.CryptoAmountDue" xml:space="preserve"><value>გადასახდელი თანხა: {0}, ვალუტა {1}.</value></data>
+  <data name="Tokens.CryptoAddress" xml:space="preserve"><value>დეპოზიტის მისამართი</value></data>
+  <data name="Tokens.CryptoNetwork" xml:space="preserve"><value>ქსელი: {0}</value></data>
+  <data name="Tokens.CryptoUnavailable" xml:space="preserve"><value>კრიპტოგადახდები ამჟამად მიუწვდომელია.</value></data>
+  <data name="StepUp.WhyTokenPurchase" xml:space="preserve"><value>უსაფრთხოებისთვის, ნაშთით ტოკენების გადახდამდე შეიყვანეთ დამადასტურებელი კოდი.</value></data>
+  <data name="Tokens.Error.CardDisabled" xml:space="preserve"><value>ბარათით გადახდა ამჟამად მიუწვდომელია.</value></data>
+  <data name="Tokens.Error.NotAwaitingCrypto" xml:space="preserve"><value>ამ შენაძენის გაუქმება აღარ შეიძლება: ის უკვე დადასტურდა, გაუქმდა ან ვადა გაუვიდა.</value></data>
+  <data name="Tokens.Error.ContactSupport" xml:space="preserve"><value>გადახდის სერვისი ისე არ პასუხობს, როგორც უნდა. თუ ეს განმეორდება, დაუკავშირდით მხარდაჭერას.</value></data>
+  <data name="Tokens.Error.ImpersonationDistribute" xml:space="preserve"><value>სხვისი სახელით ანგარიშის ნახვისას ტოკენების განაწილება დაუშვებელია.</value></data>
+  <data name="Tokens.CancelPurchase" xml:space="preserve"><value>ამ შენაძენის გაუქმება</value></data>
+  <data name="Tokens.Status.Cancelled" xml:space="preserve"><value>შენაძენი გაუქმდა. ეს ტოკენები თვიურ ლიმიტს დაუბრუნდა.</value></data>
+  <data name="Tokens.Status.Rejected" xml:space="preserve"><value>ეს კრიპტოშენაძენი უარყოფილია: გადარიცხვის გადამოწმება ვერ მოხერხდა. ტოკენები არ გაცემულა.</value></data>
+  <data name="Tokens.Status.Expired" xml:space="preserve"><value>ამ კრიპტოშენაძენს ვადა გაუვიდა გადახდის გარეშე. ტოკენები არ გაცემულა.</value></data>
+  <data name="Tokens.Error.SelfRecipient" xml:space="preserve"><value>ტოკენების საკუთარ თავზე გაგზავნა შეუძლებელია.</value></data>
+  <data name="Tokens.PendingAttempt" xml:space="preserve"><value>არსებობს დაუდასტურებელი შენაძენი. დააჭირეთ „ახლავე ყიდვას“ ზუსტად იმავე შენაძენის გასამეორებლად (ორჯერ არ ჩამოგეჭრებათ) ან შეამოწმეთ ისტორია. სხვა შენაძენის დასაწყებად ისტორიის შემოწმების შემდეგ განაახლეთ გვერდი.</value></data>
+  <data name="Tokens.CardExpired" xml:space="preserve"><value>ვადაგასული</value></data>
+  <data name="Tokens.PaymentMethodsAria" xml:space="preserve"><value>გადახდის მეთოდი</value></data>
+  <data name="Tokens.CopyCode" xml:space="preserve"><value>კოდის {0} კოპირება</value></data>
 </root>

@@ -10,5 +10,11 @@ public enum CryptoPaymentConfirmationStatus
     AwaitingPayment = 1,
 
     /// <summary>Alguien con permiso confirmó el cobro. A partir de aquí el miembro está activo.</summary>
-    Confirmed = 2
+    Confirmed = 2,
+
+    /// <summary>
+    /// La compra de tokens que esperaba este pago se anuló sin cobrarse: la canceló el miembro, la
+    /// rechazó un administrador o caducó. El motivo queda en Notes. Ya no se puede confirmar.
+    /// </summary>
+    Cancelled = 3
 }

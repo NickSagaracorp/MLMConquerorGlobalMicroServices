@@ -182,4 +182,57 @@ public class AdminCryptoSignupsControllerTests
         result.Should().BeOfType<NotFoundObjectResult>();
         factory.Verify(f => f.CreateClient(It.IsAny<string>()), Times.Never);
     }
+
+    // ── Las compras de tokens en cripto no son altas (Plan F) ───────────────────
+
+    private static async Task MarcarComoCompraDeTokensAsync(AppDbContext db, string orderId)
+    {
+        (await db.CryptoPaymentConfirmations.SingleAsync(c => c.OrderId == orderId)).Purpose = CryptoPaymentPurpose.TokenPurchase;
+        await db.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task ListPending_no_muestra_compras_de_tokens()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await SeedAsync(db, "ORD-A", "AMB-A", CryptoPaymentConfirmationStatus.AwaitingPayment);
+        await SeedAsync(db, "ORD-T", "AMB-T", CryptoPaymentConfirmationStatus.AwaitingPayment);
+        await MarcarComoCompraDeTokensAsync(db, "ORD-T");
+
+        var result = await Build(db).ListPending();
+
+        ((OkObjectResult)result).Value
+            .Should().BeOfType<ApiResponse<IEnumerable<AdminCryptoSignupsController.PendingCryptoSignupDto>>>()
+            .Which.Data!.Select(d => d.OrderId).Should().Equal("ORD-A");
+    }
+
+    [Fact]
+    public async Task ListConfirmed_no_muestra_compras_de_tokens()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await SeedAsync(db, "ORD-B", "AMB-B", CryptoPaymentConfirmationStatus.Confirmed);
+        await SeedAsync(db, "ORD-T", "AMB-T", CryptoPaymentConfirmationStatus.Confirmed);
+        await MarcarComoCompraDeTokensAsync(db, "ORD-T");
+
+        var result = await Build(db).ListConfirmed();
+
+        ((OkObjectResult)result).Value
+            .Should().BeOfType<ApiResponse<IEnumerable<AdminCryptoSignupsController.ConfirmedCryptoSignupDto>>>()
+            .Which.Data!.Select(d => d.OrderId).Should().Equal("ORD-B");
+    }
+
+    [Fact]
+    public async Task Confirm_de_una_compra_de_tokens_no_se_reenvia_a_SignupApi()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await SeedAsync(db, "ORD-T", "AMB-T", CryptoPaymentConfirmationStatus.AwaitingPayment);
+        await MarcarComoCompraDeTokensAsync(db, "ORD-T");
+        var factory = new Mock<IHttpClientFactory>(MockBehavior.Strict);
+
+        var result = await new AdminCryptoSignupsController(db, factory.Object)
+            .Confirm("ORD-T", new AdminCryptoSignupsController.ConfirmCryptoRequest("abc123", null));
+
+        result.Should().BeOfType<NotFoundObjectResult>();
+        factory.Verify(f => f.CreateClient(It.IsAny<string>()), Times.Never);
+    }
 }

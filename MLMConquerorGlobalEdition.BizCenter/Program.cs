@@ -79,6 +79,10 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 // DownlineGuard: la regla sigue siendo CallerIdentity.CanActOnMember, con la descendencia del que
 // llama como sujeto añadido para las pantallas que recorren el árbol hacia abajo.
 builder.Services.AddScoped<IDownlineGuard, DownlineGuard>();
+// Candado de fondos por miembro (sp_getapplock), el mismo de Billing: distribuir y transferir tokens
+// no se cruzan entre sí ni con la emisión de una compra.
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Funds.IMemberFundsGate,
+                           MLMConquerorGlobalEdition.Repository.Services.Funds.SqlServerMemberFundsGate>();
 // Registers all rank services in one call:
 //   IEnrollmentTeamPointsService, IPersonalCustomerPointsService,
 //   IRankQualificationService, IRankComputationService.
@@ -268,6 +272,10 @@ builder.Services.AddHttpClient("certificates");
     });
 }
 builder.Services.AddScoped<IRankEngineClient, RankEngineClient>();
+
+// Cliente de Billing para la compra de tokens (Plan F). Ver BillingClientRegistration: valida el
+// certificado, 90 s, y fuera de Development exige Services:BillingBaseUrl.
+builder.Services.AddBillingClient(builder.Configuration, builder.Environment);
 
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")

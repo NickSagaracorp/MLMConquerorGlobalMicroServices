@@ -26,4 +26,11 @@ public static class StepUpMessages
             StepUpGrant.ImpersonationNotAllowedErrorCode => "StepUp.ImpersonationNotAllowed",
             _ => TwoFactorMessages.ErrorKeyFor(errorCode)
         };
+
+    /// <summary>
+    /// Por qué se pide el código, según la operación. El texto de siempre ("antes de cambiar a dónde
+    /// se pagan tus comisiones") no sirve para pagar tokens con saldo.
+    /// </summary>
+    public static string WhyKeyFor(string? operationKey) =>
+        operationKey == StepUpOperations.TokenPurchaseFromBalance ? "StepUp.WhyTokenPurchase" : "StepUp.Why";
 }

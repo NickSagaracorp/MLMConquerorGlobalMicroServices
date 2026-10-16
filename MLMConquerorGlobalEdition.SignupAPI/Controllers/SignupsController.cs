@@ -2,8 +2,11 @@ using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using MLMConquerorGlobalEdition.Domain.Enums;
+using MLMConquerorGlobalEdition.Repository.Services.Crypto;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Billing;
 using MLMConquerorGlobalEdition.SharedKernel.Constants;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Commands.CompleteSignup;
@@ -103,7 +106,13 @@ public class SignupsController : ControllerBase
     {
         var result = await _mediator.Send(new CompleteSignupCommand(signupId, request), ct);
         if (!result.IsSuccess)
-            return BadRequest(ApiResponse<SignupResponse>.Fail(result.ErrorCode!, result.Error!));
+        {
+            // Candado del dueño del token ocupado: no se hizo nada y se puede repetir tal cual.
+            var body = ApiResponse<SignupResponse>.Fail(result.ErrorCode!, result.Error!);
+            return result.ErrorCode == CompleteSignupHandler.TokenBusyCode
+                ? Conflict(body)
+                : BadRequest(body);
+        }
         return Ok(ApiResponse<SignupResponse>.Ok(result.Value!));
     }
 
@@ -236,4 +245,29 @@ public class SignupsController : ControllerBase
         var result = await _mediator.Send(new GetCountriesQuery(), ct);
         return Ok(ApiResponse<List<CountryLookupDto>>.Ok(result.Value!));
     }
+
+    /// <summary>
+    /// GET api/v1/signups/crypto-deposit-addresses — monedas con dirección de depósito configurada en
+    /// Admin → Global Parameters. Anónimo: lo pide el alta antes de que exista la cuenta, y una
+    /// dirección de depósito no es un secreto (se le enseña a cualquiera que vaya a pagar).
+    ///
+    /// Al ser anónimo se cachea 60 s para que no sea una consulta a la base gratis por petición. Un
+    /// cambio de dirección en el admin tarda como mucho eso en verse aquí; CompleteSignup no usa
+    /// esta caché, valida contra la lectura fresca.
+    /// </summary>
+    [HttpGet("crypto-deposit-addresses")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetCryptoDepositAddresses(
+        [FromServices] ICryptoDepositAddressReader reader, [FromServices] IMemoryCache cache, CancellationToken ct)
+    {
+        var addresses = await cache.GetOrCreateAsync(CryptoDepositAddressesCacheKey, entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = CryptoDepositAddressesTtl;
+            return reader.GetConfiguredAsync(ct);
+        }) ?? [];
+        return Ok(ApiResponse<IReadOnlyList<CryptoDepositAddressDto>>.Ok(addresses));
+    }
+
+    public const string CryptoDepositAddressesCacheKey = "signups:crypto-deposit-addresses";
+    public static readonly TimeSpan CryptoDepositAddressesTtl = TimeSpan.FromSeconds(60);
 }
