@@ -16,8 +16,23 @@ internal static class TarjetaDelAlta
     /// <summary>Sin la clave: tiene que valer lo mismo que apagada.</summary>
     public static IConfiguration SinOpcion() => new ConfigurationBuilder().Build();
 
-    public static IConfiguration Con(string? valor)
+    public static IConfiguration Con(string? valor) => Interruptor.Con(SignupCardPayments.EnabledConfigKey, valor);
+}
+
+/// <summary>La configuración del interruptor <c>Membership:UpgradeEnabled</c> para las pruebas.</summary>
+internal static class SubidaDeNivel
+{
+    public static IConfiguration Encendida() => Con("true");
+
+    public static IConfiguration Apagada() => Con("false");
+
+    public static IConfiguration Con(string? valor) => Interruptor.Con(MembershipUpgrades.EnabledConfigKey, valor);
+}
+
+internal static class Interruptor
+{
+    public static IConfiguration Con(string clave, string? valor)
         => new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?> { [SignupCardPayments.EnabledConfigKey] = valor })
+            .AddInMemoryCollection(new Dictionary<string, string?> { [clave] = valor })
             .Build();
 }

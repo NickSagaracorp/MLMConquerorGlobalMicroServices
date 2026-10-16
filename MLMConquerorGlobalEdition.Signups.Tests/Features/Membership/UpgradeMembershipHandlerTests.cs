@@ -8,6 +8,9 @@ using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Features.Membership;
 
+/// <summary>
+/// El comportamiento de la subida con Membership:UpgradeEnabled encendido; apagado, SubidaDeNivelApagadaTests.
+/// </summary>
 public class UpgradeMembershipHandlerTests
 {
     private static readonly DateTime FixedNow = new(2026, 3, 20, 12, 0, 0, DateTimeKind.Utc);
@@ -60,7 +63,7 @@ public class UpgradeMembershipHandlerTests
     public async Task Handle_WhenMemberNotFound_ReturnsFailure()
     {
         await using var db = InMemoryDbHelper.Create();
-        var handler = new UpgradeMembershipHandler(db, DateTime().Object);
+        var handler = new UpgradeMembershipHandler(db, DateTime().Object, SubidaDeNivel.Encendida());
 
         var result = await handler.Handle(
             new UpgradeMembershipCommand("NON-EXISTENT", 2, null), CancellationToken.None);
@@ -86,7 +89,7 @@ public class UpgradeMembershipHandlerTests
         });
         await db.SaveChangesAsync();
 
-        var handler = new UpgradeMembershipHandler(db, DateTime().Object);
+        var handler = new UpgradeMembershipHandler(db, DateTime().Object, SubidaDeNivel.Encendida());
 
         var result = await handler.Handle(
             new UpgradeMembershipCommand("AMB-000001", 2, null), CancellationToken.None);
@@ -101,7 +104,7 @@ public class UpgradeMembershipHandlerTests
         await using var db = InMemoryDbHelper.Create();
         await SeedMemberWithSubscription(db, "AMB-000001", 1, 10);
 
-        var handler = new UpgradeMembershipHandler(db, DateTime().Object);
+        var handler = new UpgradeMembershipHandler(db, DateTime().Object, SubidaDeNivel.Encendida());
 
         var result = await handler.Handle(
             new UpgradeMembershipCommand("AMB-000001", 99, null), CancellationToken.None);
@@ -122,7 +125,7 @@ public class UpgradeMembershipHandlerTests
         });
         await db.SaveChangesAsync();
 
-        var handler = new UpgradeMembershipHandler(db, DateTime().Object);
+        var handler = new UpgradeMembershipHandler(db, DateTime().Object, SubidaDeNivel.Encendida());
 
         Func<Task> act = () => handler.Handle(
             new UpgradeMembershipCommand("AMB-000001", 99, null), CancellationToken.None);
@@ -141,7 +144,7 @@ public class UpgradeMembershipHandlerTests
         });
         await db.SaveChangesAsync();
 
-        var handler = new UpgradeMembershipHandler(db, DateTime().Object);
+        var handler = new UpgradeMembershipHandler(db, DateTime().Object, SubidaDeNivel.Encendida());
 
         Func<Task> act = () => handler.Handle(
             new UpgradeMembershipCommand("AMB-000001", 99, null), CancellationToken.None);
@@ -160,7 +163,7 @@ public class UpgradeMembershipHandlerTests
         });
         await db.SaveChangesAsync();
 
-        var handler = new UpgradeMembershipHandler(db, DateTime().Object);
+        var handler = new UpgradeMembershipHandler(db, DateTime().Object, SubidaDeNivel.Encendida());
 
         var result = await handler.Handle(
             new UpgradeMembershipCommand("AMB-000001", 3, "Upgrading to Elite"), CancellationToken.None);
