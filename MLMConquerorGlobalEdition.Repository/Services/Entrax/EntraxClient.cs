@@ -35,7 +35,17 @@ public sealed class EntraxClient : IEntraxClient
         _logger  = logger;
     }
 
-    private Uri BaseUri => new(_options.BaseUrl.TrimEnd('/') + "/");
+    /// <summary>La base de la API si las credenciales están completas y la URL es https absoluta; si no, null.</summary>
+    private Uri? ConfiguredBase()
+    {
+        if (string.IsNullOrWhiteSpace(_options.KeyId) || string.IsNullOrWhiteSpace(_options.Secret))
+            return null;
+
+        return Uri.TryCreate((_options.BaseUrl ?? string.Empty).Trim().TrimEnd('/') + "/", UriKind.Absolute, out var u)
+               && u.Scheme == Uri.UriSchemeHttps
+            ? u
+            : null;
+    }
 
     public Task<EntraxCall<EntraxQr>> CreateQrAsync(EntraxQrRequest r, CancellationToken ct)
     {
@@ -64,29 +74,49 @@ public sealed class EntraxClient : IEntraxClient
         where TWire : class
         where TOut : class
     {
-        var uri       = new Uri(BaseUri, relative);
-        var timestamp = new DateTimeOffset(DateTime.SpecifyKind(_clock.UtcNow, DateTimeKind.Utc)).ToUnixTimeSeconds();
-        var nonce     = Guid.NewGuid().ToString("N");
-        var signature = EntraxSignature.Sign(
-            EntraxSignature.Canonical(method.Method, uri.AbsolutePath, timestamp, nonce, body), _options.Secret ?? string.Empty);
-
-        using var request = new HttpRequestMessage(method, uri);
-        request.Headers.TryAddWithoutValidation("Authorization",
-            EntraxSignature.AuthorizationHeader(_options.KeyId ?? string.Empty, timestamp, nonce, signature));
-        if (method != HttpMethod.Get)
-            request.Content = new StringContent(body, Encoding.UTF8, "application/json");
+        // Nunca lanza: mal configurado no se llama, y cualquier fallo al construir, enviar o leer es
+        // un EntraxCall fallido. Quien llama decide (reintentar, ToReview, 502), no una excepción.
+        var baseUri = ConfiguredBase();
+        if (baseUri is null)
+        {
+            _logger.LogWarning("Entrax {Method} {Relative}: sin KeyId/Secret o BaseUrl no es https absoluta; no se llama.",
+                method.Method, relative);
+            return EntraxCall<TOut>.Fail(0, EntraxErrorCodes.NotConfigured, null, 0);
+        }
 
         var sw = Stopwatch.StartNew();
+        var path = relative;
         HttpResponseMessage response;
         string text;
         try
         {
+            var uri       = new Uri(baseUri, relative);
+            path          = uri.AbsolutePath;
+            var timestamp = new DateTimeOffset(DateTime.SpecifyKind(_clock.UtcNow, DateTimeKind.Utc)).ToUnixTimeSeconds();
+            var nonce     = Guid.NewGuid().ToString("N");
+            var signature = EntraxSignature.Sign(
+                EntraxSignature.Canonical(method.Method, uri.AbsolutePath, timestamp, nonce, body), _options.Secret!);
+
+            using var request = new HttpRequestMessage(method, uri);
+            request.Headers.TryAddWithoutValidation("Authorization",
+                EntraxSignature.AuthorizationHeader(_options.KeyId!, timestamp, nonce, signature));
+            if (method != HttpMethod.Get)
+                request.Content = new StringContent(body, Encoding.UTF8, "application/json");
+
             response = await _http.SendAsync(request, ct);
-            text     = await response.Content.ReadAsStringAsync(ct);
+            try
+            {
+                text = await response.Content.ReadAsStringAsync(ct);
+            }
+            catch
+            {
+                response.Dispose();
+                throw;
+            }
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
+        catch (Exception ex)
         {
-            _logger.LogWarning("Entrax {Method} {Path}: sin respuesta ({Error}).", method.Method, uri.AbsolutePath, ex.GetType().Name);
+            _logger.LogWarning("Entrax {Method} {Path}: sin respuesta ({Error}).", method.Method, path, ex.GetType().Name);
             return EntraxCall<TOut>.Fail(0, EntraxErrorCodes.Transport, ex.GetType().Name, sw.ElapsedMilliseconds);
         }
 
@@ -104,7 +134,7 @@ public sealed class EntraxClient : IEntraxClient
             if (!response.IsSuccessStatusCode || !envelope.Success || envelope.Data is null)
             {
                 var code = envelope.Error?.Code ?? (response.IsSuccessStatusCode ? EntraxErrorCodes.BadResponse : $"HTTP_{status}");
-                _logger.LogWarning("Entrax {Method} {Path}: {Status} {Code}.", method.Method, uri.AbsolutePath, status, code);
+                _logger.LogWarning("Entrax {Method} {Path}: {Status} {Code}.", method.Method, path, status, code);
                 return EntraxCall<TOut>.Fail(status, code, envelope.Error?.Message, sw.ElapsedMilliseconds);
             }
 

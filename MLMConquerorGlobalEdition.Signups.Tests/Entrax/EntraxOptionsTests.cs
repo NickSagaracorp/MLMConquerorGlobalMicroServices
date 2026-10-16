@@ -38,6 +38,36 @@ public class EntraxOptionsTests
         EntraxOptionsGuard.Problems(o, isDevelopment: false).Should().ContainSingle(p => p.Contains("CallbackUrl"));
     }
 
+    [Theory]
+    [InlineData("key-1", null)]
+    [InlineData(null, "s3cr3t")]
+    public void Apagado_con_credenciales_a_medias_en_produccion_no_arranca(string? keyId, string? secret)
+    {
+        // El barrido sigue liquidando con Enabled=false los pagos en vuelo: si hay credenciales, que sirvan.
+        var o = new EntraxOptions { Enabled = false, KeyId = keyId, Secret = secret };
+
+        var act = () => EntraxOptionsGuard.ThrowIfInvalid(o, isDevelopment: false);
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void Apagado_con_credenciales_y_BaseUrl_http_en_produccion_no_arranca()
+    {
+        var o = new EntraxOptions { Enabled = false, KeyId = "key-1", Secret = "s3cr3t", BaseUrl = "http://entrax.pro/api" };
+
+        EntraxOptionsGuard.Problems(o, isDevelopment: false).Should().ContainSingle(p => p.Contains("BaseUrl"));
+    }
+
+    [Fact]
+    public void Apagado_con_credenciales_completas_arranca_aunque_no_haya_callback()
+    {
+        // Apagar Entrax es dejar de ofrecerlo, no quitar credenciales: el barrido las necesita.
+        var o = new EntraxOptions { Enabled = false, KeyId = "key-1", Secret = "s3cr3t" };
+
+        EntraxOptionsGuard.Problems(o, isDevelopment: false).Should().BeEmpty();
+    }
+
     [Fact]
     public void Encendido_y_completo_arranca()
         => ((Action)(() => EntraxOptionsGuard.ThrowIfInvalid(Completas(), isDevelopment: false))).Should().NotThrow();

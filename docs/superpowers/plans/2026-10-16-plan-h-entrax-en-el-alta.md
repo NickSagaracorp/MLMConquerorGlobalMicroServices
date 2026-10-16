@@ -65,6 +65,7 @@
 | H16 | El barrido (`entrax-signup-sweep`, cada 2 min, cola `signups`) corre siempre, aunque `Entrax:Enabled` sea `false`. | Si se apaga con pagos en vuelo, esos pagos tienen que seguir liquidándose. |
 | H17 | En Development, `Entrax:UseFake = true` registra `FakeEntraxClient` (singleton en memoria) y mapea `POST /api/v1/dev/entrax/{paymentId}/{paid|underpaid|failed|expired}` y `POST /api/v1/dev/entrax/sweep`. Fuera de Development `UseFake` hace fallar el arranque. | Probar de punta a punta sin credenciales, sin que el fake pueda llegar a producción. |
 | H18 | Fuera de Development, `Entrax:Enabled = true` sin `KeyId`, `Secret`, `CallbackUrl` https absoluta o `BaseUrl` https → `InvalidOperationException` al arrancar. En Development solo se escribe un aviso por consola. | Lo pide el encargo; en Development se puede trabajar con el fake o sin túnel. |
+| H19 | Fuera de Development, con `Enabled = false` pero alguna credencial puesta, tienen que estar `KeyId` y `Secret` y `BaseUrl` https. El cliente nunca lanza: sin credenciales o sin https devuelve `NOT_CONFIGURED` sin llamar. | El barrido corre con Entrax apagado (H16): apagar es dejar de ofrecer, no quitar credenciales. |
 
 ## Fuera de alcance
 
@@ -6767,6 +6768,11 @@ queda *To review* sin activar nada.
 - **`Entrax:CallbackUrl` pública y https**, apuntando a `https://{host-público-de-SignupAPI}/api/v1/signups/entrax/callback`.
   Fuera de Development, sin https absoluta no arranca.
 - **`Entrax:UseFake` nunca fuera de Development** (si está puesto, no arranca).
+- **Apagar Entrax es dejar de ofrecerlo, no quitar credenciales.** Se apaga con `Entrax:Enabled = false`
+  y se dejan `KeyId` y `Secret`: el barrido corre apagado y sigue liquidando los pagos en vuelo con
+  ellas. Fuera de Development, unas credenciales **a medias** (solo `KeyId` o solo `Secret`) o una
+  `BaseUrl` sin https **no arrancan** aunque esté apagado. Sin credenciales, el cliente no llama
+  (`NOT_CONFIGURED`) y esos pagos quedan esperando hasta que vuelvan.
 - **El barrido vivo.** En `/hangfire` de SignupAPI debe existir el recurrente `entrax-signup-sweep`
   (cada 2 minutos, cola `signups`). Es lo que activa las altas cuyo callback no llegó.
 - **IP de Entrax en `IpRateLimiting:IpWhitelist`** de SignupAPI. Si no, la regla general (60/min por

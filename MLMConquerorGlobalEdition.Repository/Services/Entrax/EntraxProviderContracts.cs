@@ -51,6 +51,9 @@ public static class EntraxErrorCodes
     /// <summary>Respuesta que no es el sobre esperado o le faltan campos.</summary>
     public const string BadResponse      = "BAD_RESPONSE";
 
+    /// <summary>Sin KeyId o Secret, o BaseUrl que no es https absoluta: no se llama.</summary>
+    public const string NotConfigured    = "NOT_CONFIGURED";
+
     /// <summary>paymentId que no es un GUID: no se llama (evita rutas inyectadas).</summary>
     public const string InvalidPaymentId = "INVALID_PAYMENT_ID";
 }

@@ -46,11 +46,22 @@ public class EntraxClientTests
         CallbackUrl = "https://alta.pruebas/api/v1/signups/entrax/callback"
     };
 
-    private static EntraxClient Cliente(HttpMessageHandler h)
+    private static EntraxClient Cliente(HttpMessageHandler h, Action<EntraxOptions>? ajustar = null)
     {
         var reloj = new Mock<IDateTimeProvider>();
         reloj.Setup(c => c.UtcNow).Returns(UtcFijo);
-        return new EntraxClient(new HttpClient(h), Opciones(), reloj.Object, NullLogger<EntraxClient>.Instance);
+        var o = Opciones();
+        ajustar?.Invoke(o);
+        return new EntraxClient(new HttpClient(h), o, reloj.Object, NullLogger<EntraxClient>.Instance);
+    }
+
+    /// <summary>Un cuerpo de respuesta que revienta al leerlo (conexión cortada a media respuesta).</summary>
+    private sealed class CuerpoRoto : HttpContent
+    {
+        protected override Task SerializeToStreamAsync(Stream stream, System.Net.TransportContext? context)
+            => Task.FromException(new IOException("conexión cortada"));
+
+        protected override bool TryComputeLength(out long length) { length = 0; return false; }
     }
 
     /// <summary>"HMAC-SHA256 KeyId=…,Timestamp=…,Nonce=…,Signature=…" → diccionario. La firma Base64 puede llevar '='.</summary>
@@ -184,5 +195,52 @@ public class EntraxClientTests
 
         r.ErrorCode.Should().Be(EntraxErrorCodes.InvalidPaymentId);
         h.Llamadas.Should().Be(0);
+    }
+
+    // ── El cliente nunca lanza ───────────────────────────────────────────────────
+
+    public static TheoryData<string, Action<EntraxOptions>> MalConfigurado => new()
+    {
+        { "sin KeyId",       o => o.KeyId = "" },
+        { "sin Secret",      o => o.Secret = null },
+        { "BaseUrl http",    o => o.BaseUrl = "http://entrax.pro/api/v1/cash-register" },
+        { "BaseUrl relativa", o => o.BaseUrl = "api/v1/cash-register" },
+        { "BaseUrl basura",  o => o.BaseUrl = "::no es una url::" }
+    };
+
+    [Theory]
+    [MemberData(nameof(MalConfigurado))]
+    public async Task Mal_configurado_no_sale_a_la_red_ni_lanza(string caso, Action<EntraxOptions> ajustar)
+    {
+        var h = new Manejador((_, _) => Json(HttpStatusCode.OK, QrOk));
+        var cliente = Cliente(h, ajustar);
+
+        var qr = await cliente.CreateQrAsync(new EntraxQrRequest(10m, "USD", "SIGNUP-o1-1", null, null), default);
+        var pago = await cliente.GetPaymentAsync(PaymentId, default);
+
+        qr.ErrorCode.Should().Be(EntraxErrorCodes.NotConfigured, caso);
+        qr.HttpStatus.Should().Be(0);
+        pago.ErrorCode.Should().Be(EntraxErrorCodes.NotConfigured, caso);
+        h.Llamadas.Should().Be(0, "sin credenciales completas o sin https no se manda nada firmado a ningún sitio.");
+    }
+
+    [Fact]
+    public async Task Si_el_cuerpo_de_la_respuesta_revienta_al_leerlo_es_TRANSPORT_y_no_lanza()
+    {
+        var r = await Cliente(new Manejador((_, _) => new HttpResponseMessage(HttpStatusCode.OK) { Content = new CuerpoRoto() }))
+            .GetPaymentAsync(PaymentId, default);
+
+        r.Ok.Should().BeFalse();
+        r.ErrorCode.Should().Be(EntraxErrorCodes.Transport);
+    }
+
+    [Fact]
+    public async Task Una_excepcion_inesperada_del_manejador_tampoco_sale_del_cliente()
+    {
+        var r = await Cliente(new Manejador((_, _) => throw new InvalidOperationException("handler roto")))
+            .GetPaymentAsync(PaymentId, default);
+
+        r.Ok.Should().BeFalse();
+        r.ErrorCode.Should().Be(EntraxErrorCodes.Transport);
     }
 }
