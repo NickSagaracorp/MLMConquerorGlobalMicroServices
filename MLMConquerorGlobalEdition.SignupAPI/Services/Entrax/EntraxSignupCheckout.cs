@@ -103,6 +103,17 @@ public sealed class EntraxSignupCheckout : IEntraxSignupCheckout
             // llegó primero. No se llamó a Entrax. Cualquier otro error al guardar se relanza: no es
             // "espera un momento".
             _db.ChangeTracker.Clear();
+
+            // Un choque de RowVersion del miembro puede ser otra cosa: que la tarjeta, el token o la cripto
+            // hayan activado el alta entre la lectura y aquí. Entonces no es "espera", es "ya está hecha".
+            if (ex is DbUpdateConcurrencyException
+                && await _db.Orders.AsNoTracking().AnyAsync(o => o.Id == order.Id && o.Status == OrderStatus.Completed, ct))
+            {
+                _logger.LogWarning("Entrax: el alta {OrderId} ya se activó por otro medio; no se emite QR.", order.Id);
+                return Result<EntraxSignupPaymentDto>.Failure(SignupOrderClaim.SignupAlreadySettledCode,
+                    "This signup was already completed with another payment.");
+            }
+
             _logger.LogWarning("Entrax: el alta {OrderId} ya tenía un QR en creación (intento {Attempt}).", order.Id, attempt);
             return Result<EntraxSignupPaymentDto>.Failure(EntraxSignupErrors.InProgress,
                 "A payment for this signup is already being created. Please wait a moment and try again.");

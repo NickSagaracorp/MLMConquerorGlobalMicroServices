@@ -40,6 +40,12 @@ public sealed class SignupOrderClaim : ISignupOrderClaim
     /// <summary>El pedido ya se activó por otro camino: el dinero que llega ahora es un doble cobro.</summary>
     public const string AlreadySettledCode = "ORDER_ALREADY_SETTLED";
 
+    /// <summary>
+    /// Para quien completa el alta (tarjeta, token, descuento, o al pedir el QR de Entrax): el alta ya
+    /// está activada por otro pago y esta llamada no hace nada. 409.
+    /// </summary>
+    public const string SignupAlreadySettledCode = "SIGNUP_ALREADY_SETTLED";
+
     private readonly AppDbContext _db;
 
     public SignupOrderClaim(AppDbContext db) => _db = db;

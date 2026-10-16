@@ -68,7 +68,7 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
     /// Otro pago (un QR de Entrax tardío, una cripto) activó este alta entre la lectura y la activación:
     /// esta llamada no activa nada. 409.
     /// </summary>
-    public const string SignupAlreadySettledCode = "SIGNUP_ALREADY_SETTLED";
+    public const string SignupAlreadySettledCode = SignupOrderClaim.SignupAlreadySettledCode;
 
     private const string TokenNotValidMessage = "This token is not valid for this signup.";
 

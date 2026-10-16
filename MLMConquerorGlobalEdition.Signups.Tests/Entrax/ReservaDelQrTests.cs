@@ -28,11 +28,12 @@ public class ReservaDelQrTests
         }
     }
 
-    private static async Task<AppDbContext> AltaAsync(Exception alGuardar)
+    private static async Task<AppDbContext> AltaAsync(Exception alGuardar,
+        MLMConquerorGlobalEdition.Domain.Entities.Orders.OrderStatus pedido = MLMConquerorGlobalEdition.Domain.Entities.Orders.OrderStatus.Pending)
     {
         var nombre = Guid.NewGuid().ToString();
         await using (var semilla = Helpers.InMemoryDbHelper.Create(nombre))
-            await EscenarioEntrax.SembrarAltaAsync(semilla);
+            await EscenarioEntrax.SembrarAltaAsync(semilla, pedido);
 
         return new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(nombre)
@@ -68,6 +69,27 @@ public class ReservaDelQrTests
         var accion = () => EmpezarAsync(db, cliente);
 
         await accion.Should().ThrowAsync<DbUpdateException>();
+        cliente.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Un_choque_de_concurrencia_con_el_alta_aun_sin_activar_es_ENTRAX_IN_PROGRESS()
+    {
+        await using var db = await AltaAsync(new DbUpdateConcurrencyException("miembro"));
+
+        (await EmpezarAsync(db, new Mock<IEntraxClient>())).ErrorCode.Should().Be(EntraxSignupErrors.InProgress);
+    }
+
+    [Fact]
+    public async Task Un_choque_de_concurrencia_porque_el_alta_ya_se_activo_es_SIGNUP_ALREADY_SETTLED()
+    {
+        // La tarjeta (o la cripto) activó el alta entre la lectura y la reserva del QR: el RowVersion del
+        // miembro choca. No es "espera un momento": el alta ya está hecha.
+        await using var db = await AltaAsync(new DbUpdateConcurrencyException("miembro"),
+            MLMConquerorGlobalEdition.Domain.Entities.Orders.OrderStatus.Completed);
+        var cliente = new Mock<IEntraxClient>();
+
+        (await EmpezarAsync(db, cliente)).ErrorCode.Should().Be(MLMConquerorGlobalEdition.SignupAPI.Services.SignupOrderClaim.SignupAlreadySettledCode);
         cliente.VerifyNoOtherCalls();
     }
 }
