@@ -1,5 +1,3 @@
-using System.Net.Http.Json;
-using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -19,14 +17,12 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 [Authorize(Roles = "SuperAdmin,Admin")]
 public class AdminSignupsController : ControllerBase
 {
-    private readonly AppDbContext       _db;
-    private readonly IHttpClientFactory _httpFactory;
+    private readonly AppDbContext _db;
 
-    public AdminSignupsController(AppDbContext db, IHttpClientFactory httpFactory)
-    {
-        _db          = db;
-        _httpFactory = httpFactory;
-    }
+    /// <summary>El reintento de alta ya no existe. 410.</summary>
+    public const string RetryRetiredCode = "SIGNUP_RETRY_RETIRED";
+
+    public AdminSignupsController(AppDbContext db) => _db = db;
 
     /// <summary>GET /api/v1/admin/signups/pending — lists members stuck in Pending status with their pending order.</summary>
     [HttpGet("pending")]
@@ -54,34 +50,20 @@ public class AdminSignupsController : ControllerBase
     }
 
     /// <summary>
-    /// POST /api/v1/admin/signups/{orderId}/retry-complete —
-    /// re-runs the Complete-Signup flow for a stuck pending signup. Forwards to
-    /// SignupAPI's existing /complete endpoint with a no-card payload, since the
-    /// original card data was lost when the prior attempt crashed.
+    /// POST /api/v1/admin/signups/{orderId}/retry-complete — RETIRADO: 410 SIGNUP_RETRY_RETIRED.
+    ///
+    /// Reenviaba <c>complete</c> a SignupAPI con <c>paymentMethod: 1</c> (tarjeta) SIN tarjeta, para que el
+    /// alta "zombi" se activara sin cobrar. La validación de SignupAPI ya lo rechazaba siempre (exige el cuerpo
+    /// <c>creditCard</c>), y ninguno de los métodos que cobran se puede repetir desde aquí: el token pide su
+    /// código, la cripto su moneda y Entrax su QR. Un alta a medias se resuelve por su camino: la cripto se
+    /// confirma en Crypto Signups, Entrax con Re-check, y la activación manual deliberada es el cambio de
+    /// estado del miembro (PUT members/{memberId}/status), que deja rastro en MemberStatusHistory.
     /// </summary>
     [HttpPost("{orderId}/retry-complete")]
-    public async Task<IActionResult> RetryComplete(string orderId, CancellationToken ct = default)
-    {
-        var order = await _db.Orders.AsNoTracking()
-            .FirstOrDefaultAsync(o => o.Id == orderId && o.Status == OrderStatus.Pending, ct);
-        if (order is null)
-            return NotFound(ApiResponse<object>.Fail("ORDER_NOT_FOUND",
-                "No pending order found for that id."));
-
-        var http = _httpFactory.CreateClient(MLMConquerorGlobalEdition.AdminAPI.Services.SignupApiRegistration.HttpClientName);
-        // PaymentMethod = 1 = CreditCard. We pass no card body so the handler
-        // skips the credit-card insert (and just flips statuses to Active).
-        var payload = new { paymentMethod = 1 };
-        var resp = await http.PostAsJsonAsync($"api/v1/signups/{orderId}/complete", payload, ct);
-        var body = await resp.Content.ReadAsStringAsync(ct);
-
-        return new ContentResult
-        {
-            Content     = body,
-            ContentType = "application/json",
-            StatusCode  = (int)resp.StatusCode
-        };
-    }
+    public IActionResult RetryComplete(string orderId)
+        => StatusCode(StatusCodes.Status410Gone, ApiResponse<object>.Fail(RetryRetiredCode,
+            "Retrying a signup is no longer available: it activated without charging. Confirm the crypto " +
+            "payment, use Re-check for an SBP (Entrax) payment, or activate the member manually from their status."));
 
     public record PendingSignupDto(
         string MemberId,

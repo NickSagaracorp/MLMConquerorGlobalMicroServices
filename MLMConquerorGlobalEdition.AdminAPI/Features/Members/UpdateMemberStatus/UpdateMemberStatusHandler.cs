@@ -10,8 +10,21 @@ using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Features.Members.UpdateMemberStatus;
 
+/// <summary>
+/// Cambio de estado de un miembro desde administración (PUT api/v1/admin/members/{memberId}/status).
+///
+/// Ponerlo en Active es una ACTIVACIÓN MANUAL Y DELIBERADA del personal: pasa la suscripción Pending a Active
+/// y el pedido Pending a Completed SIN COBRO (p. ej. un pago verificado por fuera). Queda en
+/// MemberStatusHistory con quién lo hizo y el motivo. Lo que no puede es pisar un pago en vuelo: si el pedido
+/// del alta (el primero del miembro) está en Processing —cripto o Entrax esperando— o hay un pago de Entrax en
+/// AwaitingPayment, responde PAYMENT_IN_FLIGHT (409) sin cambiar nada; ahí lo correcto es confirmar la
+/// cripto o hacer Re-check.
+/// </summary>
 public class UpdateMemberStatusHandler : IRequestHandler<UpdateMemberStatusCommand, Result<AdminMemberDto>>
 {
+    /// <summary>Hay un cobro del alta en curso: no se activa a mano. 409.</summary>
+    public const string PaymentInFlightCode = "PAYMENT_IN_FLIGHT";
+
     private readonly AppDbContext _db;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _dateTime;
@@ -37,6 +50,12 @@ public class UpdateMemberStatusHandler : IRequestHandler<UpdateMemberStatusComma
 
         if (member is null)
             return Result<AdminMemberDto>.Failure("MEMBER_NOT_FOUND", $"Member '{request.MemberId}' not found.");
+
+        if (request.Request.Status == MemberAccountStatus.Active
+            && await HasPaymentInFlightAsync(member.MemberId, cancellationToken))
+            return Result<AdminMemberDto>.Failure(PaymentInFlightCode,
+                "This member has a signup payment in progress (crypto or SBP). Confirm the crypto payment or use " +
+                "Re-check instead of activating manually.");
 
         var oldStatus = member.Status;
         var now = _dateTime.Now;
@@ -119,5 +138,24 @@ public class UpdateMemberStatusHandler : IRequestHandler<UpdateMemberStatusComma
         };
 
         return Result<AdminMemberDto>.Success(dto);
+    }
+
+    /// <summary>
+    /// El pedido del alta (el primero del miembro, por fecha) está en Processing, o hay un pago de Entrax del
+    /// miembro esperando cobro.
+    /// </summary>
+    private async Task<bool> HasPaymentInFlightAsync(string memberId, CancellationToken ct)
+    {
+        var signupOrderStatus = await _db.Orders.AsNoTracking()
+            .Where(o => o.MemberId == memberId)
+            .OrderBy(o => o.OrderDate).ThenBy(o => o.CreationDate)
+            .Select(o => (OrderStatus?)o.Status)
+            .FirstOrDefaultAsync(ct);
+
+        if (signupOrderStatus == OrderStatus.Processing)
+            return true;
+
+        return await _db.EntraxPayments.AsNoTracking()
+            .AnyAsync(p => p.MemberId == memberId && p.Status == EntraxPaymentStatus.AwaitingPayment, ct);
     }
 }
