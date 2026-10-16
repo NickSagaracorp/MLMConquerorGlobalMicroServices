@@ -19,6 +19,13 @@ public static class EntraxSignupErrors
     /// </summary>
     public const string QrAlreadyActive = "ENTRAX_QR_ALREADY_ACTIVE";
 
+    /// <summary>
+    /// El QR de otra ventana ya caducó pero el servidor aún no lo cerró (hasta unos 12 min, mientras
+    /// espera la confirmación del banco): no se puede empezar otro pago todavía. 409. La pantalla lo dice
+    /// y no reintenta.
+    /// </summary>
+    public const string PaymentConfirming = "ENTRAX_PAYMENT_CONFIRMING";
+
     public const string NothingToPay    = "ENTRAX_NOTHING_TO_PAY";
 
     public const string PaymentNotFound = "ENTRAX_PAYMENT_NOT_FOUND";

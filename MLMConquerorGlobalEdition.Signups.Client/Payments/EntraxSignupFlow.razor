@@ -51,6 +51,12 @@ else
 
     [Parameter] public EventCallback OnChooseAnother { get; set; }
 
+    /// <summary>
+    /// Va a pedirse un QR (primera vez o reintento): la página limpia aquí el aviso de error anterior para
+    /// que no se quede en pantalla junto a un QR que sí funcionó.
+    /// </summary>
+    [Parameter] public EventCallback OnStarting { get; set; }
+
     /// <summary>No se pudo emitir el QR; lleva el texto para el aviso de la página.</summary>
     [Parameter] public EventCallback<string> OnError { get; set; }
 
@@ -77,6 +83,7 @@ else
         _busy = true;
         try
         {
+            await OnStarting.InvokeAsync();
             var result = await start();
             switch (result.Outcome)
             {
@@ -96,8 +103,10 @@ else
                     break;
             }
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex)
         {
+            // Sin filtro: este flujo no recibe token, así que un OperationCanceledException solo puede ser el
+            // timeout del HttpClient (TaskCanceledException), que no es motivo para la barra de error de Blazor.
             await OnError.InvokeAsync(string.Format(ConnectionErrorText, ex.Message));
         }
         finally

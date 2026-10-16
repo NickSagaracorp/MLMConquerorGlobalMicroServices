@@ -118,7 +118,7 @@ public class SignupsController : ControllerBase
             return result.ErrorCode switch
             {
                 CompleteSignupHandler.TokenBusyCode or EntraxSignupErrors.InProgress
-                    or EntraxSignupErrors.QrAlreadyActive
+                    or EntraxSignupErrors.QrAlreadyActive or EntraxSignupErrors.PaymentConfirming
                     or CompleteSignupHandler.SignupAlreadySettledCode => Conflict(body),
                 EntraxSignupErrors.Unavailable => StatusCode(StatusCodes.Status502BadGateway, body),
                 _ => BadRequest(body)

@@ -39,19 +39,20 @@ public class EntraxSignupFlowTests : BunitContext
     private static string Fallo(string codigo, string texto)
         => $$"""{"success":false,"errorCode":"{{codigo}}","errors":["{{texto}}"]}""";
 
-    private sealed record Avisos(List<bool> Completadas, List<string> Errores, int[] OtroMetodo);
+    private sealed record Avisos(List<bool> Completadas, List<string> Errores, int[] OtroMetodo, int[] Empiezos);
 
     private (IRenderedComponent<EntraxSignupFlow> Cut, Avisos Avisos, Fabrica Http) Pinta(
         Func<HttpRequestMessage, HttpResponseMessage> responder, string? signupId = "ORD-1")
     {
         var http = new Fabrica(responder);
         Services.AddSingleton<IHttpClientFactory>(http);
-        var avisos = new Avisos([], [], [0]);
+        var avisos = new Avisos([], [], [0], [0]);
         var cut = Render<EntraxSignupFlow>(p => p
             .Add(c => c.SignupId, signupId)
             .AddChildContent("<form id='formulario'>formulario del alta</form>")
             .Add(c => c.OnCompleted, EventCallback.Factory.Create<bool>(this, v => avisos.Completadas.Add(v)))
             .Add(c => c.OnError, EventCallback.Factory.Create<string>(this, t => avisos.Errores.Add(t)))
+            .Add(c => c.OnStarting, EventCallback.Factory.Create(this, () => avisos.Empiezos[0]++))
             .Add(c => c.OnChooseAnother, EventCallback.Factory.Create(this, () => avisos.OtroMetodo[0]++)));
         return (cut, avisos, http);
     }
@@ -185,5 +186,45 @@ public class EntraxSignupFlowTests : BunitContext
 
         avisos.Completadas.Should().Equal(true);
         cut.FindAll(".entrax-qr").Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Un_timeout_en_el_reintento_llega_como_aviso_y_no_como_excepcion()
+    {
+        var n = 0;
+        var (cut, avisos, _) = Pinta(_ => ++n == 1
+            ? Json(HttpStatusCode.OK, QrOk)
+            : throw new TaskCanceledException("timeout del HttpClient"));
+        await cut.InvokeAsync(() => cut.Instance.StartAsync());
+
+        var act = () => cut.InvokeAsync(() => cut.FindComponent<MLMConquerorGlobalEdition.SharedComponents.Lite.Payments.EntraxQrPayment>()
+            .Instance.OnRetry.InvokeAsync());
+
+        await act.Should().NotThrowAsync();
+        avisos.Errores.Should().ContainSingle().Which.Should().StartWith("Connection error:");
+    }
+
+    [Fact]
+    public async Task Avisa_de_que_empieza_cada_peticion_para_que_la_pagina_limpie_el_error_viejo()
+    {
+        var (cut, avisos, _) = Pinta(_ => Json(HttpStatusCode.OK, QrOk));
+
+        await cut.InvokeAsync(() => cut.Instance.StartAsync());
+        await cut.InvokeAsync(() => cut.FindComponent<MLMConquerorGlobalEdition.SharedComponents.Lite.Payments.EntraxQrPayment>()
+            .Instance.OnRetry.InvokeAsync());
+
+        avisos.Empiezos[0].Should().Be(2);
+    }
+
+    [Fact]
+    public async Task El_aviso_de_pago_en_confirmacion_llega_como_texto_y_no_se_reintenta()
+    {
+        var (cut, avisos, http) = Pinta(_ => Json(HttpStatusCode.Conflict,
+            Fallo("ENTRAX_PAYMENT_CONFIRMING", "An SBP payment for this signup is being confirmed; please wait a few minutes and try again")));
+
+        await cut.InvokeAsync(() => cut.Instance.StartAsync());
+
+        avisos.Errores.Should().ContainSingle().Which.Should().Contain("being confirmed");
+        http.Peticiones.Should().Be(1);
     }
 }

@@ -121,6 +121,7 @@
         <EntraxSignupFlow @ref="_entraxFlow"
                           SignupId="_signupId"
                           OnCompleted="OnEntraxCompleted"
+                          OnStarting="OnEntraxStarting"
                           OnError="OnEntraxError"
                           OnChooseAnother="ChooseAnotherPaymentMethod">
         @if (_productsLoading)
@@ -1877,9 +1878,15 @@
     /// </summary>
     private void OnEntraxCompleted(bool alreadyPaid) => ShowSettled(alreadyPaid);
 
+    private void OnEntraxStarting() => _error = string.Empty;
+
     private void OnEntraxError(string message) => _error = message;
 
-    private void ChooseAnotherPaymentMethod() => _paymentTab = "card";
+    private void ChooseAnotherPaymentMethod()
+    {
+        _error      = string.Empty;
+        _paymentTab = "card";
+    }
 
     /// <summary>La pantalla de "ya está pagada, inicia sesión", común a todos los métodos de pago.</summary>
     private void ShowSettled(bool alreadyPaid)

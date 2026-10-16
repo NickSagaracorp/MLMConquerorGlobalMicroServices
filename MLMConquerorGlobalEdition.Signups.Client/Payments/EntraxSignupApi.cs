@@ -19,6 +19,9 @@ public enum EntraxStartOutcome
     /// <summary>Otra ventana ya tiene un QR vivo de este alta (409 ENTRAX_QR_ALREADY_ACTIVE): no se reintenta.</summary>
     QrAlreadyActive,
 
+    /// <summary>El QR de otra ventana caducó pero se está confirmando con el banco (409 ENTRAX_PAYMENT_CONFIRMING).</summary>
+    PaymentConfirming,
+
     /// <summary>Cualquier otro fallo: <see cref="EntraxStartResult.Error"/> lleva el texto.</summary>
     Failed
 }
@@ -37,6 +40,7 @@ public static class EntraxSignupApi
     public const string InProgressCode      = "ENTRAX_IN_PROGRESS";
     public const string AlreadySettledCode  = "SIGNUP_ALREADY_SETTLED";
     public const string QrAlreadyActiveCode = "ENTRAX_QR_ALREADY_ACTIVE";
+    public const string PaymentConfirmingCode = "ENTRAX_PAYMENT_CONFIRMING";
 
     /// <summary>Veces que se intenta emitir el QR cuando el servidor dice que otra petición lo está creando.</summary>
     public const int InProgressAttempts = 3;
@@ -46,6 +50,8 @@ public static class EntraxSignupApi
 
     private const string GenericError    = "Could not create the SBP payment.";
     private const string QrAlreadyActiveError = "There is already an active QR for this signup in another window.";
+    private const string PaymentConfirmingError =
+        "An SBP payment for this signup is being confirmed; please wait a few minutes and try again";
     private const string InProgressError = "Your SBP payment is still being prepared. Please try again in a moment.";
 
     /// <summary>Países donde se ofrece. Si no se puede leer, ninguno: la pestaña no aparece.</summary>
@@ -117,6 +123,7 @@ public static class EntraxSignupApi
             AlreadySettledCode => new(EntraxStartOutcome.AlreadySettled, null, error),
             InProgressCode     => new(EntraxStartOutcome.InProgress, null, InProgressError),
             QrAlreadyActiveCode => new(EntraxStartOutcome.QrAlreadyActive, null, QrAlreadyActiveError),
+            PaymentConfirmingCode => new(EntraxStartOutcome.PaymentConfirming, null, PaymentConfirmingError),
             _                  => new(EntraxStartOutcome.Failed, null, error)
         };
     }

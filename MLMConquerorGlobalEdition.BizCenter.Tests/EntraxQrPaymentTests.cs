@@ -370,7 +370,7 @@ public class EntraxQrPaymentTests : BunitContext
 
         Turno_(cut);   // 5 s: la cuenta (3 s) llega a cero y toca preguntar
 
-        cut.WaitForAssertion(() => cut.Markup.Should().Contain("do not pay it"));
+        cut.WaitForAssertion(() => cut.Markup.Should().Contain("do not pay it").And.Contain("few minutes"));
         cut.FindAll("img").Should().BeEmpty("un QR caducado no se enseña aunque el servidor no lo haya cerrado.");
         cut.FindAll("a").Should().BeEmpty();
 

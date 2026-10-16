@@ -74,28 +74,35 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
     /// El alta no está en Pending: se dice POR QUÉ en vez de un "no encontrada" que no ayuda.
     ///  - Completed: ya está pagada y activa (por un QR tardío, cripto, tarjeta o token) -> 409
     ///    SIGNUP_ALREADY_SETTLED; la pantalla manda a iniciar sesión.
-    ///  - Processing con un QR de Entrax vivo o recién pedido y se pide otro QR -> 409
-    ///    ENTRAX_QR_ALREADY_ACTIVE (otra ventana lo tiene); no se reintenta.
-    ///  - Cualquier otro caso (no existe, o cripto en proceso) sigue siendo SIGNUP_NOT_FOUND.
+    ///  - Con un pago de Entrax esperando (AwaitingPayment), con CUALQUIER método: 409
+    ///    ENTRAX_QR_ALREADY_ACTIVE si su QR sigue vivo (o recién pedido), y ENTRAX_PAYMENT_CONFIRMING si
+    ///    ya caducó pero el servidor aún no lo cerró (hasta unos 12 min). La pantalla no reintenta.
+    ///  - Cualquier otro caso (no existe, no es el pedido de un alta, o cripto en proceso) sigue siendo
+    ///    SIGNUP_NOT_FOUND: el 409 no puede servir para averiguar si un id de pedido cualquiera existe.
     /// </summary>
     private async Task<Result<SignupResponse>> ExplainMissingPendingOrderAsync(
         string signupId, PaymentMethodType method, DateTime now, CancellationToken ct)
     {
-        var status = await _db.Orders.AsNoTracking()
-            .Where(o => o.Id == signupId)
-            .Select(o => (OrderStatus?)o.Status)
-            .FirstOrDefaultAsync(ct);
+        var status = await SignupEnrollmentOrder.GetStatusAsync(_db, signupId, ct);
 
         if (status == OrderStatus.Completed)
             return Result<SignupResponse>.Failure(SignupAlreadySettledCode,
                 "This signup is already paid and active. Please sign in.");
 
-        if (status == OrderStatus.Processing && method == PaymentMethodType.Entrax
-            && await _db.EntraxPayments.AsNoTracking().AnyAsync(p =>
-                   p.OrderId == signupId && p.Status == EntraxPaymentStatus.AwaitingPayment
-                   && (p.ExpiresAt == null || p.ExpiresAt > now), ct))
-            return Result<SignupResponse>.Failure(EntraxSignupErrors.QrAlreadyActive,
-                "There is already an active QR for this signup in another window.");
+        if (status is not null)
+        {
+            var waiting = await _db.EntraxPayments.AsNoTracking()
+                .Where(p => p.OrderId == signupId && p.Status == EntraxPaymentStatus.AwaitingPayment)
+                .Select(p => p.ExpiresAt)
+                .ToListAsync(ct);
+
+            if (waiting.Count > 0)
+                return waiting.Any(expires => expires is null || expires > now)
+                    ? Result<SignupResponse>.Failure(EntraxSignupErrors.QrAlreadyActive,
+                        "There is already an active QR for this signup in another window.")
+                    : Result<SignupResponse>.Failure(EntraxSignupErrors.PaymentConfirming,
+                        "An SBP payment for this signup is being confirmed; please wait a few minutes and try again");
+        }
 
         return Result<SignupResponse>.Failure("SIGNUP_NOT_FOUND", "Pending signup not found.");
     }

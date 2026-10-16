@@ -41,6 +41,7 @@ public class EntraxSignupApiTests
         EntraxSignupApi.InProgressCode.Should().Be(EntraxSignupErrors.InProgress);
         EntraxSignupApi.AlreadySettledCode.Should().Be(CompleteSignupHandler.SignupAlreadySettledCode);
         EntraxSignupApi.QrAlreadyActiveCode.Should().Be(EntraxSignupErrors.QrAlreadyActive);
+        EntraxSignupApi.PaymentConfirmingCode.Should().Be(EntraxSignupErrors.PaymentConfirming);
     }
 
     [Fact]
@@ -127,6 +128,18 @@ public class EntraxSignupApiTests
         r.Outcome.Should().Be(EntraxStartOutcome.QrAlreadyActive);
         r.Payment.Should().BeNull();
         r.Error.Should().Be("There is already an active QR for this signup in another window.");
+        api.Peticiones.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task Si_el_pago_de_otro_QR_se_esta_confirmando_lo_dice_sin_reintentar()
+    {
+        var api = new Api(_ => Json(HttpStatusCode.Conflict, Fallo("ENTRAX_PAYMENT_CONFIRMING", "x")));
+
+        var r = await EntraxSignupApi.StartAsync(Cliente(api), "ORD-1", retryDelay: TimeSpan.Zero);
+
+        r.Outcome.Should().Be(EntraxStartOutcome.PaymentConfirming);
+        r.Error.Should().Contain("being confirmed").And.Contain("few minutes");
         api.Peticiones.Should().HaveCount(1);
     }
 
