@@ -50,5 +50,16 @@ public class SqlServerResidualesTests
             """).SingleAsync();
 
         n.Should().Be(1, "la migración IndiceResidualesPorBeneficiarioYFecha tiene que estar aplicada en local (Tarea 8)");
+
+        var incluidas = await db.Database.SqlQuery<string>($"""
+            SELECT c.name AS [Value] FROM sys.indexes i
+            JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id
+            JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
+            WHERE i.name = 'IX_DailyResidualEarnings_BeneficiaryMemberId_EarnedDate'
+              AND i.object_id = OBJECT_ID('DailyResidualEarnings') AND ic.is_included_column = 1
+            """).ToListAsync();
+
+        incluidas.Should().BeEquivalentTo(new[] { "Amount", "Status" },
+            "la migración IndiceResidualesConImporteYEstado tiene que estar aplicada en local");
     }
 }
