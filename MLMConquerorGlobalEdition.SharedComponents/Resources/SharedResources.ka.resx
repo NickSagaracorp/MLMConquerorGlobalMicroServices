@@ -1359,4 +1359,7 @@
   <data name="Common.AllMonths" xml:space="preserve"><value>ყველა თვე</value></data>
   <data name="Common.Of" xml:space="preserve"><value>-დან</value></data>
   <data name="Common.Amount" xml:space="preserve"><value>თანხა</value></data>
+  <data name="Team.CustomersScopePersonal" xml:space="preserve"><value>პირადი</value></data>
+  <data name="Team.CustomersScopeTeam" xml:space="preserve"><value>მთელი გუნდი</value></data>
+  <data name="Team.ContactOnlyPersonal" xml:space="preserve"><value>საკონტაქტო მონაცემები ჩანს მხოლოდ თქვენი პირადი კლიენტებისთვის.</value></data>
 </root>

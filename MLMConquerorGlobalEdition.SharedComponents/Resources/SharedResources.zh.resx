@@ -1359,4 +1359,7 @@
   <data name="Common.AllMonths" xml:space="preserve"><value>所有月份</value></data>
   <data name="Common.Of" xml:space="preserve"><value>/</value></data>
   <data name="Common.Amount" xml:space="preserve"><value>金额</value></data>
+  <data name="Team.CustomersScopePersonal" xml:space="preserve"><value>个人</value></data>
+  <data name="Team.CustomersScopeTeam" xml:space="preserve"><value>整个团队</value></data>
+  <data name="Team.ContactOnlyPersonal" xml:space="preserve"><value>仅显示您个人客户的联系方式。</value></data>
 </root>

@@ -1426,4 +1426,7 @@
   <data name="Common.Year" xml:space="preserve"><value>연도</value></data>
   <data name="Common.Month" xml:space="preserve"><value>월</value></data>
   <data name="Common.AllMonths" xml:space="preserve"><value>모든 월</value></data>
+  <data name="Team.CustomersScopePersonal" xml:space="preserve"><value>개인</value></data>
+  <data name="Team.CustomersScopeTeam" xml:space="preserve"><value>전체 팀</value></data>
+  <data name="Team.ContactOnlyPersonal" xml:space="preserve"><value>연락처 정보는 개인 고객에게만 표시됩니다.</value></data>
 </root>

@@ -1444,4 +1444,7 @@
   <data name="Common.Year" xml:space="preserve"><value>Ano</value></data>
   <data name="Common.Month" xml:space="preserve"><value>Mês</value></data>
   <data name="Common.AllMonths" xml:space="preserve"><value>Todos os meses</value></data>
+  <data name="Team.CustomersScopePersonal" xml:space="preserve"><value>Pessoais</value></data>
+  <data name="Team.CustomersScopeTeam" xml:space="preserve"><value>Toda a equipe</value></data>
+  <data name="Team.ContactOnlyPersonal" xml:space="preserve"><value>Os dados de contato só são exibidos para seus clientes pessoais.</value></data>
 </root>

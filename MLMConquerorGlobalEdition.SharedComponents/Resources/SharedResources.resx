@@ -1526,4 +1526,7 @@
   <data name="Reports.PeriodTotal" xml:space="preserve"><value>Period total</value></data>
   <data name="Reports.Comment" xml:space="preserve"><value>Comment</value></data>
   <data name="Reports.Consolidated" xml:space="preserve"><value>Consolidated</value></data>
+  <data name="Team.CustomersScopePersonal" xml:space="preserve"><value>Personal</value></data>
+  <data name="Team.CustomersScopeTeam" xml:space="preserve"><value>Whole team</value></data>
+  <data name="Team.ContactOnlyPersonal" xml:space="preserve"><value>Contact details are shown only for your personal customers.</value></data>
 </root>

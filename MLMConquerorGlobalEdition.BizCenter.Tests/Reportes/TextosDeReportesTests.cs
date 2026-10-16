@@ -21,6 +21,8 @@ public class TextosDeReportesTests
         "Sidebar.Residuals", "Team.LoadFailedResiduals", "Team.NoResidualEarnings",
         "Common.Year", "Common.Month", "Common.AllMonths", "Common.Of", "Common.Amount", "Common.Status",
         "Common.Previous", "Common.Next",
+        // Bloque 3 — Clientes del equipo
+        "Team.CustomersScopePersonal", "Team.CustomersScopeTeam", "Team.ContactOnlyPersonal",
         // (claves de los bloques siguientes)
     };
 
