@@ -592,18 +592,16 @@ pendiente: no había credencial de administrador.
 | 10.2 | Sin secreto en el servidor | arrancar sin `Entrax__Secret` y mandar un callback firmado con cualquier secreto | `401` (falla cerrado) y un `Error` en el log | ✔ (2026-10-16, por API con el fake): arrancado sin `Entrax__Secret`, `401` con la firma buena y con otra, y un `Error` "no hay Entrax:Secret" en el log |
 | 10.3 | Firma mala | firma hecha con otro secreto, o un byte del cuerpo cambiado tras firmar | `401` | ✔ (2026-10-16, por API con el fake): `401` con otro secreto y con un byte cambiado |
 | 10.4 | Firma en hexadecimal | la misma firma en hexadecimal de 64 caracteres (`[Convert]::ToHexString(...)`) | se acepta igual que en Base64 | ✔ (2026-10-16, por API con el fake): en mayúsculas y en minúsculas la firma pasa (`503` del pago aún sin pagar, no `401`) |
-| 10.5 | Cuerpo grande | callback de más de 64 KB | `413`, sin procesarlo | ✘ (2026-10-16): devuelve `500 INTERNAL_ERROR`, no `413`; no lo procesa, pero cada petición deja una fila en `ErrorLogs`. Ver la nota tras la tabla |
+| 10.5 | Cuerpo grande | callback de más de 64 KB | `413`, sin procesarlo | ✔ (2026-10-16, por API con el fake, tras f467d51): `413` con `Content-Length` y con `Transfer-Encoding: chunked`, sin fila en `ErrorLogs`. Antes del arreglo devolvía `500` |
 | 10.6 | Antigüedad | callback bien firmado con `timestamp` de hace 2 h, o de dentro de 2 h | `400 STALE_CALLBACK`, sin cambios | ✔ (2026-10-16, por API con el fake): `400 STALE_CALLBACK` con −2 h y con +2 h |
 | 10.7 | El cuerpo no decide | callback bien firmado con `status: SUCCESS` de un QR que en el fake sigue sin pagar | `503` y el alta sigue pendiente: manda `GET /payment`, no el aviso; Entrax reintentará | ✔ (2026-10-16, por API con el fake): `503` y el alta sigue pendiente |
 | 10.8 | Replay | tras `POST api/v1/dev/entrax/{paymentId}/paid`, el mismo callback bien firmado dos veces | las dos `200`; un solo `PaymentHistory` `Entrax`, una sola activación | ✔ (2026-10-16, por API con el fake): dos `200` y un solo `PaymentHistory` |
 | 10.9 | `orderId` que no casa | callback con el `paymentId` de un alta y el `orderId` de otra | `400 INVALID_CALLBACK`; ninguna de las dos altas cambia | ✔ (2026-10-16, por API con el fake): `400 INVALID_CALLBACK` en los dos sentidos; ningún pago cambia |
 | 10.10 | Pago que no es nuestro | callback firmado con un `paymentId` inventado | `404`, sin cambios | ✔ (2026-10-16, por API con el fake): `404` |
 
-**10.5 falla.** Con `[RequestSizeLimit]` de 64 KB, Kestrel lanza `BadHttpRequestException` (413) al
-leer el cuerpo en `EntraxSignupsController.ReadBodyAsync`; el `try` del controlador no cubre esa
-lectura y `DomainExceptionMiddleware` la convierte en `500 INTERNAL_ERROR` y escribe una fila en
-`ErrorLogs`. El callback no se procesa, que es lo que importa, pero la respuesta no es `413` y cada
-petición grande escribe en `ErrorLogs`. Pasa con `Content-Length` y con `Transfer-Encoding: chunked`.
+**10.5 corregida (f467d51).** Antes, Kestrel lanzaba `BadHttpRequestException` (413) al leer el
+cuerpo fuera del `try` del controlador y salía `500 INTERNAL_ERROR` con una fila en `ErrorLogs`.
+Ahora el endpoint mira `Content-Length` y captura esa excepción: responde `413` y solo deja un Warning.
 
 ### 10.2 El endpoint de estado
 
