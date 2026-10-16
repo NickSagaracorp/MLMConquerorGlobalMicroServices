@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -88,7 +87,7 @@ public class TokensController : ControllerBase
             return BadRequest(ApiResponse<bool>.Fail(TokenPurchaseErrors.IdempotencyKeyRequired,
                 "An Idempotency-Key header (letters, digits or '-', up to 64) is required.", HttpContext.TraceIdentifier));
 
-        var memberId = User.FindFirstValue("memberId") ?? string.Empty;
+        var memberId = CallerIdentity.MemberIdOf(User) ?? string.Empty;
         var claimKey = TokenDistributionErrors.IdempotencyCacheKey(memberId, key!);
         bool claimed;
         try
@@ -228,15 +227,15 @@ public class TokensController : ControllerBase
     private IActionResult WrongEndpoint(string message) =>
         BadRequest(ApiResponse<TokenPurchaseResultDto>.Fail(TokenPurchaseErrors.WrongEndpoint, message, HttpContext.TraceIdentifier));
 
-    // Billing también lo rechaza; aquí se corta antes para no llamar en vano. En la ruta de saldo el
-    // filtro de step-up ya quemó el permiso del BizCenter: bajo suplantación se pierde, y es correcto,
-    // porque ese permiso no debía poder usarse para comprar.
     // Distribuir o transferir da tokens a otra persona: igual que comprar, nunca suplantando (la
     // pantalla ya lo apaga; esto es la puerta de verdad). Data null, como los 403 de compra.
     private IActionResult DistributionImpersonationForbidden() =>
         StatusCode(StatusCodes.Status403Forbidden, ApiResponse<object>.Fail(
             TokenDistributionErrors.Impersonation, "Tokens cannot be distributed during impersonation.", HttpContext.TraceIdentifier));
 
+    // Billing también lo rechaza; aquí se corta antes para no llamar en vano. En la ruta de saldo el
+    // filtro de step-up ya quemó el permiso del BizCenter: bajo suplantación se pierde, y es correcto,
+    // porque ese permiso no debía poder usarse para comprar.
     private IActionResult ImpersonationForbidden() =>
         StatusCode(StatusCodes.Status403Forbidden, ApiResponse<TokenPurchaseResultDto>.Fail(
             TokenPurchaseErrors.Impersonation, "Purchases are not allowed during impersonation.", HttpContext.TraceIdentifier));
