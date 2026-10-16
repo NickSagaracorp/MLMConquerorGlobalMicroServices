@@ -95,6 +95,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     public DbSet<OrderDetail> OrderDetails => Set<OrderDetail>();
     public DbSet<PaymentHistory> PaymentHistories => Set<PaymentHistory>();
     public DbSet<CryptoPaymentConfirmation> CryptoPaymentConfirmations => Set<CryptoPaymentConfirmation>();
+    public DbSet<EntraxPayment> EntraxPayments => Set<EntraxPayment>();
+    public DbSet<EntraxApiCall> EntraxApiCalls => Set<EntraxApiCall>();
 
     public DbSet<LoyaltyPoints> LoyaltyPoints => Set<LoyaltyPoints>();
 
