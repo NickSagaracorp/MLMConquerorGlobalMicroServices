@@ -669,7 +669,6 @@ public class AltaPorCriptoTests
     [Theory]
     [InlineData(PaymentMethodType.Token)]
     [InlineData(PaymentMethodType.CreditCard)]
-    [InlineData(PaymentMethodType.DiscountCode)]
     public async Task Completar_PorLasViasQueYaCobraron_SigueActivandoYComisionando(PaymentMethodType metodo)
     {
         await using var db = InMemoryDbHelper.Create();
@@ -686,8 +685,7 @@ public class AltaPorCriptoTests
         var request = new CompleteSignupRequest
         {
             PaymentMethod = metodo,
-            TokenCode     = metodo == PaymentMethodType.Token ? "ABCD1234" : null,
-            DiscountCode  = metodo == PaymentMethodType.DiscountCode ? "FREE100" : null
+            TokenCode     = metodo == PaymentMethodType.Token ? "ABCD1234" : null
         };
 
         var result = await handler.Handle(new CompleteSignupCommand(OrderId, request), CancellationToken.None);

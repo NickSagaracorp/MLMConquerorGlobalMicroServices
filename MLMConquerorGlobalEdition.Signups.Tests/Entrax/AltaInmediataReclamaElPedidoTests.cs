@@ -32,7 +32,9 @@ public class AltaInmediataReclamaElPedidoTests
                new SignupActivationService(db, sponsor ?? Mock.Of<ISponsorBonusService>(), Mock.Of<IFastStartBonusService>(),
                    Mock.Of<IRecurringBillingEnrollmentService>(), reclamo),
                Mock.Of<ICryptoDepositAddressReader>(), puerta ?? new PuertaDeFondosDePrueba(db),
-               orderClaim: reclamo);
+               orderClaim: reclamo,
+               // La tarjeta encendida a propósito: es el camino inmediato que estas pruebas reclaman.
+               configuration: TarjetaDelAlta.Encendida());
 
     private static IJwtService Jwt()
     {
@@ -41,8 +43,9 @@ public class AltaInmediataReclamaElPedidoTests
         return m.Object;
     }
 
-    private static CompleteSignupCommand ConDescuento()
-        => new(EscenarioEntrax.OrderId, new CompleteSignupRequest { PaymentMethod = PaymentMethodType.DiscountCode, DiscountCode = "FREE100" });
+    // Antes era un código de descuento, que ya no activa nada. Ahora la tarjeta con el interruptor encendido.
+    private static CompleteSignupCommand ConTarjeta()
+        => new(EscenarioEntrax.OrderId, new CompleteSignupRequest { PaymentMethod = PaymentMethodType.CreditCard });
 
     [Fact]
     public async Task Si_gana_el_pedido_se_activa_y_el_reclamo_se_pidio_solo_desde_Pending()
@@ -52,7 +55,7 @@ public class AltaInmediataReclamaElPedidoTests
         var reclamo = new ReclamoDePrueba(gana: true);
 
         var r = await Handler(db, EscenarioEntrax.Usuarios(EscenarioEntrax.UsuarioInactivo()), reclamo)
-            .Handle(ConDescuento(), default);
+            .Handle(ConTarjeta(), default);
 
         r.IsSuccess.Should().BeTrue();
         reclamo.DesdePending.Should().Be(1);
@@ -70,7 +73,7 @@ public class AltaInmediataReclamaElPedidoTests
         var usuarios = EscenarioEntrax.Usuarios(usuario);
         var sponsor = new Mock<ISponsorBonusService>();
 
-        var r = await Handler(db, usuarios, new ReclamoDePrueba(gana: false), sponsor.Object).Handle(ConDescuento(), default);
+        var r = await Handler(db, usuarios, new ReclamoDePrueba(gana: false), sponsor.Object).Handle(ConTarjeta(), default);
 
         r.IsSuccess.Should().BeFalse();
         r.ErrorCode.Should().Be(CompleteSignupHandler.SignupAlreadySettledCode);

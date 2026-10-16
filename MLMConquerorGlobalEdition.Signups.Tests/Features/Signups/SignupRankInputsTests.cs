@@ -244,10 +244,11 @@ public class SignupRankInputsTests
         CreatedBy          = email
     };
 
+    // Con token (el canje de prueba siempre acepta): el código de descuento ya no activa nada.
     private static CompleteSignupRequest BuildRequest() => new()
     {
-        PaymentMethod = PaymentMethodType.DiscountCode,
-        DiscountCode  = "FREE100"
+        PaymentMethod = PaymentMethodType.Token,
+        TokenCode     = "ABCD1234"
     };
 
     /// <summary>El servicio de activación real sobre los dobles de los bonos: estas pruebas

@@ -23,7 +23,12 @@ namespace MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Commands.Complete
 /// <summary>
 /// Fase 3 del asistente de alta.
 ///
-/// Con token o código de descuento esta fase activa al miembro y dispara las comisiones.
+/// Con token esta fase activa al miembro y dispara las comisiones.
+///
+/// CON CÓDIGO DE DESCUENTO, NUNCA. No existe ningún sistema de códigos de descuento (ni entidad, ni
+/// validación, ni pantalla que lo use): antes cualquier cadena de 4 a 32 caracteres activaba la membresía y
+/// generaba comisiones gratis. Se rechaza siempre con DISCOUNT_CODES_DISABLED antes de leer nada. No hay
+/// interruptor porque no hay nada que encender: cuando exista un sistema de códigos real, esta rama lo valida.
 ///
 /// CON TARJETA NO SE COBRA NADA AQUÍ, y tampoco antes: la tokenización del navegador es simulada y el
 /// gateway de tarjeta (SpreedlyCardGatewayService) es un stub. Esta rama solo guarda la tarjeta y activa,
@@ -71,6 +76,9 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
 
     /// <summary>La tarjeta del alta está apagada (Signup:CardEnabled): no se hizo nada. 400.</summary>
     public const string CardPaymentsDisabledCode = TokenPurchaseErrors.CardPaymentsDisabled;
+
+    /// <summary>No hay sistema de códigos de descuento: el alta con DiscountCode no hace nada. 400.</summary>
+    public const string DiscountCodesDisabledCode = "DISCOUNT_CODES_DISABLED";
 
     /// <summary>El candado del dueño del token está ocupado: no se hizo nada y se puede repetir.</summary>
     public const string TokenBusyCode = "TOKEN_BUSY";
@@ -158,6 +166,11 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
     {
         var req = command.Request;
         var now = _dateTime.Now;
+
+        // Antes de leer nada: un código de descuento no se puede validar contra nada, así que no paga nada.
+        if (req.PaymentMethod == PaymentMethodType.DiscountCode)
+            return Result<SignupResponse>.Failure(DiscountCodesDisabledCode,
+                "Discount codes are not available. Please choose another payment method.");
 
         // Antes de leer nada: con la tarjeta apagada no se activa, no se guarda la tarjeta, no se sube la
         // captura y el pedido no se reclama. Se mira el método, no si viene la tarjeta: sin cuerpo de
