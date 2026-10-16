@@ -155,9 +155,12 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
             return EntraxSettlementOutcome.ProviderUnavailable;
         }
 
+        // Lo que Entrax dice de ESTE pago tiene que ser de este pago: el paymentId siempre, y el orderId
+        // (nuestro SIGNUP-{pedido}-{n}) cuando lo manda. Si no lo manda (null o vacío) basta el paymentId,
+        // que es el GUID que Entrax nos dio al emitir este QR y por el que acabamos de preguntar.
         var remote = call.Value!;
         if (!string.Equals(remote.PaymentId, payment.ExternalPaymentId, StringComparison.OrdinalIgnoreCase)
-            || (remote.OrderId is not null && remote.OrderId != payment.ExternalOrderId))
+            || (!string.IsNullOrWhiteSpace(remote.OrderId) && remote.OrderId != payment.ExternalOrderId))
             return await ReviewAsync(payment, "PROVIDER_MISMATCH", now, null);
 
         switch (remote.Status.Trim().ToLowerInvariant())

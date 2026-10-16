@@ -196,6 +196,30 @@ public class EntraxSignupSettlementTests
         (await m.Db.Orders.SingleAsync()).Status.Should().Be(OrderStatus.Processing);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("  ")]
+    public async Task Si_Entrax_no_manda_el_orderId_basta_con_que_el_paymentId_sea_el_nuestro(string? orderId)
+    {
+        var remoto = EscenarioEntrax.Remoto("paid") with { OrderId = orderId };
+        var m = await MontarAsync(remoto: remoto);
+
+        (await m.Liquidacion.SettleAsync(m.PagoId, EntraxSettlementSource.Webhook, default))
+            .Should().Be(EntraxSettlementOutcome.Activated);
+    }
+
+    [Fact]
+    public async Task Sin_orderId_y_con_otro_paymentId_no_se_aplica()
+    {
+        var remoto = EscenarioEntrax.Remoto("paid", paymentId: Guid.NewGuid().ToString()) with { OrderId = null };
+        var m = await MontarAsync(remoto: remoto);
+
+        (await m.Liquidacion.SettleAsync(m.PagoId, EntraxSettlementSource.Webhook, default))
+            .Should().Be(EntraxSettlementOutcome.ToReview);
+        (await Fila(m)).FailureCode.Should().Be("PROVIDER_MISMATCH");
+    }
+
     [Fact]
     public async Task Si_otro_pago_activo_el_pedido_en_paralelo_es_un_doble_cobro_sin_activar_nada()
     {
