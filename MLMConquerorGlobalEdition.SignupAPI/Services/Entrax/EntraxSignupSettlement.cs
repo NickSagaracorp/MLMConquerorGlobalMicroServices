@@ -482,7 +482,21 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
         payment.PaidAmountUsd  = paidUsd ?? payment.PaidAmountUsd;
         payment.LastUpdateDate = now;
         payment.LastUpdateBy   = Actor;
-        await _db.SaveChangesAsync(CancellationToken.None);
+
+        // El pago a revisar nunca activa (SettleOnceAsync lo da por resuelto), así que el alta no puede
+        // quedarse en Processing esperándolo: si nada más la espera (otro QR vivo, una cripto), el pedido
+        // vuelve a Pending de forma condicional, en la misma transacción. El aspirante puede pagar con
+        // otro método (el reclamo del pedido sigue siendo atómico) y la devolución la gestiona Soporte.
+        // Si el pedido ya está Completed (ORDER_ALREADY_SETTLED) no se toca.
+        var none = CancellationToken.None;
+        await using (var tx = await _db.Database.BeginTransactionAsync(none))
+        {
+            var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == payment.OrderId, none);
+            if (order is not null)
+                await ReleaseOrderIfIdleAsync(order, payment.Id, now);
+            await _db.SaveChangesAsync(none);
+            await tx.CommitAsync(none);
+        }
 
         _logger.LogCritical(
             "Entrax: el pago {ExternalPaymentId} del alta {OrderId} queda A REVISAR ({Reason}). No se activó nada; " +

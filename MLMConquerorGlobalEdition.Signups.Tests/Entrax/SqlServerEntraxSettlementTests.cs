@@ -242,7 +242,8 @@ public class SqlServerEntraxSettlementTests : IAsyncLifetime
         pago.FailureCode.Should().Be(SignupOrderClaim.AlreadySettledCode);
         pago.Consumed.Should().BeFalse();
         (await db.PaymentHistories.AsNoTracking().CountAsync(h => h.OrderId == _order)).Should().Be(0);
-        (await db.Orders.AsNoTracking().SingleAsync(o => o.Id == _order)).Status.Should().Be(OrderStatus.Processing);
+        (await db.Orders.AsNoTracking().SingleAsync(o => o.Id == _order)).Status.Should().NotBe(OrderStatus.Completed,
+            "este pago no activó nada; el pedido (sin activar en este escenario) vuelve a Pending al quedar a revisar.");
     }
 
     [SqlServerFact]

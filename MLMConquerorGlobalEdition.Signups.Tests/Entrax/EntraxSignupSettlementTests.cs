@@ -145,7 +145,8 @@ public class EntraxSignupSettlementTests
         pago.FailureCode.Should().Be("AMOUNT_TOO_LOW");
         pago.PaidAmountUsd.Should().Be(79m);
         pago.Consumed.Should().BeFalse();
-        (await m.Db.Orders.SingleAsync()).Status.Should().Be(OrderStatus.Processing);
+        (await m.Db.Orders.SingleAsync()).Status.Should().Be(OrderStatus.Pending,
+            "un pago a revisar no deja el alta atascada en Processing: el aspirante puede pagar con otro método.");
         (await m.Db.MemberProfiles.SingleAsync()).Status.Should().Be(MemberAccountStatus.Pending);
         (await m.Db.PaymentHistories.CountAsync()).Should().Be(0);
         m.Usuario.IsActive.Should().BeFalse();
@@ -188,6 +189,30 @@ public class EntraxSignupSettlementTests
     }
 
     [Fact]
+    public async Task A_revisar_con_otro_QR_vivo_del_pedido_el_pedido_sigue_en_Processing()
+    {
+        var m = await MontarAsync(remoto: EscenarioEntrax.Remoto("paid", original: 79m));
+        await EscenarioEntrax.SembrarPagoAsync(m.Db, paymentId: Guid.NewGuid().ToString(), intento: 2);
+
+        (await m.Liquidacion.SettleAsync(m.PagoId, EntraxSettlementSource.Webhook, default))
+            .Should().Be(EntraxSettlementOutcome.ToReview);
+        (await m.Db.Orders.AsNoTracking().SingleAsync()).Status.Should().Be(OrderStatus.Processing);
+    }
+
+    [Fact]
+    public async Task Un_pago_a_revisar_no_activa_nunca_aunque_el_pedido_haya_vuelto_a_Pending()
+    {
+        var m = await MontarAsync(remoto: EscenarioEntrax.Remoto("paid", original: 79m));
+        await m.Liquidacion.SettleAsync(m.PagoId, EntraxSettlementSource.Webhook, default);
+
+        // Un Re-check o un callback repetido del mismo pago, ahora con el pedido en Pending.
+        (await m.Liquidacion.SettleAsync(m.PagoId, EntraxSettlementSource.Admin, default))
+            .Should().Be(EntraxSettlementOutcome.AlreadyResolved);
+        (await m.Db.Orders.AsNoTracking().SingleAsync()).Status.Should().Be(OrderStatus.Pending);
+        (await m.Db.MemberProfiles.AsNoTracking().SingleAsync()).Status.Should().Be(MemberAccountStatus.Pending);
+    }
+
+    [Fact]
     public async Task Un_pago_que_Entrax_atribuye_a_otro_pedido_no_se_aplica()
     {
         var m = await MontarAsync(remoto: EscenarioEntrax.Remoto("paid", orderId: "SIGNUP-OTRO-1"));
@@ -195,7 +220,8 @@ public class EntraxSignupSettlementTests
         (await m.Liquidacion.SettleAsync(m.PagoId, EntraxSettlementSource.Webhook, default))
             .Should().Be(EntraxSettlementOutcome.ToReview);
         (await Fila(m)).FailureCode.Should().Be("PROVIDER_MISMATCH");
-        (await m.Db.Orders.SingleAsync()).Status.Should().Be(OrderStatus.Processing);
+        (await m.Db.Orders.SingleAsync()).Status.Should().Be(OrderStatus.Pending,
+            "un pago a revisar no deja el alta atascada en Processing: el aspirante puede pagar con otro método.");
     }
 
     [Theory]
