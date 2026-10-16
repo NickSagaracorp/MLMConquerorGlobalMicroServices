@@ -37,7 +37,7 @@
             <div class="btn-group btn-group-sm">
                 <button class="btn @(_view == "open" ? "btn-primary" : "btn-outline-primary")" @onclick='() => ChangeView("open")'>Awaiting payment</button>
                 <button class="btn @(_view == "review" ? "btn-primary" : "btn-outline-primary")" @onclick='() => ChangeView("review")'>To review</button>
-                <button class="btn @(_view == "recent" ? "btn-primary" : "btn-outline-primary")" @onclick='() => ChangeView("recent")'>Recent</button>
+                <button class="btn @(_view == "recent" ? "btn-primary" : "btn-outline-primary")" @onclick='() => ChangeView("recent")'>Recent (30 days)</button>
             </div>
             <button class="btn btn-sm btn-outline-secondary" @onclick="LoadAsync" disabled="@_loading">
                 <i class="ri-refresh-line"></i> Refresh
@@ -58,9 +58,9 @@
         }
         else
         {
-            <SfGrid TValue="EntraxSignupRowDto" DataSource="@_rows"
-                    AllowFiltering="true" AllowSorting="true" AllowResizing="true" GridLines="GridLine.Horizontal">
-                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+            @* Sin filtro ni ordenación del grid: solo actuarían sobre la página cargada. Las vistas de
+               arriba filtran en el servidor y el orden es siempre del más reciente al más antiguo. *@
+            <SfGrid TValue="EntraxSignupRowDto" DataSource="@_rows" AllowResizing="true" GridLines="GridLine.Horizontal">
                 <GridColumns>
                     <GridColumn HeaderText="Created" Width="140">
                         <Template>
@@ -198,6 +198,10 @@
         }
         catch (Exception ex)
         {
+            // Sin lista: lo que hubiera es de otra vista o de otra página y engañaría.
+            _rows       = new();
+            _totalCount = 0;
+            _totalPages = 1;
             _alertMsg = $"Error: {ex.Message}";
             _alertIsError = true;
         }
@@ -206,6 +210,7 @@
 
     private async Task RecheckAsync(EntraxSignupRowDto row)
     {
+        if (_busyId is not null) return;   // doble clic: un Re-check a la vez
         _busyId = row.Id;
         try
         {
@@ -218,6 +223,11 @@
                 _alertMsg     = $"{row.MemberId}: {OutcomeText(payload.Data.Outcome)}";
                 _alertIsError = payload.Data.Outcome is "ToReview" or "ProviderUnavailable" or "Failed";
                 await LoadAsync();
+            }
+            else if (resp.StatusCode is System.Net.HttpStatusCode.Forbidden or System.Net.HttpStatusCode.Unauthorized)
+            {
+                _alertMsg     = "You do not have permission to re-check Entrax payments.";
+                _alertIsError = true;
             }
             else
             {

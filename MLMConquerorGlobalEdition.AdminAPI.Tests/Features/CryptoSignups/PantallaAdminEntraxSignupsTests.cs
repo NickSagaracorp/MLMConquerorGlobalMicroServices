@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text.RegularExpressions;
 using MLMConquerorGlobalEdition.AdminAPI.Controllers;
 
@@ -50,17 +51,36 @@ public class PantallaAdminEntraxSignupsTests
     }
 
     [Fact]
-    public void La_fila_de_la_pagina_tiene_los_campos_del_controlador_en_el_mismo_orden()
+    public void La_fila_de_la_pagina_tiene_los_campos_del_controlador_con_su_tipo_y_en_el_mismo_orden()
     {
         var m = Regex.Match(Pagina(), @"private record EntraxSignupRowDto\((?<campos>[^)]*)\)", RegexOptions.Singleline);
         m.Success.Should().BeTrue();
 
-        var nombres = m.Groups["campos"].Value
+        var deLaPagina = m.Groups["campos"].Value
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(c => c.Split(' ', StringSplitOptions.RemoveEmptyEntries).Last());
+            .Select(c => c.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            .Select(p => $"{p[0]} {p[1]}");
 
-        nombres.Should().Equal(typeof(AdminEntraxSignupsController.EntraxSignupRowDto)
-            .GetConstructors().Single().GetParameters().Select(p => p.Name!));
+        var nulabilidad = new NullabilityInfoContext();
+        var delControlador = typeof(AdminEntraxSignupsController.EntraxSignupRowDto)
+            .GetConstructors().Single().GetParameters()
+            .Select(p => $"{Alias(p, nulabilidad)} {p.Name}");
+
+        deLaPagina.Should().Equal(delControlador);
+    }
+
+    /// <summary>El tipo tal como se escribe en C#: <c>string?</c>, <c>decimal?</c>, <c>DateTime</c>…</summary>
+    private static string Alias(ParameterInfo p, NullabilityInfoContext ctx)
+    {
+        var tipo     = Nullable.GetUnderlyingType(p.ParameterType) ?? p.ParameterType;
+        var anulable = Nullable.GetUnderlyingType(p.ParameterType) is not null
+                       || ctx.Create(p).WriteState == NullabilityState.Nullable;
+        var nombre = tipo == typeof(string)  ? "string"
+                   : tipo == typeof(decimal) ? "decimal"
+                   : tipo == typeof(int)     ? "int"
+                   : tipo == typeof(bool)    ? "bool"
+                   : tipo.Name;
+        return anulable ? nombre + "?" : nombre;
     }
 
     [Fact]
@@ -70,6 +90,35 @@ public class PantallaAdminEntraxSignupsTests
 
         pagina.Should().Contain("<SfGrid TValue=\"EntraxSignupRowDto\"");
         pagina.Should().NotContain("QrLink");
+    }
+
+    [Fact]
+    public void El_grid_no_filtra_ni_ordena_porque_solo_veria_la_pagina_cargada()
+    {
+        var grid = Regex.Match(Pagina(), @"<SfGrid TValue=""EntraxSignupRowDto""[^>]*>", RegexOptions.Singleline).Value;
+
+        grid.Should().NotContain("AllowFiltering").And.NotContain("AllowSorting");
+        Pagina().Should().NotContain("<GridFilterSettings");
+    }
+
+    [Fact]
+    public void Re_check_ignora_el_doble_clic_y_explica_un_403()
+    {
+        var pagina = Pagina();
+        var recheck = pagina[pagina.IndexOf("private async Task RecheckAsync", StringComparison.Ordinal)..];
+
+        recheck.Should().Contain("if (_busyId is not null) return;");
+        recheck.Should().Contain("HttpStatusCode.Forbidden").And.Contain("permission");
+    }
+
+    [Fact]
+    public void Un_error_al_cargar_vacia_la_lista()
+    {
+        var pagina = Pagina();
+        var carga = pagina[pagina.IndexOf("private async Task LoadAsync", StringComparison.Ordinal)..];
+        var catchDeCarga = carga[carga.IndexOf("catch", StringComparison.Ordinal)..carga.IndexOf("finally", StringComparison.Ordinal)];
+
+        catchDeCarga.Should().Contain("_rows").And.Contain("_totalCount = 0");
     }
 
     [Fact]

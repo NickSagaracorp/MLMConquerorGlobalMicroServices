@@ -27,7 +27,8 @@ public class AdminEntraxSignupsControllerTests
     private static readonly DateTime Now = new(2026, 10, 16, 10, 0, 0);
 
     private sealed class Captura(HttpStatusCode codigo = HttpStatusCode.OK,
-        string cuerpo = "{\"success\":true,\"data\":{\"outcome\":\"Activated\"}}") : HttpMessageHandler
+        string cuerpo = "{\"success\":true,\"data\":{\"outcome\":\"Activated\"}}",
+        string tipo = "application/json") : HttpMessageHandler
     {
         public HttpRequestMessage? Peticion;
 
@@ -36,8 +37,21 @@ public class AdminEntraxSignupsControllerTests
             Peticion = r;
             return Task.FromResult(new HttpResponseMessage(codigo)
             {
-                Content = new StringContent(cuerpo, System.Text.Encoding.UTF8, "application/json")
+                Content = new StringContent(cuerpo, System.Text.Encoding.UTF8, tipo)
             });
+        }
+    }
+
+    /// <summary>No contesta nunca: espera hasta que le cancelen el token.</summary>
+    private sealed class Mudo : HttpMessageHandler
+    {
+        public readonly TaskCompletionSource Llamado = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage r, CancellationToken ct)
+        {
+            Llamado.TrySetResult();
+            await Task.Delay(Timeout.Infinite, ct);
+            throw new InvalidOperationException("inalcanzable");
         }
     }
 
@@ -54,7 +68,8 @@ public class AdminEntraxSignupsControllerTests
         return f;
     }
 
-    private static AdminEntraxSignupsController Build(AppDbContext db, IHttpClientFactory? f = null, string? bearer = null)
+    private static AdminEntraxSignupsController Build(AppDbContext db, IHttpClientFactory? f = null, string? bearer = null,
+        TimeSpan? recheckTimeout = null)
     {
         var ctx = new DefaultHttpContext();
         if (bearer is not null) ctx.Request.Headers.Authorization = bearer;
@@ -68,6 +83,7 @@ public class AdminEntraxSignupsControllerTests
         return new AdminEntraxSignupsController(db, f ?? Mock.Of<IHttpClientFactory>(), user.Object, clock.Object,
             NullLogger<AdminEntraxSignupsController>.Instance)
         {
+            RecheckTimeout    = recheckTimeout ?? AdminEntraxSignupsController.DefaultRecheckTimeout,
             ControllerContext = new ControllerContext { HttpContext = ctx }
         };
     }
@@ -82,7 +98,7 @@ public class AdminEntraxSignupsControllerTests
                 MemberType = MemberType.Ambassador, Status = MemberAccountStatus.Pending, EnrollDate = Now,
                 Country = "RU", CreatedBy = "seed", CreationDate = Now, LastUpdateDate = Now
             });
-        db.EntraxPayments.Add(new EntraxPayment
+        var pago = new EntraxPayment
         {
             Id = id, OrderId = $"ORD-{id}", MemberId = memberId, ExternalOrderId = $"SIGNUP-ORD-{id}-1",
             ExternalPaymentId = Guid.NewGuid().ToString(), Status = status, AmountUsd = 80m, AmountRub = 7640m,
@@ -90,7 +106,13 @@ public class AdminEntraxSignupsControllerTests
             Notes = "nota interna",
             FailureCode = status == EntraxPaymentStatus.ToReview ? "AMOUNT_TOO_LOW" : null,
             CreatedBy = "seed", CreationDate = creado ?? Now, LastUpdateDate = Now
-        });
+        };
+        db.EntraxPayments.Add(pago);
+        await db.SaveChangesAsync();
+
+        // El AuditInterceptor pone CreationDate = DateTime.Now al insertar; al modificar solo toca
+        // LastUpdateDate, así que la fecha de la prueba se fija en un segundo guardado.
+        pago.CreationDate = creado ?? Now;
         await db.SaveChangesAsync();
     }
 
@@ -281,5 +303,128 @@ public class AdminEntraxSignupsControllerTests
         var r = await Build(db, Fabrica(new Caido(new TaskCanceledException("timeout"))).Object).Recheck("p1");
 
         r.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status502BadGateway);
+    }
+
+    // ── Tiempo, cancelación y respuestas raras de SignupAPI ──────────────────────
+
+    [Fact]
+    public void El_Re_check_tiene_un_tiempo_maximo_de_20_s()
+        => AdminEntraxSignupsController.DefaultRecheckTimeout.Should().Be(TimeSpan.FromSeconds(20));
+
+    [Fact]
+    public async Task Si_SignupAPI_no_contesta_a_tiempo_es_502_y_queda_auditado()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await SeedAsync(db, "p1", EntraxPaymentStatus.AwaitingPayment);
+
+        var r = await Build(db, Fabrica(new Mudo()).Object, recheckTimeout: TimeSpan.FromMilliseconds(50)).Recheck("p1");
+
+        r.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status502BadGateway);
+        using var nuevo = JsonDocument.Parse(db.AuditTracking.Single().NewValues!);
+        nuevo.RootElement.GetProperty("Outcome").GetString().Should().Be("SIGNUP_API_UNAVAILABLE");
+    }
+
+    [Fact]
+    public async Task Si_el_administrador_cancela_se_audita_igualmente_y_se_relanza()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await SeedAsync(db, "p1", EntraxPaymentStatus.AwaitingPayment);
+        var mudo = new Mudo();
+        using var cts = new CancellationTokenSource();
+
+        var llamada = Build(db, Fabrica(mudo).Object).Recheck("p1", cts.Token);
+        await mudo.Llamado.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        cts.Cancel();
+
+        await ((Func<Task>)(() => llamada)).Should().ThrowAsync<OperationCanceledException>();
+        var fila = db.AuditTracking.Should().ContainSingle(
+            "SignupAPI pudo liquidar aunque el administrador cerrara la pantalla.").Subject;
+        using var nuevo = JsonDocument.Parse(fila.NewValues!);
+        nuevo.RootElement.GetProperty("HttpStatus").GetInt32().Should().Be(0);
+        nuevo.RootElement.GetProperty("Outcome").GetString().Should().Be(AdminEntraxSignupsController.ClientCancelled);
+    }
+
+    [Fact]
+    public async Task La_respuesta_siempre_es_application_json()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await SeedAsync(db, "p1", EntraxPaymentStatus.AwaitingPayment);
+        var captura = new Captura(cuerpo: "{\"success\":true,\"data\":{\"outcome\":\"StillPending\"}}", tipo: "text/html");
+
+        var r = await Build(db, Fabrica(captura).Object).Recheck("p1");
+
+        r.Should().BeOfType<ContentResult>().Which.ContentType.Should().Be("application/json");
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.OK, "<html>proxy</html>")]
+    [InlineData(HttpStatusCode.BadGateway, "Bad gateway")]
+    [InlineData(HttpStatusCode.OK, "")]
+    public async Task Un_cuerpo_que_no_es_JSON_es_502(HttpStatusCode codigo, string cuerpo)
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await SeedAsync(db, "p1", EntraxPaymentStatus.AwaitingPayment);
+
+        var r = await Build(db, Fabrica(new Captura(codigo, cuerpo, "text/html")).Object).Recheck("p1");
+
+        var obj = r.Should().BeOfType<ObjectResult>().Subject;
+        obj.StatusCode.Should().Be(StatusCodes.Status502BadGateway);
+        obj.Value.Should().BeOfType<ApiResponse<object>>().Which.ErrorCode.Should().Be("SIGNUP_API_UNAVAILABLE");
+        using var nuevo = JsonDocument.Parse(db.AuditTracking.Single().NewValues!);
+        nuevo.RootElement.GetProperty("HttpStatus").GetInt32().Should().Be((int)codigo);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    public async Task Un_401_o_403_sin_cuerpo_de_SignupAPI_llega_como_tal(HttpStatusCode codigo)
+    {
+        // El [Authorize] de SignupAPI rechaza sin cuerpo; convertirlo en 502 escondería un problema de permisos.
+        await using var db = InMemoryDbHelper.Create();
+        await SeedAsync(db, "p1", EntraxPaymentStatus.AwaitingPayment);
+
+        var r = await Build(db, Fabrica(new Captura(codigo, "", "text/plain")).Object).Recheck("p1");
+
+        var obj = r.Should().BeOfType<ObjectResult>().Subject;
+        obj.StatusCode.Should().Be((int)codigo);
+        obj.Value.Should().BeOfType<ApiResponse<object>>().Which.ErrorCode.Should().Be("FORBIDDEN");
+    }
+
+    // ── Límites de la lista ──────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Una_pagina_enorme_no_desborda()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await SeedAsync(db, "p1", EntraxPaymentStatus.Paid);
+
+        var pagina = Pagina(await Build(db).List(AdminEntraxSignupsController.ViewRecent, int.MaxValue,
+            AdminEntraxSignupsController.MaxPageSize));
+
+        pagina.Items.Should().BeEmpty();
+        pagina.TotalCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Recientes_solo_mira_los_ultimos_30_dias()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await SeedAsync(db, "viejo", EntraxPaymentStatus.Paid,
+            creado: Now.AddDays(-AdminEntraxSignupsController.RecentDays).AddMinutes(-1));
+        await SeedAsync(db, "nuevo", EntraxPaymentStatus.Paid,
+            creado: Now.AddDays(-AdminEntraxSignupsController.RecentDays).AddMinutes(1));
+
+        Filas(await Build(db).List(AdminEntraxSignupsController.ViewRecent)).Select(f => f.Id).Should().Equal("nuevo");
+        AdminEntraxSignupsController.RecentDays.Should().Be(30);
+    }
+
+    [Fact]
+    public async Task A_revisar_no_tiene_limite_de_fecha()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await SeedAsync(db, "p1", EntraxPaymentStatus.ToReview, creado: Now.AddDays(-400));
+
+        Filas(await Build(db).List(AdminEntraxSignupsController.ViewReview)).Should().ContainSingle(
+            "un pago a revisar tiene dinero en juego hasta que alguien lo resuelve.");
     }
 }

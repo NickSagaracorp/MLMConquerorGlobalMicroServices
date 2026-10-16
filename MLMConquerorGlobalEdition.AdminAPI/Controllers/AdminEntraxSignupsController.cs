@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.AdminAPI.Services;
 using MLMConquerorGlobalEdition.Domain.Entities.General;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Repository.Context;
@@ -36,11 +37,23 @@ public class AdminEntraxSignupsController : ControllerBase
     public const int DefaultPageSize = 50;
     public const int MaxPageSize     = 200;
 
+    /// <summary>
+    /// "Recientes" mira solo estos días: sin filtro de estado no hay índice que la sostenga (el que hay
+    /// es Status + CreationDate) y la tabla crece con cada QR. Esperando y a revisar no tienen límite.
+    /// </summary>
+    public const int RecentDays = 30;
+
+    /// <summary>Tope del Re-check: Entrax + activación. Si no contesta, 502 y se puede repetir.</summary>
+    public static readonly TimeSpan DefaultRecheckTimeout = TimeSpan.FromSeconds(20);
+
     /// <summary>Acción de la fila de AuditTracking que deja cada Re-check.</summary>
     public const string AuditRecheck = "EntraxRecheck";
 
-    /// <summary>Lo que se audita cuando SignupAPI no contestó.</summary>
+    /// <summary>Lo que se audita cuando SignupAPI no contestó (o no contestó un JSON).</summary>
     public const string SignupApiUnavailable = "SIGNUP_API_UNAVAILABLE";
+
+    /// <summary>Lo que se audita cuando el administrador cerró la petición antes de la respuesta.</summary>
+    public const string ClientCancelled = "CLIENT_CANCELLED";
 
     private readonly AppDbContext                           _db;
     private readonly IHttpClientFactory                     _httpFactory;
@@ -59,20 +72,25 @@ public class AdminEntraxSignupsController : ControllerBase
         _logger      = logger;
     }
 
+    /// <summary>Tope del Re-check; las pruebas lo acortan.</summary>
+    public TimeSpan RecheckTimeout { get; init; } = DefaultRecheckTimeout;
+
     /// <summary>GET api/v1/admin/entrax-signups?view=open|review|recent&amp;page=1&amp;pageSize=50</summary>
     [HttpGet]
     public async Task<IActionResult> List(
         [FromQuery] string? view = ViewOpen, [FromQuery] int page = 1, [FromQuery] int pageSize = DefaultPageSize,
         CancellationToken ct = default)
     {
-        page     = Math.Max(1, page);
         pageSize = pageSize < 1 ? DefaultPageSize : Math.Min(pageSize, MaxPageSize);
+        // Acotada para que (page - 1) * pageSize quepa en un int.
+        page     = Math.Clamp(page, 1, int.MaxValue / pageSize);
 
-        var payments = _db.EntraxPayments.AsNoTracking();
+        var recentFrom = _clock.Now.AddDays(-RecentDays);
+        var payments   = _db.EntraxPayments.AsNoTracking();
         payments = view switch
         {
             ViewReview => payments.Where(p => p.Status == EntraxPaymentStatus.ToReview),
-            ViewRecent => payments,
+            ViewRecent => payments.Where(p => p.CreationDate >= recentFrom),
             _          => payments.Where(p => p.Status == EntraxPaymentStatus.AwaitingPayment)
         };
 
@@ -129,37 +147,72 @@ public class AdminEntraxSignupsController : ControllerBase
         if (before is null)
             return NotFound(ApiResponse<object>.Fail("ENTRAX_PAYMENT_NOT_FOUND", "Payment not found."));
 
-        var http = _httpFactory.CreateClient("SignupApi");
+        var http = _httpFactory.CreateClient(SignupApiRegistration.HttpClientName);
         using var request = new HttpRequestMessage(HttpMethod.Post, $"api/v1/signups/entrax/{Uri.EscapeDataString(id)}/recheck");
 
         var bearer = Request.Headers.Authorization.ToString();
         if (!string.IsNullOrWhiteSpace(bearer) && AuthenticationHeaderValue.TryParse(bearer, out var parsed))
             request.Headers.Authorization = parsed;
 
-        HttpResponseMessage resp;
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(RecheckTimeout);
+
+        int     status;
+        string  body;
         try
         {
-            resp = await http.SendAsync(request, ct);
+            using var resp = await http.SendAsync(request, timeout.Token);
+            status = (int)resp.StatusCode;
+            // Con ResponseContentRead el cuerpo ya está en memoria: leerlo no depende del token.
+            body   = await resp.Content.ReadAsStringAsync(CancellationToken.None);
         }
-        catch (Exception ex) when (ex is HttpRequestException
-                                   || (ex is TaskCanceledException && !ct.IsCancellationRequested))
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            // No se sabe si SignupAPI llegó a liquidar; es idempotente, así que repetir es seguro.
+            // El administrador cerró la pantalla; SignupAPI pudo liquidar igualmente. Queda auditado.
+            await AuditAsync(id, before.Value, httpStatus: 0, ClientCancelled);
+            throw;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+        {
+            // Caído o sin respuesta a tiempo: no se sabe si llegó a liquidar; es idempotente, repetir es seguro.
             await AuditAsync(id, before.Value, httpStatus: 0, SignupApiUnavailable);
-            return StatusCode(StatusCodes.Status502BadGateway,
-                ApiResponse<object>.Fail(SignupApiUnavailable, "The signup service is not reachable. Try again."));
+            return Unavailable();
         }
 
-        using (resp)
+        if (!IsJsonObject(body))
         {
-            var body = await resp.Content.ReadAsStringAsync(ct);
-            await AuditAsync(id, before.Value, (int)resp.StatusCode, OutcomeOf(body));
-            return new ContentResult
+            // El [Authorize] de SignupAPI rechaza sin cuerpo: un problema de permisos no es un servicio caído.
+            if (status is StatusCodes.Status401Unauthorized or StatusCodes.Status403Forbidden)
             {
-                Content     = body,
-                ContentType = resp.Content.Headers.ContentType?.ToString() ?? "application/json",
-                StatusCode  = (int)resp.StatusCode
-            };
+                await AuditAsync(id, before.Value, status, "FORBIDDEN");
+                return StatusCode(status, ApiResponse<object>.Fail("FORBIDDEN",
+                    "You do not have permission to re-check Entrax payments."));
+            }
+
+            // Un proxy o una página de error delante de SignupAPI: no se reenvía a la pantalla.
+            await AuditAsync(id, before.Value, status, SignupApiUnavailable);
+            return Unavailable();
+        }
+
+        await AuditAsync(id, before.Value, status, OutcomeOf(body));
+        return new ContentResult { Content = body, ContentType = "application/json", StatusCode = status };
+    }
+
+    private ObjectResult Unavailable() =>
+        StatusCode(StatusCodes.Status502BadGateway,
+            ApiResponse<object>.Fail(SignupApiUnavailable, "The signup service is not reachable. Try again."));
+
+    private static bool IsJsonObject(string body)
+    {
+        if (string.IsNullOrWhiteSpace(body)) return false;
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            return doc.RootElement.ValueKind == JsonValueKind.Object;
+        }
+        catch (JsonException)
+        {
+            return false;
         }
     }
 
