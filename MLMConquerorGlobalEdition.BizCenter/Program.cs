@@ -107,6 +107,8 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Commiss
 
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Commissions.IDailyResidualReportService,
                             MLMConquerorGlobalEdition.Repository.Services.Commissions.DailyResidualReportService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IEnrollmentActivityService,
+                            MLMConquerorGlobalEdition.Repository.Services.Teams.EnrollmentActivityService>();
 
 // "Mis enlaces" (Plan J): plantillas de appsettings validadas al arrancar. Con una plantilla
 // inválida el BizCenter no arranca (R11). Sin sección no hay enlaces, y arranca. Un
