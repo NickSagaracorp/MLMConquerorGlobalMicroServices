@@ -1,0 +1,126 @@
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inject IStringLocalizer<SharedResources> L
+@using System.Net.Http.Json
+@using Microsoft.Extensions.Localization
+@using Microsoft.JSInterop
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
+
+@*
+    "Mis enlaces" (Plan J). Componente único: la ruta del API entra por parámetro, así sirve al
+    BizCenter y a cualquier portal que exponga el mismo endpoint. Los enlaces los construye el
+    servidor con el slug del miembro del token; aquí solo se pintan y se copian.
+*@
+
+<div class="card bg-white border-0 rounded-3 mb-4 my-links">
+    <div class="card-body p-4">
+        <h5 class="fw-semibold mb-3"><i class="ri-links-line me-2 text-primary"></i>@L["Sidebar.MyLinks"]</h5>
+
+        @if (_loading)
+        {
+            <LoadingSpinner IsLoading="true" />
+        }
+        else if (_error || _data is null)
+        {
+            <div class="alert alert-danger my-links-error">@L["MyLinks.LoadFailed"]</div>
+        }
+        else
+        {
+            <h6 class="fw-semibold mt-2">@L["MyLinks.Personal"]</h6>
+            @if (_data.SlugMissing)
+            {
+                <div class="alert alert-warning my-links-noslug">
+                    @L["MyLinks.NoSlug"]
+                    <a href="@ProfileUrl" class="alert-link ms-1">@L["MyLinks.GoToProfile"]</a>
+                </div>
+            }
+            else
+            {
+                @RenderList(_data.Personal)
+            }
+
+            <h6 class="fw-semibold mt-4">@L["MyLinks.Corporate"]</h6>
+            @RenderList(_data.Corporate)
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>Raíz del API; el componente llama a <c>{ApiBaseUrl}/my-links</c>.</summary>
+    [Parameter] public string ApiBaseUrl { get; set; } = "api/v1/bizcenter";
+
+    /// <summary>Dónde se configura el slug (la tarjeta WebsiteSlugCard del perfil).</summary>
+    [Parameter] public string ProfileUrl { get; set; } = "/profile";
+
+    private bool      _loading = true;
+    private bool      _error;
+    private LinksDto? _data;
+    private string?   _copiedKey;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<LinksDto>>($"{ApiBaseUrl}/my-links");
+            if (resp?.Success == true && resp.Data is not null) _data = resp.Data;
+            else _error = true;
+        }
+        catch (Exception)
+        {
+            _error = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task CopyAsync(LinkDto link)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", link.Url);
+            _copiedKey = link.Key;
+        }
+        catch (JSException)
+        {
+            _copiedKey = null;
+        }
+    }
+
+    private RenderFragment RenderList(List<LinkDto> links) => __builder =>
+    {
+        <ul class="list-group list-group-flush">
+            @foreach (var link in links)
+            {
+                <li class="list-group-item d-flex align-items-center gap-2 px-0 my-link" data-key="@link.Key">
+                    <div class="flex-grow-1 text-truncate">
+                        <div class="fw-medium">@link.Label</div>
+                        <a href="@link.Url" target="_blank" rel="noopener noreferrer" class="small text-break">@link.Url</a>
+                    </div>
+                    <button type="button" class="btn btn-outline-primary btn-sm my-link-copy"
+                            aria-label="@($"{L["MyLinks.Copy"]} {link.Label}")"
+                            @onclick="() => CopyAsync(link)">
+                        @(_copiedKey == link.Key ? L["MyLinks.Copied"] : L["MyLinks.Copy"])
+                    </button>
+                </li>
+            }
+        </ul>
+    };
+
+    private sealed class ApiWrapper<T> { public bool Success { get; set; } public T? Data { get; set; } }
+
+    private sealed class LinksDto
+    {
+        public bool          SlugMissing { get; set; }
+        public List<LinkDto> Personal    { get; set; } = new();
+        public List<LinkDto> Corporate   { get; set; } = new();
+    }
+
+    private sealed class LinkDto
+    {
+        public string Key   { get; set; } = string.Empty;
+        public string Label { get; set; } = string.Empty;
+        public string Url   { get; set; } = string.Empty;
+    }
+}
