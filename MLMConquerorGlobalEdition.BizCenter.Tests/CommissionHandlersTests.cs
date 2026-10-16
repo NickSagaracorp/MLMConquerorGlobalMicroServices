@@ -14,6 +14,9 @@ namespace MLMConquerorGlobalEdition.BizCenter.Tests;
 
 public class CommissionHandlersTests : IDisposable
 {
+    /// <summary>Reloj de servidor fijo: las pruebas no dependen del día en que se ejecutan.</summary>
+    private static readonly RelojFijo Reloj = new(new DateTime(2026, 3, 15, 10, 0, 0));
+
     private const string MemberId = "member-comm-001";
 
     // Category IDs as defined in each handler
@@ -62,8 +65,8 @@ public class CommissionHandlersTests : IDisposable
             CommissionTypeId    = typeId,
             Amount              = amount,
             Status              = status,
-            EarnedDate          = DateTime.UtcNow,
-            PaymentDate         = DateTime.UtcNow
+            EarnedDate          = Reloj.Now,
+            PaymentDate         = Reloj.Now
         };
         _db.CommissionEarnings.Add(e);
         return e;
@@ -78,7 +81,7 @@ public class CommissionHandlersTests : IDisposable
         SeedEarning(MemberId, type.Id, 200m);
         await _db.SaveChangesAsync();
 
-        var handler = new GetFastStartBonusCommissionsHandler(new CommissionsService(_db, new RelojFijo(DateTime.Now)), _currentUser.Object);
+        var handler = new GetFastStartBonusCommissionsHandler(new CommissionsService(_db, Reloj), _currentUser.Object);
         var result  = await handler.Handle(new GetFastStartBonusCommissionsQuery(1, 20), default);
 
         result.IsSuccess.Should().BeTrue();
@@ -89,7 +92,7 @@ public class CommissionHandlersTests : IDisposable
     [Fact]
     public async Task FastStartBonus_WhenNoFsbEarnings_ReturnsEmptyPage()
     {
-        var handler = new GetFastStartBonusCommissionsHandler(new CommissionsService(_db, new RelojFijo(DateTime.Now)), _currentUser.Object);
+        var handler = new GetFastStartBonusCommissionsHandler(new CommissionsService(_db, Reloj), _currentUser.Object);
         var result  = await handler.Handle(new GetFastStartBonusCommissionsQuery(1, 20), default);
 
         result.IsSuccess.Should().BeTrue();
@@ -105,7 +108,7 @@ public class CommissionHandlersTests : IDisposable
         SeedEarning("other-member", type.Id, 500m);
         await _db.SaveChangesAsync();
 
-        var handler = new GetFastStartBonusCommissionsHandler(new CommissionsService(_db, new RelojFijo(DateTime.Now)), _currentUser.Object);
+        var handler = new GetFastStartBonusCommissionsHandler(new CommissionsService(_db, Reloj), _currentUser.Object);
         var result  = await handler.Handle(new GetFastStartBonusCommissionsQuery(1, 20), default);
 
         result.Value!.TotalCount.Should().Be(0);
@@ -119,7 +122,7 @@ public class CommissionHandlersTests : IDisposable
         for (int i = 0; i < 5; i++) SeedEarning(MemberId, type.Id, 100m * (i + 1));
         await _db.SaveChangesAsync();
 
-        var handler = new GetFastStartBonusCommissionsHandler(new CommissionsService(_db, new RelojFijo(DateTime.Now)), _currentUser.Object);
+        var handler = new GetFastStartBonusCommissionsHandler(new CommissionsService(_db, Reloj), _currentUser.Object);
         var result  = await handler.Handle(new GetFastStartBonusCommissionsQuery(1, 3), default);
 
         result.Value!.TotalCount.Should().Be(5);
@@ -135,7 +138,7 @@ public class CommissionHandlersTests : IDisposable
         SeedEarning(MemberId, type.Id, 75m);
         await _db.SaveChangesAsync();
 
-        var handler = new GetDualResidualCommissionsHandler(new CommissionsService(_db, new RelojFijo(DateTime.Now)), _currentUser.Object);
+        var handler = new GetDualResidualCommissionsHandler(new CommissionsService(_db, Reloj), _currentUser.Object);
         var result  = await handler.Handle(new GetDualResidualCommissionsQuery(1, 20), default);
 
         result.IsSuccess.Should().BeTrue();
@@ -146,7 +149,7 @@ public class CommissionHandlersTests : IDisposable
     [Fact]
     public async Task DualResidual_WhenNoEarnings_ReturnsEmptyPage()
     {
-        var handler = new GetDualResidualCommissionsHandler(new CommissionsService(_db, new RelojFijo(DateTime.Now)), _currentUser.Object);
+        var handler = new GetDualResidualCommissionsHandler(new CommissionsService(_db, Reloj), _currentUser.Object);
         var result  = await handler.Handle(new GetDualResidualCommissionsQuery(1, 20), default);
 
         result.IsSuccess.Should().BeTrue();
@@ -161,7 +164,7 @@ public class CommissionHandlersTests : IDisposable
         SeedEarning(MemberId, fsbType.Id, 300m);
         await _db.SaveChangesAsync();
 
-        var handler = new GetDualResidualCommissionsHandler(new CommissionsService(_db, new RelojFijo(DateTime.Now)), _currentUser.Object);
+        var handler = new GetDualResidualCommissionsHandler(new CommissionsService(_db, Reloj), _currentUser.Object);
         var result  = await handler.Handle(new GetDualResidualCommissionsQuery(1, 20), default);
 
         result.Value!.TotalCount.Should().Be(0);
@@ -176,7 +179,7 @@ public class CommissionHandlersTests : IDisposable
         SeedEarning(MemberId, type.Id, 500m);
         await _db.SaveChangesAsync();
 
-        var handler = new GetBoostBonusCommissionsHandler(new CommissionsService(_db, new RelojFijo(DateTime.Now)), _currentUser.Object);
+        var handler = new GetBoostBonusCommissionsHandler(new CommissionsService(_db, Reloj), _currentUser.Object);
         var result  = await handler.Handle(new GetBoostBonusCommissionsQuery(1, 20), default);
 
         result.IsSuccess.Should().BeTrue();
@@ -193,7 +196,7 @@ public class CommissionHandlersTests : IDisposable
         SeedEarning(MemberId, type.Id, 1000m);
         await _db.SaveChangesAsync();
 
-        var handler = new GetBoostBonusCommissionsHandler(new CommissionsService(_db, new RelojFijo(DateTime.Now)), _currentUser.Object);
+        var handler = new GetBoostBonusCommissionsHandler(new CommissionsService(_db, Reloj), _currentUser.Object);
         var result  = await handler.Handle(new GetBoostBonusCommissionsQuery(1, 20), default);
 
         result.Value!.TotalCount.Should().Be(0);
@@ -202,7 +205,7 @@ public class CommissionHandlersTests : IDisposable
     [Fact]
     public async Task BoostBonus_WhenNoBoostEarnings_ReturnsEmptyPage()
     {
-        var handler = new GetBoostBonusCommissionsHandler(new CommissionsService(_db, new RelojFijo(DateTime.Now)), _currentUser.Object);
+        var handler = new GetBoostBonusCommissionsHandler(new CommissionsService(_db, Reloj), _currentUser.Object);
         var result  = await handler.Handle(new GetBoostBonusCommissionsQuery(1, 20), default);
 
         result.IsSuccess.Should().BeTrue();
@@ -218,7 +221,7 @@ public class CommissionHandlersTests : IDisposable
         SeedEarning(MemberId, type.Id, 2000m);
         await _db.SaveChangesAsync();
 
-        var handler = new GetPresidentialBonusCommissionsHandler(new CommissionsService(_db, new RelojFijo(DateTime.Now)), _currentUser.Object);
+        var handler = new GetPresidentialBonusCommissionsHandler(new CommissionsService(_db, Reloj), _currentUser.Object);
         var result  = await handler.Handle(new GetPresidentialBonusCommissionsQuery(1, 20), default);
 
         result.IsSuccess.Should().BeTrue();
@@ -234,7 +237,7 @@ public class CommissionHandlersTests : IDisposable
         SeedEarning(MemberId, type.Id, 500m);
         await _db.SaveChangesAsync();
 
-        var handler = new GetPresidentialBonusCommissionsHandler(new CommissionsService(_db, new RelojFijo(DateTime.Now)), _currentUser.Object);
+        var handler = new GetPresidentialBonusCommissionsHandler(new CommissionsService(_db, Reloj), _currentUser.Object);
         var result  = await handler.Handle(new GetPresidentialBonusCommissionsQuery(1, 20), default);
 
         result.Value!.TotalCount.Should().Be(0);
@@ -243,7 +246,7 @@ public class CommissionHandlersTests : IDisposable
     [Fact]
     public async Task PresidentialBonus_WhenNoEarnings_ReturnsEmptyPage()
     {
-        var handler = new GetPresidentialBonusCommissionsHandler(new CommissionsService(_db, new RelojFijo(DateTime.Now)), _currentUser.Object);
+        var handler = new GetPresidentialBonusCommissionsHandler(new CommissionsService(_db, Reloj), _currentUser.Object);
         var result  = await handler.Handle(new GetPresidentialBonusCommissionsQuery(1, 20), default);
 
         result.IsSuccess.Should().BeTrue();
