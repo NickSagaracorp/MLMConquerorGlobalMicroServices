@@ -28,6 +28,7 @@ public class SqlServerEntraxSettlementTests : IAsyncLifetime
     // MemberProfiles.MemberId y MembershipSubscriptions.MemberId son nvarchar(20).
     private readonly string _member = $"TST-{Guid.NewGuid():N}"[..20];
     private readonly string _order  = $"ORD-{Guid.NewGuid():N}"[..24];
+    private readonly string _otroPedido = $"ORX-{Guid.NewGuid():N}"[..24];
     private string Email => $"{_member}@example.com";
 
     public Task InitializeAsync() => Task.CompletedTask;
@@ -57,16 +58,17 @@ public class SqlServerEntraxSettlementTests : IAsyncLifetime
         await using var db = SqlServerTestDb.Db();
         var m = _member;
         var o = _order;
+        var o2 = _otroPedido;
         var prefix = $"SIGNUP-{o}-%";
         await db.Database.ExecuteSqlInterpolatedAsync($@"
             SET DEADLOCK_PRIORITY HIGH;
             DELETE FROM EntraxApiCalls WHERE ExternalOrderId LIKE {prefix};
-            DELETE FROM EntraxPayments WHERE OrderId = {o};
+            DELETE FROM EntraxPayments WHERE OrderId = {o} OR OrderId = {o2};
             DELETE FROM PaymentHistories WHERE OrderId = {o};
             DELETE FROM CryptoPaymentConfirmations WHERE OrderId = {o};
             DELETE FROM MemberStatisticDeltas WHERE SourceMemberId = {m};
             DELETE FROM MembershipSubscriptions WHERE MemberId = {m};
-            DELETE FROM Orders WHERE Id = {o};
+            DELETE FROM Orders WHERE Id = {o} OR Id = {o2};
             DELETE FROM MemberProfiles WHERE MemberId = {m};");
     }
 
@@ -264,6 +266,40 @@ public class SqlServerEntraxSettlementTests : IAsyncLifetime
         await Task.WhenAll(Servicio(dbA).GetAsync(_order, pagoId, default), Servicio(dbB).GetAsync(_order, pagoId, default));
 
         liquidacion.Verify(s => s.SettleAsync(pagoId, EntraxSettlementSource.Poll, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [SqlServerFact]
+    public async Task Si_el_orderId_del_intento_ya_existe_la_reserva_del_QR_es_ENTRAX_IN_PROGRESS()
+    {
+        // Otra petición del mismo alta reservó SIGNUP-{pedido}-1 (aquí, una fila de otro pedido con ese
+        // orderId externo): la clave única IX_EntraxPayments_ExternalOrderId salta (2601) y no se llama a Entrax.
+        await SembrarAsync(OrderStatus.Pending);
+        await using (var semilla = SqlServerTestDb.Db())
+        {
+            var now = DateTime.Now;
+            semilla.Orders.Add(new Orders
+            {
+                Id = _otroPedido, MemberId = _member, TotalAmount = 80m, Status = OrderStatus.Pending, OrderDate = now,
+                CreatedBy = "sql-test", CreationDate = now, LastUpdateDate = now
+            });
+            semilla.EntraxPayments.Add(new EntraxPayment
+            {
+                OrderId = _otroPedido, MemberId = _member, ExternalOrderId = EntraxPayment.BuildExternalOrderId(_order, 1),
+                Status = EntraxPaymentStatus.AwaitingPayment, AmountUsd = 80m, CreatedBy = "sql-test",
+                CreationDate = now, LastUpdateDate = now
+            });
+            await semilla.SaveChangesAsync();
+        }
+        var cliente = new Mock<IEntraxClient>();
+
+        await using var db = SqlServerTestDb.Db();
+        var r = await new EntraxSignupCheckout(db, cliente.Object, new EntraxOptions { Enabled = true },
+                NullLogger<EntraxSignupCheckout>.Instance, new SignupOrderClaim(db))
+            .StartAsync(await db.Orders.SingleAsync(o => o.Id == _order),
+                        await db.MemberProfiles.SingleAsync(m => m.MemberId == _member), DateTime.Now, default);
+
+        r.ErrorCode.Should().Be(EntraxSignupErrors.InProgress);
+        cliente.VerifyNoOtherCalls();
     }
 
     private EntraxSignupSettlement Liquidacion(AppDbContext db, IEntraxClient cliente)

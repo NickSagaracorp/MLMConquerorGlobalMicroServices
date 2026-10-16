@@ -1,3 +1,4 @@
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
@@ -58,8 +59,11 @@ public sealed class EntraxSignupCheckout : IEntraxSignupCheckout
 
     private static bool IsExternalOrderIdTaken(DbUpdateException ex)
     {
+        // Por el número de SQL Server (2601/2627, clave única) y el nombre del índice, igual que en la
+        // liquidación; si no es SQL Server (pruebas), por el nombre.
         for (Exception? e = ex; e is not null; e = e.InnerException)
-            if (e.Message.Contains(ExternalOrderIdIndex, StringComparison.OrdinalIgnoreCase))
+            if (e.Message.Contains(ExternalOrderIdIndex, StringComparison.OrdinalIgnoreCase)
+                && (e is not SqlException sql || sql.Number is 2601 or 2627))
                 return true;
         return false;
     }
