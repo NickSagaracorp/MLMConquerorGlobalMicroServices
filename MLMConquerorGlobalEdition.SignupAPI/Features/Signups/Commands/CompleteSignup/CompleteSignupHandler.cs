@@ -80,6 +80,9 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
     /// <summary>No hay sistema de códigos de descuento: el alta con DiscountCode no hace nada. 400.</summary>
     public const string DiscountCodesDisabledCode = "DISCOUNT_CODES_DISABLED";
 
+    /// <summary>Un método que no está en la lista de admitidos (también uno fuera del enum). 400.</summary>
+    public const string PaymentMethodNotSupportedCode = TokenPurchaseErrors.PaymentMethodNotSupported;
+
     /// <summary>El candado del dueño del token está ocupado: no se hizo nada y se puede repetir.</summary>
     public const string TokenBusyCode = "TOKEN_BUSY";
 
@@ -167,17 +170,27 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
         var req = command.Request;
         var now = _dateTime.Now;
 
-        // Antes de leer nada: un código de descuento no se puede validar contra nada, así que no paga nada.
-        if (req.PaymentMethod == PaymentMethodType.DiscountCode)
-            return Result<SignupResponse>.Failure(DiscountCodesDisabledCode,
-                "Discount codes are not available. Please choose another payment method.");
-
-        // Antes de leer nada: con la tarjeta apagada no se activa, no se guarda la tarjeta, no se sube la
-        // captura y el pedido no se reclama. Se mira el método, no si viene la tarjeta: sin cuerpo de
-        // tarjeta esta rama también activaba.
-        if (req.PaymentMethod == PaymentMethodType.CreditCard && !SignupCardPayments.IsEnabled(_configuration))
-            return Result<SignupResponse>.Failure(CardPaymentsDisabledCode,
-                "Card payments are not available right now. Please choose another payment method.");
+        // LISTA DE ADMITIDOS, antes de leer nada (ni pedido, ni captura, ni reclamo). Lo que no está aquí no
+        // llega a la rama que activa: un método nuevo, o un número fuera del enum, no puede activar sin que
+        // alguien decida cómo cobra.
+        //  - Token, Crypto y Entrax: cada uno tiene su cobro o su espera más abajo.
+        //  - CreditCard: solo con Signup:CardEnabled. Apagada, no se activa, no se guarda la tarjeta, no se
+        //    sube la captura y el pedido no se reclama. (Sin el cuerpo creditCard la petición ni llega aquí: la
+        //    validación del modelo la rechaza antes con su 400.)
+        //  - DiscountCode: no existe sistema de códigos que validar; nunca paga nada.
+        var methodRejection = req.PaymentMethod switch
+        {
+            PaymentMethodType.Token or PaymentMethodType.Crypto or PaymentMethodType.Entrax => null,
+            PaymentMethodType.CreditCard when SignupCardPayments.IsEnabled(_configuration) => null,
+            PaymentMethodType.CreditCard => Result<SignupResponse>.Failure(CardPaymentsDisabledCode,
+                "Card payments are not available right now. Please choose another payment method."),
+            PaymentMethodType.DiscountCode => Result<SignupResponse>.Failure(DiscountCodesDisabledCode,
+                "Discount codes are not available. Please choose another payment method."),
+            _ => Result<SignupResponse>.Failure(PaymentMethodNotSupportedCode,
+                "Payment method not supported. Please choose another payment method.")
+        };
+        if (methodRejection is not null)
+            return methodRejection;
 
         // La moneda se valida contra las direcciones configuradas ANTES de tocar nada, igual que
         // Billing en la compra de tokens: aceptar un alta en una moneda sin dirección deja al

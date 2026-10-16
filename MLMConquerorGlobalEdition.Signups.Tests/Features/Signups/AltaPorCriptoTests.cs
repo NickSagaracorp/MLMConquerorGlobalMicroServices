@@ -281,13 +281,11 @@ public class AltaPorCriptoTests
         Mock<UserManager<ApplicationUser>> userMgr,
         ISponsorBonusService sponsor,
         IFastStartBonusService fsb,
-        IRecurringBillingEnrollmentService recurring,
-        bool tarjetaEncendida = false)
+        IRecurringBillingEnrollmentService recurring)
         => new(db, Clock(FixedNow).Object, S3().Object, userMgr.Object, Jwt().Object,
                Encryption().Object, TokenRedemption().Object,
                new SignupActivationService(db, sponsor, fsb, recurring), Addresses(),
-               new PuertaDeFondosDePrueba(db),
-               configuration: tarjetaEncendida ? TarjetaDelAlta.Encendida() : TarjetaDelAlta.Apagada());
+               new PuertaDeFondosDePrueba(db));
 
     private static ConfirmCryptoPaymentHandler BuildConfirmHandler(
         AppDbContext db,
@@ -668,7 +666,6 @@ public class AltaPorCriptoTests
 
     [Theory]
     [InlineData(PaymentMethodType.Token)]
-    [InlineData(PaymentMethodType.CreditCard)]
     public async Task Completar_PorLasViasQueYaCobraron_SigueActivandoYComisionando(PaymentMethodType metodo)
     {
         await using var db = InMemoryDbHelper.Create();
@@ -677,10 +674,9 @@ public class AltaPorCriptoTests
         var appUser = BuildInactiveUser();
         var sponsor = SponsorBonus();
 
-        // La tarjeta del alta va apagada por defecto (Signup:CardEnabled): aquí se enciende a propósito.
+        // Solo el token: la tarjeta no cobra (Signup:CardEnabled apagado) y el código de descuento no existe.
         var handler = BuildCompleteHandler(db, UserMgr(appUser),
-            sponsor.Object, FastStartBonus().Object, RecurringBilling().Object,
-            tarjetaEncendida: metodo == PaymentMethodType.CreditCard);
+            sponsor.Object, FastStartBonus().Object, RecurringBilling().Object);
 
         var request = new CompleteSignupRequest
         {
