@@ -1447,4 +1447,12 @@
   <data name="Team.CustomersScopePersonal" xml:space="preserve"><value>Pessoais</value></data>
   <data name="Team.CustomersScopeTeam" xml:space="preserve"><value>Toda a equipe</value></data>
   <data name="Team.ContactOnlyPersonal" xml:space="preserve"><value>Os dados de contato só são exibidos para seus clientes pessoais.</value></data>
+  <data name="Sidebar.Activity" xml:space="preserve"><value>Atividade</value></data>
+  <data name="PageTitle.EnrollmentActivity" xml:space="preserve"><value>Atividade de inscrição</value></data>
+  <data name="Activity.OtherLevel" xml:space="preserve"><value>Outros</value></data>
+  <data name="Reports.RangeInvalid" xml:space="preserve"><value>A data final deve ser igual ou posterior à inicial.</value></data>
+  <data name="Reports.RangeTooLong" xml:space="preserve"><value>O intervalo de datas não pode exceder {0} dias.</value></data>
+  <data name="Reports.RangeTooOld" xml:space="preserve"><value>A data inicial não pode ser anterior a {0} (três meses atrás).</value></data>
+  <data name="Reports.RangeInFuture" xml:space="preserve"><value>A data final não pode ser posterior a hoje.</value></data>
+  <data name="Reports.Apply" xml:space="preserve"><value>Aplicar</value></data>
 </root>

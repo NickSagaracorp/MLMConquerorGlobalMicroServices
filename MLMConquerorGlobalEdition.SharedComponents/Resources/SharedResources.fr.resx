@@ -1429,4 +1429,12 @@
   <data name="Team.CustomersScopePersonal" xml:space="preserve"><value>Personnels</value></data>
   <data name="Team.CustomersScopeTeam" xml:space="preserve"><value>Toute l'équipe</value></data>
   <data name="Team.ContactOnlyPersonal" xml:space="preserve"><value>Les coordonnées ne sont affichées que pour vos clients personnels.</value></data>
+  <data name="Sidebar.Activity" xml:space="preserve"><value>Activité</value></data>
+  <data name="PageTitle.EnrollmentActivity" xml:space="preserve"><value>Activité d'inscription</value></data>
+  <data name="Activity.OtherLevel" xml:space="preserve"><value>Autres</value></data>
+  <data name="Reports.RangeInvalid" xml:space="preserve"><value>La date de fin doit être égale ou postérieure à la date de début.</value></data>
+  <data name="Reports.RangeTooLong" xml:space="preserve"><value>La période ne peut pas dépasser {0} jours.</value></data>
+  <data name="Reports.RangeTooOld" xml:space="preserve"><value>La date de début ne peut pas être antérieure au {0} (trois mois en arrière).</value></data>
+  <data name="Reports.RangeInFuture" xml:space="preserve"><value>La date de fin ne peut pas être postérieure à aujourd'hui.</value></data>
+  <data name="Reports.Apply" xml:space="preserve"><value>Appliquer</value></data>
 </root>

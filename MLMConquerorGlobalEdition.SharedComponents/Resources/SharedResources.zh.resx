@@ -1362,4 +1362,13 @@
   <data name="Team.CustomersScopePersonal" xml:space="preserve"><value>个人</value></data>
   <data name="Team.CustomersScopeTeam" xml:space="preserve"><value>整个团队</value></data>
   <data name="Team.ContactOnlyPersonal" xml:space="preserve"><value>仅显示您个人客户的联系方式。</value></data>
+  <data name="Sidebar.Activity" xml:space="preserve"><value>注册动态</value></data>
+  <data name="PageTitle.EnrollmentActivity" xml:space="preserve"><value>注册动态</value></data>
+  <data name="Activity.OtherLevel" xml:space="preserve"><value>其他</value></data>
+  <data name="Reports.RangeInvalid" xml:space="preserve"><value>结束日期必须等于或晚于开始日期。</value></data>
+  <data name="Reports.RangeTooLong" xml:space="preserve"><value>日期范围不能超过 {0} 天。</value></data>
+  <data name="Reports.RangeTooOld" xml:space="preserve"><value>开始日期不能早于 {0}（三个月前）。</value></data>
+  <data name="Reports.RangeInFuture" xml:space="preserve"><value>结束日期不能晚于今天。</value></data>
+  <data name="Reports.Apply" xml:space="preserve"><value>应用</value></data>
+  <data name="Common.Error" xml:space="preserve"><value>错误</value></data>
 </root>

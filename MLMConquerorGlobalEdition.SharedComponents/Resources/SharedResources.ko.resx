@@ -1429,4 +1429,12 @@
   <data name="Team.CustomersScopePersonal" xml:space="preserve"><value>개인</value></data>
   <data name="Team.CustomersScopeTeam" xml:space="preserve"><value>전체 팀</value></data>
   <data name="Team.ContactOnlyPersonal" xml:space="preserve"><value>연락처 정보는 개인 고객에게만 표시됩니다.</value></data>
+  <data name="Sidebar.Activity" xml:space="preserve"><value>활동</value></data>
+  <data name="PageTitle.EnrollmentActivity" xml:space="preserve"><value>등록 활동</value></data>
+  <data name="Activity.OtherLevel" xml:space="preserve"><value>기타</value></data>
+  <data name="Reports.RangeInvalid" xml:space="preserve"><value>종료일은 시작일과 같거나 이후여야 합니다.</value></data>
+  <data name="Reports.RangeTooLong" xml:space="preserve"><value>기간은 {0}일을 초과할 수 없습니다.</value></data>
+  <data name="Reports.RangeTooOld" xml:space="preserve"><value>시작일은 {0}(3개월 전)보다 이전일 수 없습니다.</value></data>
+  <data name="Reports.RangeInFuture" xml:space="preserve"><value>종료일은 오늘 이후일 수 없습니다.</value></data>
+  <data name="Reports.Apply" xml:space="preserve"><value>적용</value></data>
 </root>

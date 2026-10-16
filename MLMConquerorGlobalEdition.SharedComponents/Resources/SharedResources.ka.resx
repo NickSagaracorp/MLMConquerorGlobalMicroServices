@@ -1362,4 +1362,13 @@
   <data name="Team.CustomersScopePersonal" xml:space="preserve"><value>პირადი</value></data>
   <data name="Team.CustomersScopeTeam" xml:space="preserve"><value>მთელი გუნდი</value></data>
   <data name="Team.ContactOnlyPersonal" xml:space="preserve"><value>საკონტაქტო მონაცემები ჩანს მხოლოდ თქვენი პირადი კლიენტებისთვის.</value></data>
+  <data name="Sidebar.Activity" xml:space="preserve"><value>აქტივობა</value></data>
+  <data name="PageTitle.EnrollmentActivity" xml:space="preserve"><value>რეგისტრაციის აქტივობა</value></data>
+  <data name="Activity.OtherLevel" xml:space="preserve"><value>სხვა</value></data>
+  <data name="Reports.RangeInvalid" xml:space="preserve"><value>დასრულების თარიღი უნდა იყოს დაწყების თარიღის ტოლი ან მის შემდეგ.</value></data>
+  <data name="Reports.RangeTooLong" xml:space="preserve"><value>თარიღების დიაპაზონი არ უნდა აღემატებოდეს {0} დღეს.</value></data>
+  <data name="Reports.RangeTooOld" xml:space="preserve"><value>დაწყების თარიღი არ შეიძლება იყოს {0}-ზე ადრე (სამი თვის წინ).</value></data>
+  <data name="Reports.RangeInFuture" xml:space="preserve"><value>დასრულების თარიღი არ შეიძლება იყოს დღევანდელზე გვიან.</value></data>
+  <data name="Reports.Apply" xml:space="preserve"><value>გამოყენება</value></data>
+  <data name="Common.Error" xml:space="preserve"><value>შეცდომა</value></data>
 </root>

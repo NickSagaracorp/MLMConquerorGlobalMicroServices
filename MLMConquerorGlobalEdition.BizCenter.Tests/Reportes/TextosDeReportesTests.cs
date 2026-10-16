@@ -23,6 +23,11 @@ public class TextosDeReportesTests
         "Common.Previous", "Common.Next",
         // Bloque 3 — Clientes del equipo
         "Team.CustomersScopePersonal", "Team.CustomersScopeTeam", "Team.ContactOnlyPersonal",
+        // Bloque 4 — Actividad por fechas
+        "Sidebar.Activity", "PageTitle.EnrollmentActivity", "Activity.OtherLevel",
+        "Reports.RangeInvalid", "Reports.RangeTooLong", "Reports.RangeTooOld", "Reports.RangeInFuture",
+        "Reports.Apply", "Common.Error", "Common.From", "Common.To", "Reports.Name", "Reports.Id",
+        "Reports.Level", "Reports.Ambassadors", "Common.Customers", "Reports.EnrollTeamPoints",
         // (claves de los bloques siguientes)
     };
 
