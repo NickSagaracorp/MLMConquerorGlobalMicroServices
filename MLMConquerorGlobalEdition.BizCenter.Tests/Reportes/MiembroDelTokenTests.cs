@@ -15,6 +15,7 @@ public class MiembroDelTokenTests
     {
         (typeof(MyLinksController), nameof(MyLinksController.Get)),
         (typeof(CommissionsController), nameof(CommissionsController.GetDailyResiduals)),
+        (typeof(TeamController), nameof(TeamController.GetEnrollmentCustomersGrid)),
         // (acciones de los bloques siguientes)
     }.Select(a => new object[] { a.Controlador, a.Accion });
 

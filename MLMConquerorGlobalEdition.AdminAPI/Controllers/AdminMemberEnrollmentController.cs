@@ -87,9 +87,11 @@ public class AdminMemberEnrollmentController : ControllerBase
     public async Task<IActionResult> GetCustomersGrid(
         string memberId,
         [FromBody] GridDataRequest request,
+        [FromQuery] string? scope = null,
         CancellationToken ct = default)
     {
-        var result = await _service.GetCustomersGridAsync(memberId, request, CustomerScope.Team, ct);
+        // Plan J: scope=personal|team, como en el BizCenter; aquí el miembro es el de la ruta.
+        var result = await _service.GetCustomersGridAsync(memberId, request, CustomerScopes.Parse(scope), ct);
         return Ok(ApiResponse<PagedResult<EnrollmentCustomerView>>.Ok(result));
     }
 
