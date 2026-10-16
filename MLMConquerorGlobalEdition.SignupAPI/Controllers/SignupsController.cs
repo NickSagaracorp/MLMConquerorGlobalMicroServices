@@ -96,7 +96,10 @@ public class SignupsController : ControllerBase
     {
         var result = await _mediator.Send(new SelectProductsCommand(signupId, request), ct);
         if (!result.IsSuccess)
-            return BadRequest(ApiResponse<bool>.Fail(result.ErrorCode!, result.Error!));
+        {
+            var body = ApiResponse<bool>.Fail(result.ErrorCode!, result.Error!);
+            return result.ErrorCode == SignupOrderClaim.SignupAlreadySettledCode ? Conflict(body) : BadRequest(body);
+        }
         return Ok(ApiResponse<bool>.Ok(true, "Products selected successfully."));
     }
 
@@ -115,6 +118,7 @@ public class SignupsController : ControllerBase
             return result.ErrorCode switch
             {
                 CompleteSignupHandler.TokenBusyCode or EntraxSignupErrors.InProgress
+                    or EntraxSignupErrors.QrAlreadyActive
                     or CompleteSignupHandler.SignupAlreadySettledCode => Conflict(body),
                 EntraxSignupErrors.Unavailable => StatusCode(StatusCodes.Status502BadGateway, body),
                 _ => BadRequest(body)

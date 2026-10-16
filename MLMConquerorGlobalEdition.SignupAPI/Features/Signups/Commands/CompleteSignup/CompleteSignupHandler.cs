@@ -70,6 +70,36 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
     /// </summary>
     public const string SignupAlreadySettledCode = SignupOrderClaim.SignupAlreadySettledCode;
 
+    /// <summary>
+    /// El alta no está en Pending: se dice POR QUÉ en vez de un "no encontrada" que no ayuda.
+    ///  - Completed: ya está pagada y activa (por un QR tardío, cripto, tarjeta o token) -> 409
+    ///    SIGNUP_ALREADY_SETTLED; la pantalla manda a iniciar sesión.
+    ///  - Processing con un QR de Entrax vivo o recién pedido y se pide otro QR -> 409
+    ///    ENTRAX_QR_ALREADY_ACTIVE (otra ventana lo tiene); no se reintenta.
+    ///  - Cualquier otro caso (no existe, o cripto en proceso) sigue siendo SIGNUP_NOT_FOUND.
+    /// </summary>
+    private async Task<Result<SignupResponse>> ExplainMissingPendingOrderAsync(
+        string signupId, PaymentMethodType method, DateTime now, CancellationToken ct)
+    {
+        var status = await _db.Orders.AsNoTracking()
+            .Where(o => o.Id == signupId)
+            .Select(o => (OrderStatus?)o.Status)
+            .FirstOrDefaultAsync(ct);
+
+        if (status == OrderStatus.Completed)
+            return Result<SignupResponse>.Failure(SignupAlreadySettledCode,
+                "This signup is already paid and active. Please sign in.");
+
+        if (status == OrderStatus.Processing && method == PaymentMethodType.Entrax
+            && await _db.EntraxPayments.AsNoTracking().AnyAsync(p =>
+                   p.OrderId == signupId && p.Status == EntraxPaymentStatus.AwaitingPayment
+                   && (p.ExpiresAt == null || p.ExpiresAt > now), ct))
+            return Result<SignupResponse>.Failure(EntraxSignupErrors.QrAlreadyActive,
+                "There is already an active QR for this signup in another window.");
+
+        return Result<SignupResponse>.Failure("SIGNUP_NOT_FOUND", "Pending signup not found.");
+    }
+
     private const string TokenNotValidMessage = "This token is not valid for this signup.";
 
     public CompleteSignupHandler(
@@ -129,7 +159,7 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
             .FirstOrDefaultAsync(o => o.Id == command.SignupId && o.Status == OrderStatus.Pending, ct);
 
         if (order is null)
-            return Result<SignupResponse>.Failure("SIGNUP_NOT_FOUND", "Pending signup not found.");
+            return await ExplainMissingPendingOrderAsync(command.SignupId, req.PaymentMethod, now, ct);
 
         var productsExistInCatalog = await _db.Products
             .AnyAsync(p => p.IsActive && !p.IsDeleted, ct);

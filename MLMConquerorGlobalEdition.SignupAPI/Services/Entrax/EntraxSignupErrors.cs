@@ -12,6 +12,13 @@ public static class EntraxSignupErrors
     /// <summary>Otra petición está creando el QR de este alta. 409.</summary>
     public const string InProgress      = "ENTRAX_IN_PROGRESS";
 
+    /// <summary>
+    /// Otra ventana tiene un QR vivo (o recién pedido) de este alta: no se emite otro. 409. La pantalla
+    /// no reintenta; le dice a la persona que ya hay un QR activo en otra ventana. No se devuelve ese
+    /// mismo QR porque la imagen no se guarda (solo el enlace) y no se puede reconstruir sin pedirla otra vez.
+    /// </summary>
+    public const string QrAlreadyActive = "ENTRAX_QR_ALREADY_ACTIVE";
+
     public const string NothingToPay    = "ENTRAX_NOTHING_TO_PAY";
 
     public const string PaymentNotFound = "ENTRAX_PAYMENT_NOT_FOUND";
