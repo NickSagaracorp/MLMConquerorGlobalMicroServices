@@ -39,17 +39,46 @@ public class SqlServerTokenPurchaseTests : IAsyncLifetime
     {
         if (!SqlServerTestDb.Reachable) return;
 
+        // La base de desarrollo es compartida (los servicios levantados la leen y escriben): el DELETE de
+        // Orders puede chocar en un interbloqueo (1205) con un trabajo de Billing que recorre Orders en
+        // paralelo. Prioridad alta y, si aun así sale víctima, se repite con espera: dejar el miembro
+        // sintético a medias ensucia la base.
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                await CleanUpOnceAsync();
+                return;
+            }
+            catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 1205 && attempt < 8)
+            {
+                await Task.Delay(500 * attempt);
+            }
+        }
+    }
+
+    private async Task CleanUpOnceAsync()
+    {
+        // Un solo lote con prioridad alta ante interbloqueos: si choca con el trabajo de Billing, la
+        // víctima es el otro y no la limpieza.
         await using var db = SqlServerTestDb.Db();
         var m = _member;
-        await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM TokenTransactions WHERE MemberId = {m} OR OriginalOwnerMemberId = {m}");
-        await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM TokenBalances WHERE MemberId = {m}");
-        await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM PaymentHistories WHERE MemberId = {m}");
-        await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM CryptoPaymentConfirmations WHERE MemberId = {m}");
-        await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM TokenPurchases WHERE MemberId = {m}");
-        await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM Orders WHERE MemberId = {m}");
-        await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM CommissionEarnings WHERE BeneficiaryMemberId = {m}");
-        await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM MemberProfiles WHERE MemberId = {m}");
+        await db.Database.ExecuteSqlInterpolatedAsync($@"
+            SET DEADLOCK_PRIORITY HIGH;
+            DELETE FROM TokenTransactions WHERE MemberId = {m} OR OriginalOwnerMemberId = {m};
+            DELETE FROM TokenBalances WHERE MemberId = {m};
+            DELETE FROM PaymentHistories WHERE MemberId = {m};
+            DELETE FROM CryptoPaymentConfirmations WHERE MemberId = {m};
+            DELETE FROM TokenPurchases WHERE MemberId = {m};
+            DELETE FROM Orders WHERE MemberId = {m};
+            DELETE FROM CommissionEarnings WHERE BeneficiaryMemberId = {m};
+            DELETE FROM MemberProfiles WHERE MemberId = {m};");
     }
+
+    // Lo que se prueba es que el candado serializa, no su tiempo de espera: con la base compartida
+    // cargada (los servicios levantados), la primera operación puede tardar más que los 15 s de
+    // producción y la segunda saldría PURCHASE_BUSY en vez de esperar.
+    private const int GateTimeoutMs = 120_000;
 
     private TokenPurchaseService Service(AppDbContext db, ITokenIssuer? issuer = null)
     {
@@ -66,7 +95,8 @@ public class SqlServerTokenPurchaseTests : IAsyncLifetime
                 .Returns(Task.CompletedTask);
 
         return new TokenPurchaseService(
-            db, clock.Object, new TokenPricingService(db), new TokenMonthlyQuota(db), new SqlServerMemberFundsGate(db),
+            db, clock.Object, new TokenPricingService(db), new TokenMonthlyQuota(db),
+            new SqlServerMemberFundsGate(db, lockTimeoutMs: GateTimeoutMs),
             issuer ?? new TokenIssuer(db), new CommissionBalanceService(db, clock.Object), Mock.Of<IEWalletFunds>(),
             Mock.Of<IGatewayRouter>(), Mock.Of<IGatewayChargeOrchestrator>(), Mock.Of<ICardBrandDetector>(),
             new CryptoDepositAddressReader(db), receipts.Object, cache.Object, push.Object,
@@ -78,7 +108,8 @@ public class SqlServerTokenPurchaseTests : IAsyncLifetime
         var now = DateTime.Now;
         db.MemberProfiles.Add(new MemberProfile
         {
-            MemberId = _member, Email = $"{_member}@example.com", FirstName = "Prueba", LastName = "SQL",
+            // UserId propio: el índice único de MemberProfiles.UserId choca si dos sintéticos dejan el Guid vacío.
+            MemberId = _member, UserId = Guid.NewGuid(), Email = $"{_member}@example.com", FirstName = "Prueba", LastName = "SQL",
             MemberType = MemberType.Ambassador, Status = MemberAccountStatus.Active, EnrollDate = now.AddYears(-1),
             Country = "US", CreatedBy = "sql-test", CreationDate = now, LastUpdateDate = now
         });
