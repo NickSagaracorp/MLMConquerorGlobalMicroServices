@@ -8,6 +8,9 @@
     una dirección que nadie le va a dar. El botón de pagar de la página debe quedar deshabilitado
     mientras <see cref="Find"/> devuelva null.
 
+    Vive en SharedComponents.Lite, no en SharedComponents: el alta pública lo descarga en el navegador
+    y no debe arrastrar Syncfusion ni el resto de componentes de los portales.
+
     No inyecta nada a propósito: así se puede usar desde un WebAssembly sin registrar servicios. Por
     eso los textos llegan por parámetro (en inglés por defecto, que es lo que usa el alta) y la página
     que tenga localizador pasa los suyos.

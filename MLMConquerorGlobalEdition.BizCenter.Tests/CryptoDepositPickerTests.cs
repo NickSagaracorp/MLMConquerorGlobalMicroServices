@@ -1,6 +1,6 @@
 using Bunit;
 using Microsoft.AspNetCore.Components;
-using MLMConquerorGlobalEdition.SharedComponents.Components.Payments;
+using MLMConquerorGlobalEdition.SharedComponents.Lite.Payments;
 using MLMConquerorGlobalEdition.SharedKernel.Billing;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Tests;

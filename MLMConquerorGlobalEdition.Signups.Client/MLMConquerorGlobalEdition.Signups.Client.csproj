@@ -11,8 +11,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.5" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.2" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -32,11 +32,12 @@
     -->
     <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedKernel\MLMConquerorGlobalEdition.SharedKernel.csproj" />
     <!--
-      Componentes unificados (CryptoDepositPicker y los que vengan): se escriben una vez y sirven a
-      cualquier portal. SharedComponents no lleva el framework compartido de ASP.NET Core
-      (SharedComponentsNoServerHostingTests), así que también corre en WebAssembly.
+      Componentes unificados que usa el alta (CryptoDepositPicker): se escriben una vez y sirven a
+      cualquier portal. La librería LIGERA, no SharedComponents: todo lo referenciado aquí se descarga
+      en el navegador de quien se da de alta, y SharedComponents arrastra Syncfusion y los
+      componentes de los portales. Lo vigila SignupsClientLigeroTests (Signups.Tests).
     -->
-    <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedComponents\MLMConquerorGlobalEdition.SharedComponents.csproj" />
+    <ProjectReference Include="..\MLMConquerorGlobalEdition.SharedComponents.Lite\MLMConquerorGlobalEdition.SharedComponents.Lite.csproj" />
   </ItemGroup>
 
 </Project>
