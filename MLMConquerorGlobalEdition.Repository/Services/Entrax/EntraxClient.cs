@@ -22,6 +22,12 @@ public sealed class EntraxClient : IEntraxClient
         NumberHandling = JsonNumberHandling.AllowReadingFromString
     };
 
+    /// <summary>Para escribir: sin campos nulos (un "description": null explícito puede no validar).</summary>
+    private static readonly JsonSerializerOptions WriteJson = new(JsonSerializerDefaults.Web)
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+
     private readonly HttpClient            _http;
     private readonly EntraxOptions         _options;
     private readonly IDateTimeProvider     _clock;
@@ -56,7 +62,7 @@ public sealed class EntraxClient : IEntraxClient
             orderId     = r.OrderId,
             description = r.Description,
             callbackUrl = r.CallbackUrl
-        }, Json);
+        }, WriteJson);
 
         return SendAsync<QrData, EntraxQr>(HttpMethod.Post, "qr", body, MapQr, ct);
     }

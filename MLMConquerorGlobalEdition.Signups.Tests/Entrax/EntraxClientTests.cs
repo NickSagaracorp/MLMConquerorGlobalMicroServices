@@ -243,4 +243,17 @@ public class EntraxClientTests
         r.Ok.Should().BeFalse();
         r.ErrorCode.Should().Be(EntraxErrorCodes.Transport);
     }
+
+    [Fact]
+    public async Task El_cuerpo_de_la_peticion_no_lleva_campos_nulos()
+    {
+        var h = new Manejador((_, _) => Json(HttpStatusCode.OK, QrOk));
+
+        await Cliente(h).CreateQrAsync(new EntraxQrRequest(10m, "USD", "SIGNUP-o1-1", null, null), default);
+
+        using var doc = JsonDocument.Parse(h.Cuerpo);
+        doc.RootElement.TryGetProperty("description", out _).Should().BeFalse("un null explícito puede no validar en Entrax.");
+        doc.RootElement.TryGetProperty("callbackUrl", out _).Should().BeFalse();
+        doc.RootElement.GetProperty("orderId").GetString().Should().Be("SIGNUP-o1-1");
+    }
 }
