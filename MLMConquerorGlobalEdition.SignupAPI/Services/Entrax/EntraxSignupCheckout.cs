@@ -53,6 +53,17 @@ public sealed class EntraxSignupCheckout : IEntraxSignupCheckout
 
     public bool IsOfferedFor(string? countryIso2) => _options.IsOfferedFor(countryIso2);
 
+    /// <summary>Índice único de EntraxPayments.ExternalOrderId (el SIGNUP-{pedido}-{n} de este intento).</summary>
+    private const string ExternalOrderIdIndex = "IX_EntraxPayments_ExternalOrderId";
+
+    private static bool IsExternalOrderIdTaken(DbUpdateException ex)
+    {
+        for (Exception? e = ex; e is not null; e = e.InnerException)
+            if (e.Message.Contains(ExternalOrderIdIndex, StringComparison.OrdinalIgnoreCase))
+                return true;
+        return false;
+    }
+
     public async Task<Result<EntraxSignupPaymentDto>> StartAsync(Orders order, MemberProfile member, DateTime now, CancellationToken ct)
     {
         var amountUsd = Math.Round(order.TotalAmount, 2, MidpointRounding.AwayFromZero);
@@ -86,10 +97,11 @@ public sealed class EntraxSignupCheckout : IEntraxSignupCheckout
         {
             await _db.SaveChangesAsync(ct);
         }
-        catch (DbUpdateException)
+        catch (DbUpdateException ex) when (ex is DbUpdateConcurrencyException || IsExternalOrderIdTaken(ex))
         {
             // Índice único de ExternalOrderId o RowVersion del miembro: otra petición del mismo alta
-            // llegó primero. No se llamó a Entrax.
+            // llegó primero. No se llamó a Entrax. Cualquier otro error al guardar se relanza: no es
+            // "espera un momento".
             _db.ChangeTracker.Clear();
             _logger.LogWarning("Entrax: el alta {OrderId} ya tenía un QR en creación (intento {Attempt}).", order.Id, attempt);
             return Result<EntraxSignupPaymentDto>.Failure(EntraxSignupErrors.InProgress,
