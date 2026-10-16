@@ -5539,6 +5539,26 @@ git commit -m "Componente unico del QR de rublos por SBP en la libreria ligera: 
 
 ### Task 18: Pestaña "Rubles (SBP)" en el alta (`Signup.razor` y `MemberJoin.razor`)
 
+> **Desviación respecto a lo implementado (revisión de las tareas 17-18).** El código de los pasos 6 y 7 de abajo
+> (estado `_entraxPayment`, `CheckEntraxStatusAsync`, `OnEntraxPaid`, `RetryEntraxAsync`, `ChooseAnotherPaymentMethod`)
+> quedó duplicado en las dos páginas y se extrajo a `Signups.Client/Payments/EntraxSignupFlow.razor`, que envuelve el
+> formulario (`ChildContent`) y lo sustituye por `EntraxQrPayment` cuando hay un QR. Las páginas solo le pasan
+> `SignupId` y escuchan `OnCompleted(bool alreadyPaid)`, `OnChooseAnother` y `OnError(string)`; piden el QR con
+> `await _entraxFlow.StartAsync()`. Además:
+>
+> - `EntraxSignupApi.StartAsync` devuelve `EntraxStartResult` (`Started`, `AlreadySettled`, `InProgress`, `QrAlreadyActive`,
+>   `Failed`) y reintenta solo ante `ENTRAX_IN_PROGRESS`.
+> - El backend responde `SIGNUP_ALREADY_SETTLED` (409) a `complete` con cualquier método y a `select-products` cuando el
+>   pedido ya está `Completed`, y `ENTRAX_QR_ALREADY_ACTIVE` (409) al pedir un QR con otro vivo en otra ventana
+>   (no se devuelve el mismo QR: la imagen no se guarda). Las páginas muestran "ya pagada, inicia sesión" con ese primer código en
+>   cualquier método.
+> - Con el alta creada (`_signupId` no nulo) se bloquean correo, contraseña, país y nivel, se avisa con una nota, el correo
+>   de la pantalla final es el que devolvió la fase 1, `EntraxOffered` usa el país guardado en la fase 1 y
+>   `select-products` no se repite.
+> - `EntraxQrPayment`: suelo de 5 s en `PollInterval`, parámetro `Time` (`TimeProvider`) para las pruebas, y con la cuenta a
+>   cero sin cerrar por el servidor se oculta el QR y se sigue preguntando.
+> - `Signups.Tests` incorpora bUnit para probar el flujo.
+
 **Files:**
 - Create: `MLMConquerorGlobalEdition.Signups.Client/Payments/EntraxSignupApi.cs`
 - Modify: `MLMConquerorGlobalEdition.Signups.Client/_Imports.razor`

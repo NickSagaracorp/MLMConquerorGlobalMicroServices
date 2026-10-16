@@ -1,0 +1,133 @@
+@using MLMConquerorGlobalEdition.SharedKernel.Billing
+@using MLMConquerorGlobalEdition.SharedComponents.Lite.Payments
+@inject IHttpClientFactory HttpFactory
+@*
+    El flujo del alta con rublos por SBP (Entrax), escrito UNA vez para Signup.razor y MemberJoin.razor.
+
+    Envuelve el formulario de la página (ChildContent). Mientras no hay QR enseña el formulario; cuando la
+    página llama a StartAsync y el servidor emite el QR, lo sustituye por EntraxQrPayment. La página solo
+    le pasa el id del alta y escucha tres cosas:
+      - OnCompleted(alreadyPaid): el alta quedó activa (por este QR, por otro medio, o ya lo estaba);
+        la página enseña su "bienvenido, inicia sesión". alreadyPaid = true si el servidor dijo
+        SIGNUP_ALREADY_SETTLED al pedir el QR.
+      - OnChooseAnother: la persona prefiere otro método; la página cambia de pestaña.
+      - OnError(texto): no se pudo emitir el QR; la página lo enseña en su aviso de error.
+
+    Corre en el WebAssembly del alta: solo inyecta IHttpClientFactory, que ya usan las dos páginas.
+*@
+
+@if (_payment is not null)
+{
+    <div class="section-card">
+        <div class="section-body py-4">
+            <EntraxQrPayment Payment="_payment"
+                             CheckStatus="CheckStatusAsync"
+                             Busy="_busy"
+                             OnPaid="HandlePaidAsync"
+                             OnRetry="RetryAsync"
+                             OnChooseAnother="ChooseAnotherAsync" />
+        </div>
+    </div>
+}
+else
+{
+    @ChildContent
+}
+
+@code {
+    /// <summary>Nombre del cliente HTTP (IHttpClientFactory) que habla con SignupAPI.</summary>
+    public const string DefaultClientName = "SignupsInternal";
+
+    /// <summary>Id del alta (el del pedido). Null hasta que la fase 1 la crea.</summary>
+    [Parameter] public string? SignupId { get; set; }
+
+    /// <summary>El formulario de la página: se ve mientras no hay un QR en pantalla.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public string ClientName { get; set; } = DefaultClientName;
+
+    /// <summary>El alta quedó activa. <c>true</c> = el servidor dijo que ya estaba pagada al pedir el QR.</summary>
+    [Parameter] public EventCallback<bool> OnCompleted { get; set; }
+
+    [Parameter] public EventCallback OnChooseAnother { get; set; }
+
+    /// <summary>No se pudo emitir el QR; lleva el texto para el aviso de la página.</summary>
+    [Parameter] public EventCallback<string> OnError { get; set; }
+
+    /// <summary>Texto si el fallo es de conexión; <c>{0}</c> es el detalle.</summary>
+    [Parameter] public string ConnectionErrorText { get; set; } = "Connection error: {0}";
+
+    private EntraxSignupPaymentDto? _payment;
+    private bool _busy;
+
+    /// <summary>Hay un QR en pantalla (la página puede esconder lo que sobre).</summary>
+    public bool HasPayment => _payment is not null;
+
+    /// <summary>Pide el QR al servidor y, si lo emite, lo enseña. Los fallos salen por OnError / OnCompleted.</summary>
+    public async Task StartAsync()
+    {
+        if (SignupId is null) return;
+        await RunAsync(() => EntraxSignupApi.StartAsync(HttpFactory.CreateClient(ClientName), SignupId));
+    }
+
+    private Task RetryAsync() => StartAsync();
+
+    private async Task RunAsync(Func<Task<EntraxStartResult>> start)
+    {
+        _busy = true;
+        try
+        {
+            var result = await start();
+            switch (result.Outcome)
+            {
+                case EntraxStartOutcome.Started:
+                    _payment = result.Payment;
+                    break;
+
+                // Ya pagada y activa: nada que reintentar, solo iniciar sesión.
+                case EntraxStartOutcome.AlreadySettled:
+                    _payment = null;
+                    await OnCompleted.InvokeAsync(true);
+                    break;
+
+                // Incluye EntraxStartOutcome.QrAlreadyActive e InProgress: sin QR y sin más reintentos.
+                default:
+                    await OnError.InvokeAsync(result.Error ?? "Could not create the SBP payment.");
+                    break;
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            await OnError.InvokeAsync(string.Format(ConnectionErrorText, ex.Message));
+        }
+        finally
+        {
+            _busy = false;
+            // StartAsync lo llama la página por referencia, no un evento de este componente: no hay
+            // repintado automático.
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private Task<EntraxSignupStatusDto?> CheckStatusAsync(CancellationToken ct)
+        => SignupId is null || _payment is null
+            ? Task.FromResult<EntraxSignupStatusDto?>(null)
+            : EntraxSignupApi.GetStatusAsync(HttpFactory.CreateClient(ClientName), SignupId, _payment.PaymentRef, ct);
+
+    /// <summary>
+    /// El servidor ya activó la cuenta (por este QR, o por otro medio si el estado fue Superseded). No hay
+    /// tokens: la activación ocurrió fuera de esta petición, la persona inicia sesión.
+    /// </summary>
+    private async Task HandlePaidAsync()
+    {
+        _payment = null;
+        await InvokeAsync(StateHasChanged);
+        await OnCompleted.InvokeAsync(false);
+    }
+
+    private async Task ChooseAnotherAsync()
+    {
+        _payment = null;
+        await OnChooseAnother.InvokeAsync();
+    }
+}

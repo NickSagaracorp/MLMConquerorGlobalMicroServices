@@ -30,7 +30,7 @@
             @if (!string.IsNullOrEmpty(_country))
             {
                 <button type="button" class="btn btn-sm btn-outline-light d-flex align-items-center gap-1"
-                        @onclick="() => { _showCountryModal = true; _countrySearch = string.Empty; }"
+                        disabled="@Locked" @onclick="() => { _showCountryModal = true; _countrySearch = string.Empty; }"
                         style="font-size:0.8rem;">
                     <span>@(_countryData.FirstOrDefault(x => x.NameEn == _country)?.FlagEmoji ?? "🌐")</span>
                     <span>@_country</span>
@@ -116,22 +116,13 @@
                 </div>
             </div>
         }
-        else if (_entraxPayment is not null)
-        {
-            @* Rublos por SBP (Plan H): el alta está creada y el pedido reservado; se espera el cobro. *@
-            <div class="section-card">
-                <div class="section-body py-4">
-                    <EntraxQrPayment Payment="_entraxPayment"
-                                     CheckStatus="CheckEntraxStatusAsync"
-                                     Busy="_busy"
-                                     OnPaid="OnEntraxPaid"
-                                     OnRetry="RetryEntraxAsync"
-                                     OnChooseAnother="ChooseAnotherPaymentMethod" />
-                </div>
-            </div>
-        }
         else
         {
+        <EntraxSignupFlow @ref="_entraxFlow"
+                          SignupId="_signupId"
+                          OnCompleted="OnEntraxCompleted"
+                          OnError="OnEntraxError"
+                          OnChooseAnother="ChooseAnotherPaymentMethod">
         @if (_productsLoading)
         {
             <div class="section-card">
@@ -184,6 +175,13 @@
         </div>
         }
 
+        @if (Locked)
+        {
+            <div class="alert alert-info mb-4" role="status">
+                Your account details are saved; to change them start a new signup.
+            </div>
+        }
+
         <!-- ── SELECT MEMBERSHIP ──────────────────────────────────────────── -->
         <div class="section-card">
             <div class="section-head">
@@ -204,6 +202,7 @@
                            @onclick="() => SelectMembership(p.Id)">
                         <input type="radio" class="plan-card__radio" name="membership"
                                checked="@(_selectedMembershipProductId == p.Id)"
+                               disabled="@Locked"
                                @onchange="() => SelectMembership(p.Id)" />
                         <div class="plan-card__body @(p.ThemeClass)">
                             <div class="plan-card__header">
@@ -414,7 +413,7 @@
                         <div class="form-floating">
                             <input type="email" class="form-control @(_emailMismatch ? "is-invalid" : "")"
                                    placeholder="name@example.com"
-                                   value="@_email" @oninput="OnEmailInput" />
+                                   value="@_email" @oninput="OnEmailInput" disabled="@Locked" />
                             <label>Email *</label>
                             <div class="invalid-feedback">Emails do not match.</div>
                         </div>
@@ -423,7 +422,7 @@
                         <div class="form-floating">
                             <input type="email" class="form-control @(_emailMismatch ? "is-invalid" : "")"
                                    placeholder="Repeat email"
-                                   value="@_email2" @oninput="OnEmail2Input" />
+                                   value="@_email2" @oninput="OnEmail2Input" disabled="@Locked" />
                             <label>Confirm Email *</label>
                         </div>
                     </div>
@@ -442,7 +441,7 @@
                     <div class="col-md-6">
                         <div class="country-select-wrap">
                             <button type="button" class="country-select-btn"
-                                    @onclick="() => { _showCountryModal = true; _countrySearch = string.Empty; }">
+                                    disabled="@Locked" @onclick="() => { _showCountryModal = true; _countrySearch = string.Empty; }">
                                 @if (!string.IsNullOrEmpty(_country))
                                 {
                                     var selCt = _countryData.FirstOrDefault(x => x.NameEn == _country);
@@ -615,7 +614,7 @@
                         <div class="input-group">
                             <input type="@(_showPwd ? "text" : "password")" class="form-control"
                                    placeholder="Create a password"
-                                   value="@_password" @oninput="OnPasswordInput" />
+                                   value="@_password" @oninput="OnPasswordInput" disabled="@Locked" />
                             <button class="btn btn-outline-secondary" type="button" @onclick="() => _showPwd = !_showPwd">
                                 <i class="@(_showPwd ? "ri-eye-off-line" : "ri-eye-line")"></i>
                             </button>
@@ -633,14 +632,14 @@
                             <input type="@(_showPwd2 ? "text" : "password")"
                                    class="form-control @(PasswordMismatch ? "is-invalid" : "")"
                                    placeholder="Repeat password"
-                                   value="@_password2" @oninput="OnPassword2Input" />
+                                   value="@_password2" @oninput="OnPassword2Input" disabled="@Locked" />
                             <button class="btn btn-outline-secondary" type="button" @onclick="() => _showPwd2 = !_showPwd2">
                                 <i class="@(_showPwd2 ? "ri-eye-off-line" : "ri-eye-line")"></i>
                             </button>
                             <div class="invalid-feedback">Passwords do not match.</div>
                         </div>
                         <div class="d-flex gap-2 mt-2">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="GeneratePassword">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" disabled="@Locked" @onclick="GeneratePassword">
                                 Generate
                             </button>
                             <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="CopyPassword">
@@ -888,6 +887,7 @@
         </div>
 
         } <!-- end _productsLoaded -->
+        </EntraxSignupFlow>
         } <!-- end !_success -->
     </div>
 
@@ -1209,12 +1209,22 @@
     // ── Payment ───────────────────────────────────────────────────────────────
     private string _paymentTab    = "card";
 
-    // Rublos por SBP con Entrax (Plan H): países donde se ofrece, el QR en curso y si el servidor
-    // dijo que el alta ya estaba pagada.
+    // Rublos por SBP con Entrax (Plan H): países donde se ofrece, el flujo del QR (componente único) y si
+    // el servidor dijo que el alta ya estaba pagada.
     private IReadOnlyList<string> _entraxCountries = [];
-    private EntraxSignupPaymentDto? _entraxPayment;
+    private EntraxSignupFlow? _entraxFlow;
     private bool _alreadyPaid;
-    private bool EntraxOffered => _entraxCountries.Any(c => string.Equals(c, _countryIso2, StringComparison.OrdinalIgnoreCase));
+
+    // Después de la fase 1 el alta ya existe con estos datos: correo, contraseña, país, patrocinador y
+    // nivel no se pueden cambiar (no se reenviarían). Lo que devolvió el servidor manda sobre el formulario.
+    private string? _signupEmail;
+    private string  _savedCountryIso2 = string.Empty;
+    private bool    _productsSelected;
+    private bool    Locked => _signupId is not null;
+
+    // Con el alta creada vale el país guardado en la fase 1, no el que haya en el formulario.
+    private bool EntraxOffered => _entraxCountries.Any(c =>
+        string.Equals(c, Locked ? _savedCountryIso2 : _countryIso2, StringComparison.OrdinalIgnoreCase));
 
     // Direcciones de depósito configuradas en Admin → Global Parameters (Plan F). Vacío = sin cripto:
     // mejor no ofrecerla que mandar a alguien a pagar a una dirección que nadie le va a dar.
@@ -1454,6 +1464,7 @@
     // ── Event handlers ────────────────────────────────────────────────────────
     private void SelectMembership(string productId)
     {
+        if (Locked) return;   // el alta ya se creó con este nivel
         _selectedMembershipProductId = productId;
         // If user is mid-token-flow, immediately revalidate against the new product selection.
         if (_paymentTab == "token" && !string.IsNullOrWhiteSpace(_payToken))
@@ -1766,20 +1777,26 @@
                 _error = b1?.Message ?? b1?.Errors?.FirstOrDefault() ?? "Signup failed. Please check your details.";
                 return;
             }
-            _signupId = b1.Data.SignupId;
+            _signupId         = b1.Data.SignupId;
+            _signupEmail      = b1.Data.Email;
+            _savedCountryIso2 = _countryIso2;
             }
 
             var productIds = new List<string>();
             if (_enrollmentProduct is not null) productIds.Add(_enrollmentProduct.Id);
             if (!string.IsNullOrEmpty(_selectedMembershipProductId)) productIds.Add(_selectedMembershipProductId);
 
-            if (productIds.Count > 0)
+            // Los productos se eligen una sola vez: el nivel queda bloqueado con el alta creada.
+            if (!_productsSelected && productIds.Count > 0)
             {
                 var r2 = await api.PostAsJsonAsync($"api/v1/signups/{_signupId}/select-products",
                     new { ProductIds = productIds });
                 var b2 = await r2.Content.ReadFromJsonAsync<ApiWrapper<bool>>();
+                if (b2?.ErrorCode == EntraxSignupApi.AlreadySettledCode)
+                { ShowSettled(alreadyPaid: true); return; }
                 if (b2?.Success != true)
                 { _error = b2?.Message ?? "Product selection failed."; return; }
+                _productsSelected = true;
             }
 
             // ── EL PAGO ────────────────────────────────────────────────────────────────────────
@@ -1799,8 +1816,7 @@
             // hay _success: la cuenta se activa cuando Entrax confirma, no al pulsar.
             if (paymentTab == "entrax")
             {
-                _completedEmail = _email;
-                ApplyEntraxStart(await EntraxSignupApi.StartAsync(api, _signupId!));
+                await _entraxFlow!.StartAsync();
                 return;
             }
 
@@ -1841,7 +1857,9 @@
             var b3 = await r3.Content.ReadFromJsonAsync<ApiWrapper<SignupResponseModel>>();
 
             if (b3?.Success == true && b3.Data is not null)
-            { _completedEmail = b3.Data.Email; _completedPendingCrypto = paymentTab == "crypto"; _success = true; }
+            { _completedEmail = b3.Data.Email; _alreadyPaid = false; _completedPendingCrypto = paymentTab == "crypto"; _success = true; }
+            else if (b3?.ErrorCode == EntraxSignupApi.AlreadySettledCode)
+            { ShowSettled(alreadyPaid: true); }   // con tarjeta, token o cripto: el alta ya estaba pagada
             else
             { _error = b3?.Message ?? b3?.Errors?.FirstOrDefault() ?? "Could not complete enrollment."; }
         }
@@ -1850,63 +1868,26 @@
     }
 
     // ── Rublos por SBP (Plan H) ──────────────────────────────────────────────
-    private Task<EntraxSignupStatusDto?> CheckEntraxStatusAsync(CancellationToken ct)
-        => _signupId is null || _entraxPayment is null
-            ? Task.FromResult<EntraxSignupStatusDto?>(null)
-            : EntraxSignupApi.GetStatusAsync(HttpFactory.CreateClient("SignupsInternal"), _signupId, _entraxPayment.PaymentRef, ct);
+    // Pedir el QR, reintentar, consultar el estado y pintarlo viven en EntraxSignupFlow (una vez para las
+    // dos páginas). Aquí solo se decide qué enseña la página al terminar.
 
     /// <summary>
-    /// El servidor ya activó la cuenta (por este QR, o por otro medio si el estado fue Superseded): se
-    /// enseña el "bienvenido" de siempre, que manda a iniciar sesión. No hay tokens: la activación
-    /// ocurrió fuera de esta petición.
+    /// El alta quedó activa (por el QR, por otro medio, o el servidor ya la tenía pagada). No hay tokens:
+    /// la activación ocurrió fuera de esta petición, la persona inicia sesión.
     /// </summary>
-    private void OnEntraxPaid()
+    private void OnEntraxCompleted(bool alreadyPaid) => ShowSettled(alreadyPaid);
+
+    private void OnEntraxError(string message) => _error = message;
+
+    private void ChooseAnotherPaymentMethod() => _paymentTab = "card";
+
+    /// <summary>La pantalla de "ya está pagada, inicia sesión", común a todos los métodos de pago.</summary>
+    private void ShowSettled(bool alreadyPaid)
     {
-        _entraxPayment          = null;
+        _alreadyPaid            = alreadyPaid;
         _completedPendingCrypto = false;
+        _completedEmail         = _signupEmail ?? _email;
         _success                = true;
-    }
-
-    /// <summary>Aplica lo que contestó el servidor al pedir el QR (primera vez o reintento).</summary>
-    private void ApplyEntraxStart(EntraxStartResult result)
-    {
-        switch (result.Outcome)
-        {
-            case EntraxStartOutcome.Started:
-                _entraxPayment = result.Payment;
-                break;
-
-            // El alta ya está pagada y activa: no se ofrece reintentar nada, solo iniciar sesión.
-            case EntraxStartOutcome.AlreadySettled:
-                _entraxPayment          = null;
-                _alreadyPaid            = true;
-                _completedPendingCrypto = false;
-                _success                = true;
-                break;
-
-            default:
-                _error = result.Error ?? "Could not create the SBP payment.";
-                break;
-        }
-    }
-
-    private async Task RetryEntraxAsync()
-    {
-        if (_signupId is null) return;
-        _error = string.Empty;
-        _busy  = true;
-        try
-        {
-            ApplyEntraxStart(await EntraxSignupApi.StartAsync(HttpFactory.CreateClient("SignupsInternal"), _signupId));
-        }
-        catch (Exception ex) { _error = $"Connection error: {ex.Message}"; }
-        finally { _busy = false; }
-    }
-
-    private void ChooseAnotherPaymentMethod()
-    {
-        _entraxPayment = null;
-        _paymentTab    = "card";
     }
 
     // ── Local models ──────────────────────────────────────────────────────────

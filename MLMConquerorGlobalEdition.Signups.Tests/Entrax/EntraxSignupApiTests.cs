@@ -40,6 +40,7 @@ public class EntraxSignupApiTests
     {
         EntraxSignupApi.InProgressCode.Should().Be(EntraxSignupErrors.InProgress);
         EntraxSignupApi.AlreadySettledCode.Should().Be(CompleteSignupHandler.SignupAlreadySettledCode);
+        EntraxSignupApi.QrAlreadyActiveCode.Should().Be(EntraxSignupErrors.QrAlreadyActive);
     }
 
     [Fact]
@@ -113,6 +114,19 @@ public class EntraxSignupApiTests
 
         r.Outcome.Should().Be(EntraxStartOutcome.AlreadySettled);
         r.Payment.Should().BeNull();
+        api.Peticiones.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task Si_otra_ventana_ya_tiene_un_QR_vivo_lo_dice_sin_reintentar()
+    {
+        var api = new Api(_ => Json(HttpStatusCode.Conflict, Fallo("ENTRAX_QR_ALREADY_ACTIVE", "x")));
+
+        var r = await EntraxSignupApi.StartAsync(Cliente(api), "ORD-1", retryDelay: TimeSpan.Zero);
+
+        r.Outcome.Should().Be(EntraxStartOutcome.QrAlreadyActive);
+        r.Payment.Should().BeNull();
+        r.Error.Should().Be("There is already an active QR for this signup in another window.");
         api.Peticiones.Should().HaveCount(1);
     }
 
