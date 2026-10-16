@@ -21,6 +21,9 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="System.Linq.Dynamic.Core" Version="1.7.2" />
+    <!-- Fijados por CVE-2026-84008 y CVE-2026-96958: Microsoft.Data.SqlClient y DataProtection traen 9.0.11 y 10.0.11 -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.13" />
   </ItemGroup>
 
   <ItemGroup>
