@@ -109,9 +109,10 @@ public class EntraxQrPaymentTests : BunitContext
             .Add(c => c.OnRetry, EventCallback.Factory.Create(this, () => reintentos++))
             .Add(c => c.OnChooseAnother, EventCallback.Factory.Create(this, () => otro++)));
 
-        cut.WaitForAssertion(() => cut.Find(".entrax-new-qr"), TimeSpan.FromSeconds(3));
-        cut.Find(".entrax-new-qr").Click();
-        cut.Find(".entrax-other").Click();
+        // Entre localizar el botón y pulsarlo puede haber un render que cambie su manejador; si pasa, la
+        // pulsación falla sin contar y se repite.
+        cut.WaitForAssertion(() => cut.Find(".entrax-new-qr").Click(), TimeSpan.FromSeconds(3));
+        cut.WaitForAssertion(() => cut.Find(".entrax-other").Click(), TimeSpan.FromSeconds(3));
 
         reintentos.Should().Be(1);
         otro.Should().Be(1);
