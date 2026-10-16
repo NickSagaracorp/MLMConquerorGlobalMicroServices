@@ -113,6 +113,52 @@ public class UnPedidoSeActivaUnaVezTests
     }
 
     [Fact]
+    public async Task Una_cripto_cancelada_porque_el_alta_se_pago_con_Entrax_tiene_su_propio_codigo()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await EscenarioEntrax.SembrarAltaAsync(db, OrderStatus.Completed);
+        db.CryptoPaymentConfirmations.Add(new CryptoPaymentConfirmation
+        {
+            OrderId = EscenarioEntrax.OrderId, MemberId = EscenarioEntrax.MemberId, MemberEmail = EscenarioEntrax.Email,
+            CryptoCurrency = "BTC", AmountDue = EscenarioEntrax.Total, Purpose = CryptoPaymentPurpose.Signup,
+            Status = CryptoPaymentConfirmationStatus.Cancelled, Notes = "Paid via Entrax (x).",
+            CreatedBy = "seed", CreationDate = EscenarioEntrax.Ahora
+        });
+        await db.SaveChangesAsync();
+
+        var handler = new ConfirmCryptoPaymentHandler(db, EscenarioEntrax.Reloj().Object,
+            EscenarioEntrax.Usuarios(EscenarioEntrax.UsuarioInactivo()).Object,
+            Activacion(db, new SignupOrderClaim(db)), NullLogger<ConfirmCryptoPaymentHandler>.Instance);
+        var r = await handler.Handle(new ConfirmCryptoPaymentCommand(EscenarioEntrax.OrderId,
+            new ConfirmCryptoPaymentRequest { CryptoTransactionId = "0xabc" }, "admin-1", "admin@example.com"), default);
+
+        r.ErrorCode.Should().Be(ConfirmCryptoPaymentHandler.CancelledCode,
+            "quien confirma tiene que saber que esa transferencia no hay que aplicarla, no que alguien ya la confirmó.");
+    }
+
+    [Fact]
+    public async Task El_controlador_contesta_409_a_una_cripto_cancelada()
+    {
+        var mediator = new Mock<MediatR.IMediator>();
+        mediator.Setup(m => m.Send(It.IsAny<ConfirmCryptoPaymentCommand>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(MLMConquerorGlobalEdition.SharedKernel.Result<ConfirmCryptoPaymentResponse>
+                    .Failure(ConfirmCryptoPaymentHandler.CancelledCode, "x"));
+        var controller = new MLMConquerorGlobalEdition.SignupAPI.Controllers.SignupsController(
+            mediator.Object, Mock.Of<IFraudFingerprintService>())
+        {
+            ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext
+            {
+                HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext()
+            }
+        };
+
+        var r = await controller.ConfirmCryptoPayment(EscenarioEntrax.OrderId,
+            new ConfirmCryptoPaymentRequest { CryptoTransactionId = "0xabc" }, default);
+
+        r.Should().BeOfType<Microsoft.AspNetCore.Mvc.ConflictObjectResult>();
+    }
+
+    [Fact]
     public async Task La_cripto_no_confirma_un_pedido_que_otro_pago_activo_en_paralelo()
     {
         await using var db = InMemoryDbHelper.Create();

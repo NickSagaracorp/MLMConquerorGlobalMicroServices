@@ -44,6 +44,12 @@ public class ConfirmCryptoPaymentHandler
     : IRequestHandler<ConfirmCryptoPaymentCommand, Result<ConfirmCryptoPaymentResponse>>
 {
     private const string AlreadyConfirmedCode = "CRYPTO_PAYMENT_ALREADY_CONFIRMED";
+
+    /// <summary>
+    /// La confirmación se canceló porque el alta se pagó por otro medio (Entrax): esa transferencia no hay
+    /// que aplicarla. 409.
+    /// </summary>
+    public const string CancelledCode = "CRYPTO_PAYMENT_CANCELLED";
     private const string AlreadyConfirmedText = "This crypto payment has already been confirmed.";
 
     private readonly AppDbContext                          _db;
@@ -80,6 +86,11 @@ public class ConfirmCryptoPaymentHandler
             return Result<ConfirmCryptoPaymentResponse>.Failure(
                 "CRYPTO_PAYMENT_NOT_FOUND",
                 "No crypto payment awaiting confirmation was found for that order.");
+
+        // Cancelada porque el alta se pagó con Entrax (EntraxSignupSettlement): no es "ya confirmada".
+        if (confirmation.Status == CryptoPaymentConfirmationStatus.Cancelled)
+            return Result<ConfirmCryptoPaymentResponse>.Failure(CancelledCode,
+                "This crypto payment was cancelled because the signup was paid another way. Do not apply the transfer.");
 
         // Capa 1 — la máquina de estados.
         if (confirmation.Status != CryptoPaymentConfirmationStatus.AwaitingPayment)

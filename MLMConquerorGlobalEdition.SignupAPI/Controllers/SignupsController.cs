@@ -158,7 +158,7 @@ public class SignupsController : ControllerBase
             {
                 "CRYPTO_PAYMENT_NOT_FOUND" => NotFound(
                     ApiResponse<ConfirmCryptoPaymentResponse>.Fail(result.ErrorCode!, result.Error!)),
-                "CRYPTO_PAYMENT_ALREADY_CONFIRMED" => Conflict(
+                "CRYPTO_PAYMENT_ALREADY_CONFIRMED" or ConfirmCryptoPaymentHandler.CancelledCode => Conflict(
                     ApiResponse<ConfirmCryptoPaymentResponse>.Fail(result.ErrorCode!, result.Error!)),
                 _ => BadRequest(
                     ApiResponse<ConfirmCryptoPaymentResponse>.Fail(result.ErrorCode!, result.Error!))
