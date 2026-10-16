@@ -216,6 +216,33 @@ public class SqlServerEntraxSettlementTests : IAsyncLifetime
         (await db.MemberProfiles.AsNoTracking().SingleAsync(m => m.MemberId == _member)).Status.Should().Be(MemberAccountStatus.Active);
     }
 
+    [SqlServerFact]
+    public async Task Si_otro_pago_del_pedido_ya_esta_consumido_el_indice_unico_lo_convierte_en_doble_cobro()
+    {
+        // El pedido sigue en Processing (así la transición del pedido no lo frena) pero otro QR del mismo
+        // pedido ya está consumido: lo que salta es UX_EntraxPayments_OrderId_Consumed (2601) al reclamar
+        // este pago. Se reconoce por el número de error de SQL Server, no por el texto del mensaje.
+        await SembrarAsync();
+        await SembrarPagoAsync(1, Guid.NewGuid().ToString("D"), EntraxPaymentStatus.Expired, consumido: true);
+        var paymentId = Guid.NewGuid().ToString("D");
+        var pagoId = await SembrarPagoAsync(2, paymentId);
+        var cliente = new Mock<IEntraxClient>();
+        cliente.Setup(c => c.GetPaymentAsync(paymentId, It.IsAny<CancellationToken>()))
+               .ReturnsAsync(EntraxCall<EntraxPaymentState>.Success(new EntraxPaymentState(paymentId, "paid",
+                   EntraxPayment.BuildExternalOrderId(_order, 2), 80m, "USD", 7640m, 95.5m, DateTimeOffset.Now), 200, 1));
+
+        await using var dbA = SqlServerTestDb.Db();
+        var r = await Liquidacion(dbA, cliente.Object).SettleAsync(pagoId, EntraxSettlementSource.Sweep, default);
+
+        r.Should().Be(EntraxSettlementOutcome.ToReview);
+        await using var db = SqlServerTestDb.Db();
+        var pago = await db.EntraxPayments.AsNoTracking().SingleAsync(p => p.Id == pagoId);
+        pago.FailureCode.Should().Be(SignupOrderClaim.AlreadySettledCode);
+        pago.Consumed.Should().BeFalse();
+        (await db.PaymentHistories.AsNoTracking().CountAsync(h => h.OrderId == _order)).Should().Be(0);
+        (await db.Orders.AsNoTracking().SingleAsync(o => o.Id == _order)).Status.Should().Be(OrderStatus.Processing);
+    }
+
     private EntraxSignupSettlement Liquidacion(AppDbContext db, IEntraxClient cliente)
     {
         var reloj = new Mock<IDateTimeProvider>();

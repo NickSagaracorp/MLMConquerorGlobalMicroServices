@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
@@ -320,18 +321,29 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
             return true;
         }
 
-        var affected = await _db.EntraxPayments
-            .Where(p => p.Id == payment.Id
-                     && p.Status != EntraxPaymentStatus.Paid
-                     && p.Status != EntraxPaymentStatus.ToReview)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(p => p.Status, EntraxPaymentStatus.Paid)
-                .SetProperty(p => p.Consumed, true)
-                .SetProperty(p => p.ActivatedAt, now)
-                .SetProperty(p => p.PaidAt, paidAt)
-                .SetProperty(p => p.PaidAmountUsd, paidUsd)
-                .SetProperty(p => p.LastUpdateDate, now)
-                .SetProperty(p => p.LastUpdateBy, Actor), none);
+        int affected;
+        try
+        {
+            affected = await _db.EntraxPayments
+                .Where(p => p.Id == payment.Id
+                         && p.Status != EntraxPaymentStatus.Paid
+                         && p.Status != EntraxPaymentStatus.ToReview)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(p => p.Status, EntraxPaymentStatus.Paid)
+                    .SetProperty(p => p.Consumed, true)
+                    .SetProperty(p => p.ActivatedAt, now)
+                    .SetProperty(p => p.PaidAt, paidAt)
+                    .SetProperty(p => p.PaidAmountUsd, paidUsd)
+                    .SetProperty(p => p.LastUpdateDate, now)
+                    .SetProperty(p => p.LastUpdateBy, Actor), none);
+        }
+        catch (SqlException ex) when (ex.Number is 2601 or 2627)
+        {
+            // Esta sentencia no toca ExternalOrderId ni ExternalPaymentId: la única clave única que puede
+            // violar es UX_EntraxPayments_OrderId_Consumed. Se reconoce por el número, no por el texto
+            // (que depende del idioma del servidor).
+            throw new OrderAlreadyConsumedException(ex);
+        }
 
         if (affected != 1)
             return false;
@@ -423,10 +435,22 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
     private static bool IsOrderAlreadyConsumed(Exception ex)
     {
         for (Exception? e = ex; e is not null; e = e.InnerException)
-            if (e.Message.Contains(OrderConsumedIndex, StringComparison.OrdinalIgnoreCase))
+        {
+            if (e is OrderAlreadyConsumedException)
                 return true;
+
+            // Al guardar (SaveChanges) la clave única llega dentro de una DbUpdateException: por el número
+            // de SQL Server (2601/2627) y el nombre del índice, o por el nombre si no es SQL Server.
+            if (e.Message.Contains(OrderConsumedIndex, StringComparison.OrdinalIgnoreCase)
+                && (e is not SqlException sql || sql.Number is 2601 or 2627))
+                return true;
+        }
         return false;
     }
+
+    /// <summary>Otro pago de Entrax del mismo pedido ya está consumido (índice único filtrado).</summary>
+    private sealed class OrderAlreadyConsumedException(Exception inner)
+        : Exception("Another Entrax payment already consumed this signup order.", inner);
 
     private async Task EnsureUserActiveAsync(string memberId)
     {
