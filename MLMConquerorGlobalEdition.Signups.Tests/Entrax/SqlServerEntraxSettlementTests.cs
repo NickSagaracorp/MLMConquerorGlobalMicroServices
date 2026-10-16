@@ -243,6 +243,29 @@ public class SqlServerEntraxSettlementTests : IAsyncLifetime
         (await db.Orders.AsNoTracking().SingleAsync(o => o.Id == _order)).Status.Should().Be(OrderStatus.Processing);
     }
 
+    [SqlServerFact]
+    public async Task Dos_pantallas_a_la_vez_solo_una_pregunta_a_Entrax()
+    {
+        // El turno de consulta se reserva con un UPDATE condicional sobre LastCheckedAt: con dos
+        // pestañas abiertas (o dos peticiones) en el mismo instante, solo una llama a Entrax.
+        await SembrarAsync();
+        var pagoId = await SembrarPagoAsync(1, Guid.NewGuid().ToString("D"));
+        var liquidacion = new Mock<IEntraxSignupSettlement>();
+        liquidacion.Setup(s => s.SettleAsync(pagoId, EntraxSettlementSource.Poll, It.IsAny<CancellationToken>()))
+                   .ReturnsAsync(EntraxSettlementOutcome.StillPending);
+        var reloj = new Mock<IDateTimeProvider>();
+        reloj.Setup(c => c.Now).Returns(() => DateTime.Now);
+
+        await using var dbA = SqlServerTestDb.Db();
+        await using var dbB = SqlServerTestDb.Db();
+        EntraxSignupStatusService Servicio(AppDbContext db) => new(db, liquidacion.Object, new EntraxOptions(),
+            reloj.Object, NullLogger<EntraxSignupStatusService>.Instance);
+
+        await Task.WhenAll(Servicio(dbA).GetAsync(_order, pagoId, default), Servicio(dbB).GetAsync(_order, pagoId, default));
+
+        liquidacion.Verify(s => s.SettleAsync(pagoId, EntraxSettlementSource.Poll, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     private EntraxSignupSettlement Liquidacion(AppDbContext db, IEntraxClient cliente)
     {
         var reloj = new Mock<IDateTimeProvider>();

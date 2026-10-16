@@ -66,7 +66,8 @@ public sealed class EntraxSignupStatusService : IEntraxSignupStatusService
 
         if (payment.Status == EntraxPaymentStatus.AwaitingPayment
             && payment.ExternalPaymentId is not null
-            && (payment.LastCheckedAt is null || now - payment.LastCheckedAt.Value >= _options.PollThrottle))
+            && (payment.LastCheckedAt is null || now - payment.LastCheckedAt.Value >= _options.PollThrottle)
+            && await TryReservePollAsync(payment, now, ct))
         {
             try
             {
@@ -87,6 +88,24 @@ public sealed class EntraxSignupStatusService : IEntraxSignupStatusService
                 ? EntraxGateway.SecondsUntil(payment.ExpiresAt, now)
                 : 0
         };
+    }
+
+    /// <summary>
+    /// Reserva el turno de consulta a Entrax con un UPDATE condicional sobre LastCheckedAt: con dos
+    /// pestañas o dos peticiones en el mismo instante, solo una pregunta (Entrax limita a 100/min por IP).
+    /// </summary>
+    private async Task<bool> TryReservePollAsync(EntraxPayment payment, DateTime now, CancellationToken ct)
+    {
+        if (!_db.Database.IsRelational())
+            return true;   // EF InMemory (pruebas): ya se decidió con lo leído.
+
+        var limit = now - _options.PollThrottle;
+        var affected = await _db.EntraxPayments
+            .Where(p => p.Id == payment.Id
+                     && p.Status == EntraxPaymentStatus.AwaitingPayment
+                     && (p.LastCheckedAt == null || p.LastCheckedAt <= limit))
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.LastCheckedAt, now), ct);
+        return affected == 1;
     }
 
     public SignupPaymentOptionsDto GetPaymentOptions()
