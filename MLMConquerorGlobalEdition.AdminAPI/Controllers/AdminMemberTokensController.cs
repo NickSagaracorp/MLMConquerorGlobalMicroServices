@@ -5,6 +5,7 @@ using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Services.Tokens;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Billing;
+using MLMConquerorGlobalEdition.SharedKernel.Constants;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
@@ -19,6 +20,11 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 /// SOLO LECTURA: resumen, historial y saldos. En el panel no se compra ni se distribuye (la pantalla
 /// los deja apagados: nadie compra con el dinero de otro); dar o ajustar tokens tiene su propia
 /// pantalla de administración. Los roles son los que ya ven la ficha del miembro.
+///
+/// LOS CÓDIGOS SON AL PORTADOR: quien lee uno lo canjea. Soporte (SupportManager y SupportLevel1-3) ve
+/// el historial con cada código tapado (<see cref="TokenCodeMask"/>: los tres primeros caracteres y
+/// <c>****</c>), también los que lleva la nota de una distribución o transferencia; solo SuperAdmin y
+/// Admin lo ven entero. En el BizCenter el dueño sigue viendo los suyos completos (no pasa por aquí).
 /// </remarks>
 [ApiController]
 [Route("api/v1/admin/members/{memberId}/tokens")]
@@ -45,6 +51,13 @@ public class AdminMemberTokensController : ControllerBase
         pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
 
         var (items, total) = await MemberTokenQueries.HistoryPageAsync(_db, memberId, page, pageSize, ct);
+        if (!CanSeeFullCodes())
+            foreach (var row in items)
+            {
+                row.TokenCode = TokenCodeMask.Mask(row.TokenCode);
+                row.Notes     = TokenCodeMask.MaskCodesIn(row.Notes);
+            }
+
         return Ok(ApiResponse<PagedResult<MemberTokenQueries.HistoryRow>>.Ok(new PagedResult<MemberTokenQueries.HistoryRow>
         {
             Items      = items,
@@ -53,6 +66,8 @@ public class AdminMemberTokensController : ControllerBase
             PageSize   = pageSize
         }));
     }
+
+    private bool CanSeeFullCodes() => User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Admin);
 
     /// <summary>GET api/v1/admin/members/{memberId}/tokens/summary — total, usados y disponibles.</summary>
     [HttpGet("summary")]

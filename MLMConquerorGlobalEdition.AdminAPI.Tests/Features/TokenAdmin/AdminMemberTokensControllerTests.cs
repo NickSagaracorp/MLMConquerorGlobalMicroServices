@@ -1,4 +1,6 @@
 using System.Reflection;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
@@ -49,7 +51,16 @@ public class AdminMemberTokensControllerTests
     {
         var clock = new Mock<IDateTimeProvider>();
         clock.Setup(c => c.Now).Returns(Now);
-        return new AdminMemberTokensController(db, clock.Object);
+        return new AdminMemberTokensController(db, clock.Object)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.Role, "Admin") }, "test"))
+                }
+            }
+        };
     }
 
     private static T DataOf<T>(IActionResult r) =>
