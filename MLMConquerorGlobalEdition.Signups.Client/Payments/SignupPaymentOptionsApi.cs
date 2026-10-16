@@ -55,7 +55,23 @@ public static class SignupPaymentTabs
     /// <summary>Antes de leer las opciones del servidor: nunca la tarjeta.</summary>
     public const string Initial = Token;
 
+    public const string CardDisabledError   = "Card payments are not available right now. Please choose another payment method.";
+    public const string EntraxDisabledError = "Payment in rubles (SBP) is not available for your country.";
+    public const string UnknownTabError     = "Please choose a payment method.";
+
     public static string Default(bool cardEnabled) => cardEnabled ? Card : Token;
+
+    /// <summary>
+    /// Por qué no se puede pagar con esta pestaña, o null si se puede. Se mira ANTES de crear el alta: con la
+    /// tarjeta apagada no se crea un alta que luego no se puede pagar así.
+    /// </summary>
+    public static string? Problem(string? tab, bool cardEnabled, bool entraxOffered) => tab switch
+    {
+        Token or Crypto => null,
+        Card            => cardEnabled ? null : CardDisabledError,
+        Entrax          => entraxOffered ? null : EntraxDisabledError,
+        _               => UnknownTabError
+    };
 
     /// <summary>
     /// La pestaña elegida si se sigue ofreciendo; si no (tarjeta apagada, Entrax fuera del país, o algo

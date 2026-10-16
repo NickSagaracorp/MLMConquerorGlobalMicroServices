@@ -106,6 +106,18 @@ public class PestanaDeTarjetaDelAltaTests
         string pestana, bool tarjeta, bool entrax, string queda)
         => SignupPaymentTabs.Normalize(pestana, tarjeta, entrax).Should().Be(queda);
 
+    [Theory]
+    [InlineData("card",   false, false, true)]
+    [InlineData("card",   true,  false, false)]
+    [InlineData("entrax", false, false, true)]
+    [InlineData("entrax", false, true,  false)]
+    [InlineData("token",  false, false, false)]
+    [InlineData("crypto", false, false, false)]
+    [InlineData("",       true,  true,  true)]
+    [InlineData("otra",   true,  true,  true)]
+    public void Una_pestana_que_no_se_puede_usar_tiene_un_problema(string pestana, bool tarjeta, bool entrax, bool problema)
+        => (SignupPaymentTabs.Problem(pestana, tarjeta, entrax) is not null).Should().Be(problema);
+
     // ── El marcado de las dos páginas ───────────────────────────────────────
 
     private static string Pagina(string nombre)
@@ -156,16 +168,55 @@ public class PestanaDeTarjetaDelAltaTests
         codigo.Should().Contain("SignupPaymentOptionsApi.GetAsync(api)", "una sola lectura que falla cerrada");
         codigo.Should().Contain("_cardEnabled");
         codigo.Should().Contain("private string _paymentTab").And.Contain("= SignupPaymentTabs.Initial;");
+        // "Elegir otro método" tras un QR vuelve a la de por defecto.
         codigo.Should().Contain("_paymentTab = SignupPaymentTabs.Default(_cardEnabled);");
         codigo.Should().NotContain("_paymentTab = \"card\"");
         codigo.Should().NotContain("_paymentTab     = \"card\"");
 
-        // Al cambiar de país (desplegable y ventana) la pestaña se revisa contra lo que se ofrece.
+        // Al leer las opciones se normaliza la pestaña (no se pisa la que ya eligió la persona), y lo mismo
+        // al cambiar de país (desplegable y ventana).
+        Regex.IsMatch(codigo, @"_cardEnabled = paymentOptions\.CardEnabled;\s+_paymentTab = SignupPaymentTabs\.Normalize\(_paymentTab, _cardEnabled, EntraxOffered\);")
+            .Should().BeTrue("la carga inicial normaliza, no pone la de por defecto");
         Regex.Matches(codigo, @"_paymentTab\s*=\s*SignupPaymentTabs\.Normalize\(_paymentTab, _cardEnabled, EntraxOffered\)")
-            .Count.Should().BeGreaterThanOrEqualTo(2);
+            .Count.Should().BeGreaterThanOrEqualTo(3);
         codigo.Should().NotContain("_paymentTab == \"entrax\" && !EntraxOffered) _paymentTab");
+    }
 
-        // Con la tarjeta apagada la página no intenta tokenizar ni enviar la tarjeta.
-        codigo.Should().Contain("if (paymentTab == SignupPaymentTabs.Card && !_cardEnabled)");
+    [Theory]
+    [InlineData("Signup.razor")]
+    [InlineData("MemberJoin.razor")]
+    public void La_pestana_se_comprueba_antes_de_crear_el_alta(string pagina)
+    {
+        var codigo = Codigo(Pagina(pagina));
+        var alta = codigo[codigo.IndexOf("private async Task HandleJoinNow", StringComparison.Ordinal)..];
+
+        var comprobacion = alta.IndexOf("SignupPaymentTabs.Problem(_paymentTab, _cardEnabled, EntraxOffered)", StringComparison.Ordinal);
+        comprobacion.Should().BePositive();
+        comprobacion.Should().BeLessThan(alta.IndexOf("PostAsJsonAsync(", StringComparison.Ordinal),
+            "con la tarjeta apagada no se crea un alta que luego no se puede pagar así");
+    }
+
+    [Theory]
+    [InlineData("Signup.razor")]
+    [InlineData("MemberJoin.razor")]
+    public void Una_pestana_desconocida_no_se_envia_como_tarjeta(string pagina)
+    {
+        var codigo = Codigo(Pagina(pagina));
+
+        Regex.IsMatch(codigo, @"PaymentMethod = ""CreditCard""\s*\}").Should().BeFalse(
+            "la tarjeta solo sale con su cuerpo; lo demás es un error en la pantalla");
+        codigo.Should().Contain("SignupPaymentTabs.UnknownTabError");
+    }
+
+    [Theory]
+    [InlineData("Signup.razor")]
+    [InlineData("MemberJoin.razor")]
+    public void Si_el_servidor_dice_que_la_tarjeta_esta_apagada_se_esconde(string pagina)
+    {
+        var codigo = Codigo(Pagina(pagina));
+
+        Regex.IsMatch(codigo,
+                @"ErrorCode == TokenPurchaseErrors\.CardPaymentsDisabled\)\s*\{(\s*//[^\n]*)*\s*_cardEnabled = false;\s*_paymentTab = SignupPaymentTabs\.Normalize\(_paymentTab, _cardEnabled, EntraxOffered\);")
+            .Should().BeTrue();
     }
 }

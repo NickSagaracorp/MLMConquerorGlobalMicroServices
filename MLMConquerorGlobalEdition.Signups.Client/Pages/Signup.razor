@@ -1359,7 +1359,7 @@
         var paymentOptions = await SignupPaymentOptionsApi.GetAsync(api);
         _entraxCountries = paymentOptions.EntraxCountries;
         _cardEnabled = paymentOptions.CardEnabled;
-        _paymentTab = SignupPaymentTabs.Default(_cardEnabled);
+        _paymentTab = SignupPaymentTabs.Normalize(_paymentTab, _cardEnabled, EntraxOffered);
 
         // Load countries first (needed to populate dropdowns)
         try
@@ -1741,6 +1741,11 @@
         if (IsUnitedStates(_country) && string.IsNullOrWhiteSpace(_ssn))
             { _error = "SSN is required for United States residents."; return; }
 
+        // La pestaña se comprueba ANTES de crear el alta: con la tarjeta apagada (o Entrax fuera del país, o
+        // una pestaña desconocida) no se crea un alta que luego no se puede pagar así.
+        var tabProblem = SignupPaymentTabs.Problem(_paymentTab, _cardEnabled, EntraxOffered);
+        if (tabProblem is not null) { _error = tabProblem; return; }
+
         _busy = true;
         try
         {
@@ -1833,14 +1838,6 @@
                 return;
             }
 
-            // Con la tarjeta apagada ni se tokeniza ni se envía. SignupAPI la rechazaría igual
-            // (CARD_PAYMENTS_DISABLED): quien manda es el servidor, esto solo evita el viaje.
-            if (paymentTab == SignupPaymentTabs.Card && !_cardEnabled)
-            {
-                _error = "Card payments are not available right now. Please choose another payment method.";
-                return;
-            }
-
             object payment;
             if (paymentTab == SignupPaymentTabs.Card)
             {
@@ -1866,12 +1863,15 @@
             }
             else
             {
-                payment = paymentTab switch
+                // Una pestaña desconocida es un error en la pantalla, nunca una tarjeta sin cuerpo.
+                object? other = paymentTab switch
                 {
-                    "token"  => (object)new { PaymentMethod = "Token",  TokenCode = _payToken },
-                    "crypto" => (object)new { PaymentMethod = "Crypto", CryptoCurrency = _cryptoCurrency },
-                    _        => (object)new { PaymentMethod = "CreditCard" }
+                    SignupPaymentTabs.Token  => new { PaymentMethod = "Token",  TokenCode = _payToken },
+                    SignupPaymentTabs.Crypto => new { PaymentMethod = "Crypto", CryptoCurrency = _cryptoCurrency },
+                    _                        => null
                 };
+                if (other is null) { _error = SignupPaymentTabs.UnknownTabError; return; }
+                payment = other;
             }
 
             var r3 = await api.PostAsJsonAsync($"api/v1/signups/{_signupId}/complete", payment);
@@ -1881,6 +1881,14 @@
             { _completedEmail = b3.Data.Email; _alreadyPaid = false; _completedPendingCrypto = paymentTab == "crypto"; _success = true; }
             else if (b3?.ErrorCode == EntraxSignupApi.AlreadySettledCode)
             { ShowSettled(alreadyPaid: true); }   // con tarjeta, token o cripto: el alta ya estaba pagada
+            else if (b3?.ErrorCode == TokenPurchaseErrors.CardPaymentsDisabled)
+            {
+                // El servidor manda: la tarjeta se apagó mientras la pantalla la ofrecía. Se esconde y se
+                // elige otra pestaña; el alta sigue en Pending para pagar con otro método.
+                _cardEnabled = false;
+                _paymentTab = SignupPaymentTabs.Normalize(_paymentTab, _cardEnabled, EntraxOffered);
+                _error = SignupPaymentTabs.CardDisabledError;
+            }
             else
             { _error = b3?.Message ?? b3?.Errors?.FirstOrDefault() ?? "Could not complete enrollment."; }
         }
