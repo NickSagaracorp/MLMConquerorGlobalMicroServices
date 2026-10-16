@@ -106,9 +106,27 @@
                     {
                         <i class="ri-checkbox-circle-fill success-check"></i>
                         <h3 class="mt-3 mb-2">Welcome, @_completedEmail!</h3>
+                        @if (_alreadyPaid)
+                        {
+                            <p class="text-muted mb-1">This enrollment was already paid, so there is nothing else to pay.</p>
+                        }
                         <p class="text-muted mb-4">Your account is active. Access your BizCenter to get started.</p>
                         <a href="/login" class="btn btn-enroll px-5">Go to BizCenter</a>
                     }
+                </div>
+            </div>
+        }
+        else if (_entraxPayment is not null)
+        {
+            @* Rublos por SBP (Plan H): el alta está creada y el pedido reservado; se espera el cobro. *@
+            <div class="section-card">
+                <div class="section-body py-4">
+                    <EntraxQrPayment Payment="_entraxPayment"
+                                     CheckStatus="CheckEntraxStatusAsync"
+                                     Busy="_busy"
+                                     OnPaid="OnEntraxPaid"
+                                     OnRetry="RetryEntraxAsync"
+                                     OnChooseAnother="ChooseAnotherPaymentMethod" />
                 </div>
             </div>
         }
@@ -677,6 +695,15 @@
                             <i class="ri-bit-coin-line me-1"></i>Crypto
                         </button>
                     </li>
+                    @if (EntraxOffered)
+                    {
+                        <li class="nav-item">
+                            <button class="nav-link @(_paymentTab == "entrax" ? "active" : "")" type="button"
+                                    @onclick='() => _paymentTab = "entrax"'>
+                                <i class="ri-qr-code-line me-1"></i>Rubles (SBP)
+                            </button>
+                        </li>
+                    }
                 </ul>
 
                 @if (_paymentTab == "card")
@@ -807,6 +834,17 @@
                     </div>
                 }
 
+                @if (_paymentTab == "entrax" && EntraxOffered)
+                {
+                    <div class="py-4">
+                        <p class="small text-muted mb-0">
+                            Pay in rubles through the Russian Fast Payment System (SBP). After you click Join Now we'll show
+                            a QR code for @AmountToday.ToString("C") converted to rubles at the current rate. Your account
+                            activates as soon as the payment arrives.
+                        </p>
+                    </div>
+                }
+
                 <hr class="my-4" />
 
                 <div class="captcha-placeholder d-flex align-items-center gap-2 mb-3">
@@ -826,7 +864,7 @@
 
                 <div class="d-grid">
                     <button type="button" class="btn btn-enroll"
-                            disabled="@(!_agreedTerms || _busy || (_paymentTab == "token" && !_tokenValid) || (_paymentTab == "crypto" && _cryptoDeposit is null))"
+                            disabled="@(!_agreedTerms || _busy || (_paymentTab == "token" && !_tokenValid) || (_paymentTab == "crypto" && _cryptoDeposit is null) || (_paymentTab == "entrax" && !EntraxOffered))"
                             @onclick="HandleJoinNow">
                         @if (_busy)
                         {
@@ -1171,6 +1209,13 @@
     // ── Payment ───────────────────────────────────────────────────────────────
     private string _paymentTab    = "card";
 
+    // Rublos por SBP con Entrax (Plan H): países donde se ofrece, el QR en curso y si el servidor
+    // dijo que el alta ya estaba pagada.
+    private IReadOnlyList<string> _entraxCountries = [];
+    private EntraxSignupPaymentDto? _entraxPayment;
+    private bool _alreadyPaid;
+    private bool EntraxOffered => _entraxCountries.Any(c => string.Equals(c, _countryIso2, StringComparison.OrdinalIgnoreCase));
+
     // Direcciones de depósito configuradas en Admin → Global Parameters (Plan F). Vacío = sin cripto:
     // mejor no ofrecerla que mandar a alguien a pagar a una dirección que nadie le va a dar.
     private List<CryptoDepositAddressDto> _cryptoDeposits = new();
@@ -1290,6 +1335,9 @@
         }
         catch { _cryptoDeposits = new(); }
 
+        // Rublos por SBP (Plan H): países con Entrax encendido. Si falla, la pestaña no aparece.
+        _entraxCountries = await EntraxSignupApi.GetCountriesAsync(api);
+
         // Load countries first (needed to populate dropdowns)
         try
         {
@@ -1346,6 +1394,7 @@
         _country  = nameEn;
         var ct = _countryData.FirstOrDefault(x => x.NameEn == nameEn);
         _countryIso2 = ct?.Iso2 ?? string.Empty;
+        if (_paymentTab == "entrax" && !EntraxOffered) _paymentTab = "card";
         if (!CountryHasStates(_countryIso2)) _province = string.Empty;
         if (!IsUnitedStates(_country)) _ssn = string.Empty;
         // Phone codes are updated but products are not reloaded from the dropdown —
@@ -1361,6 +1410,7 @@
     {
         _country     = ct.NameEn;
         _countryIso2 = ct.Iso2;
+        if (_paymentTab == "entrax" && !EntraxOffered) _paymentTab = "card";
         if (!CountryHasStates(_countryIso2)) _province = string.Empty;
         if (!IsUnitedStates(_country)) _ssn = string.Empty;
         if (ct.PhoneCode is not null)
@@ -1675,6 +1725,10 @@
                 ? null
                 : $"{_cellCountryCode}{_cellPhone}";
 
+            // Un alta ya creada (p. ej. tras un QR de Entrax caducado y "otro método") no se vuelve a
+            // crear: el correo ya existe. Se sigue desde la selección de productos.
+            if (_signupId is null)
+            {
             var r1 = await api.PostAsJsonAsync("api/v1/signups/ambassador", new
             {
                 SponsorReplicateSite = SponsorSlug,
@@ -1713,6 +1767,7 @@
                 return;
             }
             _signupId = b1.Data.SignupId;
+            }
 
             var productIds = new List<string>();
             if (_enrollmentProduct is not null) productIds.Add(_enrollmentProduct.Id);
@@ -1739,6 +1794,16 @@
             // El método se fija aquí: si el usuario cambia de pestaña mientras se espera la
             // respuesta, la pantalla final tiene que hablar del método con el que se pagó.
             var paymentTab = _paymentTab;
+
+            // Rublos por SBP (Plan H): el servidor emite el QR y la pantalla espera el cobro. Todavía no
+            // hay _success: la cuenta se activa cuando Entrax confirma, no al pulsar.
+            if (paymentTab == "entrax")
+            {
+                _completedEmail = _email;
+                ApplyEntraxStart(await EntraxSignupApi.StartAsync(api, _signupId!));
+                return;
+            }
+
             object payment;
             if (paymentTab == "card")
             {
@@ -1782,6 +1847,66 @@
         }
         catch (Exception ex) { _error = $"Connection error: {ex.Message}"; }
         finally { _busy = false; }
+    }
+
+    // ── Rublos por SBP (Plan H) ──────────────────────────────────────────────
+    private Task<EntraxSignupStatusDto?> CheckEntraxStatusAsync(CancellationToken ct)
+        => _signupId is null || _entraxPayment is null
+            ? Task.FromResult<EntraxSignupStatusDto?>(null)
+            : EntraxSignupApi.GetStatusAsync(HttpFactory.CreateClient("SignupsInternal"), _signupId, _entraxPayment.PaymentRef, ct);
+
+    /// <summary>
+    /// El servidor ya activó la cuenta (por este QR, o por otro medio si el estado fue Superseded): se
+    /// enseña el "bienvenido" de siempre, que manda a iniciar sesión. No hay tokens: la activación
+    /// ocurrió fuera de esta petición.
+    /// </summary>
+    private void OnEntraxPaid()
+    {
+        _entraxPayment          = null;
+        _completedPendingCrypto = false;
+        _success                = true;
+    }
+
+    /// <summary>Aplica lo que contestó el servidor al pedir el QR (primera vez o reintento).</summary>
+    private void ApplyEntraxStart(EntraxStartResult result)
+    {
+        switch (result.Outcome)
+        {
+            case EntraxStartOutcome.Started:
+                _entraxPayment = result.Payment;
+                break;
+
+            // El alta ya está pagada y activa: no se ofrece reintentar nada, solo iniciar sesión.
+            case EntraxStartOutcome.AlreadySettled:
+                _entraxPayment          = null;
+                _alreadyPaid            = true;
+                _completedPendingCrypto = false;
+                _success                = true;
+                break;
+
+            default:
+                _error = result.Error ?? "Could not create the SBP payment.";
+                break;
+        }
+    }
+
+    private async Task RetryEntraxAsync()
+    {
+        if (_signupId is null) return;
+        _error = string.Empty;
+        _busy  = true;
+        try
+        {
+            ApplyEntraxStart(await EntraxSignupApi.StartAsync(HttpFactory.CreateClient("SignupsInternal"), _signupId));
+        }
+        catch (Exception ex) { _error = $"Connection error: {ex.Message}"; }
+        finally { _busy = false; }
+    }
+
+    private void ChooseAnotherPaymentMethod()
+    {
+        _entraxPayment = null;
+        _paymentTab    = "card";
     }
 
     // ── Local models ──────────────────────────────────────────────────────────
