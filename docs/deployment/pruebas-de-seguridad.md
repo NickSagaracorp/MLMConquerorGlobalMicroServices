@@ -327,6 +327,33 @@ muestra el nombre bien; lo que hay que verificar es lo que se guarda.
 **Debe** responder lo mismo exista o no la cuenta — si dice "esa dirección no está
 registrada", el formulario sirve para averiguar qué correos tienen cuenta.
 
+### 6.4 La tarjeta del alta está apagada
+
+Qué protege: `POST api/v1/signups/{signupId}/complete` (anónimo) con `"paymentMethod":"CreditCard"`.
+En el alta nada cobra una tarjeta: la tokenización del navegador es simulada
+(`SimulatedCardTokenizationService`) y `SpreedlyCardGatewayService` es un stub. Con la tarjeta
+encendida, `CompleteSignup` guarda la tarjeta y **activa la membresía y genera comisiones sin cobrar**.
+
+**Condiciones de despliegue:**
+
+- **BLOQUEANTE — la tarjeta del alta no se enciende en producción.** `Signup:CardEnabled` tiene que
+  valer `false` en SignupAPI (es el valor de `appsettings.json`; si falta la clave, o no es `true`,
+  también vale apagada) **hasta que exista el cobro real con 3DS**. Apagada, `payment-options` trae
+  `cardEnabled: false`, las dos páginas del alta (`Signup.razor` y `MemberJoin.razor`) no muestran la
+  pestaña y `complete` con tarjeta responde `400 CARD_PAYMENTS_DISABLED` antes de leer el pedido: no
+  activa, no guarda la tarjeta, no sube la captura y el pedido sigue en `Pending` para pagar con otro
+  método. El servidor manda: aunque una pantalla vieja muestre la pestaña, la rechaza.
+- Encenderla exige el cobro real (tokenización real en el navegador, cargo con 3DS por Spreedly y
+  activación solo con el cargo confirmado) y una alta de prueba real en sandbox. Es lo mismo que
+  `Billing:TokenPurchase:CardEnabled` en la compra de tokens (§9).
+
+| # | Prueba | Resultado esperado | ✔ |
+|---|---|---|---|
+| 6.4.1 | `POST api/v1/signups/{signupId}/complete` con `"paymentMethod":"CreditCard"` (con y sin cuerpo `creditCard`) y la tarjeta apagada | `400 CARD_PAYMENTS_DISABLED`, sin activar: pedido en `Pending`, miembro y suscripción en `Pending`, usuario inactivo, ninguna fila en `CreditCards` ni comisión; después el mismo alta se completa con otro método | ☐ |
+| 6.4.2 | `GET api/v1/signups/payment-options` con la tarjeta apagada | `cardEnabled: false` | ☐ |
+| 6.4.3 | Abrir `/ambassador-join/…` y `/member-join/…` con la tarjeta apagada | sin pestaña *Credit Card*; elegida por defecto *Token*, también al cambiar de país y al volver de un QR de Entrax | ☐ |
+| 6.4.4 | `POST api/v1/admin/signups/{orderId}/retry-complete` (AdminAPI) con la tarjeta apagada | no activa: reenvía `complete` con `paymentMethod: 1` sin tarjeta y SignupAPI lo rechaza (`400`) | ☐ |
+
 ---
 
 ## 7. Lo que **no** está encendido
@@ -339,6 +366,7 @@ explicación.
 | `Auth:TwoFactor:MandatoryRoles` | vacío | Nadie está obligado a llevar 2FA. Encenderlo **antes** de que el correo entregue de verdad deja fuera del portal a quien tenga ese canal |
 | Correo y SMS | proveedor `Null` | El log registra el evento y los nombres de las variables, nunca el código ni los enlaces. En desarrollo el correo va a MailHog (`docs/deployment/correo-en-desarrollo.md`). Encender SES es un paso de despliegue con prerrequisitos |
 | Step-up fuera del cambio de cobro | sin construir | El step-up existe (Plan E) y protege solo el cambio de wallet de cobro del BizCenter. Las operaciones del Admin (§6.4 de la spec de 2FA) siguen sin él |
+| `Signup:CardEnabled` (tarjeta en el alta) | `false` | Nada cobra la tarjeta del alta (tokenización simulada, gateway stub): encendida activaría y comisionaría sin dinero. Bloqueante hasta el cobro real con 3DS (§6.4) |
 | Lista blanca de IP del limitador | sin declarar | El refresco tiene una red de seguridad de 600/min por IP. Los portales llaman servidor a servidor, así que en producción hay que declarar sus IP |
 
 ### Antes de encender el correo
