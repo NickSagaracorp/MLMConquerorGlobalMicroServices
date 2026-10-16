@@ -18,6 +18,13 @@ public interface ISignupOrderClaim
     /// así que tiene que ir dentro de la transacción de quien activa (si no, lanza).
     /// </summary>
     Task<bool> TryCompleteAsync(Orders order, DateTime now, string actor, CancellationToken ct);
+
+    /// <summary>
+    /// Igual, pero SOLO desde Pending: el camino inmediato (tarjeta, token, código de descuento). Un
+    /// pedido en Processing está esperando otro cobro (un QR de Entrax, una cripto) y no lo completa
+    /// la tarjeta. También dentro de la transacción de quien activa.
+    /// </summary>
+    Task<bool> TryCompleteFromPendingAsync(Orders order, DateTime now, string actor, CancellationToken ct);
 }
 
 /// <inheritdoc />
@@ -30,30 +37,48 @@ public sealed class SignupOrderClaim : ISignupOrderClaim
 
     public SignupOrderClaim(AppDbContext db) => _db = db;
 
-    public async Task<bool> TryCompleteAsync(Orders order, DateTime now, string actor, CancellationToken ct)
+    public Task<bool> TryCompleteAsync(Orders order, DateTime now, string actor, CancellationToken ct)
+        => TryMoveAsync(order, [OrderStatus.Pending, OrderStatus.Processing], OrderStatus.Completed, now, actor,
+                        requireTransaction: true, ct);
+
+    public Task<bool> TryCompleteFromPendingAsync(Orders order, DateTime now, string actor, CancellationToken ct)
+        => TryMoveAsync(order, [OrderStatus.Pending], OrderStatus.Completed, now, actor, requireTransaction: true, ct);
+
+    private async Task<bool> TryMoveAsync(
+        Orders order, OrderStatus[] from, OrderStatus to, DateTime now, string actor, bool requireTransaction,
+        CancellationToken ct)
     {
         if (!_db.Database.IsRelational())
         {
             // EF InMemory (pruebas) no tiene UPDATE condicional: se decide con lo leído.
-            return order.Status is OrderStatus.Pending or OrderStatus.Processing;
+            return from.Contains(order.Status);
         }
 
         // Fallo cerrado: fuera de una transacción el UPDATE quedaría confirmado aunque la activación
         // fallara después, y el pedido quedaría Completed sin miembro activo ni comisiones.
-        if (_db.Database.CurrentTransaction is null)
+        if (requireTransaction && _db.Database.CurrentTransaction is null)
             throw new InvalidOperationException(
-                "SignupOrderClaim.TryCompleteAsync must run inside the activation's database transaction.");
+                "SignupOrderClaim must run inside the activation's database transaction.");
 
         // El segundo que llegue espera al bloqueo de la fila y, cuando el primero confirma, ya no la
-        // encuentra en Pending ni en Processing: cero filas.
+        // encuentra en el estado de partida: cero filas.
         var affected = await _db.Orders
-            .Where(o => o.Id == order.Id
-                     && (o.Status == OrderStatus.Pending || o.Status == OrderStatus.Processing))
+            .Where(o => o.Id == order.Id && from.Contains(o.Status))
             .ExecuteUpdateAsync(s => s
-                .SetProperty(o => o.Status, OrderStatus.Completed)
+                .SetProperty(o => o.Status, to)
                 .SetProperty(o => o.LastUpdateDate, now)
                 .SetProperty(o => o.LastUpdateBy, actor), ct);
 
-        return affected == 1;
+        if (affected != 1)
+            return false;
+
+        // La entidad seguida refleja lo que ya está en la base, sin quedar marcada como modificada.
+        var entry = _db.Entry(order);
+        if (entry.State != EntityState.Detached)
+        {
+            entry.Property(o => o.Status).CurrentValue  = to;
+            entry.Property(o => o.Status).OriginalValue = to;
+        }
+        return true;
     }
 }

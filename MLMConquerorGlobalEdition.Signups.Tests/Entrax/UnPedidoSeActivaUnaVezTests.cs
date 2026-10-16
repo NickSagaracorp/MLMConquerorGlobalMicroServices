@@ -31,6 +31,12 @@ public class UnPedidoSeActivaUnaVezTests
             Llamadas++;
             return Task.FromResult(false);
         }
+
+        public Task<bool> TryCompleteFromPendingAsync(Orders order, DateTime now, string actor, CancellationToken ct)
+        {
+            Llamadas++;
+            return Task.FromResult(false);
+        }
     }
 
     private static SignupActivationService Activacion(

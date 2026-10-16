@@ -59,9 +59,16 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
     private readonly ICryptoDepositAddressReader  _cryptoAddresses;
     private readonly IMemberFundsGate             _gate;
     private readonly IEntraxSignupCheckout?       _entraxCheckout;
+    private readonly ISignupOrderClaim            _orderClaim;
 
     /// <summary>El candado del dueño del token está ocupado: no se hizo nada y se puede repetir.</summary>
     public const string TokenBusyCode = "TOKEN_BUSY";
+
+    /// <summary>
+    /// Otro pago (un QR de Entrax tardío, una cripto) activó este alta entre la lectura y la activación:
+    /// esta llamada no activa nada. 409.
+    /// </summary>
+    public const string SignupAlreadySettledCode = "SIGNUP_ALREADY_SETTLED";
 
     private const string TokenNotValidMessage = "This token is not valid for this signup.";
 
@@ -78,7 +85,9 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
         IMemberFundsGate gate,
         // Opcional a propósito: sin él (pruebas antiguas, o Entrax sin registrar) el método no está
         // disponible y el alta lo rechaza con ENTRAX_NOT_AVAILABLE. El contenedor lo inyecta.
-        IEntraxSignupCheckout? entraxCheckout = null)
+        IEntraxSignupCheckout? entraxCheckout = null,
+        // Opcional por lo mismo; el contenedor inyecta SignupOrderClaim.
+        ISignupOrderClaim? orderClaim = null)
     {
         _db              = db;
         _dateTime        = dateTime;
@@ -91,6 +100,7 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
         _cryptoAddresses = cryptoAddresses;
         _gate            = gate;
         _entraxCheckout  = entraxCheckout;
+        _orderClaim      = orderClaim ?? new SignupOrderClaim(db);
     }
 
     public async Task<Result<SignupResponse>> Handle(CompleteSignupCommand command, CancellationToken ct)
@@ -342,19 +352,40 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
 
             // Activar puede guardar por su cuenta (el alta en la facturación recurrente): por eso el choque de
             // concurrencia se recoge de las dos llamadas. Con token, todo va en la transacción del candado y
-            // se deshace al soltarla; sin token, ningún guardado toca un código.
+            // se deshace al soltarla; sin token se abre una aquí, porque el pedido se reclama dentro.
+            var ownTx = tokenLock is null && _db.Database.IsRelational()
+                ? await _db.Database.BeginTransactionAsync(ct)
+                : null;
             try
             {
+                // El pedido pasa de Pending a Completed de forma atómica ANTES de activar: si un pago de
+                // Entrax tardío o la cripto lo activó entre la lectura y aquí, esta llamada no activa nada
+                // (y la transacción se deshace al soltarla, con el canje del token si lo hubo).
+                if (!await _orderClaim.TryCompleteFromPendingAsync(order, now, member.Email, ct))
+                {
+                    _db.ChangeTracker.Clear();
+                    return Result<SignupResponse>.Failure(SignupAlreadySettledCode,
+                        "This signup was already completed with another payment.");
+                }
+
                 await _activation.ActivateAsync(
                     order, member, subscription, totalQualPoints, now, member.Email, ct);
 
                 await _db.SaveChangesAsync(ct);
+
+                if (ownTx is not null)
+                    await ownTx.CommitAsync(ct);
             }
             catch (DbUpdateConcurrencyException) when (req.PaymentMethod == PaymentMethodType.Token)
             {
                 // Otro proceso canjeó o movió el código entre la lectura y el guardado.
                 _db.ChangeTracker.Clear();
                 return Result<SignupResponse>.Failure("TOKEN_NOT_VALID", TokenNotValidMessage);
+            }
+            finally
+            {
+                if (ownTx is not null)
+                    await ownTx.DisposeAsync();
             }
 
             if (tokenLock is not null)

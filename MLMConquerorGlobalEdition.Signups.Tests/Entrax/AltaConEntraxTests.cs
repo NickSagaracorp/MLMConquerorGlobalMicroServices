@@ -160,6 +160,7 @@ public class AltaConEntraxTests
     [InlineData(EntraxSignupErrors.Unavailable, StatusCodes.Status502BadGateway)]
     [InlineData(EntraxSignupErrors.InProgress, StatusCodes.Status409Conflict)]
     [InlineData(EntraxSignupErrors.NotAvailable, StatusCodes.Status400BadRequest)]
+    [InlineData(CompleteSignupHandler.SignupAlreadySettledCode, StatusCodes.Status409Conflict)]
     public async Task El_controlador_traduce_los_errores_de_Entrax(string codigo, int http)
     {
         var mediator = new Mock<IMediator>();

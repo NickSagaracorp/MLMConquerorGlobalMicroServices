@@ -109,11 +109,13 @@ public class SignupsController : ControllerBase
         if (!result.IsSuccess)
         {
             // Candado del token ocupado u otro QR en creación: no se hizo nada y se puede repetir.
+            // Alta ya activada por otro pago (Entrax tardío, cripto): 409, esta llamada no activó nada.
             // Entrax sin QR usable: 502, el aspirante reintenta o elige otro método.
             var body = ApiResponse<SignupResponse>.Fail(result.ErrorCode!, result.Error!);
             return result.ErrorCode switch
             {
-                CompleteSignupHandler.TokenBusyCode or EntraxSignupErrors.InProgress => Conflict(body),
+                CompleteSignupHandler.TokenBusyCode or EntraxSignupErrors.InProgress
+                    or CompleteSignupHandler.SignupAlreadySettledCode => Conflict(body),
                 EntraxSignupErrors.Unavailable => StatusCode(StatusCodes.Status502BadGateway, body),
                 _ => BadRequest(body)
             };

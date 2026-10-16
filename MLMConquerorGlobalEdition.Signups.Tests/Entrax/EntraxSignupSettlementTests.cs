@@ -380,4 +380,7 @@ internal sealed class CarreraPerdida : ISignupOrderClaim
 {
     public Task<bool> TryCompleteAsync(Orders order, DateTime now, string actor, CancellationToken ct)
         => Task.FromResult(false);
+
+    public Task<bool> TryCompleteFromPendingAsync(Orders order, DateTime now, string actor, CancellationToken ct)
+        => Task.FromResult(false);
 }
