@@ -451,6 +451,15 @@ que no pueden esperar a esa tarea.
   compra con tarjeta o eWallet que se quedó en `Pending` porque el proceso o la base cayeron entre
   el cobro y la emisión (R5). Nunca libera el cupo: tesorería mira el gateway y la cierra en
   *Admin → Billing → Token Purchases → To review*.
+- **Altas en cripto: las direcciones antes que SignupAPI.** El alta en cripto solo se ofrece y
+  SignupAPI solo la acepta si hay `Crypto.DepositAddress.{BTC|ETH|USDT}` en *Admin → Settings →
+  Global Parameters* (la red, `Crypto.DepositNetwork.*`, es opcional, pero para USDT conviene
+  ponerla); sin ellas, `400 CRYPTO_ADDRESS_NOT_CONFIGURED`. Configurarlas **antes** de desplegar
+  la versión nueva de SignupAPI.
+- **`Services:BillingBaseUrl` definida en BizCenter y en AdminAPI** para cada entorno (variable
+  `Services__BillingBaseUrl` o `appsettings.{Entorno}.json`). No está en el `appsettings.json` base
+  a propósito: fuera de Development, sin ella el arranque falla en vez de mandar el token del
+  miembro o del administrador a localhost. AdminAPI ya no lee `Services:Billing`.
 - **Revisar el log de Billing por `Critical`** de la compra de tokens tras el despliegue: cada uno
   lleva el id de una compra cuyo resultado no se pudo guardar y hay que mirar a mano.
 - El orquestador de tarjeta pasa al siguiente gateway ante cualquier fallo (R5b del plan): la compra
@@ -464,3 +473,6 @@ que no pueden esperar a esa tarea.
 | 9.2 | Catálogo con la tarjeta apagada | `cardEnabled: false` y sin pestaña de tarjeta | ☐ |
 | 9.3 | Misma clave de idempotencia con otra cantidad | `409 IDEMPOTENCY_KEY_REUSED` | ☐ |
 | 9.4 | `token-purchase-stale-pending` en `/hangfire` | existe, cada hora | ☐ |
+| 9.5 | Ficha de un miembro en AdminWeb → pestaña Tokens, con un usuario SupportLevel1 | los códigos salen como `ABC****` (también dentro de las notas); con Admin, enteros | ☐ |
+| 9.6 | Confirmar una cripto o conciliar una compra desde AdminWeb, mirando la respuesta en las herramientas del navegador | `tokenCodes: []` | ☐ |
+| 9.7 | *Reopen & confirm* sobre una compra cancelada o rechazada (por API) | `409 TOKEN_PURCHASE_NOT_EXPIRED`, sin emitir | ☐ |
