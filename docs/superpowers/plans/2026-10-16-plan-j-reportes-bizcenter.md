@@ -14,10 +14,10 @@
 |---|---|---|
 | 1. Mis enlaces | 1–6 | Plantillas validadas en configuración, endpoint, tarjeta con copiar, página y menú |
 | 2. Residuales diarios | 7–14 | Arreglo del menú, índice, endpoint sobre `DailyResidualEarnings`, hora de servidor, sección 4 y gráfico nuevos, borrado de `DualResidualReport.razor` |
-| 3. Clientes del equipo | 15–20 | Personales/Equipo, `Level`, contacto solo de los personales, índice de patrocinador, guarda de profundidad y propuesta de índice de `HierarchyPath` |
-| 4. Actividad por fechas | 21–26 | Rango de fechas común, servicio, índice de fecha de alta, endpoint, pantalla |
-| 5. Cambios de estado | 27–33 | Modelo e interceptor primero; «Calificado», servicio, endpoint y componente con tres vistas |
-| 6. Eventos del equipo | 34–42 | Entidad, CSV seguro, importación en el Admin, reporte en el BizCenter |
+| 3. Clientes del equipo | 15–18 | Personales/Equipo, `Level`, contacto solo de los personales, índice de patrocinador (19 y 20 salen: N1) |
+| 4. Actividad por fechas | 21–26 | Rango de fechas común (3 meses hacia atrás, N4), servicio con el nivel de la orden (N2), índice de fecha de alta, endpoint, pantalla |
+| 5. Cambios de estado | 27–33 | Modelo e interceptor primero; marca `KeepQualified` y servicio de calificación compartido (N3), servicio, endpoint y componente con tres vistas |
+| 6. Eventos del equipo | 34, 39–42 | Entidad y reporte en el BizCenter, vacío hasta que haya importación (35–38 salen: N5) |
 | Cierre | 43–44 | §12 de `pruebas-de-seguridad.md` y verificación completa |
 
 **Reglas del repo que aplican en todo el plan:**
@@ -35,20 +35,34 @@
 
 ---
 
+## Correcciones de Nick (2026-10-16) — mandan sobre el resto del plan
+
+Llegaron con los Bloques 1 y 2 en marcha. Donde una tarea, decisión o riesgo de más abajo diga otra cosa, **manda esta sección**; las filas y tareas afectadas llevan además una nota «Corrección de Nick».
+
+| # | Corrección | Qué cambia en el plan |
+|---|---|---|
+| N1 | **No se migran datos del legado** (clientes, historial, eventos). Sí se permiten cambios de esquema pequeños en nuestra base: índices y tablas nuevas (historial de estados, inscripciones a eventos, la marca de N3). **`GenealogyTree.HierarchyPath` no se toca**: ni `nvarchar(450)` ni índice. | **Fuera:** Tareas 19 y 20, J21 y R1. Las consultas por prefijo del árbol de inscripción se quedan con el `StartsWith` actual sobre `nvarchar(max)` (funcionan igual, solo sin *seek*). Pasar la ruta a `nvarchar(450)` con índice queda anotado como **mejora de rendimiento futura**. P2 queda contestada: no se migran clientes. |
+| N2 | **El nivel de membresía lo da el producto de la orden** (`OrderDetails → Products.MembershipLevelId`), no la suscripción. Un pedido lleva como mucho dos productos de membresía (Lifestyle Ambassador y, opcionalmente, VIP/Elite/Turbo) y su nivel es **el más alto**. Ya existe el sitio único que aplica esa regla: `Repository/Queries/OrderMembershipLevelQueries.cs` (`GetHighestMembershipLevelIdAsync`, `GetHighestMembershipLevelIdsByOrderAsync`). Se reutiliza; no se escribe otra consulta. | J10 cambia: la columna de *Actividad* sale del nivel más alto de la **orden de alta** del inscrito (la primera orden suya con productos de membresía), no de su primera suscripción. Todo reporte que **muestre** un nivel (*Cambios de estado*: `MembershipLevelName`) lo saca de la orden de la suscripción actual (`MembershipSubscription.LastOrderId`) con la misma regla; solo si la suscripción no tiene orden (semillas, altas manuales) se usa `MembershipSubscription.MembershipLevelId` como reserva. Se añade a `OrderMembershipLevelQueries` una variante por lote que recibe un `IQueryable<string>` de ids de orden (la de hoy recorre todos los pedidos), con su prueba. |
+| N3 | **«Calificado» = membresía activa Y una de tres:** (a) se inscribió en los últimos 12 meses (`EnrollDate > Now − 12 meses`, hora de servidor); (b) se inscribió hace más de 12 meses y ya pagó su anualidad; (c) tiene la marca de mantener calificado. **Hoy no existe ni la marca ni el pago de la anualidad** (solo el `TokenType` «Annual Fee», sin fecha de pago por miembro). | Sustituye a J15. Un único servicio compartido `IQualificationService` (Repository) que usan todos los reportes y, como es sencillo, también `EnrollmentTeamService` y `DualTeamService` (hoy `IsQualified = suscripción Active`). La marca se crea: `MemberProfile.KeepQualified` (`bit`, por defecto `0`) en una migración pequeña propia (`MarcaMantenerCalificado`); editarla desde el Admin queda fuera de este plan. (b) es un punto de extensión explícito, `IAnnualFeeStatus.HasPaidCurrentAnnualFeeAsync` (y su versión por lote), cuya única implementación hoy, `AnnualFeeNotModeled`, devuelve `false` y lo documenta; el Plan K la sustituye. **Se retira «Calificado desde»** (`QualificationTimeline`, `QualifiedChangedAt`): con (a), (b) y (c) la calificación cambia por el paso del tiempo y por pagos que aún no existen, así que una fecha de último cambio sacada del historial de suscripciones sería falsa. *Cambios de estado* enseña «Calificado» (Sí/No, actual) y las fechas de último cambio de cuenta y de membresía. |
+| N4 | **Rango de fechas: como mucho 3 meses hacia atrás.** Por defecto, del día 1 del mes en curso a hoy. Se rechaza un rango cuyo inicio sea anterior a `hoy − 3 meses` o cuyo fin sea posterior a hoy. | Sustituye a J12 y a los 366 días. `ReportDateRange` lo comparten *Actividad* y *Cambios de estado*, así que la regla vale para los dos (si Nick la quiere solo para *Actividad*, se separa la constante). Errores: `REPORT_RANGE_INVALID` (fin antes que inicio), `REPORT_RANGE_TOO_OLD` (inicio anterior a hoy − 3 meses) y `REPORT_RANGE_IN_FUTURE` (fin posterior a hoy); desaparece `REPORT_RANGE_TOO_LONG`. `GET team/reports/setup` devuelve `MinFrom` en lugar de `MaxRangeDays`. R5 se reduce: como mucho ~92 días de altas. |
+| N5 | **Eventos del equipo: no se importa nada todavía.** Solo se maqueta el reporte, aunque salga vacío. | **Fuera:** Tareas 35 (`CsvLite`), 36 (importador), 37 (endpoint del Admin) y 38 (pantalla del Admin), J19, R10 y las pruebas de inyección CSV. Se mantienen: la entidad mínima `CorporateEventRegistration` con su migración `InscripcionesAEventos` (Tarea 34, fuente del reporte), el servicio y el endpoint del BizCenter (Tareas 39 y 40), la página con selector de evento y tabla (Tarea 41, vacía hasta que haya importación) y las pruebas SQL Server del reporte (Tarea 42, sin las del importador). La importación será un plan aparte. |
+
+---
+
 ## Riesgos
 
 | # | Riesgo | Mitigación en este plan |
 |---|---|---|
-| R1 | **`GenealogyTree.HierarchyPath` a `nvarchar(450)`.** Hoy las rutas miden como mucho 89 caracteres (nivel 8; ids `AMB-######` y `MBR-######` de 10 caracteres: 11 por nivel más la barra inicial). Con 450 caben **40 niveles**. La base local parece sintética (119.446 nodos, profundidad 8, una sola raíz `AMB-700829`); **no sabemos la profundidad real de la red migrada de MWR Life en producción**, y un árbol de patrocinio real puede pasar de 40 niveles. | Va en su **propia migración y su propio commit** (Tarea 20), separable del resto del bloque: las consultas funcionan igual sin el índice, solo más lentas. Guarda doble: (1) `GenealogyPath.TryChild` (Tarea 19) hace que el alta de alguien que quedaría por debajo del límite falle con `GENEALOGY_TOO_DEEP` **antes** de crear nada, en vez de un 500 por truncado; (2) la migración lanza `THROW 51002` si existe alguna ruta de más de 450, así que nunca trunca en silencio. Condición de despliegue: `SELECT MAX(LEN(HierarchyPath)), MAX(Level) FROM GenealogyTree` en producción; si pasa de 360 (80 %), **no** desplegar la Tarea 20 (revertir su commit) y reabrir J21. |
+| R1 | **~~Retirado (corrección de Nick N1): `HierarchyPath` no se toca; el cambio a `nvarchar(450)` con índice queda como mejora de rendimiento futura. Lo que sigue se conserva solo como análisis para entonces.~~** **`GenealogyTree.HierarchyPath` a `nvarchar(450)`.** Hoy las rutas miden como mucho 89 caracteres (nivel 8; ids `AMB-######` y `MBR-######` de 10 caracteres: 11 por nivel más la barra inicial). Con 450 caben **40 niveles**. La base local parece sintética (119.446 nodos, profundidad 8, una sola raíz `AMB-700829`); **no sabemos la profundidad real de la red migrada de MWR Life en producción**, y un árbol de patrocinio real puede pasar de 40 niveles. | Va en su **propia migración y su propio commit** (Tarea 20), separable del resto del bloque: las consultas funcionan igual sin el índice, solo más lentas. Guarda doble: (1) `GenealogyPath.TryChild` (Tarea 19) hace que el alta de alguien que quedaría por debajo del límite falle con `GENEALOGY_TOO_DEEP` **antes** de crear nada, en vez de un 500 por truncado; (2) la migración lanza `THROW 51002` si existe alguna ruta de más de 450, así que nunca trunca en silencio. Condición de despliegue: `SELECT MAX(LEN(HierarchyPath)), MAX(Level) FROM GenealogyTree` en producción; si pasa de 360 (80 %), **no** desplegar la Tarea 20 (revertir su commit) y reabrir J21. |
 | R2 | **Todos los servicios aplican migraciones al arrancar** (`MigrateAsync` en los ocho `Program.cs`). Las del plan alteran `MemberProfiles.SponsorMemberId` (de `nvarchar(max)` a `nvarchar(20)`), `GenealogyTree.HierarchyPath` y `MemberStatusHistories.MemberId`, y crean índices sobre tablas de ~120.000 filas: bloqueo de la tabla durante segundos. En local, arrancar cualquier servicio las aplica sin pedir permiso. | Cada migración que estrecha una columna comprueba antes con `THROW` que ningún valor existente se trunca (51001, 51002, 51003). Desplegar fuera de horas de tráfico. En local se aplican a mano con `--connection` (paso explícito en cada tarea) antes de arrancar nada. |
 | R3 | `ExecuteUpdate`/`ExecuteDelete` y el SQL crudo se saltan el interceptor del historial: un cambio de estado hecho así no deja rastro. Tampoco lo deja un `Update()` sobre una entidad que no venía del contexto (el valor original sería el nuevo), que es lo que hace `GenericRepository.Update` de `IUnitOfWork.Members`/`Subscriptions`. Hoy nadie hace ninguna de las dos cosas con estados (`IUnitOfWork` no tiene consumidores). | `EstadosSinInterceptorTests` (Tarea 28) recorre el código fuente y falla si una sentencia con `ExecuteUpdate`, `ExecuteDelete` o `ExecuteSql` menciona `MemberProfiles` o `MembershipSubscriptions` y `Status`, si aparece un `UPDATE` de esas tablas en SQL, o si alguien llama a `Members.Update(` o `Subscriptions.Update(`. |
 | R4 | **El historial empieza el día que se despliega el Bloque 5.** Antes solo hay 4 filas en `MemberStatusHistories` y ninguna de membresía: «fecha del último cambio» y «Calificado desde» no existen para lo anterior. | Fechas de reserva documentadas (J15): para la membresía, la columna propia del estado; para la cuenta, «—». El reporte lista miembros con un cambio **registrado** en el rango, así que antes del despliegue sale vacío; lo dice §12. Por eso el modelo y el interceptor son las dos primeras tareas del bloque (27 y 28) y se pueden fusionar y desplegar antes que la pantalla. |
-| R5 | **Actividad por fechas materializa en memoria** las altas del rango dentro del equipo (cuatro campos por alta) para pivotar por nivel. Para la raíz del árbol y 366 días pueden ser decenas de miles de filas. | Rango limitado a 366 días (`ReportDateRange.MaxDays`); el filtro por fecha y equipo y la unión con suscripciones van en SQL (sin `Contains` de miles de ids); el pivote y el orden, en memoria. `SqlServerActividadTests` (Tarea 26) mide la consulta de la raíz local; si un año tarda más de 3 s, abrir una tarea de agregación en SQL. |
+| R5 | **Corrección de Nick N4: el rango es de 3 meses hacia atrás como mucho (~92 días), no 366; el riesgo se reduce en proporción.** **Actividad por fechas materializa en memoria** las altas del rango dentro del equipo (cuatro campos por alta) para pivotar por nivel. Para la raíz del árbol y 366 días pueden ser decenas de miles de filas. | Rango limitado a 366 días (`ReportDateRange.MaxDays`); el filtro por fecha y equipo y la unión con suscripciones van en SQL (sin `Contains` de miles de ids); el pivote y el orden, en memoria. `SqlServerActividadTests` (Tarea 26) mide la consulta de la raíz local; si un año tarda más de 3 s, abrir una tarea de agregación en SQL. |
 | R6 | El legado filtraba texto en cualquier columna. Aquí, en *Cambios de estado* y en *Clientes*, solo se buscan, filtran y ordenan en la base las columnas que salen de `MemberProfiles`; las enriquecidas por página se descartan, igual que ya hace `EnrollmentTeamService`. | Esas columnas se pintan con `AllowSorting="false"` y `AllowFiltering="false"`. |
 | R7 | Solo hay **3** `ExternalMember` en local: *Clientes* y *Cambios de clientes* no se pueden probar con volumen. | Pruebas con datos sintéticos (InMemory y SQL Server). Pregunta P2 a Nick. |
 | R8 | `GenealogyTree` admite **dos nodos para el mismo miembro** (el índice `(MemberId, CreationDate)` no es único; ver e4af288). Un `JOIN` contra el árbol duplicaría filas y contaría dos veces. | El nodo del que mira es siempre el más reciente (`OrderByDescending(CreationDate)`); los equipos se acotan con un subconjunto `Distinct()` de `MemberId`; la actividad hace `DistinctBy` antes de contar. |
 | R9 | **`Orders.OrderNo` y `Orders.MemberId` son `nvarchar(max)` sin índice** (no hay `OrdersConfiguration`) y seis bucles comprueban la unicidad de `OrderNo` con `AnyAsync`: provoca bloqueos al arrancar Billing (289.519 pedidos en local). | **Fuera de alcance**, trabajo aparte: hace falta la longitud real de `OrderNo`, un índice único y revisar los seis bucles (`ChargeHandler`, `RenewMembershipHandler`, `RecurringBillingProcessor`, `SignupAmbassadorHandler`, `SignupMemberHandler`…). Se anota aquí para que no se pierda. |
-| R10 | La importación CSV rechaza cualquier campo que empiece por `=`, `+`, `-`, `@`, tabulador o retorno: una referencia legítima que empiece por `-` se rechaza. | Aceptado: la referencia la genera la plataforma de entradas. El rechazo dice motivo (`FORMULA_NOT_ALLOWED`) y línea. |
+| R10 | **Retirado (corrección de Nick N5): no hay importación CSV en este plan.** La importación CSV rechaza cualquier campo que empiece por `=`, `+`, `-`, `@`, tabulador o retorno: una referencia legítima que empiece por `-` se rechaza. | Aceptado: la referencia la genera la plataforma de entradas. El rechazo dice motivo (`FORMULA_NOT_ALLOWED`) y línea. |
 | R11 | Las plantillas de enlaces viven en `appsettings.json` del BizCenter: cambiarlas exige desplegar, y una plantilla inválida **impide arrancar** el BizCenter. | Es lo que se busca (J1). `ConfiguracionDeEnlacesTests` (Tarea 4) valida el `appsettings.json` del repositorio con la misma guarda que el arranque: una plantilla mala no llega a fusionarse. |
 | R12 | EF InMemory no traduce a SQL, no aplica índices únicos y no reproduce el `UNION`. | Una tarea `[SqlServerFact]` por bloque. Exigen las migraciones aplicadas en local; sin SQL Server se marcan **saltadas** (no verdes). |
 | R13 | **Choque de nombre:** el Plan I (`2026-10-16-plan-i-3ds-con-spreedly.md`, R12) dice que «el Plan J» pondrá en `BizCenterWeb` la CSP de Spreedly. Este Plan J no lo hace. | Fuera de alcance y anotado: hay que renombrar esa referencia del Plan I para que no se dé por hecha. |
@@ -72,18 +86,18 @@
 | J7 | La sección 4 de `DualTeamResiduals.razor` sale a un componente propio, `DailyResidualHistory.razor` (sin Syncfusion, con bUnit). `DualTeamResiduals` pierde el parámetro `EnrollDate` (solo servía para los años) y el Admin deja de pasarlo. | Componente unificado y probable; saca de un archivo de 1.023 líneas toda la lógica que cambia, con su `UtcNow` (línea 604). |
 | J8 | Clientes: alcance `Team` por defecto (lo de hoy) y `Personal` (`SponsorMemberId == yo`). El correo y el teléfono se anulan **en la proyección SQL** (`CASE`) para quien no es personal, de modo que ni la búsqueda ni el filtro por correo o teléfono delatan a un cliente ajeno. También en el `GET` antiguo `team/enrollment/customers`. | Si se anulara después de paginar, buscar `juan@` encontraría la fila de un cliente del nivel 3 y revelaría que existe. |
 | J9 | `Level` = nivel del cliente menos el del que mira (1 = personal), igual que *Mi equipo*. En alcance Personal es siempre 1. | Una sola definición de nivel en el BizCenter. |
-| J10 | Actividad: columnas fijas por `MembershipLevelId` **1 a 4** (Lifestyle Ambassador, VIP, Elite, Turbo) con los nombres de `MembershipLevels`. **No hay columna «Plus»** porque ese nivel no existe aquí; **Turbo no tenía columna en el legado** y aquí la tiene; cualquier otro nivel o la falta de suscripción va a «Otros». Se cuenta el nivel de la **primera** suscripción del inscrito (la del alta), no el actual. | El reporte cuenta lo que se inscribió en el rango: una subida posterior no debe moverlo de columna. |
+| J10 | **Corrección de Nick N2: el nivel del inscrito es el más alto de los productos de su orden de alta (`OrderMembershipLevelQueries`), no el de su primera suscripción. Sin orden con productos de membresía, «Otros». El resto de la fila se mantiene.** Actividad: columnas fijas por `MembershipLevelId` **1 a 4** (Lifestyle Ambassador, VIP, Elite, Turbo) con los nombres de `MembershipLevels`. **No hay columna «Plus»** porque ese nivel no existe aquí; **Turbo no tenía columna en el legado** y aquí la tiene; cualquier otro nivel o la falta de suscripción va a «Otros». Se cuenta el nivel de la **primera** suscripción del inscrito (la del alta), no el actual. | El reporte cuenta lo que se inscribió en el rango: una subida posterior no debe moverlo de columna. |
 | J11 | Actividad: una fila por miembro del equipo (el que mira incluido) con al menos un inscrito en el rango, no los 120.000 del equipo. Puntos = `MemberStatistics.EnrollmentPoints` actuales, como el legado. | Las filas a cero no dicen nada y harían la consulta inmanejable. |
-| J12 | Rango común `ReportDateRange`: `from` y `to` son días **inclusivos**; se convierten a `[from, to + 1 día)`; máximo **366 días**; errores `REPORT_RANGE_INVALID` y `REPORT_RANGE_TOO_LONG` (400). Valores por defecto del servidor: día 1 del mes en curso hasta hoy (`GET team/reports/setup`). | Una sola regla para actividad y cambios; el tope acota R5. |
+| J12 | **Sustituida por la corrección de Nick N4: inicio no anterior a hoy − 3 meses, fin no posterior a hoy, por defecto del día 1 del mes a hoy; errores `REPORT_RANGE_INVALID`, `REPORT_RANGE_TOO_OLD`, `REPORT_RANGE_IN_FUTURE`.** ~~Rango común `ReportDateRange`:~~ `from` y `to` son días **inclusivos**; se convierten a `[from, to + 1 día)`; máximo **366 días**; errores `REPORT_RANGE_INVALID` y `REPORT_RANGE_TOO_LONG` (400). Valores por defecto del servidor: día 1 del mes en curso hasta hoy (`GET team/reports/setup`). | Una sola regla para actividad y cambios; el tope acota R5. |
 | J13 | El historial de membresía va en una **tabla hermana**, `MembershipStatusHistories` (`MemberId`, `SubscriptionId`, `MembershipLevelId`, `OldStatus` anulable, `NewStatus`, `ChangedAt`), no en una columna `Kind` de `MemberStatusHistories`. | Los dos enumerados son distintos (`MemberAccountStatus` y `MembershipStatus`); mezclar sus enteros en una columna invita a leer mal. La tabla hermana no toca las filas ni los escritores existentes. |
 | J14 | El interceptor (`StatusHistoryInterceptor`) registra: cambios de `MemberProfile.Status` (no la creación del perfil), la creación de una `MembershipSubscription` (`OldStatus = null`) y los cambios de `SubscriptionStatus`. Compara el valor original con el actual, como `SecurityFactorsInterceptor`. Si el mismo guardado ya trae una `MemberStatusHistory` añadida a mano para ese miembro y ese estado nuevo (lo hacen `UpdateMemberStatusHandler`, `CancelMembershipHandler` y `ProcessScheduledCancellationsJob`, con su motivo), no duplica. | Los escritores actuales no cambian y conservan su `Reason`; los que no escribían (activación del alta, facturación recurrente, subida y bajada de nivel) quedan cubiertos sin tocarlos. |
-| J15 | **«Calificado» = la suscripción actual del miembro está `Active`**, la misma definición que `EnrollmentTeamService.cs:240`. «Calificado desde» = el último instante en que cambió la condición «tiene alguna suscripción `Active`», calculado con `QualificationTimeline` **agrupando por instante**: una subida de nivel (la vieja pasa a `Expired` y la nueva nace `Active` en el mismo guardado) no cuenta como cambio. Suscripción actual = la de `StartDate` más reciente (desempate por `CreationDate`), sea cual sea su estado. Sin historial, la fecha de reserva es la propia del estado: `HoldDate` para `OnHold`/`HoldByBilling`, `CancellationDate` para `Cancelled`, `EndDate` para `Expired`, `StartDate` para el resto. | Nick pidió estado actual y fecha del último cambio, como el legado. Sin agrupar por instante, cada subida de nivel parecería una pérdida y una recuperación de la calificación. |
+| J15 | **Sustituida por la corrección de Nick N3: «Calificado» = membresía activa Y (alta en los últimos 12 meses O anualidad pagada O `KeepQualified`), en `IQualificationService`; sin «Calificado desde».** ~~«Calificado» = la suscripción actual del miembro está `Active`~~, la misma definición que `EnrollmentTeamService.cs:240`. «Calificado desde» = el último instante en que cambió la condición «tiene alguna suscripción `Active`», calculado con `QualificationTimeline` **agrupando por instante**: una subida de nivel (la vieja pasa a `Expired` y la nueva nace `Active` en el mismo guardado) no cuenta como cambio. Suscripción actual = la de `StartDate` más reciente (desempate por `CreationDate`), sea cual sea su estado. Sin historial, la fecha de reserva es la propia del estado: `HoldDate` para `OnHold`/`HoldByBilling`, `CancellationDate` para `Cancelled`, `EndDate` para `Expired`, `StartDate` para el resto. | Nick pidió estado actual y fecha del último cambio, como el legado. Sin agrupar por instante, cada subida de nivel parecería una pérdida y una recuperación de la calificación. |
 | J16 | *Cambios de estado* lista a los miembros del alcance con **algún cambio registrado en el rango** (cuenta o membresía) y, de cada uno, el estado **actual** y la fecha del **último** cambio (de siempre, no del rango). | Es el `EnrollmentTeamChangesReport` del legado con los datos que tenemos. |
 | J17 | Vista Dual Team: `UNION` de los `MemberId` con cambios en el rango → `JOIN` a `DualTeamTree` por `MemberId` (índice `IX_DualTeamTree_MemberId_Lookup`) → `StartsWith` del prefijo binario solo sobre esas filas. La pierna sale del hijo directo del que mira en la ruta, como en `DualTeamService`. | `DualTeamTree.HierarchyPath` llega a 10.275 caracteres y no es indexable: hay que reducir antes. |
-| J18 | Inscripciones a eventos: entidad `CorporateEventRegistration` (`EventId`, `MemberId`, `RegisteredAt`, `Tickets`, `Price` anulable, `Source = "CsvImport"`, `ExternalRef`) con índice **único** `(EventId, ExternalRef)` y claves foráneas a `CorporateEvents.Id` y `MemberProfiles.MemberId`. Reimportar el mismo archivo es idempotente: una referencia ya importada cuenta como `AlreadyImported` y **no** se actualiza. La comparación de referencias no distingue mayúsculas, como la intercalación de la base. | La referencia es la de la compra en la plataforma de entradas; un miembro puede comprar varias veces y el reporte suma sus entradas. |
-| J19 | CSV: UTF-8 (con o sin BOM; un byte inválido es `400 INVALID_ENCODING`), coma, comillas RFC 4180, cabecera exacta `MemberId,RegisteredAt,Tickets,Price,ExternalRef` (sin distinguir mayúsculas), 2 MB y 10.000 filas como mucho. Fechas `yyyy-MM-dd`, `yyyy-MM-dd HH:mm[:ss]` o con `T`, no más de un día en el futuro; entradas 1–100; precio vacío o 0–100.000 con punto; `MemberId` `^[A-Za-z0-9-]{1,20}$` que exista (sin distinguir mayúsculas: se normaliza a mayúsculas, como se generan); referencia `^[A-Za-z0-9._:/#-]{1,100}$`. Cualquier campo que empiece por `= + - @`, tabulador o retorno se rechaza (`FORMULA_NOT_ALLOWED`). En el informe, el texto devuelto se neutraliza (prefijo `'`) y se recorta a 100; se listan hasta 500 rechazos y se cuentan todos. | Validación, informe, idempotencia e inyección CSV, sin paquete nuevo. |
+| J18 | **Corrección de Nick N5: la entidad se mantiene como fuente del reporte, pero no hay importación en este plan; la idempotencia por `(EventId, ExternalRef)` queda para el importador futuro (el índice único se crea igual).** Inscripciones a eventos: entidad `CorporateEventRegistration` (`EventId`, `MemberId`, `RegisteredAt`, `Tickets`, `Price` anulable, `Source = "CsvImport"`, `ExternalRef`) con índice **único** `(EventId, ExternalRef)` y claves foráneas a `CorporateEvents.Id` y `MemberProfiles.MemberId`. Reimportar el mismo archivo es idempotente: una referencia ya importada cuenta como `AlreadyImported` y **no** se actualiza. La comparación de referencias no distingue mayúsculas, como la intercalación de la base. | La referencia es la de la compra en la plataforma de entradas; un miembro puede comprar varias veces y el reporte suma sus entradas. |
+| J19 | **Retirada (corrección de Nick N5): fuera de este plan.** ~~CSV:~~ UTF-8 (con o sin BOM; un byte inválido es `400 INVALID_ENCODING`), coma, comillas RFC 4180, cabecera exacta `MemberId,RegisteredAt,Tickets,Price,ExternalRef` (sin distinguir mayúsculas), 2 MB y 10.000 filas como mucho. Fechas `yyyy-MM-dd`, `yyyy-MM-dd HH:mm[:ss]` o con `T`, no más de un día en el futuro; entradas 1–100; precio vacío o 0–100.000 con punto; `MemberId` `^[A-Za-z0-9-]{1,20}$` que exista (sin distinguir mayúsculas: se normaliza a mayúsculas, como se generan); referencia `^[A-Za-z0-9._:/#-]{1,100}$`. Cualquier campo que empiece por `= + - @`, tabulador o retorno se rechaza (`FORMULA_NOT_ALLOWED`). En el informe, el texto devuelto se neutraliza (prefijo `'`) y se recorta a 100; se listan hasta 500 rechazos y se cuentan todos. | Validación, informe, idempotencia e inyección CSV, sin paquete nuevo. |
 | J20 | Reporte de eventos: equipo de inscripción por prefijo, **el que mira incluido**; por defecto solo inscritos (`registeredOnly=true`) con la opción de ver a todo el equipo con «No»; totales (inscritos distintos y entradas) por consulta aparte; solo eventos `IsActive && !IsDeleted` (uno inactivo es `404 EVENT_NOT_FOUND`). | Como el legado (columna «Register» y totales), sin cargar el equipo entero por defecto. |
-| J21 | **Se propone** pasar `GenealogyTree.HierarchyPath` a `nvarchar(450)` con índice, en migración propia (Tarea 20), con la guarda de altas `GENEALOGY_TOO_DEEP` (Tarea 19) y el `THROW` de la migración. Solo escriben rutas de genealogía el alta (`SignupAmbassadorHandler.cs:228`, `SignupMemberHandler.cs:168`) y `RootAmbassadorSeeder` (raíz de 12 caracteres); colocar y retirar escriben `DualTeamTree`, no esta tabla. | Hoy cada consulta por prefijo recorre las 119.446 rutas en `nvarchar(max)`; con el índice es un *seek*. 40 niveles bastan con los datos que conocemos; R1 dice qué hacer si producción no cabe. |
+| J21 | **Retirada (corrección de Nick N1): `GenealogyTree.HierarchyPath` no se toca; mejora de rendimiento futura.** ~~Se propone~~ pasar `GenealogyTree.HierarchyPath` a `nvarchar(450)` con índice, en migración propia (Tarea 20), con la guarda de altas `GENEALOGY_TOO_DEEP` (Tarea 19) y el `THROW` de la migración. Solo escriben rutas de genealogía el alta (`SignupAmbassadorHandler.cs:228`, `SignupMemberHandler.cs:168`) y `RootAmbassadorSeeder` (raíz de 12 caracteres); colocar y retirar escriben `DualTeamTree`, no esta tabla. | Hoy cada consulta por prefijo recorre las 119.446 rutas en `nvarchar(max)`; con el índice es un *seek*. 40 niveles bastan con los datos que conocemos; R1 dice qué hacer si producción no cabe. |
 | J22 | `MemberProfiles.SponsorMemberId` pasa a `nvarchar(20)` (como `MemberId`) para indexar `(SponsorMemberId, EnrollDate)`; además, índice `(EnrollDate)` para *Actividad*, que filtra por fecha sin patrocinador concreto. | Un `nvarchar(max)` no puede ser clave de índice; el compuesto sirve al alcance Personal, no a un rango de fechas suelto. |
 | J23 | `MemberStatusHistories.MemberId`, y `MemberId`/`SubscriptionId` de la tabla hermana, a `nvarchar(450)`, como pide el encargo (los ids reales miden 10). Índices `(MemberId, ChangedAt)` y `(ChangedAt)` en las dos tablas. | `(MemberId, ChangedAt)` para la última fecha por miembro; `(ChangedAt)` para reducir por rango. |
 | J24 | Los endpoints nuevos van en controladores nuevos (`MyLinksController`, `TeamReportsController`, `TeamEventsController`) o con `[FromServices]` en los existentes; ningún constructor existente cambia. | `PropiedadEnElCentroDeNegociosTests` construye `TeamController` y `CommissionsController` a mano. |
@@ -97,7 +111,11 @@
 - **CSP de Spreedly en `BizCenterWeb`** que el Plan I atribuye a «Plan J» (R13).
 - **Exportación a Excel/CSV** de los reportes (P3).
 - **Línea Manager→National** de *Clientes* (P4).
-- **Migración de clientes del legado** (P2).
+- **Migración de datos del legado** (clientes, historial, eventos): no se hace (corrección de Nick N1).
+- **`GenealogyTree.HierarchyPath` a `nvarchar(450)` con índice** y la guarda `GENEALOGY_TOO_DEEP` (Tareas 19 y 20): mejora de rendimiento futura (N1).
+- **Importación de inscripciones a eventos** (CSV, endpoint y pantalla del Admin; Tareas 35–38): plan aparte (N5).
+- **Pago de la anualidad** para la rama (b) de «Calificado»: Plan K; aquí solo el punto de extensión `IAnnualFeeStatus` (N3).
+- **Editar `KeepQualified` desde el Admin** (N3).
 - **Páginas de `BizCenterApp` (MAUI)** para los reportes nuevos: los componentes son los mismos y se podrán montar después.
 - **Pestañas nuevas en el perfil de miembro del Admin** para actividad, cambios y eventos. Solo se añaden endpoints de Admin donde un componente que ya usa el Admin cambia (residuales y clientes).
 - **Editar o borrar inscripciones importadas**, y otras fuentes de importación que no sean CSV.
@@ -111,10 +129,10 @@ No bloquean el plan: cada una tiene un valor por defecto que el plan implementa 
 | # | Pregunta | Qué hace el plan mientras tanto |
 |---|---|---|
 | P1 | ¿Qué dominios de *Mis enlaces* siguen vivos? El legado tenía `mwrlife.com/{user}`, `join.`/`vip.`/`free.traveladvantage.com/{user}`, `lifeexperience.club/{user}` y los estáticos `mwracademy.com`, `mwrlife.online`, `mwrevents.com`, `traveladvantage.com` y `mwrlifespace.com`. | Los diez van en `appsettings.json` con https. Quitar uno es borrar su entrada. |
-| P2 | ¿Se migran los clientes (`ExternalMember`) del legado? En local solo hay 3. | Los reportes de clientes funcionan con los que haya. |
+| P2 | **Contestada (N1): no se migran.** ¿Se migran los clientes (`ExternalMember`) del legado? En local solo hay 3. | Los reportes de clientes funcionan con los que haya. |
 | P3 | ¿Se quiere exportación a Excel/CSV en el BizCenter? Hoy no hay ninguna. | No se añade. Si se añade, toda celda de texto pasará por `CsvLite.Neutralize` (Tarea 35). |
 | P4 | ¿Hace falta la línea Manager→National de *Clientes*? | No se añade. |
-| P5 | ¿Valen la definición de «Calificado» (J15) y que la actividad cuente el nivel de la **primera** suscripción (J10)? | Implementadas así. |
+| P5 | ~~¿Valen la definición de «Calificado» (J15) y que la actividad cuente el nivel de la primera suscripción (J10)?~~ | **Contestada (N2 y N3).** |
 | P6 | ¿Se enseña al miembro el `PaymentComment` de los residuales («Consolidated into CommissionEarning #…»)? | Se enseña: es información suya. |
 
 ## Mapa de archivos
@@ -136,16 +154,16 @@ Rutas abreviadas: todos los proyectos llevan el prefijo `MLMConquerorGlobalEditi
 | `Repository/Services/Teams/CustomerScope.cs` (nuevo), `EnrollmentTeamService.cs`, `IEnrollmentTeamService.cs`, `EnrollmentDtos.cs` | Alcance, nivel y contacto de clientes |
 | `BizCenter/Controllers/TeamController.cs`, `BizCenter/DTOs/Teams/EnrollmentCustomerDto.cs`, `BizCenter/Features/Teams/GetEnrollmentCustomers/GetEnrollmentCustomersHandler.cs`, `AdminAPI/Controllers/AdminMemberEnrollmentController.cs`, `SharedComponents/Components/Team/EnrollmentTeamCustomers.razor` | Clientes en los dos portales |
 | `Repository/Configurations/MemberProfileConfiguration.cs`, migraciones `IndicePatrocinadorYFechaDeAlta` e `IndiceFechaDeAlta` | Índices de `MemberProfiles` |
-| `Domain/Entities/Tree/GenealogyPath.cs` (nuevo), `SignupAPI/Features/Signups/Commands/SignupAmbassador/SignupAmbassadorHandler.cs`, `SignupMember/SignupMemberHandler.cs`, `Repository/Configurations/GenealogyConfiguration.cs`, migración `IndiceRutaDeGenealogia` | Guarda de profundidad e índice de ruta |
+| `Domain/Entities/Tree/GenealogyPath.cs` (nuevo), `SignupAPI/Features/Signups/Commands/SignupAmbassador/SignupAmbassadorHandler.cs`, `SignupMember/SignupMemberHandler.cs`, `Repository/Configurations/GenealogyConfiguration.cs`, migración `IndiceRutaDeGenealogia` | **Fuera (N1).** Guarda de profundidad e índice de ruta |
 | `Repository/Services/Teams/ReportDateRange.cs`, `EnrollmentActivityDtos.cs`, `IEnrollmentActivityService.cs`, `EnrollmentActivityService.cs` (nuevos) | Rango común y actividad |
 | `BizCenter/Controllers/TeamReportsController.cs` (nuevo) | Setup, actividad y cambios de estado |
 | `SharedComponents/Components/Team/EnrollmentTeamActivity.razor`, `BizCenterWeb/Components/Pages/EnrollmentActivity.razor` (nuevos) | Pantalla de actividad |
 | `Domain/Entities/Membership/MembershipStatusHistory.cs`, `Repository/Configurations/MemberStatusHistoryConfiguration.cs`, `MembershipStatusHistoryConfiguration.cs`, `Repository/Interceptors/StatusHistoryInterceptor.cs` (nuevos), `Repository/Context/AppDbContext.cs`, migración `HistorialDeEstados` | Historial de estados |
-| `Repository/Services/Teams/QualificationTimeline.cs`, `StatusChangesScope.cs`, `TeamStatusChangeDtos.cs`, `ITeamStatusChangesService.cs`, `TeamStatusChangesService.cs` (nuevos) | Cambios de estado |
+| `Repository/Services/Teams/IQualificationService.cs`, `QualificationService.cs`, `IAnnualFeeStatus.cs` (N3, en lugar de `QualificationTimeline.cs`), `StatusChangesScope.cs`, `TeamStatusChangeDtos.cs`, `ITeamStatusChangesService.cs`, `TeamStatusChangesService.cs` (nuevos) | Cambios de estado |
 | `SharedComponents/Components/Team/TeamStatusChangesGrid.razor`, `BizCenterWeb/Components/Pages/EnrollmentChanges.razor`, `DualTeamChanges.razor`, `CustomerChanges.razor` (nuevos) | Componente único con tres vistas |
 | `Domain/Entities/Events/CorporateEventRegistration.cs`, `Repository/Configurations/CorporateEventRegistrationConfiguration.cs` (nuevos), migración `InscripcionesAEventos` | Inscripciones a eventos |
-| `Repository/Services/Events/CsvLite.cs`, `EventRegistrationImportDtos.cs`, `IEventRegistrationImporter.cs`, `EventRegistrationImporter.cs`, `TeamEventDtos.cs`, `ITeamEventRegistrationsService.cs`, `TeamEventRegistrationsService.cs` (nuevos) | CSV, importación y reporte |
-| `AdminAPI/Controllers/CorporateEventsController.cs`, `AdminWeb/Components/Pages/AdminCorporateEvents.razor` | Importación en el Admin |
+| `Repository/Services/Events/CsvLite.cs`, `EventRegistrationImportDtos.cs`, `IEventRegistrationImporter.cs`, `EventRegistrationImporter.cs`, `TeamEventDtos.cs`, `ITeamEventRegistrationsService.cs`, `TeamEventRegistrationsService.cs` (nuevos) | Reporte (`CsvLite`, `EventRegistrationImport*` e `IEventRegistrationImporter` quedan fuera: N5) |
+| `AdminAPI/Controllers/CorporateEventsController.cs`, `AdminWeb/Components/Pages/AdminCorporateEvents.razor` | **Fuera (N5).** Importación en el Admin |
 | `BizCenter/Controllers/TeamEventsController.cs`, `SharedComponents/Components/Team/TeamEventRegistrations.razor`, `BizCenterWeb/Components/Pages/TeamEvents.razor` (nuevos) | Reporte en el BizCenter |
 | `SharedComponents/Resources/SharedResources*.resx` (9) | Textos |
 | `docs/deployment/pruebas-de-seguridad.md` | §12 |
@@ -4014,6 +4032,8 @@ git commit -m "MemberProfiles.SponsorMemberId pasa a nvarchar(20) con indice (Sp
 
 ### Task 19: Guarda de profundidad en el alta (`GENEALOGY_TOO_DEEP`)
 
+> **FUERA (corrección de Nick N1).** No se implementa: sin cambio de `HierarchyPath` no hay límite de 450 que proteger. Se conserva el texto como referencia para la mejora de rendimiento futura.
+
 Antes de poner límite a la columna (Tarea 20) hay que impedir que el alta escriba una ruta que no cabría. Solo escriben rutas de genealogía `SignupAmbassadorHandler.cs:224-235` y `SignupMemberHandler.cs:164-175` (y la semilla de la raíz).
 
 **Files:**
@@ -4211,6 +4231,8 @@ git commit -m "Alta: la ruta de patrocinio se construye con GenealogyPath y un a
 
 ### Task 20: `GenealogyTree.HierarchyPath` a `nvarchar(450)` con índice (migración propia)
 
+> **FUERA (corrección de Nick N1).** `GenealogyTree.HierarchyPath` no se toca. Pasarla a `nvarchar(450)` con índice queda como mejora de rendimiento futura; las consultas siguen con `StartsWith` sobre `nvarchar(max)`. Ninguna prueba de otro bloque puede exigir `IX_GenealogyTree_HierarchyPath`.
+
 **Esta tarea se puede revertir sola** si R1 lo exige: nada del plan depende de ella, solo es más rápido con ella.
 
 **Files:**
@@ -4364,6 +4386,8 @@ git commit -m "GenealogyTree.HierarchyPath pasa a nvarchar(450) con indice para 
 
 ### Task 21: Rango de fechas común (`ReportDateRange`)
 
+> **Corrección de Nick N4.** `ReportDateRange` cambia de regla: sin `MaxDays = 366`; el inicio no puede ser anterior a `hoy − 3 meses` (`REPORT_RANGE_TOO_OLD`) ni el fin posterior a hoy (`REPORT_RANGE_IN_FUTURE`); `REPORT_RANGE_INVALID` si el fin es anterior al inicio. Por defecto, del día 1 del mes en curso a hoy. El *setup* devuelve `MinFrom` (hoy − 3 meses) en lugar de `MaxRangeDays`. Las pruebas `Caben_366_dias_y_no_367` y similares se reescriben para estos tres casos y el límite exacto (`hoy − 3 meses` vale; un día antes, no).
+
 **Files:**
 - Create: `MLMConquerorGlobalEdition.Repository/Services/Teams/ReportDateRange.cs`
 - Test: `MLMConquerorGlobalEdition.BizCenter.Tests/Reportes/ReportDateRangeTests.cs`
@@ -4506,6 +4530,8 @@ git commit -m "Reportes del equipo: rango de fechas comun con dias inclusivos, m
 ---
 
 ### Task 22: Servicio de actividad por fechas
+
+> **Corrección de Nick N2 y N4.** La columna de nivel sale de `OrderMembershipLevelQueries` (nivel más alto de los productos de la **orden de alta** del inscrito: su primera orden con productos de membresía, por `OrderDate` y desempate por `CreationDate`), no de la primera suscripción; sin esa orden, «Otros». Para no hacer un `Contains` de miles de ids, se añade a `OrderMembershipLevelQueries` una variante por lote que recibe un `IQueryable<string>` de ids de orden y agrupa con `g.Max()` en SQL. La prueba `Un_rango_de_mas_de_366_dias_se_rechaza` pasa a ser la de N4 (inicio anterior a hoy − 3 meses).
 
 **Files:**
 - Create: `MLMConquerorGlobalEdition.Repository/Services/Teams/EnrollmentActivityDtos.cs`
@@ -4954,6 +4980,8 @@ Con el comando de la cabecera. Expected: `Applying migration '…_IndiceFechaDeA
 
 ### Task 24: Endpoints de actividad (`TeamReportsController`)
 
+> **Corrección de Nick N4.** `GET team/reports/setup` devuelve `From`, `To` y `MinFrom` (sin `MaxRangeDays`); los errores de rango son los de N4.
+
 **Files:**
 - Create: `MLMConquerorGlobalEdition.BizCenter/Controllers/TeamReportsController.cs`
 - Modify: `MLMConquerorGlobalEdition.BizCenter/Program.cs` (registro)
@@ -5152,6 +5180,8 @@ git commit -m "Actividad por fechas: GET team/reports/setup con la hora del serv
 ---
 
 ### Task 25: Pantalla de actividad, página, menú y textos
+
+> **Corrección de Nick N4.** La pantalla limita el selector de fechas a `[MinFrom, hoy]` con los valores del *setup*; `ReportRangeCheck` comprueba esos dos límites en vez de los 366 días y sus textos cambian (`Reports.RangeTooOld`, `Reports.RangeInFuture` en lugar de `Reports.RangeTooLong`).
 
 **Files:**
 - Create: `MLMConquerorGlobalEdition.SharedComponents/Components/Team/ReportRangeCheck.cs`
@@ -5496,6 +5526,8 @@ git commit -m "Actividad por fechas: componente compartido con rango del servido
 
 ### Task 26: Pruebas contra SQL Server de la actividad
 
+> **Corrección de Nick N1, N2 y N4.** La medición de la raíz es sobre 3 meses, no 366 días; sin índice de `HierarchyPath` (N1). La prueba de nivel siembra una orden de alta con dos productos (niveles 1 y 3) y espera la columna del 3.
+
 **Files:**
 - Test: `MLMConquerorGlobalEdition.BizCenter.Tests/Reportes/SqlServerActividadTests.cs`
 
@@ -5577,6 +5609,8 @@ git commit -m "Pruebas contra SQL Server de la actividad por fechas: misma cuent
 Las Tareas 27 y 28 (modelo e interceptor) son lo primero que conviene fusionar y desplegar: desde ese momento el historial empieza a acumularse (R4), aunque la pantalla llegue después.
 
 ### Task 27: Modelo del historial y migración `HistorialDeEstados`
+
+> **Corrección de Nick N3.** Esta tarea añade además la marca `MemberProfile.KeepQualified` (`bool`, por defecto `false`) en **su propia migración pequeña**, `MarcaMantenerCalificado`, separada de `HistorialDeEstados`. Editarla desde el Admin queda fuera del plan.
 
 **Files:**
 - Create: `MLMConquerorGlobalEdition.Domain/Entities/Membership/MembershipStatusHistory.cs`
@@ -6160,6 +6194,8 @@ git commit -m "Historial de estados al guardar: StatusHistoryInterceptor registr
 
 ### Task 29: Qué es «Calificado» (`QualificationTimeline`)
 
+> **SUSTITUIDA (corrección de Nick N3).** En lugar de `QualificationTimeline` se crea un servicio compartido `IQualificationService` / `QualificationService` en `Repository/Services/Teams` con `IsQualifiedAsync(memberId)` y una versión por lote para una página de miembros: **membresía activa** (suscripción actual `Active`) **Y** (a) `EnrollDate > Now − 12 meses` (hora de servidor, `IDateTimeProvider`), **o** (b) `IAnnualFeeStatus.HasPaidCurrentAnnualFeeAsync` (punto de extensión; la única implementación, `AnnualFeeNotModeled`, devuelve `false` hasta el Plan K y lo dice en su `<summary>`), **o** (c) `MemberProfile.KeepQualified`. Pruebas: cada rama por separado, el borde exacto de los 12 meses, y que sin membresía activa nada califica. `EnrollmentTeamService` y `DualTeamService` pasan a usarlo para su `IsQualified`. No hay «Calificado desde».
+
 **Files:**
 - Create: `MLMConquerorGlobalEdition.Repository/Services/Teams/QualificationTimeline.cs`
 - Test: `MLMConquerorGlobalEdition.BizCenter.Tests/Reportes/QualificationTimelineTests.cs`
@@ -6344,6 +6380,8 @@ git commit -m "Calificado es tener una suscripcion Active; su ultima fecha de ca
 ---
 
 ### Task 30: Servicio de cambios de estado (tres vistas)
+
+> **Corrección de Nick N2, N3 y N4.** `IsQualified` sale de `IQualificationService`; se quitan `QualifiedChangedAt` y el uso de `QualificationTimeline`. `MembershipLevelName` sale del nivel más alto de los productos de la orden de la suscripción actual (`LastOrderId`, vía `OrderMembershipLevelQueries`); sin orden, el `MembershipLevelId` de la suscripción. El rango sigue N4.
 
 **Files:**
 - Create: `MLMConquerorGlobalEdition.Repository/Services/Teams/StatusChangesScope.cs`
@@ -7056,6 +7094,8 @@ git commit -m "Cambios de estado: POST team/changes/{enrollment|dual|customers}/
 
 ### Task 32: Componente único con tres vistas, páginas, menú y textos
 
+> **Corrección de Nick N3 y N4.** Sin columna «Calificado desde»; la columna «Calificado» es el valor actual de `IQualificationService`. El selector de fechas sigue N4 (`_maxDays` desaparece).
+
 **Files:**
 - Create: `MLMConquerorGlobalEdition.SharedComponents/Components/Team/TeamStatusChangesGrid.razor`
 - Create: `MLMConquerorGlobalEdition.BizCenterWeb/Components/Pages/EnrollmentChanges.razor`
@@ -7449,6 +7489,8 @@ git commit -m "Cambios de estado: un componente compartido para las vistas de in
 
 ### Task 33: Pruebas contra SQL Server de los cambios de estado
 
+> **Corrección de Nick N3.** Las pruebas SQL Server del servicio de calificación sustituyen a las de `QualificationTimeline`.
+
 **Files:**
 - Test: `MLMConquerorGlobalEdition.BizCenter.Tests/Reportes/SqlServerCambiosDeEstadoTests.cs`
 
@@ -7533,6 +7575,8 @@ git commit -m "Pruebas contra SQL Server de las tres vistas de cambios de estado
 # Bloque 6 — Eventos del equipo
 
 ### Task 34: Entidad de inscripción a evento y migración `InscripcionesAEventos`
+
+> **Corrección de Nick N5.** Se mantiene: la entidad es la fuente del reporte. No hay importador en este plan; el índice único `(EventId, ExternalRef)` se crea para el importador futuro.
 
 **Files:**
 - Create: `MLMConquerorGlobalEdition.Domain/Entities/Events/CorporateEventRegistration.cs`
@@ -7682,6 +7726,8 @@ Con el comando de la cabecera. Expected: `Applying migration '…_InscripcionesA
 ---
 
 ### Task 35: Lector de CSV y neutralización de fórmulas (`CsvLite`)
+
+> **FUERA (corrección de Nick N5).** Sin importación CSV en este plan.
 
 **Files:**
 - Create: `MLMConquerorGlobalEdition.Repository/Services/Events/CsvLite.cs`
@@ -7876,6 +7922,8 @@ git commit -m "Lector de CSV RFC 4180 sin dependencias con linea de inicio de ca
 ---
 
 ### Task 36: Importador de inscripciones
+
+> **FUERA (corrección de Nick N5).** Sin importación CSV en este plan.
 
 **Files:**
 - Create: `MLMConquerorGlobalEdition.Repository/Services/Events/EventRegistrationImportDtos.cs`
@@ -8379,6 +8427,8 @@ git commit -m "Importacion CSV de inscripciones a eventos: cabecera fija, hasta 
 
 ### Task 37: Endpoint de importación en el Admin
 
+> **FUERA (corrección de Nick N5).** Sin endpoint de importación en el Admin.
+
 **Files:**
 - Modify: `MLMConquerorGlobalEdition.AdminAPI/Controllers/CorporateEventsController.cs`
 - Modify: `MLMConquerorGlobalEdition.AdminAPI/Program.cs` (registro)
@@ -8628,6 +8678,8 @@ git commit -m "Admin: POST corporate-events/{id}/registrations/import para Super
 
 ### Task 38: Pantalla de importación en el Admin
 
+> **FUERA (corrección de Nick N5).** Sin pantalla de importación en el Admin.
+
 **Files:**
 - Modify: `MLMConquerorGlobalEdition.AdminWeb/Components/Pages/AdminCorporateEvents.razor:78-84,185,328`
 
@@ -8837,6 +8889,8 @@ git commit -m "Admin, eventos corporativos: boton de importar inscripciones por 
 ---
 
 ### Task 39: Servicio de eventos del equipo (BizCenter)
+
+> **Corrección de Nick N3 y N5.** Si la fila enseña «Calificado», sale de `IQualificationService`. Hasta que haya importación, el reporte sale vacío.
 
 **Files:**
 - Create: `MLMConquerorGlobalEdition.Repository/Services/Events/TeamEventDtos.cs`
@@ -9437,6 +9491,8 @@ git commit -m "Eventos del equipo: GET bizcenter/events, POST events/{id}/team-r
 
 ### Task 41: Pantalla de eventos del equipo, página, menú y textos
 
+> **Corrección de Nick N5.** La página se maqueta con el selector de evento y la tabla; sin inscripciones importadas se ve el estado vacío.
+
 **Files:**
 - Create: `MLMConquerorGlobalEdition.SharedComponents/Components/Team/TeamEventRegistrations.razor`
 - Create: `MLMConquerorGlobalEdition.BizCenterWeb/Components/Pages/TeamEvents.razor`
@@ -9741,6 +9797,8 @@ git commit -m "Eventos del equipo: componente compartido con selector de evento 
 
 ### Task 42: Pruebas contra SQL Server de eventos
 
+> **Corrección de Nick N5.** Solo las pruebas del reporte; las del importador y de la neutralización CSV salen con las Tareas 35 y 36.
+
 **Files:**
 - Test: `MLMConquerorGlobalEdition.BizCenter.Tests/Reportes/SqlServerEventosTests.cs`
 
@@ -9847,6 +9905,8 @@ git commit -m "Pruebas contra SQL Server de los eventos del equipo, del indice u
 # Cierre
 
 ### Task 43: Pruebas de seguridad, §12
+
+> **Corrección de Nick.** §12 no lleva filas de importación CSV (N5) ni de `GENEALOGY_TOO_DEEP`/`HierarchyPath` (N1); los rangos son los de N4 y «Calificado» el de N3.
 
 **Files:**
 - Modify: `docs/deployment/pruebas-de-seguridad.md` (sección nueva al final, después de §10)
