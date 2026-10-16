@@ -578,78 +578,87 @@ $sig = [Convert]::ToBase64String($hmac.ComputeHash([IO.File]::ReadAllBytes("$PWD
 curl.exe -k -i -X POST https://localhost:7005/api/v1/signups/entrax/callback -H "Content-Type: application/json" -H "X-Signature: $sig" --data-binary "@body.json"
 ```
 
-Todas las pruebas de esta sección están **pendientes de verificar**: la Tarea 22 del plan hace la
-prueba de punta a punta con el fake y las marca.
+La Tarea 22 del plan las pasó el 2026-10-16 de punta a punta contra el fake, por API (sin
+navegador) y con los servicios en `7b1cc25`. ✔ = verificada; ✔ en parte = lo que dice la nota;
+✘ = falla; ☐ = pendiente, con el motivo. Lo que exige un administrador autenticado (10.29 con
+`SupportLevel1`, 10.30 a 10.33, el *Re-check* de 10.22 y la vista *To review* de 10.16) queda
+pendiente: no había credencial de administrador.
 
 ### 10.1 El callback
 
 | # | Qué se prueba | Cómo | Resultado esperado | ✔ |
 |---|---|---|---|---|
-| 10.1 | Sin firma | callback sin `X-Signature` | `401`, sin cambios en `EntraxPayments` ni en el alta | ☐ |
-| 10.2 | Sin secreto en el servidor | arrancar sin `Entrax__Secret` y mandar un callback firmado con cualquier secreto | `401` (falla cerrado) y un `Error` en el log | ☐ |
-| 10.3 | Firma mala | firma hecha con otro secreto, o un byte del cuerpo cambiado tras firmar | `401` | ☐ |
-| 10.4 | Firma en hexadecimal | la misma firma en hexadecimal de 64 caracteres (`[Convert]::ToHexString(...)`) | se acepta igual que en Base64 | ☐ |
-| 10.5 | Cuerpo grande | callback de más de 64 KB | `413`, sin procesarlo | ☐ |
-| 10.6 | Antigüedad | callback bien firmado con `timestamp` de hace 2 h, o de dentro de 2 h | `400 STALE_CALLBACK`, sin cambios | ☐ |
-| 10.7 | El cuerpo no decide | callback bien firmado con `status: SUCCESS` de un QR que en el fake sigue sin pagar | `503` y el alta sigue pendiente: manda `GET /payment`, no el aviso; Entrax reintentará | ☐ |
-| 10.8 | Replay | tras `POST api/v1/dev/entrax/{paymentId}/paid`, el mismo callback bien firmado dos veces | las dos `200`; un solo `PaymentHistory` `Entrax`, una sola activación | ☐ |
-| 10.9 | `orderId` que no casa | callback con el `paymentId` de un alta y el `orderId` de otra | `400 INVALID_CALLBACK`; ninguna de las dos altas cambia | ☐ |
-| 10.10 | Pago que no es nuestro | callback firmado con un `paymentId` inventado | `404`, sin cambios | ☐ |
+| 10.1 | Sin firma | callback sin `X-Signature` | `401`, sin cambios en `EntraxPayments` ni en el alta | ✔ (2026-10-16, por API con el fake): `401` y sin cambios |
+| 10.2 | Sin secreto en el servidor | arrancar sin `Entrax__Secret` y mandar un callback firmado con cualquier secreto | `401` (falla cerrado) y un `Error` en el log | ✔ (2026-10-16, por API con el fake): arrancado sin `Entrax__Secret`, `401` con la firma buena y con otra, y un `Error` "no hay Entrax:Secret" en el log |
+| 10.3 | Firma mala | firma hecha con otro secreto, o un byte del cuerpo cambiado tras firmar | `401` | ✔ (2026-10-16, por API con el fake): `401` con otro secreto y con un byte cambiado |
+| 10.4 | Firma en hexadecimal | la misma firma en hexadecimal de 64 caracteres (`[Convert]::ToHexString(...)`) | se acepta igual que en Base64 | ✔ (2026-10-16, por API con el fake): en mayúsculas y en minúsculas la firma pasa (`503` del pago aún sin pagar, no `401`) |
+| 10.5 | Cuerpo grande | callback de más de 64 KB | `413`, sin procesarlo | ✘ (2026-10-16): devuelve `500 INTERNAL_ERROR`, no `413`; no lo procesa, pero cada petición deja una fila en `ErrorLogs`. Ver la nota tras la tabla |
+| 10.6 | Antigüedad | callback bien firmado con `timestamp` de hace 2 h, o de dentro de 2 h | `400 STALE_CALLBACK`, sin cambios | ✔ (2026-10-16, por API con el fake): `400 STALE_CALLBACK` con −2 h y con +2 h |
+| 10.7 | El cuerpo no decide | callback bien firmado con `status: SUCCESS` de un QR que en el fake sigue sin pagar | `503` y el alta sigue pendiente: manda `GET /payment`, no el aviso; Entrax reintentará | ✔ (2026-10-16, por API con el fake): `503` y el alta sigue pendiente |
+| 10.8 | Replay | tras `POST api/v1/dev/entrax/{paymentId}/paid`, el mismo callback bien firmado dos veces | las dos `200`; un solo `PaymentHistory` `Entrax`, una sola activación | ✔ (2026-10-16, por API con el fake): dos `200` y un solo `PaymentHistory` |
+| 10.9 | `orderId` que no casa | callback con el `paymentId` de un alta y el `orderId` de otra | `400 INVALID_CALLBACK`; ninguna de las dos altas cambia | ✔ (2026-10-16, por API con el fake): `400 INVALID_CALLBACK` en los dos sentidos; ningún pago cambia |
+| 10.10 | Pago que no es nuestro | callback firmado con un `paymentId` inventado | `404`, sin cambios | ✔ (2026-10-16, por API con el fake): `404` |
+
+**10.5 falla.** Con `[RequestSizeLimit]` de 64 KB, Kestrel lanza `BadHttpRequestException` (413) al
+leer el cuerpo en `EntraxSignupsController.ReadBodyAsync`; el `try` del controlador no cubre esa
+lectura y `DomainExceptionMiddleware` la convierte en `500 INTERNAL_ERROR` y escribe una fila en
+`ErrorLogs`. El callback no se procesa, que es lo que importa, pero la respuesta no es `413` y cada
+petición grande escribe en `ErrorLogs`. Pasa con `Content-Length` y con `Transfer-Encoding: chunked`.
 
 ### 10.2 El endpoint de estado
 
 | # | Qué se prueba | Cómo | Resultado esperado | ✔ |
 |---|---|---|---|---|
-| 10.11 | Las dos referencias | `GET .../entrax-status` sin `ref`, con el `ref` de otra alta o con un `signupId` inventado | `404 ENTRAX_PAYMENT_NOT_FOUND`, sin más datos | ☐ |
-| 10.12 | Qué devuelve | `GET .../entrax-status` correcto | solo `status`, `expiresAt` y `secondsRemaining`: ni tokens, ni enlace del QR, ni importes, ni datos del aspirante | ☐ |
-| 10.13 | Freno de 15 s en servidor | varias consultas seguidas (o cuatro a la vez) del mismo pago | en `EntraxApiCalls` hay como mucho una `GetPayment` de la pantalla (`Entrax:Poll`) cada 15 s: el turno se reserva con un `UPDATE` condicional sobre `LastCheckedAt` | ☐ |
-| 10.14 | Rate limit | más de 30 consultas en un minuto desde la misma IP | `429` a partir de la 31.ª | ☐ |
-| 10.15 | Alta ya completada | consultar un QR `AwaitingPayment` de un alta que ya se completó por otro medio | `Superseded` con `secondsRemaining: 0`; la pantalla dice "alta completada, inicia sesión" y oculta el QR | ☐ |
+| 10.11 | Las dos referencias | `GET .../entrax-status` sin `ref`, con el `ref` de otra alta o con un `signupId` inventado | `404 ENTRAX_PAYMENT_NOT_FOUND`, sin más datos | ✔ (2026-10-16, por API con el fake): `404 ENTRAX_PAYMENT_NOT_FOUND` sin `ref`, con el `ref` de otra alta y con un `signupId` inventado |
+| 10.12 | Qué devuelve | `GET .../entrax-status` correcto | solo `status`, `expiresAt` y `secondsRemaining`: ni tokens, ni enlace del QR, ni importes, ni datos del aspirante | ✔ (2026-10-16, por API con el fake): solo `status`, `expiresAt` y `secondsRemaining` |
+| 10.13 | Freno de 15 s en servidor | varias consultas seguidas (o cuatro a la vez) del mismo pago | en `EntraxApiCalls` hay como mucho una `GetPayment` de la pantalla (`Entrax:Poll`) cada 15 s: el turno se reserva con un `UPDATE` condicional sobre `LastCheckedAt` | ✔ (2026-10-16, por API con el fake): 4 consultas a la vez y 6 seguidas → una sola `GetPayment` `Entrax:Poll` |
+| 10.14 | Rate limit | más de 30 consultas en un minuto desde la misma IP | `429` a partir de la 31.ª | ✔ (2026-10-16, por API con el fake): `429` desde la 31.ª |
+| 10.15 | Alta ya completada | consultar un QR `AwaitingPayment` de un alta que ya se completó por otro medio | `Superseded` con `secondsRemaining: 0`; la pantalla dice "alta completada, inicia sesión" y oculta el QR | ☐ pendiente: con un QR vivo ningún método completa el alta (10.25), así que hay que confirmar una cripto desde el admin, y no hay credencial de administrador |
 
 ### 10.3 Liquidación: importe, unicidad y reactivaciones
 
 | # | Qué se prueba | Cómo | Resultado esperado | ✔ |
 |---|---|---|---|---|
-| 10.16 | Monto menor | `POST api/v1/dev/entrax/{paymentId}/underpaid` y `POST api/v1/dev/entrax/sweep` | `ToReview` `AMOUNT_TOO_LOW`, alta sin activar, `Critical` en el log, visible en *To review* | ☐ |
-| 10.17 | Doble cobro | activar un alta con un QR y luego pagar en el fake un segundo QR del mismo pedido (el que quedó `Superseded`) y barrer | el segundo queda `ToReview` `ORDER_ALREADY_SETTLED`, sin segunda activación | ☐ |
-| 10.18 | Carrera | con un QR pagado en el fake, cuatro `entrax-status` a la vez más un `sweep` | un solo `PaymentHistory` `Entrax`, una sola fila de cada bono por `SourceOrderId`, el pago `Paid` una vez y ninguno `ToReview`: el pago se reclama antes que el pedido, con un `ExecuteUpdate` condicional | ☐ |
-| 10.19 | QR caducado | `POST api/v1/dev/entrax/{paymentId}/expired` | el pago `Expired`; el pedido vuelve a `Pending` solo si estaba en `Processing` y nada más lo espera (vuelta condicional) | ☐ |
-| 10.20 | Caducidad local (H20) | dejar el QR en `pending` (o sin credenciales) más allá de `ExpiresAt` + `Entrax:LocalExpiryGraceMinutes` y barrer | `Expired` con `FailureCode = LOCAL_EXPIRY` y el pedido de vuelta a `Pending`; si luego resulta pagado, el barrido de pagos tardíos lo vuelve a mirar | ☐ |
-| 10.21 | Sustituidos (H21) | activar un alta con un QR teniendo otro `AwaitingPayment` del mismo pedido | el otro pasa a `Superseded`; el barrido lo sigue mirando mientras pueda pagarse | ☐ |
-| 10.22 | Sin reactivar a quien desactivó un administrador | alta pagada y activa; un administrador la desactiva (miembro `Inactive` o `Terminated`); repetir el callback y hacer un *Re-check* | `AlreadyResolved` y la cuenta **sigue inactiva** | ☐ |
+| 10.16 | Monto menor | `POST api/v1/dev/entrax/{paymentId}/underpaid` y `POST api/v1/dev/entrax/sweep` | `ToReview` `AMOUNT_TOO_LOW`, alta sin activar, `Critical` en el log, visible en *To review* | ✔ (2026-10-16, por API con el fake): `ToReview` `AMOUNT_TOO_LOW` (pagado 1 USD de menos), sin `PaymentHistory` y con `Critical`; el pedido se queda en `Processing`. La vista *To review*, pendiente (admin) |
+| 10.17 | Doble cobro | activar un alta con un QR y luego pagar en el fake un segundo QR del mismo pedido (el que quedó `Superseded`) y barrer | el segundo queda `ToReview` `ORDER_ALREADY_SETTLED`, sin segunda activación | ✔ (2026-10-16, por API con el fake), con el QR caducado en vez de uno `Superseded` (por API no se llega a dos QR vivos): `ToReview` `ORDER_ALREADY_SETTLED`, `Critical` y un solo `PaymentHistory` |
+| 10.18 | Carrera | con un QR pagado en el fake, cuatro `entrax-status` a la vez más un `sweep` | un solo `PaymentHistory` `Entrax`, una sola fila de cada bono por `SourceOrderId`, el pago `Paid` una vez y ninguno `ToReview`: el pago se reclama antes que el pedido, con un `ExecuteUpdate` condicional | ✔ (2026-10-16, por API con el fake), dos veces (4 estados + barrido; 4 estados + 2 barridos + 4 callbacks): un `PaymentHistory`, una fila por bono (tipos 2 y 34) y ningún `ToReview` |
+| 10.19 | QR caducado | `POST api/v1/dev/entrax/{paymentId}/expired` | el pago `Expired`; el pedido vuelve a `Pending` solo si estaba en `Processing` y nada más lo espera (vuelta condicional) | ✔ (2026-10-16, por API con el fake): `Expired` y el pedido de `Processing` a `Pending` |
+| 10.20 | Caducidad local (H20) | dejar el QR en `pending` (o sin credenciales) más allá de `ExpiresAt` + `Entrax:LocalExpiryGraceMinutes` y barrer | `Expired` con `FailureCode = LOCAL_EXPIRY` y el pedido de vuelta a `Pending`; si luego resulta pagado, el barrido de pagos tardíos lo vuelve a mirar | ✔ (2026-10-16, por API con el fake, con `ExpiresAt` atrasado a mano en la BD local): dentro de la gracia sigue esperando; pasada, `Expired` `LOCAL_EXPIRY` y el pedido a `Pending`; pagado después, el barrido lo activa (el `FailureCode` `LOCAL_EXPIRY` se queda en la fila ya `Paid`) |
+| 10.21 | Sustituidos (H21) | activar un alta con un QR teniendo otro `AwaitingPayment` del mismo pedido | el otro pasa a `Superseded`; el barrido lo sigue mirando mientras pueda pagarse | ☐ pendiente: por API no se llega a dos QR `AwaitingPayment` del mismo pedido (10.24 y 10.25 lo impiden); solo lo cubren las pruebas unitarias |
+| 10.22 | Sin reactivar a quien desactivó un administrador | alta pagada y activa; un administrador la desactiva (miembro `Inactive` o `Terminated`); repetir el callback y hacer un *Re-check* | `AlreadyResolved` y la cuenta **sigue inactiva** | ✔ en parte (2026-10-16, por API con el fake): con el miembro puesto `Inactive` en la BD local, el callback (`200`) y el barrido no lo reactivan. El *Re-check*, pendiente (admin) |
 
 ### 10.4 El alta con otros métodos mientras hay un QR
 
 | # | Qué se prueba | Cómo | Resultado esperado | ✔ |
 |---|---|---|---|---|
-| 10.23 | País no configurado | `complete` con `"paymentMethod": 5` desde un país fuera de `Entrax:Countries` (o con Entrax apagado) | `400 ENTRAX_NOT_AVAILABLE` | ☐ |
-| 10.24 | Dos QR a la vez | dos `complete` con Entrax simultáneos del mismo alta | uno recibe el QR y el otro `409 ENTRAX_IN_PROGRESS` (o `ENTRAX_QR_ALREADY_ACTIVE` si llega cuando el primero ya terminó) | ☐ |
-| 10.25 | QR vivo en otra ventana | con un QR vivo, `complete` con **cualquier** método (Entrax, tarjeta, token, cripto) | `409 ENTRAX_QR_ALREADY_ACTIVE`, sin tocar nada | ☐ |
-| 10.26 | QR caducado sin cerrar | con un QR ya caducado que el servidor aún no cerró, `complete` con cualquier método | `409 ENTRAX_PAYMENT_CONFIRMING` | ☐ |
-| 10.27 | Alta ya pagada | alta completada con Entrax; `complete` con tarjeta o token | `409 SIGNUP_ALREADY_SETTLED`; la tarjeta y el token reclaman el pedido solo desde `Pending` con un `UPDATE` condicional y no activan nada | ☐ |
-| 10.28 | El 409 no delata pedidos | `complete` con el id de un pedido completado que **no** es el de un alta (una renovación o una compra: el del alta es el primer pedido del miembro) | `400 SIGNUP_NOT_FOUND`, nunca `SIGNUP_ALREADY_SETTLED` | ☐ |
+| 10.23 | País no configurado | `complete` con `"paymentMethod": 5` desde un país fuera de `Entrax:Countries` (o con Entrax apagado) | `400 ENTRAX_NOT_AVAILABLE` | ✔ (2026-10-16, por API con el fake): un alta de `ES` recibe `400 ENTRAX_NOT_AVAILABLE`; con Entrax apagado, lo mismo y `payment-options` vacío |
+| 10.24 | Dos QR a la vez | dos `complete` con Entrax simultáneos del mismo alta | uno recibe el QR y el otro `409 ENTRAX_IN_PROGRESS` (o `ENTRAX_QR_ALREADY_ACTIVE` si llega cuando el primero ya terminó) | ✔ (2026-10-16, por API con el fake): uno `200` con el QR y otro `409 ENTRAX_IN_PROGRESS`; un solo pago |
+| 10.25 | QR vivo en otra ventana | con un QR vivo, `complete` con **cualquier** método (Entrax, tarjeta, token, cripto) | `409 ENTRAX_QR_ALREADY_ACTIVE`, sin tocar nada | ✔ (2026-10-16, por API con el fake): Entrax, tarjeta, token y cripto → `409 ENTRAX_QR_ALREADY_ACTIVE` |
+| 10.26 | QR caducado sin cerrar | con un QR ya caducado que el servidor aún no cerró, `complete` con cualquier método | `409 ENTRAX_PAYMENT_CONFIRMING` | ✔ (2026-10-16, por API con el fake, con `ExpiresAt` atrasado a mano en la BD local): token, Entrax y cripto → `409 ENTRAX_PAYMENT_CONFIRMING` |
+| 10.27 | Alta ya pagada | alta completada con Entrax; `complete` con tarjeta o token | `409 SIGNUP_ALREADY_SETTLED`; la tarjeta y el token reclaman el pedido solo desde `Pending` con un `UPDATE` condicional y no activan nada | ✔ (2026-10-16, por API con el fake): tarjeta, token, cripto y Entrax → `409 SIGNUP_ALREADY_SETTLED`, y también `select-products`; nada cambia |
+| 10.28 | El 409 no delata pedidos | `complete` con el id de un pedido completado que **no** es el de un alta (una renovación o una compra: el del alta es el primer pedido del miembro) | `400 SIGNUP_NOT_FOUND`, nunca `SIGNUP_ALREADY_SETTLED` | ✔ en parte (2026-10-16, por API): en la BD local no hay ningún pedido completado que no sea de alta; con renovaciones `Paid` y `Processing` → `400 SIGNUP_NOT_FOUND`, y con el primer pedido completado de un miembro → `409` |
 
 ### 10.5 Admin
 
 | # | Qué se prueba | Cómo | Resultado esperado | ✔ |
 |---|---|---|---|---|
-| 10.29 | Roles | `GET .../admin/entrax-signups` y los dos `recheck` (AdminAPI y SignupAPI) con un token de `SupportLevel1` | `403`; en AdminWeb la entrada *Entrax Signups* no aparece | ☐ |
-| 10.30 | La lista no expone | respuesta de `GET .../admin/entrax-signups?view=open` en las herramientas del navegador | sin `QrLink` (con él se puede pagar), sin `Notes`, sin cuerpos ni firmas de Entrax | ☐ |
-| 10.31 | Recientes | `view=recent` | solo pagos de los últimos 30 días; *open* y *review* sin límite de fecha | ☐ |
-| 10.32 | Re-check auditado | *Re-check* sobre un pago; repetirlo cerrando la pestaña antes de la respuesta | una fila en `AuditTracking` (`Action = EntraxRecheck`) con quién, el estado anterior, el código HTTP y el desenlace; la cancelada con `CLIENT_CANCELLED`. El Bearer no se guarda | ☐ |
-| 10.33 | Re-check con SignupAPI caída o lenta | parar SignupAPI (o hacer que tarde más de 20 s) y pulsar *Re-check* | `502 SIGNUP_API_UNAVAILABLE` en ≤ 20 s, auditado; repetirlo es seguro (idempotente) | ☐ |
-| 10.34 | Arranque sin `Services:SignupAPI` | arrancar AdminAPI con `ASPNETCORE_ENVIRONMENT=Production` sin `Services__SignupAPI` | no arranca (`InvalidOperationException`); con ella, valida el certificado de SignupAPI | ☐ |
+| 10.29 | Roles | `GET .../admin/entrax-signups` y los dos `recheck` (AdminAPI y SignupAPI) con un token de `SupportLevel1` | `403`; en AdminWeb la entrada *Entrax Signups* no aparece | ✔ en parte (2026-10-16, por API con el fake): sin token `401`, y con el token de un `Ambassador` `403` en la lista (las tres vistas) y en los dos `recheck`. Con `SupportLevel1` y el menú de AdminWeb, pendiente (no hay credencial) |
+| 10.30 | La lista no expone | respuesta de `GET .../admin/entrax-signups?view=open` en las herramientas del navegador | sin `QrLink` (con él se puede pagar), sin `Notes`, sin cuerpos ni firmas de Entrax | ☐ pendiente: necesita un administrador autenticado y no hay credencial |
+| 10.31 | Recientes | `view=recent` | solo pagos de los últimos 30 días; *open* y *review* sin límite de fecha | ☐ pendiente: necesita un administrador autenticado y no hay credencial |
+| 10.32 | Re-check auditado | *Re-check* sobre un pago; repetirlo cerrando la pestaña antes de la respuesta | una fila en `AuditTracking` (`Action = EntraxRecheck`) con quién, el estado anterior, el código HTTP y el desenlace; la cancelada con `CLIENT_CANCELLED`. El Bearer no se guarda | ☐ pendiente: necesita un administrador autenticado y no hay credencial |
+| 10.33 | Re-check con SignupAPI caída o lenta | parar SignupAPI (o hacer que tarde más de 20 s) y pulsar *Re-check* | `502 SIGNUP_API_UNAVAILABLE` en ≤ 20 s, auditado; repetirlo es seguro (idempotente) | ☐ pendiente: necesita un administrador autenticado y no hay credencial |
+| 10.34 | Arranque sin `Services:SignupAPI` | arrancar AdminAPI con `ASPNETCORE_ENVIRONMENT=Production` sin `Services__SignupAPI` | no arranca (`InvalidOperationException`); con ella, valida el certificado de SignupAPI | ☐ pendiente: en `Production` AdminAPI se para antes en `Jwt:PrivateKeyBase64` (vive en los secretos de usuario, que `Production` no carga) y sin pasarle la llave de firma no se llega a la comprobación de `Services:SignupAPI` |
 
 ### 10.6 Configuración y endpoints de desarrollo
 
 | # | Qué se prueba | Cómo | Resultado esperado | ✔ |
 |---|---|---|---|---|
-| 10.35 | Fake fuera de Development | arrancar SignupAPI en `Production` con `Entrax__UseFake=true` | no arranca | ☐ |
-| 10.36 | Endpoints de desarrollo | `POST api/v1/dev/entrax/{id}/paid` en Development sin `UseFake` | `404`: solo existen con `IsDevelopment` **y** `UseFake` (y fuera de Development `UseFake` no arranca) | ☐ |
-| 10.37 | Credenciales a medias | arrancar en `Production` con `Entrax__Enabled=false` y solo `Entrax__KeyId` | no arranca | ☐ |
-| 10.38 | Encendido sin callback https | `Production`, `Enabled=true`, credenciales y `Entrax__CallbackUrl=http://…` | no arranca | ☐ |
-| 10.39 | Apagado con pagos esperando | `Enabled=false` con un pago `AwaitingPayment` y ejecutar el barrido | `Critical` en el log y el pago se sigue liquidando | ☐ |
-| 10.40 | El barrido vivo | `/hangfire` de SignupAPI | `entrax-signup-sweep` existe, cada 2 minutos, cola `signups` | ☐ |
+| 10.35 | Fake fuera de Development | arrancar SignupAPI en `Production` con `Entrax__UseFake=true` | no arranca | ✔ (2026-10-16, `Production` en otro puerto contra la BD local): no arranca, `InvalidOperationException` "[Entrax] … UseFake solo se permite en Development" |
+| 10.36 | Endpoints de desarrollo | `POST api/v1/dev/entrax/{id}/paid` en Development sin `UseFake` | `404`: solo existen con `IsDevelopment` **y** `UseFake` (y fuera de Development `UseFake` no arranca) | ✔ (2026-10-16, por API, Development sin `UseFake`): `404` en `paid` y en `sweep` |
+| 10.37 | Credenciales a medias | arrancar en `Production` con `Entrax__Enabled=false` y solo `Entrax__KeyId` | no arranca | ✔ (2026-10-16, `Production` en otro puerto contra la BD local): no arranca, "credenciales a medias" |
+| 10.38 | Encendido sin callback https | `Production`, `Enabled=true`, credenciales y `Entrax__CallbackUrl=http://…` | no arranca | ✔ (2026-10-16, `Production` en otro puerto contra la BD local): no arranca, "CallbackUrl debe ser una URL https absoluta" |
+| 10.39 | Apagado con pagos esperando | `Enabled=false` con un pago `AwaitingPayment` y ejecutar el barrido | `Critical` en el log y el pago se sigue liquidando | ✔ en parte (2026-10-16, por API con el fake): `Critical` "Entrax está apagado y hay 1 pagos…" y el barrido sigue llamando a `GetPayment`; que liquide no se ve con el fake, que pierde sus pagos al reiniciar |
+| 10.40 | El barrido vivo | `/hangfire` de SignupAPI | `entrax-signup-sweep` existe, cada 2 minutos, cola `signups` | ✔ (2026-10-16, tablas de Hangfire): `*/2 * * * *`, cola `signups` y un servidor que atiende `signups` |
 
 ### 10.7 Fallos del legado (MWR Life) que no se copiaron
 
@@ -657,10 +666,10 @@ Cada uno era un fallo real de la integración de Entrax en MWR Life. Se prueban 
 
 | # | Fallo del legado | Cómo se prueba | Resultado esperado | ✔ |
 |---|---|---|---|---|
-| 10.41 | El monto lo mandaba el cliente | `complete` con Entrax añadiendo `"amount": 1` (o cualquier campo de importe) al cuerpo | `CompleteSignupRequest` no tiene importe: el QR sale por `Orders.TotalAmount` en USD (`EntraxPayments.AmountUsd` = total del pedido) | ☐ |
-| 10.42 | Un mismo pago valía para varias altas | 10.9, y en SQL intentar dar el mismo `ExternalPaymentId` a dos filas, o `Consumed = 1` a dos pagos del mismo pedido | `400 INVALID_CALLBACK`; los índices únicos `IX_EntraxPayments_ExternalPaymentId` y `UX_EntraxPayments_OrderId_Consumed` lo impiden | ☐ |
-| 10.43 | La contraseña del formulario en claro en el log | hacer un alta con una contraseña reconocible y buscarla en el log de SignupAPI y en `EntraxApiCalls` | no aparece; `EntraxApiCalls` solo tiene campos estructurados, sin cuerpos | ☐ |
-| 10.44 | El webhook no activaba el alta (lo hacía el navegador) | cerrar la pestaña tras emitir el QR, `POST api/v1/dev/entrax/{paymentId}/paid` y mandar el callback firmado (o esperar al barrido) | el alta queda activa sin nadie en la página | ☐ |
-| 10.45 | La firma se comparaba con `==` | revisar `EntraxSignature.VerifyCallback` | HMAC-SHA256 sobre el cuerpo crudo, comparado con `CryptographicOperations.FixedTimeEquals` | ☐ |
-| 10.46 | Endpoints anónimos que devolvían `ex.ToString()` | provocar errores en los anónimos: callback firmado con un cuerpo que no es JSON, `entrax-status` con la base parada | `400 INVALID_CALLBACK`, o `500 INTERNAL_ERROR` ("An unexpected error occurred." y el `traceId`) sin traza ni texto de la excepción; el detalle solo en el log | ☐ |
-| 10.47 | Conversión de divisa con el tipo de cambio de Spreedly (y USD mandados como rublos si fallaba) | mirar la petición del QR y `EntraxPayments` | el QR se pide **en USD** y nunca convertimos la divisa: `AmountRub` y `ExchangeRate` los da Entrax. Un QR que vuelve en otra moneda o por otro importe no se muestra (`502 ENTRAX_UNAVAILABLE` y `Critical`), y un pago en otra moneda va a `ToReview` `CURRENCY_MISMATCH` | ☐ |
+| 10.41 | El monto lo mandaba el cliente | `complete` con Entrax añadiendo `"amount": 1` (o cualquier campo de importe) al cuerpo | `CompleteSignupRequest` no tiene importe: el QR sale por `Orders.TotalAmount` en USD (`EntraxPayments.AmountUsd` = total del pedido) | ✔ (2026-10-16, por API con el fake): con `"amount": 1` en el cuerpo el QR sale por 458,94 USD, el `Orders.TotalAmount` |
+| 10.42 | Un mismo pago valía para varias altas | 10.9, y en SQL intentar dar el mismo `ExternalPaymentId` a dos filas, o `Consumed = 1` a dos pagos del mismo pedido | `400 INVALID_CALLBACK`; los índices únicos `IX_EntraxPayments_ExternalPaymentId` y `UX_EntraxPayments_OrderId_Consumed` lo impiden | ✔ (2026-10-16, por API con el fake): 10.9, y en SQL (con `ROLLBACK`) los índices únicos rechazan un `ExternalPaymentId` y un `ExternalOrderId` repetidos y un segundo `Consumed = 1` del mismo pedido |
+| 10.43 | La contraseña del formulario en claro en el log | hacer un alta con una contraseña reconocible y buscarla en el log de SignupAPI y en `EntraxApiCalls` | no aparece; `EntraxApiCalls` solo tiene campos estructurados, sin cuerpos | ✔ (2026-10-16, por API con el fake): ninguna de las 8 contraseñas aparece en los logs, en `EntraxApiCalls` ni en `ErrorLogs` |
+| 10.44 | El webhook no activaba el alta (lo hacía el navegador) | cerrar la pestaña tras emitir el QR, `POST api/v1/dev/entrax/{paymentId}/paid` y mandar el callback firmado (o esperar al barrido) | el alta queda activa sin nadie en la página | ✔ (2026-10-16, por API con el fake): altas activadas por el barrido sin nadie consultando el estado (Tarea 22, paso 5, y 10.20) |
+| 10.45 | La firma se comparaba con `==` | revisar `EntraxSignature.VerifyCallback` | HMAC-SHA256 sobre el cuerpo crudo, comparado con `CryptographicOperations.FixedTimeEquals` | ✔ (2026-10-16, revisión del código): `HMACSHA256.HashData` sobre el cuerpo crudo y `CryptographicOperations.FixedTimeEquals` |
+| 10.46 | Endpoints anónimos que devolvían `ex.ToString()` | provocar errores en los anónimos: callback firmado con un cuerpo que no es JSON, `entrax-status` con la base parada | `400 INVALID_CALLBACK`, o `500 INTERNAL_ERROR` ("An unexpected error occurred." y el `traceId`) sin traza ni texto de la excepción; el detalle solo en el log | ✔ en parte (2026-10-16, por API con el fake): un cuerpo que no es JSON → `400 INVALID_CALLBACK`; los `500` salen con "An unexpected error occurred." y sin traza, pero con el `traceId` vacío. Con la base parada no se probó (es la SQL Server local compartida) |
+| 10.47 | Conversión de divisa con el tipo de cambio de Spreedly (y USD mandados como rublos si fallaba) | mirar la petición del QR y `EntraxPayments` | el QR se pide **en USD** y nunca convertimos la divisa: `AmountRub` y `ExchangeRate` los da Entrax. Un QR que vuelve en otra moneda o por otro importe no se muestra (`502 ENTRAX_UNAVAILABLE` y `Critical`), y un pago en otra moneda va a `ToReview` `CURRENCY_MISMATCH` | ✔ en parte (2026-10-16, por API con el fake): el QR se pide en USD y `AmountRub` y `ExchangeRate` los da el proveedor (95,50 del fake). El `502` por otra moneda y `CURRENCY_MISMATCH` no se pueden provocar con el fake |
