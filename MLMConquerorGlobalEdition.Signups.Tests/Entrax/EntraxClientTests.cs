@@ -286,4 +286,40 @@ public class EntraxClientTests
 
         r.ErrorCode.Should().Be(EntraxErrorCodes.Cancelled, "un timeout de Entrax y una petición abandonada no son lo mismo.");
     }
+
+    [Fact]
+    public async Task Una_fecha_sin_desfase_se_entiende_en_UTC_y_no_en_la_zona_del_servidor()
+    {
+        var h = new Manejador((_, _) => Json(HttpStatusCode.OK, QrOk.Replace("2026-10-16T07:15:00Z", "2026-10-16T07:15:00")));
+
+        var r = await Cliente(h).CreateQrAsync(new EntraxQrRequest(100.50m, "USD", "SIGNUP-o1-1", null, null), default);
+
+        r.Value!.ExpiresAt.Should().Be(new DateTimeOffset(2026, 10, 16, 7, 15, 0, TimeSpan.Zero));
+        r.Value.ExpiresAt!.Value.Offset.Should().Be(TimeSpan.Zero);
+    }
+
+    [Fact]
+    public async Task La_caducidad_en_Z_pasa_a_hora_de_servidor_con_la_zona_del_servidor()
+    {
+        var r = await Cliente(new Manejador((_, _) => Json(HttpStatusCode.OK, QrOk)))
+            .CreateQrAsync(new EntraxQrRequest(100.50m, "USD", "SIGNUP-o1-1", null, null), default);
+
+        // Lo que hace el alta al guardarla (EntraxSignupCheckout): hora local del servidor.
+        r.Value!.ExpiresAt!.Value.LocalDateTime.Should().Be(
+            TimeZoneInfo.ConvertTimeFromUtc(new DateTime(2026, 10, 16, 7, 15, 0, DateTimeKind.Utc), TimeZoneInfo.Local));
+    }
+
+    [Fact]
+    public async Task La_hora_de_pago_sin_desfase_tambien_es_UTC()
+    {
+        var h = new Manejador((_, _) => Json(HttpStatusCode.OK, """
+            {"success":true,"data":{"paymentId":"550e8400-e29b-41d4-a716-446655440000","status":"paid","orderId":"SIGNUP-o1-1",
+             "amount":{"original":100.50,"currency":"USD","rubles":7525.50,"exchangeRate":75.255},
+             "timestamps":{"created":"2026-10-16T07:00:00","completed":"2026-10-16T07:05:30"}}}
+            """));
+
+        var r = await Cliente(h).GetPaymentAsync(PaymentId, default);
+
+        r.Value!.CompletedAt.Should().Be(new DateTimeOffset(2026, 10, 16, 7, 5, 30, TimeSpan.Zero));
+    }
 }

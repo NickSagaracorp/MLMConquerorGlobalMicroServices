@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -19,7 +20,8 @@ public sealed class EntraxClient : IEntraxClient
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
-        NumberHandling = JsonNumberHandling.AllowReadingFromString
+        NumberHandling = JsonNumberHandling.AllowReadingFromString,
+        Converters     = { new UtcUnlessOffsetConverter() }
     };
 
     /// <summary>Para escribir: sin campos nulos (un "description": null explícito puede no validar).</summary>
@@ -178,6 +180,26 @@ public sealed class EntraxClient : IEntraxClient
         return new EntraxPaymentState(d.PaymentId, d.Status, d.OrderId,
             d.Amount?.Original ?? 0m, d.Amount?.Currency ?? string.Empty,
             d.Amount?.Rubles ?? 0m, d.Amount?.ExchangeRate ?? 0m, d.Timestamps?.Completed);
+    }
+
+    /// <summary>
+    /// Fechas de Entrax: con desfase ('Z' o '+03:00') se respetan; SIN desfase se entienden en UTC,
+    /// nunca en la zona del servidor (el lector por defecto asumiría la local y desplazaría la hora).
+    /// </summary>
+    private sealed class UtcUnlessOffsetConverter : JsonConverter<DateTimeOffset>
+    {
+        public override DateTimeOffset Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType == JsonTokenType.String
+                && DateTimeOffset.TryParse(reader.GetString(), CultureInfo.InvariantCulture,
+                       DateTimeStyles.AssumeUniversal, out var value))
+                return value;
+
+            throw new JsonException("Fecha de Entrax ilegible.");
+        }
+
+        public override void Write(Utf8JsonWriter writer, DateTimeOffset value, JsonSerializerOptions options)
+            => writer.WriteStringValue(value);
     }
 
     // ── Forma del cable (documentación de Entrax, Cash Register API v1) ──────────────────────
