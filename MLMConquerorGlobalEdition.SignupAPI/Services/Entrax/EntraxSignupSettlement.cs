@@ -336,6 +336,12 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
     {
         var none = CancellationToken.None;
 
+        // Un pago Paid no lleva código de fallo. Si lo tenía (p. ej. LOCAL_EXPIRY de un pago tardío), el
+        // rastro pasa a las notas.
+        var notes = payment.FailureCode is null
+            ? payment.Notes
+            : Cut($"{payment.Notes} Before paid: {payment.FailureCode}.".Trim(), 500);
+
         if (!_db.Database.IsRelational())
         {
             // EF InMemory (pruebas) no tiene UPDATE condicional: se mira lo que hay guardado ahora.
@@ -347,6 +353,8 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
             payment.Status         = EntraxPaymentStatus.Paid;
             payment.Consumed       = true;
             payment.ActivatedAt    = now;
+            payment.FailureCode    = null;
+            payment.Notes          = notes;
             payment.LastUpdateDate = now;
             payment.LastUpdateBy   = Actor;
             return true;
@@ -365,6 +373,8 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
                     .SetProperty(p => p.ActivatedAt, now)
                     .SetProperty(p => p.PaidAt, paidAt)
                     .SetProperty(p => p.PaidAmountUsd, paidUsd)
+                    .SetProperty(p => p.FailureCode, (string?)null)
+                    .SetProperty(p => p.Notes, notes)
                     .SetProperty(p => p.LastUpdateDate, now)
                     .SetProperty(p => p.LastUpdateBy, Actor), none);
         }
@@ -480,6 +490,9 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
             payment.ExternalPaymentId, payment.OrderId, reason);
         return EntraxSettlementOutcome.ToReview;
     }
+
+    private static string? Cut(string? value, int max)
+        => value is null ? null : value.Length <= max ? value : value[..max];
 
     private static bool IsOrderAlreadyConsumed(Exception ex)
     {

@@ -60,6 +60,29 @@ public class CaducidadLocalTests
     }
 
     [Fact]
+    public async Task Si_luego_resulta_pagado_activa_y_el_codigo_de_la_caducidad_local_pasa_a_las_notas()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await EscenarioEntrax.SembrarAltaAsync(db, OrderStatus.Pending);
+        var pago = await EscenarioEntrax.SembrarPagoAsync(db, EntraxPaymentStatus.Expired, caduca: EscenarioEntrax.Ahora.AddMinutes(-30));
+        pago.FailureCode = "LOCAL_EXPIRY";
+        await db.SaveChangesAsync();
+        var cliente = new Mock<IEntraxClient>();
+        cliente.Setup(c => c.GetPaymentAsync(EscenarioEntrax.PaymentId, It.IsAny<CancellationToken>()))
+               .ReturnsAsync(EscenarioEntrax.Ok(EscenarioEntrax.Remoto("paid")));
+
+        (await new EntraxSignupSettlement(db, cliente.Object, EscenarioEntrax.Activacion(db),
+                EscenarioEntrax.Usuarios(EscenarioEntrax.UsuarioInactivo()).Object, EscenarioEntrax.Reloj().Object,
+                NullLogger<EntraxSignupSettlement>.Instance)
+            .SettleAsync(pago.Id, EntraxSettlementSource.Sweep, default)).Should().Be(EntraxSettlementOutcome.Activated);
+
+        var fila = await db.EntraxPayments.AsNoTracking().SingleAsync();
+        fila.Status.Should().Be(EntraxPaymentStatus.Paid);
+        fila.FailureCode.Should().BeNull("un pago Paid no lleva código de fallo.");
+        fila.Notes.Should().Contain("LOCAL_EXPIRY");
+    }
+
+    [Fact]
     public async Task Dentro_del_margen_se_sigue_esperando()
     {
         var m = await MontarAsync(EscenarioEntrax.Ahora.AddMinutes(-5), Caido(EntraxErrorCodes.Transport));
