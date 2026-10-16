@@ -106,6 +106,11 @@ internal static class EscenarioEntrax
         };
         db.EntraxPayments.Add(p);
         await db.SaveChangesAsync();
+
+        // AuditInterceptor pone CreationDate = DateTime.Now real al insertar; la prueba necesita la
+        // hora del escenario (la gracia de 30 min sin paymentId se mide desde ahí). Al modificar no la toca.
+        p.CreationDate = creado ?? Ahora;
+        await db.SaveChangesAsync();
         return p;
     }
 
