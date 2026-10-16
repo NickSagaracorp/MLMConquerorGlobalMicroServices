@@ -69,6 +69,7 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
     private readonly UserManager<ApplicationUser>     _users;
     private readonly IDateTimeProvider                _clock;
     private readonly ILogger<EntraxSignupSettlement>  _logger;
+    private readonly ISignupOrderClaim                _orderClaim;
 
     public EntraxSignupSettlement(
         AppDbContext db,
@@ -76,7 +77,9 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
         ISignupActivationService activation,
         UserManager<ApplicationUser> users,
         IDateTimeProvider clock,
-        ILogger<EntraxSignupSettlement> logger)
+        ILogger<EntraxSignupSettlement> logger,
+        // Opcional para no tocar las construcciones existentes; el de verdad es SignupOrderClaim.
+        ISignupOrderClaim? orderClaim = null)
     {
         _db         = db;
         _client     = client;
@@ -84,6 +87,7 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
         _users      = users;
         _clock      = clock;
         _logger     = logger;
+        _orderClaim = orderClaim ?? new SignupOrderClaim(db);
     }
 
     public async Task<EntraxSettlementOutcome> SettleAsync(
@@ -346,12 +350,18 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
             payment.LastUpdateDate = now;
             payment.LastUpdateBy   = Actor;
 
+            // El pago cerrado y la vuelta (condicional) del pedido a Pending, juntos.
+            await using var tx = await _db.Database.BeginTransactionAsync(none);
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == payment.OrderId, none);
             if (order is not null)
                 await ReleaseOrderIfIdleAsync(order, payment.Id, now);
+            await _db.SaveChangesAsync(none);
+            await tx.CommitAsync(none);
         }
-
-        await _db.SaveChangesAsync(none);
+        else
+        {
+            await _db.SaveChangesAsync(none);
+        }
         return to == EntraxPaymentStatus.Failed ? EntraxSettlementOutcome.Failed : EntraxSettlementOutcome.Expired;
     }
 
@@ -370,9 +380,9 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
             && c.Status == CryptoPaymentConfirmationStatus.AwaitingPayment, none);
         if (otherEntrax || crypto) return;
 
-        order.Status         = OrderStatus.Pending;
-        order.LastUpdateDate = now;
-        order.LastUpdateBy   = Actor;
+        // Condicional (Processing a Pending): si un pago tardío completó el pedido entre la lectura y
+        // aquí, se queda Completed. Escribirlo a ciegas dejaría el pedido Pending con el miembro activo.
+        await _orderClaim.TryReleaseAsync(order, now, Actor, none);
     }
 
     private async Task CancelWaitingCryptoAsync(string orderId, string externalPaymentId, DateTime now)

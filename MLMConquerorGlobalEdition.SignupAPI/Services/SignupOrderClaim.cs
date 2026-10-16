@@ -25,6 +25,13 @@ public interface ISignupOrderClaim
     /// la tarjeta. También dentro de la transacción de quien activa.
     /// </summary>
     Task<bool> TryCompleteFromPendingAsync(Orders order, DateTime now, string actor, CancellationToken ct);
+
+    /// <summary>
+    /// Devuelve el pedido de Processing a Pending (un QR de Entrax fallido o caducado). Condicional: si
+    /// otro camino lo completó entre tanto (un pago tardío), no lo toca y devuelve false. No exige
+    /// transacción (es una sola sentencia), pero va en la de quien cierra el pago.
+    /// </summary>
+    Task<bool> TryReleaseAsync(Orders order, DateTime now, string actor, CancellationToken ct);
 }
 
 /// <inheritdoc />
@@ -44,14 +51,25 @@ public sealed class SignupOrderClaim : ISignupOrderClaim
     public Task<bool> TryCompleteFromPendingAsync(Orders order, DateTime now, string actor, CancellationToken ct)
         => TryMoveAsync(order, [OrderStatus.Pending], OrderStatus.Completed, now, actor, requireTransaction: true, ct);
 
+    public Task<bool> TryReleaseAsync(Orders order, DateTime now, string actor, CancellationToken ct)
+        => TryMoveAsync(order, [OrderStatus.Processing], OrderStatus.Pending, now, actor, requireTransaction: false, ct);
+
     private async Task<bool> TryMoveAsync(
         Orders order, OrderStatus[] from, OrderStatus to, DateTime now, string actor, bool requireTransaction,
         CancellationToken ct)
     {
         if (!_db.Database.IsRelational())
         {
-            // EF InMemory (pruebas) no tiene UPDATE condicional: se decide con lo leído.
-            return from.Contains(order.Status);
+            // EF InMemory (pruebas) no tiene UPDATE condicional: se decide con lo leído. Al completar, la
+            // activación pone el estado; al devolver a Pending, lo pone esto (se guarda con quien llama).
+            if (!from.Contains(order.Status)) return false;
+            if (to == OrderStatus.Pending)
+            {
+                order.Status         = to;
+                order.LastUpdateDate = now;
+                order.LastUpdateBy   = actor;
+            }
+            return true;
         }
 
         // Fallo cerrado: fuera de una transacción el UPDATE quedaría confirmado aunque la activación

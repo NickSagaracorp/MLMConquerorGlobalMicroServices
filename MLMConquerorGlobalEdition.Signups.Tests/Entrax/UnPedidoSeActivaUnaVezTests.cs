@@ -37,6 +37,9 @@ public class UnPedidoSeActivaUnaVezTests
             Llamadas++;
             return Task.FromResult(false);
         }
+
+        public Task<bool> TryReleaseAsync(Orders order, DateTime now, string actor, CancellationToken ct)
+            => Task.FromResult(true);
     }
 
     private static SignupActivationService Activacion(

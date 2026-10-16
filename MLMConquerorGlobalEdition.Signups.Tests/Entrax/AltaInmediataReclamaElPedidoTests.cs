@@ -132,5 +132,8 @@ public class AltaInmediataReclamaElPedidoTests
             return Task.FromResult(gana);
         }
 
+        public Task<bool> TryReleaseAsync(Orders order, DateTime now, string actor, CancellationToken ct)
+            => Task.FromResult(true);
+
     }
 }

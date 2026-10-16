@@ -37,13 +37,18 @@ public sealed class EntraxSignupCheckout : IEntraxSignupCheckout
     private readonly IEntraxClient                   _client;
     private readonly EntraxOptions                   _options;
     private readonly ILogger<EntraxSignupCheckout>   _logger;
+    private readonly ISignupOrderClaim               _orderClaim;
 
-    public EntraxSignupCheckout(AppDbContext db, IEntraxClient client, EntraxOptions options, ILogger<EntraxSignupCheckout> logger)
+    public EntraxSignupCheckout(
+        AppDbContext db, IEntraxClient client, EntraxOptions options, ILogger<EntraxSignupCheckout> logger,
+        // Opcional para no tocar las construcciones existentes; el de verdad es SignupOrderClaim.
+        ISignupOrderClaim? orderClaim = null)
     {
-        _db      = db;
-        _client  = client;
-        _options = options;
-        _logger  = logger;
+        _db         = db;
+        _client     = client;
+        _options    = options;
+        _logger     = logger;
+        _orderClaim = orderClaim ?? new SignupOrderClaim(db);
     }
 
     public bool IsOfferedFor(string? countryIso2) => _options.IsOfferedFor(countryIso2);
@@ -122,10 +127,15 @@ public sealed class EntraxSignupCheckout : IEntraxSignupCheckout
             payment.ExternalPaymentId = paymentId;
             payment.LastUpdateDate    = now;
             payment.LastUpdateBy      = member.Email;
-            order.Status              = OrderStatus.Pending;
-            order.LastUpdateDate      = now;
-            order.LastUpdateBy        = member.Email;
-            await _db.SaveChangesAsync(CancellationToken.None);
+
+            // El intento fallido y la vuelta del pedido a Pending, juntos. La vuelta es condicional
+            // (Processing a Pending): si un pago tardío de otro QR lo completó entre tanto, se queda.
+            await using (var tx = await _db.Database.BeginTransactionAsync(CancellationToken.None))
+            {
+                await _orderClaim.TryReleaseAsync(order, now, member.Email, CancellationToken.None);
+                await _db.SaveChangesAsync(CancellationToken.None);
+                await tx.CommitAsync(CancellationToken.None);
+            }
 
             if (problem == "PROVIDER_MISMATCH")
                 _logger.LogCritical(
