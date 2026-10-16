@@ -108,7 +108,7 @@ public class TeamController : ControllerBase
     [ReadOnlySafe]
     public async Task<IActionResult> GetEnrollmentCustomersGrid([FromBody] GridDataRequest request, CancellationToken ct = default)
     {
-        var result = await _enrollment.GetCustomersGridAsync(_currentUser.MemberId, request, ct);
+        var result = await _enrollment.GetCustomersGridAsync(_currentUser.MemberId, request, CustomerScope.Team, ct);
         return Ok(ApiResponse<PagedResult<EnrollmentCustomerView>>.Ok(result));
     }
 

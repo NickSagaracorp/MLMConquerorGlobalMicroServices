@@ -89,7 +89,7 @@ public class AdminMemberEnrollmentController : ControllerBase
         [FromBody] GridDataRequest request,
         CancellationToken ct = default)
     {
-        var result = await _service.GetCustomersGridAsync(memberId, request, ct);
+        var result = await _service.GetCustomersGridAsync(memberId, request, CustomerScope.Team, ct);
         return Ok(ApiResponse<PagedResult<EnrollmentCustomerView>>.Ok(result));
     }
 

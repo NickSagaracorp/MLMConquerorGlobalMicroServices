@@ -2,9 +2,11 @@ using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
+using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Grid;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.SharedKernel;
 
@@ -507,11 +509,10 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         string memberId, int page, int pageSize, string? search,
         CancellationToken ct = default)
     {
-        var myNode = await _db.GenealogyTree.AsNoTracking()
-            .FirstOrDefaultAsync(g => g.MemberId == memberId, ct);
+        var myNode = await MyGenealogyNodeAsync(memberId, ct);
         if (myNode is null) return new PagedResult<EnrollmentCustomerView>();
 
-        var q = BuildCustomerQueryable(myNode.HierarchyPath);
+        var q = BuildCustomerQueryable(memberId, myNode.HierarchyPath, myNode.Level, CustomerScope.Team);
         if (!string.IsNullOrWhiteSpace(search))
         {
             var s = search.ToLower();
@@ -530,44 +531,77 @@ public class EnrollmentTeamService : IEnrollmentTeamService
     }
 
     /// <summary>
-    /// Server-side grid read over the viewer's external-member customers — DB-side
-    /// search/filter/sort/count/page on a light projection, page-only enrichment (was a
-    /// whole-subtree Contains(allIds) load + in-memory page).
+    /// Server-side grid read over the viewer's customers — DB-side search/filter/sort/count/page on
+    /// a light projection, page-only enrichment. <paramref name="scope"/> chooses personal customers
+    /// or the whole enrollment downline (Plan J).
     /// </summary>
     public async Task<PagedResult<EnrollmentCustomerView>> GetCustomersGridAsync(
-        string memberId, GridDataRequest request, CancellationToken ct = default)
+        string memberId, GridDataRequest request, CustomerScope scope, CancellationToken ct = default)
     {
-        var myNode = await _db.GenealogyTree.AsNoTracking()
-            .FirstOrDefaultAsync(g => g.MemberId == memberId, ct);
+        var myNode = await MyGenealogyNodeAsync(memberId, ct);
         if (myNode is null) return new PagedResult<EnrollmentCustomerView>();
 
         if (!request.Sorts.Any(s => CustomerSearchableFields.Contains(s.Field, StringComparer.OrdinalIgnoreCase)
                                  || string.Equals(s.Field, nameof(EnrollmentCustomerView.EnrollDate), StringComparison.OrdinalIgnoreCase)))
             request.Sorts.Add(new GridSort { Field = nameof(EnrollmentCustomerView.EnrollDate), Direction = "desc" });
 
-        var q      = BuildCustomerQueryable(myNode.HierarchyPath);
+        var q      = BuildCustomerQueryable(memberId, myNode.HierarchyPath, myNode.Level, scope);
         var result = await q.ToGridResultAsync(request, CustomerSearchableFields, ct: ct);
         await EnrichCustomerPageAsync(result.Items, ct);
         return result;
     }
 
-    /// <summary>Light DB projection of the viewer's external-member customers (profile columns
-    /// only). Enriched columns (sponsor name, membership, points) filled per-page by
-    /// <see cref="EnrichCustomerPageAsync"/>.</summary>
-    private IQueryable<EnrollmentCustomerView> BuildCustomerQueryable(string pathPrefix)
+    /// <summary>The viewer's most recent genealogy node: a member can have two (see e4af288, R8).</summary>
+    private Task<GenealogyEntity?> MyGenealogyNodeAsync(string memberId, CancellationToken ct) =>
+        _db.GenealogyTree.AsNoTracking()
+            .Where(g => g.MemberId == memberId)
+            .OrderByDescending(g => g.CreationDate)
+            .FirstOrDefaultAsync(ct);
+
+    /// <summary>
+    /// Light DB projection of the viewer's external-member customers. Email and phone are nulled
+    /// IN THE PROJECTION (a SQL CASE) for customers the viewer did not enroll, so the grid's search
+    /// and column filters run on the redacted value and cannot reveal that a non-personal customer
+    /// with a given e-mail exists (Plan J, J8). Enriched columns are filled per page by
+    /// <see cref="EnrichCustomerPageAsync"/>.
+    /// </summary>
+    private IQueryable<EnrollmentCustomerView> BuildCustomerQueryable(
+        string memberId, string pathPrefix, int rootLevel, CustomerScope scope)
     {
+        if (scope == CustomerScope.Personal)
+        {
+            return
+                from m in _db.MemberProfiles.AsNoTracking()
+                where m.SponsorMemberId == memberId && m.MemberType == MemberType.ExternalMember
+                select new EnrollmentCustomerView
+                {
+                    MemberId        = m.MemberId,
+                    FullName        = m.FirstName + " " + m.LastName,
+                    Email           = m.Email,
+                    Phone           = m.Phone,
+                    Country         = m.Country,
+                    Level           = 1,
+                    IsPersonal      = true,
+                    EnrollDate      = m.EnrollDate,
+                    SponsorMemberId = m.SponsorMemberId,
+                    AccountStatus   = m.Status.ToString()
+                };
+        }
+
         return
             from g in _db.GenealogyTree.AsNoTracking()
-            where g.HierarchyPath.StartsWith(pathPrefix)
+            where g.HierarchyPath.StartsWith(pathPrefix) && g.MemberId != memberId
             join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
             where m.MemberType == MemberType.ExternalMember
             select new EnrollmentCustomerView
             {
                 MemberId        = m.MemberId,
                 FullName        = m.FirstName + " " + m.LastName,
-                Email           = m.Email,
-                Phone           = m.Phone,
+                Email           = m.SponsorMemberId == memberId ? m.Email : null,
+                Phone           = m.SponsorMemberId == memberId ? m.Phone : null,
                 Country         = m.Country,
+                Level           = g.Level - rootLevel,
+                IsPersonal      = m.SponsorMemberId == memberId,
                 EnrollDate      = m.EnrollDate,
                 SponsorMemberId = m.SponsorMemberId,
                 AccountStatus   = m.Status.ToString()
@@ -582,10 +616,15 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         var ids = rows.Select(r => r.MemberId).ToList();
 
         var subs = await _db.MembershipSubscriptions.AsNoTracking()
-            .Include(s => s.MembershipLevel)
             .Where(s => ids.Contains(s.MemberId))
             .OrderByDescending(s => s.StartDate).ToListAsync(ct);
         var subMap = subs.GroupBy(s => s.MemberId).ToDictionary(g => g.Key, g => g.First());
+
+        // Plan J, corrección N2: el nivel lo da el producto de la orden de la suscripción actual
+        // (el más alto), no el MembershipLevelId de la suscripción, que solo es la reserva.
+        var levelBySub = await _db.GetMembershipLevelIdsBySubscriptionAsync(subMap.Values.ToList(), ct);
+        var levelNames = await _db.MembershipLevels.AsNoTracking()
+            .ToDictionaryAsync(l => l.Id, l => l.Name, ct);
 
         var statsMap = await _db.MemberStatistics.AsNoTracking()
             .Where(s => ids.Contains(s.MemberId))
@@ -605,7 +644,9 @@ public class EnrollmentTeamService : IEnrollmentTeamService
             nameMap.TryGetValue(row.SponsorMemberId ?? "", out var sponsorName);
             row.SponsorFullName  = sponsorName;
             row.MembershipStatus = sub?.SubscriptionStatus.ToString() ?? "None";
-            row.MembershipLevel  = sub?.MembershipLevel?.Name;
+            row.MembershipLevel  = sub is not null && levelBySub.TryGetValue(sub.Id, out var levelId)
+                ? levelNames.GetValueOrDefault(levelId)
+                : null;
             row.PersonalPoints   = stat?.PersonalPoints ?? 0;
         }
     }
