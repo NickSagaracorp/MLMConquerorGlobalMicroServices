@@ -46,13 +46,14 @@ public class EntraxClientTests
         CallbackUrl = "https://alta.pruebas/api/v1/signups/entrax/callback"
     };
 
-    private static EntraxClient Cliente(HttpMessageHandler h, Action<EntraxOptions>? ajustar = null)
+    private static EntraxClient Cliente(HttpMessageHandler h, Action<EntraxOptions>? ajustar = null,
+        Microsoft.Extensions.Logging.ILogger<EntraxClient>? log = null)
     {
         var reloj = new Mock<IDateTimeProvider>();
         reloj.Setup(c => c.UtcNow).Returns(UtcFijo);
         var o = Opciones();
         ajustar?.Invoke(o);
-        return new EntraxClient(new HttpClient(h), o, reloj.Object, NullLogger<EntraxClient>.Instance);
+        return new EntraxClient(new HttpClient(h), o, reloj.Object, log ?? NullLogger<EntraxClient>.Instance);
     }
 
     /// <summary>Un cuerpo de respuesta que revienta al leerlo (conexión cortada a media respuesta).</summary>
@@ -255,5 +256,23 @@ public class EntraxClientTests
         doc.RootElement.TryGetProperty("description", out _).Should().BeFalse("un null explícito puede no validar en Entrax.");
         doc.RootElement.TryGetProperty("callbackUrl", out _).Should().BeFalse();
         doc.RootElement.GetProperty("orderId").GetString().Should().Be("SIGNUP-o1-1");
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.BadGateway, "<html><body>502 Bad Gateway nginx</body></html>")]
+    [InlineData(HttpStatusCode.Unauthorized, "")]
+    public async Task Una_respuesta_que_no_es_el_sobre_se_avisa_sin_el_cuerpo(HttpStatusCode codigo, string cuerpo)
+    {
+        var log = new RegistroDePrueba<EntraxClient>();
+
+        var r = await Cliente(new Manejador((_, _) => new HttpResponseMessage(codigo) { Content = new StringContent(cuerpo) }), log: log)
+            .CreateQrAsync(new EntraxQrRequest(10m, "USD", "SIGNUP-o1-1", null, null), default);
+
+        r.ErrorCode.Should().Be(EntraxErrorCodes.BadResponse);
+        var aviso = log.Entradas.Should().ContainSingle(e => e.Nivel == Microsoft.Extensions.Logging.LogLevel.Warning).Subject.Texto;
+        aviso.Should().Contain("POST").And.Contain("/api/v1/cash-register/qr")
+             .And.Contain(((int)codigo).ToString()).And.Contain(EntraxErrorCodes.BadResponse);
+        if (cuerpo.Length > 0)
+            aviso.Should().NotContain("nginx", "el cuerpo de un proxy no va al log.");
     }
 }

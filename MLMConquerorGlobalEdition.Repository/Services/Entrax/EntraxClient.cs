@@ -135,7 +135,12 @@ public sealed class EntraxClient : IEntraxClient
             catch (JsonException) { }
 
             if (envelope is null)
+            {
+                // HTML de un proxy, un 401 sin cuerpo…: se avisa con método, ruta y estado, nunca con el cuerpo.
+                _logger.LogWarning("Entrax {Method} {Path}: {Status} {Code} (la respuesta no es el sobre de Entrax).",
+                    method.Method, path, status, EntraxErrorCodes.BadResponse);
                 return EntraxCall<TOut>.Fail(status, EntraxErrorCodes.BadResponse, null, sw.ElapsedMilliseconds);
+            }
 
             if (!response.IsSuccessStatusCode || !envelope.Success || envelope.Data is null)
             {
