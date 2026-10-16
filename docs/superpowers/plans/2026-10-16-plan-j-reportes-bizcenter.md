@@ -69,6 +69,7 @@ Llegaron con los Bloques 1 y 2 en marcha. Donde una tarea, decisión o riesgo de
 | R13 | **Choque de nombre:** el Plan I (`2026-10-16-plan-i-3ds-con-spreedly.md`, R12) dice que «el Plan J» pondrá en `BizCenterWeb` la CSP de Spreedly. Este Plan J no lo hace. | Fuera de alcance y anotado: hay que renombrar esa referencia del Plan I para que no se dé por hecha. |
 | R14 | El interceptor añade una fila por cada cambio de estado de suscripción, y `RecurringBillingProcessor` puede pasar miles a `HoldByBilling` en una noche. | Una inserción pequeña por cambio, en la misma transacción. Índices `(MemberId, ChangedAt)` y `(ChangedAt)`. Se vigila la duración del primer ciclo tras desplegar (§12.30). |
 | R15 | Las pantallas con Syncfusion (`SfGrid`) no tienen pruebas bUnit en el repo. | La lógica vive en servicios y endpoints, que sí se prueban; las pantallas se verifican a mano en la Tarea 44 con pasos concretos. Los componentes sin Syncfusion (`MyLinksCard`, `DailyResidualHistory`) llevan bUnit. |
+| R16 | **El nivel por la orden (N2) recorre `Orders` y `OrderDetails` enteros.** `OrderDetails.OrderId` y `Orders.MemberId` son `nvarchar(max)` sin índice; el único índice de `OrderDetails` es `IX_OrderDetails_OrdersId`, sobre una FK en sombra (`OrdersId`) que está **vacía en las 190.517 filas locales** (la columna que se rellena es `OrderId`). *Actividad* une las altas del rango con sus órdenes por `MemberId` y *Clientes* busca las órdenes de una página por `Id` y sus líneas por `OrderId`. **Medido en local (Tarea 26): la raíz con 3 meses tarda 6,2 s** (umbral de R5: 3 s), y con servicios levantados contra la base local, una lectura `ReadCommitted` de *Actividad* sobre la raíz acaba víctima de un *deadlock* frente al bucle de `OrderNo` de R9. | Es R9 con un motivo más: antes de desplegar los reportes con N2, indexar `OrderDetails.OrderId` y `Orders.MemberId` (pasarlas a `nvarchar(450)` con su guarda de truncado) y revisar por qué `OrdersId` existe y está vacía. Trabajo aparte, no en este plan; la medición queda en `SqlServerActividadTests` para comparar después. |
 
 ## Decisiones
 
@@ -120,6 +121,8 @@ Llegaron con los Bloques 1 y 2 en marcha. Donde una tarea, decisión o riesgo de
 - **Importación de inscripciones a eventos** (CSV, endpoint y pantalla del Admin; Tareas 35–38): plan aparte (N5).
 - **Pago de la anualidad** para la rama (b) de «Calificado»: Plan K; aquí solo el punto de extensión `IAnnualFeeStatus` (N3).
 - **Editar `KeepQualified` desde el Admin** (N3).
+- **Índices de `OrderDetails.OrderId` y `Orders.MemberId`** (R9 y R16): necesarios para que el nivel por la orden no recorra las tablas enteras.
+- **Nivel por la orden en *Mi equipo* de inscripción y de Dual Team** (`EnrollmentTeamService.GetMyTeam*`, `DualTeamService`): siguen sacando `MembershipLevelName` de la suscripción. N2 se aplicó a los reportes del Plan J (*Clientes* y *Actividad*); el método compartido `GetMembershipLevelIdsBySubscriptionAsync` ya existe para extenderlo.
 - **Retirar `GET commissions/dual-residual`** (J29) y **separar visualmente los débitos** en la lista de comisiones (J28): pendientes.
 - **Páginas de `BizCenterApp` (MAUI)** para los reportes nuevos: los componentes son los mismos y se podrán montar después.
 - **Pestañas nuevas en el perfil de miembro del Admin** para actividad, cambios y eventos. Solo se añaden endpoints de Admin donde un componente que ya usa el Admin cambia (residuales y clientes).
@@ -5531,6 +5534,8 @@ git commit -m "Actividad por fechas: componente compartido con rango del servido
 
 ### Task 26: Pruebas contra SQL Server de la actividad
 
+> **Hecho (Bloques 3 y 4):** la raíz local con 3 meses tarda **6,2 s** medida en `ReadUncommitted`: pasa del umbral de 3 s, ver R16. Las páginas de *Mis enlaces* y *Actividad* también se añadieron a `BizCenterApp` (MAUI) como envoltorios finos, para que el menú compartido no lleve a una página inexistente.
+>
 > **Corrección de Nick N1, N2 y N4.** La medición de la raíz es sobre 3 meses, no 366 días; sin índice de `HierarchyPath` (N1). La prueba de nivel siembra una orden de alta con dos productos (niveles 1 y 3) y espera la columna del 3.
 
 **Files:**
