@@ -15,6 +15,8 @@ public class TextosDeReportesTests
         // Bloque 1 — Mis enlaces
         "Sidebar.MyLinks", "PageTitle.MyLinks", "MyLinks.Personal", "MyLinks.Corporate",
         "MyLinks.Copy", "MyLinks.Copied", "MyLinks.NoSlug", "MyLinks.GoToProfile", "MyLinks.LoadFailed",
+        // Bloque 2 — Residuales diarios
+        "Reports.PeriodTotal", "Reports.Comment",
         // (claves de los bloques siguientes)
     };
 

@@ -1420,4 +1420,6 @@
   <data name="MyLinks.NoSlug" xml:space="preserve"><value>Configurez le nom de votre site web dans votre profil pour obtenir vos liens personnels.</value></data>
   <data name="MyLinks.GoToProfile" xml:space="preserve"><value>Aller à mon profil</value></data>
   <data name="MyLinks.LoadFailed" xml:space="preserve"><value>Impossible de charger vos liens. Veuillez réessayer.</value></data>
+  <data name="Reports.PeriodTotal" xml:space="preserve"><value>Total de la période</value></data>
+  <data name="Reports.Comment" xml:space="preserve"><value>Commentaire</value></data>
 </root>

@@ -1351,4 +1351,6 @@
   <data name="MyLinks.NoSlug" xml:space="preserve"><value>პირადი ბმულების მისაღებად მიუთითეთ თქვენი ვებსაიტის სახელი პროფილში.</value></data>
   <data name="MyLinks.GoToProfile" xml:space="preserve"><value>ჩემს პროფილზე გადასვლა</value></data>
   <data name="MyLinks.LoadFailed" xml:space="preserve"><value>ბმულების ჩატვირთვა ვერ მოხერხდა. სცადეთ ხელახლა.</value></data>
+  <data name="Reports.PeriodTotal" xml:space="preserve"><value>პერიოდის ჯამი</value></data>
+  <data name="Reports.Comment" xml:space="preserve"><value>კომენტარი</value></data>
 </root>

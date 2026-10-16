@@ -1,0 +1,219 @@
+@inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
+@using System.Globalization
+@using System.Net.Http.Json
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
+
+@*
+    Historial de residuales diarios (Plan J). Lee {ApiBaseUrl}/commissions/dual-residual/daily,
+    que sirve DailyResidualEarnings: en el BizCenter con el miembro del token y en el Admin con el
+    de la ruta. Año por defecto y años disponibles los da el servidor (hora de servidor).
+*@
+
+<div class="card bg-white border-0 rounded-3 mb-4 daily-residuals">
+    <div class="card-body p-0">
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 p-4">
+            <h5 class="fw-semibold mb-0">@L["Sidebar.Residuals"]</h5>
+            <div class="d-flex gap-2 flex-wrap">
+                <div>
+                    <label class="form-label fs-12 mb-1 fw-medium" for="dr-year">@L["Common.Year"]</label>
+                    <select id="dr-year" class="form-select form-select-sm" value="@_year" @onchange="OnYearChange">
+                        @foreach (var y in _years)
+                        {
+                            <option value="@y">@y</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label fs-12 mb-1 fw-medium" for="dr-month">@L["Common.Month"]</label>
+                    <select id="dr-month" class="form-select form-select-sm" value="@_month" @onchange="OnMonthChange">
+                        <option value="0">@L["Common.AllMonths"]</option>
+                        @for (var m = 1; m <= 12; m++)
+                        {
+                            var mo = m;
+                            <option value="@mo">@MonthName(mo)</option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        @if (_loading)
+        {
+            <LoadingSpinner IsLoading="true" />
+        }
+        else if (_error || _data is null)
+        {
+            <div class="alert alert-danger m-3 daily-residuals-error">@L["Team.LoadFailedResiduals"]</div>
+        }
+        else
+        {
+            <div class="d-flex flex-wrap gap-4 px-4 pb-3">
+                <div><span class="text-muted fs-12 d-block">@L["Reports.PeriodTotal"]</span><span class="fw-semibold dr-total">@Money.Usd(_data.PeriodTotal)</span></div>
+                <div><span class="text-muted fs-12 d-block">@L["Reports.Paid"]</span><span class="fw-semibold text-success dr-paid">@Money.Usd(_data.PeriodPaid)</span></div>
+                <div><span class="text-muted fs-12 d-block">@L["Reports.Pending"]</span><span class="fw-semibold text-warning dr-pending">@Money.Usd(_data.PeriodPending)</span></div>
+            </div>
+
+            <div class="default-table-area style-two default-table-width">
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>@L["Reports.EarnedDate"]</th>
+                                <th>@L["Common.Amount"]</th>
+                                <th>@L["Common.Status"]</th>
+                                <th>@L["Reports.PaymentDate"]</th>
+                                <th>@L["Reports.EligiblePoints"]</th>
+                                <th>@L["Reports.Comment"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (_data.Items.Count == 0)
+                            {
+                                <tr><td colspan="6" class="text-center text-muted py-4">@L["Team.NoResidualEarnings"]</td></tr>
+                            }
+                            @foreach (var r in _data.Items)
+                            {
+                                <tr class="dr-row">
+                                    <td>@r.EarnedDate.ToString("MMM dd, yyyy")</td>
+                                    <td class="fw-semibold">@Money.Usd(r.Amount)</td>
+                                    <td><span class="badge @BadgeClass(r.Status) p-2 fs-12 fw-normal">@StatusText(r.Status)</span></td>
+                                    <td>@(r.PaymentDate?.ToString("MMM dd, yyyy") ?? "—")</td>
+                                    <td>@(r.EligiblePoints?.ToString("N0") ?? "—")</td>
+                                    <td class="small text-muted">@(r.PaymentComment ?? "—")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="p-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <span class="fs-12 fw-medium">@L["Reports.Showing"] @_data.Items.Count @L["Common.Of"] @_data.TotalCount @L["Reports.Results"]</span>
+                    @if (TotalPages > 1)
+                    {
+                        <div class="btn-group">
+                            <button class="btn btn-outline-secondary btn-sm dr-prev" disabled="@(_page <= 1)" @onclick="() => LoadAsync(_page - 1)">@L["Common.Previous"]</button>
+                            <button class="btn btn-outline-secondary btn-sm dr-next" disabled="@(_page >= TotalPages)" @onclick="() => LoadAsync(_page + 1)">@L["Common.Next"]</button>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>Raíz del API: "api/v1/bizcenter" o "api/v1/admin/members/{id}".</summary>
+    [Parameter] public string ApiBaseUrl { get; set; } = "api/v1/bizcenter";
+
+    [Parameter] public int PageSize { get; set; } = 10;
+
+    private bool        _loading = true;
+    private bool        _error;
+    private HistoryDto? _data;
+    private List<int>   _years = new();
+    private int         _year;      // 0 = que decida el servidor
+    private int         _month;     // 0 = todo el año
+    private int         _page = 1;
+
+    private int TotalPages => _data is null || _data.PageSize <= 0
+        ? 0
+        : (int)Math.Ceiling(_data.TotalCount / (double)_data.PageSize);
+
+    protected override Task OnParametersSetAsync() => LoadAsync(1);
+
+    private async Task LoadAsync(int page)
+    {
+        _loading = true;
+        _error   = false;
+        try
+        {
+            var url = $"{ApiBaseUrl}/commissions/dual-residual/daily?page={page}&pageSize={PageSize}";
+            if (_year > 0) url += $"&year={_year}";
+            if (_month is >= 1 and <= 12) url += $"&month={_month}";
+
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<HistoryDto>>(url);
+            if (resp?.Success == true && resp.Data is not null)
+            {
+                _data  = resp.Data;
+                _page  = resp.Data.Page;
+                _year  = resp.Data.Year;
+                _month = resp.Data.Month ?? 0;
+                _years = resp.Data.AvailableYears.Count > 0 ? resp.Data.AvailableYears : new List<int> { resp.Data.Year };
+            }
+            else
+            {
+                _error = true;
+            }
+        }
+        catch (Exception)
+        {
+            _error = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnYearChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var y)) _year = y;
+        await LoadAsync(1);
+    }
+
+    private async Task OnMonthChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var m)) _month = m;
+        await LoadAsync(1);
+    }
+
+    private string StatusText(string status) => status switch
+    {
+        "Paid"    => L["Reports.Paid"],
+        "Pending" => L["Reports.Pending"],
+        _         => status
+    };
+
+    private static string BadgeClass(string status) => status switch
+    {
+        "Paid"    => "bg-success bg-opacity-10 text-success",
+        "Pending" => "bg-warning bg-opacity-10 text-warning",
+        _         => "bg-secondary bg-opacity-10 text-secondary"
+    };
+
+    /// <summary>Algunas culturas (es, fr, it…) dan el mes en minúscula: se capitaliza la primera letra.</summary>
+    private static string MonthName(int month)
+    {
+        var name = CultureInfo.CurrentUICulture.DateTimeFormat.GetMonthName(month);
+        return name.Length == 0 ? name : char.ToUpper(name[0]) + name[1..];
+    }
+
+    private sealed class ApiWrapper<T> { public bool Success { get; set; } public T? Data { get; set; } }
+
+    private sealed class HistoryDto
+    {
+        public List<RowDto> Items          { get; set; } = new();
+        public int          TotalCount     { get; set; }
+        public int          Page           { get; set; }
+        public int          PageSize       { get; set; }
+        public int          Year           { get; set; }
+        public int?         Month          { get; set; }
+        public decimal      PeriodTotal    { get; set; }
+        public decimal      PeriodPaid     { get; set; }
+        public decimal      PeriodPending  { get; set; }
+        public List<int>    AvailableYears { get; set; } = new();
+    }
+
+    private sealed class RowDto
+    {
+        public long      Id             { get; set; }
+        public DateTime  EarnedDate     { get; set; }
+        public decimal   Amount         { get; set; }
+        public string    Status         { get; set; } = string.Empty;
+        public DateTime? PaymentDate    { get; set; }
+        public int?      EligiblePoints { get; set; }
+        public string?   PaymentComment { get; set; }
+    }
+}

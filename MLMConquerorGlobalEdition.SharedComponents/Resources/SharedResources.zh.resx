@@ -1351,4 +1351,6 @@
   <data name="MyLinks.NoSlug" xml:space="preserve"><value>请在个人资料中设置您的网站名称以获取个人链接。</value></data>
   <data name="MyLinks.GoToProfile" xml:space="preserve"><value>前往我的资料</value></data>
   <data name="MyLinks.LoadFailed" xml:space="preserve"><value>无法加载您的链接，请重试。</value></data>
+  <data name="Reports.PeriodTotal" xml:space="preserve"><value>期间合计</value></data>
+  <data name="Reports.Comment" xml:space="preserve"><value>备注</value></data>
 </root>
