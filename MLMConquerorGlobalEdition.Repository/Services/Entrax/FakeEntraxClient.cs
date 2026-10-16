@@ -44,7 +44,7 @@ public sealed class FakeEntraxClient : IEntraxClient
             OrderId = request.OrderId, Amount = request.Amount, Currency = request.Currency, ExpiresAt = expires
         };
 
-        var qr = new EntraxQr(id, PlaceholderPng, $"https://qr.nspk.ru/FAKE{id.Replace("-", string.Empty)}",
+        var qr = new EntraxQr(id, PlaceholderPng, $"https://entrax.invalid/fake/{id}",
             Math.Round(request.Amount * Rate, 2), Rate, request.Currency, request.Amount, expires, request.OrderId);
         return Task.FromResult(EntraxCall<EntraxQr>.Success(qr, 200, 1));
     }

@@ -23,7 +23,8 @@ public class FakeEntraxClientTests
 
         Guid.TryParse(qr.PaymentId, out _).Should().BeTrue();
         qr.ImageDataUri.Should().StartWith("data:image/png;base64,");
-        qr.Link.Should().StartWith("https://");
+        qr.Link.Should().StartWith("https://entrax.invalid/fake/",
+            "un enlace de mentira no puede parecer uno real del sistema de pagos (qr.nspk.ru).");
         qr.AmountInRubles.Should().Be(80m * FakeEntraxClient.Rate);
         qr.OriginalAmount.Should().Be(80m);
         qr.ExpiresAt.Should().Be(new DateTimeOffset(Inicio).Add(FakeEntraxClient.Lifetime));
