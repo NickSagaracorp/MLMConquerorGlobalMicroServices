@@ -23,7 +23,7 @@
 
 | # | Riesgo | Mitigación en este plan |
 |---|---|---|
-| R1 | **El comercio de Entrax puede no aceptar USD** ("USD, EUR depending on merchant configuration"). Si no, `POST /qr` falla con `INVALID_CURRENCY` o `RATE_NOT_AVAILABLE`. | El alta devuelve `502 ENTRAX_UNAVAILABLE`, el pedido vuelve a `Pending` y el aspirante puede elegir otro método. **Nunca** convertimos nosotros (fallo del legado). Condición de despliegue: compra real con Entrax en USD antes de anunciar (Tarea 22 y `pruebas-de-seguridad.md` §10). |
+| R1 | **El comercio de Entrax puede no aceptar USD** ("USD, EUR depending on merchant configuration"). Si no, `POST /qr` falla con `INVALID_CURRENCY` o `RATE_NOT_AVAILABLE`. | El alta devuelve `502 ENTRAX_UNAVAILABLE`, el pedido vuelve a `Pending` y el aspirante puede elegir otro método. **Nunca** convertimos nosotros (fallo del legado). Condición de despliegue: compra real con Entrax en USD antes de anunciar, con un importe mínimo y con la aprobación de Nick, porque PaymentQr no tiene sandbox documentado (`pruebas-de-seguridad.md` §10; la Tarea 22 solo prueba con el fake). |
 | R2 | **La firma del callback está mal documentada.** El texto dice Base64 sobre el cuerpo crudo; el ejemplo de cabecera parece hexadecimal y el ejemplo JS firma `JSON.stringify(req.body)` (re-serializado). | Se acepta Base64 **o** hexadecimal de 64 caracteres, siempre sobre el cuerpo crudo y en tiempo constante. Si Entrax firmara otra cosa, los callbacks se rechazan con 401 pero **ningún alta se pierde**: la pantalla y el barrido liquidan por `GET /payment/{id}`, que es lo único en lo que confiamos. Verificar en la prueba real (§10). |
 | R3 | Si Entrax no tiene clave activa manda el callback **sin firma**. | Se rechaza con 401 (fallo cerrado). Sin `Entrax:Secret` configurado también se rechaza todo. La liquidación sigue por consulta y barrido. |
 | R4 | **Límite de Entrax: 100 peticiones/min por IP.** Una pantalla que consulta cada 5 s por aspirante lo agotaría. | La pantalla pregunta a SignupAPI, no a Entrax. SignupAPI solo re-consulta a Entrax si la última consulta de ese pago tiene ≥ `Entrax:PollThrottleSeconds` (15 s); el barrido toma como mucho `Entrax:SweepBatchSize` (50) pagos cada 2 min, los menos consultados primero. Un 429 se trata como `ProviderUnavailable` y se reintenta más tarde. |
@@ -6769,7 +6769,21 @@ git commit -m "Pantalla de admin de altas con Entrax: esperando, a revisar y rec
 **Files:**
 - Modify: `docs/deployment/pruebas-de-seguridad.md` (sección nueva al final)
 
-- [ ] **Step 1: Añadir la sección 10 al final del archivo**
+- [x] **Step 1: Añadir la sección 10 al final del archivo**
+
+> **Hecho, con la sección contrastada contra el código (no copiada de esta plantilla).** La §10 real de
+> `docs/deployment/pruebas-de-seguridad.md` sustituye a la plantilla de abajo, que se escribió antes de
+> las tareas 10 a 20 y se queda corta: numera las pruebas de 10.1 a 10.47 en siete bloques (callback,
+> estado, liquidación, otros métodos, admin, configuración y fallos del legado), añade `413` por encima de
+> 64 KB, firma en hexadecimal, freno de 15 s reservado con `UPDATE` condicional, `Superseded` (H21),
+> `LOCAL_EXPIRY` (H20), los 409 `ENTRAX_QR_ALREADY_ACTIVE`, `ENTRAX_PAYMENT_CONFIRMING` y
+> `SIGNUP_ALREADY_SETTLED` (este solo para el pedido de un alta), el Re-check auditado con `CLIENT_CANCELLED`
+> y su tope de 20 s, y que un Re-check no reactiva a quien desactivó un administrador. Condiciones de
+> despliegue que la plantilla no tenía: `Entrax__CallbackUrl` también por variable de entorno,
+> `Services__SignupAPI` en AdminAPI (sin ella AdminAPI entero no arranca), la migración
+> `20261016045914_EntraxEnElAlta` antes de que SignupAPI atienda tráfico, NTP por la tolerancia del callback
+> y la primera prueba real con importe mínimo y aprobación de Nick (no hay sandbox de PaymentQr). Las
+> pruebas quedan pendientes de verificar (Tarea 22).
 
 ````markdown
 
@@ -6845,7 +6859,7 @@ curl.exe -k -i -X POST https://localhost:7005/api/v1/signups/entrax/callback -H 
 | 10.12 | `entrax-signup-sweep` en `/hangfire` | existe, cada 2 minutos, cola `signups` | ☐ |
 ````
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add docs/deployment/pruebas-de-seguridad.md
@@ -6905,7 +6919,7 @@ Expected: en la consola de SignupAPI no sale ningún `[Entrax] …` (configuraci
 4. Volver a caducarlo, pulsar *Choose another payment method*, elegir *Crypto* y *Join Now*: el alta **no** se vuelve a crear (no hay error de correo duplicado) y queda en "Thank you… crypto transfer".
 5. **Pago tardío**: `curl.exe -k -X POST https://localhost:7005/api/v1/dev/entrax/{paymentId-del-intento-2}/paid` y `curl.exe -k -X POST https://localhost:7005/api/v1/dev/entrax/sweep` → el alta se activa con Entrax y la `CryptoPaymentConfirmation` del pedido pasa a `Cancelled` con la nota "Paid via Entrax (…)".
 
-- [ ] **Step 6: Webhook y casos de seguridad** — ejecutar las pruebas 10.1 a 10.11 de `docs/deployment/pruebas-de-seguridad.md` §10 con el script de firma de esa sección y marcar las que pasen.
+- [ ] **Step 6: Webhook y casos de seguridad** — ejecutar las pruebas de `docs/deployment/pruebas-de-seguridad.md` §10 que se pueden hacer con el fake (10.1 a 10.33 y 10.36 a 10.47; 10.34, 10.35, 10.37 y 10.38 arrancan en `Production`) con el script de firma de esa sección y marcar las que pasen.
 
 - [ ] **Step 7: Carrera contra SQL Server (R8)**
 
@@ -6922,7 +6936,7 @@ Expected: un solo `PaymentHistory` `Entrax` para el pedido, una sola fila de cad
 
 - [ ] **Step 8: Admin**
 
-Entrar a AdminWeb con un usuario `BillingManager` → menú lateral → *Entrax Signups* (junto a *Crypto Signups*): las tres vistas cargan; *Re-check* sobre un pago `AwaitingPayment` pagado en el fake lo activa; el de la prueba 10.6 aparece en *To review* con `AMOUNT_TOO_LOW`. Con `SupportLevel1` la entrada del menú no aparece y la API devuelve `403`.
+Entrar a AdminWeb con un usuario `BillingManager` → menú lateral → *Entrax Signups* (junto a *Crypto Signups*): las tres vistas cargan; *Re-check* sobre un pago `AwaitingPayment` pagado en el fake lo activa; el de la prueba 10.16 aparece en *To review* con `AMOUNT_TOO_LOW`. Con `SupportLevel1` la entrada del menú no aparece y la API devuelve `403`.
 
 - [ ] **Step 9: Cerrar**
 
