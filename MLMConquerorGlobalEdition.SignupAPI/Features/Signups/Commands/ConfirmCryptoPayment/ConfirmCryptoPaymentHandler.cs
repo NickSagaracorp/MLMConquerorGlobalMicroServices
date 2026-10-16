@@ -107,6 +107,10 @@ public class ConfirmCryptoPaymentHandler
         MemberProfile member;
         try
         {
+            // La transacción envuelve la transición atómica del pedido (SignupOrderClaim, un UPDATE
+            // que se ejecuta en el acto) y todo lo que guarda la activación: o entra todo o nada.
+            await using var tx = await _db.Database.BeginTransactionAsync(ct);
+
             // Exactamente lo mismo que hacen la vía de tarjeta al completar y Entrax al cobrar:
             // pedido cerrado, miembro y suscripción activos, deltas encolados al upline y
             // comisiones calculadas. Un solo sitio (ISignupActivationService).
@@ -122,14 +126,26 @@ public class ConfirmCryptoPaymentHandler
             var activation = await _activation.ActivatePendingSignupAsync(order, now, ct);
             if (!activation.IsSuccess)
             {
-                // Sin miembro o sin suscripción pendiente no se activa nada: se descarta la
-                // marca de la confirmación para que no viaje en ningún guardado posterior.
+                // No se activa nada: se descarta la marca de la confirmación para que no viaje en
+                // ningún guardado posterior.
+                await tx.RollbackAsync(ct);
                 _db.ChangeTracker.Clear();
+
+                // Otro pago (Entrax, u otra confirmación que ganó la carrera) ya activó el pedido.
+                if (activation.ErrorCode == SignupOrderClaim.AlreadySettledCode)
+                {
+                    _logger.LogWarning(
+                        "ConfirmCryptoPayment: el pedido {OrderId} ya estaba activado por otro pago; no se confirma.",
+                        command.OrderId);
+                    return Result<ConfirmCryptoPaymentResponse>.Failure(AlreadyConfirmedCode, AlreadyConfirmedText);
+                }
+
                 return Result<ConfirmCryptoPaymentResponse>.Failure(activation.ErrorCode!, activation.Error!);
             }
 
             member = activation.Value!;
             await _db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
         }
         catch (DbUpdateConcurrencyException)
         {

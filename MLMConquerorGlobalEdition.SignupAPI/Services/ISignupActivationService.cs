@@ -37,6 +37,10 @@ public interface ISignupActivationService
     ///
     /// No guarda (aunque el alta en el cobro recurrente sí lo hace por dentro: quien llama marca su
     /// propia fila ANTES de llamar, para que viaje en ese guardado). Si falla, no ha tocado nada.
+    ///
+    /// El pedido se reclama de forma atómica (<see cref="ISignupOrderClaim"/>): si otro pago ya lo
+    /// activó devuelve ORDER_ALREADY_SETTLED. En SQL Server ese UPDATE se ejecuta en el acto, así que
+    /// quien llama abre una transacción antes y la confirma después de su SaveChanges.
     /// </summary>
     Task<Result<MemberProfile>> ActivatePendingSignupAsync(Orders order, DateTime now, CancellationToken ct);
 }

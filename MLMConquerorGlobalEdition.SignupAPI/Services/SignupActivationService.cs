@@ -15,17 +15,21 @@ public class SignupActivationService : ISignupActivationService
     private readonly ISponsorBonusService               _sponsorBonus;
     private readonly IFastStartBonusService             _fastStartBonus;
     private readonly IRecurringBillingEnrollmentService _recurringBillingEnrollment;
+    private readonly ISignupOrderClaim                  _orderClaim;
 
     public SignupActivationService(
         AppDbContext db,
         ISponsorBonusService sponsorBonus,
         IFastStartBonusService fastStartBonus,
-        IRecurringBillingEnrollmentService recurringBillingEnrollment)
+        IRecurringBillingEnrollmentService recurringBillingEnrollment,
+        // Opcional para no tocar las construcciones existentes; el de verdad es SignupOrderClaim.
+        ISignupOrderClaim? orderClaim = null)
     {
         _db                         = db;
         _sponsorBonus               = sponsorBonus;
         _fastStartBonus             = fastStartBonus;
         _recurringBillingEnrollment = recurringBillingEnrollment;
+        _orderClaim                 = orderClaim ?? new SignupOrderClaim(db);
     }
 
     public async Task ActivateAsync(
@@ -132,6 +136,13 @@ public class SignupActivationService : ISignupActivationService
             .Where(od => od.OrderId == order.Id)
             .Join(_db.Products.AsNoTracking(), od => od.ProductId, p => p.Id, (od, p) => p.QualificationPoins)
             .SumAsync(ct);
+
+        // El pedido pasa a Completed de forma atómica ANTES de tocar nada más: si otro pago (cripto,
+        // otro QR de Entrax) lo activó entre tanto, este no activa nada y quien llama lo trata como
+        // doble cobro.
+        if (!await _orderClaim.TryCompleteAsync(order, now, member.Email, ct))
+            return Result<MemberProfile>.Failure(SignupOrderClaim.AlreadySettledCode,
+                "This signup was already activated by another payment.");
 
         await ActivateAsync(order, member, subscription, totalQualPoints, now, member.Email, ct);
         return Result<MemberProfile>.Success(member);
