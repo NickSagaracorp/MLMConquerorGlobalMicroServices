@@ -34,6 +34,13 @@ public class EntraxPaymentConfiguration : IEntityTypeConfiguration<EntraxPayment
         builder.HasIndex(x => x.ExternalPaymentId).IsUnique().HasFilter("[ExternalPaymentId] IS NOT NULL");
 
         builder.HasIndex(x => x.OrderId);
+
+        // Un pedido lo activa como mucho UN pago de Entrax: dos QR distintos del mismo alta (uno pagado
+        // tarde y el siguiente) no pueden quedar los dos Consumed. Es la red debajo de la transición
+        // atómica del pedido (SignupOrderClaim): si aun así llegaran dos, el segundo guardado choca aquí.
+        builder.HasIndex(x => x.OrderId, "UX_EntraxPayments_OrderId_Consumed")
+               .IsUnique()
+               .HasFilter("[Consumed] = 1");
         builder.HasIndex(x => new { x.Status, x.CreationDate });
 
         builder.HasQueryFilter(x => !x.IsDeleted);

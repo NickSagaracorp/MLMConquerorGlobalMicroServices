@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.SharedKernel.Billing;
 using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
@@ -25,6 +26,21 @@ public class EntraxPaymentModelTests
             && i.Properties.Count == 1 && i.Properties[0].Name == nameof(EntraxPayment.ExternalOrderId));
         tipo.GetIndexes().Should().Contain(i => i.IsUnique
             && i.Properties.Count == 1 && i.Properties[0].Name == nameof(EntraxPayment.ExternalPaymentId));
+    }
+
+    [Fact]
+    public void Un_pedido_lo_consume_como_mucho_un_pago()
+    {
+        // Dos pagos distintos del mismo pedido (un QR pagado tarde y el siguiente) no pueden quedar
+        // los dos Consumed: el segundo guardado choca con este índice y el pago va a revisión.
+        using var db = InMemoryDbHelper.Create();
+        var indice = db.Model.FindEntityType(typeof(EntraxPayment))!.GetIndexes()
+            .SingleOrDefault(i => i.GetDatabaseName() == "UX_EntraxPayments_OrderId_Consumed");
+
+        indice.Should().NotBeNull();
+        indice!.IsUnique.Should().BeTrue();
+        indice.Properties.Select(p => p.Name).Should().Equal(nameof(EntraxPayment.OrderId));
+        indice.GetFilter().Should().Be("[Consumed] = 1");
     }
 
     [Fact]

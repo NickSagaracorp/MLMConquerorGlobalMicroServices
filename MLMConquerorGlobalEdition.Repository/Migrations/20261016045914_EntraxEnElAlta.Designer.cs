@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MLMConquerorGlobalEdition.Repository.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261016024525_EntraxEnElAlta")]
+    [Migration("20261016045914_EntraxEnElAlta")]
     partial class EntraxEnElAlta
     {
         /// <inheritdoc />
@@ -8895,6 +8895,10 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasIndex("OrderId");
 
                     b.HasIndex("Status", "CreationDate");
+
+                    b.HasIndex(new[] { "OrderId" }, "UX_EntraxPayments_OrderId_Consumed")
+                        .IsUnique()
+                        .HasFilter("[Consumed] = 1");
 
                     b.ToTable("EntraxPayments");
                 });

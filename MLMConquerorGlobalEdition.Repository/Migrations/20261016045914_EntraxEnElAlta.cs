@@ -101,6 +101,13 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                 name: "IX_EntraxPayments_Status_CreationDate",
                 table: "EntraxPayments",
                 columns: new[] { "Status", "CreationDate" });
+
+            migrationBuilder.CreateIndex(
+                name: "UX_EntraxPayments_OrderId_Consumed",
+                table: "EntraxPayments",
+                column: "OrderId",
+                unique: true,
+                filter: "[Consumed] = 1");
         }
 
         /// <inheritdoc />

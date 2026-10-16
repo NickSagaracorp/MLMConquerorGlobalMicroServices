@@ -8893,6 +8893,10 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("Status", "CreationDate");
 
+                    b.HasIndex(new[] { "OrderId" }, "UX_EntraxPayments_OrderId_Consumed")
+                        .IsUnique()
+                        .HasFilter("[Consumed] = 1");
+
                     b.ToTable("EntraxPayments");
                 });
 
