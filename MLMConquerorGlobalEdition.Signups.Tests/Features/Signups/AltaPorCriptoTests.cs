@@ -666,8 +666,6 @@ public class AltaPorCriptoTests
 
     [Theory]
     [InlineData(PaymentMethodType.Token)]
-    [InlineData(PaymentMethodType.CreditCard)]
-    [InlineData(PaymentMethodType.DiscountCode)]
     public async Task Completar_PorLasViasQueYaCobraron_SigueActivandoYComisionando(PaymentMethodType metodo)
     {
         await using var db = InMemoryDbHelper.Create();
@@ -676,14 +674,14 @@ public class AltaPorCriptoTests
         var appUser = BuildInactiveUser();
         var sponsor = SponsorBonus();
 
+        // Solo el token: la tarjeta no cobra (Signup:CardEnabled apagado) y el código de descuento no existe.
         var handler = BuildCompleteHandler(db, UserMgr(appUser),
             sponsor.Object, FastStartBonus().Object, RecurringBilling().Object);
 
         var request = new CompleteSignupRequest
         {
             PaymentMethod = metodo,
-            TokenCode     = metodo == PaymentMethodType.Token ? "ABCD1234" : null,
-            DiscountCode  = metodo == PaymentMethodType.DiscountCode ? "FREE100" : null
+            TokenCode     = metodo == PaymentMethodType.Token ? "ABCD1234" : null
         };
 
         var result = await handler.Handle(new CompleteSignupCommand(OrderId, request), CancellationToken.None);

@@ -327,6 +327,84 @@ muestra el nombre bien; lo que hay que verificar es lo que se guarda.
 **Debe** responder lo mismo exista o no la cuenta — si dice "esa dirección no está
 registrada", el formulario sirve para averiguar qué correos tienen cuenta.
 
+### 6.4 Ningún camino activa ni sube de nivel sin cobrar
+
+Qué protege: `POST api/v1/signups/{signupId}/complete` (anónimo) con `"paymentMethod":"CreditCard"`.
+En el alta nada cobra una tarjeta: la tokenización del navegador es simulada
+(`SimulatedCardTokenizationService`) y `SpreedlyCardGatewayService` es un stub. Con la tarjeta
+encendida, `CompleteSignup` guarda la tarjeta y **activa la membresía y genera comisiones sin cobrar**.
+
+**Condiciones de despliegue:**
+
+- **BLOQUEANTE — la tarjeta del alta no se enciende en producción.** `Signup:CardEnabled` tiene que
+  valer `false` en SignupAPI (es el valor de `appsettings.json`; si falta la clave, o no es `true`,
+  también vale apagada) **hasta que exista el cobro real con 3DS**. Apagada, `payment-options` trae
+  `cardEnabled: false`, las dos páginas del alta (`Signup.razor` y `MemberJoin.razor`) no muestran la
+  pestaña y `complete` con tarjeta responde `400 CARD_PAYMENTS_DISABLED` antes de leer el pedido: no
+  activa, no guarda la tarjeta, no sube la captura y el pedido sigue en `Pending` para pagar con otro
+  método. El servidor manda: aunque una pantalla vieja muestre la pestaña, la rechaza.
+- Encenderla exige el cobro real (tokenización real en el navegador, cargo con 3DS por Spreedly y
+  activación solo con el cargo confirmado) y una alta de prueba real en sandbox. Es lo mismo que
+  `Billing:TokenPurchase:CardEnabled` en la compra de tokens (§9).
+
+| # | Prueba | Resultado esperado | ✔ |
+|---|---|---|---|
+| 6.4.1 | `POST api/v1/signups/{signupId}/complete` con `"paymentMethod":"CreditCard"` y un cuerpo `creditCard` válido, con la tarjeta apagada | `400 CARD_PAYMENTS_DISABLED`, sin activar: pedido en `Pending`, miembro y suscripción en `Pending`, usuario inactivo, ninguna fila en `CreditCards` ni comisión; después el mismo alta se completa con otro método. **Sin** cuerpo `creditCard` la respuesta es el `400` de validación del modelo (no llega al handler), tampoco activa | ☐ |
+| 6.4.2 | `GET api/v1/signups/payment-options` con la tarjeta apagada | `cardEnabled: false` | ☐ |
+| 6.4.3 | Abrir `/ambassador-join/…` y `/member-join/…` con la tarjeta apagada | sin pestaña *Credit Card*; elegida por defecto *Token*, también al cambiar de país y al volver de un QR de Entrax | ☐ |
+| 6.4.4 | `POST api/v1/admin/signups/{orderId}/retry-complete` (AdminAPI), también desde el botón *Retry Complete Signup* de *Members* | `410 SIGNUP_RETRY_RETIRED` sin llamar a SignupAPI ni tocar nada | ☐ |
+| 6.4.7 | `complete` con un método fuera de la lista (`"paymentMethod": 99`) | `400`: la validación del modelo lo rechaza; si llegara al handler, `400 PAYMENT_METHOD_NOT_SUPPORTED`. Nunca activa | ☐ |
+
+**Métodos admitidos.** `CompleteSignup` decide con una **lista de admitidos**, antes de leer el pedido:
+`Token`, `Crypto` y `Entrax` pasan; `CreditCard` solo con `Signup:CardEnabled`; `DiscountCode` es
+`DISCOUNT_CODES_DISABLED`, y cualquier otro valor `PAYMENT_METHOD_NOT_SUPPORTED`. Un método nuevo no
+puede activar por caer en la rama que activa.
+
+**`retry-complete` retirado.** Existía para "reintentar" altas zombis reenviando `complete` con
+`paymentMethod: 1` (tarjeta) **sin tarjeta**, es decir, para activarlas sin cobrar. La validación de
+SignupAPI ya lo rechazaba siempre, y ningún método que cobra se puede repetir así (el token pide su
+código, la cripto su moneda, Entrax su QR). Ahora responde `410 SIGNUP_RETRY_RETIRED`. Un alta a medias se
+resuelve por su camino: la cripto se confirma en *Crypto Signups*, Entrax con *Re-check*, y lo demás con
+la activación manual (abajo).
+
+**Códigos de descuento.** No existe ningún sistema de códigos de descuento (ni entidad, ni validación, ni
+pantalla que los use). Antes, `complete` con `"paymentMethod":"DiscountCode"` (o `4`) y cualquier cadena
+de 4 a 32 caracteres (`FREE100`) activaba la membresía y generaba comisiones gratis en un endpoint
+anónimo. Ahora se rechaza **siempre**, antes de leer el pedido. No hay interruptor: no hay nada que
+encender hasta que exista un sistema de códigos real. `Scripts/SignupLoadTest` completaba la fase 3 con
+un código de descuento y ya no puede activar altas.
+
+**Subida de nivel del miembro.** `POST api/v1/members/{memberId}/membership/upgrade` (SignupAPI, del
+propio miembro o de personal) cambia de nivel **sin cobrar nada**. Su único llamador es ese endpoint;
+AdminAPI no tiene subida de nivel (`AdminMemberMembershipController` solo lee).
+
+**Condición de despliegue:**
+
+- **BLOQUEANTE — la subida de nivel no se enciende en producción.** `Membership:UpgradeEnabled` tiene
+  que valer `false` (es el valor de `appsettings.json`; si falta o no es `true`, también apagada) hasta
+  que la subida cobre la diferencia (Plan G). Apagada, responde `400 UPGRADE_DISABLED` sin cambiar nada.
+
+| # | Prueba | Resultado esperado | ✔ |
+|---|---|---|---|
+| 6.4.5 | `complete` con `"paymentMethod":"DiscountCode"` y `"discountCode":"FREE100"` sobre un alta en `Pending` (también con la tarjeta encendida) | `400 DISCOUNT_CODES_DISABLED`, sin activar: pedido, miembro y suscripción en `Pending`, usuario inactivo, sin comisiones; el alta se completa después con otro método | ☐ |
+| 6.4.6 | `POST api/v1/members/{suMemberId}/membership/upgrade` con un nivel superior y la subida apagada | `400 UPGRADE_DISABLED`; la suscripción activa no cambia y no aparece otra | ☐ |
+
+**Activación manual del personal.** `PUT api/v1/admin/members/{memberId}/status` (AdminAPI) con
+`"status":"Active"` es una **activación manual deliberada**: pasa la suscripción `Pending` a `Active` y el
+pedido `Pending` a `Completed` **sin cobro** (para un pago verificado por fuera). No calcula comisiones ni
+activa el usuario de acceso. Pueden hacerlo `SuperAdmin`, `Admin`, `SupportManager` y `SupportLevel1` a
+`SupportLevel3` (los roles de `MembersController`). Queda auditada en `MemberStatusHistory` (estado
+anterior y nuevo, motivo, quién —`CreatedBy`— y cuándo). Lo que **no** puede es pisar un pago en vuelo:
+si el pedido del alta (el primero del miembro) está en `Processing` —cripto o Entrax esperando— o hay un
+`EntraxPayment` en `AwaitingPayment`, responde `409 PAYMENT_IN_FLIGHT` sin cambiar nada (ni historial);
+ahí lo correcto es confirmar la cripto o hacer *Re-check*.
+
+| # | Prueba | Resultado esperado | ✔ |
+|---|---|---|---|
+| 6.4.8 | Activar a mano un miembro con su alta en cripto pendiente de confirmar (pedido `Processing`) | `409 PAYMENT_IN_FLIGHT`; miembro, suscripción y pedido sin cambios, sin fila en `MemberStatusHistory` | ☐ |
+| 6.4.9 | Activar a mano un miembro con un QR de Entrax en `AwaitingPayment` | `409 PAYMENT_IN_FLIGHT`, sin cambios | ☐ |
+| 6.4.10 | Activar a mano un miembro `Pending` sin pago en vuelo, con motivo | `200`; activo, suscripción `Active`, pedido `Completed` y una fila en `MemberStatusHistory` con el usuario y el motivo | ☐ |
+
 ---
 
 ## 7. Lo que **no** está encendido
@@ -339,6 +417,11 @@ explicación.
 | `Auth:TwoFactor:MandatoryRoles` | vacío | Nadie está obligado a llevar 2FA. Encenderlo **antes** de que el correo entregue de verdad deja fuera del portal a quien tenga ese canal |
 | Correo y SMS | proveedor `Null` | El log registra el evento y los nombres de las variables, nunca el código ni los enlaces. En desarrollo el correo va a MailHog (`docs/deployment/correo-en-desarrollo.md`). Encender SES es un paso de despliegue con prerrequisitos |
 | Step-up fuera del cambio de cobro | sin construir | El step-up existe (Plan E) y protege solo el cambio de wallet de cobro del BizCenter. Las operaciones del Admin (§6.4 de la spec de 2FA) siguen sin él |
+| `Membership:UpgradeEnabled` (subida de nivel del miembro) | `false` | La subida cambia de nivel sin cobrar. Bloqueante hasta que cobre la diferencia, Plan G (§6.4) |
+| Códigos de descuento en el alta | sin sistema | `DiscountCode` se rechaza siempre con `DISCOUNT_CODES_DISABLED`: no hay códigos que validar (§6.4) |
+| `Signup:CardEnabled` (tarjeta en el alta) | `false` | Nada cobra la tarjeta del alta (tokenización simulada, gateway stub): encendida activaría y comisionaría sin dinero. Bloqueante hasta el cobro real con 3DS (§6.4) |
+| Activación manual del personal | encendida, limitada | `PUT admin/members/{id}/status` a `Active` activa sin cobro a propósito (pago verificado por fuera), auditada en `MemberStatusHistory`; no pisa un pago en vuelo (`409 PAYMENT_IN_FLIGHT`). La pueden hacer también `SupportLevel1` a `SupportLevel3` (§6.4) |
+| `retry-complete` de AdminAPI | retirado | Activaba altas sin cobrar; `410 SIGNUP_RETRY_RETIRED` (§6.4) |
 | Lista blanca de IP del limitador | sin declarar | El refresco tiene una red de seguridad de 600/min por IP. Los portales llaman servidor a servidor, así que en producción hay que declarar sus IP |
 
 ### Antes de encender el correo

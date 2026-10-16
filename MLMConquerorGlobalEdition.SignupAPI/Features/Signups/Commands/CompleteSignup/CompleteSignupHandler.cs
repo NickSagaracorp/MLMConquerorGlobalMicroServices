@@ -23,8 +23,20 @@ namespace MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Commands.Complete
 /// <summary>
 /// Fase 3 del asistente de alta.
 ///
-/// Con tarjeta, token o código de descuento el dinero ya está cobrado cuando se llega aquí, así
-/// que esta fase activa al miembro y dispara las comisiones.
+/// Con token esta fase activa al miembro y dispara las comisiones.
+///
+/// CON CÓDIGO DE DESCUENTO, NUNCA. No existe ningún sistema de códigos de descuento (ni entidad, ni
+/// validación, ni pantalla que lo use): antes cualquier cadena de 4 a 32 caracteres activaba la membresía y
+/// generaba comisiones gratis. Se rechaza siempre con DISCOUNT_CODES_DISABLED antes de leer nada. No hay
+/// interruptor porque no hay nada que encender: cuando exista un sistema de códigos real, esta rama lo valida.
+///
+/// CON TARJETA NO SE COBRA NADA AQUÍ, y tampoco antes: la tokenización del navegador es simulada y el
+/// gateway de tarjeta (SpreedlyCardGatewayService) es un stub. Esta rama solo guarda la tarjeta y activa,
+/// así que activaría membresía y comisiones sin dinero. Por eso va detrás de Signup:CardEnabled
+/// (<see cref="SignupCardPayments"/>), apagado por defecto y si falta: apagado, la tarjeta se rechaza con
+/// CARD_PAYMENTS_DISABLED antes de leer el pedido —no activa, no guarda la tarjeta, no sube la captura ni
+/// reclama el pedido, que sigue en Pending para pagar con otro método—. No se enciende en producción hasta
+/// que haya cobro real con 3DS.
 ///
 /// CON CRIPTO NO. El cobro llega por fuera —no hay pasarela integrada, es el diseño— y hasta que
 /// alguien de la casa confirme que la transferencia entró, el alta queda registrada pero la
@@ -60,6 +72,16 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
     private readonly IMemberFundsGate             _gate;
     private readonly IEntraxSignupCheckout?       _entraxCheckout;
     private readonly ISignupOrderClaim            _orderClaim;
+    private readonly IConfiguration?              _configuration;
+
+    /// <summary>La tarjeta del alta está apagada (Signup:CardEnabled): no se hizo nada. 400.</summary>
+    public const string CardPaymentsDisabledCode = TokenPurchaseErrors.CardPaymentsDisabled;
+
+    /// <summary>No hay sistema de códigos de descuento: el alta con DiscountCode no hace nada. 400.</summary>
+    public const string DiscountCodesDisabledCode = "DISCOUNT_CODES_DISABLED";
+
+    /// <summary>Un método que no está en la lista de admitidos (también uno fuera del enum). 400.</summary>
+    public const string PaymentMethodNotSupportedCode = TokenPurchaseErrors.PaymentMethodNotSupported;
 
     /// <summary>El candado del dueño del token está ocupado: no se hizo nada y se puede repetir.</summary>
     public const string TokenBusyCode = "TOKEN_BUSY";
@@ -124,7 +146,9 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
         // disponible y el alta lo rechaza con ENTRAX_NOT_AVAILABLE. El contenedor lo inyecta.
         IEntraxSignupCheckout? entraxCheckout = null,
         // Opcional por lo mismo; el contenedor inyecta SignupOrderClaim.
-        ISignupOrderClaim? orderClaim = null)
+        ISignupOrderClaim? orderClaim = null,
+        // Sin configuración la tarjeta va apagada (falla cerrada). El contenedor inyecta IConfiguration.
+        IConfiguration? configuration = null)
     {
         _db              = db;
         _dateTime        = dateTime;
@@ -138,12 +162,35 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
         _gate            = gate;
         _entraxCheckout  = entraxCheckout;
         _orderClaim      = orderClaim ?? new SignupOrderClaim(db);
+        _configuration   = configuration;
     }
 
     public async Task<Result<SignupResponse>> Handle(CompleteSignupCommand command, CancellationToken ct)
     {
         var req = command.Request;
         var now = _dateTime.Now;
+
+        // LISTA DE ADMITIDOS, antes de leer nada (ni pedido, ni captura, ni reclamo). Lo que no está aquí no
+        // llega a la rama que activa: un método nuevo, o un número fuera del enum, no puede activar sin que
+        // alguien decida cómo cobra.
+        //  - Token, Crypto y Entrax: cada uno tiene su cobro o su espera más abajo.
+        //  - CreditCard: solo con Signup:CardEnabled. Apagada, no se activa, no se guarda la tarjeta, no se
+        //    sube la captura y el pedido no se reclama. (Sin el cuerpo creditCard la petición ni llega aquí: la
+        //    validación del modelo la rechaza antes con su 400.)
+        //  - DiscountCode: no existe sistema de códigos que validar; nunca paga nada.
+        var methodRejection = req.PaymentMethod switch
+        {
+            PaymentMethodType.Token or PaymentMethodType.Crypto or PaymentMethodType.Entrax => null,
+            PaymentMethodType.CreditCard when SignupCardPayments.IsEnabled(_configuration) => null,
+            PaymentMethodType.CreditCard => Result<SignupResponse>.Failure(CardPaymentsDisabledCode,
+                "Card payments are not available right now. Please choose another payment method."),
+            PaymentMethodType.DiscountCode => Result<SignupResponse>.Failure(DiscountCodesDisabledCode,
+                "Discount codes are not available. Please choose another payment method."),
+            _ => Result<SignupResponse>.Failure(PaymentMethodNotSupportedCode,
+                "Payment method not supported. Please choose another payment method.")
+        };
+        if (methodRejection is not null)
+            return methodRejection;
 
         // La moneda se valida contra las direcciones configuradas ANTES de tocar nada, igual que
         // Billing en la compra de tokens: aceptar un alta en una moneda sin dirección deja al

@@ -202,10 +202,12 @@ public class CompleteSignupHandlerTests
         CreatedBy          = email
     };
 
-    private static CompleteSignupRequest BuildRequest(PaymentMethodType method = PaymentMethodType.DiscountCode) => new()
+    // Las pruebas de activación completan con token (el canje de prueba siempre acepta). Antes usaban un
+    // código de descuento, que ya no activa nada: no existe sistema de códigos (DescuentoCerradoEnElAltaTests).
+    private static CompleteSignupRequest BuildRequest(PaymentMethodType method = PaymentMethodType.Token) => new()
     {
         PaymentMethod = method,
-        DiscountCode  = method == PaymentMethodType.DiscountCode ? "FREE100" : null
+        TokenCode     = method == PaymentMethodType.Token ? "ABCD1234" : null
     };
 
 
@@ -571,7 +573,9 @@ public class CompleteSignupHandlerTests
             userMgr.Object, BuildJwtMock().Object, BuildEncryptionMock().Object,
             BuildTokenRedemptionMock().Object, BuildActivation(db),
             Mock.Of<MLMConquerorGlobalEdition.Repository.Services.Crypto.ICryptoDepositAddressReader>(),
-            new PuertaDeFondosDePrueba(db));
+            new PuertaDeFondosDePrueba(db),
+            // La tarjeta del alta va apagada por defecto (Signup:CardEnabled): esta prueba la enciende.
+            configuration: TarjetaDelAlta.Encendida());
 
         var ccRequest = new CompleteSignupRequest
         {

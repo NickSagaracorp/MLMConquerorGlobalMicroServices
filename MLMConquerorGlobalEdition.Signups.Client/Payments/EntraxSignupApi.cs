@@ -56,21 +56,7 @@ public static class EntraxSignupApi
 
     /// <summary>Países donde se ofrece. Si no se puede leer, ninguno: la pestaña no aparece.</summary>
     public static async Task<IReadOnlyList<string>> GetCountriesAsync(HttpClient api, CancellationToken ct = default)
-    {
-        try
-        {
-            var r = await api.GetFromJsonAsync<Wrapper<SignupPaymentOptionsDto>>("api/v1/signups/payment-options", ct);
-            return r?.Data?.EntraxCountries ?? [];
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch
-        {
-            return [];
-        }
-    }
+        => (await SignupPaymentOptionsApi.GetAsync(api, ct)).EntraxCountries;
 
     /// <summary>
     /// Completa el alta con Entrax. Un 409 ENTRAX_IN_PROGRESS (otra petición está creando el QR) se

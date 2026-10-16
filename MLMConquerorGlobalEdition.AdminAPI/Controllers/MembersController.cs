@@ -108,8 +108,11 @@ public class MembersController : ControllerBase
     {
         var result = await _mediator.Send(new UpdateMemberStatusCommand(memberId, request), ct);
 
+        // Un cobro del alta en curso (cripto o Entrax): 409, se confirma o se hace Re-check en su sitio.
         if (!result.IsSuccess)
-            return BadRequest(ApiResponse<AdminMemberDto>.Fail(result.ErrorCode!, result.Error!));
+            return result.ErrorCode == UpdateMemberStatusHandler.PaymentInFlightCode
+                ? Conflict(ApiResponse<AdminMemberDto>.Fail(result.ErrorCode!, result.Error!))
+                : BadRequest(ApiResponse<AdminMemberDto>.Fail(result.ErrorCode!, result.Error!));
 
         return Ok(ApiResponse<AdminMemberDto>.Ok(result.Value!));
     }

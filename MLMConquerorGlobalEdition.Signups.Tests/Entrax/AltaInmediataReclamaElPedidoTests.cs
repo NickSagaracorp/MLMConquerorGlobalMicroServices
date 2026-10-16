@@ -28,11 +28,21 @@ public class AltaInmediataReclamaElPedidoTests
         AppDbContext db, Mock<UserManager<ApplicationUser>> usuarios, ISignupOrderClaim reclamo,
         ISponsorBonusService? sponsor = null, ITokenRedemptionService? canje = null, PuertaDeFondosDePrueba? puerta = null)
         => new(db, EscenarioEntrax.Reloj().Object, Mock.Of<IS3FileService>(), usuarios.Object, Jwt(),
-               Mock.Of<IEncryptionService>(), canje ?? Mock.Of<ITokenRedemptionService>(),
+               Mock.Of<IEncryptionService>(), canje ?? CanjeQueAcepta(),
                new SignupActivationService(db, sponsor ?? Mock.Of<ISponsorBonusService>(), Mock.Of<IFastStartBonusService>(),
                    Mock.Of<IRecurringBillingEnrollmentService>(), reclamo),
                Mock.Of<ICryptoDepositAddressReader>(), puerta ?? new PuertaDeFondosDePrueba(db),
                orderClaim: reclamo);
+
+    /// <summary>Un canje que acepta cualquier código: el camino inmediato que estas pruebas reclaman es el token.</summary>
+    private static ITokenRedemptionService CanjeQueAcepta()
+    {
+        var m = new Mock<ITokenRedemptionService>();
+        m.Setup(c => c.RedeemForSignupAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+         .ReturnsAsync(Result<bool>.Success(true));
+        return m.Object;
+    }
 
     private static IJwtService Jwt()
     {
@@ -41,8 +51,10 @@ public class AltaInmediataReclamaElPedidoTests
         return m.Object;
     }
 
-    private static CompleteSignupCommand ConDescuento()
-        => new(EscenarioEntrax.OrderId, new CompleteSignupRequest { PaymentMethod = PaymentMethodType.DiscountCode, DiscountCode = "FREE100" });
+    // Antes era un código de descuento, que ya no activa nada. Ahora un token sin dueño guardado (sin candado):
+    // la tarjeta tampoco cobra de verdad y no puede ser el camino que se prueba.
+    private static CompleteSignupCommand ConToken()
+        => new(EscenarioEntrax.OrderId, new CompleteSignupRequest { PaymentMethod = PaymentMethodType.Token, TokenCode = "TOK-SIN-DUENO" });
 
     [Fact]
     public async Task Si_gana_el_pedido_se_activa_y_el_reclamo_se_pidio_solo_desde_Pending()
@@ -52,11 +64,11 @@ public class AltaInmediataReclamaElPedidoTests
         var reclamo = new ReclamoDePrueba(gana: true);
 
         var r = await Handler(db, EscenarioEntrax.Usuarios(EscenarioEntrax.UsuarioInactivo()), reclamo)
-            .Handle(ConDescuento(), default);
+            .Handle(ConToken(), default);
 
         r.IsSuccess.Should().BeTrue();
         reclamo.DesdePending.Should().Be(1);
-        reclamo.DesdePendingOProcessing.Should().Be(0, "un pedido en Processing espera otro cobro: la tarjeta no lo completa.");
+        reclamo.DesdePendingOProcessing.Should().Be(0, "un pedido en Processing espera otro cobro: el token no lo completa.");
         (await db.Orders.SingleAsync()).Status.Should().Be(OrderStatus.Completed);
     }
 
@@ -70,7 +82,7 @@ public class AltaInmediataReclamaElPedidoTests
         var usuarios = EscenarioEntrax.Usuarios(usuario);
         var sponsor = new Mock<ISponsorBonusService>();
 
-        var r = await Handler(db, usuarios, new ReclamoDePrueba(gana: false), sponsor.Object).Handle(ConDescuento(), default);
+        var r = await Handler(db, usuarios, new ReclamoDePrueba(gana: false), sponsor.Object).Handle(ConToken(), default);
 
         r.IsSuccess.Should().BeFalse();
         r.ErrorCode.Should().Be(CompleteSignupHandler.SignupAlreadySettledCode);

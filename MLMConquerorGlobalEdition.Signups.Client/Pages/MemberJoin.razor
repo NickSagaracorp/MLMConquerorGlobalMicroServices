@@ -497,12 +497,16 @@
                 </div>
 
                 <ul class="nav nav-pills pay-tabs mb-3">
-                    <li class="nav-item">
-                        <button class="nav-link @(_paymentTab == "card" ? "active" : "")" type="button"
-                                @onclick='() => _paymentTab = "card"'>
-                            <i class="ri-bank-card-2-line me-1"></i>Credit Card
-                        </button>
-                    </li>
+                    @* Solo si SignupAPI la ofrece (Signup:CardEnabled): hoy nada cobra la tarjeta del alta. *@
+                    @if (_cardEnabled)
+                    {
+                        <li class="nav-item">
+                            <button class="nav-link @(_paymentTab == SignupPaymentTabs.Card ? "active" : "")" type="button"
+                                    @onclick="() => _paymentTab = SignupPaymentTabs.Card">
+                                <i class="ri-bank-card-2-line me-1"></i>Credit Card
+                            </button>
+                        </li>
+                    }
                     <li class="nav-item">
                         <button class="nav-link @(_paymentTab == "token" ? "active" : "")" type="button"
                                 @onclick='() => _paymentTab = "token"'>
@@ -526,7 +530,7 @@
                     }
                 </ul>
 
-                @if (_paymentTab == "card")
+                @if (_paymentTab == SignupPaymentTabs.Card && _cardEnabled)
                 {
                     <div class="row g-3">
                         <div class="col-md-6">
@@ -682,7 +686,7 @@
 
                 <div class="d-grid">
                     <button type="button" class="btn btn-enroll"
-                            disabled="@(!_agreedTerms || _busy || (_paymentTab == "token" && !_tokenValid) || (_paymentTab == "crypto" && _cryptoDeposit is null) || (_paymentTab == "entrax" && !EntraxOffered))"
+                            disabled="@(!_agreedTerms || _busy || (_paymentTab == SignupPaymentTabs.Card && !_cardEnabled) || (_paymentTab == "token" && !_tokenValid) || (_paymentTab == "crypto" && _cryptoDeposit is null) || (_paymentTab == "entrax" && !EntraxOffered))"
                             @onclick="HandleJoinNow">
                         @if (_busy)
                         {
@@ -948,7 +952,11 @@
     private string _copyBtnText = "Copy";
 
     // ── Payment ───────────────────────────────────────────────────────────────
-    private string _paymentTab     = "card";
+    // Nunca la tarjeta antes de saber si el servidor la ofrece: se elige al leer payment-options.
+    private string _paymentTab = SignupPaymentTabs.Initial;
+
+    // Si SignupAPI ofrece la tarjeta (Signup:CardEnabled). Falso hasta leerlo y si no se puede leer.
+    private bool _cardEnabled;
 
     // Rublos por SBP con Entrax (Plan H): países donde se ofrece, el flujo del QR (componente único) y si
     // el servidor dijo que el alta ya estaba pagada.
@@ -1073,8 +1081,12 @@
         }
         catch { _cryptoDeposits = new(); }
 
-        // Rublos por SBP (Plan H): países con Entrax encendido. Si falla, la pestaña no aparece.
-        _entraxCountries = await EntraxSignupApi.GetCountriesAsync(api);
+        // Opciones de pago del servidor, en una lectura: países con Entrax encendido (Plan H) y si se ofrece
+        // la tarjeta. Si falla, ni la una ni la otra (falla cerrada) y la pestaña elegida es otra.
+        var paymentOptions = await SignupPaymentOptionsApi.GetAsync(api);
+        _entraxCountries = paymentOptions.EntraxCountries;
+        _cardEnabled = paymentOptions.CardEnabled;
+        _paymentTab = SignupPaymentTabs.Normalize(_paymentTab, _cardEnabled, EntraxOffered);
 
         // Load active countries first
         try
@@ -1131,7 +1143,7 @@
         _country  = nameEn;
         var ct = _countryData.FirstOrDefault(x => x.NameEn == nameEn);
         _countryIso2 = ct?.Iso2 ?? string.Empty;
-        if (_paymentTab == "entrax" && !EntraxOffered) _paymentTab = "card";
+        _paymentTab = SignupPaymentTabs.Normalize(_paymentTab, _cardEnabled, EntraxOffered);
         if (!CountryHasStates(_countryIso2)) _province = string.Empty;
         if (!IsUnitedStates(_country)) _ssn = string.Empty;
         // Phone codes are updated but products are not reloaded from the dropdown —
@@ -1147,7 +1159,7 @@
     {
         _country     = ct.NameEn;
         _countryIso2 = ct.Iso2;
-        if (_paymentTab == "entrax" && !EntraxOffered) _paymentTab = "card";
+        _paymentTab = SignupPaymentTabs.Normalize(_paymentTab, _cardEnabled, EntraxOffered);
         if (!CountryHasStates(_countryIso2)) _province = string.Empty;
         if (!IsUnitedStates(_country)) _ssn = string.Empty;
         if (ct.PhoneCode is not null)
@@ -1412,6 +1424,11 @@
         if (IsUnitedStates(_country) && string.IsNullOrWhiteSpace(_ssn))
             { _error = "SSN is required for United States residents."; return; }
 
+        // La pestaña se comprueba ANTES de crear el alta: con la tarjeta apagada (o Entrax fuera del país, o
+        // una pestaña desconocida) no se crea un alta que luego no se puede pagar así.
+        var tabProblem = SignupPaymentTabs.Problem(_paymentTab, _cardEnabled, EntraxOffered);
+        if (tabProblem is not null) { _error = tabProblem; return; }
+
         _busy = true;
         try
         {
@@ -1491,7 +1508,7 @@
             }
 
             object payment;
-            if (paymentTab == "card")
+            if (paymentTab == SignupPaymentTabs.Card)
             {
                 var cardProblem = CardPayment.Validate(_ccNumber, _ccExpMonth, _ccExpYear, _ccCvv);
                 if (cardProblem is not null) { _error = cardProblem; return; }
@@ -1513,12 +1530,15 @@
             }
             else
             {
-                payment = paymentTab switch
+                // Una pestaña desconocida es un error en la pantalla, nunca una tarjeta sin cuerpo.
+                object? other = paymentTab switch
                 {
-                    "token"  => (object)new { PaymentMethod = "Token",  TokenCode = _payToken },
-                    "crypto" => (object)new { PaymentMethod = "Crypto", CryptoCurrency = _cryptoCurrency },
-                    _        => (object)new { PaymentMethod = "CreditCard" }
+                    SignupPaymentTabs.Token  => new { PaymentMethod = "Token",  TokenCode = _payToken },
+                    SignupPaymentTabs.Crypto => new { PaymentMethod = "Crypto", CryptoCurrency = _cryptoCurrency },
+                    _                        => null
                 };
+                if (other is null) { _error = SignupPaymentTabs.UnknownTabError; return; }
+                payment = other;
             }
 
             var r3 = await api.PostAsJsonAsync($"api/v1/signups/{_signupId}/complete", payment);
@@ -1528,6 +1548,14 @@
             { _completedEmail = b3.Data.Email; _alreadyPaid = false; _completedPendingCrypto = paymentTab == "crypto"; _success = true; }
             else if (b3?.ErrorCode == EntraxSignupApi.AlreadySettledCode)
             { ShowSettled(alreadyPaid: true); }   // con tarjeta, token o cripto: el alta ya estaba pagada
+            else if (b3?.ErrorCode == TokenPurchaseErrors.CardPaymentsDisabled)
+            {
+                // El servidor manda: la tarjeta se apagó mientras la pantalla la ofrecía. Se esconde y se
+                // elige otra pestaña; el alta sigue en Pending para pagar con otro método.
+                _cardEnabled = false;
+                _paymentTab = SignupPaymentTabs.Normalize(_paymentTab, _cardEnabled, EntraxOffered);
+                _error = SignupPaymentTabs.CardDisabledError;
+            }
             else
             { _error = b3?.Message ?? b3?.Errors?.FirstOrDefault() ?? "Could not complete enrollment."; }
         }
@@ -1552,7 +1580,7 @@
     private void ChooseAnotherPaymentMethod()
     {
         _error      = string.Empty;
-        _paymentTab = "card";
+        _paymentTab = SignupPaymentTabs.Default(_cardEnabled);
     }
 
     /// <summary>La pantalla de "ya está pagada, inicia sesión", común a todos los métodos de pago.</summary>

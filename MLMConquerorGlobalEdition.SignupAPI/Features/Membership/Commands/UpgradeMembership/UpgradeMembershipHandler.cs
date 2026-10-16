@@ -8,19 +8,40 @@ using MLMConquerorGlobalEdition.SignupAPI.Services;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Features.Membership.Commands.UpgradeMembership;
 
+/// <summary>
+/// Subida de nivel del propio miembro (<c>POST api/v1/members/{memberId}/membership/upgrade</c>; es su único
+/// llamador, y AdminAPI no tiene subida de nivel).
+///
+/// NO COBRA NADA: cierra la suscripción actual y abre la nueva. Por eso va detrás de
+/// <c>Membership:UpgradeEnabled</c> (<see cref="MembershipUpgrades"/>), apagado por defecto y si falta:
+/// apagado responde UPGRADE_DISABLED antes de leer nada y no cambia nada. Lo enciende el Plan G cuando la
+/// subida cobre la diferencia.
+/// </summary>
 public class UpgradeMembershipHandler : IRequestHandler<UpgradeMembershipCommand, Result<bool>>
 {
+    /// <summary>La subida de nivel está apagada (Membership:UpgradeEnabled): no se hizo nada. 400.</summary>
+    public const string UpgradeDisabledCode = "UPGRADE_DISABLED";
+
     private readonly AppDbContext _db;
     private readonly IDateTimeProvider _dateTime;
+    private readonly IConfiguration? _configuration;
 
-    public UpgradeMembershipHandler(AppDbContext db, IDateTimeProvider dateTime)
+    public UpgradeMembershipHandler(
+        AppDbContext db,
+        IDateTimeProvider dateTime,
+        // Sin configuración la subida va apagada (falla cerrada). El contenedor inyecta IConfiguration.
+        IConfiguration? configuration = null)
     {
         _db = db;
         _dateTime = dateTime;
+        _configuration = configuration;
     }
 
     public async Task<Result<bool>> Handle(UpgradeMembershipCommand command, CancellationToken ct)
     {
+        if (!MembershipUpgrades.IsEnabled(_configuration))
+            return Result<bool>.Failure(UpgradeDisabledCode, "Membership upgrades are not available right now.");
+
         var now = _dateTime.Now;
 
         var member = await _db.MemberProfiles.FirstOrDefaultAsync(x => x.MemberId == command.MemberId, ct);
