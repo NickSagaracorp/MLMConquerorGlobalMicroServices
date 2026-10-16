@@ -38,8 +38,10 @@ public interface IEntraxSignupSettlement
 ///  - no se fía de quien avisa: SIEMPRE re-consulta GET /payment/{id};
 ///  - exige paid, USD e importe ≥ lo pedido (y ≥ el total actual del pedido); si no cuadra, ToReview
 ///    con un Critical en el log y sin activar nada;
-///  - un pago activa UNA alta: la fila se marca Paid/Consumed antes de activar, viaja en el mismo
-///    guardado con su RowVersion y, si otro camino ganó la carrera, se relee (máx. 3 veces);
+///  - un pago activa UNA alta: se reclama con un UPDATE condicional (no Paid ni ToReview) como primera
+///    sentencia de la transacción, y el que llega segundo (webhook y pantalla a la vez) lo encuentra ya
+///    liquidado y devuelve AlreadyResolved, nunca ToReview; si pierde después en el pedido, relee el
+///    pago y, si está Paid, también AlreadyResolved. Una DbUpdateConcurrencyException se relee (máx. 3);
 ///  - un pedido lo activa UN pago: la transición atómica del pedido (SignupOrderClaim) y el índice
 ///    UX_EntraxPayments_OrderId_Consumed hacen que el segundo (otro QR, la cripto) quede ToReview con
 ///    ORDER_ALREADY_SETTLED;
@@ -139,9 +141,11 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
             payment.ExternalOrderId, payment.ExternalPaymentId, call.Value?.Status, now, $"{Actor}:{source}"));
         payment.LastCheckedAt = now;
 
+        // La consulta queda anotada pase lo que pase después (deshacer la activación no la borra).
+        await _db.SaveChangesAsync(none);
+
         if (!call.Ok)
         {
-            await _db.SaveChangesAsync(none);
             _logger.LogWarning("Entrax: no se pudo consultar el pago {ExternalPaymentId} ({Code}); se reintentará.",
                 payment.ExternalPaymentId, call.ErrorCode);
             return EntraxSettlementOutcome.ProviderUnavailable;
@@ -161,7 +165,6 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
             case "expired":
                 return await CloseAsync(payment, EntraxPaymentStatus.Expired, null, now);
             default:
-                await _db.SaveChangesAsync(none);
                 return EntraxSettlementOutcome.StillPending;
         }
     }
@@ -171,7 +174,8 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
     {
         var none = CancellationToken.None;
 
-        payment.PaidAt      ??= remote.CompletedAt?.LocalDateTime ?? now;
+        var paidAt = payment.PaidAt ?? remote.CompletedAt?.LocalDateTime ?? now;
+        payment.PaidAt        = paidAt;
         payment.PaidAmountUsd = remote.Original;
 
         if (!string.Equals(remote.Currency, EntraxGateway.Currency, StringComparison.OrdinalIgnoreCase))
@@ -191,41 +195,45 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
         if (order.Status is not (OrderStatus.Pending or OrderStatus.Processing))
             return await ReviewAsync(payment, "ORDER_ALREADY_SETTLED", now, remote.Original);
 
-        // Se marca ANTES de activar: el alta en el cobro recurrente guarda por su cuenta dentro de la
-        // activación y ese guardado tiene que llevar esta fila, con su RowVersion, en el mismo lote.
-        payment.Status         = EntraxPaymentStatus.Paid;
-        payment.Consumed       = true;
-        payment.ActivatedAt    = now;
-        payment.LastUpdateDate = now;
-        payment.LastUpdateBy   = Actor;
-
-        _db.PaymentHistories.Add(new PaymentHistory
-        {
-            OrderId              = order.Id,
-            MemberId             = order.MemberId,
-            Amount               = remote.Original,
-            GatewayName          = EntraxGateway.Name,
-            GatewayTransactionId = payment.ExternalPaymentId,
-            TransactionStatus    = PaymentHistoryTransactionStatus.Captured,
-            ProcessedAt          = now,
-            CreationDate         = now,
-            CreatedBy            = Actor,
-            LastUpdateDate       = now,
-            LastUpdateBy         = Actor
-        });
-
-        await CancelWaitingCryptoAsync(order.Id, payment.ExternalPaymentId!, now);
-
-        // La transición atómica del pedido (SignupOrderClaim, un UPDATE que se ejecuta en el acto) y todo
-        // lo que guarda la activación van en una transacción: o entra todo o nada. Una
-        // DbUpdateConcurrencyException sale de aquí (la transacción se deshace al soltarla) y SettleAsync
-        // vuelve a leer.
+        // El pago, el pedido y todo lo que guarda la activación van en UNA transacción: o entra todo o
+        // nada. Cualquier excepción dentro deja el contexto limpio antes de salir (el barrido o un
+        // reintento pueden reutilizarlo y no deben guardar Paid/Consumed/PaymentHistory sin activación).
+        // Una DbUpdateConcurrencyException sale de aquí y SettleAsync vuelve a leer.
         string? failureCode = null;
         Result<MemberProfile>? activation = null;
         await using (var tx = await _db.Database.BeginTransactionAsync(none))
         {
             try
             {
+                // 1) El PAGO se reclama de forma atómica antes que nada: si otro camino (webhook, pantalla,
+                //    barrido, admin) ya lo liquidó, este no hace nada más. Es lo que impide que el que llega
+                //    segundo caiga en el pedido ya Completed y marque a revisar un pago legítimo.
+                if (!await TryClaimPaymentAsync(payment, paidAt, remote.Original, now))
+                {
+                    await tx.RollbackAsync(none);
+                    _db.ChangeTracker.Clear();
+                    await EnsureUserActiveAsync(payment.MemberId);
+                    return EntraxSettlementOutcome.AlreadyResolved;
+                }
+
+                _db.PaymentHistories.Add(new PaymentHistory
+                {
+                    OrderId              = order.Id,
+                    MemberId             = order.MemberId,
+                    Amount               = remote.Original,
+                    GatewayName          = EntraxGateway.Name,
+                    GatewayTransactionId = payment.ExternalPaymentId,
+                    TransactionStatus    = PaymentHistoryTransactionStatus.Captured,
+                    ProcessedAt          = now,
+                    CreationDate         = now,
+                    CreatedBy            = Actor,
+                    LastUpdateDate       = now,
+                    LastUpdateBy         = Actor
+                });
+
+                await CancelWaitingCryptoAsync(order.Id, payment.ExternalPaymentId!, now);
+
+                // 2) El PEDIDO, también atómico: SignupOrderClaim dentro de la activación.
                 activation = await _activation.ActivatePendingSignupAsync(order, now, none);
                 if (activation.IsSuccess)
                 {
@@ -240,20 +248,34 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
                     failureCode = activation.ErrorCode ?? "ACTIVATION_FAILED";
                 }
             }
-            catch (DbUpdateException ex) when (ex is not DbUpdateConcurrencyException && IsOrderAlreadyConsumed(ex))
+            catch (Exception ex) when (ex is not DbUpdateConcurrencyException && IsOrderAlreadyConsumed(ex))
             {
                 // Otro pago de Entrax del mismo pedido quedó Consumed antes: doble cobro.
                 await tx.RollbackAsync(none);
                 failureCode = SignupOrderClaim.AlreadySettledCode;
             }
+            catch
+            {
+                // La transacción se deshace al soltarla; el contexto se limpia aquí.
+                _db.ChangeTracker.Clear();
+                throw;
+            }
         }
 
         if (failureCode is not null)
         {
-            // Se descarta lo marcado y el pago queda a revisar, con lo que se sabe de él.
-            var paidAt = payment.PaidAt;
+            // Se descarta lo marcado y se relee el pago. Si otro camino lo liquidó entre tanto (por eso
+            // este perdió en el pedido o ya no encontró la suscripción pendiente), está Paid: es el mismo
+            // pago ya resuelto, no un doble cobro.
             _db.ChangeTracker.Clear();
             var again = await _db.EntraxPayments.FirstAsync(p => p.Id == payment.Id, none);
+            if (again.Status is EntraxPaymentStatus.Paid or EntraxPaymentStatus.ToReview)
+            {
+                if (again.Status == EntraxPaymentStatus.Paid)
+                    await EnsureUserActiveAsync(again.MemberId);
+                return EntraxSettlementOutcome.AlreadyResolved;
+            }
+
             again.PaidAt        = paidAt;
             again.LastCheckedAt = now;
             return await ReviewAsync(again, failureCode, now, remote.Original);
@@ -264,6 +286,52 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
         _logger.LogInformation("Entrax: alta {OrderId} activada con el pago {ExternalPaymentId} ({Source}).",
             order.Id, payment.ExternalPaymentId, source);
         return EntraxSettlementOutcome.Activated;
+    }
+
+    /// <summary>
+    /// Pasa el pago a Paid/Consumed con un UPDATE condicional (no estaba ya Paid ni ToReview), dentro de
+    /// la transacción de la liquidación: el segundo que llegue espera al bloqueo de la fila y, cuando el
+    /// primero confirma, ya no la encuentra. Devuelve false si otro camino ya lo había liquidado.
+    /// </summary>
+    private async Task<bool> TryClaimPaymentAsync(EntraxPayment payment, DateTime paidAt, decimal paidUsd, DateTime now)
+    {
+        var none = CancellationToken.None;
+
+        if (!_db.Database.IsRelational())
+        {
+            // EF InMemory (pruebas) no tiene UPDATE condicional: se mira lo que hay guardado ahora.
+            var current = await _db.EntraxPayments.AsNoTracking()
+                .Where(p => p.Id == payment.Id).Select(p => p.Status).FirstAsync(none);
+            if (current is EntraxPaymentStatus.Paid or EntraxPaymentStatus.ToReview)
+                return false;
+
+            payment.Status         = EntraxPaymentStatus.Paid;
+            payment.Consumed       = true;
+            payment.ActivatedAt    = now;
+            payment.LastUpdateDate = now;
+            payment.LastUpdateBy   = Actor;
+            return true;
+        }
+
+        var affected = await _db.EntraxPayments
+            .Where(p => p.Id == payment.Id
+                     && p.Status != EntraxPaymentStatus.Paid
+                     && p.Status != EntraxPaymentStatus.ToReview)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(p => p.Status, EntraxPaymentStatus.Paid)
+                .SetProperty(p => p.Consumed, true)
+                .SetProperty(p => p.ActivatedAt, now)
+                .SetProperty(p => p.PaidAt, paidAt)
+                .SetProperty(p => p.PaidAmountUsd, paidUsd)
+                .SetProperty(p => p.LastUpdateDate, now)
+                .SetProperty(p => p.LastUpdateBy, Actor), none);
+
+        if (affected != 1)
+            return false;
+
+        // La fila seguida, con lo que acaba de escribirse y su RowVersion nuevo.
+        await _db.Entry(payment).ReloadAsync(none);
+        return true;
     }
 
     private async Task<EntraxSettlementOutcome> CloseAsync(
@@ -339,7 +407,7 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
         return EntraxSettlementOutcome.ToReview;
     }
 
-    private static bool IsOrderAlreadyConsumed(DbUpdateException ex)
+    private static bool IsOrderAlreadyConsumed(Exception ex)
     {
         for (Exception? e = ex; e is not null; e = e.InnerException)
             if (e.Message.Contains(OrderConsumedIndex, StringComparison.OrdinalIgnoreCase))
