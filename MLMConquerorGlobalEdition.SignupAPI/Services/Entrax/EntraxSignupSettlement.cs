@@ -125,8 +125,9 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
 
         if (payment.Status == EntraxPaymentStatus.Paid)
         {
-            // Ya activó. Si el proceso cayó entre guardar y activar el usuario, esto lo repara.
-            await EnsureUserActiveAsync(payment.MemberId);
+            // Ya activó. Si el proceso cayó entre guardar y activar el usuario, esto lo repara (solo eso:
+            // nunca reactiva una cuenta que un administrador desactivó).
+            await EnsureUserActiveAsync(payment.Id);
             return EntraxSettlementOutcome.AlreadyResolved;
         }
 
@@ -220,7 +221,8 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
                 {
                     await tx.RollbackAsync(none);
                     _db.ChangeTracker.Clear();
-                    await EnsureUserActiveAsync(payment.MemberId);
+                    // Se relee dentro: solo un pago Paid repara la cuenta; uno ToReview, nunca.
+                    await EnsureUserActiveAsync(payment.Id);
                     return EntraxSettlementOutcome.AlreadyResolved;
                 }
 
@@ -280,7 +282,7 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
             if (again.Status is EntraxPaymentStatus.Paid or EntraxPaymentStatus.ToReview)
             {
                 if (again.Status == EntraxPaymentStatus.Paid)
-                    await EnsureUserActiveAsync(again.MemberId);
+                    await EnsureUserActiveAsync(again.Id);
                 return EntraxSettlementOutcome.AlreadyResolved;
             }
 
@@ -452,12 +454,29 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
     private sealed class OrderAlreadyConsumedException(Exception inner)
         : Exception("Another Entrax payment already consumed this signup order.", inner);
 
-    private async Task EnsureUserActiveAsync(string memberId)
+    /// <summary>
+    /// Repara la cuenta de Identity de un alta ya liquidada (el proceso cayó entre confirmar y activar el
+    /// usuario). Solo si las tres cosas se cumplen: el pago está Paid, el miembro Active y el pedido
+    /// Completed. Una cuenta que un administrador desactivó (miembro Inactive o Terminated) no se
+    /// reactiva por un Re-check ni por un callback repetido, y un pago ToReview no da acceso.
+    /// </summary>
+    private async Task EnsureUserActiveAsync(string entraxPaymentId)
     {
+        var none = CancellationToken.None;
+        var paid = await _db.EntraxPayments.AsNoTracking()
+            .Where(p => p.Id == entraxPaymentId && p.Status == EntraxPaymentStatus.Paid)
+            .Select(p => new { p.MemberId, p.OrderId })
+            .FirstOrDefaultAsync(none);
+        if (paid is null) return;
+
+        var orderCompleted = await _db.Orders.AsNoTracking()
+            .AnyAsync(o => o.Id == paid.OrderId && o.Status == OrderStatus.Completed, none);
+        if (!orderCompleted) return;
+
         var email = await _db.MemberProfiles.AsNoTracking()
-            .Where(m => m.MemberId == memberId)
+            .Where(m => m.MemberId == paid.MemberId && m.Status == MemberAccountStatus.Active)
             .Select(m => m.Email)
-            .FirstOrDefaultAsync(CancellationToken.None);
+            .FirstOrDefaultAsync(none);
 
         if (email is not null)
             await SignupUserActivation.ActivateAsync(_users, email);

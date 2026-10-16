@@ -98,7 +98,9 @@ public class EntraxSignupSettlementTests
     [Fact]
     public async Task Un_pago_ya_liquidado_repara_el_usuario_si_quedo_inactivo()
     {
-        var m = await MontarAsync(pago: EntraxPaymentStatus.Paid);
+        var m = await MontarAsync(pedido: OrderStatus.Completed, pago: EntraxPaymentStatus.Paid);
+        (await m.Db.MemberProfiles.SingleAsync()).Status = MemberAccountStatus.Active;
+        await m.Db.SaveChangesAsync();
 
         var r = await m.Liquidacion.SettleAsync(m.PagoId, EntraxSettlementSource.Admin, default);
 
