@@ -1,0 +1,250 @@
+@using System.Globalization
+@using MLMConquerorGlobalEdition.SharedKernel.Billing
+@implements IAsyncDisposable
+@*
+    Pago del alta en rublos por SBP (Entrax): QR, enlace para abrirlo en el móvil, importe en rublos,
+    cuenta atrás y consulta del estado cada pocos segundos. Una sola pieza para Signup.razor y
+    MemberJoin.razor (y para la compra de tokens si algún día se ofrece Entrax ahí).
+
+    No inyecta nada, como CryptoDepositPicker: corre en el WebAssembly del alta. Lo específico entra
+    por parámetro: cómo preguntar el estado (CheckStatus), qué hacer al pagar (OnPaid), al pedir un
+    QR nuevo (OnRetry) o al elegir otro método (OnChooseAnother), y los textos (inglés por defecto,
+    que es el idioma del alta; la página que tenga localizador pasa los suyos).
+
+    La activación NO depende de esta pantalla: el servidor liquida por callback y por barrido aunque
+    la persona cierre la pestaña. Esto solo enseña lo que el servidor ya sabe.
+
+    La cuenta atrás parte de los segundos que calculó el servidor (y se corrige con los de cada
+    consulta) y corre con el reloj monótono de TimeProvider, nunca con una hora: el navegador puede estar
+    en otro huso. TimeProvider es un parámetro para que las pruebas avancen el tiempo a mano.
+
+    Si la cuenta llega a cero y el servidor aún no cerró el pago, el QR se oculta (ya no se debe pagar)
+    pero se sigue preguntando: el servidor decide si fue pagado, caducado o a revisar.
+
+    Estados finales: Paid y Superseded (el alta ya está completada: se oculta el QR y se avisa a la
+    página con OnPaid, que manda a iniciar sesión), ToReview (sin reintento: pagar otra vez sería doble
+    cobro), Expired y Failed (QR nuevo u otro método). En cualquiera de ellos se deja de preguntar.
+*@
+
+<div class="entrax-qr text-center" data-state="@_state" aria-live="polite">
+    @if (_state is EntraxSignupStatuses.Paid or EntraxSignupStatuses.Superseded)
+    {
+        <i class="ri-checkbox-circle-fill fs-1 text-success" aria-hidden="true"></i>
+        <p class="mt-2 mb-0 fw-semibold entrax-done">@(_state == EntraxSignupStatuses.Paid ? PaidText : SupersededText)</p>
+    }
+    else if (_state == EntraxSignupStatuses.ToReview)
+    {
+        <i class="ri-error-warning-line fs-1 text-warning" aria-hidden="true"></i>
+        <p class="mt-2 mb-0 entrax-review">@ReviewText</p>
+    }
+    else if (_state is EntraxSignupStatuses.Expired or EntraxSignupStatuses.Failed)
+    {
+        <p class="mb-3 entrax-ended">@(_state == EntraxSignupStatuses.Expired ? ExpiredText : FailedText)</p>
+        <div class="d-flex flex-wrap gap-2 justify-content-center">
+            <button type="button" class="btn btn-enroll entrax-new-qr" disabled="@Busy" @onclick="OnRetry">@NewQrText</button>
+            <button type="button" class="btn btn-outline-secondary entrax-other" disabled="@Busy" @onclick="OnChooseAnother">@OtherMethodText</button>
+        </div>
+    }
+    else if (Remaining == 0)
+    {
+        @* Caducó por su hora pero el servidor aún no lo cerró: no se enseña el QR, se sigue esperando. *@
+        <div class="entrax-closing">
+            <p class="mb-2 entrax-closing-text">@ClosingText</p>
+            <p class="small text-muted mb-0">
+                <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>@WaitingText
+            </p>
+        </div>
+    }
+    else
+    {
+        <div class="entrax-waiting">
+            <h5 class="mb-2">@TitleText</h5>
+            <p class="small text-muted mb-3">@ScanText</p>
+            @if (ShowImage)
+            {
+                <img class="entrax-qr-image img-fluid mb-3" src="@Payment.QrImage" alt="@QrAltText" width="@QrSize" height="@QrSize" />
+            }
+            @if (ShowLink)
+            {
+                <p>
+                    <a class="btn btn-outline-primary entrax-link" href="@Payment.QrLink" target="_blank" rel="noopener noreferrer">@OpenLinkText</a>
+                </p>
+            }
+            <p class="fw-semibold mb-1 entrax-amount">
+                @string.Format(CultureInfo.InvariantCulture, AmountText,
+                    Payment.AmountRub.ToString("N2", CultureInfo.InvariantCulture),
+                    Payment.AmountUsd.ToString("N2", CultureInfo.InvariantCulture))
+            </p>
+            <p class="small text-muted mb-1 entrax-countdown">
+                @string.Format(CultureInfo.InvariantCulture, ExpiresInText, FormatRemaining(Remaining))
+            </p>
+            <p class="small text-muted mb-0">
+                <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>@WaitingText
+            </p>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Lado en píxeles del QR (cuadrado).</summary>
+    private const int QrSize = 240;
+
+    /// <summary>Cada cuánto despierta el bucle para repintar la cuenta atrás.</summary>
+    private static readonly TimeSpan TickInterval = TimeSpan.FromSeconds(1);
+
+    /// <summary>
+    /// Suelo del ritmo de consulta: SignupAPI solo pregunta a Entrax una vez cada 15 s y la regla de rate
+    /// limit del estado es de 30/min por IP. Un valor menor en <see cref="PollInterval"/> se sube a este.
+    /// </summary>
+    public static readonly TimeSpan MinPollInterval = TimeSpan.FromSeconds(5);
+
+    private const string ImagePrefix = "data:image/";
+    private const string LinkPrefix  = "https://";
+
+    [Parameter, EditorRequired] public EntraxSignupPaymentDto Payment { get; set; } = default!;
+
+    /// <summary>Pregunta el estado al servidor. Null = no se pregunta (solo se pinta).</summary>
+    [Parameter] public Func<CancellationToken, Task<EntraxSignupStatusDto?>>? CheckStatus { get; set; }
+
+    /// <summary>
+    /// El alta quedó pagada y activa en el servidor: por este QR (Paid) o por otro medio (Superseded).
+    /// La página enseña su "bienvenido, inicia sesión".
+    /// </summary>
+    [Parameter] public EventCallback OnPaid          { get; set; }
+    [Parameter] public EventCallback OnRetry         { get; set; }
+    [Parameter] public EventCallback OnChooseAnother { get; set; }
+
+    /// <summary>La página está pidiendo un QR nuevo: los botones se deshabilitan.</summary>
+    [Parameter] public bool Busy { get; set; }
+
+    /// <summary>Cada cuánto se pregunta; nunca menos de <see cref="MinPollInterval"/>.</summary>
+    [Parameter] public TimeSpan PollInterval { get; set; } = MinPollInterval;
+
+    /// <summary>Reloj. Solo lo cambian las pruebas, para avanzar el tiempo a mano.</summary>
+    [Parameter] public TimeProvider Time { get; set; } = TimeProvider.System;
+
+    [Parameter] public string TitleText         { get; set; } = "Pay in rubles with SBP";
+    [Parameter] public string ScanText          { get; set; } = "Scan the QR code with your bank's app, or open the link on your phone.";
+    [Parameter] public string QrAltText         { get; set; } = "SBP payment QR code";
+    [Parameter] public string OpenLinkText      { get; set; } = "Open payment link";
+    /// <summary><c>{0}</c> rublos, <c>{1}</c> dólares.</summary>
+    [Parameter] public string AmountText        { get; set; } = "Amount to pay: {0} RUB (USD {1})";
+    /// <summary><c>{0}</c> mm:ss.</summary>
+    [Parameter] public string ExpiresInText     { get; set; } = "This QR code expires in {0}.";
+    [Parameter] public string ClosingText       { get; set; } = "This QR code has expired; we are confirming with the bank — do not pay it. This may take a few minutes.";
+    [Parameter] public string WaitingText       { get; set; } = "Waiting for your payment…";
+    [Parameter] public string PaidText          { get; set; } = "Payment received! Your account is active — sign in to get started.";
+    [Parameter] public string SupersededText    { get; set; } = "Your enrollment is already complete — sign in to get started. This QR code is no longer needed, please don't pay it.";
+    [Parameter] public string ExpiredText       { get; set; } = "This QR code expired before we received a payment. If you already paid, don't pay again: your account activates as soon as the payment reaches us.";
+    [Parameter] public string FailedText        { get; set; } = "The payment didn't go through. You can try again or choose another payment method.";
+    [Parameter] public string ReviewText        { get; set; } = "We received your payment but need to review it before activating your account. Our support team will contact you.";
+    [Parameter] public string NewQrText         { get; set; } = "Generate a new QR code";
+    [Parameter] public string OtherMethodText   { get; set; } = "Choose another payment method";
+
+    private string _state = EntraxSignupStatuses.AwaitingPayment;
+    private long _baseStamp;
+    private int _baseSeconds;
+    private CancellationTokenSource? _cts;
+    private string? _paymentRef;
+
+    private TimeSpan EffectivePoll => PollInterval < MinPollInterval ? MinPollInterval : PollInterval;
+
+    private int Remaining => Math.Max(0, _baseSeconds - (int)Time.GetElapsedTime(_baseStamp).TotalSeconds);
+
+    // El servidor ya validó la imagen (data:image/png) y el enlace (https); aquí se vuelve a exigir
+    // para que un valor inesperado nunca llegue al DOM como src o href.
+    private bool ShowImage => Payment.QrImage?.StartsWith(ImagePrefix, StringComparison.OrdinalIgnoreCase) == true;
+    private bool ShowLink  => Payment.QrLink?.StartsWith(LinkPrefix, StringComparison.OrdinalIgnoreCase) == true;
+
+    protected override void OnParametersSet()
+    {
+        // Un QR nuevo (reintento) reinicia el estado, la cuenta atrás y la consulta.
+        if (_paymentRef == Payment.PaymentRef) return;
+
+        _paymentRef  = Payment.PaymentRef;
+        _state       = EntraxSignupStatuses.AwaitingPayment;
+        _baseSeconds = Payment.SecondsRemaining;
+        _baseStamp   = Time.GetTimestamp();
+
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+        _ = LoopAsync(_cts.Token);
+    }
+
+    private async Task LoopAsync(CancellationToken ct)
+    {
+        try
+        {
+            var lastCheck = Time.GetTimestamp();
+            while (_state == EntraxSignupStatuses.AwaitingPayment)
+            {
+                await Task.Delay(TickInterval, Time, ct);
+
+                var finished = false;
+                if (CheckStatus is not null && Time.GetElapsedTime(lastCheck) >= EffectivePoll)
+                {
+                    finished  = await CheckAsync(ct);
+                    lastCheck = Time.GetTimestamp();
+                }
+
+                ct.ThrowIfCancellationRequested();
+
+                // Un estado final ya se pintó (una sola vez) dentro de CheckAsync.
+                if (!finished)
+                    await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (ObjectDisposedException) { }
+    }
+
+    /// <summary>Pregunta el estado. Devuelve true si llegó a un estado final y ya se repintó.</summary>
+    private async Task<bool> CheckAsync(CancellationToken ct)
+    {
+        EntraxSignupStatusDto? status;
+        try
+        {
+            status = await CheckStatus!(ct);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            // Un fallo de red no cambia nada: se vuelve a preguntar en el siguiente turno.
+            return false;
+        }
+
+        // Si mientras tanto llegó un QR nuevo o el componente se destruyó, esta respuesta es de otro pago.
+        ct.ThrowIfCancellationRequested();
+
+        if (status is null || !EntraxSignupStatuses.All.Contains(status.Status))
+            return false;
+
+        if (status.Status == EntraxSignupStatuses.AwaitingPayment)
+        {
+            // El servidor manda: se corrige la cuenta atrás con sus segundos.
+            _baseSeconds = status.SecondsRemaining;
+            _baseStamp   = Time.GetTimestamp();
+            return false;
+        }
+
+        _state = status.Status;
+        await InvokeAsync(StateHasChanged);
+        if (_state is EntraxSignupStatuses.Paid or EntraxSignupStatuses.Superseded)
+            await InvokeAsync(() => OnPaid.InvokeAsync());
+        return true;
+    }
+
+    private static string FormatRemaining(int seconds) => $"{seconds / 60:00}:{seconds % 60:00}";
+
+    public ValueTask DisposeAsync()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = null;
+        return ValueTask.CompletedTask;
+    }
+}

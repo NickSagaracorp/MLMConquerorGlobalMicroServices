@@ -21,6 +21,7 @@ using MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Queries.ValidateSpons
 using MLMConquerorGlobalEdition.SignupAPI.Features.Countries;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Tokens.ValidateToken;
 using MLMConquerorGlobalEdition.SignupAPI.Services;
+using MLMConquerorGlobalEdition.SignupAPI.Services.Entrax;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Controllers;
 
@@ -95,7 +96,10 @@ public class SignupsController : ControllerBase
     {
         var result = await _mediator.Send(new SelectProductsCommand(signupId, request), ct);
         if (!result.IsSuccess)
-            return BadRequest(ApiResponse<bool>.Fail(result.ErrorCode!, result.Error!));
+        {
+            var body = ApiResponse<bool>.Fail(result.ErrorCode!, result.Error!);
+            return result.ErrorCode == SignupOrderClaim.SignupAlreadySettledCode ? Conflict(body) : BadRequest(body);
+        }
         return Ok(ApiResponse<bool>.Ok(true, "Products selected successfully."));
     }
 
@@ -107,11 +111,18 @@ public class SignupsController : ControllerBase
         var result = await _mediator.Send(new CompleteSignupCommand(signupId, request), ct);
         if (!result.IsSuccess)
         {
-            // Candado del dueño del token ocupado: no se hizo nada y se puede repetir tal cual.
+            // Candado del token ocupado u otro QR en creación: no se hizo nada y se puede repetir.
+            // Alta ya activada por otro pago (Entrax tardío, cripto): 409, esta llamada no activó nada.
+            // Entrax sin QR usable: 502, el aspirante reintenta o elige otro método.
             var body = ApiResponse<SignupResponse>.Fail(result.ErrorCode!, result.Error!);
-            return result.ErrorCode == CompleteSignupHandler.TokenBusyCode
-                ? Conflict(body)
-                : BadRequest(body);
+            return result.ErrorCode switch
+            {
+                CompleteSignupHandler.TokenBusyCode or EntraxSignupErrors.InProgress
+                    or EntraxSignupErrors.QrAlreadyActive or EntraxSignupErrors.PaymentConfirming
+                    or CompleteSignupHandler.SignupAlreadySettledCode => Conflict(body),
+                EntraxSignupErrors.Unavailable => StatusCode(StatusCodes.Status502BadGateway, body),
+                _ => BadRequest(body)
+            };
         }
         return Ok(ApiResponse<SignupResponse>.Ok(result.Value!));
     }
@@ -151,7 +162,7 @@ public class SignupsController : ControllerBase
             {
                 "CRYPTO_PAYMENT_NOT_FOUND" => NotFound(
                     ApiResponse<ConfirmCryptoPaymentResponse>.Fail(result.ErrorCode!, result.Error!)),
-                "CRYPTO_PAYMENT_ALREADY_CONFIRMED" => Conflict(
+                "CRYPTO_PAYMENT_ALREADY_CONFIRMED" or ConfirmCryptoPaymentHandler.CancelledCode => Conflict(
                     ApiResponse<ConfirmCryptoPaymentResponse>.Fail(result.ErrorCode!, result.Error!)),
                 _ => BadRequest(
                     ApiResponse<ConfirmCryptoPaymentResponse>.Fail(result.ErrorCode!, result.Error!))

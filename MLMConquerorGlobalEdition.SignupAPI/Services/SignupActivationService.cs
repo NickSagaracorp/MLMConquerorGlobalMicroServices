@@ -4,6 +4,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Services;
 
@@ -14,17 +15,21 @@ public class SignupActivationService : ISignupActivationService
     private readonly ISponsorBonusService               _sponsorBonus;
     private readonly IFastStartBonusService             _fastStartBonus;
     private readonly IRecurringBillingEnrollmentService _recurringBillingEnrollment;
+    private readonly ISignupOrderClaim                  _orderClaim;
 
     public SignupActivationService(
         AppDbContext db,
         ISponsorBonusService sponsorBonus,
         IFastStartBonusService fastStartBonus,
-        IRecurringBillingEnrollmentService recurringBillingEnrollment)
+        IRecurringBillingEnrollmentService recurringBillingEnrollment,
+        // Opcional para no tocar las construcciones existentes; el de verdad es SignupOrderClaim.
+        ISignupOrderClaim? orderClaim = null)
     {
         _db                         = db;
         _sponsorBonus               = sponsorBonus;
         _fastStartBonus             = fastStartBonus;
         _recurringBillingEnrollment = recurringBillingEnrollment;
+        _orderClaim                 = orderClaim ?? new SignupOrderClaim(db);
     }
 
     public async Task ActivateAsync(
@@ -113,6 +118,35 @@ public class SignupActivationService : ISignupActivationService
         // Crea o actualiza el SubscriptionBillingState para que el barrido de morosidad sepa que
         // esta suscripción entra en cobro recurrente desde hoy.
         await _recurringBillingEnrollment.EnsureStateForSubscriptionAsync(subscription, actorEmail, ct);
+    }
+
+    public async Task<Result<MemberProfile>> ActivatePendingSignupAsync(Orders order, DateTime now, CancellationToken ct)
+    {
+        var member = await _db.MemberProfiles.FirstOrDefaultAsync(m => m.MemberId == order.MemberId, ct);
+        if (member is null)
+            return Result<MemberProfile>.Failure("MEMBER_NOT_FOUND", "Associated member not found.");
+
+        // El pedido pasa a Completed de forma atómica ANTES de leer la suscripción y de tocar nada más:
+        // si otro pago (cripto, otro QR de Entrax, el mismo pago por otro camino) lo activó entre tanto,
+        // este no activa nada y recibe ORDER_ALREADY_SETTLED, no SUBSCRIPTION_NOT_FOUND (el ganador ya
+        // la activó). Si algo de lo que sigue falla, quien llama deshace su transacción y el reclamo.
+        if (!await _orderClaim.TryCompleteAsync(order, now, member.Email, ct))
+            return Result<MemberProfile>.Failure(SignupOrderClaim.AlreadySettledCode,
+                "This signup was already activated by another payment.");
+
+        var subscription = await _db.MembershipSubscriptions.FirstOrDefaultAsync(
+            s => s.MemberId == member.MemberId && s.SubscriptionStatus == MembershipStatus.Pending, ct);
+        if (subscription is null)
+            return Result<MemberProfile>.Failure("SUBSCRIPTION_NOT_FOUND", "Pending subscription not found.");
+
+        var totalQualPoints = await _db.OrderDetails
+            .AsNoTracking()
+            .Where(od => od.OrderId == order.Id)
+            .Join(_db.Products.AsNoTracking(), od => od.ProductId, p => p.Id, (od, p) => p.QualificationPoins)
+            .SumAsync(ct);
+
+        await ActivateAsync(order, member, subscription, totalQualPoints, now, member.Email, ct);
+        return Result<MemberProfile>.Success(member);
     }
 
     private static List<string> ParseHierarchyPath(string hierarchyPath)

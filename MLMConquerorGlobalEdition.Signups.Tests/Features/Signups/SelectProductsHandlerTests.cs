@@ -91,7 +91,7 @@ public class SelectProductsHandlerTests
             new SelectProductsCommand("ORDER-001", request), CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
-        result.ErrorCode.Should().Be("SIGNUP_NOT_FOUND");
+        result.ErrorCode.Should().Be("SIGNUP_ALREADY_SETTLED", "una alta completada ya está pagada: no es un alta no encontrada.");
     }
 
     [Fact]

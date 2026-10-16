@@ -254,7 +254,7 @@ public class CompleteSignupHandlerTests
             new CompleteSignupCommand("ORD-001", BuildRequest()), CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
-        result.ErrorCode.Should().Be("SIGNUP_NOT_FOUND");
+        result.ErrorCode.Should().Be(CompleteSignupHandler.SignupAlreadySettledCode, "una alta completada ya está pagada: no es un alta no encontrada.");
     }
 
     [Fact]

@@ -1,6 +1,12 @@
 namespace MLMConquerorGlobalEdition.SharedKernel;
 
-public class ApiResponse<T>
+/// <summary>Lo común a cualquier ApiResponse, sea cual sea T: lo usa quien rellena el traceId.</summary>
+public interface IApiResponseEnvelope
+{
+    string TraceId { get; set; }
+}
+
+public class ApiResponse<T> : IApiResponseEnvelope
 {
     public bool Success { get; set; }
     public T? Data { get; set; }

@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.AdminAPI.Services;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
@@ -118,19 +119,24 @@ public class AdminCryptoSignupsController : ControllerBase
             return NotFound(ApiResponse<object>.Fail(
                 "CRYPTO_PAYMENT_NOT_FOUND", "No crypto payment awaiting confirmation was found for that order."));
 
-        var http = _httpFactory.CreateClient("SignupApi");
+        var http = _httpFactory.CreateClient(SignupApiRegistration.HttpClientName);
+
+        // El Bearer va en la petición, no en DefaultRequestHeaders: el cliente sale de la fábrica y no
+        // debe quedarse con el token de nadie.
+        using var forward = new HttpRequestMessage(HttpMethod.Post,
+            $"api/v1/signups/{Uri.EscapeDataString(orderId)}/confirm-crypto-payment")
+        {
+            Content = JsonContent.Create(new { cryptoTransactionId = request.CryptoTransactionId, notes = request.Notes })
+        };
 
         var bearer = Request.Headers.Authorization.ToString();
         if (!string.IsNullOrWhiteSpace(bearer)
             && AuthenticationHeaderValue.TryParse(bearer, out var parsed))
         {
-            http.DefaultRequestHeaders.Authorization = parsed;
+            forward.Headers.Authorization = parsed;
         }
 
-        var resp = await http.PostAsJsonAsync(
-            $"api/v1/signups/{orderId}/confirm-crypto-payment",
-            new { cryptoTransactionId = request.CryptoTransactionId, notes = request.Notes },
-            ct);
+        using var resp = await http.SendAsync(forward, ct);
 
         var body = await resp.Content.ReadAsStringAsync(ct);
 

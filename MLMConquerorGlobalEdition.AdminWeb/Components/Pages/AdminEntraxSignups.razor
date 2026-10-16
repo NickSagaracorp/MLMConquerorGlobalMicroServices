@@ -1,0 +1,285 @@
+@page "/admin/billing/entrax-signups"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.CryptoPaymentApprovers)]
+@inject HttpClient Http
+
+@*
+    Altas pagadas en rublos por SBP con Entrax (Plan H). Re-check vuelve a preguntar a Entrax y, si el
+    pago está hecho y cuadra, activa el alta por el mismo camino que el webhook (lo hace SignupAPI).
+    Los "To review" tienen dinero en juego: o se aplican a mano o se devuelven desde Entrax.
+
+    El atributo de arriba solo esconde la pantalla: AdminEntraxSignupsController y SignupAPI
+    comprueban los mismos cuatro roles. Cada Re-check queda en AuditTracking (lo escribe AdminAPI).
+    Las fechas son hora de servidor, como el resto del admin.
+*@
+
+<PageTitle>Entrax Signups — Admin</PageTitle>
+
+<BreadcrumbNav Items="@(new List<BreadcrumbNav.BreadcrumbItem> {
+    new("Admin Dashboard", "/admin"), new("Billing"), new("Entrax Signups") })" />
+
+@if (_alertMsg is not null)
+{
+    <div class="alert @(_alertIsError ? "alert-danger" : "alert-success") alert-dismissible mb-3">
+        @_alertMsg <button type="button" class="btn-close" @onclick="() => _alertMsg = null"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <h5 class="mb-0 fw-bold">Ruble (SBP) signups — Entrax</h5>
+            <small class="text-muted">
+                Paid signups activate automatically. "To review" means money may have been received but was not applied.
+            </small>
+        </div>
+        <div class="d-flex gap-2">
+            <div class="btn-group btn-group-sm">
+                <button class="btn @(_view == "open" ? "btn-primary" : "btn-outline-primary")" @onclick='() => ChangeView("open")'>Awaiting payment</button>
+                <button class="btn @(_view == "review" ? "btn-primary" : "btn-outline-primary")" @onclick='() => ChangeView("review")'>To review</button>
+                <button class="btn @(_view == "recent" ? "btn-primary" : "btn-outline-primary")" @onclick='() => ChangeView("recent")'>Recent (30 days)</button>
+            </div>
+            <button class="btn btn-sm btn-outline-secondary" @onclick="LoadAsync" disabled="@_loading">
+                <i class="ri-refresh-line"></i> Refresh
+            </button>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+        }
+        else if (_rows.Count == 0)
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="ri-qr-code-line" style="font-size:2.5rem;opacity:.4"></i>
+                <p class="mt-2 mb-0">Nothing here.</p>
+            </div>
+        }
+        else
+        {
+            @* Sin filtro ni ordenación del grid: solo actuarían sobre la página cargada. Las vistas de
+               arriba filtran en el servidor y el orden es siempre del más reciente al más antiguo. *@
+            <SfGrid TValue="EntraxSignupRowDto" DataSource="@_rows" AllowResizing="true" GridLines="GridLine.Horizontal">
+                <GridColumns>
+                    <GridColumn HeaderText="Created" Width="140">
+                        <Template>
+                            <span class="small text-muted">@(((EntraxSignupRowDto)context).CreatedAt.ToString("yyyy-MM-dd HH:mm"))</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(EntraxSignupRowDto.MemberId)" HeaderText="Member ID" Width="120" />
+                    <GridColumn HeaderText="Order" Width="120">
+                        <Template>@(((EntraxSignupRowDto)context).OrderNo ?? "—")</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Name" Width="170">
+                        <Template>@(((EntraxSignupRowDto)context).FullName ?? "(profile not found)")</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Email" Width="200">
+                        <Template>@(((EntraxSignupRowDto)context).Email ?? "—")</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Country" Width="90">
+                        <Template>@(((EntraxSignupRowDto)context).Country ?? "—")</Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(EntraxSignupRowDto.Status)" HeaderText="Status" Width="140" TextAlign="TextAlign.Center">
+                        <Template>
+                            @{ var s = ((EntraxSignupRowDto)context).Status; }
+                            <span class="badge @StatusBadge(s)">@s</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="USD" Width="90" TextAlign="TextAlign.Right">
+                        <Template>@(((EntraxSignupRowDto)context).AmountUsd.ToString("N2"))</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="RUB" Width="110" TextAlign="TextAlign.Right">
+                        <Template>@(((EntraxSignupRowDto)context).AmountRub?.ToString("N2") ?? "—")</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Paid USD" Width="100" TextAlign="TextAlign.Right">
+                        <Template>@(((EntraxSignupRowDto)context).PaidAmountUsd?.ToString("N2") ?? "—")</Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Reason" Width="190">
+                        <Template><code class="small">@(((EntraxSignupRowDto)context).Reason ?? "—")</code></Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Expires" Width="140">
+                        <Template>
+                            <span class="small text-muted">@(((EntraxSignupRowDto)context).ExpiresAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Paid at" Width="140">
+                        <Template>
+                            <span class="small text-muted">@(((EntraxSignupRowDto)context).PaidAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Entrax order / payment id" Width="260">
+                        <Template>
+                            @{ var r = (EntraxSignupRowDto)context; }
+                            <code class="small d-block">@r.ExternalOrderId</code>
+                            <code class="small d-block text-muted">@(r.ExternalPaymentId ?? "—")</code>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Last check" Width="140">
+                        <Template>
+                            <span class="small text-muted">@(((EntraxSignupRowDto)context).LastCheckedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</span>
+                        </Template>
+                    </GridColumn>
+                    <GridColumn HeaderText="Actions" Width="120" TextAlign="TextAlign.Center">
+                        <Template>
+                            @{ var row = (EntraxSignupRowDto)context; }
+                            <button class="btn btn-sm btn-outline-primary py-0" disabled="@(_busyId is not null)"
+                                    @onclick="() => RecheckAsync(row)" title="Ask Entrax again and settle">
+                                @if (_busyId == row.Id) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                                Re-check
+                            </button>
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+
+            @if (_totalPages > 1)
+            {
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light">
+                    <small class="text-muted">@_totalCount payments — Page @_page of @_totalPages</small>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(_page == 1 ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page - 1)">‹</button></li>
+                            @for (int i = Math.Max(1, _page - 2); i <= Math.Min(_totalPages, _page + 2); i++)
+                            { var pg = i; <li class="page-item @(_page == pg ? "active" : "")"><button class="page-link" @onclick="() => ChangePage(pg)">@pg</button></li> }
+                            <li class="page-item @(_page == _totalPages ? "disabled" : "")"><button class="page-link" @onclick="() => ChangePage(_page + 1)">›</button></li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+        }
+    </div>
+    <div class="card-footer bg-light small text-muted">
+        Re-check asks Entrax for the real status; it never marks anything as paid on its own. Every Re-check is audited.
+        Refunds of "To review" payments are done manually in Entrax.
+    </div>
+</div>
+
+@code {
+    private const int PageSize = 50;
+
+    private List<EntraxSignupRowDto> _rows = new();
+    private string  _view = "open";
+    private int     _page = 1;
+    private int     _totalCount;
+    private int     _totalPages = 1;
+    private bool    _loading = true;
+    private string? _busyId;
+    private string? _alertMsg;
+    private bool    _alertIsError;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task ChangeView(string view)
+    {
+        _view = view;
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task ChangePage(int p)
+    {
+        if (p < 1 || p > _totalPages) return;
+        _page = p;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+        try
+        {
+            var r = await Http.GetFromJsonAsync<ApiResp<Paged<EntraxSignupRowDto>>>(
+                $"api/v1/admin/entrax-signups?view={_view}&page={_page}&pageSize={PageSize}");
+            _rows       = r?.Data?.Items.ToList() ?? new();
+            _totalCount = r?.Data?.TotalCount ?? 0;
+            _totalPages = Math.Max(1, r?.Data?.TotalPages ?? 1);
+        }
+        catch (Exception ex)
+        {
+            // Sin lista: lo que hubiera es de otra vista o de otra página y engañaría.
+            _rows       = new();
+            _totalCount = 0;
+            _totalPages = 1;
+            _alertMsg = $"Error: {ex.Message}";
+            _alertIsError = true;
+        }
+        finally { _loading = false; }
+    }
+
+    private async Task RecheckAsync(EntraxSignupRowDto row)
+    {
+        if (_busyId is not null) return;   // doble clic: un Re-check a la vez
+        _busyId = row.Id;
+        try
+        {
+            using var resp = await Http.PostAsync($"api/v1/admin/entrax-signups/{Uri.EscapeDataString(row.Id)}/recheck", null);
+            ApiResp<RecheckResult>? payload = null;
+            try { payload = await resp.Content.ReadFromJsonAsync<ApiResp<RecheckResult>>(); } catch { /* cuerpo no JSON (403 sin cuerpo) */ }
+
+            if (resp.IsSuccessStatusCode && payload?.Data is not null)
+            {
+                _alertMsg     = $"{row.MemberId}: {OutcomeText(payload.Data.Outcome)}";
+                _alertIsError = payload.Data.Outcome is "ToReview" or "ProviderUnavailable" or "Failed";
+                await LoadAsync();
+            }
+            else if (resp.StatusCode is System.Net.HttpStatusCode.Forbidden or System.Net.HttpStatusCode.Unauthorized)
+            {
+                _alertMsg     = "You do not have permission to re-check Entrax payments.";
+                _alertIsError = true;
+            }
+            else
+            {
+                _alertMsg = payload?.ErrorCode switch
+                {
+                    "ENTRAX_PAYMENT_NOT_FOUND" => "This payment no longer exists. Refresh the list.",
+                    "SIGNUP_API_UNAVAILABLE"   => "The signup service did not respond. Try again in a moment.",
+                    _ => payload?.Errors?.FirstOrDefault() ?? payload?.Message ?? $"Re-check failed ({(int)resp.StatusCode})."
+                };
+                _alertIsError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _alertMsg = $"Error: {ex.Message}";
+            _alertIsError = true;
+        }
+        finally { _busyId = null; }
+    }
+
+    private static string OutcomeText(string outcome) => outcome switch
+    {
+        "Activated"           => "paid — the signup is now active.",
+        "AlreadyResolved"     => "already settled; nothing changed.",
+        "StillPending"        => "Entrax still shows it as pending.",
+        "Failed"              => "Entrax reports the payment failed. The order is open again.",
+        "Expired"             => "the QR expired without payment. The order is open again.",
+        "ToReview"            => "money may have been received but it was not applied. Review it and refund in Entrax if needed.",
+        "ProviderUnavailable" => "Entrax did not answer. Try again later.",
+        _                     => outcome
+    };
+
+    private static string StatusBadge(string status) => status switch
+    {
+        "Paid"            => "bg-success",
+        "ToReview"        => "bg-danger",
+        "AwaitingPayment" => "bg-warning text-dark",
+        "Superseded"      => "bg-info text-dark",
+        _                 => "bg-secondary"
+    };
+
+    // AdminWeb no referencia AdminAPI: el contrato se duplica por forma del JSON, como en AdminCryptoSignups.razor.
+    // PantallaAdminEntraxSignupsTests (AdminAPI.Tests) vigila que la fila no se separe de la del controlador.
+    private record ApiResp<T>(bool Success, T? Data, string? Message, string? ErrorCode, IEnumerable<string>? Errors);
+
+    private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);
+
+    private record RecheckResult(string Outcome);
+
+    private record EntraxSignupRowDto(
+        string Id, string OrderId, string? OrderNo, string MemberId, string? FullName, string? Email, string? Country,
+        string Status, decimal AmountUsd, decimal? AmountRub, decimal? PaidAmountUsd, string ExternalOrderId,
+        string? ExternalPaymentId, DateTime? ExpiresAt, DateTime? PaidAt, DateTime? LastCheckedAt, string? Reason,
+        DateTime CreatedAt);
+}

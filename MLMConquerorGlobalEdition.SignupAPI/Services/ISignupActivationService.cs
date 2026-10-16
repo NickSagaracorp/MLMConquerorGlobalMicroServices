@@ -1,6 +1,7 @@
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
+using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Services;
 
@@ -27,4 +28,19 @@ public interface ISignupActivationService
         DateTime now,
         string actorEmail,
         CancellationToken ct);
+
+    /// <summary>
+    /// Lo mismo que <see cref="ActivateAsync"/>, partiendo solo del pedido: carga el miembro, su
+    /// suscripción en Pending y los puntos de los productos del pedido. Es lo que hacen la
+    /// confirmación cripto y Entrax cuando el dinero llega más tarde. El actor de la auditoría es el
+    /// correo del miembro, como en la vía inmediata.
+    ///
+    /// No guarda (aunque el alta en el cobro recurrente sí lo hace por dentro: quien llama marca su
+    /// propia fila ANTES de llamar, para que viaje en ese guardado). Si falla, no ha tocado nada.
+    ///
+    /// El pedido se reclama de forma atómica (<see cref="ISignupOrderClaim"/>): si otro pago ya lo
+    /// activó devuelve ORDER_ALREADY_SETTLED. En SQL Server ese UPDATE se ejecuta en el acto, así que
+    /// quien llama abre una transacción antes y la confirma después de su SaveChanges.
+    /// </summary>
+    Task<Result<MemberProfile>> ActivatePendingSignupAsync(Orders order, DateTime now, CancellationToken ct);
 }

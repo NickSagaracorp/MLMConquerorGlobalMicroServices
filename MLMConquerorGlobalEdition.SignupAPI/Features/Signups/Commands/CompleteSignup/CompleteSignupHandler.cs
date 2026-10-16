@@ -16,6 +16,7 @@ using MLMConquerorGlobalEdition.SharedKernel.Billing;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs;
 using MLMConquerorGlobalEdition.SignupAPI.Services;
+using MLMConquerorGlobalEdition.SignupAPI.Services.Entrax;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Commands.CompleteSignup;
 
@@ -40,6 +41,10 @@ namespace MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Commands.Complete
 /// guardar y confirmar ocurren dentro. Así un canje y una distribución simultáneos del mismo código
 /// no se pisan. Si aun así el guardado choca con los tokens de concurrencia de <c>TokenTransaction</c>
 /// (dueño y estado), el alta falla con TOKEN_NOT_VALID y no se guarda nada.
+///
+/// CON ENTRAX (rublos por SBP) pasa lo mismo que con cripto —pedido en Processing, miembro y
+/// suscripción en Pending, usuario inactivo, ni una comisión— pero el cobro no lo confirma nadie de
+/// la casa: lo liquida EntraxSignupSettlement cuando Entrax dice "paid". Aquí solo se emite el QR.
 /// </summary>
 public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Result<SignupResponse>>
 {
@@ -53,9 +58,54 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
     private readonly ISignupActivationService     _activation;
     private readonly ICryptoDepositAddressReader  _cryptoAddresses;
     private readonly IMemberFundsGate             _gate;
+    private readonly IEntraxSignupCheckout?       _entraxCheckout;
+    private readonly ISignupOrderClaim            _orderClaim;
 
     /// <summary>El candado del dueño del token está ocupado: no se hizo nada y se puede repetir.</summary>
     public const string TokenBusyCode = "TOKEN_BUSY";
+
+    /// <summary>
+    /// Otro pago (un QR de Entrax tardío, una cripto) activó este alta entre la lectura y la activación:
+    /// esta llamada no activa nada. 409.
+    /// </summary>
+    public const string SignupAlreadySettledCode = SignupOrderClaim.SignupAlreadySettledCode;
+
+    /// <summary>
+    /// El alta no está en Pending: se dice POR QUÉ en vez de un "no encontrada" que no ayuda.
+    ///  - Completed: ya está pagada y activa (por un QR tardío, cripto, tarjeta o token) -> 409
+    ///    SIGNUP_ALREADY_SETTLED; la pantalla manda a iniciar sesión.
+    ///  - Con un pago de Entrax esperando (AwaitingPayment), con CUALQUIER método: 409
+    ///    ENTRAX_QR_ALREADY_ACTIVE si su QR sigue vivo (o recién pedido), y ENTRAX_PAYMENT_CONFIRMING si
+    ///    ya caducó pero el servidor aún no lo cerró (hasta unos 12 min). La pantalla no reintenta.
+    ///  - Cualquier otro caso (no existe, no es el pedido de un alta, o cripto en proceso) sigue siendo
+    ///    SIGNUP_NOT_FOUND: el 409 no puede servir para averiguar si un id de pedido cualquiera existe.
+    /// </summary>
+    private async Task<Result<SignupResponse>> ExplainMissingPendingOrderAsync(
+        string signupId, PaymentMethodType method, DateTime now, CancellationToken ct)
+    {
+        var status = await SignupEnrollmentOrder.GetStatusAsync(_db, signupId, ct);
+
+        if (status == OrderStatus.Completed)
+            return Result<SignupResponse>.Failure(SignupAlreadySettledCode,
+                "This signup is already paid and active. Please sign in.");
+
+        if (status is not null)
+        {
+            var waiting = await _db.EntraxPayments.AsNoTracking()
+                .Where(p => p.OrderId == signupId && p.Status == EntraxPaymentStatus.AwaitingPayment)
+                .Select(p => p.ExpiresAt)
+                .ToListAsync(ct);
+
+            if (waiting.Count > 0)
+                return waiting.Any(expires => expires is null || expires > now)
+                    ? Result<SignupResponse>.Failure(EntraxSignupErrors.QrAlreadyActive,
+                        "There is already an active QR for this signup in another window.")
+                    : Result<SignupResponse>.Failure(EntraxSignupErrors.PaymentConfirming,
+                        "An SBP payment for this signup is being confirmed; please wait a few minutes and try again");
+        }
+
+        return Result<SignupResponse>.Failure("SIGNUP_NOT_FOUND", "Pending signup not found.");
+    }
 
     private const string TokenNotValidMessage = "This token is not valid for this signup.";
 
@@ -69,7 +119,12 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
         ITokenRedemptionService tokenRedemption,
         ISignupActivationService activation,
         ICryptoDepositAddressReader cryptoAddresses,
-        IMemberFundsGate gate)
+        IMemberFundsGate gate,
+        // Opcional a propósito: sin él (pruebas antiguas, o Entrax sin registrar) el método no está
+        // disponible y el alta lo rechaza con ENTRAX_NOT_AVAILABLE. El contenedor lo inyecta.
+        IEntraxSignupCheckout? entraxCheckout = null,
+        // Opcional por lo mismo; el contenedor inyecta SignupOrderClaim.
+        ISignupOrderClaim? orderClaim = null)
     {
         _db              = db;
         _dateTime        = dateTime;
@@ -81,6 +136,8 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
         _activation      = activation;
         _cryptoAddresses = cryptoAddresses;
         _gate            = gate;
+        _entraxCheckout  = entraxCheckout;
+        _orderClaim      = orderClaim ?? new SignupOrderClaim(db);
     }
 
     public async Task<Result<SignupResponse>> Handle(CompleteSignupCommand command, CancellationToken ct)
@@ -109,7 +166,7 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
             .FirstOrDefaultAsync(o => o.Id == command.SignupId && o.Status == OrderStatus.Pending, ct);
 
         if (order is null)
-            return Result<SignupResponse>.Failure("SIGNUP_NOT_FOUND", "Pending signup not found.");
+            return await ExplainMissingPendingOrderAsync(command.SignupId, req.PaymentMethod, now, ct);
 
         var productsExistInCatalog = await _db.Products
             .AnyAsync(p => p.IsActive && !p.IsDeleted, ct);
@@ -138,6 +195,13 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
         if (appUser is null || appUser.IsActive)
             return Result<SignupResponse>.Failure(
                 "USER_NOT_FOUND", "Pending user account not found for this signup.");
+
+        // Rublos por SBP solo donde está encendido y para el país del aspirante (MemberProfile.Country,
+        // ISO2). Se comprueba aquí aunque la pantalla ya esconda la pestaña.
+        if (req.PaymentMethod == PaymentMethodType.Entrax
+            && (_entraxCheckout is null || !_entraxCheckout.IsOfferedFor(member.Country)))
+            return Result<SignupResponse>.Failure(EntraxSignupErrors.NotAvailable,
+                "Payment in rubles (SBP) is not available for your country.");
 
         // La captura se sube ANTES del canje: es red hacia S3 y no debe ir dentro del candado del dueño
         // del token. Si luego el canje falla, el objeto queda huérfano en S3 (el pedido no se guarda).
@@ -239,14 +303,39 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
             //
             // Sprint-15 Bug A: the new leaf's own stat row never races (member just created)
             // so we can still use AddAsync here. Ancestor rows DO race — see below.
-            await _db.MemberStatistics.AddAsync(new MemberStatisticEntity
+            //
+            // Un alta que volvió a Pending (QR de Entrax fallido o caducado) se completa otra vez: la
+            // fila ya existe del primer intento y no se duplica.
+            if (!await _db.MemberStatistics.AnyAsync(s => s.MemberId == member.MemberId, ct))
             {
-                MemberId         = member.MemberId,
-                PersonalPoints   = totalQualPoints,
-                EnrollmentPoints = totalQualPoints,
-                CreatedBy        = member.Email,
-                CreationDate     = now
-            }, ct);
+                await _db.MemberStatistics.AddAsync(new MemberStatisticEntity
+                {
+                    MemberId         = member.MemberId,
+                    PersonalPoints   = totalQualPoints,
+                    EnrollmentPoints = totalQualPoints,
+                    CreatedBy        = member.Email,
+                    CreationDate     = now
+                }, ct);
+            }
+
+            if (req.PaymentMethod == PaymentMethodType.Entrax)
+            {
+                // StartAsync reserva el pedido (Processing), guarda —también la fila de estadísticas de
+                // arriba— y pide el QR. Si Entrax falla, deja el pedido en Pending para reintentar.
+                var started = await _entraxCheckout!.StartAsync(order, member, now, ct);
+                if (!started.IsSuccess)
+                    return Result<SignupResponse>.Failure(started.ErrorCode!, started.Error!);
+
+                return Result<SignupResponse>.Success(new SignupResponse
+                {
+                    SignupId   = order.Id,
+                    MemberId   = member.MemberId,
+                    Email      = member.Email,
+                    MemberType = member.MemberType.ToString(),
+                    EnrollDate = member.EnrollDate,
+                    Entrax     = started.Value
+                });
+            }
 
             if (req.PaymentMethod == PaymentMethodType.Crypto)
             {
@@ -300,19 +389,40 @@ public class CompleteSignupHandler : IRequestHandler<CompleteSignupCommand, Resu
 
             // Activar puede guardar por su cuenta (el alta en la facturación recurrente): por eso el choque de
             // concurrencia se recoge de las dos llamadas. Con token, todo va en la transacción del candado y
-            // se deshace al soltarla; sin token, ningún guardado toca un código.
+            // se deshace al soltarla; sin token se abre una aquí, porque el pedido se reclama dentro.
+            var ownTx = tokenLock is null && _db.Database.IsRelational()
+                ? await _db.Database.BeginTransactionAsync(ct)
+                : null;
             try
             {
+                // El pedido pasa de Pending a Completed de forma atómica ANTES de activar: si un pago de
+                // Entrax tardío o la cripto lo activó entre la lectura y aquí, esta llamada no activa nada
+                // (y la transacción se deshace al soltarla, con el canje del token si lo hubo).
+                if (!await _orderClaim.TryCompleteFromPendingAsync(order, now, member.Email, ct))
+                {
+                    _db.ChangeTracker.Clear();
+                    return Result<SignupResponse>.Failure(SignupAlreadySettledCode,
+                        "This signup was already completed with another payment.");
+                }
+
                 await _activation.ActivateAsync(
                     order, member, subscription, totalQualPoints, now, member.Email, ct);
 
                 await _db.SaveChangesAsync(ct);
+
+                if (ownTx is not null)
+                    await ownTx.CommitAsync(ct);
             }
             catch (DbUpdateConcurrencyException) when (req.PaymentMethod == PaymentMethodType.Token)
             {
                 // Otro proceso canjeó o movió el código entre la lectura y el guardado.
                 _db.ChangeTracker.Clear();
                 return Result<SignupResponse>.Failure("TOKEN_NOT_VALID", TokenNotValidMessage);
+            }
+            finally
+            {
+                if (ownTx is not null)
+                    await ownTx.DisposeAsync();
             }
 
             if (tokenLock is not null)

@@ -292,18 +292,14 @@ builder.Services.AddHttpClient("HealthCheck")
     {
         ServerCertificateCustomValidationCallback = (_, _, _, _) => true
     });
-builder.Services.AddHttpClient("SignupApi", client =>
-{
-    client.BaseAddress = new Uri(builder.Configuration["Services:SignupAPI"] ?? "https://localhost:7005");
-})
-.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-{
-    ServerCertificateCustomValidationCallback = (_, _, _, _) => true
-});
+// SignupAPI recibe el Bearer del administrador (confirmar cripto, Re-check de Entrax). Fuera de
+// Development valida el certificado y exige Services:SignupAPI (no está en el appsettings.json base):
+// ver SignupApiRegistration.
+builder.Services.AddSignupApiClient(builder.Configuration, builder.Environment);
 
 // Billing confirma, rechaza o reabre las compras de tokens en cripto y cierra las que quedaron a
 // conciliar (Plan F); AdminTokenPurchasesController le reenvía el Bearer del administrador. Sin
-// desactivar la validación del certificado, a diferencia del cliente de arriba. Fuera de Development
+// desactivar la validación del certificado. Fuera de Development
 // exige Services:BillingBaseUrl (no está en el appsettings.json base): ver BillingApiRegistration.
 builder.Services.AddBillingApiClient(builder.Configuration, builder.Environment);
 

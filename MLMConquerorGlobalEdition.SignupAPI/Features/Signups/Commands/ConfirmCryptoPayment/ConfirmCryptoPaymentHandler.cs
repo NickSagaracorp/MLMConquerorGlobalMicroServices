@@ -2,7 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using MLMConquerorGlobalEdition.Domain.Entities.Membership;
+using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Identity;
@@ -44,6 +44,12 @@ public class ConfirmCryptoPaymentHandler
     : IRequestHandler<ConfirmCryptoPaymentCommand, Result<ConfirmCryptoPaymentResponse>>
 {
     private const string AlreadyConfirmedCode = "CRYPTO_PAYMENT_ALREADY_CONFIRMED";
+
+    /// <summary>
+    /// La confirmación se canceló porque el alta se pagó por otro medio (Entrax): esa transferencia no hay
+    /// que aplicarla. 409.
+    /// </summary>
+    public const string CancelledCode = "CRYPTO_PAYMENT_CANCELLED";
     private const string AlreadyConfirmedText = "This crypto payment has already been confirmed.";
 
     private readonly AppDbContext                          _db;
@@ -81,6 +87,11 @@ public class ConfirmCryptoPaymentHandler
                 "CRYPTO_PAYMENT_NOT_FOUND",
                 "No crypto payment awaiting confirmation was found for that order.");
 
+        // Cancelada porque el alta se pagó con Entrax (EntraxSignupSettlement): no es "ya confirmada".
+        if (confirmation.Status == CryptoPaymentConfirmationStatus.Cancelled)
+            return Result<ConfirmCryptoPaymentResponse>.Failure(CancelledCode,
+                "This crypto payment was cancelled because the signup was paid another way. Do not apply the transfer.");
+
         // Capa 1 — la máquina de estados.
         if (confirmation.Status != CryptoPaymentConfirmationStatus.AwaitingPayment)
             return Result<ConfirmCryptoPaymentResponse>.Failure(AlreadyConfirmedCode, AlreadyConfirmedText);
@@ -93,25 +104,6 @@ public class ConfirmCryptoPaymentHandler
         if (order.Status != OrderStatus.Processing)
             return Result<ConfirmCryptoPaymentResponse>.Failure(AlreadyConfirmedCode, AlreadyConfirmedText);
 
-        var member = await _db.MemberProfiles
-            .FirstOrDefaultAsync(m => m.MemberId == order.MemberId, ct);
-        if (member is null)
-            return Result<ConfirmCryptoPaymentResponse>.Failure(
-                "MEMBER_NOT_FOUND", "Associated member not found.");
-
-        var subscription = await _db.MembershipSubscriptions
-            .FirstOrDefaultAsync(
-                s => s.MemberId == member.MemberId && s.SubscriptionStatus == MembershipStatus.Pending, ct);
-        if (subscription is null)
-            return Result<ConfirmCryptoPaymentResponse>.Failure(
-                "SUBSCRIPTION_NOT_FOUND", "Pending subscription not found.");
-
-        var totalQualPoints = await _db.OrderDetails
-            .AsNoTracking()
-            .Where(od => od.OrderId == order.Id)
-            .Join(_db.Products.AsNoTracking(), od => od.ProductId, p => p.Id, (od, p) => p.QualificationPoins)
-            .SumAsync(ct);
-
         // El rastro se marca ANTES de activar, para que la fila de confirmación —con su
         // RowVersion— viaje en el mismo lote de UPDATE que el resto. Es lo que decide la carrera.
         confirmation.Status              = CryptoPaymentConfirmationStatus.Confirmed;
@@ -123,11 +115,16 @@ public class ConfirmCryptoPaymentHandler
         confirmation.LastUpdateDate      = now;
         confirmation.LastUpdateBy        = command.ConfirmedByEmail;
 
+        MemberProfile member;
         try
         {
-            // Exactamente lo mismo que hace la vía de tarjeta al completar: pedido cerrado,
-            // miembro y suscripción activos, deltas encolados al upline y comisiones calculadas.
-            // Un solo sitio.
+            // La transacción envuelve la transición atómica del pedido (SignupOrderClaim, un UPDATE
+            // que se ejecuta en el acto) y todo lo que guarda la activación: o entra todo o nada.
+            await using var tx = await _db.Database.BeginTransactionAsync(ct);
+
+            // Exactamente lo mismo que hacen la vía de tarjeta al completar y Entrax al cobrar:
+            // pedido cerrado, miembro y suscripción activos, deltas encolados al upline y
+            // comisiones calculadas. Un solo sitio (ISignupActivationService).
             //
             // La llamada va DENTRO del try aunque no sea ella quien persiste: por dentro,
             // RecurringBillingEnrollmentService.EnsureStateForSubscriptionAsync llama a
@@ -137,10 +134,29 @@ public class ConfirmCryptoPaymentHandler
             // abajo. Con el try solo alrededor del SaveChanges explícito, al perdedor le salía
             // "An unexpected error occurred" en vez de "ya está confirmado". Verificado en
             // caliente con cuatro confirmaciones simultáneas.
-            await _activation.ActivateAsync(
-                order, member, subscription, totalQualPoints, now, member.Email, ct);
+            var activation = await _activation.ActivatePendingSignupAsync(order, now, ct);
+            if (!activation.IsSuccess)
+            {
+                // No se activa nada: se descarta la marca de la confirmación para que no viaje en
+                // ningún guardado posterior.
+                await tx.RollbackAsync(ct);
+                _db.ChangeTracker.Clear();
 
+                // Otro pago (Entrax, u otra confirmación que ganó la carrera) ya activó el pedido.
+                if (activation.ErrorCode == SignupOrderClaim.AlreadySettledCode)
+                {
+                    _logger.LogWarning(
+                        "ConfirmCryptoPayment: el pedido {OrderId} ya estaba activado por otro pago; no se confirma.",
+                        command.OrderId);
+                    return Result<ConfirmCryptoPaymentResponse>.Failure(AlreadyConfirmedCode, AlreadyConfirmedText);
+                }
+
+                return Result<ConfirmCryptoPaymentResponse>.Failure(activation.ErrorCode!, activation.Error!);
+            }
+
+            member = activation.Value!;
             await _db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
         }
         catch (DbUpdateConcurrencyException)
         {
@@ -152,13 +168,7 @@ public class ConfirmCryptoPaymentHandler
 
         // Solo ahora la cuenta puede entrar al portal. Hasta este punto LoginHandler la rechazaba
         // por IsActive = false, que es lo que se quería mientras el dinero no estuviera cobrado.
-        var appUser = await _userManager.FindByEmailAsync(member.Email);
-        if (appUser is not null && !appUser.IsActive)
-        {
-            appUser.IsActive       = true;
-            appUser.EmailConfirmed = true;
-            await _userManager.UpdateAsync(appUser);
-        }
+        await SignupUserActivation.ActivateAsync(_userManager, member.Email);
 
         return Result<ConfirmCryptoPaymentResponse>.Success(new ConfirmCryptoPaymentResponse
         {

@@ -4,6 +4,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
+using MLMConquerorGlobalEdition.SignupAPI.Services;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Commands.SelectProducts;
 
@@ -28,7 +29,14 @@ public class SelectProductsHandler : IRequestHandler<SelectProductsCommand, Resu
             .FirstOrDefaultAsync(o => o.Id == command.SignupId && o.Status == OrderStatus.Pending, ct);
 
         if (order is null)
-            return Result<bool>.Failure("SIGNUP_NOT_FOUND", "Pending signup not found.");
+        {
+            // Un alta ya completada (p. ej. por un QR tardío) no es "no encontrada": está pagada y activa.
+            // Solo si es el pedido de un alta: el 409 no puede servir para averiguar si un id cualquiera existe.
+            var completed = await SignupEnrollmentOrder.GetStatusAsync(_db, command.SignupId, ct) == OrderStatus.Completed;
+            return completed
+                ? Result<bool>.Failure(SignupOrderClaim.SignupAlreadySettledCode, "This signup is already paid and active. Please sign in.")
+                : Result<bool>.Failure("SIGNUP_NOT_FOUND", "Pending signup not found.");
+        }
 
         var member = await _db.MemberProfiles
             .AsNoTracking()

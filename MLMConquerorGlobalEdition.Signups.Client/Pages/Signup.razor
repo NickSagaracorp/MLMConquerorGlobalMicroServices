@@ -30,7 +30,7 @@
             @if (!string.IsNullOrEmpty(_country))
             {
                 <button type="button" class="btn btn-sm btn-outline-light d-flex align-items-center gap-1"
-                        @onclick="() => { _showCountryModal = true; _countrySearch = string.Empty; }"
+                        disabled="@Locked" @onclick="() => { _showCountryModal = true; _countrySearch = string.Empty; }"
                         style="font-size:0.8rem;">
                     <span>@(_countryData.FirstOrDefault(x => x.NameEn == _country)?.FlagEmoji ?? "🌐")</span>
                     <span>@_country</span>
@@ -106,6 +106,10 @@
                     {
                         <i class="ri-checkbox-circle-fill success-check"></i>
                         <h3 class="mt-3 mb-2">Welcome, @_completedEmail!</h3>
+                        @if (_alreadyPaid)
+                        {
+                            <p class="text-muted mb-1">This enrollment was already paid, so there is nothing else to pay.</p>
+                        }
                         <p class="text-muted mb-4">Your account is active. Access your BizCenter to get started.</p>
                         <a href="/login" class="btn btn-enroll px-5">Go to BizCenter</a>
                     }
@@ -114,6 +118,12 @@
         }
         else
         {
+        <EntraxSignupFlow @ref="_entraxFlow"
+                          SignupId="_signupId"
+                          OnCompleted="OnEntraxCompleted"
+                          OnStarting="OnEntraxStarting"
+                          OnError="OnEntraxError"
+                          OnChooseAnother="ChooseAnotherPaymentMethod">
         @if (_productsLoading)
         {
             <div class="section-card">
@@ -166,6 +176,13 @@
         </div>
         }
 
+        @if (Locked)
+        {
+            <div class="alert alert-info mb-4" role="status">
+                Your account details are saved; to change them start a new signup.
+            </div>
+        }
+
         <!-- ── SELECT MEMBERSHIP ──────────────────────────────────────────── -->
         <div class="section-card">
             <div class="section-head">
@@ -186,6 +203,7 @@
                            @onclick="() => SelectMembership(p.Id)">
                         <input type="radio" class="plan-card__radio" name="membership"
                                checked="@(_selectedMembershipProductId == p.Id)"
+                               disabled="@Locked"
                                @onchange="() => SelectMembership(p.Id)" />
                         <div class="plan-card__body @(p.ThemeClass)">
                             <div class="plan-card__header">
@@ -212,7 +230,7 @@
                 }
                 <!-- No-membership option -->
                 <div class="text-center mt-3">
-                    <button type="button" class="btn btn-link btn-sm text-muted"
+                    <button type="button" class="btn btn-link btn-sm text-muted" disabled="@Locked"
                             @onclick="() => _showNoMemberModal = true">
                         Continue without a membership plan
                     </button>
@@ -234,20 +252,20 @@
                     <div class="col-md-6">
                         <div class="form-floating">
                             <input type="text" class="form-control" placeholder="First Name"
-                                   value="@_firstName" @oninput="e => _firstName = e.Value?.ToString() ?? string.Empty" />
+                                   value="@_firstName" @oninput="e => _firstName = e.Value?.ToString() ?? string.Empty" disabled="@Locked" />
                             <label>First Name *</label>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-floating">
                             <input type="text" class="form-control" placeholder="Last Name"
-                                   value="@_lastName" @oninput="e => _lastName = e.Value?.ToString() ?? string.Empty" />
+                                   value="@_lastName" @oninput="e => _lastName = e.Value?.ToString() ?? string.Empty" disabled="@Locked" />
                             <label>Last Name *</label>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-floating">
-                            <input type="date" class="form-control" @bind="_dateOfBirth" max="@_maxDob" />
+                            <input type="date" class="form-control" @bind="_dateOfBirth" disabled="@Locked" max="@_maxDob" />
                             <label>Date of Birth *</label>
                         </div>
                     </div>
@@ -255,7 +273,7 @@
                     {
                         <div class="col-md-6">
                             <div class="form-floating">
-                                <input type="text" class="form-control" placeholder="SSN" @bind="_ssn" />
+                                <input type="text" class="form-control" placeholder="SSN" @bind="_ssn" disabled="@Locked" />
                                 <label>SSN *</label>
                             </div>
                         </div>
@@ -270,7 +288,7 @@
                         <small class="text-muted">Toggle to add company details.</small>
                     </div>
                     <div class="form-check form-switch m-0">
-                        <input class="form-check-input" type="checkbox" @bind="_showBusiness" />
+                        <input class="form-check-input" type="checkbox" @bind="_showBusiness" disabled="@Locked" />
                         <label class="form-check-label">Yes</label>
                     </div>
                 </div>
@@ -280,13 +298,13 @@
                     <div class="row g-3 mt-2">
                         <div class="col-md-8">
                             <div class="form-floating">
-                                <input type="text" class="form-control" placeholder="Business Name" @bind="_businessName" />
+                                <input type="text" class="form-control" placeholder="Business Name" @bind="_businessName" disabled="@Locked" />
                                 <label>Business Name</label>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="form-floating">
-                                <input type="text" class="form-control" placeholder="EIN" @bind="_ein" />
+                                <input type="text" class="form-control" placeholder="EIN" @bind="_ein" disabled="@Locked" />
                                 <label>EIN</label>
                             </div>
                         </div>
@@ -311,7 +329,7 @@
                         <div class="input-group country-line">
                             <div class="phone-picker">
                                 @{ var waCt = _countryData.FirstOrDefault(x => x.PhoneCode == _waCountryCode); }
-                                <button type="button" class="phone-picker-btn"
+                                <button type="button" class="phone-picker-btn" disabled="@Locked"
                                         @onclick="() => { _showWaPicker = !_showWaPicker; _waPickerSearch = string.Empty; _showCellPicker = false; }">
                                     <img class="phone-picker-flag"
                                          src="https://flagcdn.com/w40/@((waCt?.Iso2 ?? "us").ToLower()).png"
@@ -346,7 +364,7 @@
                                     </div>
                                 }
                             </div>
-                            <input type="tel" class="form-control" placeholder="9XXXXXXXX" @bind="_whatsApp" />
+                            <input type="tel" class="form-control" placeholder="9XXXXXXXX" @bind="_whatsApp" disabled="@Locked" />
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -354,7 +372,7 @@
                         <div class="input-group country-line">
                             <div class="phone-picker">
                                 @{ var cellCt = _countryData.FirstOrDefault(x => x.PhoneCode == _cellCountryCode); }
-                                <button type="button" class="phone-picker-btn"
+                                <button type="button" class="phone-picker-btn" disabled="@Locked"
                                         @onclick="() => { _showCellPicker = !_showCellPicker; _cellPickerSearch = string.Empty; _showWaPicker = false; }">
                                     <img class="phone-picker-flag"
                                          src="https://flagcdn.com/w40/@((cellCt?.Iso2 ?? "us").ToLower()).png"
@@ -389,14 +407,14 @@
                                     </div>
                                 }
                             </div>
-                            <input type="tel" class="form-control" placeholder="9XXXXXXXX" @bind="_cellPhone" />
+                            <input type="tel" class="form-control" placeholder="9XXXXXXXX" @bind="_cellPhone" disabled="@Locked" />
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-floating">
                             <input type="email" class="form-control @(_emailMismatch ? "is-invalid" : "")"
                                    placeholder="name@example.com"
-                                   value="@_email" @oninput="OnEmailInput" />
+                                   value="@_email" @oninput="OnEmailInput" disabled="@Locked" />
                             <label>Email *</label>
                             <div class="invalid-feedback">Emails do not match.</div>
                         </div>
@@ -405,26 +423,26 @@
                         <div class="form-floating">
                             <input type="email" class="form-control @(_emailMismatch ? "is-invalid" : "")"
                                    placeholder="Repeat email"
-                                   value="@_email2" @oninput="OnEmail2Input" />
+                                   value="@_email2" @oninput="OnEmail2Input" disabled="@Locked" />
                             <label>Confirm Email *</label>
                         </div>
                     </div>
                     <div class="col-md-8">
                         <div class="form-floating">
-                            <input type="text" class="form-control" placeholder="Address" @bind="_address" />
+                            <input type="text" class="form-control" placeholder="Address" @bind="_address" disabled="@Locked" />
                             <label>Address</label>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="form-floating">
-                            <input type="text" class="form-control" placeholder="City" @bind="_city" />
+                            <input type="text" class="form-control" placeholder="City" @bind="_city" disabled="@Locked" />
                             <label>City</label>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="country-select-wrap">
                             <button type="button" class="country-select-btn"
-                                    @onclick="() => { _showCountryModal = true; _countrySearch = string.Empty; }">
+                                    disabled="@Locked" @onclick="() => { _showCountryModal = true; _countrySearch = string.Empty; }">
                                 @if (!string.IsNullOrEmpty(_country))
                                 {
                                     var selCt = _countryData.FirstOrDefault(x => x.NameEn == _country);
@@ -445,7 +463,7 @@
                     </div>
                     <div class="col-md-3">
                         <div class="form-floating">
-                            <input type="text" class="form-control" placeholder="Postal Code" @bind="_postalCode" />
+                            <input type="text" class="form-control" placeholder="Postal Code" @bind="_postalCode" disabled="@Locked" />
                             <label>Postal Code</label>
                         </div>
                     </div>
@@ -453,7 +471,7 @@
                         <div class="form-floating">
                             @if (CountryHasStates(_countryIso2))
                             {
-                                <select class="form-select" @bind="_province">
+                                <select class="form-select" disabled="@Locked" @bind="_province">
                                     <option value="">— State —</option>
                                     @foreach (var pr in GetProvinces(_countryIso2))
                                     {
@@ -464,7 +482,7 @@
                             else
                             {
                                 <input type="text" class="form-control" placeholder="State / Province"
-                                       value="@_province" @oninput="e => _province = e.Value?.ToString() ?? string.Empty" />
+                                       value="@_province" @oninput="e => _province = e.Value?.ToString() ?? string.Empty" disabled="@Locked" />
                             }
                             <label>State / Province</label>
                         </div>
@@ -582,7 +600,7 @@
                             <span class="input-group-text bg-light">mlmconqueror.com/</span>
                             <input type="text" class="form-control" placeholder="yourname"
                                    maxlength="30" autocomplete="off"
-                                   value="@_siteHandle" @oninput="OnHandleInput" />
+                                   value="@_siteHandle" @oninput="OnHandleInput" disabled="@Locked" />
                         </div>
                         <div class="d-flex gap-3 mt-1 align-items-center">
                             <small class="text-muted">Letters and numbers only.</small>
@@ -597,7 +615,7 @@
                         <div class="input-group">
                             <input type="@(_showPwd ? "text" : "password")" class="form-control"
                                    placeholder="Create a password"
-                                   value="@_password" @oninput="OnPasswordInput" />
+                                   value="@_password" @oninput="OnPasswordInput" disabled="@Locked" />
                             <button class="btn btn-outline-secondary" type="button" @onclick="() => _showPwd = !_showPwd">
                                 <i class="@(_showPwd ? "ri-eye-off-line" : "ri-eye-line")"></i>
                             </button>
@@ -615,14 +633,14 @@
                             <input type="@(_showPwd2 ? "text" : "password")"
                                    class="form-control @(PasswordMismatch ? "is-invalid" : "")"
                                    placeholder="Repeat password"
-                                   value="@_password2" @oninput="OnPassword2Input" />
+                                   value="@_password2" @oninput="OnPassword2Input" disabled="@Locked" />
                             <button class="btn btn-outline-secondary" type="button" @onclick="() => _showPwd2 = !_showPwd2">
                                 <i class="@(_showPwd2 ? "ri-eye-off-line" : "ri-eye-line")"></i>
                             </button>
                             <div class="invalid-feedback">Passwords do not match.</div>
                         </div>
                         <div class="d-flex gap-2 mt-2">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="GeneratePassword">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" disabled="@Locked" @onclick="GeneratePassword">
                                 Generate
                             </button>
                             <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="CopyPassword">
@@ -677,6 +695,15 @@
                             <i class="ri-bit-coin-line me-1"></i>Crypto
                         </button>
                     </li>
+                    @if (EntraxOffered)
+                    {
+                        <li class="nav-item">
+                            <button class="nav-link @(_paymentTab == "entrax" ? "active" : "")" type="button"
+                                    @onclick='() => _paymentTab = "entrax"'>
+                                <i class="ri-qr-code-line me-1"></i>Rubles (SBP)
+                            </button>
+                        </li>
+                    }
                 </ul>
 
                 @if (_paymentTab == "card")
@@ -807,6 +834,17 @@
                     </div>
                 }
 
+                @if (_paymentTab == "entrax" && EntraxOffered)
+                {
+                    <div class="py-4">
+                        <p class="small text-muted mb-0">
+                            Pay in rubles through the Russian Fast Payment System (SBP). After you click Join Now we'll show
+                            a QR code for @AmountToday.ToString("C") converted to rubles at the current rate. Your account
+                            activates as soon as the payment arrives.
+                        </p>
+                    </div>
+                }
+
                 <hr class="my-4" />
 
                 <div class="captcha-placeholder d-flex align-items-center gap-2 mb-3">
@@ -826,7 +864,7 @@
 
                 <div class="d-grid">
                     <button type="button" class="btn btn-enroll"
-                            disabled="@(!_agreedTerms || _busy || (_paymentTab == "token" && !_tokenValid) || (_paymentTab == "crypto" && _cryptoDeposit is null))"
+                            disabled="@(!_agreedTerms || _busy || (_paymentTab == "token" && !_tokenValid) || (_paymentTab == "crypto" && _cryptoDeposit is null) || (_paymentTab == "entrax" && !EntraxOffered))"
                             @onclick="HandleJoinNow">
                         @if (_busy)
                         {
@@ -850,6 +888,7 @@
         </div>
 
         } <!-- end _productsLoaded -->
+        </EntraxSignupFlow>
         } <!-- end !_success -->
     </div>
 
@@ -1171,6 +1210,23 @@
     // ── Payment ───────────────────────────────────────────────────────────────
     private string _paymentTab    = "card";
 
+    // Rublos por SBP con Entrax (Plan H): países donde se ofrece, el flujo del QR (componente único) y si
+    // el servidor dijo que el alta ya estaba pagada.
+    private IReadOnlyList<string> _entraxCountries = [];
+    private EntraxSignupFlow? _entraxFlow;
+    private bool _alreadyPaid;
+
+    // Después de la fase 1 el alta ya existe con estos datos: correo, contraseña, país, patrocinador y
+    // nivel no se pueden cambiar (no se reenviarían). Lo que devolvió el servidor manda sobre el formulario.
+    private string? _signupEmail;
+    private string  _savedCountryIso2 = string.Empty;
+    private bool    _productsSelected;
+    private bool    Locked => _signupId is not null;
+
+    // Con el alta creada vale el país guardado en la fase 1, no el que haya en el formulario.
+    private bool EntraxOffered => _entraxCountries.Any(c =>
+        string.Equals(c, Locked ? _savedCountryIso2 : _countryIso2, StringComparison.OrdinalIgnoreCase));
+
     // Direcciones de depósito configuradas en Admin → Global Parameters (Plan F). Vacío = sin cripto:
     // mejor no ofrecerla que mandar a alguien a pagar a una dirección que nadie le va a dar.
     private List<CryptoDepositAddressDto> _cryptoDeposits = new();
@@ -1290,6 +1346,9 @@
         }
         catch { _cryptoDeposits = new(); }
 
+        // Rublos por SBP (Plan H): países con Entrax encendido. Si falla, la pestaña no aparece.
+        _entraxCountries = await EntraxSignupApi.GetCountriesAsync(api);
+
         // Load countries first (needed to populate dropdowns)
         try
         {
@@ -1346,6 +1405,7 @@
         _country  = nameEn;
         var ct = _countryData.FirstOrDefault(x => x.NameEn == nameEn);
         _countryIso2 = ct?.Iso2 ?? string.Empty;
+        if (_paymentTab == "entrax" && !EntraxOffered) _paymentTab = "card";
         if (!CountryHasStates(_countryIso2)) _province = string.Empty;
         if (!IsUnitedStates(_country)) _ssn = string.Empty;
         // Phone codes are updated but products are not reloaded from the dropdown —
@@ -1361,6 +1421,7 @@
     {
         _country     = ct.NameEn;
         _countryIso2 = ct.Iso2;
+        if (_paymentTab == "entrax" && !EntraxOffered) _paymentTab = "card";
         if (!CountryHasStates(_countryIso2)) _province = string.Empty;
         if (!IsUnitedStates(_country)) _ssn = string.Empty;
         if (ct.PhoneCode is not null)
@@ -1404,6 +1465,7 @@
     // ── Event handlers ────────────────────────────────────────────────────────
     private void SelectMembership(string productId)
     {
+        if (Locked) return;   // el alta ya se creó con este nivel
         _selectedMembershipProductId = productId;
         // If user is mid-token-flow, immediately revalidate against the new product selection.
         if (_paymentTab == "token" && !string.IsNullOrWhiteSpace(_payToken))
@@ -1675,6 +1737,10 @@
                 ? null
                 : $"{_cellCountryCode}{_cellPhone}";
 
+            // Un alta ya creada (p. ej. tras un QR de Entrax caducado y "otro método") no se vuelve a
+            // crear: el correo ya existe. Se sigue desde la selección de productos.
+            if (_signupId is null)
+            {
             var r1 = await api.PostAsJsonAsync("api/v1/signups/ambassador", new
             {
                 SponsorReplicateSite = SponsorSlug,
@@ -1712,19 +1778,26 @@
                 _error = b1?.Message ?? b1?.Errors?.FirstOrDefault() ?? "Signup failed. Please check your details.";
                 return;
             }
-            _signupId = b1.Data.SignupId;
+            _signupId         = b1.Data.SignupId;
+            _signupEmail      = b1.Data.Email;
+            _savedCountryIso2 = _countryIso2;
+            }
 
             var productIds = new List<string>();
             if (_enrollmentProduct is not null) productIds.Add(_enrollmentProduct.Id);
             if (!string.IsNullOrEmpty(_selectedMembershipProductId)) productIds.Add(_selectedMembershipProductId);
 
-            if (productIds.Count > 0)
+            // Los productos se eligen una sola vez: el nivel queda bloqueado con el alta creada.
+            if (!_productsSelected && productIds.Count > 0)
             {
                 var r2 = await api.PostAsJsonAsync($"api/v1/signups/{_signupId}/select-products",
                     new { ProductIds = productIds });
                 var b2 = await r2.Content.ReadFromJsonAsync<ApiWrapper<bool>>();
+                if (b2?.ErrorCode == EntraxSignupApi.AlreadySettledCode)
+                { ShowSettled(alreadyPaid: true); return; }
                 if (b2?.Success != true)
                 { _error = b2?.Message ?? "Product selection failed."; return; }
+                _productsSelected = true;
             }
 
             // ── EL PAGO ────────────────────────────────────────────────────────────────────────
@@ -1739,6 +1812,15 @@
             // El método se fija aquí: si el usuario cambia de pestaña mientras se espera la
             // respuesta, la pantalla final tiene que hablar del método con el que se pagó.
             var paymentTab = _paymentTab;
+
+            // Rublos por SBP (Plan H): el servidor emite el QR y la pantalla espera el cobro. Todavía no
+            // hay _success: la cuenta se activa cuando Entrax confirma, no al pulsar.
+            if (paymentTab == "entrax")
+            {
+                await _entraxFlow!.StartAsync();
+                return;
+            }
+
             object payment;
             if (paymentTab == "card")
             {
@@ -1776,12 +1858,43 @@
             var b3 = await r3.Content.ReadFromJsonAsync<ApiWrapper<SignupResponseModel>>();
 
             if (b3?.Success == true && b3.Data is not null)
-            { _completedEmail = b3.Data.Email; _completedPendingCrypto = paymentTab == "crypto"; _success = true; }
+            { _completedEmail = b3.Data.Email; _alreadyPaid = false; _completedPendingCrypto = paymentTab == "crypto"; _success = true; }
+            else if (b3?.ErrorCode == EntraxSignupApi.AlreadySettledCode)
+            { ShowSettled(alreadyPaid: true); }   // con tarjeta, token o cripto: el alta ya estaba pagada
             else
             { _error = b3?.Message ?? b3?.Errors?.FirstOrDefault() ?? "Could not complete enrollment."; }
         }
         catch (Exception ex) { _error = $"Connection error: {ex.Message}"; }
         finally { _busy = false; }
+    }
+
+    // ── Rublos por SBP (Plan H) ──────────────────────────────────────────────
+    // Pedir el QR, reintentar, consultar el estado y pintarlo viven en EntraxSignupFlow (una vez para las
+    // dos páginas). Aquí solo se decide qué enseña la página al terminar.
+
+    /// <summary>
+    /// El alta quedó activa (por el QR, por otro medio, o el servidor ya la tenía pagada). No hay tokens:
+    /// la activación ocurrió fuera de esta petición, la persona inicia sesión.
+    /// </summary>
+    private void OnEntraxCompleted(bool alreadyPaid) => ShowSettled(alreadyPaid);
+
+    private void OnEntraxStarting() => _error = string.Empty;
+
+    private void OnEntraxError(string message) => _error = message;
+
+    private void ChooseAnotherPaymentMethod()
+    {
+        _error      = string.Empty;
+        _paymentTab = "card";
+    }
+
+    /// <summary>La pantalla de "ya está pagada, inicia sesión", común a todos los métodos de pago.</summary>
+    private void ShowSettled(bool alreadyPaid)
+    {
+        _alreadyPaid            = alreadyPaid;
+        _completedPendingCrypto = false;
+        _completedEmail         = _signupEmail ?? _email;
+        _success                = true;
     }
 
     // ── Local models ──────────────────────────────────────────────────────────

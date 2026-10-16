@@ -32,6 +32,8 @@ using MLMConquerorGlobalEdition.SignupAPI.Jobs;
 using MLMConquerorGlobalEdition.Repository.Jobs;
 using MLMConquerorGlobalEdition.SignupAPI.Middleware;
 using MLMConquerorGlobalEdition.SignupAPI.Services;
+using MLMConquerorGlobalEdition.Repository.Services.Entrax;
+using MLMConquerorGlobalEdition.SignupAPI.Services.Entrax;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -110,6 +112,8 @@ builder.Services.AddScoped<IFastStartBonusService, FastStartBonusService>();
 // Lo usan las dos vías que cobran — la inmediata (tarjeta, token, descuento) al completar, y la
 // de cripto al confirmar el cobro a mano — para que no existan dos versiones de lo mismo.
 builder.Services.AddScoped<ISignupActivationService, SignupActivationService>();
+// La transición atómica del pedido de alta a Completed (un pedido se activa una sola vez).
+builder.Services.AddScoped<ISignupOrderClaim, SignupOrderClaim>();
 // Direcciones de depósito cripto configuradas en el admin: el alta las muestra (Plan F).
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Crypto.ICryptoDepositAddressReader,
                            MLMConquerorGlobalEdition.Repository.Services.Crypto.CryptoDepositAddressReader>();
@@ -120,6 +124,20 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Funds.I
                            MLMConquerorGlobalEdition.Repository.Services.Funds.SqlServerMemberFundsGate>();
 builder.Services.AddScoped<IFraudFingerprintService, FraudFingerprintService>();
 builder.Services.AddScoped<IEncryptionService, EncryptionService>();
+
+// Entrax: rublos por SBP en el alta (Plan H). La guarda tumba el arranque fuera de Development si
+// está encendido sin KeyId, Secret o CallbackUrl https, si hay credenciales a medias o si UseFake
+// está puesto; en Development solo avisa. El fake (UseFake) es un singleton en memoria que se paga
+// con /api/v1/dev/entrax/….
+var entraxOptions = EntraxOptions.FromConfiguration(builder.Configuration);
+foreach (var problem in EntraxOptionsGuard.Problems(entraxOptions, builder.Environment.IsDevelopment()))
+    Console.WriteLine($"[Entrax] {problem}");
+// AddEntrax pasa la guarda (EntraxOptionsGuard.ThrowIfInvalid) antes de registrar nada.
+builder.Services.AddEntrax(entraxOptions, builder.Environment.IsDevelopment());
+builder.Services.AddScoped<IEntraxSignupCheckout, EntraxSignupCheckout>();
+builder.Services.AddScoped<IEntraxSignupSettlement, EntraxSignupSettlement>();
+builder.Services.AddScoped<IEntraxCallbackProcessor, EntraxCallbackProcessor>();
+builder.Services.AddScoped<IEntraxSignupStatusService, EntraxSignupStatusService>();
 
 // Recurring billing — enrolment service creates the SubscriptionBillingState
 // record as part of the CompleteSignup flow so the dunning sweep can pick it up.
@@ -238,6 +256,7 @@ builder.Services.AddScoped<BuilderBonusSweepJob>();
 builder.Services.AddScoped<FastStartBonusSweepJob>();
 builder.Services.AddScoped<ContestPointsSweepJob>();
 builder.Services.AddScoped<ApplyMemberStatisticDeltasJob>();
+builder.Services.AddScoped<EntraxSignupSweepJob>();
 builder.Services.AddHangfire(cfg => cfg
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
     .UseSimpleAssemblyNameTypeSerializer()
@@ -254,7 +273,8 @@ builder.Services.AddHangfireServer(options =>
 });
 
 // Controllers only — no Blazor
-builder.Services.AddControllers()
+// El traceId de la petición en toda ApiResponse de error que un controlador arme sin él.
+builder.Services.AddControllers(options => options.Filters.Add<ApiResponseTraceIdFilter>())
     .AddJsonOptions(opts =>
         opts.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
@@ -429,6 +449,14 @@ RecurringJob.AddOrUpdate<ContestPointsSweepJob>(
     "*/10 * * * *",                    // every 10 minutes
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc, QueueName = "signups" });
 
+// Entrax (Plan H): liquida los pagos del alta que ni el callback ni la pantalla liquidaron, y mira
+// los QR caducados hace poco por si se pagaron tarde. Corre aunque Entrax esté apagado.
+RecurringJob.AddOrUpdate<EntraxSignupSweepJob>(
+    EntraxSignupSweepJob.RecurringJobId,
+    job => job.ExecuteAsync(CancellationToken.None),
+    EntraxSignupSweepJob.Cron,
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc, QueueName = "signups" });
+
 // Sprint-16 — drains MemberStatisticDeltas into MemberStatistics. Phase-3 of
 // CompleteSignup enqueues 1 delta per ancestor (76 per signup at the deep end
 // of the tree) in a single batch insert; this job groups by upline + applies
@@ -451,6 +479,32 @@ if (app.Environment.IsDevelopment())
         {
             await job.ExecuteAsync(ct);
             return Results.Ok(new { drained = true });
+        }).AllowAnonymous();
+}
+
+// Solo Development con Entrax:UseFake: pagar (o hacer fallar, caducar o pagar de menos) un QR del
+// fake, y forzar un barrido. La guarda de arranque impide UseFake fuera de Development.
+if (app.Environment.IsDevelopment() && entraxOptions.UseFake)
+{
+    app.MapPost("/api/v1/dev/entrax/{paymentId}/{outcome}",
+        (string paymentId, string outcome, FakeEntraxClient fake) =>
+        {
+            var ok = outcome switch
+            {
+                "paid"      => fake.MarkPaid(paymentId),
+                "underpaid" => fake.MarkPaid(paymentId, underpayBy: 1m),
+                "failed"    => fake.MarkFailed(paymentId),
+                "expired"   => fake.MarkExpired(paymentId),
+                _           => false
+            };
+            return ok ? Results.Ok(new { paymentId, outcome }) : Results.NotFound();
+        }).AllowAnonymous();
+
+    app.MapPost("/api/v1/dev/entrax/sweep",
+        async (EntraxSignupSweepJob job, CancellationToken ct) =>
+        {
+            await job.ExecuteAsync(ct);
+            return Results.Ok(new { swept = true });
         }).AllowAnonymous();
 }
 
