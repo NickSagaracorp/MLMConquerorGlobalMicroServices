@@ -331,6 +331,14 @@
                         <span class="title">Token Purchases</span>
                     </a>
                 </li>
+                @* Altas pagadas en rublos por SBP con Entrax (Plan H): mismos cuatro roles que la cripto. *@
+                <li class="menu-item @(IsActive("/admin/billing/entrax-signups") == "active" ? "active" : "")">
+                    <a href="/admin/billing/entrax-signups"
+                       class="menu-link @IsActive("/admin/billing/entrax-signups")">
+                        <i class="ri-qr-code-line menu-icon"></i>
+                        <span class="title">Entrax Signups</span>
+                    </a>
+                </li>
             </Authorized>
         </AuthorizeView>
 
