@@ -2,9 +2,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
+using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+
+using OrdersEntity = MLMConquerorGlobalEdition.Domain.Entities.Orders.Orders;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 
@@ -112,6 +115,47 @@ public static class ReportesDb
         };
         db.MemberStatistics.Add(estadistica);
         return estadistica;
+    }
+
+    /// <summary>
+    /// Un pedido de <paramref name="memberId"/> con un producto por cada nivel de
+    /// <paramref name="niveles"/> (null = un producto que no es de membresía). Un pedido de alta
+    /// lleva Lifestyle Ambassador (1) y, si acaso, VIP, Elite o Turbo: su nivel es el más alto.
+    /// </summary>
+    public static OrdersEntity Orden(AppDbContext db, string memberId, DateTime fecha, params int?[] niveles)
+    {
+        var orden = new OrdersEntity
+        {
+            MemberId  = memberId,
+            OrderDate = fecha,
+            Status    = OrderStatus.Completed,
+            CreatedBy = "prueba"
+        };
+        db.Orders.Add(orden);
+
+        foreach (var nivel in niveles)
+        {
+            var producto = new Product
+            {
+                Name              = nivel is null ? "Otro producto" : $"Membresía {nivel}",
+                Description       = "prueba",
+                ImageUrl          = "prueba",
+                MonthlyFee        = 0,
+                SetupFee          = 0,
+                MembershipLevelId = nivel,
+                CreatedBy         = "prueba"
+            };
+            db.Products.Add(producto);
+            db.OrderDetails.Add(new OrderDetail
+            {
+                OrderId   = orden.Id,
+                ProductId = producto.Id,
+                Quantity  = 1,
+                CreatedBy = "prueba"
+            });
+        }
+
+        return orden;
     }
 
     /// <summary>

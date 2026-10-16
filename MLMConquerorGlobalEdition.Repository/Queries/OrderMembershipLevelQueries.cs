@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Repository.Context;
 
 namespace MLMConquerorGlobalEdition.Repository.Queries;
@@ -66,5 +67,60 @@ public static class OrderMembershipLevelQueries
             select new { OrderId = g.Key, LevelId = g.Max() };
 
         return query.ToDictionaryAsync(x => x.OrderId, x => x.LevelId, ct);
+    }
+
+    /// <summary>
+    /// Nivel más alto por pedido para los pedidos de <paramref name="orderIds"/>, que es una
+    /// CONSULTA y se une en SQL: los reportes pasan "las órdenes de alta del equipo en el rango" sin
+    /// traer miles de ids a memoria para un Contains (Plan J, corrección N2). Un pedido sin productos
+    /// de membresía no aparece en el resultado.
+    /// </summary>
+    public static Task<Dictionary<string, int>> GetHighestMembershipLevelIdsAsync(
+        this AppDbContext db, IQueryable<string> orderIds, CancellationToken ct = default)
+    {
+        var query =
+            from od in db.OrderDetails.AsNoTracking()
+            join id in orderIds on od.OrderId equals id
+            join p in db.Products.AsNoTracking() on od.ProductId equals p.Id
+            where p.MembershipLevelId.HasValue
+            group p.MembershipLevelId!.Value by od.OrderId into g
+            select new { OrderId = g.Key, LevelId = g.Max() };
+
+        return query.ToDictionaryAsync(x => x.OrderId, x => x.LevelId, ct);
+    }
+
+    /// <summary>
+    /// Nivel de membresía de cada suscripción, por su Id (Plan J, corrección N2): el más alto de los
+    /// productos de su última orden (<see cref="MembershipSubscription.LastOrderId"/>, que el alta,
+    /// la renovación y la facturación recurrente mantienen). Solo si la suscripción no tiene orden, o
+    /// la orden no trae productos de membresía (semillas, altas manuales), se usa como reserva el
+    /// <see cref="MembershipSubscription.MembershipLevelId"/> de la propia suscripción.
+    /// Pensado para una página de resultados: hace un Contains de sus órdenes.
+    /// </summary>
+    public static async Task<Dictionary<string, int>> GetMembershipLevelIdsBySubscriptionAsync(
+        this AppDbContext db, IReadOnlyCollection<MembershipSubscription> subscriptions, CancellationToken ct = default)
+    {
+        var orderIds = subscriptions
+            .Where(s => s.LastOrderId != null)
+            .Select(s => s.LastOrderId!)
+            .Distinct()
+            .ToList();
+
+        var byOrder = orderIds.Count == 0
+            ? new Dictionary<string, int>()
+            : await db.GetHighestMembershipLevelIdsAsync(
+                db.Orders.AsNoTracking().Where(o => orderIds.Contains(o.Id)).Select(o => o.Id), ct);
+
+        return subscriptions
+            .GroupBy(s => s.Id)
+            .ToDictionary(
+                g => g.Key,
+                g =>
+                {
+                    var s = g.First();
+                    return s.LastOrderId != null && byOrder.TryGetValue(s.LastOrderId, out var level)
+                        ? level
+                        : s.MembershipLevelId;
+                });
     }
 }
