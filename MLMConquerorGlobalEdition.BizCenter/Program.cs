@@ -104,6 +104,15 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Trees.I
                             MLMConquerorGlobalEdition.Repository.Services.Trees.DualTeamPointsRecalculator>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Commissions.ICommissionsService,
                             MLMConquerorGlobalEdition.Repository.Services.Commissions.CommissionsService>();
+
+// "Mis enlaces" (Plan J): plantillas de appsettings validadas al arrancar. Con una plantilla
+// inválida el BizCenter no arranca (R11). Sin sección no hay enlaces, y arranca.
+MLMConquerorGlobalEdition.Repository.Services.Links.MyLinksServiceCollectionExtensions.AddMyLinks(
+    builder.Services,
+    builder.Configuration
+        .GetSection(MLMConquerorGlobalEdition.Repository.Services.Links.MyLinksOptions.SectionName)
+        .Get<MLMConquerorGlobalEdition.Repository.Services.Links.MyLinksOptions>()
+    ?? new MLMConquerorGlobalEdition.Repository.Services.Links.MyLinksOptions());
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Wallets.IMemberWalletService,
                             MLMConquerorGlobalEdition.Repository.Services.Wallets.MemberWalletService>();
 
