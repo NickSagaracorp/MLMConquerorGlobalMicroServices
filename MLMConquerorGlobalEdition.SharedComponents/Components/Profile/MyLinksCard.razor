@@ -5,6 +5,7 @@
 @using Microsoft.Extensions.Localization
 @using Microsoft.JSInterop
 @using MLMConquerorGlobalEdition.SharedComponents.Resources
+@implements IDisposable
 
 @*
     "Mis enlaces" (Plan J). Componente único: la ruta del API entra por parámetro, así sirve al
@@ -52,10 +53,14 @@
     /// <summary>Dónde se configura el slug (la tarjeta WebsiteSlugCard del perfil).</summary>
     [Parameter] public string ProfileUrl { get; set; } = "/profile";
 
+    /// <summary>Cuánto dura el «Copiado» antes de volver a «Copiar».</summary>
+    [Parameter] public TimeSpan CopiedFeedback { get; set; } = TimeSpan.FromSeconds(2);
+
     private bool      _loading = true;
     private bool      _error;
     private LinksDto? _data;
     private string?   _copiedKey;
+    private CancellationTokenSource? _copiedCts;
 
     protected override async Task OnInitializedAsync()
     {
@@ -80,13 +85,32 @@
         try
         {
             await JS.InvokeVoidAsync("navigator.clipboard.writeText", link.Url);
-            _copiedKey = link.Key;
         }
-        catch (JSException)
+        catch (Exception e) when (e is JSException or JSDisconnectedException or TaskCanceledException)
         {
+            // Sin permiso de portapapeles, circuito caído o llamada cancelada: no se dice «Copiado».
             _copiedKey = null;
+            return;
         }
+
+        _copiedKey = link.Key;
+        _copiedCts?.Cancel();
+        var cts = _copiedCts = new CancellationTokenSource();
+        StateHasChanged();
+
+        try
+        {
+            await Task.Delay(CopiedFeedback, cts.Token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;   // otro clic (o el componente se destruyó) ya manda sobre el aviso
+        }
+
+        if (_copiedKey == link.Key) _copiedKey = null;
     }
+
+    public void Dispose() => _copiedCts?.Cancel();
 
     private RenderFragment RenderList(List<LinkDto> links) => __builder =>
     {

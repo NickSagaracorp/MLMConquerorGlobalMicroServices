@@ -22,7 +22,7 @@ public class MyLinksCardTests : BunitContext
     private readonly List<string> _rutas = new();
 
     private IRenderedComponent<MyLinksCard> Montar(string json, HttpStatusCode estado = HttpStatusCode.OK,
-        string api = "api/v1/bizcenter")
+        string api = "api/v1/bizcenter", TimeSpan? aviso = null)
     {
         Services.AddSingleton(new HttpClient(new Manejador(r =>
         {
@@ -31,7 +31,9 @@ public class MyLinksCardTests : BunitContext
         })) { BaseAddress = new Uri("https://api.pruebas/") });
         Services.AddSingleton<IStringLocalizer<SharedResources>>(new StepUpDialogTests.LocalizadorDeClaves());
         JSInterop.Mode = JSRuntimeMode.Loose;
-        return Render<MyLinksCard>(p => p.Add(c => c.ApiBaseUrl, api));
+        return Render<MyLinksCard>(p => p
+            .Add(c => c.ApiBaseUrl, api)
+            .Add(c => c.CopiedFeedback, aviso ?? TimeSpan.FromSeconds(2)));
     }
 
     [Fact]
@@ -64,6 +66,43 @@ public class MyLinksCardTests : BunitContext
 
         JSInterop.VerifyInvoke("navigator.clipboard.writeText").Arguments[0].Should().Be("https://mwrlife.com/ana");
         tarjeta.Find(".my-link[data-key='mwrlife'] .my-link-copy").TextContent.Trim().Should().Be("MyLinks.Copied");
+    }
+
+    [Fact]
+    public void Copiado_vuelve_a_Copiar_al_cabo_de_un_rato()
+    {
+        var tarjeta = Montar(ConSlug, aviso: TimeSpan.FromMilliseconds(50));
+        tarjeta.WaitForAssertion(() => tarjeta.FindAll(".my-link-copy").Should().HaveCount(2));
+
+        tarjeta.Find(".my-link[data-key='mwrlife'] .my-link-copy").Click();
+
+        tarjeta.WaitForAssertion(() => tarjeta.Find(".my-link[data-key='mwrlife'] .my-link-copy")
+            .TextContent.Trim().Should().Be("MyLinks.Copy"));
+    }
+
+    [Fact]
+    public void El_aviso_dura_dos_segundos_por_defecto()
+        => new MyLinksCard().CopiedFeedback.Should().Be(TimeSpan.FromSeconds(2));
+
+    public static IEnumerable<object[]> FallosDeJs() => new[]
+    {
+        new object[] { new Microsoft.JSInterop.JSException("sin permiso") },
+        new object[] { new Microsoft.JSInterop.JSDisconnectedException("circuito caído") },
+        new object[] { new TaskCanceledException("cancelado") },
+    };
+
+    [Theory]
+    [MemberData(nameof(FallosDeJs))]
+    public void Si_el_portapapeles_falla_no_rompe_y_no_dice_copiado(Exception fallo)
+    {
+        JSInterop.SetupVoid("navigator.clipboard.writeText", _ => true).SetException(fallo);
+        var tarjeta = Montar(ConSlug);
+        tarjeta.WaitForAssertion(() => tarjeta.FindAll(".my-link-copy").Should().HaveCount(2));
+
+        var act = () => tarjeta.Find(".my-link[data-key='mwrlife'] .my-link-copy").Click();
+
+        act.Should().NotThrow();
+        tarjeta.Find(".my-link[data-key='mwrlife'] .my-link-copy").TextContent.Trim().Should().Be("MyLinks.Copy");
     }
 
     [Fact]
