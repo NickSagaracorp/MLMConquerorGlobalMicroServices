@@ -1353,4 +1353,10 @@
   <data name="MyLinks.LoadFailed" xml:space="preserve"><value>无法加载您的链接，请重试。</value></data>
   <data name="Reports.PeriodTotal" xml:space="preserve"><value>期间合计</value></data>
   <data name="Reports.Comment" xml:space="preserve"><value>备注</value></data>
+  <data name="Reports.Consolidated" xml:space="preserve"><value>已合并</value></data>
+  <data name="Common.Year" xml:space="preserve"><value>年份</value></data>
+  <data name="Common.Month" xml:space="preserve"><value>月份</value></data>
+  <data name="Common.AllMonths" xml:space="preserve"><value>所有月份</value></data>
+  <data name="Common.Of" xml:space="preserve"><value>/</value></data>
+  <data name="Common.Amount" xml:space="preserve"><value>金额</value></data>
 </root>

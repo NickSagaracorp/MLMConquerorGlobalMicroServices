@@ -9,6 +9,10 @@
     Historial de residuales diarios (Plan J). Lee {ApiBaseUrl}/commissions/dual-residual/daily,
     que sirve DailyResidualEarnings: en el BizCenter con el miembro del token y en el Admin con el
     de la ruta. Año por defecto y años disponibles los da el servidor (hora de servidor).
+
+    "Paid" en DailyResidualEarnings NO es dinero pagado: solo dice que la fila se consolidó en un
+    crédito de comisión (CommissionEarnings), que puede seguir pendiente de pago o haberse gastado
+    en una renovación o en tokens. Por eso se rotula "Consolidado" (Plan J, J27).
 *@
 
 <div class="card bg-white border-0 rounded-3 mb-4 daily-residuals">
@@ -51,7 +55,7 @@
         {
             <div class="d-flex flex-wrap gap-4 px-4 pb-3">
                 <div><span class="text-muted fs-12 d-block">@L["Reports.PeriodTotal"]</span><span class="fw-semibold dr-total">@Money.Usd(_data.PeriodTotal)</span></div>
-                <div><span class="text-muted fs-12 d-block">@L["Reports.Paid"]</span><span class="fw-semibold text-success dr-paid">@Money.Usd(_data.PeriodPaid)</span></div>
+                <div><span class="text-muted fs-12 d-block">@L["Reports.Consolidated"]</span><span class="fw-semibold text-success dr-paid">@Money.Usd(_data.PeriodPaid)</span></div>
                 <div><span class="text-muted fs-12 d-block">@L["Reports.Pending"]</span><span class="fw-semibold text-warning dr-pending">@Money.Usd(_data.PeriodPending)</span></div>
             </div>
 
@@ -116,15 +120,30 @@
     private int         _year;      // 0 = que decida el servidor
     private int         _month;     // 0 = todo el año
     private int         _page = 1;
+    private string?     _loadedFor; // ApiBaseUrl con el que se eligieron _year y _month
+    private int         _request;   // cada carga lleva un número; solo pinta la última
+
 
     private int TotalPages => _data is null || _data.PageSize <= 0
         ? 0
         : (int)Math.Ceiling(_data.TotalCount / (double)_data.PageSize);
 
-    protected override Task OnParametersSetAsync() => LoadAsync(1);
+    protected override Task OnParametersSetAsync()
+    {
+        // Otro miembro (o portal): su año y su mes por defecto los vuelve a decidir el servidor.
+        if (!string.Equals(_loadedFor, ApiBaseUrl, StringComparison.Ordinal))
+        {
+            _loadedFor = ApiBaseUrl;
+            _year      = 0;
+            _month     = 0;
+            _years     = new();
+        }
+        return LoadAsync(1);
+    }
 
     private async Task LoadAsync(int page)
     {
+        var request = ++_request;
         _loading = true;
         _error   = false;
         try
@@ -134,6 +153,8 @@
             if (_month is >= 1 and <= 12) url += $"&month={_month}";
 
             var resp = await Http.GetFromJsonAsync<ApiWrapper<HistoryDto>>(url);
+            if (request != _request) return;   // ya hay una petición más nueva: esta no pinta nada
+
             if (resp?.Success == true && resp.Data is not null)
             {
                 _data  = resp.Data;
@@ -149,11 +170,11 @@
         }
         catch (Exception)
         {
-            _error = true;
+            if (request == _request) _error = true;
         }
         finally
         {
-            _loading = false;
+            if (request == _request) _loading = false;
         }
     }
 
@@ -171,7 +192,7 @@
 
     private string StatusText(string status) => status switch
     {
-        "Paid"    => L["Reports.Paid"],
+        "Paid"    => L["Reports.Consolidated"],
         "Pending" => L["Reports.Pending"],
         _         => status
     };

@@ -16,7 +16,11 @@ public class TextosDeReportesTests
         "Sidebar.MyLinks", "PageTitle.MyLinks", "MyLinks.Personal", "MyLinks.Corporate",
         "MyLinks.Copy", "MyLinks.Copied", "MyLinks.NoSlug", "MyLinks.GoToProfile", "MyLinks.LoadFailed",
         // Bloque 2 — Residuales diarios
-        "Reports.PeriodTotal", "Reports.Comment",
+        "Reports.PeriodTotal", "Reports.Comment", "Reports.Consolidated", "Reports.Pending",
+        "Reports.EarnedDate", "Reports.PaymentDate", "Reports.EligiblePoints", "Reports.Showing", "Reports.Results",
+        "Sidebar.Residuals", "Team.LoadFailedResiduals", "Team.NoResidualEarnings",
+        "Common.Year", "Common.Month", "Common.AllMonths", "Common.Of", "Common.Amount", "Common.Status",
+        "Common.Previous", "Common.Next",
         // (claves de los bloques siguientes)
     };
 
@@ -28,7 +32,10 @@ public class TextosDeReportesTests
     {
         var ruta = Path.Combine(ReportesDb.RaizDelRepositorio(), "MLMConquerorGlobalEdition.SharedComponents",
             "Resources", $"SharedResources{cultura}.resx");
-        var datos = XDocument.Load(ruta).Root!.Elements("data")
+        // Por flujo y no por ruta: XDocument.Load(string) trata la ruta como URI y una carpeta con
+        // caracteres especiales (o un '#') la rompe.
+        using var archivo = File.OpenRead(ruta);
+        var datos = XDocument.Load(archivo).Root!.Elements("data")
             .ToDictionary(d => (string)d.Attribute("name")!, d => (string?)d.Element("value") ?? string.Empty);
 
         Claves.Where(k => !datos.ContainsKey(k)).Should().BeEmpty($"SharedResources{cultura}.resx tiene que traerlas");

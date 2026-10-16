@@ -1353,4 +1353,10 @@
   <data name="MyLinks.LoadFailed" xml:space="preserve"><value>ბმულების ჩატვირთვა ვერ მოხერხდა. სცადეთ ხელახლა.</value></data>
   <data name="Reports.PeriodTotal" xml:space="preserve"><value>პერიოდის ჯამი</value></data>
   <data name="Reports.Comment" xml:space="preserve"><value>კომენტარი</value></data>
+  <data name="Reports.Consolidated" xml:space="preserve"><value>კონსოლიდირებული</value></data>
+  <data name="Common.Year" xml:space="preserve"><value>წელი</value></data>
+  <data name="Common.Month" xml:space="preserve"><value>თვე</value></data>
+  <data name="Common.AllMonths" xml:space="preserve"><value>ყველა თვე</value></data>
+  <data name="Common.Of" xml:space="preserve"><value>-დან</value></data>
+  <data name="Common.Amount" xml:space="preserve"><value>თანხა</value></data>
 </root>

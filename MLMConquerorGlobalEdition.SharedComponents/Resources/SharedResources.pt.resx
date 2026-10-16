@@ -1440,4 +1440,8 @@
   <data name="MyLinks.LoadFailed" xml:space="preserve"><value>Não foi possível carregar seus links. Tente novamente.</value></data>
   <data name="Reports.PeriodTotal" xml:space="preserve"><value>Total do período</value></data>
   <data name="Reports.Comment" xml:space="preserve"><value>Comentário</value></data>
+  <data name="Reports.Consolidated" xml:space="preserve"><value>Consolidado</value></data>
+  <data name="Common.Year" xml:space="preserve"><value>Ano</value></data>
+  <data name="Common.Month" xml:space="preserve"><value>Mês</value></data>
+  <data name="Common.AllMonths" xml:space="preserve"><value>Todos os meses</value></data>
 </root>

@@ -50,6 +50,64 @@ public class DailyResidualHistoryTests : BunitContext
     }
 
     [Fact]
+    public void Una_fila_Paid_se_rotula_Consolidado_y_no_Pagado()
+    {
+        // Paid en DailyResidualEarnings solo dice que la fila se consolidó en un crédito de
+        // comisión, que puede seguir pendiente o haberse gastado: no es dinero pagado.
+        var c = Montar(Mayo);
+
+        c.WaitForAssertion(() => c.FindAll(".dr-row").Should().HaveCount(2));
+        c.FindAll(".dr-row .badge").Select(b => b.TextContent.Trim())
+            .Should().Equal("Reports.Pending", "Reports.Consolidated");
+        c.Markup.Should().NotContain("Reports.Paid");
+    }
+
+    [Fact]
+    public void Al_cambiar_de_ApiBaseUrl_se_olvidan_el_anio_y_el_mes()
+    {
+        var c = Montar(Mayo);
+        c.WaitForAssertion(() => _peticiones.Should().HaveCount(1));
+        c.Find("#dr-month").Change("5");
+        c.WaitForAssertion(() => _peticiones.Should().HaveCount(2));
+
+        c.Render(p => p.Add(x => x.ApiBaseUrl, "api/v1/admin/members/AMB-2"));
+
+        c.WaitForAssertion(() => _peticiones.Last().AbsolutePath
+            .Should().Be("/api/v1/admin/members/AMB-2/commissions/dual-residual/daily"));
+        _peticiones.Last().Query.Should().NotContain("year=").And.NotContain("month=");
+    }
+
+    [Fact]
+    public async Task Una_respuesta_vieja_que_llega_tarde_no_pisa_a_la_nueva()
+    {
+        var primera = new TaskCompletionSource<HttpResponseMessage>();
+        var nueva   = Mayo.Replace("\"periodTotal\":15", "\"periodTotal\":99");
+        var n = 0;
+        Services.AddSingleton(new HttpClient(new ManejadorAsincrono(_ =>
+            Interlocked.Increment(ref n) == 1
+                ? primera.Task
+                : Task.FromResult(Json(nueva)))) { BaseAddress = new Uri("https://api.pruebas/") });
+        Services.AddSingleton<IStringLocalizer<SharedResources>>(new StepUpDialogTests.LocalizadorDeClaves());
+        var c = Render<DailyResidualHistory>(p => p.Add(x => x.ApiBaseUrl, "api/v1/bizcenter"));
+
+        c.Find("#dr-month").Change("5");
+        c.WaitForAssertion(() => c.Find(".dr-total").TextContent.Should().Be("$99.00"));
+
+        primera.SetResult(Json(Mayo));
+        await Task.Delay(500);   // margen para que la respuesta vieja termine de procesarse
+
+        c.Find(".dr-total").TextContent.Should().Be("$99.00");
+    }
+
+    private static HttpResponseMessage Json(string json) =>
+        new(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
+
+    private sealed class ManejadorAsincrono(Func<HttpRequestMessage, Task<HttpResponseMessage>> f) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage r, CancellationToken ct) => f(r);
+    }
+
+    [Fact]
     public void Pide_el_endpoint_diario_y_no_el_de_comisiones()
     {
         var c = Montar(Mayo);
