@@ -50,6 +50,20 @@ public sealed class EntraxSignupStatusService : IEntraxSignupStatusService
             return null;
 
         var now = _clock.Now;
+
+        // El alta ya se completó por otro pago (otro QR, cripto, tarjeta): este QR no se paga. La pantalla
+        // lo oculta; no se pregunta a Entrax (si alguien lo paga igual, el barrido lo deja a revisar).
+        if (payment.Status is EntraxPaymentStatus.AwaitingPayment or EntraxPaymentStatus.Superseded
+            && await _db.Orders.AsNoTracking().AnyAsync(o => o.Id == signupId && o.Status == OrderStatus.Completed, ct))
+        {
+            return new EntraxSignupStatusDto
+            {
+                Status           = EntraxSignupStatuses.Superseded,
+                ExpiresAt        = payment.ExpiresAt,
+                SecondsRemaining = 0
+            };
+        }
+
         if (payment.Status == EntraxPaymentStatus.AwaitingPayment
             && payment.ExternalPaymentId is not null
             && (payment.LastCheckedAt is null || now - payment.LastCheckedAt.Value >= _options.PollThrottle))

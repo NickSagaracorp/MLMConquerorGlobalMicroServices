@@ -22,5 +22,12 @@ public enum EntraxPaymentStatus
     /// Hubo (o pudo haber) cobro pero NO se aplicó: importe o moneda que no cuadran, pedido ya activado
     /// por otro medio, datos del proveedor que no coinciden. Se mira y se devuelve a mano.
     /// </summary>
-    ToReview = 5
+    ToReview = 5,
+
+    /// <summary>
+    /// El alta se activó con otro pago (otro QR de Entrax) mientras este QR seguía vivo. La pantalla lo
+    /// oculta; el barrido lo sigue mirando mientras pueda pagarse, y si alguien lo paga es un doble cobro
+    /// (ToReview con ORDER_ALREADY_SETTLED).
+    /// </summary>
+    Superseded = 6
 }

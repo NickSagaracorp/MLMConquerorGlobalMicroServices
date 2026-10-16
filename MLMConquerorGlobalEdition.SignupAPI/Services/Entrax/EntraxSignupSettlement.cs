@@ -270,6 +270,7 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
                 });
 
                 await CancelWaitingCryptoAsync(order.Id, payment.ExternalPaymentId!, now);
+                await SupersedeOtherQrsAsync(order.Id, payment.Id, now);
 
                 // 2) El PEDIDO, también atómico: SignupOrderClaim dentro de la activación.
                 activation = await _activation.ActivatePendingSignupAsync(order, now, none);
@@ -428,6 +429,24 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
         // Condicional (Processing a Pending): si un pago tardío completó el pedido entre la lectura y
         // aquí, se queda Completed. Escribirlo a ciegas dejaría el pedido Pending con el miembro activo.
         await _orderClaim.TryReleaseAsync(order, now, Actor, none);
+    }
+
+    /// <summary>
+    /// Los demás QR del mismo pedido que seguían esperando ya no hay que pagarlos: Superseded. La pantalla
+    /// los oculta y el barrido los sigue mirando mientras puedan pagarse (doble cobro, a revisar).
+    /// </summary>
+    private async Task SupersedeOtherQrsAsync(string orderId, string exceptPaymentId, DateTime now)
+    {
+        var others = await _db.EntraxPayments
+            .Where(p => p.OrderId == orderId && p.Id != exceptPaymentId && p.Status == EntraxPaymentStatus.AwaitingPayment)
+            .ToListAsync(CancellationToken.None);
+
+        foreach (var p in others)
+        {
+            p.Status         = EntraxPaymentStatus.Superseded;
+            p.LastUpdateDate = now;
+            p.LastUpdateBy   = Actor;
+        }
     }
 
     private async Task CancelWaitingCryptoAsync(string orderId, string externalPaymentId, DateTime now)

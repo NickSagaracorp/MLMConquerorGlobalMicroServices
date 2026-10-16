@@ -12,7 +12,13 @@ public static class EntraxSignupStatuses
     public const string Expired         = "Expired";
     public const string ToReview        = "ToReview";
 
-    public static readonly IReadOnlyList<string> All = [AwaitingPayment, Paid, Failed, Expired, ToReview];
+    /// <summary>
+    /// El alta ya está completada por otro pago: este QR no hay que pagarlo y la pantalla lo oculta
+    /// (alta completada, inicia sesión).
+    /// </summary>
+    public const string Superseded      = "Superseded";
+
+    public static readonly IReadOnlyList<string> All = [AwaitingPayment, Paid, Failed, Expired, ToReview, Superseded];
 }
 
 /// <summary>

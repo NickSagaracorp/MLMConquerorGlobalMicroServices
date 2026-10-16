@@ -11,7 +11,8 @@ namespace MLMConquerorGlobalEdition.SignupAPI.Jobs;
 /// <summary>
 /// HangFire, cada 2 minutos, cola "signups": liquida los pagos de Entrax del alta que nadie más
 /// liquidó — el callback no llegó (o se rechazó) y la pantalla se cerró —, y re-mira los QR que
-/// caducaron hace menos de Entrax:LatePaymentWindowMinutes por si se pagaron tarde.
+/// caducaron hace menos de Entrax:LatePaymentWindowMinutes por si se pagaron tarde. También los
+/// sustituidos (el alta se activó con otro QR) mientras puedan pagarse: si alguien los paga, a revisar.
 ///
 /// Como mucho Entrax:SweepBatchSize por pasada, los menos consultados primero: Entrax limita a 100
 /// peticiones por minuto e IP. Corre aunque Entrax esté apagado: si se apaga con pagos en vuelo,
@@ -51,7 +52,8 @@ public class EntraxSignupSweepJob
 
         var ids = await _db.EntraxPayments.AsNoTracking()
             .Where(p => p.Status == EntraxPaymentStatus.AwaitingPayment
-                     || (p.Status == EntraxPaymentStatus.Expired && p.ExpiresAt != null && p.ExpiresAt >= lateFrom))
+                     || ((p.Status == EntraxPaymentStatus.Expired || p.Status == EntraxPaymentStatus.Superseded)
+                         && p.ExpiresAt != null && p.ExpiresAt >= lateFrom))
             .OrderBy(p => p.LastCheckedAt ?? DateTime.MinValue)
             .ThenBy(p => p.CreationDate)
             .Select(p => p.Id)
