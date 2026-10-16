@@ -10,7 +10,8 @@ namespace MLMConquerorGlobalEdition.Domain.Entities.Tokens;
 /// (TokenTransaction.TokenPurchaseId). Su Id es también el MerchantReferenceID del débito eWallet.
 ///
 /// No reembolsable: Completed no tiene salida. Una compra en cripto sin pagar sí la tiene: el
-/// miembro la cancela, un administrador la rechaza o caduca; las tres liberan el cupo.
+/// miembro la cancela, un administrador la rechaza o caduca; las tres liberan el cupo. Solo la
+/// caducada se puede reabrir (la transferencia llegó tarde) y confirmar, si su mes aún tiene cupo.
 /// </summary>
 public class TokenPurchase : AuditChangesStringKey
 {
@@ -128,7 +129,10 @@ public class TokenPurchase : AuditChangesStringKey
         Touch(now, actor);
     }
 
-    /// <summary>Nadie la confirmó dentro del plazo. Ver <see cref="IsCryptoExpired"/>.</summary>
+    /// <summary>
+    /// Nadie la confirmó dentro del plazo (Billing:TokenPurchase:CryptoExpiryDays, contado desde
+    /// CreationDate en hora de servidor; lo filtra TokenPurchaseService.ExpireStaleCryptoAsync).
+    /// </summary>
     public void Expire(DateTime now, string actor)
     {
         EnsureAwaitingCrypto("caducar");
@@ -138,13 +142,20 @@ public class TokenPurchase : AuditChangesStringKey
     }
 
     /// <summary>
-    /// ¿Lleva <paramref name="expiryDays"/> días o más esperando la transferencia? Cuenta desde
-    /// CreationDate, que sella AuditInterceptor con la hora del servidor, igual que <paramref name="now"/>.
+    /// La transferencia llegó después de caducar: un aprobador la reabre para confirmarla. Solo una
+    /// CADUCADA; la cancelada por el miembro o la rechazada fueron decisiones de alguien y no se
+    /// reabren. Conserva su PeriodKey: vuelve a ocupar el cupo de su mes, y quien reabre debe comprobar
+    /// antes que cabe.
     /// </summary>
-    public bool IsCryptoExpired(DateTime now, int expiryDays) =>
-        Status == TokenPurchaseStatus.AwaitingCryptoConfirmation
-        && expiryDays > 0
-        && CreationDate.AddDays(expiryDays) <= now;
+    public void ReopenExpired(DateTime now, string actor)
+    {
+        if (Status != TokenPurchaseStatus.Expired)
+            throw new InvalidOperationException($"La compra {Id} está en {Status} y no se puede reabrir: solo una compra en cripto caducada.");
+
+        Status      = TokenPurchaseStatus.AwaitingCryptoConfirmation;
+        FailureCode = null;
+        Touch(now, actor);
+    }
 
     private void EnsureAwaitingCrypto(string action)
     {

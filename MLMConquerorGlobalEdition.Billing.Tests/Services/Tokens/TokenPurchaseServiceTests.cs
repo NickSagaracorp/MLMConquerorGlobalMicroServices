@@ -51,6 +51,7 @@ public class TokenPurchaseServiceTests
     private readonly Mock<IEWalletFunds> _eWallet = new();
     private readonly Mock<ITokenPurchaseReceipts> _receipts = new();
     private IMemberFundsGate? _gate;
+    private ICacheService? _cache;
 
     public TokenPurchaseServiceTests()
     {
@@ -104,7 +105,7 @@ public class TokenPurchaseServiceTests
             new TokenPricingService(_db), new TokenMonthlyQuota(_db), _gate ?? new TransactionOnlyGate(_db),
             _issuer ?? new TokenIssuer(_db), new CommissionBalanceService(_db, clock.Object), _eWallet.Object,
             _router.Object, _orchestrator.Object, brands.Object, new CryptoDepositAddressReader(_db),
-            _receipts.Object, cache.Object, push.Object, NullLogger<TokenPurchaseService>.Instance,
+            _receipts.Object, _cache ?? cache.Object, push.Object, NullLogger<TokenPurchaseService>.Instance,
             new ConfigurationBuilder().AddInMemoryCollection(_settings).Build());
     }
 
@@ -465,7 +466,8 @@ public class TokenPurchaseServiceTests
         var ok = await Service().ConfirmCryptoAsync(orderId,
             new ConfirmCryptoTokenPurchaseRequest { CryptoTransactionId = " 0xabc ", Notes = "red BTC" }, "admin-1", "admin@x.com");
 
-        ok.Value!.TokenCodes.Should().HaveCount(2);
+        ok.Value!.TokenCodes.Should().BeEmpty("la respuesta va al admin: el miembro ve sus códigos en su pantalla y en el recibo");
+        _db.TokenTransactions.Count(t => t.ReferenceId != null).Should().Be(2);
         var conf = await _db.CryptoPaymentConfirmations.SingleAsync();
         conf.Status.Should().Be(CryptoPaymentConfirmationStatus.Confirmed);
         conf.CryptoTransactionId.Should().Be("0xabc");
@@ -510,7 +512,8 @@ public class TokenPurchaseServiceTests
         var r = await Service().ReconcileAsync(id,
             new ReconcileTokenPurchaseRequest { Charged = true, GatewayReference = "ipayout-tx-9", Notes = "visto en i-Payout" }, "tesoreria@x.com");
 
-        r.Value!.TokenCodes.Should().HaveCount(2);
+        r.Value!.TokenCodes.Should().BeEmpty("la respuesta va al admin");
+        _db.TokenTransactions.Count(t => t.ReferenceId != null).Should().Be(2);
         (await _db.TokenPurchases.SingleAsync()).Status.Should().Be(TokenPurchaseStatus.Completed);
         (await _db.PaymentHistories.SingleAsync()).GatewayTransactionId.Should().Be("ipayout-tx-9");
         _receipts.Verify(x => x.SendAsync(It.IsAny<TokenPurchase>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
@@ -595,6 +598,144 @@ public class TokenPurchaseServiceTests
         (await _db.TokenPurchases.SingleAsync(x => x.Id == vieja.PurchaseId)).Status.Should().Be(TokenPurchaseStatus.Expired);
         (await _db.TokenPurchases.SingleAsync(x => x.Id == reciente.PurchaseId)).Status.Should().Be(TokenPurchaseStatus.AwaitingCryptoConfirmation);
         (await new TokenMonthlyQuota(_db).UsedAsync(MemberId, FixedNow)).Should().Be(1);
+    }
+
+    // ── Reabrir una cripto caducada (la transferencia llegó tarde) ─────────────
+
+    private async Task<TokenPurchaseResultDto> CriptoCaducada(int qty = 3)
+    {
+        var p = await CriptoPendiente(qty);
+        foreach (var c in await _db.TokenPurchases.Where(x => x.Id == p.PurchaseId).ToListAsync())
+            c.CreationDate = FixedNow.AddDays(-4);
+        await _db.SaveChangesAsync();
+        (await Service().ExpireStaleCryptoAsync(3, "job")).Should().Be(1);
+        _db.ChangeTracker.Clear();
+        return p;
+    }
+
+    private static ConfirmCryptoTokenPurchaseRequest TxId(string id = "0xlate") => new() { CryptoTransactionId = id, Notes = "llegó tarde" };
+
+    [Fact]
+    public async Task Reabrir_una_caducada_emite_paga_el_pedido_y_manda_recibo()
+    {
+        var p = await CriptoCaducada(3);
+        var gate = new TransactionOnlyGate(_db);
+        _gate = gate;
+
+        var r = await Service().ReopenExpiredCryptoAsync(p.OrderId, TxId(), "admin-1", "admin@x.com");
+
+        r.IsSuccess.Should().BeTrue();
+        r.Value!.Status.Should().Be(TokenPurchaseStatuses.Completed);
+        r.Value.TokenCodes.Should().BeEmpty("la respuesta va al admin");
+        gate.Entered.Should().Equal(MemberId);
+        _db.ChangeTracker.Clear();
+        var compra = await _db.TokenPurchases.SingleAsync();
+        compra.Status.Should().Be(TokenPurchaseStatus.Completed);
+        compra.FailureCode.Should().BeNull();
+        compra.Notes.Should().StartWith("Reopened after expiry and confirmed by admin@x.com.");
+        var conf = await _db.CryptoPaymentConfirmations.SingleAsync();
+        conf.Status.Should().Be(CryptoPaymentConfirmationStatus.Confirmed);
+        conf.CryptoTransactionId.Should().Be("0xlate");
+        conf.Notes.Should().Be("Reopened after expiry. llegó tarde");
+        (await _db.Orders.SingleAsync()).Status.Should().Be(OrderStatus.Paid);
+        (await _db.PaymentHistories.SingleAsync()).GatewayTransactionId.Should().Be("0xlate");
+        _db.TokenTransactions.Count(t => t.ReferenceId != null && t.TokenPurchaseId == p.PurchaseId).Should().Be(3);
+        (await new TokenMonthlyQuota(_db).UsedAsync(MemberId, FixedNow)).Should().Be(3);
+        _receipts.Verify(x => x.SendAsync(It.IsAny<TokenPurchase>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+
+        (await Service().ReopenExpiredCryptoAsync(p.OrderId, TxId(), "admin-1", "admin@x.com"))
+            .ErrorCode.Should().Be(TokenPurchaseErrors.NotExpired, "ya no está caducada");
+    }
+
+    [Fact]
+    public async Task Reabrir_exige_el_id_de_la_transaccion()
+    {
+        var p = await CriptoCaducada();
+
+        (await Service().ReopenExpiredCryptoAsync(p.OrderId, TxId("  "), "admin-1", "admin@x.com"))
+            .ErrorCode.Should().Be(TokenPurchaseErrors.CryptoTransactionIdRequired);
+        (await _db.TokenPurchases.AsNoTracking().SingleAsync()).Status.Should().Be(TokenPurchaseStatus.Expired);
+    }
+
+    [Fact]
+    public async Task No_se_reabren_las_canceladas_ni_las_rechazadas_ni_las_pendientes()
+    {
+        var cancelada = await CriptoPendiente(1);
+        await Service().CancelCryptoAsync(MemberId, cancelada.PurchaseId, Actor);
+        var rechazada = await CriptoPendiente(1);
+        await Service().RejectCryptoAsync(rechazada.OrderId, new RejectCryptoTokenPurchaseRequest { Reason = "no" }, "admin-1", "admin@x.com");
+        var pendiente = await CriptoPendiente(1);
+
+        foreach (var orderId in new[] { cancelada.OrderId, rechazada.OrderId, pendiente.OrderId })
+            (await Service().ReopenExpiredCryptoAsync(orderId, TxId(), "admin-1", "admin@x.com"))
+                .ErrorCode.Should().Be(TokenPurchaseErrors.NotExpired);
+
+        _db.TokenTransactions.Should().BeEmpty();
+        (await Service().ReopenExpiredCryptoAsync("no-existe", TxId(), "admin-1", "admin@x.com"))
+            .ErrorCode.Should().Be(TokenPurchaseErrors.CryptoPaymentNotFound);
+    }
+
+    [Fact]
+    public async Task Reabrir_sin_cupo_en_su_mes_no_toca_nada()
+    {
+        // Caduca una de 3 y, con su hueco libre, el miembro compra 48 en el mismo mes: 48 + 3 > 50.
+        var p = await CriptoCaducada(3);
+        SeedCommissions(10000m);
+        (await Buy(Request(TokenPaymentMethods.CommissionBalance, qty: 48))).IsSuccess.Should().BeTrue();
+        _db.ChangeTracker.Clear();
+
+        var r = await Service().ReopenExpiredCryptoAsync(p.OrderId, TxId(), "admin-1", "admin@x.com");
+
+        r.ErrorCode.Should().Be(TokenPurchaseErrors.MonthlyLimitReached);
+        _db.ChangeTracker.Clear();
+        (await _db.TokenPurchases.SingleAsync(x => x.Id == p.PurchaseId)).Status.Should().Be(TokenPurchaseStatus.Expired);
+        (await _db.CryptoPaymentConfirmations.SingleAsync()).Status.Should().Be(CryptoPaymentConfirmationStatus.Cancelled);
+        _db.TokenTransactions.Count(t => t.TokenPurchaseId == p.PurchaseId).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Reabrir_mide_el_cupo_del_mes_de_la_compra_no_el_actual()
+    {
+        // Septiembre: caducó una de 3 y septiembre está lleno con 48 de antes. Octubre está vacío: no cuenta.
+        var p = await CriptoCaducada(3);
+        (await _db.TokenPurchases.SingleAsync()).PeriodKey = 202609;
+        await _db.SaveChangesAsync();
+        SeedPurchased(48, new DateTime(2026, 9, 10));
+        _db.ChangeTracker.Clear();
+
+        (await Service().ReopenExpiredCryptoAsync(p.OrderId, TxId(), "admin-1", "admin@x.com"))
+            .ErrorCode.Should().Be(TokenPurchaseErrors.MonthlyLimitReached);
+    }
+
+    [Fact]
+    public async Task Con_el_candado_ocupado_reabrir_no_emite()
+    {
+        var p = await CriptoCaducada();
+        var busy = new Mock<IMemberFundsGate>();
+        busy.Setup(g => g.EnterAsync(MemberId, It.IsAny<CancellationToken>())).ThrowsAsync(new MemberFundsBusyException(MemberId));
+        _gate = busy.Object;
+
+        (await Service().ReopenExpiredCryptoAsync(p.OrderId, TxId(), "admin-1", "admin@x.com"))
+            .ErrorCode.Should().Be(TokenPurchaseErrors.Busy);
+        _db.ChangeTracker.Clear();
+        (await _db.TokenPurchases.SingleAsync()).Status.Should().Be(TokenPurchaseStatus.Expired);
+    }
+
+    [Fact]
+    public async Task Conciliar_pone_la_decision_antes_de_las_notas_previas_y_recorta_lo_antiguo()
+    {
+        var id = await CompraAConciliar();
+        var compra = await _db.TokenPurchases.SingleAsync();
+        compra.Notes = new string('x', TokenPurchase.NotesMaxLength);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        (await Service().ReconcileAsync(id, new ReconcileTokenPurchaseRequest { Charged = false, Notes = "sin movimiento" }, "tesoreria@x.com"))
+            .IsSuccess.Should().BeTrue();
+
+        var notas = (await _db.TokenPurchases.AsNoTracking().SingleAsync()).Notes!;
+        notas.Should().StartWith("Reconciled by tesoreria@x.com: not charged. sin movimiento | Before: xxx");
+        notas.Should().HaveLength(TokenPurchase.NotesMaxLength);
     }
 
     [Fact]
@@ -1045,7 +1186,8 @@ public class TokenPurchaseServiceTests
         _issuer = null;
         var r = await Service().ReconcileAsync(compra.Id, new ReconcileTokenPurchaseRequest { Charged = true }, "tesoreria@x.com");
 
-        r.Value!.TokenCodes.Should().HaveCount(1);
+        r.Value!.TokenCodes.Should().BeEmpty("la respuesta va al admin");
+        _db.TokenTransactions.Count(t => t.ReferenceId != null).Should().Be(1);
         var pago = await _db.PaymentHistories.AsNoTracking().SingleAsync();
         pago.Id.Should().Be("ph-card", "el cobro ya tenía su PaymentHistory: no se escribe otro");
         pago.GatewayName.Should().Be("NmiSpreedly");
@@ -1195,6 +1337,60 @@ public class TokenPurchaseServiceTests
         f.CommissionBalance.Should().Be(120m);
     }
 
+    /// <summary>Caché de diccionario: guarda y devuelve el mismo objeto, como haría la de verdad.</summary>
+    private sealed class CacheEnMemoria : ICacheService
+    {
+        public readonly Dictionary<string, object> Valores = new();
+        public Task<T?> GetAsync<T>(string key, CancellationToken ct = default) where T : class =>
+            Task.FromResult(Valores.TryGetValue(key, out var v) ? (T?)v : null);
+        public Task SetAsync<T>(string key, T value, TimeSpan expiry, CancellationToken ct = default) where T : class
+        {
+            Valores[key] = value;
+            return Task.CompletedTask;
+        }
+        public Task RemoveAsync(string key, CancellationToken ct = default)
+        {
+            Valores.Remove(key);
+            return Task.CompletedTask;
+        }
+        public Task<long> IncrementAsync(string key, TimeSpan expiry, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<long> DecrementAsync(string key, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<long> GetCounterAsync(string key, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<bool> TryClaimOnceAsync(string key, TimeSpan expiry, CancellationToken ct = default) => throw new NotSupportedException();
+    }
+
+    [Fact]
+    public async Task El_saldo_de_iPayout_se_guarda_30_s_y_una_compra_con_eWallet_lo_borra()
+    {
+        var cache = new CacheEnMemoria();
+        _cache = cache;
+        EWalletWith(500m, EWalletDebitStatus.Completed);
+
+        (await Service().GetFundsAsync(MemberId)).EWalletBalance.Should().Be(500m);
+        (await Service().GetFundsAsync(MemberId)).EWalletBalance.Should().Be(500m);
+        _eWallet.Verify(e => e.BalanceAsync("ipayout-1", It.IsAny<CancellationToken>()), Times.Once,
+            "la segunda lectura sale de la caché");
+        cache.Valores.Should().ContainKey(CacheKeys.MemberEWalletBalance(MemberId));
+        CacheKeys.MemberEWalletBalanceTtl.Should().Be(TimeSpan.FromSeconds(30));
+
+        (await Buy(Request(TokenPaymentMethods.EWallet))).IsSuccess.Should().BeTrue();
+
+        cache.Valores.Should().NotContainKey(CacheKeys.MemberEWalletBalance(MemberId));
+    }
+
+    [Fact]
+    public async Task Un_saldo_que_no_se_pudo_leer_no_se_guarda()
+    {
+        var cache = new CacheEnMemoria();
+        _cache = cache;
+        _eWallet.Setup(e => e.UserNameOfAsync(MemberId, It.IsAny<CancellationToken>())).ReturnsAsync("ipayout-1");
+        _eWallet.Setup(e => e.BalanceAsync("ipayout-1", It.IsAny<CancellationToken>())).ThrowsAsync(new HttpRequestException("caído"));
+
+        (await Service().GetFundsAsync(MemberId)).EWalletBalance.Should().BeNull();
+
+        cache.Valores.Should().BeEmpty();
+    }
+
     // ── M1: el pago de la conciliación como el de los caminos normales ────────
 
     [Fact]
@@ -1281,7 +1477,7 @@ public class TokenPurchaseServiceTests
 
         var r = await Service().ConfirmCryptoAsync(orderId, new ConfirmCryptoTokenPurchaseRequest { CryptoTransactionId = "0x1" }, "admin-1", "admin@x.com");
 
-        r.Value!.TokenCodes.Should().HaveCount(2);
+        r.Value!.TokenCodes.Should().BeEmpty("la respuesta va al admin");
         _db.TokenTransactions.Count(t => t.ReferenceId != null).Should().Be(2);
         (await _db.CryptoPaymentConfirmations.AsNoTracking().SingleAsync()).Status.Should().Be(CryptoPaymentConfirmationStatus.Confirmed);
     }
@@ -1308,7 +1504,8 @@ public class TokenPurchaseServiceTests
 
         var r = await Service().ReconcileAsync(id, new ReconcileTokenPurchaseRequest { Charged = true }, "tesoreria@x.com");
 
-        r.Value!.TokenCodes.Should().HaveCount(2);
+        r.Value!.TokenCodes.Should().BeEmpty("la respuesta va al admin");
+        _db.TokenTransactions.Count(t => t.ReferenceId != null).Should().Be(2);
         _db.PaymentHistories.Should().HaveCount(1);
     }
     [Fact]

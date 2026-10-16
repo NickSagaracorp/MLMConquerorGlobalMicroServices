@@ -349,6 +349,54 @@ public class AdminTokenPurchasesControllerTests
         captura.Peticion!.RequestUri!.AbsolutePath.Should().Be("/api/v1/billing/tokens/purchases/crypto/A%2F..%2FB/confirm");
     }
 
+    // ── Cripto caducada: reabrir y confirmar ────────────────────────────────────
+
+    [Fact]
+    public async Task Caducadas_lista_solo_las_caducadas_de_tokens()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await SeedAsync(db, "ORD-EXP", TokenPurchaseStatus.Expired, cryptoStatus: CryptoPaymentConfirmationStatus.Cancelled);
+        await SeedAsync(db, "ORD-CAN", TokenPurchaseStatus.Cancelled, cryptoStatus: CryptoPaymentConfirmationStatus.Cancelled);
+        await SeedAsync(db, "ORD-REJ", TokenPurchaseStatus.Rejected, cryptoStatus: CryptoPaymentConfirmationStatus.Cancelled);
+        await SeedAsync(db, "ORD-PEN", TokenPurchaseStatus.AwaitingCryptoConfirmation);
+
+        var r = await Build(db).ListCryptoExpired();
+
+        var fila = ((OkObjectResult)r).Value.Should()
+            .BeOfType<ApiResponse<IEnumerable<AdminTokenPurchasesController.ExpiredCryptoTokenPurchaseDto>>>()
+            .Which.Data!.Should().ContainSingle().Subject;
+        fila.OrderId.Should().Be("ORD-EXP");
+        fila.PeriodKey.Should().Be(202610);
+        fila.FullName.Should().Be("Ana Ruiz");
+    }
+
+    [Fact]
+    public async Task Reabrir_reenvia_a_Billing_con_el_Bearer_y_el_id_de_la_transaccion()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await SeedAsync(db, "ORD-EXP", TokenPurchaseStatus.Expired, cryptoStatus: CryptoPaymentConfirmationStatus.Cancelled);
+        var (factory, captura) = Billing();
+
+        var r = await Build(db, factory.Object, "Bearer admin.jwt")
+            .ReopenExpiredCrypto("ORD-EXP", new AdminTokenPurchasesController.ConfirmCryptoRequest("0xlate", "tarde"));
+
+        r.Should().BeOfType<ContentResult>().Which.StatusCode.Should().Be(200);
+        captura.Peticion!.RequestUri!.AbsolutePath.Should().Be("/api/v1/billing/tokens/purchases/crypto/ORD-EXP/reopen-confirm");
+        captura.Peticion.Headers.Authorization!.ToString().Should().Be("Bearer admin.jwt");
+        captura.Cuerpo.Should().Contain("0xlate");
+    }
+
+    [Fact]
+    public async Task Reabrir_un_alta_no_se_reenvia()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await SeedAsync(db, "ORD-SIGNUP", TokenPurchaseStatus.Expired, CryptoPaymentPurpose.Signup);
+        var factory = new Mock<IHttpClientFactory>(MockBehavior.Strict);
+
+        (await Build(db, factory.Object).ReopenExpiredCrypto("ORD-SIGNUP", new AdminTokenPurchasesController.ConfirmCryptoRequest("0x1", null)))
+            .Should().BeOfType<NotFoundObjectResult>();
+    }
+
     // ── Billing que no responde, respuestas y cabeceras ─────────────────────────
 
     [Fact]

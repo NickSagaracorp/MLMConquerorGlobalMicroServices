@@ -29,6 +29,9 @@ public static class TokenPurchaseRules
 
     public static DateTime MonthStart(DateTime now) => new(now.Year, now.Month, 1, 0, 0, 0, now.Kind);
 
+    /// <summary>El primer día del mes de un <see cref="PeriodKey"/> (yyyyMM), para medir el cupo de ese mes.</summary>
+    public static DateTime MonthOf(int periodKey) => new(periodKey / 100, periodKey % 100, 1);
+
     /// <summary>
     /// Clave de configuración de Billing con los días que una compra en cripto puede esperar la
     /// transferencia antes de caducar y soltar el cupo.
@@ -144,6 +147,12 @@ public static class TokenPurchaseErrors
 
     /// <summary>Cancelar o rechazar algo que no es una compra en cripto pendiente de confirmar.</summary>
     public const string NotAwaitingCrypto             = "TOKEN_PURCHASE_NOT_AWAITING_CRYPTO";
+
+    /// <summary>
+    /// "Reabrir y confirmar" solo vale para una compra en cripto CADUCADA. Una cancelada por el miembro o
+    /// rechazada por un administrador no se reabre: es una decisión de alguien, no un plazo vencido.
+    /// </summary>
+    public const string NotExpired                    = "TOKEN_PURCHASE_NOT_EXPIRED";
 
     /// <summary>El pago con tarjeta está apagado (Billing:TokenPurchase:CardEnabled = false).</summary>
     public const string CardPaymentsDisabled          = "CARD_PAYMENTS_DISABLED";

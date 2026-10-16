@@ -329,6 +329,26 @@ public class CompraDeTokensControllerTests
     }
 
     [Fact]
+    public void Reabrir_y_confirmar_lleva_el_rol_de_quien_confirma()
+        => typeof(TokenPurchasesController).GetMethod(nameof(TokenPurchasesController.ReopenExpiredCrypto))!
+            .GetCustomAttribute<AuthorizeAttribute>()!.Roles.Should().Be(AppRoles.CryptoPaymentApprovers);
+
+    [Theory]
+    [InlineData(TokenPurchaseErrors.NotExpired)]
+    [InlineData(TokenPurchaseErrors.MonthlyLimitReached)]
+    public async Task Reabrir_una_que_no_esta_caducada_o_sin_cupo_es_409(string code)
+    {
+        _svc.Setup(s => s.ReopenExpiredCryptoAsync("ord-1", It.IsAny<ConfirmCryptoTokenPurchaseRequest>(), "admin-1", "admin@x.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<TokenPurchaseResultDto>.Failure(code, "no"));
+        var admin = Usuario(new Claim(ClaimTypes.NameIdentifier, "admin-1"), new Claim(ClaimTypes.Email, "admin@x.com"),
+                            new Claim(ClaimTypes.Role, AppRoles.SupportLevel3));
+
+        var r = await Controlador(admin).ReopenExpiredCrypto("ord-1", new ConfirmCryptoTokenPurchaseRequest { CryptoTransactionId = "0x1" }, default);
+
+        r.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status409Conflict);
+    }
+
+    [Fact]
     public void El_controlador_exige_sesion()
         => typeof(TokenPurchasesController).GetCustomAttribute<AuthorizeAttribute>().Should().NotBeNull();
 }

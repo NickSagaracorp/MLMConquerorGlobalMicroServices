@@ -47,6 +47,14 @@ public interface ITokenPurchaseService
         string orderId, RejectCryptoTokenPurchaseRequest request, string rejectedByUserId, string rejectedByEmail,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// La transferencia de una cripto CADUCADA llegó tarde: un aprobador la reabre y la confirma con el id
+    /// de la transacción, si el mes de su PeriodKey aún tiene cupo. No vale para canceladas ni rechazadas.
+    /// </summary>
+    Task<Result<TokenPurchaseResultDto>> ReopenExpiredCryptoAsync(
+        string orderId, ConfirmCryptoTokenPurchaseRequest request, string confirmedByUserId, string confirmedByEmail,
+        CancellationToken ct = default);
+
     /// <summary>Caduca las cripto sin confirmar de <paramref name="expiryDays"/> días o más. Devuelve cuántas.</summary>
     Task<int> ExpireStaleCryptoAsync(int expiryDays, string actor, CancellationToken ct = default);
 
@@ -178,11 +186,64 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
         if (userName is null) return funds;
 
         // Si i-Payout falla o no responde, el saldo sale como "no disponible" (null) y no como un 500
-        // que tumbaría la pantalla entera, comisiones incluidas.
+        // que tumbaría la pantalla entera, comisiones incluidas. Un saldo leído se guarda 30 s por
+        // miembro (CacheKeys.MemberEWalletBalance): la pantalla recarga fondos a menudo y cada lectura
+        // es una llamada a i-Payout. Solo es para enseñarlo: comprar con eWallet relee el saldo real.
         funds.HasEWallet = true;
+        var key    = CacheKeys.MemberEWalletBalance(memberId);
+        var cached = await CachedBalanceAsync(key, ct);
+        if (cached is not null)
+        {
+            funds.EWalletBalance = cached.Balance;
+            return funds;
+        }
+
         var balance = await SafeBalanceAsync(memberId, userName, ct);
         funds.EWalletBalance = balance.IsSuccess ? balance.Value : null;
+        if (balance.IsSuccess)
+            await CacheBalanceAsync(key, balance.Value, ct);
         return funds;
+    }
+
+    /// <summary>El saldo de i-Payout en caché (una clase: la caché solo guarda tipos por referencia).</summary>
+    private sealed record CachedEWalletBalance(decimal Balance);
+
+    private async Task<CachedEWalletBalance?> CachedBalanceAsync(string key, CancellationToken ct)
+    {
+        try
+        {
+            return await _cache.GetAsync<CachedEWalletBalance>(key, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogDebug(ex, "No se pudo leer el saldo de eWallet en caché; se pide a i-Payout.");
+            return null;
+        }
+    }
+
+    private async Task CacheBalanceAsync(string key, decimal balance, CancellationToken ct)
+    {
+        try
+        {
+            await _cache.SetAsync(key, new CachedEWalletBalance(balance), CacheKeys.MemberEWalletBalanceTtl, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogDebug(ex, "No se pudo guardar el saldo de eWallet en caché.");
+        }
+    }
+
+    /// <summary>Tras una compra con eWallet el saldo en caché ya no vale: se borra pase lo que pase.</summary>
+    private async Task ForgetEWalletBalanceAsync(string memberId)
+    {
+        try
+        {
+            await _cache.RemoveAsync(CacheKeys.MemberEWalletBalance(memberId), CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "No se pudo invalidar el saldo de eWallet en caché de {MemberId}.", memberId);
+        }
     }
 
     // ── Compra ────────────────────────────────────────────────────────────────
@@ -249,6 +310,13 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
         catch (MemberFundsBusyException)
         {
             return Fail(TokenPurchaseErrors.Busy, BusyMessage);
+        }
+        finally
+        {
+            // Se haya cobrado, rechazado o quedado a conciliar, el saldo que enseñaba la pantalla ya no
+            // es fiable: la siguiente lectura va a i-Payout.
+            if (method == TokenPaymentMethod.EWallet)
+                await ForgetEWalletBalanceAsync(input.MemberId);
         }
     }
 
@@ -376,14 +444,14 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
                 {
                     case EWalletDebitStatus.Rejected:
                         purchase.Fail(TokenPurchaseErrors.EWalletRejected, at, d.Actor);
-                        purchase.Notes = Truncate($"{outcome.Code}: {outcome.Detail}");
+                        purchase.Notes = $"{outcome.Code}: {outcome.Detail}";
                         Cancel(order, d.Actor, at);
                         await _db.SaveChangesAsync(CancellationToken.None);
                         await tx2.CommitAsync(CancellationToken.None);
                         return Fail(TokenPurchaseErrors.EWalletRejected, EWalletRejectedMessage);
 
                     case EWalletDebitStatus.NeedsReconciliation:
-                        purchase.MarkForReconciliation(outcome.Code ?? "EWALLET_OUTCOME_UNKNOWN", Truncate(outcome.Detail), at, d.Actor);
+                        purchase.MarkForReconciliation(outcome.Code ?? "EWALLET_OUTCOME_UNKNOWN", outcome.Detail, at, d.Actor);
                         await _db.SaveChangesAsync(CancellationToken.None);
                         await tx2.CommitAsync(CancellationToken.None);
                         return Fail(TokenPurchaseErrors.NeedsReview, EWalletReviewMessage);
@@ -683,10 +751,82 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
         if (purchase.Status != TokenPurchaseStatus.AwaitingCryptoConfirmation)
             return Fail(TokenPurchaseErrors.CryptoAlreadyConfirmed, "This crypto payment has already been confirmed.");
 
-        var now = _clock.Now;
+        return await ConfirmUnderGateAsync(tx, confirmation, purchase, order, request,
+            confirmedByUserId, confirmedByEmail, request.Notes?.Trim(), _clock.Now, ct);
+    }
+
+    /// <remarks>
+    /// Mismo candado, mismas capas y misma emisión que <see cref="ConfirmCryptoAsync"/>; antes, bajo el
+    /// candado, vuelve a comprobar el cupo del mes de la compra (su PeriodKey): al caducar soltó su
+    /// reserva y el miembro pudo gastar ese hueco. Si ya no cabe, TOKEN_MONTHLY_LIMIT_REACHED sin tocar
+    /// nada: el dinero recibido se resuelve fuera (devolución o soporte), no rompiendo el tope.
+    /// </remarks>
+    public async Task<Result<TokenPurchaseResultDto>> ReopenExpiredCryptoAsync(
+        string orderId, ConfirmCryptoTokenPurchaseRequest request, string confirmedByUserId, string confirmedByEmail,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.CryptoTransactionId))
+            return Fail(TokenPurchaseErrors.CryptoTransactionIdRequired, "The transaction id is required.");
+
+        return await WithOneRetryOnCollisionAsync(
+            () => ReopenExpiredCryptoOnceAsync(orderId, request, confirmedByUserId, confirmedByEmail, ct),
+            $"reabrir y confirmar la cripto del pedido {orderId}");
+    }
+
+    private async Task<Result<TokenPurchaseResultDto>> ReopenExpiredCryptoOnceAsync(
+        string orderId, ConfirmCryptoTokenPurchaseRequest request, string confirmedByUserId, string confirmedByEmail,
+        CancellationToken ct)
+    {
+        var (tx, busy) = await EnterGateOfPurchaseAsync(
+            _db.TokenPurchases.AsNoTracking().Where(p => p.OrderId == orderId), ct);
+        if (busy is not null) return busy;
+        await using var _ = tx;
+
+        var confirmation = await _db.CryptoPaymentConfirmations
+            .FirstOrDefaultAsync(c => c.OrderId == orderId && c.Purpose == CryptoPaymentPurpose.TokenPurchase, ct);
+        var purchase = await _db.TokenPurchases.FirstOrDefaultAsync(p => p.OrderId == orderId, ct);
+        var order    = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId, ct);
+        if (confirmation is null || purchase is null || order is null)
+            return Fail(TokenPurchaseErrors.CryptoPaymentNotFound, "No crypto token purchase was found for that order.");
+        if (purchase.Status != TokenPurchaseStatus.Expired || confirmation.Status != CryptoPaymentConfirmationStatus.Cancelled)
+            return Fail(TokenPurchaseErrors.NotExpired,
+                "Only an expired crypto purchase can be reopened. Cancelled or rejected purchases cannot.");
+
+        var used = await _quota.UsedAsync(purchase.MemberId, TokenPurchaseRules.MonthOf(purchase.PeriodKey), ct);
+        if (used + purchase.Quantity > TokenPurchaseRules.MonthlyLimit)
+            return Fail(TokenPurchaseErrors.MonthlyLimitReached,
+                $"Reopening it would exceed the member's monthly limit of {TokenPurchaseRules.MonthlyLimit} tokens for " +
+                $"{purchase.PeriodKey / 100}-{purchase.PeriodKey % 100:00} ({Math.Max(0, TokenPurchaseRules.MonthlyLimit - used)} left). " +
+                "The purchase stays expired.");
+
+        var now   = _clock.Now;
+        var actor = string.IsNullOrWhiteSpace(confirmedByEmail) ? confirmedByUserId : confirmedByEmail;
+        purchase.ReopenExpired(now, actor);
+        purchase.Notes = $"Reopened after expiry and confirmed by {actor}. {purchase.Notes}".Trim();
+        confirmation.Status = CryptoPaymentConfirmationStatus.AwaitingPayment;
+
+        var notes = $"Reopened after expiry. {request.Notes?.Trim()}".Trim();
+        return await ConfirmUnderGateAsync(tx, confirmation, purchase, order, request,
+            confirmedByUserId, confirmedByEmail, notes, now, ct);
+    }
+
+    /// <summary>
+    /// Confirma una cripto ya comprobada bajo el candado: confirmación, PaymentHistory, códigos, compra
+    /// completada y pedido pagado en UN SaveChanges (el RowVersion de la confirmación y de la compra
+    /// impide confirmar dos veces), y después recibo, push y caché.
+    /// </summary>
+    /// <remarks>
+    /// La respuesta va a un administrador: NO lleva los códigos (al portador; quien los lee los canjea).
+    /// El miembro los ve en su pantalla de tokens y en el recibo (D17).
+    /// </remarks>
+    private async Task<Result<TokenPurchaseResultDto>> ConfirmUnderGateAsync(
+        IDbContextTransaction? tx, CryptoPaymentConfirmation confirmation, TokenPurchase purchase, Orders order,
+        ConfirmCryptoTokenPurchaseRequest request, string confirmedByUserId, string confirmedByEmail, string? notes,
+        DateTime now, CancellationToken ct)
+    {
         confirmation.Status              = CryptoPaymentConfirmationStatus.Confirmed;
         confirmation.CryptoTransactionId = request.CryptoTransactionId.Trim();
-        confirmation.Notes               = request.Notes?.Trim();
+        confirmation.Notes               = Truncate(string.IsNullOrEmpty(notes) ? null : notes);
         confirmation.ConfirmedByUserId   = confirmedByUserId;
         confirmation.ConfirmedByEmail    = confirmedByEmail;
         confirmation.ConfirmedAt         = now;
@@ -695,7 +835,7 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
 
         var payment = AddPaymentHistory(order, confirmation.AmountDue, $"Crypto:{confirmation.CryptoCurrency}",
                                         confirmation.CryptoTransactionId, confirmedByEmail, now);
-        var codes = await _issuer.IssueAsync(
+        await _issuer.IssueAsync(
             new TokenIssue(purchase.MemberId, purchase.TokenTypeId, purchase.Quantity, purchase.Id, order.OrderNo, confirmedByEmail, now), ct);
         purchase.Complete(payment.Id, now, confirmedByEmail);
         MarkPaid(order, confirmedByEmail, now);
@@ -712,7 +852,7 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
         if (tx is not null) await tx.CommitAsync(CancellationToken.None);
 
         await AfterIssueAsync(purchase, order, await TokenTypeNameAsync(purchase.TokenTypeId, ct));
-        return Done(purchase, order, codes, await _quota.UsedAsync(purchase.MemberId, now, ct));
+        return Done(purchase, order, Array.Empty<string>(), await _quota.UsedAsync(purchase.MemberId, now, ct));
     }
 
     // ── Conciliación ──────────────────────────────────────────────────────────
@@ -753,10 +893,11 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
             .OrderByDescending(p => p.CreationDate)
             .FirstOrDefaultAsync(ct);
         var now   = _clock.Now;
-        var note  = Truncate($"{purchase.Notes} | Reconciled by {actor}: {(request.Charged ? "charged" : "not charged")}. {request.Notes}".Trim());
+        // Primero la decisión, luego lo que ya había: TokenPurchase recorta Notes a su columna y lo que se
+        // pierda, si se pierde algo, debe ser lo antiguo y no quién cerró la compra ni cómo.
+        var decision = $"Reconciled by {actor}: {(request.Charged ? "charged" : "not charged")}. {request.Notes?.Trim()}".Trim();
+        var note     = string.IsNullOrWhiteSpace(purchase.Notes) ? decision : $"{decision} | Before: {purchase.Notes}";
         var reference = string.IsNullOrWhiteSpace(request.GatewayReference) ? null : request.GatewayReference.Trim();
-        IReadOnlyList<string> codes = Array.Empty<string>();
-
         if (request.Charged)
         {
             PaymentHistory payment;
@@ -774,7 +915,7 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
                                             reference ?? purchase.Id, actor, now);
             }
 
-            codes = await _issuer.IssueAsync(
+            await _issuer.IssueAsync(
                 new TokenIssue(purchase.MemberId, purchase.TokenTypeId, purchase.Quantity, purchase.Id, order.OrderNo, actor, now), ct);
             purchase.Complete(payment.Id, now, actor);
             MarkPaid(order, actor, now);
@@ -809,7 +950,8 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
         if (request.Charged)
             await AfterIssueAsync(purchase, order, await TokenTypeNameAsync(purchase.TokenTypeId, ct));
 
-        return Done(purchase, order, codes, await _quota.UsedAsync(purchase.MemberId, now, ct));
+        // La respuesta va a tesorería: sin los códigos, como al confirmar cripto.
+        return Done(purchase, order, Array.Empty<string>(), await _quota.UsedAsync(purchase.MemberId, now, ct));
     }
 
     // ── Cripto sin pagar (D18) ────────────────────────────────────────────────
@@ -1095,7 +1237,7 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
     {
         try
         {
-            purchase.MarkForReconciliation(code, Truncate(detail), _clock.Now, actor);
+            purchase.MarkForReconciliation(code, detail, _clock.Now, actor);
             await _db.SaveChangesAsync(CancellationToken.None);
         }
         catch (Exception ex)
@@ -1130,7 +1272,7 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
             }
             else if (purchase.Status == TokenPurchaseStatus.Pending)
             {
-                purchase.MarkForReconciliation(code, Truncate(detail), _clock.Now, actor);
+                purchase.MarkForReconciliation(code, detail, _clock.Now, actor);
                 await _db.SaveChangesAsync(CancellationToken.None);
             }
             else
@@ -1344,6 +1486,7 @@ public sealed class TokenPurchaseService : ITokenPurchaseService
         await _db.TokenTypes.AsNoTracking().Where(t => t.Id == tokenTypeId).Select(t => t.Name).FirstOrDefaultAsync(ct)
         ?? $"Token type {tokenTypeId}";
 
+    // TokenPurchase ya recorta Notes y FailureCode; CryptoPaymentConfirmation no, y su columna es de 500.
     private static string? Truncate(string? s) => s is null || s.Length <= 500 ? s : s[..500];
 
     private static Result<TokenPurchaseResultDto> LimitReached(int used) =>

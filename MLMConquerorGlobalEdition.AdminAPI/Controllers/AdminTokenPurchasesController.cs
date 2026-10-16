@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.AdminAPI.Services;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
@@ -84,6 +85,55 @@ public class AdminTokenPurchasesController : ControllerBase
     }
 
     /// <summary>
+    /// GET /api/v1/admin/token-purchases/crypto-expired — compras en cripto que CADUCARON sin confirmar
+    /// (no las canceladas por el miembro ni las rechazadas), las más recientes primero. Si la
+    /// transferencia llega tarde, se reabren y confirman desde aquí.
+    /// </summary>
+    [HttpGet("crypto-expired")]
+    public async Task<IActionResult> ListCryptoExpired(CancellationToken ct = default)
+    {
+        var rows = await (
+            from p in _db.TokenPurchases.AsNoTracking()
+            where p.Status == TokenPurchaseStatus.Expired && p.PaymentMethod == TokenPaymentMethod.Crypto
+            join c in _db.CryptoPaymentConfirmations.AsNoTracking() on p.OrderId equals c.OrderId
+            where c.Purpose == CryptoPaymentPurpose.TokenPurchase
+            join o0 in _db.Orders.AsNoTracking() on p.OrderId equals o0.Id into os
+            from o in os.DefaultIfEmpty()
+            join m0 in _db.MemberProfiles.AsNoTracking() on p.MemberId equals m0.MemberId into ms
+            from m in ms.DefaultIfEmpty()
+            join t0 in _db.TokenTypes.AsNoTracking() on p.TokenTypeId equals t0.Id into ts
+            from t in ts.DefaultIfEmpty()
+            orderby p.CreationDate descending
+            select new ExpiredCryptoTokenPurchaseDto(
+                c.OrderId, p.Id, o == null ? null : o.OrderNo, p.MemberId,
+                m == null ? ProfileNotFound : (m.FirstName + " " + m.LastName).Trim(), c.MemberEmail,
+                t == null ? TokenTypeNotFound : t.Name, p.Quantity, c.CryptoCurrency, c.AmountDue, p.PeriodKey,
+                p.CreationDate, p.LastUpdateDate)
+        ).Take(MaxExpiredRows).ToListAsync(ct);
+
+        return Ok(ApiResponse<IEnumerable<ExpiredCryptoTokenPurchaseDto>>.Ok(rows));
+    }
+
+    /// <summary>
+    /// POST /api/v1/admin/token-purchases/crypto/{orderId}/reopen-confirm — la transferencia de una
+    /// compra caducada llegó tarde. Billing la reabre y la confirma (emite) bajo el candado del miembro
+    /// si su mes aún tiene cupo; si no, 409 TOKEN_MONTHLY_LIMIT_REACHED y sigue caducada. El id de la
+    /// transacción es obligatorio, como al confirmar.
+    /// </summary>
+    [HttpPost("crypto/{orderId}/reopen-confirm")]
+    public async Task<IActionResult> ReopenExpiredCrypto(
+        string orderId, [FromBody] ConfirmCryptoRequest request, CancellationToken ct = default)
+    {
+        if (!await IsCryptoTokenPurchaseAsync(orderId, ct))
+            return CryptoNotFound();
+
+        return await ForwardAsync(
+            $"api/v1/billing/tokens/purchases/crypto/{Uri.EscapeDataString(orderId)}/reopen-confirm",
+            new ConfirmCryptoTokenPurchaseRequest { CryptoTransactionId = request.CryptoTransactionId, Notes = request.Notes },
+            ct);
+    }
+
+    /// <summary>
     /// POST /api/v1/admin/token-purchases/crypto/{orderId}/reject — la transferencia no llegó o no vale.
     /// Billing cierra la compra sin emitir y libera el cupo (D18).
     /// </summary>
@@ -157,6 +207,10 @@ public class AdminTokenPurchasesController : ControllerBase
         NotFound(ApiResponse<object>.Fail(
             TokenPurchaseErrors.CryptoPaymentNotFound, "No crypto token purchase was found for that order."));
 
+    // Las caducadas se acumulan; la pantalla enseña las más recientes, que son las que pueden recibir
+    // una transferencia tardía.
+    private const int MaxExpiredRows = 200;
+
     private const string ProfileNotFound   = "(profile not found)";
     private const string TokenTypeNotFound = "(token type not found)";
 
@@ -168,7 +222,7 @@ public class AdminTokenPurchasesController : ControllerBase
     /// </summary>
     private async Task<IActionResult> ForwardAsync<TBody>(string path, TBody body, CancellationToken ct)
     {
-        var http = _httpFactory.CreateClient("BillingApi");
+        var http = _httpFactory.CreateClient(BillingApiRegistration.HttpClientName);
 
         using var request = new HttpRequestMessage(HttpMethod.Post, path) { Content = JsonContent.Create(body) };
         var bearer = Request.Headers.Authorization.ToString();
@@ -207,6 +261,11 @@ public class AdminTokenPurchasesController : ControllerBase
     public record PendingCryptoTokenPurchaseDto(
         string OrderId, string PurchaseId, string? OrderNo, string MemberId, string FullName, string Email,
         string TokenTypeName, int Quantity, string CryptoCurrency, decimal AmountDue, DateTime RequestedAt);
+
+    public record ExpiredCryptoTokenPurchaseDto(
+        string OrderId, string PurchaseId, string? OrderNo, string MemberId, string FullName, string Email,
+        string TokenTypeName, int Quantity, string CryptoCurrency, decimal AmountDue, int PeriodKey,
+        DateTime RequestedAt, DateTime ExpiredAt);
 
     public record TokenPurchaseToReviewDto(
         string PurchaseId, string? OrderNo, string MemberId, string FullName, string Email, string TokenTypeName,

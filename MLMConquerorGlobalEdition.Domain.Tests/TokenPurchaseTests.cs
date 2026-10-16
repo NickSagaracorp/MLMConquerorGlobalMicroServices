@@ -119,20 +119,39 @@ public class TokenPurchaseTests
     }
 
     [Fact]
-    public void Caduca_a_los_dias_configurados_y_no_antes()
+    public void Caduca_una_cripto_sin_confirmar()
     {
         var p = new TokenPurchase { Status = TokenPurchaseStatus.AwaitingCryptoConfirmation, CreationDate = Now };
-
-        p.IsCryptoExpired(Now.AddDays(3).AddSeconds(-1), 3).Should().BeFalse();
-        p.IsCryptoExpired(Now.AddDays(3), 3).Should().BeTrue();
-        p.IsCryptoExpired(Now.AddYears(1), 0).Should().BeFalse("0 días apaga la caducidad");
 
         p.Expire(Now.AddDays(3), "token-purchase-expiry");
 
         p.Status.Should().Be(TokenPurchaseStatus.Expired);
         p.FailureCode.Should().Be(TokenPurchase.CryptoExpiredCode);
-        p.IsCryptoExpired(Now.AddDays(10), 3).Should().BeFalse("ya no está esperando");
     }
+
+    [Fact]
+    public void Una_cripto_caducada_se_reabre_y_vuelve_a_esperar_la_confirmacion()
+    {
+        var p = new TokenPurchase { Status = TokenPurchaseStatus.Expired, FailureCode = TokenPurchase.CryptoExpiredCode, PeriodKey = 202609 };
+
+        p.ReopenExpired(Now, "admin@x.com");
+
+        p.Status.Should().Be(TokenPurchaseStatus.AwaitingCryptoConfirmation);
+        p.FailureCode.Should().BeNull();
+        p.PeriodKey.Should().Be(202609, "sigue contando en el mes en que se reservó");
+        p.LastUpdateBy.Should().Be("admin@x.com");
+        p.IsReservation.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(TokenPurchaseStatus.Cancelled)]
+    [InlineData(TokenPurchaseStatus.Rejected)]
+    [InlineData(TokenPurchaseStatus.AwaitingCryptoConfirmation)]
+    [InlineData(TokenPurchaseStatus.Completed)]
+    [InlineData(TokenPurchaseStatus.Failed)]
+    public void Solo_se_reabre_una_caducada(TokenPurchaseStatus status)
+        => ((Action)(() => new TokenPurchase { Status = status }.ReopenExpired(Now, "admin-1")))
+            .Should().Throw<InvalidOperationException>();
 
     [Theory]
     [InlineData(TokenPurchaseStatus.Pending)]
