@@ -83,6 +83,38 @@ public class EntraxSignupsControllerTests
         m.Callbacks.VerifyNoOtherCalls();
     }
 
+    /// <summary>Lo que hace Kestrel al pasar de MaxRequestBodySize con un cuerpo chunked: lanza al leer.</summary>
+    private sealed class CuerpoDemasiadoGrande : MemoryStream
+    {
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken ct = default)
+            => throw new BadHttpRequestException("Request body too large.", StatusCodes.Status413PayloadTooLarge);
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken ct)
+            => throw new BadHttpRequestException("Request body too large.", StatusCodes.Status413PayloadTooLarge);
+    }
+
+    [Fact]
+    public async Task Si_el_servidor_corta_el_cuerpo_por_grande_es_413_y_no_un_error()
+    {
+        var m = Crear(firma: "f");
+        m.Controlador.HttpContext.Request.Body = new CuerpoDemasiadoGrande();
+
+        Codigo(await m.Controlador.EntraxCallback(default)).Should().Be(StatusCodes.Status413PayloadTooLarge,
+            "un cuerpo grande no es un fallo nuestro: ni 500 ni una fila en ErrorLogs.");
+        m.Callbacks.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Con_un_Content_Length_de_mas_es_413_sin_leer_el_cuerpo()
+    {
+        var m = Crear(firma: "f");
+        m.Controlador.HttpContext.Request.Body = new CuerpoDemasiadoGrande();
+        m.Controlador.HttpContext.Request.ContentLength = EntraxSignupsController.MaxCallbackBytes + 1;
+
+        Codigo(await m.Controlador.EntraxCallback(default)).Should().Be(StatusCodes.Status413PayloadTooLarge);
+        m.Callbacks.VerifyNoOtherCalls();
+    }
+
     [Fact]
     public async Task Un_error_inesperado_es_500_sin_detalles()
     {

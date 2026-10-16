@@ -69,9 +69,24 @@ public class EntraxSignupsController : ControllerBase
     [RequestSizeLimit(MaxCallbackBytes)]
     public async Task<IActionResult> EntraxCallback(CancellationToken ct)
     {
-        var body = await ReadBodyAsync(Request.Body, MaxCallbackBytes, ct);
+        // Un cuerpo de más no es un fallo nuestro: 413 con un aviso, nunca un 500 ni una fila en ErrorLogs.
+        // Con Content-Length se corta sin leer; sin él (chunked), Kestrel lanza al pasar de
+        // [RequestSizeLimit] y ReadBodyAsync corta en el tope.
+        if (Request.ContentLength > MaxCallbackBytes)
+            return TooLarge();
+
+        byte[]? body;
+        try
+        {
+            body = await ReadBodyAsync(Request.Body, MaxCallbackBytes, ct);
+        }
+        catch (BadHttpRequestException ex) when (ex.StatusCode == StatusCodes.Status413PayloadTooLarge)
+        {
+            body = null;
+        }
+
         if (body is null)
-            return StatusCode(StatusCodes.Status413PayloadTooLarge);
+            return TooLarge();
 
         EntraxCallbackOutcome outcome;
         try
@@ -110,6 +125,12 @@ public class EntraxSignupsController : ControllerBase
     }
 
     public sealed record EntraxRecheckResponse(string Outcome);
+
+    private IActionResult TooLarge()
+    {
+        _logger.LogWarning("Entrax callback rechazado: el cuerpo pasa de {Max} bytes.", MaxCallbackBytes);
+        return StatusCode(StatusCodes.Status413PayloadTooLarge);
+    }
 
     /// <summary>Lee el cuerpo entero o devuelve null si pasa de <paramref name="max"/> bytes.</summary>
     internal static async Task<byte[]?> ReadBodyAsync(Stream body, int max, CancellationToken ct)
