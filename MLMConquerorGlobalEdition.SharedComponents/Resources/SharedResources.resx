@@ -1514,4 +1514,13 @@
   <data name="Tokens.CardExpired" xml:space="preserve"><value>Expired</value></data>
   <data name="Tokens.PaymentMethodsAria" xml:space="preserve"><value>Payment method</value></data>
   <data name="Tokens.CopyCode" xml:space="preserve"><value>Copy code {0}</value></data>
+  <data name="Sidebar.MyLinks" xml:space="preserve"><value>My Links</value></data>
+  <data name="PageTitle.MyLinks" xml:space="preserve"><value>My Links</value></data>
+  <data name="MyLinks.Personal" xml:space="preserve"><value>Your personal links</value></data>
+  <data name="MyLinks.Corporate" xml:space="preserve"><value>Corporate sites</value></data>
+  <data name="MyLinks.Copy" xml:space="preserve"><value>Copy</value></data>
+  <data name="MyLinks.Copied" xml:space="preserve"><value>Copied</value></data>
+  <data name="MyLinks.NoSlug" xml:space="preserve"><value>Set up your website name in your profile to get your personal links.</value></data>
+  <data name="MyLinks.GoToProfile" xml:space="preserve"><value>Go to my profile</value></data>
+  <data name="MyLinks.LoadFailed" xml:space="preserve"><value>We couldn't load your links. Please try again.</value></data>
 </root>

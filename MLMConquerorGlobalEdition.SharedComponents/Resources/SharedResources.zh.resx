@@ -1342,4 +1342,13 @@
   <data name="Tokens.CardExpired" xml:space="preserve"><value>已过期</value></data>
   <data name="Tokens.PaymentMethodsAria" xml:space="preserve"><value>付款方式</value></data>
   <data name="Tokens.CopyCode" xml:space="preserve"><value>复制代码 {0}</value></data>
+  <data name="Sidebar.MyLinks" xml:space="preserve"><value>我的链接</value></data>
+  <data name="PageTitle.MyLinks" xml:space="preserve"><value>我的链接</value></data>
+  <data name="MyLinks.Personal" xml:space="preserve"><value>您的个人链接</value></data>
+  <data name="MyLinks.Corporate" xml:space="preserve"><value>公司网站</value></data>
+  <data name="MyLinks.Copy" xml:space="preserve"><value>复制</value></data>
+  <data name="MyLinks.Copied" xml:space="preserve"><value>已复制</value></data>
+  <data name="MyLinks.NoSlug" xml:space="preserve"><value>请在个人资料中设置您的网站名称以获取个人链接。</value></data>
+  <data name="MyLinks.GoToProfile" xml:space="preserve"><value>前往我的资料</value></data>
+  <data name="MyLinks.LoadFailed" xml:space="preserve"><value>无法加载您的链接，请重试。</value></data>
 </root>

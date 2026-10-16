@@ -1342,4 +1342,13 @@
   <data name="Tokens.CardExpired" xml:space="preserve"><value>ვადაგასული</value></data>
   <data name="Tokens.PaymentMethodsAria" xml:space="preserve"><value>გადახდის მეთოდი</value></data>
   <data name="Tokens.CopyCode" xml:space="preserve"><value>კოდის {0} კოპირება</value></data>
+  <data name="Sidebar.MyLinks" xml:space="preserve"><value>ჩემი ბმულები</value></data>
+  <data name="PageTitle.MyLinks" xml:space="preserve"><value>ჩემი ბმულები</value></data>
+  <data name="MyLinks.Personal" xml:space="preserve"><value>თქვენი პირადი ბმულები</value></data>
+  <data name="MyLinks.Corporate" xml:space="preserve"><value>კორპორატიული საიტები</value></data>
+  <data name="MyLinks.Copy" xml:space="preserve"><value>კოპირება</value></data>
+  <data name="MyLinks.Copied" xml:space="preserve"><value>დაკოპირდა</value></data>
+  <data name="MyLinks.NoSlug" xml:space="preserve"><value>პირადი ბმულების მისაღებად მიუთითეთ თქვენი ვებსაიტის სახელი პროფილში.</value></data>
+  <data name="MyLinks.GoToProfile" xml:space="preserve"><value>ჩემს პროფილზე გადასვლა</value></data>
+  <data name="MyLinks.LoadFailed" xml:space="preserve"><value>ბმულების ჩატვირთვა ვერ მოხერხდა. სცადეთ ხელახლა.</value></data>
 </root>
