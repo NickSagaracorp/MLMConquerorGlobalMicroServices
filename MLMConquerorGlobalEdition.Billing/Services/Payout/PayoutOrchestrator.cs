@@ -81,7 +81,7 @@ public class PayoutOrchestrator : IPayoutOrchestrator
             earnings = await _db.CommissionEarnings
                 .Where(e => e.BeneficiaryMemberId == memberId
                             && e.Status == CommissionEarningStatus.Pending
-                            && e.PaymentDate <= processDate
+                            && (e.Amount < 0 || e.PaymentDate <= processDate)
                             && !e.IsDeleted
                             && !reservedEarningIds.Contains(e.Id))
                 .OrderBy(e => e.PaymentDate)

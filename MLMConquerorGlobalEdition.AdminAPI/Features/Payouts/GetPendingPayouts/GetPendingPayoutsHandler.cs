@@ -28,7 +28,7 @@ public class GetPendingPayoutsHandler
         // Per-member pending total, due on/before processDate, not reserved (DB-side aggregation).
         var perMember = _db.CommissionEarnings
             .Where(e => e.Status == CommissionEarningStatus.Pending
-                        && e.PaymentDate <= request.ProcessDate
+                        && (e.Amount < 0 || e.PaymentDate <= request.ProcessDate)
                         && !e.IsDeleted
                         && (request.CommissionTypeId == null || e.CommissionTypeId == request.CommissionTypeId)
                         && !reservedEarningIds.Contains(e.Id))

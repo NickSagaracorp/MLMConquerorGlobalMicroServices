@@ -57,7 +57,7 @@ public class PayoutBatchExportService : IPayoutBatchExportService
             .Select(pae => pae.CommissionEarningId);
 
         var perMember = _db.CommissionEarnings
-            .Where(e => e.Status == CommissionEarningStatus.Pending && e.PaymentDate <= processDate
+            .Where(e => e.Status == CommissionEarningStatus.Pending && (e.Amount < 0 || e.PaymentDate <= processDate)
                         && !e.IsDeleted && !reservedEarningIds.Contains(e.Id))
             .GroupBy(e => e.BeneficiaryMemberId)
             .Select(g => new { MemberId = g.Key, Total = g.Sum(x => x.Amount) });
@@ -123,7 +123,7 @@ public class PayoutBatchExportService : IPayoutBatchExportService
 
             var earnings = await _db.CommissionEarnings
                 .Where(e => lockedIds.Contains(e.BeneficiaryMemberId)
-                            && e.Status == CommissionEarningStatus.Pending && e.PaymentDate <= processDate
+                            && e.Status == CommissionEarningStatus.Pending && (e.Amount < 0 || e.PaymentDate <= processDate)
                             && !e.IsDeleted && !reservedAtQuery.Contains(e.Id))
                 .Select(e => new { e.Id, e.BeneficiaryMemberId, e.Amount })
                 .ToListAsync(ct);

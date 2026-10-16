@@ -28,6 +28,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Wallet;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
+using IClock = MLMConquerorGlobalEdition.SharedKernel.Interfaces.IDateTimeProvider;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 
@@ -43,12 +44,14 @@ public class AdminPayoutsController : ControllerBase
     private readonly IMediator _mediator;
     private readonly AppDbContext _db;
     private readonly IReceiptStorage _receiptStorage;
+    private readonly IClock _clock;
 
-    public AdminPayoutsController(IMediator mediator, AppDbContext db, IReceiptStorage receiptStorage)
+    public AdminPayoutsController(IMediator mediator, AppDbContext db, IReceiptStorage receiptStorage, IClock clock)
     {
         _mediator = mediator;
         _db = db;
         _receiptStorage = receiptStorage;
+        _clock = clock;
     }
 
     // ── Payout Gateways (PaymentGatewayInfo catalog) ────────────────────────
@@ -130,10 +133,9 @@ public class AdminPayoutsController : ControllerBase
         [FromBody] ProcessPayoutBody body,
         CancellationToken ct = default)
     {
-        // ProcessDate comes from the caller (admin's chosen date); falls back to UtcNow when omitted.
-        // The orchestrator itself uses IDateTimeProvider for audit timestamps — this is the one
-        // accepted DateTime.UtcNow usage per the plan note.
-        var processDate = body.ProcessDate ?? DateTime.UtcNow;
+        // ProcessDate es la fecha que elige el admin; sin ella, la hora de servidor: las comisiones
+        // guardan PaymentDate en hora de servidor y comparar con UTC adelantaba o retrasaba el corte.
+        var processDate = body.ProcessDate ?? _clock.Now;
         var result = await _mediator.Send(new ProcessMemberPayoutCommand(memberId, processDate), ct);
 
         if (!result.IsSuccess)
@@ -155,7 +157,7 @@ public class AdminPayoutsController : ControllerBase
         CancellationToken ct = default)
     {
         var result = await _mediator.Send(
-            new GetPendingPayoutsQuery(processDate ?? DateTime.UtcNow, page, pageSize, walletType, commissionTypeId), ct);
+            new GetPendingPayoutsQuery(processDate ?? _clock.Now, page, pageSize, walletType, commissionTypeId), ct);
 
         if (!result.IsSuccess)
             return BadRequest(ApiResponse<object>.Fail(result.ErrorCode!, result.Error!));
@@ -170,7 +172,7 @@ public class AdminPayoutsController : ControllerBase
         [FromQuery] int? commissionTypeId = null,
         CancellationToken ct = default)
     {
-        var result = await _mediator.Send(new GetPayoutStatsQuery(processDate ?? DateTime.UtcNow, commissionTypeId), ct);
+        var result = await _mediator.Send(new GetPayoutStatsQuery(processDate ?? _clock.Now, commissionTypeId), ct);
 
         if (!result.IsSuccess)
             return BadRequest(ApiResponse<object>.Fail(result.ErrorCode!, result.Error!));
@@ -268,7 +270,7 @@ public class AdminPayoutsController : ControllerBase
         CancellationToken ct = default)
     {
         var r = await _mediator.Send(
-            new ExportPayoutBatchCommand(body.WalletType, body.ProcessDate ?? DateTime.UtcNow), ct);
+            new ExportPayoutBatchCommand(body.WalletType, body.ProcessDate ?? _clock.Now), ct);
 
         if (!r.IsSuccess)
             return BadRequest(ApiResponse<object>.Fail(r.ErrorCode!, r.Error!));
@@ -380,7 +382,7 @@ public class AdminPayoutsController : ControllerBase
         [FromBody] UpdateReceiptEmailSettingRequest body,
         CancellationToken ct = default)
     {
-        var now = DateTime.UtcNow;
+        var now = _clock.Now;
         var actor = User.Identity?.Name ?? "admin";
         var p = await _db.GlobalParameters.FirstOrDefaultAsync(x => x.Key == PayoutReceiptService.AutoSendKey, ct);
         if (p is null)

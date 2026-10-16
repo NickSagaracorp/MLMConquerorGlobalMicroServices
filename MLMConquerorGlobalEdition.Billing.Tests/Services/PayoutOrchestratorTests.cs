@@ -202,6 +202,26 @@ public class PayoutOrchestratorTests
     }
 
     [Fact]
+    public async Task Payout_UnDebitoPendienteSeDescuentaAunqueSuFechaSeaPosteriorAlProcessDate()
+    {
+        // Crédito del 1/10 y compra de tokens con comisiones el 15/10 (débito negativo con
+        // PaymentDate = ese momento). Un pago con processDate 14/10 cogía el crédito y dejaba fuera el
+        // débito: pagaba dinero ya gastado en tokens.
+        using var db = TestDbContextFactory.Create();
+        SeedWallet(db, "m1", WalletType.eWallet, "wallet@x.com");
+        SeedEarning(db, "m1", 100m, new DateTime(2026, 10, 1));
+        SeedEarning(db, "m1", -60m, new DateTime(2026, 10, 15, 9, 30, 0));
+        SeedEarning(db, "m1", 999m, new DateTime(2026, 10, 20)); // crédito futuro: sigue fuera
+        await db.SaveChangesAsync();
+
+        var result = await Create(db, GatewayMock().Object).ExecutePayoutAsync("m1", new DateTime(2026, 10, 14));
+
+        result.Value!.AmountUsd.Should().Be(40m);
+        result.Value.EarningsCount.Should().Be(2);
+        (await db.CommissionEarnings.SingleAsync(e => e.Amount == 999m)).Status.Should().Be(CommissionEarningStatus.Pending);
+    }
+
+    [Fact]
     public async Task Payout_ReservedEarnings_ExcludedFromNewCandidates()
     {
         using var db = TestDbContextFactory.Create();

@@ -185,4 +185,24 @@ public class PayoutBatchExportServiceTests
         result.Value!.MemberCount.Should().Be(0);
         db.PayoutAttemptEarnings.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task Export_UnDebitoPendienteSeDescuentaAunqueSuFechaSeaPosteriorAlProcessDate()
+    {
+        // El débito de una compra de tokens lleva PaymentDate = el momento de la compra; un lote con un
+        // processDate anterior lo dejaba fuera y pagaba el crédito entero.
+        using var db = TestDbContextFactory.Create();
+        Seed(db, "AMB-1", WalletType.eWallet, 100m);
+        db.CommissionEarnings.Add(new CommissionEarning
+        {
+            BeneficiaryMemberId = "AMB-1", Amount = -60m, Status = CommissionEarningStatus.Pending,
+            PaymentDate = Now.AddDays(5), IsDeleted = false, CreationDate = Now, CreatedBy = "s"
+        });
+        db.SaveChanges();
+
+        var result = await Build(db).ExportAsync(WalletType.eWallet, Now);
+
+        result.Value!.TotalAmountUsd.Should().Be(40m);
+        (await db.PayoutAttemptEarnings.CountAsync()).Should().Be(2);
+    }
 }
