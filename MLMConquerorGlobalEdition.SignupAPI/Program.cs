@@ -130,10 +130,10 @@ builder.Services.AddScoped<IEncryptionService, EncryptionService>();
 // está puesto; en Development solo avisa. El fake (UseFake) es un singleton en memoria que se paga
 // con /api/v1/dev/entrax/….
 var entraxOptions = EntraxOptions.FromConfiguration(builder.Configuration);
-EntraxOptionsGuard.ThrowIfInvalid(entraxOptions, builder.Environment.IsDevelopment());
 foreach (var problem in EntraxOptionsGuard.Problems(entraxOptions, builder.Environment.IsDevelopment()))
     Console.WriteLine($"[Entrax] {problem}");
-builder.Services.AddEntrax(entraxOptions);
+// AddEntrax pasa la guarda (EntraxOptionsGuard.ThrowIfInvalid) antes de registrar nada.
+builder.Services.AddEntrax(entraxOptions, builder.Environment.IsDevelopment());
 builder.Services.AddScoped<IEntraxSignupCheckout, EntraxSignupCheckout>();
 builder.Services.AddScoped<IEntraxSignupSettlement, EntraxSignupSettlement>();
 builder.Services.AddScoped<IEntraxCallbackProcessor, EntraxCallbackProcessor>();

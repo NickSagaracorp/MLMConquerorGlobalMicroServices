@@ -6,12 +6,12 @@ namespace MLMConquerorGlobalEdition.SignupAPI.Tests.Entrax;
 
 public class EntraxRegistroTests
 {
-    private static ServiceProvider Contenedor(EntraxOptions o)
+    private static ServiceProvider Contenedor(EntraxOptions o, bool isDevelopment = true)
     {
         var s = new ServiceCollection();
         s.AddLogging();
         s.AddSingleton(Mock.Of<IDateTimeProvider>());
-        s.AddEntrax(o);
+        s.AddEntrax(o, isDevelopment);
         return s.BuildServiceProvider();
     }
 
@@ -42,5 +42,24 @@ public class EntraxRegistroTests
         using var sp = Contenedor(o);
 
         sp.GetRequiredService<EntraxOptions>().Should().BeSameAs(o);
+    }
+
+    [Fact]
+    public void El_fake_fuera_de_Development_no_se_registra_aunque_nadie_llame_a_la_guarda()
+    {
+        var s = new ServiceCollection();
+
+        var act = () => s.AddEntrax(new EntraxOptions { UseFake = true }, isDevelopment: false);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*UseFake*");
+        s.Should().NotContain(d => d.ServiceType == typeof(FakeEntraxClient));
+    }
+
+    [Fact]
+    public void Encendido_sin_credenciales_fuera_de_Development_tampoco_se_registra()
+    {
+        var act = () => new ServiceCollection().AddEntrax(new EntraxOptions { Enabled = true }, isDevelopment: false);
+
+        act.Should().Throw<InvalidOperationException>();
     }
 }
