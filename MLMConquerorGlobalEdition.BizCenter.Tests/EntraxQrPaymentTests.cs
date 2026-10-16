@@ -46,17 +46,22 @@ public class EntraxQrPaymentTests : BunitContext
                 vencidos = _activos.Where(t => t.VenceEn <= _ms).ToList();
                 foreach (var t in vencidos) _activos.Remove(t);
             }
-            foreach (var t in vencidos) t.Disparar();
+            // Como un temporizador de verdad, el aviso sale por el pool y no por el hilo de la prueba: si no,
+            // todo el bucle del componente correría dentro de Avanzar, tomando los bloqueos del renderizador.
+            foreach (var t in vencidos) _ = Task.Run(t.Disparar);
         }
 
         private sealed class Temporizador(RelojManual reloj, TimerCallback callback, object? state) : ITimer
         {
             public long VenceEn;
+            private bool _liberado;
 
             public bool Change(TimeSpan dueTime, TimeSpan period)
             {
                 lock (reloj._lock)
                 {
+                    // Como un temporizador de verdad: tras Dispose, Change no hace nada.
+                    if (_liberado) return false;
                     reloj._activos.Remove(this);
                     if (dueTime == Timeout.InfiniteTimeSpan) return true;
                     VenceEn = reloj._ms + (long)dueTime.TotalMilliseconds;
@@ -66,12 +71,19 @@ public class EntraxQrPaymentTests : BunitContext
             }
 
             public void Disparar() => callback(state);
-            public void Dispose() { lock (reloj._lock) reloj._activos.Remove(this); }
+            public void Dispose() { lock (reloj._lock) { _liberado = true; reloj._activos.Remove(this); } }
             public ValueTask DisposeAsync() { Dispose(); return ValueTask.CompletedTask; }
         }
     }
 
     private readonly RelojManual _reloj = new();
+
+    public EntraxQrPaymentTests()
+    {
+        // Las esperas son por condición, no por tiempo; el límite solo evita colgar la ejecución si algo
+        // falla, y es holgado para que un equipo cargado no dé falsos rojos.
+        DefaultWaitTimeout = TimeSpan.FromSeconds(30);
+    }
 
     private static EntraxSignupPaymentDto Pago(string referencia = "ref-1", int segundos = 900) => new()
     {
@@ -97,7 +109,9 @@ public class EntraxQrPaymentTests : BunitContext
     /// <summary>Espera a que el componente esté dormido en su pausa y la cumple, avanzando <paramref name="tiempo"/>.</summary>
     private void Turno_(IRenderedComponent<EntraxQrPayment> cut, TimeSpan? tiempo = null)
     {
-        cut.WaitForState(() => _reloj.Pendientes > 0);
+        // El bucle registra su pausa DESPUÉS de repintar, así que no hay un render que avise: se espera
+        // a la condición, no a un tiempo.
+        SpinWait.SpinUntil(() => _reloj.Pendientes > 0, TimeSpan.FromSeconds(10)).Should().BeTrue("el bucle debe pedir su siguiente pausa.");
         _reloj.Avanzar(tiempo ?? Turno);
     }
 
@@ -263,7 +277,7 @@ public class EntraxQrPaymentTests : BunitContext
         EsperaEstado(cut, estado);
 
         // Sin pausas pendientes el bucle ya terminó: no hay un turno siguiente que pueda preguntar.
-        cut.WaitForState(() => _reloj.Pendientes == 0);
+        SpinWait.SpinUntil(() => _reloj.Pendientes == 0, TimeSpan.FromSeconds(10)).Should().BeTrue();
         llamadas.Should().Be(1);
     }
 
@@ -286,14 +300,25 @@ public class EntraxQrPaymentTests : BunitContext
     }
 
     [Fact]
-    public async Task Al_destruir_el_componente_deja_de_preguntar()
+    public async Task Al_destruir_el_componente_cancela_la_consulta_en_curso()
     {
-        var cut = Pinta(Dice(EntraxSignupStatuses.AwaitingPayment, 500));
+        CancellationToken token = default;
+        var llamadas = 0;
+        var cut = Pinta(ct =>
+        {
+            token = ct;
+            Interlocked.Increment(ref llamadas);
+            return Task.FromResult<EntraxSignupStatusDto?>(new EntraxSignupStatusDto
+                { Status = EntraxSignupStatuses.AwaitingPayment, SecondsRemaining = 500 });
+        });
         Turno_(cut);
+        cut.WaitForAssertion(() => llamadas.Should().Be(1));
+        token.IsCancellationRequested.Should().BeFalse();
 
         await DisposeComponentsAsync();
 
-        _reloj.Pendientes.Should().Be(0, "la pausa del bucle se cancela al destruir el componente.");
+        SpinWait.SpinUntil(() => token.IsCancellationRequested, TimeSpan.FromSeconds(10))
+            .Should().BeTrue("el bucle y la consulta comparten el token que se cancela al destruir.");
     }
 
     [Fact]
