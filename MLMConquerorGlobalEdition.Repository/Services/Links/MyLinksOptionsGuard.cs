@@ -6,6 +6,12 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Links;
 /// Valida las plantillas al arrancar. Una sola regla mala impide arrancar el BizCenter: es mejor que
 /// repartir a miles de miembros un enlace http, con usuario y contraseña, o con el slug en el dominio
 /// (que convertiría cada slug en un subdominio que no controlamos).
+///
+/// Reglas: como mucho <see cref="MyLinksOptions.MaxLinks"/> enlaces; clave de 1 a 40 letras, números
+/// o guiones, única sin distinguir mayúsculas; etiqueta obligatoria de 60 caracteres como mucho; URL
+/// https absoluta sin usuario ni contraseña; <c>{slug}</c> como mucho una vez y detrás de la primera
+/// '/' que sigue al dominio (ruta, query o fragmento: "https://x.com?ref={slug}", sin '/', se
+/// rechaza); ningún otro marcador entre llaves.
 /// </summary>
 public static class MyLinksOptionsGuard
 {
@@ -64,7 +70,8 @@ public static class MyLinksOptionsGuard
 
         if (tokens == 1)
         {
-            // El primer '/' después de "https://" cierra el dominio: el slug tiene que ir detrás.
+            // La primera '/' después de "https://" cierra el dominio: el slug tiene que ir detrás
+            // (en la ruta, la query o el fragmento). Sin esa '/' no hay sitio válido para el slug.
             var authorityEnd = url.IndexOf('/', "https://".Length);
             var at           = url.IndexOf(MyLinksOptions.SlugToken, StringComparison.Ordinal);
             if (authorityEnd < 0 || at < authorityEnd)

@@ -31,6 +31,7 @@ public class MyLinksOptionsGuardTests
     [InlineData("mwrlife.com/{slug}",                       "https")]
     [InlineData("javascript:alert(1)",                      "https")]
     [InlineData("https://{slug}.mwrlife.com/",              "ruta")]
+    [InlineData("https://mwrlife.com?ref={slug}",           "ruta")]
     [InlineData("https://mwrlife.com/{slug}/{slug}",        "una vez")]
     [InlineData("https://mwrlife.com/{user}",               "{slug}")]
     [InlineData("https://usuario:clave@mwrlife.com/{slug}", "usuario")]

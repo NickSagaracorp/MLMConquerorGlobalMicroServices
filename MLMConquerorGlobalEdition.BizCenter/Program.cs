@@ -109,7 +109,9 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Commiss
                             MLMConquerorGlobalEdition.Repository.Services.Commissions.DailyResidualReportService>();
 
 // "Mis enlaces" (Plan J): plantillas de appsettings validadas al arrancar. Con una plantilla
-// inválida el BizCenter no arranca (R11). Sin sección no hay enlaces, y arranca.
+// inválida el BizCenter no arranca (R11). Sin sección no hay enlaces, y arranca. Un
+// appsettings.{Entorno}.json fusiona la lista POR ÍNDICE (no la sustituye): para cambiarla en un
+// entorno hay que repetirla entera.
 MLMConquerorGlobalEdition.Repository.Services.Links.MyLinksServiceCollectionExtensions.AddMyLinks(
     builder.Services,
     builder.Configuration
