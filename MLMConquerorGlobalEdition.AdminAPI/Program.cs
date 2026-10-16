@@ -301,23 +301,11 @@ builder.Services.AddHttpClient("SignupApi", client =>
     ServerCertificateCustomValidationCallback = (_, _, _, _) => true
 });
 
-// Billing confirma o rechaza las compras de tokens en cripto y cierra las que quedaron a conciliar
-// (Plan F); AdminTokenPurchasesController le reenvía el Bearer del administrador. SIN desactivar la
-// validación del certificado, a diferencia del cliente de arriba: por aquí viaja un token de admin
-// que autoriza emitir tokens, y en desarrollo el certificado de localhost ya es de confianza.
-// Fuera de Development no hay valor por defecto: sin Services:Billing el arranque falla con un
-// mensaje claro en vez de mandar el token del administrador a localhost.
-{
-    var billingUrl = builder.Configuration["Services:Billing"];
-    if (string.IsNullOrWhiteSpace(billingUrl))
-    {
-        if (!builder.Environment.IsDevelopment())
-            throw new InvalidOperationException(
-                "Services:Billing is not configured. AdminAPI forwards token purchase actions to Billing and needs its URL.");
-        billingUrl = "https://localhost:7007";
-    }
-    builder.Services.AddHttpClient("BillingApi", client => client.BaseAddress = new Uri(billingUrl));
-}
+// Billing confirma, rechaza o reabre las compras de tokens en cripto y cierra las que quedaron a
+// conciliar (Plan F); AdminTokenPurchasesController le reenvía el Bearer del administrador. Sin
+// desactivar la validación del certificado, a diferencia del cliente de arriba. Fuera de Development
+// exige Services:BillingBaseUrl (no está en el appsettings.json base): ver BillingApiRegistration.
+builder.Services.AddBillingApiClient(builder.Configuration, builder.Environment);
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
