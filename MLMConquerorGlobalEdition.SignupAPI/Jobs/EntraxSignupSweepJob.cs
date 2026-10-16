@@ -58,6 +58,17 @@ public class EntraxSignupSweepJob
             .Take(Math.Max(1, _options.SweepBatchSize))
             .ToListAsync(ct);
 
+        if (!_options.Enabled)
+        {
+            var waiting = await _db.EntraxPayments.AsNoTracking()
+                .CountAsync(p => p.Status == EntraxPaymentStatus.AwaitingPayment, ct);
+            if (waiting > 0)
+                _logger.LogCritical(
+                    "Entrax está apagado y hay {Waiting} pagos del alta esperando. El barrido los sigue liquidando: " +
+                    "no quites Entrax:KeyId ni Entrax:Secret (apagar es dejar de ofrecerlo, no quitar credenciales).",
+                    waiting);
+        }
+
         foreach (var id in ids)
         {
             if (ct.IsCancellationRequested) break;

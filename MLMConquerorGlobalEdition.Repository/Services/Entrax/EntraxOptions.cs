@@ -36,6 +36,13 @@ public sealed class EntraxOptions
     /// <summary>Durante cuánto tiempo tras caducar se sigue mirando si un QR se pagó tarde.</summary>
     public int LatePaymentWindowMinutes { get; set; } = 120;
 
+    /// <summary>
+    /// Minutos tras ExpiresAt a partir de los cuales el barrido cierra en local como Expired un QR del
+    /// que Entrax no da noticia (caído, sin credenciales o todavía "pending"). Así el pedido no se queda
+    /// en Processing para siempre; los pagos tardíos los sigue mirando LatePaymentWindowMinutes.
+    /// </summary>
+    public int LocalExpiryGraceMinutes { get; set; } = 10;
+
     /// <summary>Segundos mínimos entre dos consultas a Entrax del mismo pago desde la pantalla.</summary>
     public int PollThrottleSeconds { get; set; } = 15;
 
@@ -45,6 +52,7 @@ public sealed class EntraxOptions
     public TimeSpan CallbackTolerance => TimeSpan.FromMinutes(Math.Max(40, CallbackToleranceMinutes));
     public TimeSpan PollThrottle      => TimeSpan.FromSeconds(Math.Max(5, PollThrottleSeconds));
     public TimeSpan LatePaymentWindow => TimeSpan.FromMinutes(Math.Max(0, LatePaymentWindowMinutes));
+    public TimeSpan LocalExpiryGrace  => TimeSpan.FromMinutes(Math.Max(1, LocalExpiryGraceMinutes));
 
     public IReadOnlyList<string> EffectiveCountries =>
         (Countries is { Length: > 0 } ? Countries : DefaultCountries)

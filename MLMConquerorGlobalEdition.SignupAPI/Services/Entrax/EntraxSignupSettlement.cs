@@ -71,6 +71,7 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
     private readonly IDateTimeProvider                _clock;
     private readonly ILogger<EntraxSignupSettlement>  _logger;
     private readonly ISignupOrderClaim                _orderClaim;
+    private readonly EntraxOptions                    _options;
 
     public EntraxSignupSettlement(
         AppDbContext db,
@@ -80,7 +81,9 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
         IDateTimeProvider clock,
         ILogger<EntraxSignupSettlement> logger,
         // Opcional para no tocar las construcciones existentes; el de verdad es SignupOrderClaim.
-        ISignupOrderClaim? orderClaim = null)
+        ISignupOrderClaim? orderClaim = null,
+        // Opcional por lo mismo; el contenedor inyecta las de configuración.
+        EntraxOptions? options = null)
     {
         _db         = db;
         _client     = client;
@@ -89,6 +92,7 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
         _clock      = clock;
         _logger     = logger;
         _orderClaim = orderClaim ?? new SignupOrderClaim(db);
+        _options    = options ?? new EntraxOptions();
     }
 
     public async Task<EntraxSettlementOutcome> SettleAsync(
@@ -152,6 +156,9 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
 
         if (!call.Ok)
         {
+            if (ShouldExpireLocally(payment, source, now))
+                return await ExpireLocallyAsync(payment, call.ErrorCode, now);
+
             _logger.LogWarning("Entrax: no se pudo consultar el pago {ExternalPaymentId} ({Code}); se reintentará.",
                 payment.ExternalPaymentId, call.ErrorCode);
             return EntraxSettlementOutcome.ProviderUnavailable;
@@ -174,8 +181,29 @@ public sealed class EntraxSignupSettlement : IEntraxSignupSettlement
             case "expired":
                 return await CloseAsync(payment, EntraxPaymentStatus.Expired, null, now);
             default:
-                return EntraxSettlementOutcome.StillPending;
+                return ShouldExpireLocally(payment, source, now)
+                    ? await ExpireLocallyAsync(payment, remote.Status, now)
+                    : EntraxSettlementOutcome.StillPending;
         }
+    }
+
+    /// <summary>
+    /// Solo el barrido, y solo un QR que esperaba y caducó hace más de Entrax:LocalExpiryGraceMinutes:
+    /// si Entrax no da noticia (caído, sin credenciales, todavía "pending"), el pedido no puede quedarse en
+    /// Processing para siempre. Si luego resulta pagado, el barrido de pagos tardíos lo vuelve a mirar.
+    /// </summary>
+    private bool ShouldExpireLocally(EntraxPayment payment, EntraxSettlementSource source, DateTime now)
+        => source == EntraxSettlementSource.Sweep
+        && payment.Status == EntraxPaymentStatus.AwaitingPayment
+        && payment.ExpiresAt is { } expires
+        && now > expires + _options.LocalExpiryGrace;
+
+    private async Task<EntraxSettlementOutcome> ExpireLocallyAsync(EntraxPayment payment, string? why, DateTime now)
+    {
+        _logger.LogWarning(
+            "Entrax: el QR {ExternalPaymentId} caducó a las {ExpiresAt} y Entrax no lo confirma ({Why}); se cierra en local.",
+            payment.ExternalPaymentId, payment.ExpiresAt, why);
+        return await CloseAsync(payment, EntraxPaymentStatus.Expired, "LOCAL_EXPIRY", now);
     }
 
     private async Task<EntraxSettlementOutcome> SettlePaidAsync(

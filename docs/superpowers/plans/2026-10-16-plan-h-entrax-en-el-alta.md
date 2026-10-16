@@ -66,6 +66,7 @@
 | H17 | En Development, `Entrax:UseFake = true` registra `FakeEntraxClient` (singleton en memoria) y mapea `POST /api/v1/dev/entrax/{paymentId}/{paid|underpaid|failed|expired}` y `POST /api/v1/dev/entrax/sweep`. Fuera de Development `UseFake` hace fallar el arranque. | Probar de punta a punta sin credenciales, sin que el fake pueda llegar a producción. |
 | H18 | Fuera de Development, `Entrax:Enabled = true` sin `KeyId`, `Secret`, `CallbackUrl` https absoluta o `BaseUrl` https → `InvalidOperationException` al arrancar. En Development solo se escribe un aviso por consola. | Lo pide el encargo; en Development se puede trabajar con el fake o sin túnel. |
 | H19 | Fuera de Development, con `Enabled = false` pero alguna credencial puesta, tienen que estar `KeyId` y `Secret` y `BaseUrl` https. El cliente nunca lanza: sin credenciales o sin https devuelve `NOT_CONFIGURED` sin llamar. | El barrido corre con Entrax apagado (H16): apagar es dejar de ofrecer, no quitar credenciales. |
+| H20 | El barrido cierra en local como `Expired` (`LOCAL_EXPIRY`) un QR que caducó hace más de `Entrax:LocalExpiryGraceMinutes` (10) si Entrax no contesta (caído, `NOT_CONFIGURED`) o sigue en `pending`; el pedido vuelve a `Pending` de forma condicional y el pago sigue en la ventana de pagos tardíos. Con `Enabled = false` y pagos esperando, el barrido escribe un `Critical`. | Un pedido no puede quedarse en `Processing` para siempre. Apagar Entrax no es quitar credenciales: sin ellas, esos pagos solo se resuelven por caducidad local o a mano. |
 
 ## Fuera de alcance
 
@@ -6772,7 +6773,9 @@ queda *To review* sin activar nada.
   y se dejan `KeyId` y `Secret`: el barrido corre apagado y sigue liquidando los pagos en vuelo con
   ellas. Fuera de Development, unas credenciales **a medias** (solo `KeyId` o solo `Secret`) o una
   `BaseUrl` sin https **no arrancan** aunque esté apagado. Sin credenciales, el cliente no llama
-  (`NOT_CONFIGURED`) y esos pagos quedan esperando hasta que vuelvan.
+  (`NOT_CONFIGURED`): el barrido cierra esos QR en local como caducados pasado `ExpiresAt` +
+  `Entrax:LocalExpiryGraceMinutes` y el pedido vuelve a `Pending`, pero un pago real ya no se puede
+  comprobar hasta que vuelvan. Con Entrax apagado y pagos esperando, el log lleva un `Critical`.
 - **El barrido vivo.** En `/hangfire` de SignupAPI debe existir el recurrente `entrax-signup-sweep`
   (cada 2 minutos, cola `signups`). Es lo que activa las altas cuyo callback no llegó.
 - **IP de Entrax en `IpRateLimiting:IpWhitelist`** de SignupAPI. Si no, la regla general (60/min por
