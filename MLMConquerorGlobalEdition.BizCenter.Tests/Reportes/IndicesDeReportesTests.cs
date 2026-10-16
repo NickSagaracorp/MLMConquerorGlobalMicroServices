@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
+using MLMConquerorGlobalEdition.Domain.Entities.Member;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 
@@ -33,6 +34,15 @@ public class IndicesDeReportesTests
             .Single(i => i.Properties.Select(p => p.Name).SequenceEqual(new[] { "BeneficiaryMemberId", "EarnedDate" }));
 
         indice.GetIncludeProperties().Should().BeEquivalentTo("Amount", "Status");
+    }
+
+    [Fact]
+    public void Perfiles_por_patrocinador_y_fecha_de_alta_con_patrocinador_de_veinte()
+    {
+        TieneIndice(typeof(MemberProfile), "SponsorMemberId", "EnrollDate").Should().BeTrue();
+        using var db = ReportesDb.Nueva();
+        db.Model.FindEntityType(typeof(MemberProfile))!.FindProperty("SponsorMemberId")!
+            .GetMaxLength().Should().Be(20);
     }
 
     // (índices de los bloques siguientes)

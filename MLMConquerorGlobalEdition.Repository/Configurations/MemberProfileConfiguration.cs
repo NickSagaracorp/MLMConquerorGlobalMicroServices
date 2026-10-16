@@ -14,6 +14,11 @@ public class MemberProfileConfiguration : IEntityTypeConfiguration<MemberProfile
         builder.Property(x => x.MemberId).IsRequired().HasMaxLength(20);
         builder.HasIndex(x => x.MemberId).IsUnique();
 
+        // Plan J: el patrocinador es un MemberId (20) y se indexa con la fecha de alta para los
+        // clientes personales y la actividad por patrocinador. nvarchar(max) no podía ser clave.
+        builder.Property(x => x.SponsorMemberId).HasMaxLength(20);
+        builder.HasIndex(x => new { x.SponsorMemberId, x.EnrollDate });
+
         builder.Property(x => x.UserId).IsRequired();
         builder.HasIndex(x => x.UserId).IsUnique();
 

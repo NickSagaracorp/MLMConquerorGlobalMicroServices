@@ -8021,7 +8021,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("SponsorMemberId")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("SsnEncrypted")
                         .HasMaxLength(512)
@@ -8066,6 +8067,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("UserId")
                         .IsUnique();
+
+                    b.HasIndex("SponsorMemberId", "EnrollDate");
 
                     b.ToTable("MemberProfiles");
                 });
