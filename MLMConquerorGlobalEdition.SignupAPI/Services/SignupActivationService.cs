@@ -4,6 +4,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Services;
 
@@ -113,6 +114,27 @@ public class SignupActivationService : ISignupActivationService
         // Crea o actualiza el SubscriptionBillingState para que el barrido de morosidad sepa que
         // esta suscripción entra en cobro recurrente desde hoy.
         await _recurringBillingEnrollment.EnsureStateForSubscriptionAsync(subscription, actorEmail, ct);
+    }
+
+    public async Task<Result<MemberProfile>> ActivatePendingSignupAsync(Orders order, DateTime now, CancellationToken ct)
+    {
+        var member = await _db.MemberProfiles.FirstOrDefaultAsync(m => m.MemberId == order.MemberId, ct);
+        if (member is null)
+            return Result<MemberProfile>.Failure("MEMBER_NOT_FOUND", "Associated member not found.");
+
+        var subscription = await _db.MembershipSubscriptions.FirstOrDefaultAsync(
+            s => s.MemberId == member.MemberId && s.SubscriptionStatus == MembershipStatus.Pending, ct);
+        if (subscription is null)
+            return Result<MemberProfile>.Failure("SUBSCRIPTION_NOT_FOUND", "Pending subscription not found.");
+
+        var totalQualPoints = await _db.OrderDetails
+            .AsNoTracking()
+            .Where(od => od.OrderId == order.Id)
+            .Join(_db.Products.AsNoTracking(), od => od.ProductId, p => p.Id, (od, p) => p.QualificationPoins)
+            .SumAsync(ct);
+
+        await ActivateAsync(order, member, subscription, totalQualPoints, now, member.Email, ct);
+        return Result<MemberProfile>.Success(member);
     }
 
     private static List<string> ParseHierarchyPath(string hierarchyPath)
