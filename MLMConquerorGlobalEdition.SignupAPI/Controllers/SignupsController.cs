@@ -21,6 +21,7 @@ using MLMConquerorGlobalEdition.SignupAPI.Features.Signups.Queries.ValidateSpons
 using MLMConquerorGlobalEdition.SignupAPI.Features.Countries;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Tokens.ValidateToken;
 using MLMConquerorGlobalEdition.SignupAPI.Services;
+using MLMConquerorGlobalEdition.SignupAPI.Services.Entrax;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Controllers;
 
@@ -107,11 +108,15 @@ public class SignupsController : ControllerBase
         var result = await _mediator.Send(new CompleteSignupCommand(signupId, request), ct);
         if (!result.IsSuccess)
         {
-            // Candado del dueño del token ocupado: no se hizo nada y se puede repetir tal cual.
+            // Candado del token ocupado u otro QR en creación: no se hizo nada y se puede repetir.
+            // Entrax sin QR usable: 502, el aspirante reintenta o elige otro método.
             var body = ApiResponse<SignupResponse>.Fail(result.ErrorCode!, result.Error!);
-            return result.ErrorCode == CompleteSignupHandler.TokenBusyCode
-                ? Conflict(body)
-                : BadRequest(body);
+            return result.ErrorCode switch
+            {
+                CompleteSignupHandler.TokenBusyCode or EntraxSignupErrors.InProgress => Conflict(body),
+                EntraxSignupErrors.Unavailable => StatusCode(StatusCodes.Status502BadGateway, body),
+                _ => BadRequest(body)
+            };
         }
         return Ok(ApiResponse<SignupResponse>.Ok(result.Value!));
     }

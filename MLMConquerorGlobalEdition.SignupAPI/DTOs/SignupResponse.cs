@@ -1,3 +1,5 @@
+using MLMConquerorGlobalEdition.SharedKernel.Billing;
+
 namespace MLMConquerorGlobalEdition.SignupAPI.DTOs;
 
 public class SignupResponse
@@ -13,4 +15,10 @@ public class SignupResponse
     public string? AccessToken   { get; set; }
     public string? RefreshToken  { get; set; }
     public DateTime? TokenExpiry { get; set; }
+
+    /// <summary>
+    /// Solo con PaymentMethod = Entrax: el QR que hay que pagar. Sin tokens: el alta se activa en el
+    /// servidor cuando Entrax confirma el cobro, y la persona inicia sesión después.
+    /// </summary>
+    public EntraxSignupPaymentDto? Entrax { get; set; }
 }
