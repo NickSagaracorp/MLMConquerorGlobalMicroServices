@@ -229,7 +229,7 @@
                 }
                 <!-- No-membership option -->
                 <div class="text-center mt-3">
-                    <button type="button" class="btn btn-link btn-sm text-muted"
+                    <button type="button" class="btn btn-link btn-sm text-muted" disabled="@Locked"
                             @onclick="() => _showNoMemberModal = true">
                         Continue without a membership plan
                     </button>
@@ -251,20 +251,20 @@
                     <div class="col-md-6">
                         <div class="form-floating">
                             <input type="text" class="form-control" placeholder="First Name"
-                                   value="@_firstName" @oninput="e => _firstName = e.Value?.ToString() ?? string.Empty" />
+                                   value="@_firstName" @oninput="e => _firstName = e.Value?.ToString() ?? string.Empty" disabled="@Locked" />
                             <label>First Name *</label>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-floating">
                             <input type="text" class="form-control" placeholder="Last Name"
-                                   value="@_lastName" @oninput="e => _lastName = e.Value?.ToString() ?? string.Empty" />
+                                   value="@_lastName" @oninput="e => _lastName = e.Value?.ToString() ?? string.Empty" disabled="@Locked" />
                             <label>Last Name *</label>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-floating">
-                            <input type="date" class="form-control" @bind="_dateOfBirth" max="@_maxDob" />
+                            <input type="date" class="form-control" @bind="_dateOfBirth" disabled="@Locked" max="@_maxDob" />
                             <label>Date of Birth *</label>
                         </div>
                     </div>
@@ -272,7 +272,7 @@
                     {
                         <div class="col-md-6">
                             <div class="form-floating">
-                                <input type="text" class="form-control" placeholder="SSN" @bind="_ssn" />
+                                <input type="text" class="form-control" placeholder="SSN" @bind="_ssn" disabled="@Locked" />
                                 <label>SSN *</label>
                             </div>
                         </div>
@@ -287,7 +287,7 @@
                         <small class="text-muted">Toggle to add company details.</small>
                     </div>
                     <div class="form-check form-switch m-0">
-                        <input class="form-check-input" type="checkbox" @bind="_showBusiness" />
+                        <input class="form-check-input" type="checkbox" @bind="_showBusiness" disabled="@Locked" />
                         <label class="form-check-label">Yes</label>
                     </div>
                 </div>
@@ -297,13 +297,13 @@
                     <div class="row g-3 mt-2">
                         <div class="col-md-8">
                             <div class="form-floating">
-                                <input type="text" class="form-control" placeholder="Business Name" @bind="_businessName" />
+                                <input type="text" class="form-control" placeholder="Business Name" @bind="_businessName" disabled="@Locked" />
                                 <label>Business Name</label>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="form-floating">
-                                <input type="text" class="form-control" placeholder="EIN" @bind="_ein" />
+                                <input type="text" class="form-control" placeholder="EIN" @bind="_ein" disabled="@Locked" />
                                 <label>EIN</label>
                             </div>
                         </div>
@@ -328,7 +328,7 @@
                         <div class="input-group country-line">
                             <div class="phone-picker">
                                 @{ var waCt = _countryData.FirstOrDefault(x => x.PhoneCode == _waCountryCode); }
-                                <button type="button" class="phone-picker-btn"
+                                <button type="button" class="phone-picker-btn" disabled="@Locked"
                                         @onclick="() => { _showWaPicker = !_showWaPicker; _waPickerSearch = string.Empty; _showCellPicker = false; }">
                                     <img class="phone-picker-flag"
                                          src="https://flagcdn.com/w40/@((waCt?.Iso2 ?? "us").ToLower()).png"
@@ -363,7 +363,7 @@
                                     </div>
                                 }
                             </div>
-                            <input type="tel" class="form-control" placeholder="9XXXXXXXX" @bind="_whatsApp" />
+                            <input type="tel" class="form-control" placeholder="9XXXXXXXX" @bind="_whatsApp" disabled="@Locked" />
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -371,7 +371,7 @@
                         <div class="input-group country-line">
                             <div class="phone-picker">
                                 @{ var cellCt = _countryData.FirstOrDefault(x => x.PhoneCode == _cellCountryCode); }
-                                <button type="button" class="phone-picker-btn"
+                                <button type="button" class="phone-picker-btn" disabled="@Locked"
                                         @onclick="() => { _showCellPicker = !_showCellPicker; _cellPickerSearch = string.Empty; _showWaPicker = false; }">
                                     <img class="phone-picker-flag"
                                          src="https://flagcdn.com/w40/@((cellCt?.Iso2 ?? "us").ToLower()).png"
@@ -406,7 +406,7 @@
                                     </div>
                                 }
                             </div>
-                            <input type="tel" class="form-control" placeholder="9XXXXXXXX" @bind="_cellPhone" />
+                            <input type="tel" class="form-control" placeholder="9XXXXXXXX" @bind="_cellPhone" disabled="@Locked" />
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -428,13 +428,13 @@
                     </div>
                     <div class="col-md-8">
                         <div class="form-floating">
-                            <input type="text" class="form-control" placeholder="Address" @bind="_address" />
+                            <input type="text" class="form-control" placeholder="Address" @bind="_address" disabled="@Locked" />
                             <label>Address</label>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="form-floating">
-                            <input type="text" class="form-control" placeholder="City" @bind="_city" />
+                            <input type="text" class="form-control" placeholder="City" @bind="_city" disabled="@Locked" />
                             <label>City</label>
                         </div>
                     </div>
@@ -462,7 +462,7 @@
                     </div>
                     <div class="col-md-3">
                         <div class="form-floating">
-                            <input type="text" class="form-control" placeholder="Postal Code" @bind="_postalCode" />
+                            <input type="text" class="form-control" placeholder="Postal Code" @bind="_postalCode" disabled="@Locked" />
                             <label>Postal Code</label>
                         </div>
                     </div>
@@ -470,7 +470,7 @@
                         <div class="form-floating">
                             @if (CountryHasStates(_countryIso2))
                             {
-                                <select class="form-select" @bind="_province">
+                                <select class="form-select" disabled="@Locked" @bind="_province">
                                     <option value="">— State —</option>
                                     @foreach (var pr in GetProvinces(_countryIso2))
                                     {
@@ -481,7 +481,7 @@
                             else
                             {
                                 <input type="text" class="form-control" placeholder="State / Province"
-                                       value="@_province" @oninput="e => _province = e.Value?.ToString() ?? string.Empty" />
+                                       value="@_province" @oninput="e => _province = e.Value?.ToString() ?? string.Empty" disabled="@Locked" />
                             }
                             <label>State / Province</label>
                         </div>
@@ -599,7 +599,7 @@
                             <span class="input-group-text bg-light">mlmconqueror.com/</span>
                             <input type="text" class="form-control" placeholder="yourname"
                                    maxlength="30" autocomplete="off"
-                                   value="@_siteHandle" @oninput="OnHandleInput" />
+                                   value="@_siteHandle" @oninput="OnHandleInput" disabled="@Locked" />
                         </div>
                         <div class="d-flex gap-3 mt-1 align-items-center">
                             <small class="text-muted">Letters and numbers only.</small>

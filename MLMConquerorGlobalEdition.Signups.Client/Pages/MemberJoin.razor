@@ -179,7 +179,7 @@
                 }
                 <!-- No-membership option -->
                 <div class="text-center mt-3">
-                    <button type="button" class="btn btn-link btn-sm text-muted"
+                    <button type="button" class="btn btn-link btn-sm text-muted" disabled="@Locked"
                             @onclick="() => _showNoMemberModal = true">
                         Continue without a membership plan
                     </button>
@@ -201,14 +201,14 @@
                     <div class="col-md-6">
                         <div class="form-floating">
                             <input type="text" class="form-control" placeholder="First Name"
-                                   value="@_firstName" @oninput="e => _firstName = e.Value?.ToString() ?? string.Empty" />
+                                   value="@_firstName" @oninput="e => _firstName = e.Value?.ToString() ?? string.Empty" disabled="@Locked" />
                             <label>First Name *</label>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-floating">
                             <input type="text" class="form-control" placeholder="Last Name"
-                                   value="@_lastName" @oninput="e => _lastName = e.Value?.ToString() ?? string.Empty" />
+                                   value="@_lastName" @oninput="e => _lastName = e.Value?.ToString() ?? string.Empty" disabled="@Locked" />
                             <label>Last Name *</label>
                         </div>
                     </div>
@@ -216,7 +216,7 @@
                     {
                         <div class="col-md-6">
                             <div class="form-floating">
-                                <input type="text" class="form-control" placeholder="SSN" @bind="_ssn" />
+                                <input type="text" class="form-control" placeholder="SSN" @bind="_ssn" disabled="@Locked" />
                                 <label>SSN *</label>
                             </div>
                         </div>
@@ -239,25 +239,25 @@
                     <div class="col-md-6">
                         <label class="form-label text-secondary small">WhatsApp</label>
                         <div class="input-group country-line">
-                            <select class="form-select country-code" @bind="_waCountryCode">
+                            <select class="form-select country-code" @bind="_waCountryCode" disabled="@Locked">
                                 @foreach (var c in _countryData.Where(x => x.PhoneCode != null))
                                 {
                                     <option value="@c.PhoneCode">@c.FlagEmoji @c.PhoneCode</option>
                                 }
                             </select>
-                            <input type="tel" class="form-control" placeholder="9XXXXXXXX" @bind="_whatsApp" />
+                            <input type="tel" class="form-control" placeholder="9XXXXXXXX" @bind="_whatsApp" disabled="@Locked" />
                         </div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label text-secondary small">Cell Phone</label>
                         <div class="input-group country-line">
-                            <select class="form-select country-code" @bind="_cellCountryCode">
+                            <select class="form-select country-code" @bind="_cellCountryCode" disabled="@Locked">
                                 @foreach (var c in _countryData.Where(x => x.PhoneCode != null))
                                 {
                                     <option value="@c.PhoneCode">@c.FlagEmoji @c.PhoneCode</option>
                                 }
                             </select>
-                            <input type="tel" class="form-control" placeholder="9XXXXXXXX" @bind="_cellPhone" />
+                            <input type="tel" class="form-control" placeholder="9XXXXXXXX" @bind="_cellPhone" disabled="@Locked" />
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -279,13 +279,13 @@
                     </div>
                     <div class="col-md-8">
                         <div class="form-floating">
-                            <input type="text" class="form-control" placeholder="Address" @bind="_address" />
+                            <input type="text" class="form-control" placeholder="Address" @bind="_address" disabled="@Locked" />
                             <label>Address</label>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="form-floating">
-                            <input type="text" class="form-control" placeholder="City" @bind="_city" />
+                            <input type="text" class="form-control" placeholder="City" @bind="_city" disabled="@Locked" />
                             <label>City</label>
                         </div>
                     </div>
@@ -306,7 +306,7 @@
                     </div>
                     <div class="col-md-3">
                         <div class="form-floating">
-                            <input type="text" class="form-control" placeholder="Postal Code" @bind="_postalCode" />
+                            <input type="text" class="form-control" placeholder="Postal Code" @bind="_postalCode" disabled="@Locked" />
                             <label>Postal Code</label>
                         </div>
                     </div>
@@ -314,7 +314,7 @@
                         <div class="form-floating">
                             @if (CountryHasStates(_countryIso2))
                             {
-                                <select class="form-select" @bind="_province">
+                                <select class="form-select" disabled="@Locked" @bind="_province">
                                     <option value="">— State —</option>
                                     @foreach (var pr in GetProvinces(_countryIso2))
                                     {
@@ -325,7 +325,7 @@
                             else
                             {
                                 <input type="text" class="form-control" placeholder="State / Province"
-                                       value="@_province" @oninput="e => _province = e.Value?.ToString() ?? string.Empty" />
+                                       value="@_province" @oninput="e => _province = e.Value?.ToString() ?? string.Empty" disabled="@Locked" />
                             }
                             <label>State / Province</label>
                         </div>
