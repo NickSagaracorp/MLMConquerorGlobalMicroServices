@@ -19,6 +19,7 @@ public class MiembroDelTokenTests
         (typeof(TeamReportsController), nameof(TeamReportsController.GetSetup)),
         (typeof(TeamReportsController), nameof(TeamReportsController.GetActivityColumns)),
         (typeof(TeamReportsController), nameof(TeamReportsController.GetActivityGrid)),
+        (typeof(TeamReportsController), nameof(TeamReportsController.GetStatusChangesGrid)),
         // (acciones de los bloques siguientes)
     }.Select(a => new object[] { a.Controlador, a.Accion });
 

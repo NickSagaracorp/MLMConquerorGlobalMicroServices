@@ -10,7 +10,7 @@ using IDateTimeProvider   = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ID
 namespace MLMConquerorGlobalEdition.BizCenter.Controllers;
 
 /// <summary>
-/// Reportes del equipo del Plan J (actividad por fechas y, en el bloque 5, cambios de estado).
+/// Reportes del equipo del Plan J (actividad por fechas y cambios de estado).
 /// Ninguna ruta lleva sujeto: el miembro sale SIEMPRE del token (ICurrentUserService.MemberId) y
 /// el alcance lo pone el servicio (prefijo de genealogía o del árbol binario). Comparte el prefijo
 /// de ruta con <see cref="TeamController"/> sin pisar ninguna de sus rutas.
@@ -57,6 +57,31 @@ public class TeamReportsController : ControllerBase
         var result = await activity.GetGridAsync(_currentUser.MemberId, from, to, request, ct);
         return result.IsSuccess
             ? Ok(ApiResponse<PagedResult<EnrollmentActivityRowView>>.Ok(result.Value!))
+            : Invalid(result);
+    }
+
+    /// <summary>
+    /// POST /api/v1/bizcenter/team/changes/{scope}/grid?from=yyyy-MM-dd&amp;to=yyyy-MM-dd, con
+    /// scope = enrollment | dual | customers. Miembros del equipo del token con un cambio de estado
+    /// registrado en el rango, con su estado actual y la fecha de su último cambio.
+    /// </summary>
+    [HttpPost("changes/{scope}/grid")]
+    [ReadOnlySafe]
+    public async Task<IActionResult> GetStatusChangesGrid(
+        string scope,
+        [FromBody]  GridDataRequest request,
+        [FromQuery] DateTime        from,
+        [FromQuery] DateTime        to,
+        [FromServices] ITeamStatusChangesService changes,
+        CancellationToken ct = default)
+    {
+        if (!StatusChangesScopes.TryParse(scope, out var parsed))
+            return NotFound(ApiResponse<PagedResult<TeamStatusChangeView>>.Fail(
+                "REPORT_SCOPE_NOT_FOUND", "Unknown report.", HttpContext.TraceIdentifier));
+
+        var result = await changes.GetGridAsync(_currentUser.MemberId, parsed, from, to, request, ct);
+        return result.IsSuccess
+            ? Ok(ApiResponse<PagedResult<TeamStatusChangeView>>.Ok(result.Value!))
             : Invalid(result);
     }
 

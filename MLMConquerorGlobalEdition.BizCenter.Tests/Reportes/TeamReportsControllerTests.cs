@@ -60,4 +60,40 @@ public class TeamReportsControllerTests
         var bad = r.Should().BeOfType<BadRequestObjectResult>().Subject;
         ((ApiResponse<PagedResult<EnrollmentActivityRowView>>)bad.Value!).ErrorCode.Should().Be(ReportDateRange.TooOldCode);
     }
+
+    [Fact]
+    public async Task Los_cambios_son_los_del_miembro_del_token_con_la_vista_de_la_ruta()
+    {
+        var cambios = new Mock<ITeamStatusChangesService>();
+        cambios.Setup(s => s.GetGridAsync("AMB-000777", StatusChangesScope.DualTeam, Desde, Hasta, It.IsAny<GridDataRequest>(), It.IsAny<CancellationToken>()))
+               .ReturnsAsync(Result<PagedResult<TeamStatusChangeView>>.Success(new PagedResult<TeamStatusChangeView>()));
+
+        var r = await Control().GetStatusChangesGrid("dual", new GridDataRequest(), Desde, Hasta, cambios.Object, CancellationToken.None);
+
+        r.Should().BeOfType<OkObjectResult>();
+        cambios.VerifyAll();
+    }
+
+    [Fact]
+    public async Task Una_vista_que_no_existe_es_404_sin_consultar()
+    {
+        var cambios = new Mock<ITeamStatusChangesService>(MockBehavior.Strict);
+
+        var r = await Control().GetStatusChangesGrid("binary", new GridDataRequest(), Desde, Hasta, cambios.Object, CancellationToken.None);
+
+        r.Should().BeOfType<NotFoundObjectResult>();
+    }
+
+    [Fact]
+    public async Task Un_rango_de_cambios_invalido_es_400_con_su_codigo()
+    {
+        var cambios = new Mock<ITeamStatusChangesService>();
+        cambios.Setup(s => s.GetGridAsync(It.IsAny<string>(), It.IsAny<StatusChangesScope>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<GridDataRequest>(), It.IsAny<CancellationToken>()))
+               .ReturnsAsync(Result<PagedResult<TeamStatusChangeView>>.Failure(ReportDateRange.TooLongCode, "Invalid date range."));
+
+        var r = await Control().GetStatusChangesGrid("enrollment", new GridDataRequest(), Desde, Hasta, cambios.Object, CancellationToken.None);
+
+        var bad = r.Should().BeOfType<BadRequestObjectResult>().Subject;
+        ((ApiResponse<PagedResult<TeamStatusChangeView>>)bad.Value!).ErrorCode.Should().Be(ReportDateRange.TooLongCode);
+    }
 }
