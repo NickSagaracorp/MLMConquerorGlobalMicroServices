@@ -166,4 +166,34 @@ public class EscriturasDelEstadoDeLaCuotaTests
         estado.NextAttemptDate.Should().Be(Ahora.Date.AddDays(1));
         estado.CurrentAttemptIndex.Should().Be(0);
     }
+
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(2, 3)]
+    public async Task El_exito_registra_el_numero_de_intento_del_ciclo(int fallosPrevios, int esperado)
+    {
+        // Revisión M-5: misma convención que los fallos (1 = primer intento del ciclo).
+        var (db, _) = await ConMiembroAsync();
+        await using var __ = db;
+        var e = await db.SubscriptionBillingStates.SingleAsync();
+        e.CurrentAttemptIndex = fallosPrevios;
+        e.Status = fallosPrevios > 0 ? RecurringBillingStatus.Retrying : RecurringBillingStatus.Active;
+        await db.SaveChangesAsync();
+        await CuotaAnualDb.TokenAsync(db, Miembro);
+
+        await CobroAutomaticoDeCuotaAnualTests.Servicio(db).ChargeDueAsync("anual-" + Miembro, force: false);
+
+        (await db.RecurringBillingAttempts.SingleAsync()).AttemptIndex.Should().Be(esperado);
+    }
+
+    [Fact]
+    public async Task El_fallo_sin_fondos_registra_el_numero_de_intento_del_ciclo()
+    {
+        var (db, _) = await ConMiembroAsync(conSaldo: false);
+        await using var __ = db;
+
+        await CobroAutomaticoDeCuotaAnualTests.Servicio(db).ChargeDueAsync("anual-" + Miembro, force: false);
+
+        (await db.RecurringBillingAttempts.SingleAsync()).AttemptIndex.Should().Be(1);
+    }
 }

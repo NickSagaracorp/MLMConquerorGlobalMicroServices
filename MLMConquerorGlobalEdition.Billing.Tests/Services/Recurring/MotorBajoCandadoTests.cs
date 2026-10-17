@@ -234,4 +234,19 @@ public class MotorBajoCandadoTests
         r.Value.FailureReason.Should().StartWith(RecurringCardSwitch.CardDisabledCode);
         (await db.CommissionEarnings.CountAsync(e => e.Amount < 0)).Should().Be(0);
     }
+
+    [Fact]
+    public async Task El_exito_registra_el_numero_de_intento_del_ciclo()
+    {
+        // Revisión M-5: antes se registraba 0 en los éxitos; los fallos ya iban 1, 2…
+        await using var db = await SembrarAsync(200m, Ahora.AddDays(-1));
+        var e = await db.SubscriptionBillingStates.SingleAsync();
+        e.CurrentAttemptIndex = 1;
+        e.Status = RecurringBillingStatus.Retrying;
+        await db.SaveChangesAsync();
+
+        await Procesador(db, new TransactionOnlyGate(db)).ProcessAsync("estado-1");
+
+        (await db.RecurringBillingAttempts.SingleAsync()).AttemptIndex.Should().Be(2);
+    }
 }

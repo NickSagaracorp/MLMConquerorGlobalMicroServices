@@ -147,9 +147,9 @@ public sealed partial class AnnualFeeChargeService
                 var history = AddEWalletPaymentHistory(order, charge, payment.Id, actor, at);
                 payment.Complete(history.Id, at, actor);
                 MarkPaid(order, actor, at);
-                AdvanceOnSuccess(state, cycle, at, at, actor);
+                var attemptIndex = AdvanceOnSuccess(state, cycle, at, at, actor);
                 AddAttempt(state, price.ProductId, RecurringFundingSource.EWallet, RecurringAttemptOutcome.Success, charge,
-                    order.Id, history.Id, tokenTransactionId: null, commissionDebitId: null, failureReason: null, at, actor);
+                    order.Id, history.Id, tokenTransactionId: null, commissionDebitId: null, failureReason: null, at, actor, attemptIndex: attemptIndex);
                 await _db.SaveChangesAsync(CancellationToken.None);
                 await tx2.CommitAsync(CancellationToken.None);
                 return Settled.Paid(payment, order, AnnualFeeMethods.EWallet);

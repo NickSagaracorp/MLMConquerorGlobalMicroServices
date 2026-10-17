@@ -422,6 +422,8 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
         var fund = fundResult.Value!;
 
         // Advance state on success
+        // Revisión M-5: el número de este intento en el ciclo (1 = el primero), como en los fallos.
+        var attemptIndex = state.CurrentAttemptIndex + 1;
         _scheduler.Advance(state, plan, succeeded: true, attemptDate: now);
         state.LastUpdateDate = now;
         state.LastUpdateBy   = Actor;
@@ -435,7 +437,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
             SubscriptionBillingStateId   = state.Id,
             MemberId                     = state.MemberId,
             ProductId                    = productId,
-            AttemptIndex                 = 0,
+            AttemptIndex                 = attemptIndex,
             AttemptedAt                  = now,
             Amount                       = amountDue,
             FundingSource                = RecurringFundingSource.CommissionBalance,
@@ -587,6 +589,8 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
         order.LastUpdateDate = now;
         order.LastUpdateBy   = Actor;
 
+        // Revisión M-5: el número de este intento en el ciclo (1 = el primero), como en los fallos.
+        var attemptIndex = state.CurrentAttemptIndex + 1;
         _scheduler.Advance(state, plan, succeeded: true, attemptDate: now);
         state.LastUpdateDate = now;
         state.LastUpdateBy   = Actor;
@@ -598,7 +602,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
             SubscriptionBillingStateId = state.Id,
             MemberId                   = state.MemberId,
             ProductId                  = productId,
-            AttemptIndex               = 0,
+            AttemptIndex               = attemptIndex,
             AttemptedAt                = now,
             Amount                     = amountDue,
             FundingSource              = RecurringFundingSource.CreditCard,

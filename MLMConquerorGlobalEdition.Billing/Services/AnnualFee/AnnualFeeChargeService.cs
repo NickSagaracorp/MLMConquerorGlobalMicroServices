@@ -277,9 +277,9 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
             order.Notes = $"{order.Notes} — paid with token {token.Code}";
             payment.CompleteWithToken(token.TokenTransactionId, token.Code, now, actor);
             MarkPaid(order, actor, now);
-            AdvanceOnSuccess(state, cycle, now, now, actor);
+            var attemptIndex = AdvanceOnSuccess(state, cycle, now, now, actor);
             AddAttempt(state, price.ProductId, RecurringFundingSource.Token, RecurringAttemptOutcome.Success, 0m,
-                order.Id, paymentHistoryId: null, token.TokenTransactionId, commissionDebitId: null, failureReason: null, now, actor);
+                order.Id, paymentHistoryId: null, token.TokenTransactionId, commissionDebitId: null, failureReason: null, now, actor, attemptIndex: attemptIndex);
 
             return await CommitOrBlockAsync(tx, Settled.Paid(payment, order, AnnualFeeMethods.Token), key, before, ct);
         }
@@ -342,10 +342,10 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
 
             payment.Complete(fund.Value!.PaymentHistoryId, now, actor);
             MarkPaid(order, actor, now);
-            AdvanceOnSuccess(state, cycle, now, now, actor);
+            var attemptIndex = AdvanceOnSuccess(state, cycle, now, now, actor);
             AddAttempt(state, price.ProductId, RecurringFundingSource.CommissionBalance, RecurringAttemptOutcome.Success,
                 price.Amount, order.Id, fund.Value.PaymentHistoryId, tokenTransactionId: null, fund.Value.DebitEarningId,
-                failureReason: null, now, actor);
+                failureReason: null, now, actor, attemptIndex: attemptIndex);
 
             return await CommitOrBlockAsync(tx, Settled.Paid(payment, order, AnnualFeeMethods.CommissionBalance), key, before, ct);
         }
@@ -621,8 +621,10 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
     /// Cobrado el ciclo <paramref name="cycle"/> en <paramref name="paidAt"/>: el siguiente según K4
     /// (revisado por Nick) y el ancla según la revisión M3: a tiempo se queda; tarde pasa a la fecha de pago.
     /// </summary>
-    private static void AdvanceOnSuccess(SubscriptionBillingState state, DateTime cycle, DateTime paidAt, DateTime now, string actor)
+    private static int AdvanceOnSuccess(SubscriptionBillingState state, DateTime cycle, DateTime paidAt, DateTime now, string actor)
     {
+        // Revisión M-5: el número de este intento en el ciclo (1 = el primero), como en los fallos.
+        var attemptIndex = state.CurrentAttemptIndex + 1;
         var next = AnnualFeeSchedule.NextDueAfterPayment(cycle, paidAt, state.BillingAnchorDate);
         state.BillingAnchorDate         = AnnualFeeSchedule.AnchorAfterPayment(cycle, paidAt, state.BillingAnchorDate);
         state.LastSuccessfulBillingDate = paidAt;
@@ -635,6 +637,7 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
         state.LastFailureReason         = null;
         state.LastUpdateDate            = now;
         state.LastUpdateBy              = actor;
+        return attemptIndex;
     }
 
     private void AddAttempt(

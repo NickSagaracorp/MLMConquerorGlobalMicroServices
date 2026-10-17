@@ -49,10 +49,11 @@ public sealed partial class AnnualFeeChargeService
                     if (state.NextBillingDate.Date == payment.CycleDueDate.Date)
                     {
                         // El débito se hizo el día del pago, no hoy: el siguiente vencimiento se cuenta desde entonces.
-                        AdvanceOnSuccess(state, payment.CycleDueDate, payment.CreationDate, now, actor);
+                        var attemptIndex = AdvanceOnSuccess(state, payment.CycleDueDate, payment.CreationDate, now, actor);
                         var productId = state.Plan!.PlanProducts.OrderBy(pp => pp.Id).Select(pp => pp.ProductId).FirstOrDefault() ?? string.Empty;
                         AddAttempt(state, productId, RecurringFundingSource.EWallet, RecurringAttemptOutcome.Success, payment.Amount,
-                            order.Id, history.Id, tokenTransactionId: null, commissionDebitId: null, failureReason: null, now, actor);
+                            order.Id, history.Id, tokenTransactionId: null, commissionDebitId: null, failureReason: null, now, actor,
+                            attemptIndex: attemptIndex);
                     }
                     else
                     {
