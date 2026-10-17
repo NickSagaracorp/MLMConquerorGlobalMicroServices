@@ -9,7 +9,7 @@ namespace MLMConquerorGlobalEdition.BizCenter.Tests.Rendimiento;
 
 /// <summary>
 /// Plan M (M11, M12, M21): Node es hierarchyid en SQL Server sin que el anfitrión llame a
-/// UseHierarchyId, con índice único filtrado e índice en anchura; en InMemory funciona como texto
+/// UseHierarchyId, con índice único entre los nodos no nulos e índice en anchura; en InMemory funciona como texto
 /// y IsDescendantOf se evalúa en memoria (R11).
 /// </summary>
 public class NodoDeGenealogiaModeloTests
@@ -26,17 +26,26 @@ public class NodoDeGenealogiaModeloTests
             .GetRelationalTypeMapping().StoreType.Should().Be("hierarchyid");
     }
 
+    /// <summary>
+    /// SQL Server no admite un índice filtrado sobre una columna CLR (error 10619 con «[Node] IS NOT NULL»),
+    /// ni filtros sobre columnas calculadas. La unicidad «solo entre los Node no nulos» se consigue con
+    /// una segunda clave: NodeNullKey vale el Id cuando Node es nulo (cada fila sin nodo es distinta) y
+    /// NULL cuando no lo es, así que dos filas con el mismo Node chocan como (Node, NULL).
+    /// </summary>
     [Fact]
-    public void Indice_unico_filtrado_en_profundidad_y_en_anchura_por_nivel()
+    public void Indice_unico_en_profundidad_entre_los_nodos_no_nulos_y_en_anchura_por_nivel()
     {
         using var db = SqlServerSinUseHierarchyId();
         var tipo = db.GetService<IDesignTimeModel>().Model.FindEntityType(typeof(GenealogyEntity))!;
 
-        var profundidad = tipo.GetIndexes().Single(i => i.Properties.Select(p => p.Name).SequenceEqual(new[] { "Node" }));
+        var profundidad = tipo.GetIndexes().Single(i => i.GetDatabaseName() == "IX_GenealogyTree_Node");
+        profundidad.Properties.Select(p => p.Name).Should().Equal("Node", "NodeNullKey");
         profundidad.IsUnique.Should().BeTrue();
-        profundidad.GetFilter().Should().Be("[Node] IS NOT NULL");
-        profundidad.GetDatabaseName().Should().Be("IX_GenealogyTree_Node");
+        profundidad.GetFilter().Should().BeNull("un filtro sobre una columna CLR no se puede crear (10619)");
         profundidad.GetIncludeProperties().Should().BeEquivalentTo("MemberId", "Level");
+        tipo.FindProperty("NodeNullKey")!.GetComputedColumnSql()
+            .Should().Be("CASE WHEN [Node] IS NULL THEN CAST([Id] AS varchar(100)) END");
+        tipo.FindProperty("NodeNullKey")!.GetIsStored().Should().BeTrue();
 
         tipo.FindProperty("NodeLevel")!.GetComputedColumnSql().Should().Be("[Node].GetLevel()");
         tipo.GetIndexes().Should().Contain(i => i.Properties.Select(p => p.Name).SequenceEqual(new[] { "NodeLevel", "Node" }));

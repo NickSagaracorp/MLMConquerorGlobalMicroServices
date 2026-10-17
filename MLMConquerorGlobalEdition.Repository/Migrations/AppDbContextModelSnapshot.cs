@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Microsoft.SqlServer.Types;
 
 #nullable disable
 
@@ -16213,6 +16214,19 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<SqlHierarchyId?>("Node")
+                        .HasColumnType("hierarchyid");
+
+                    b.Property<short?>("NodeLevel")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("smallint")
+                        .HasComputedColumnSql("[Node].GetLevel()", true);
+
+                    b.Property<string>("NodeNullKey")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("varchar(100)")
+                        .HasComputedColumnSql("CASE WHEN [Node] IS NULL THEN CAST([Id] AS varchar(100)) END", true);
+
                     b.Property<string>("ParentMemberId")
                         .HasColumnType("nvarchar(450)");
 
@@ -16224,6 +16238,14 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasIndex("ParentMemberId");
 
                     b.HasIndex("MemberId", "CreationDate");
+
+                    b.HasIndex("Node", "NodeNullKey")
+                        .IsUnique()
+                        .HasDatabaseName("IX_GenealogyTree_Node");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("Node", "NodeNullKey"), new[] { "MemberId", "Level" });
+
+                    b.HasIndex("NodeLevel", "Node");
 
                     b.ToTable("GenealogyTree");
                 });
