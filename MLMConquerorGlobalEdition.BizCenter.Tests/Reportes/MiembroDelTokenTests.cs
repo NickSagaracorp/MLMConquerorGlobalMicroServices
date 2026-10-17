@@ -23,6 +23,9 @@ public class MiembroDelTokenTests
         (typeof(TeamEventsController), nameof(TeamEventsController.GetActive)),
         (typeof(TeamEventsController), nameof(TeamEventsController.GetTeamRegistrationsGrid)),
         (typeof(TeamEventsController), nameof(TeamEventsController.GetTeamRegistrationsTotals)),
+        (typeof(AnnualFeeController), nameof(AnnualFeeController.Get)),
+        (typeof(AnnualFeeController), nameof(AnnualFeeController.SetPreference)),
+        (typeof(AnnualFeeController), nameof(AnnualFeeController.Pay)),
     }.Select(a => new object[] { a.Controlador, a.Accion });
 
     [Theory]

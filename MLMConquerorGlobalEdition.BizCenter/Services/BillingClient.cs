@@ -60,6 +60,15 @@ public sealed class BillingClient : IBillingClient
         SendAsync<TokenPurchaseResultDto>(new HttpRequestMessage(HttpMethod.Post,
             $"api/v1/billing/tokens/purchases/{Uri.EscapeDataString(purchaseId)}/cancel"), bearerToken, ct);
 
+    public Task<BillingResult<AnnualFeePaymentResultDto>> PayAnnualFeeAsync(
+        PayAnnualFeeRequest request, string bearerToken, string? stepUpGrant, CancellationToken ct = default)
+    {
+        var message = new HttpRequestMessage(HttpMethod.Post, "api/v1/billing/annual-fee/pay") { Content = JsonContent.Create(request) };
+        if (!string.IsNullOrWhiteSpace(stepUpGrant))
+            message.Headers.TryAddWithoutValidation(StepUpGrant.HeaderName, stepUpGrant);
+        return SendAsync<AnnualFeePaymentResultDto>(message, bearerToken, ct);
+    }
+
     private async Task<BillingResult<T>> SendAsync<T>(HttpRequestMessage request, string bearerToken, CancellationToken ct)
         where T : class
     {
