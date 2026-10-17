@@ -108,4 +108,66 @@ public class ExcepcionDelProcesadorTests
         p.Verify(x => x.ProcessAsync("bien", It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Once);
         await NadaDelCasoFallidoAsync(db);
     }
+
+    /// <summary>Logger que guarda nivel y mensaje para comprobar los avisos.</summary>
+    private sealed class LoggerQueGuarda<T> : ILogger<T>
+    {
+        public readonly List<(LogLevel Nivel, string Mensaje)> Entradas = new();
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            => Entradas.Add((logLevel, formatter(state, exception)));
+    }
+
+    [Fact]
+    public async Task Cobrado_pero_sin_eventos_deja_un_aviso_propio_y_sigue()
+    {
+        // Revisión final (M-d): el cobro ya está hecho; si los puntos y disparadores no se guardan, hay
+        // que poder encontrarlo en el log y emitirlos a mano. El caso no cuenta como fallido.
+        var fallos = new SaveFaults();
+        var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
+            .AddInterceptors(fallos).Options);
+        await using var _ = db;
+        db.MembershipSubscriptions.Add(new MLMConquerorGlobalEdition.Domain.Entities.Membership.MembershipSubscription
+        {
+            Id = "sub-bien", MemberId = "AMB-bien", MembershipLevelId = 3, StartDate = Hoy, DualTeamContribution = 10,
+            CreatedBy = "prueba"
+        });
+        db.SubscriptionBillingStates.Add(new SubscriptionBillingState
+        {
+            Id = "bien", MembershipSubscriptionId = "sub-bien", MemberId = "AMB-bien", RecurringBillingPlanId = 1,
+            BillingAnchorDate = Hoy.AddDays(-30), NextBillingDate = Hoy.Date, NextAttemptDate = Hoy.Date,
+            Status = RecurringBillingStatus.Active, ShardKey = 2, CreatedBy = "prueba"
+        });
+        db.RecurringBillingBatches.Add(new RecurringBillingBatch
+        {
+            Id = "lote", RunDate = Hoy.Date, Gateway = CardProcessor.NmiSpreedly, WorkerCount = 1,
+            ScheduledStartTime = Hoy, CaseCount = 1, Status = RecurringBillingBatchStatus.Planned, CreatedBy = "prueba"
+        });
+        db.RecurringBillingBatchShards.Add(new RecurringBillingBatchShard
+        {
+            Id = "trozo", BatchId = "lote", ShardIndex = 0, IdRangeStart = 1, IdRangeEnd = 10,
+            Status = RecurringBillingBatchStatus.Planned, CreatedBy = "prueba"
+        });
+        await db.SaveChangesAsync();
+        fallos.FailWhen(c => c.ChangeTracker.Entries<MLMConquerorGlobalEdition.Domain.Entities.Commission.PointDeltaEvent>()
+            .Any(e => e.State == EntityState.Added), times: 1);
+        var p = new Mock<IRecurringBillingProcessor>();
+        p.Setup(x => x.ProcessAsync("bien", It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+         .ReturnsAsync(Result<RecurringBillingProcessorResult>.Success(
+             new RecurringBillingProcessorResult { BillingStateId = "bien", Outcome = "Success", OrderId = "ord-1" }));
+        var log = new LoggerQueGuarda<RecurringChargeWorker>();
+
+        var r = await new RecurringChargeWorker(db, p.Object, Reloj(), log).ProcessShardAsync("trozo");
+
+        r.IsSuccess.Should().BeTrue();
+        r.Value!.Succeeded.Should().Be(1);
+        r.Value.Failed.Should().Be(0);
+        log.Entradas.Should().Contain(e => e.Nivel == LogLevel.Critical
+            && e.Mensaje.Contains("bien") && e.Mensaje.Contains("ord-1") && e.Mensaje.Contains("eventos"));
+        (await db.RecurringBillingBatchShards.AsNoTracking().SingleAsync()).Status.Should().Be(RecurringBillingBatchStatus.Done);
+        (await db.PointDeltaEvents.CountAsync()).Should().Be(0);
+    }
 }

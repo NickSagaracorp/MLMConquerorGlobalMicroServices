@@ -164,17 +164,41 @@ public class RecurringChargeWorker : IRecurringChargeWorker
                 {
                     case "Success":
                         succeeded++;
-                        await EmitActivatedEventsAsync(
-                            batchId, stateRef.Id, stateRef.MemberId,
-                            stateRef.MembershipSubscriptionId, result.Value.OrderId,
-                            now, ct);
+                        try
+                        {
+                            await EmitActivatedEventsAsync(
+                                batchId, stateRef.Id, stateRef.MemberId,
+                                stateRef.MembershipSubscriptionId, result.Value.OrderId,
+                                now, ct);
+                        }
+                        catch (Exception ex) when (ex is not OperationCanceledException)
+                        {
+                            // Plan K (revisión final, M-d): el cobro YA está hecho y no se deshace. Lo que falta son
+                            // los puntos y los disparadores de comisión: aviso propio para emitirlos a mano.
+                            _logger.LogCritical(ex,
+                                "RecurringChargeWorker: estado {StateId} de {MemberId} COBRADO (pedido {OrderId}) pero los eventos " +
+                                "de puntos y comisiones no se emitieron; hay que emitirlos a mano (lote {BatchId}).",
+                                stateRef.Id, stateRef.MemberId, result.Value.OrderId, batchId);
+                            await PendingChanges.DiscardAsync(_db, _logger);
+                        }
                         break;
 
                     case "Failed":
                         failed++;
-                        await EmitDeactivatedEventIfNeededAsync(
-                            batchId, stateRef.Id, stateRef.MemberId,
-                            stateRef.MembershipSubscriptionId, now, ct);
+                        try
+                        {
+                            await EmitDeactivatedEventIfNeededAsync(
+                                batchId, stateRef.Id, stateRef.MemberId,
+                                stateRef.MembershipSubscriptionId, now, ct);
+                        }
+                        catch (Exception ex) when (ex is not OperationCanceledException)
+                        {
+                            _logger.LogError(ex,
+                                "RecurringChargeWorker: estado {StateId} de {MemberId} falló el cobro y el evento de baja de " +
+                                "puntos no se emitió; hay que emitirlo a mano (lote {BatchId}).",
+                                stateRef.Id, stateRef.MemberId, batchId);
+                            await PendingChanges.DiscardAsync(_db, _logger);
+                        }
                         break;
 
                     case "Skipped":
