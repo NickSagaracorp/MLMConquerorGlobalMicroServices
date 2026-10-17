@@ -1,0 +1,19 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using MLMConquerorGlobalEdition.Domain.Entities.Member;
+
+namespace MLMConquerorGlobalEdition.Repository.Configurations;
+
+/// <summary>
+/// Plan M (M9): LegPointMaintenance une por MemberId en cada colocación, el MERGE WITH (HOLDLOCK) de
+/// ApplyMemberStatisticDeltasJob busca por MemberId (sin índice bloquea un rango de toda la tabla) y
+/// cada página de reportes hace Contains(ids). No es único: no cambia ningún escritor.
+/// </summary>
+public class MemberStatisticConfiguration : IEntityTypeConfiguration<MemberStatisticEntity>
+{
+    public void Configure(EntityTypeBuilder<MemberStatisticEntity> builder)
+    {
+        builder.Property(s => s.MemberId).HasMaxLength(100).IsRequired();
+        builder.HasIndex(s => s.MemberId);
+    }
+}
