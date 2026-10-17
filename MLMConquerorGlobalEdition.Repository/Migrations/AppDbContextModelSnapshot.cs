@@ -16243,7 +16243,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_GenealogyTree_Node");
 
-                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("Node", "NodeNullKey"), new[] { "MemberId", "Level" });
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("Node", "NodeNullKey"), new[] { "MemberId", "Level", "CreationDate", "IsDeleted" });
 
                     b.HasIndex("NodeLevel", "Node");
 

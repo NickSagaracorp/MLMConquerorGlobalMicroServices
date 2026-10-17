@@ -44,7 +44,7 @@ IF EXISTS (SELECT 1 FROM [GenealogyTree] WHERE DATALENGTH([Id]) / 2 > 100)
                 table: "GenealogyTree",
                 columns: new[] { "Node", "NodeNullKey" },
                 unique: true)
-                .Annotation("SqlServer:Include", new[] { "MemberId", "Level" });
+                .Annotation("SqlServer:Include", new[] { "MemberId", "Level", "CreationDate", "IsDeleted" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_GenealogyTree_NodeLevel_Node",

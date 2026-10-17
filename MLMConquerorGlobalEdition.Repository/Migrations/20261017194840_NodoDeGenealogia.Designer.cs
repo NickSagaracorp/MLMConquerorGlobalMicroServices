@@ -13,7 +13,7 @@ using Microsoft.SqlServer.Types;
 namespace MLMConquerorGlobalEdition.Repository.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261017183935_NodoDeGenealogia")]
+    [Migration("20261017194840_NodoDeGenealogia")]
     partial class NodoDeGenealogia
     {
         /// <inheritdoc />
@@ -16246,7 +16246,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_GenealogyTree_Node");
 
-                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("Node", "NodeNullKey"), new[] { "MemberId", "Level" });
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("Node", "NodeNullKey"), new[] { "MemberId", "Level", "CreationDate", "IsDeleted" });
 
                     b.HasIndex("NodeLevel", "Node");
 

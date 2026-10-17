@@ -35,7 +35,9 @@ public class GenealogyConfiguration : IEntityTypeConfiguration<GenealogyEntity>
             // Sin el filtro que EF pone por defecto a un índice único con columnas que admiten nulos (10619).
             .HasFilter(null)
             .HasDatabaseName(NodeIndexName)
-            .IncludeProperties(x => new { x.MemberId, x.Level });
+            // Cubre CurrentUnder entero: el nodo vigente (CreationDate) y el filtro global (IsDeleted). Sin
+            // ellas, unido a los perfiles, el optimizador recorre la tabla en vez de hacer el seek.
+            .IncludeProperties(x => new { x.MemberId, x.Level, x.CreationDate, x.IsDeleted });
 
         // Plan M (M12): en anchura, solo para reservar el ordinal de una raíz nueva.
         builder.Property<short?>("NodeLevel").HasComputedColumnSql("[Node].GetLevel()", stored: true);

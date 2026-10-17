@@ -42,7 +42,9 @@ public class NodoDeGenealogiaModeloTests
         profundidad.Properties.Select(p => p.Name).Should().Equal("Node", "NodeNullKey");
         profundidad.IsUnique.Should().BeTrue();
         profundidad.GetFilter().Should().BeNull("un filtro sobre una columna CLR no se puede crear (10619)");
-        profundidad.GetIncludeProperties().Should().BeEquivalentTo("MemberId", "Level");
+        // CurrentUnder lee además CreationDate (nodo vigente, R8) e IsDeleted (filtro global): sin ellas el
+        // optimizador prefiere recorrer la tabla a hacer un seek con búsquedas en la clave agrupada.
+        profundidad.GetIncludeProperties().Should().BeEquivalentTo("MemberId", "Level", "CreationDate", "IsDeleted");
         tipo.FindProperty("NodeNullKey")!.GetComputedColumnSql()
             .Should().Be("CASE WHEN [Node] IS NULL THEN CAST([Id] AS varchar(100)) END");
         tipo.FindProperty("NodeNullKey")!.GetIsStored().Should().BeTrue();
