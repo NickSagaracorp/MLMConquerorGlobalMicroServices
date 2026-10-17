@@ -1,7 +1,12 @@
+using System.Data;
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Queries;
+using MLMConquerorGlobalEdition.Repository.Grid;
+using MLMConquerorGlobalEdition.Repository.Services.Teams;
+using Xunit.Abstractions;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Tests.Rendimiento;
 
@@ -9,6 +14,10 @@ namespace MLMConquerorGlobalEdition.BizCenter.Tests.Rendimiento;
 [Collection(SqlServerReportesCollection.Nombre)]
 public class SqlServerDualSubtreeTests
 {
+    private readonly ITestOutputHelper _salida;
+
+    public SqlServerDualSubtreeTests(ITestOutputHelper salida) => _salida = salida;
+
     [SqlServerFact]
     public Task Devuelve_cada_descendiente_con_su_profundidad_y_su_pierna() => SqlServerReportes.ConReintentoAsync(async () =>
     {
@@ -108,4 +117,64 @@ public class SqlServerDualSubtreeTests
         plan.Should().Contain("IX_DualTeamTree_ParentMemberId").And.Contain(PlanDeEjecucion.Seek);
         plan.Should().NotContain("Key Lookup", "el índice incluye MemberId, Side e IsDeleted (M10)");
     }
+
+    [SqlServerFact]
+    public Task Mi_equipo_por_la_CTE_da_lo_mismo_que_por_la_ruta() => SqlServerReportes.ConReintentoAsync(async () =>
+    {
+        await using var db = SqlServerReportes.Db();
+        await using var tx = await db.Database.BeginTransactionAsync();
+        var r = SqlServerReportes.NuevoId(); var a = SqlServerReportes.NuevoId(); var b = SqlServerReportes.NuevoId();
+        foreach (var id in new[] { r, a, b }) ReportesDb.Miembro(db, id);
+        ReportesDb.NodoBinario(db, r, null, ReportesDb.Ruta(r), TreeSide.Left);
+        ReportesDb.NodoBinario(db, a, r, ReportesDb.Ruta(r, a), TreeSide.Left);
+        ReportesDb.NodoBinario(db, b, a, ReportesDb.Ruta(r, a, b), TreeSide.Right);
+        await db.SaveChangesAsync();
+        var servicio = new DualTeamService(db, CalificadoEnLosEquiposTests.Rangos(db), CalificadoEnLosEquiposTests.Calificacion(db));
+
+        var filas = (await servicio.GetMyTeamGridAsync(r, new GridDataRequest { PageSize = 50 })).Items.ToList();
+
+        filas.Select(f => (f.MemberId, f.Level, f.Leg)).Should().BeEquivalentTo(new[]
+        {
+            (a, 1, "Left"), (b, 2, "Left")
+        });
+        await tx.RollbackAsync();
+    });
+
+    [SqlServerFact]
+    public Task Mi_equipo_de_un_subarbol_normal_cabe_en_tiempo() => SqlServerReportes.ConReintentoAsync(async () =>
+    {
+        await using var db = SqlServerReportes.Db();
+        await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.ReadUncommitted);
+        // El subárbol más grande que cabe en la CTE: desde la raíz más grande se baja por el hijo que aún no
+        // cabe, y cuando los dos caben se queda con el mayor (revisión: la medición con un equipo de 3 no decía nada).
+        var raices = await db.DualTeamTree.AsNoTracking().Where(d => d.ParentMemberId == null)
+            .OrderBy(d => d.MemberId).Select(d => d.MemberId).ToListAsync();
+        var actual = raices.First();
+        foreach (var r in raices)
+            if (await DualSubtree.DescendantsAsync(db, r, DualSubtree.MaxRowsForCte) is null) { actual = r; break; }
+        IReadOnlyList<DualSubtree.Row>? sub = await DualSubtree.DescendantsAsync(db, actual, DualSubtree.MaxRowsForCte);
+        for (var i = 0; i < 2000 && sub is null; i++)
+        {
+            var hijos = await db.DualTeamTree.AsNoTracking().Where(d => d.ParentMemberId == actual)
+                .OrderBy(d => d.MemberId).Select(d => d.MemberId).ToListAsync();
+            var medidos = new List<(string Id, IReadOnlyList<DualSubtree.Row>? Sub)>();
+            foreach (var h in hijos)
+                medidos.Add((h, await DualSubtree.DescendantsAsync(db, h, DualSubtree.MaxRowsForCte)));
+            var grande = medidos.FirstOrDefault(m => m.Sub is null);
+            if (grande.Id is not null) { actual = grande.Id; continue; }
+            var mayor = medidos.OrderByDescending(m => m.Sub!.Count).First();
+            actual = mayor.Id; sub = mayor.Sub;
+        }
+        sub.Should().NotBeNull();
+        var servicio = new DualTeamService(db, CalificadoEnLosEquiposTests.Rangos(db), CalificadoEnLosEquiposTests.Calificacion(db));
+
+        var cronometro = Stopwatch.StartNew();
+        var pagina = await servicio.GetMyTeamGridAsync(actual, new GridDataRequest { PageSize = 20 });
+        cronometro.Stop();
+
+        _salida.WriteLine($"Mi equipo Dual de {actual}: {sub!.Count} nodos, {pagina.TotalCount} filas en {cronometro.ElapsedMilliseconds} ms");
+        pagina.TotalCount.Should().Be(sub.Count);
+        cronometro.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(2));
+        await tx.RollbackAsync();
+    });
 }
