@@ -12,7 +12,7 @@ Tres cerrojos, los tres terminan en THROW sin tocar nada:
   3. El servidor es la misma maquina que lo ejecuta: SERVERPROPERTY('MachineName') = HOST_NAME().
 
 Como ejecutarlo (desde la raiz del repositorio, en la maquina del servidor local):
-  sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -v Confirmo=LOCAL -i Scripts/sql/plan-m/01-orderno-duplicados.sql
+  sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -I -v Confirmo=LOCAL -i Scripts/sql/plan-m/01-orderno-duplicados.sql
 */
 -- sqlcmd arranca con QUOTED_IDENTIFIER OFF, y con el indice filtrado IX_Orders_OrderNo un UPDATE de
 -- Orders falla con 1934. Va en su propio lote porque se aplica al compilar.

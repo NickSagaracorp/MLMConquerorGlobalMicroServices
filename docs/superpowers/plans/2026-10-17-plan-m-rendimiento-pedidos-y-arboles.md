@@ -21,9 +21,9 @@
 | Bloque | Tareas | Qué entrega | Despliegue |
 |---|---|---|---|
 | 0. Medición | 1 | Pruebas de medición con objetivo, en rojo antes del plan | — |
-| 1. Pedidos e índices | 2–5 | `OrderNo` acotado y único, índices de `Orders`/`OrderDetails`/`PaymentHistories`/`MemberStatistics`/`DualTeamTree`, relaciones explícitas; migración `PedidosAcotadosEIndices` | Despliegue 1 |
-| 2. Nodo de inscripción (escritura) | 6–10 | `Node hierarchyid` en el modelo, escritores, regla, migración `NodoDeGenealogia`, script de relleno | Despliegue 1 + relleno |
-| 3. Nodo de inscripción (lectura) | 11–13 | `GenealogySubtree`, todas las consultas de equipo por `Node`, regla contra `StartsWith` | Despliegue 2, **solo con el relleno al 100 %** |
+| 1. Pedidos e índices | 2–5 | `OrderNo` acotado y único, índices de `Orders`/`OrderDetails`/`PaymentHistories`/`MemberStatistics`/`DualTeamTree`, relaciones explícitas; migración `PedidosAcotadosEIndices` | Despliegue único |
+| 2. Nodo de inscripción (escritura) | 6–10 | `Node hierarchyid` en el modelo, escritores, regla, migración `NodoDeGenealogia`, script de relleno | Despliegue único (con el relleno) |
+| 3. Nodo de inscripción (lectura) | 11–13 | `GenealogySubtree`, todas las consultas de equipo por `Node`, regla contra `StartsWith` | Despliegue único: los servicios arrancan solo con el relleno al 100 % |
 | 4. Binario | 14–15 | `DualSubtree` (CTE), *Mi equipo* del Dual Team por la CTE en subárboles normales | Cualquiera |
 | 5. RCSI | 16–17 | Prueba de reclamo concurrente, script de activación, activación local | Local ya; producción con condición (R6) |
 | Cierre | 18 | Medición después y verificación completa | — |
@@ -88,9 +88,9 @@
 | R5 | **Ordinales concurrentes:** dos altas a la vez bajo el mismo patrocinador calculan el mismo `Node`. | Índice único `IX_GenealogyTree_Node`. El alta ya reintenta cuando choca con `AK_MemberProfiles_MemberId`, y el reintento se amplía al índice del nodo (Tarea 8). Con RCSI pasa más a menudo (la lectura no espera), pero sigue cerrado. |
 | R6 | **RCSI y colocaciones en el binario.** `PlacementService` serializa con un `sp_getapplock` **por patrocinador**. Dos patrocinadores distintos pueden derramar al mismo hueco. Hoy, en lectura confirmada con bloqueos, la lectura de los hijos del hueco **espera** a la inserción sin confirmar del otro (bloqueo X en `IX_DualTeamTree_ParentMemberId`), y eso los serializa por accidente. Con RCSI lee la versión anterior y ve el hueco libre. **Ya hay 939 huecos repetidos en local.** | **Condición de producción:** no activar RCSI en producción hasta que un plan aparte repare los huecos repetidos y cree `UX_DualTeamTree_ParentMemberId_Side` (único, `IsDeleted = 0`). Ese índice cierra la carrera con o sin RCSI. En local se activa ya (aprobado por Nick, Tarea 17), sabiendo que los datos locales ya tienen huecos repetidos. Ver «Revisión de candados bajo RCSI». |
 | R7 | **RCSI y webhooks de pago.** `ProcessPaymentWebhookHandler` busca por `GatewayTransactionId` y, si no lo encuentra, inserta, sin índice único. Hoy el recorrido completo de la tabla espera a la fila sin confirmar del otro webhook. Con RCSI y con el índice nuevo, los dos webhooks iguales pueden insertar. | Se propone `UX_PaymentHistories_GatewayName_GatewayTransactionId` (filtrado, no nulo; hoy 0 repetidos), **pendiente de que Nick confirme** que ningún flujo repite el id de transacción (M7). Mientras no esté, es condición de producción de RCSI, igual que R6. |
-| R8 | **Las migraciones corren al arrancar** (`MigrateAsync` en los ocho servicios), con el *timeout* por defecto de 30 s. Un `ALTER COLUMN` de `nvarchar(max)` a una longitud acotada reescribe y bloquea la tabla con Sch-M. Con millones de filas tarda minutos: los servicios no arrancan y la tabla queda bloqueada. | **En producción las migraciones del plan se aplican antes de desplegar**, con `dotnet ef migrations script --idempotent` y `sqlcmd -b`, que no tiene *timeout*, en una ventana sin tráfico (M24). Así, cuando arranquen, los servicios las encontrarán aplicadas. En local las tablas son pequeñas (segundos). Si la guarda de huérfanos supera los 30 s por bloqueos de los servicios levantados, se paran y se repite. |
+| R8 | **Las migraciones corren al arrancar** (`MigrateAsync` en los ocho servicios), con el *timeout* por defecto de 30 s. Un `ALTER COLUMN` de `nvarchar(max)` a una longitud acotada reescribe y bloquea la tabla con Sch-M. Con millones de filas tarda minutos: los servicios no arrancan y la tabla queda bloqueada. | **En producción las migraciones del plan se aplican antes de desplegar**, con `dotnet ef migrations script --idempotent` y `sqlcmd -b -I`, que no tiene *timeout*, en una ventana sin tráfico (M24). Así, cuando arranquen, los servicios las encontrarán aplicadas. En local las tablas son pequeñas (segundos). Si la guarda de huérfanos supera los 30 s por bloqueos de los servicios levantados, se paran y se repite. |
 | R9 | **Las FK nuevas** (`OrderDetails.OrderId` → `Orders`, `MembershipSubscriptions.LastOrderId` → `Orders`) rompen a cualquier escritor que inserte la línea o la suscripción **antes** que el pedido en otro `SaveChanges`. | Con la relación modelada, EF ordena las inserciones dentro de un mismo `SaveChanges`. `RecurringBillingProcessor` ya guarda primero el pedido. Antes de crear las FK, la migración comprueba que no hay huérfanos (51024, 51027). Las pruebas de SQL Server del alta, de Billing y de los reportes deben seguir en verde (Tarea 18). `PaymentHistories` **no** lleva FK (M7). |
-| R10 | `hierarchyid` en contenedores Linux. El tipo de EF depende de `Microsoft.SqlServer.Types`, que en la parte de `hierarchyid` es código gestionado. | Antes del despliegue 2, levantar un servicio en su imagen Docker y llamar a *Mi equipo*. Si falla al cargar el tipo, parar y avisar. |
+| R10 | `hierarchyid` en contenedores Linux. El tipo de EF depende de `Microsoft.SqlServer.Types`, que en la parte de `hierarchyid` es código gestionado. | Antes del despliegue, levantar un servicio en su imagen Docker y llamar a *Mi equipo*. Si falla al cargar el tipo, parar y avisar. |
 | R11 | **InMemory no tiene `hierarchyid`.** Sin conversor, EF trataría `HierarchyId` como entidad. | En InMemory, `Node` se guarda como texto (`HasConversion`, Tarea 6). `IsDescendantOf` y `GetAncestor` se evalúan en memoria con la implementación de EF, que es la misma semántica. La traducción a SQL y el *seek* los prueban las `[SqlServerFact]`. |
 | R12 | **`IsDescendantOf` con *seek*** solo se consigue con la forma «la columna `Node` contra un parámetro». La forma en que se lee el nodo del candidato con una subconsulta escalar no hace *seek*, pero parte de un conjunto pequeño (altas del rango, inscripciones a un evento, cambios de estado). | `SqlServerPlanesDeEjecucionTests` lee el plan estimado de cada consulta que debe hacer *seek* (Tareas 5, 11 y 14). Las consultas de equipo completo usan `CurrentUnder` (M16). |
 | R13 | **Conflicto con el Plan K:** su migración `CuotaAnual` y el *snapshot* están sin fusionar en `plan-k-cuota-anual`. | La rama del Plan M sale de `master` después de fusionar el Plan K. Si no se puede esperar, rebasar y regenerar las migraciones del Plan M (no fusionar el *snapshot* a mano). |
@@ -153,7 +153,7 @@ Con `READ_COMMITTED_SNAPSHOT ON`, una lectura en `READ COMMITTED` deja de tomar 
 | M21 | **`UseHierarchyId()` se activa en `AppDbContext.OnConfiguring`**, solo si el proveedor es SQL Server, junto a los interceptores. | Se hace en un solo sitio en lugar de en ocho `Program.cs`, la fábrica de diseño y los ayudantes de pruebas. Un anfitrión que lo olvidara fallaría al construir el modelo. Usa `SqlServerOptionsExtension`, que es una API interna, así que lleva `#pragma warning disable EF1001` y una prueba que lo vigila (Tarea 6). |
 | M22 | **RCSI con un script, fuera de EF** (`Scripts/sql/plan-m/03-activar-rcsi.sql`). El script se niega a seguir si hay otras sesiones en la base y usa `ALTER DATABASE CURRENT … WITH ROLLBACK IMMEDIATE`. | Necesita acceso exclusivo y no puede ir dentro de una transacción. Dentro de una migración cortaría las conexiones de los ocho servicios al arrancar. |
 | M23 | **`HierarchyPath` no se acorta** (ni a `varchar(1700)` ni a `nvarchar(850)`). | Con `Node` indexado, la ruta deja de filtrarse. |
-| M24 | **En producción, las tres migraciones se aplican con un script idempotente y `sqlcmd`** antes de desplegar los servicios: `PedidosAcotadosEIndices` y `NodoDeGenealogia` en el despliegue 1, y ninguna en el 2. Si `DeploymentScripts/migrate-rds.sql` es el que se usa para RDS, se regenera con `--idempotent`. | R8. **Revisión:** solo con `sqlcmd -b` (nunca SSMS ni sin `-b`), con los servicios parados durante la ventana y sin arrancar ninguno hasta que el script termine (ver «Condiciones de despliegue»). |
+| M24 | **En producción, las tres migraciones se aplican con un script idempotente y `sqlcmd`** antes de arrancar los servicios: `PedidosAcotadosEIndices` y `NodoDeGenealogia`, en un único despliegue (revisión C1: en producción nunca se aplicó ninguna versión de `NodoDeGenealogia`). Script generado: `Scripts/sql/plan-m/00-migraciones-plan-m.sql`. Si `DeploymentScripts/migrate-rds.sql` es el que se usa para RDS, se regenera con `--idempotent`. | R8. **Revisión:** solo con `sqlcmd -b -I` (nunca SSMS ni sin `-b`), con los servicios parados durante la ventana y sin arrancar ninguno hasta que el script termine (ver «Condiciones de despliegue»). |
 
 ## Fuera de alcance
 
@@ -218,7 +218,7 @@ Rutas abreviadas: todos los proyectos llevan el prefijo `MLMConquerorGlobalEditi
 - **Ejecutar un script de `Scripts/sql/plan-m`** (solo en local):
 
   ```bash
-  sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -i Scripts/sql/plan-m/NOMBRE.sql
+  sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -I -i Scripts/sql/plan-m/NOMBRE.sql
   ```
 
 ---
@@ -783,7 +783,7 @@ git commit -m "Pedidos, lineas, pagos, suscripciones y estadisticas con longitud
 
 - [x] **Step 1: Comprobar que hay duplicados (estado de partida)**
 
-Run: `sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -W -Q "SET NOCOUNT ON; SELECT COUNT(*) AS Grupos FROM (SELECT OrderNo FROM Orders WHERE OrderNo IS NOT NULL GROUP BY OrderNo HAVING COUNT(*) > 1) d"`
+Run: `sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -W -I -Q "SET NOCOUNT ON; SELECT COUNT(*) AS Grupos FROM (SELECT OrderNo FROM Orders WHERE OrderNo IS NOT NULL GROUP BY OrderNo HAVING COUNT(*) > 1) d"`
 Expected: `68` o un número parecido (no 0). Si sale un deadlock (1205), repetir.
 
 - [x] **Step 2: Escribir el script**
@@ -830,7 +830,7 @@ FROM (SELECT OrderNo FROM Orders WHERE OrderNo IS NOT NULL GROUP BY OrderNo HAVI
 
 - [x] **Step 3: Ejecutarlo en local**
 
-Run: `sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -v Confirmo=LOCAL -i Scripts/sql/plan-m/01-orderno-duplicados.sql` (tras la revisión: sin `-v Confirmo=LOCAL`, con otra base o contra un servidor que no sea la máquina local, el script termina en `THROW` 51029–51031 sin tocar nada; si un sufijo `-Dn` ya está ocupado prueba el siguiente)
+Run: `sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -I -v Confirmo=LOCAL -i Scripts/sql/plan-m/01-orderno-duplicados.sql` (tras la revisión: sin `-v Confirmo=LOCAL`, con otra base o contra un servidor que no sea la máquina local, el script termina en `THROW` 51029–51031 sin tocar nada; si un sufijo `-Dn` ya está ocupado prueba el siguiente)
 Expected: `Pedidos renumerados: 84` (152 filas menos 68 grupos) y `GruposDuplicadosRestantes 0`. Ejecutarlo otra vez da `Pedidos renumerados: 0`.
 
 - [x] **Step 4: Commit**
@@ -1824,7 +1824,7 @@ Plan M, Tarea 10 (M14, R1). Rellena GenealogyTree.Node a partir de ParentMemberI
 - Ordinales como GenealogyNodes.NextChildAsync: ultimo ordinal del grupo + ROW_NUMBER por (CreationDate, Id).
 - Si un alta simultanea ocupa un Node, el lote falla (indice unico) y basta con relanzar.
 - En local: solo MLMConquerorGlobalEditionDb. En produccion: ventana con poco trafico, tras la migracion
-  NodoDeGenealogia y ANTES del despliegue 2 (Bloque 3).
+  NodoDeGenealogia y ANTES de arrancar los servicios (despliegue unico, revision C1). Version vigente: el script del repositorio.
 */
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
@@ -1898,7 +1898,7 @@ SELECT
 
 - [x] **Step 3: Ejecutarlo en local**
 
-Run: `sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -i Scripts/sql/plan-m/02-relleno-nodo-genealogia.sql`
+Run: `sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -I -i Scripts/sql/plan-m/02-relleno-nodo-genealogia.sql`
 Expected: unas 9 pasadas (8 niveles más la última, vacía). `Rellenadas 119446 filas en total` (o el número de filas de la tabla). Al final, `SinNode 0` e `Incoherentes 0`. Si se relanza, `Rellenadas 0`.
 
 - [x] **Step 4: Ejecutar las pruebas**
@@ -1914,7 +1914,7 @@ git add Scripts/sql/plan-m/02-relleno-nodo-genealogia.sql \
 git commit -m "Script idempotente por lotes que rellena GenealogyTree.Node nivel a nivel desde ParentMemberId con los mismos ordinales que el alta; pruebas de coherencia, de equivalencia con la ruta y del calculo del siguiente nodo en SQL"
 ```
 
-**Fin del despliegue 1.** Antes de seguir con el Bloque 3 en producción hay que aplicar las migraciones `PedidosAcotadosEIndices` y `NodoDeGenealogia` (M24), ejecutar el relleno y obtener `SinNode = 0` e `Incoherentes = 0`.
+**Despliegue único (revisión C1).** No hay despliegue intermedio: el Bloque 3 se despliega junto con este, con los servicios parados hasta que el relleno deje `SinNode = 0` e `Incoherentes = 0` (ver «Condiciones de despliegue»).
 
 ---
 
@@ -2391,7 +2391,7 @@ git add MLMConquerorGlobalEdition.RankEngine/Features/GetRankProgress/GetRankPro
 git commit -m "Progreso de rango, nodos disponibles, custodia de tokens, todo el equipo, visualizador y comisiones del Admin acotan el equipo de inscripcion con Node; ninguna consulta del arbol de inscripcion filtra ya por la ruta"
 ```
 
-**Fin del despliegue 2.** Solo se despliega con `SinNode = 0` e `Incoherentes = 0` en producción (R17) y con R10 comprobado.
+**Despliegue único (revisión C1).** Los lectores por `Node` se despliegan con todo lo demás; los servicios solo arrancan con `SinNode = 0` e `Incoherentes = 0` (R17) y con R10 comprobado.
 
 ---
 
@@ -2857,9 +2857,9 @@ git commit -m "Script versionado que activa READ_COMMITTED_SNAPSHOT con los serv
 - [ ] **Step 3: Activación en la base LOCAL (la ejecuta el coordinador o Nick, no el implementador)**
 
 1. Parar los servicios del worktree `-run` y cualquier otra conexión a la base local.
-2. Run: `sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -i Scripts/sql/plan-m/03-activar-rcsi.sql`
+2. Run: `sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -I -i Scripts/sql/plan-m/03-activar-rcsi.sql`
    Expected: una fila `MLMConquerorGlobalEditionDb 1 OFF` y `VersionStoreMB` con un número pequeño. Si sale 51041, quedan sesiones abiertas.
-3. Verificar: `sqlcmd -S . -d master -E -C -W -Q "SELECT name, is_read_committed_snapshot_on FROM sys.databases WHERE name = N'MLMConquerorGlobalEditionDb'"`. Expected: `1`.
+3. Verificar: `sqlcmd -S . -d master -E -C -W -I -Q "SELECT name, is_read_committed_snapshot_on FROM sys.databases WHERE name = N'MLMConquerorGlobalEditionDb'"`. Expected: `1`.
 4. Repetir las pruebas de candados: `dotnet test MLMConquerorGlobalEdition.Signups.Tests --filter SqlServerReclamoConcurrenteTests -nologo` y `dotnet test MLMConquerorGlobalEdition.Billing.Tests --filter SqlServerMemberFundsGateTests -nologo`. Expected: PASS.
 
 ---
@@ -2886,7 +2886,7 @@ Expected: PASS en todas. Las `[SqlServerFact]` deben pasar, no salir como `Skipp
 
 - [ ] **Step 3: Condiciones de la base local**
 
-Run: `sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -W -Q "SET NOCOUNT ON; SELECT COUNT(*) AS SinNode FROM GenealogyTree WHERE Node IS NULL; SELECT COUNT(*) AS DuplicadosOrderNo FROM (SELECT OrderNo FROM Orders WHERE OrderNo IS NOT NULL GROUP BY OrderNo HAVING COUNT(*) > 1) d"`
+Run: `sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -W -I -Q "SET NOCOUNT ON; SELECT COUNT(*) AS SinNode FROM GenealogyTree WHERE Node IS NULL; SELECT COUNT(*) AS DuplicadosOrderNo FROM (SELECT OrderNo FROM Orders WHERE OrderNo IS NOT NULL GROUP BY OrderNo HAVING COUNT(*) > 1) d"`
 Expected: `0` y `0`. Si hay altas nuevas desde el relleno, siguen en 0 porque el alta escribe `Node`.
 
 - [ ] **Step 4: Commit**
@@ -2897,15 +2897,17 @@ git commit -m "Plan M: medicion despues anotada en el plan"
 ```
 
 **Condiciones de despliegue (resumen):**
-1. **Despliegue 1:**
-   - En producción, ejecutar antes la consulta de duplicados de la Tarea 4. Si hay alguno, decide Nick.
-   - Aplicar `PedidosAcotadosEIndices` y `NodoDeGenealogia` con un script idempotente (`dotnet ef migrations script --idempotent`) **solo con `sqlcmd -b`** (M24, R8):
-     - nunca desde SSMS ni con `sqlcmd` sin `-b`: sin `-b`, un `THROW` de una guarda (51020–51028) no detiene `sqlcmd` y los lotes siguientes se ejecutarían igual;
-     - **todos los servicios parados** durante la ventana;
-     - **ningún servicio arranca antes** de que el script termine bien: cada uno ejecuta `MigrateAsync` al arrancar, con el *timeout* de 30 s de EF, y se pondría a aplicar las mismas migraciones sobre tablas grandes, chocando con el script o dejando la tabla bloqueada.
-   - Desplegar los servicios.
-   - Ejecutar el relleno de la Tarea 10 hasta obtener `SinNode = 0` e `Incoherentes = 0`.
-2. **Despliegue 2:** solo con las dos cifras a 0 y R10 comprobado en Docker.
+1. **Un solo despliegue (revisión C1).** En producción no se aplicó nunca ninguna versión de `NodoDeGenealogia`, así que no hay despliegue intermedio. Orden, sin saltarse ningún paso:
+   1. **Antes de la ventana:** ejecutar la consulta de duplicados de la Tarea 4. Si hay alguno, decide Nick (R15); la guarda 51021 detendría la migración.
+   2. **Parar todos los servicios.** Ninguno arranca hasta el paso 6: cada uno ejecuta `MigrateAsync` al arrancar, con el *timeout* de 30 s de EF, y se pondría a aplicar las mismas migraciones sobre tablas grandes; además, un alta durante el relleno podría ocupar un ordinal.
+   3. **Script idempotente de migraciones**, generado con `dotnet ef migrations script CuotaAnual --idempotent` (`Scripts/sql/plan-m/00-migraciones-plan-m.sql`; regenerarlo si cambia alguna migración), **solo con `sqlcmd -b -I`**:
+      - nunca desde SSMS ni sin `-b`: sin `-b`, un `THROW` de una guarda (51020–51028, 51033) no detiene `sqlcmd`;
+      - nunca sin `-I`: el script de EF **no** emite `SET QUOTED_IDENTIFIER ON` y, sin él, crear los índices filtrados y los de columnas calculadas falla con 1934 (ensayado: la transacción de la migración se deshace entera, pero el despliegue no avanza).
+   4. **Relleno:** `sqlcmd -b -I -i Scripts/sql/plan-m/02-relleno-nodo-genealogia.sql`. Al final hace `ALTER INDEX IX_GenealogyTree_Node REBUILD` y `UPDATE STATISTICS GenealogyTree WITH FULLSCAN`, y devuelve las dos cifras.
+   5. **Comprobar `SinNode = 0` e `Incoherentes = 0`.** Si no, no se arranca: se investiga y se relanza el relleno (es idempotente).
+   6. **Arrancar los servicios**, primero uno solo (encontrará las migraciones aplicadas). Con R10 comprobado en Docker.
+   - Ensayo en una copia local restaurada (revisión I2): migraciones 37 s y relleno 43 s con 306.000 pedidos y 119.446 nodos; los Node salen idénticos a los de la base local.
+2. **Fallar cerrado mientras tanto:** si por error algún miembro quedara sin `Node`, el alta se niega a colgar a nadie de él (I4), los puntos de equipo devuelven «sin dato» y el job de estadísticas no escribe 0 (C1), y el bono de coche lo omite (M6).
 3. **RCSI en producción:** solo con R6 y R7 resueltos (planes aparte), los servicios parados y el script de la Tarea 17.
 
 ---
@@ -2941,7 +2943,7 @@ Lo que no encajaba con el plan escrito y cómo se adaptó, respetando su intenci
       - por eWallet, tarjeta y cripto, `SaveReservationAsync` confirma el pedido en la fase 1, antes de cobrar;
       - por comisiones, guarda el pedido antes de `FundTokenPurchaseAsync`, dentro de la misma transacción.
     - En los dos servicios, un choque de `OrderNo` falla sin cobrar.
-  - **Despliegue en producción:** M24 y «Condiciones de despliegue» dicen ahora tres cosas. El script se aplica solo con `sqlcmd -b`. Los servicios están parados durante la ventana. Ninguno arranca antes de que termine el script.
+  - **Despliegue en producción:** M24 y «Condiciones de despliegue» dicen ahora tres cosas. El script se aplica solo con `sqlcmd -b -I`. Los servicios están parados durante la ventana. Ninguno arranca antes de que termine el script.
 - **Tarea 6: los paquetes.** `Microsoft.EntityFrameworkCore.SqlServer.HierarchyId` y `…SqlServer.Abstractions` están publicados en 10.0.11, la misma versión que EF Core del repositorio.
 - **Tarea 7: más de nueve hermanos.** Se añadió una prueba con diez o más hijos. Comprueba que el orden es por `Node` y no por su texto, también en InMemory, donde `Node` se guarda como texto.
 - **Tarea 9: SQL Server no admite un índice filtrado sobre una columna CLR.** `HasFilter("[Node] IS NOT NULL")` falla con el error 10619, y tampoco se puede filtrar por una columna calculada.
@@ -2985,6 +2987,54 @@ Lo que no encajaba con el plan escrito y cómo se adaptó, respetando su intenci
   - Las cuatro pruebas de medición pasan.
 - **Servicios del worktree `-run`.** Corren con el código de 3df58ff, sin el Bloque 2, así que sus altas crean nodos de inscripción con `Node` nulo. Cuando se actualicen hay que relanzar `02-relleno-nodo-genealogia.sql`, que es idempotente. En este momento hay 0 nulos.
 - **Prueba intermitente:** `EntraxQrPaymentTests.Caducado_o_fallido_ofrece_un_QR_nuevo_u_otro_metodo(Expired)` falló una vez con la suite completa y pasó sola y en la siguiente ejecución completa. No tiene relación con este plan.
+
+- **Revisión de las Tareas 6–13 (arreglos).**
+  - **C1, un solo despliegue:** las condiciones de despliegue describen ahora una sola ventana: servicios parados → script idempotente de migraciones → relleno → `REBUILD` y estadísticas → comprobación → arranque. Ya no quedan referencias a dos despliegues.
+  - **C1, fallar cerrado:** `RecomputeEnrollmentPointsAsync` devuelve `int?`, y `null` cuando el miembro no tiene nodo vigente con `Node`. `MemberStatisticSnapshotJob` no escribe y lo registra como error (`MemberStatisticSnapshotJobTests.ExecuteAsync_SinNode_NoEscribeCeroYRegistraUnError`).
+    - La prueba de RankEngine que esperaba 0 para un miembro sin nodo espera ahora `null`. Es la única aserción cambiada, por decisión de la revisión.
+    - El recálculo suma por SQL con `CurrentUnder`; antes devolvía la lista de ids del equipo y la usaba en un `Contains`.
+  - **I1, relleno rehecho:**
+    - Calcula nivel a nivel en `#nodos`, con una sola lectura de las filas sin `Node` en la primera pasada; cada pasada siguiente lee solo los hijos de la anterior.
+    - Aplica por lotes de 4.000 filas en orden de `Id`, cada lote en su transacción, y termina con `REBUILD` y `UPDATE STATISTICS … WITH FULLSCAN`.
+    - Medido en local con 119.446 nodos: cálculo 14 s, aplicación 17 s, índice y estadísticas 3 s, **35 s** en total. Relanzado, 0 filas en 90 ms.
+    - **Comparación con los `Node` anteriores** (copia en `tempdb`): 119.272 iguales y 174 distintos. Los 174 son hijos de un mismo patrocinador, AMB-922290, que tiene 175. El script antiguo los numeraba por lotes de 50.000 y su orden no seguía `(CreationDate, Id)`: 174 fuera de orden. El nuevo sigue exactamente la regla del alta (0 fuera de orden) y da los mismos valores en cada ejecución.
+    - El padre es el nodo **vivo** más reciente con desempate por `Id`, como `NextChildAsync`. En local no hay nodos borrados ni miembros con dos nodos.
+  - **I2, `-I` y ensayo:**
+    - Todos los `sqlcmd` del plan y de los scripts llevan `-I`.
+    - **El script de EF no emite `SET QUOTED_IDENTIFIER ON`.** Se generó con `dotnet ef migrations script CuotaAnual --idempotent` y se guarda como `Scripts/sql/plan-m/00-migraciones-plan-m.sql`.
+    - **Ensayo en `MLMConquerorGlobalEditionDb_PlanMEnsayo`,** restaurada de una copia `COPY_ONLY` de la base local:
+      1. La copia se llevó a `CuotaAnual` con `dotnet ef database update CuotaAnual`.
+      2. Con un `OrderNo` duplicado, `sqlcmd -b -I` se detuvo con 51021, sin aplicar nada y sin transacción abierta.
+      3. Sin el duplicado, aplicó las dos migraciones en **37 s**. La segunda ejecución no hizo nada (0,1 s).
+      4. El relleno, con una copia del script con el nombre de la base cambiado, tardó 43 s y dio `Node` idénticos a los de la base local.
+      5. Sin `-I`, el script falla con 1934 y la migración se deshace entera.
+    - La base de ensayo y el backup se borraron.
+    - **Por qué no se creó la copia con las migraciones:** desde una base vacía no se puede. `HelpdeskModule` vuelve a crear `AspNetRoles` (2714), así que hubo que restaurar.
+    - **Aviso:** el log de la base local mide 248 GB (modelo `FULL`, espera `LOG_BACKUP`), y por eso restaurarla tardó 20 minutos.
+  - **I3, altas concurrentes:**
+    - `GenealogyChildrenGate`: `sp_getapplock` sobre `genealogy-children:{patrocinador}` en una transacción que abarca `NextChildAsync` y el `SaveChanges`. Está en `SignupMemberHandler` y en `SignupAmbassadorHandler`.
+    - Si alguien activara `EnableRetryOnFailure`, falla con un mensaje claro: el alta tendría que ir dentro de `CreateExecutionStrategy().ExecuteAsync`. SignupAPI no lo activa.
+    - `SqlServerAltasConcurrentesTests`: 10 altas a la vez al mismo patrocinador terminan todas, con 10 `Node` distintos y **0 choques** por el índice. Sin el candado hubo 25 choques que salvaba el reintento. La prueba borra sus filas.
+  - **I4:** `NextChildAsync` lanza `InvalidOperationException` si el nodo vigente del patrocinador no tiene `Node`. Un patrocinador que no está en el árbol da una raíz nueva, como su ruta. Las pruebas del alta siembran el `Node` del patrocinador.
+  - **I5:** Mi equipo, puntos, comisiones (BizCenter y Admin), todo el equipo, visualizador, custodia de tokens, candidatos a colocar y progreso de rango usan `CurrentUnder`. **Medido con AMB-700829** (119.403 personas):
+    - *Clientes*: 221 ms.
+    - *Eventos*: 994 ms.
+    - *Mi equipo*: 638 ms (medición nueva).
+    - Ninguna pasa de 3 s.
+  - **M1–M3:**
+    - El padre se busca entre los nodos vivos; los hermanos, también entre los borrados.
+    - `CurrentOfAsync` y `NodeOfAsync` eligen el nodo vigente con desempate por `Id`, y sustituyen a los 10 `FirstOrDefaultAsync` sin orden: Mi equipo ×2, rama, puntos, nodos disponibles, progreso y evaluación de rango, cancelación, alta ×2 y activación.
+    - `CurrentUnder` desempata también por `Id`.
+  - **M4:** SQL Server admite el CHECK con un método de `hierarchyid`: `CK_GenealogyTree_Node_OrdinalesEnteros` (`[Node] IS NULL OR CHARINDEX('.', [Node].ToString()) = 0`). Probado en una transacción deshecha: rechaza `/999999.1/` con 547. Se mantiene también la prueba en SQL.
+  - **M5:** `IX_GenealogyTree_ParentMemberId` lleva `INCLUDE (Node)`. La migración se regeneró (`20261017215312_NodoDeGenealogia`), porque solo estaba aplicada en local.
+  - **M8:** `NodeNullKey` pasa a `nvarchar(100)`: la clave queda en 892 + 200 bytes, por debajo de 1.700, y el índice se crea sin avisos. La migración tarda unos 2,7 s en SQL en local con 119.446 filas: cinco sentencias de 0,2 a 0,7 s, sin contar el arranque de EF.
+  - **M6:**
+    - El bono de coche suma el equipo por el `Node` vigente, con sumas acumuladas sobre la lista ordenada por `Node`. Omite al embajador sin `Node`, y un miembro con dos nodos ya no revienta el `ToDictionary`. Tiene pruebas nuevas.
+    - `DownlineGuard.PuedeVerRamaDePatrocinioAsync` autoriza por `Node`.
+    - La regla `Nadie_filtra_en_memoria_filas_de_genealogia_por_la_ruta` detecta `x.HierarchyPath.Contains/StartsWith` en archivos que leen `GenealogyTree`, fuera del binario. Se comprobó que habría detectado el código antiguo del bono.
+  - **M7:** el webhook rechaza también un `provider` de más de 100 caracteres (`PaymentHistory.GatewayNameMaxLength`; la columna sigue en `nvarchar(max)`). Comentario corregido: no todas las pasarelas dejan de reintentar un 4xx.
+  - **M9 y M10:** la revisión pide solo una nota en el plan, y el mensaje no dice su contenido. Quedan pendientes de que el coordinador las precise.
+  - **Guarda del relleno:** comprueba que la base se llama `MLMConquerorGlobalEditionDb`. Si en producción tiene otro nombre, hay que ajustarla antes de la ventana.
 
 ---
 
