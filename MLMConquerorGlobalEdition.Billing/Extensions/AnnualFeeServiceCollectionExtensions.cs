@@ -15,6 +15,7 @@ public static class AnnualFeeServiceCollectionExtensions
         services.AddScoped<IAnnualFeeTokenConsumer, AnnualFeeTokenConsumer>();
         services.AddScoped<IAnnualFeeChargeService, AnnualFeeChargeService>();
         services.AddScoped<AnnualFeeStateEnrollmentJob>();
+        services.AddScoped<AnnualFeeStalePendingJob>();
         return services;
     }
 }

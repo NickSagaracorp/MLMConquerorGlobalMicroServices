@@ -318,6 +318,14 @@ RecurringJob.AddOrUpdate<AnnualFeeStateEnrollmentJob>(
         : Cron.Never(),
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
+// Pagos de cuota anual que se quedaron Pending: a conciliar, nunca liberados (Plan K, K11). No mueve
+// dinero: solo cambia Pending a NeedsReconciliation para que tesorería lo mire.
+RecurringJob.AddOrUpdate<AnnualFeeStalePendingJob>(
+    "annual-fee-stale-pending",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "45 * * * *",                   // Cada hora, a los 45 (no coincide con los de tokens)
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
 // Hourly exchange-rate refresh
 RecurringJob.AddOrUpdate<ExchangeRateRefreshJob>(
     "exchange-rate-refresh",

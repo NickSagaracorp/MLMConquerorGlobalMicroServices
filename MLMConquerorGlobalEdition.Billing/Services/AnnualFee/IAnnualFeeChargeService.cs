@@ -39,4 +39,12 @@ public interface IAnnualFeeChargeService
     /// devuelve lo que ya pasó: el controlador no quema un permiso de step-up en una repetición.
     /// </summary>
     Task<bool> HasPaymentAsync(string memberId, string? idempotencyKey, CancellationToken ct = default);
+
+    /// <summary>Tesorería cierra un pago a conciliar tras mirar i-Payout (K11).</summary>
+    Task<Result<MLMConquerorGlobalEdition.SharedKernel.Billing.AnnualFeePaymentResultDto>> ReconcileAsync(
+        string paymentId, MLMConquerorGlobalEdition.SharedKernel.Billing.ReconcileAnnualFeePaymentRequest request,
+        string actor, CancellationToken ct = default);
+
+    /// <summary>Pasa a conciliar los pagos que llevan <paramref name="minutes"/> minutos o más en Pending. Nunca libera.</summary>
+    Task<int> MoveStalePendingToReconciliationAsync(int minutes, string actor, CancellationToken ct = default);
 }
