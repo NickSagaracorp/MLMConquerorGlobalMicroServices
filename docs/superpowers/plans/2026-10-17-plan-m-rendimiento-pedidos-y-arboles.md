@@ -69,11 +69,11 @@
 
 | Medición (mediana de 3, base local) | Antes | Después | Objetivo |
 |---|---|---|---|
-| *Actividad por fechas* de la raíz, 3 meses | | | < 3 s |
-| *Clientes*, alcance Equipo, raíz, página 1 | | | < 3 s |
-| *Eventos*, «todo el equipo», raíz, rejilla + totales | | | < 3 s |
-| Comprobación de `OrderNo` (`AnyAsync`) | | | < 50 ms |
-| *Mi equipo* del Dual Team, subárbol de ≤ 20.000 nodos | | | < 2 s |
+| *Actividad por fechas* de la raíz, 3 meses | 5.307 ms (5.307 · 5.714 · 3.901) | | < 3 s |
+| *Clientes*, alcance Equipo, raíz, página 1 | 526 ms (1.146 · 526 · 477): ya cumple | | < 3 s |
+| *Eventos*, «todo el equipo», raíz, rejilla + totales | 6.180 ms (6.602 · 6.180 · 3.906) | | < 3 s |
+| Comprobación de `OrderNo` (`AnyAsync`) | 430 ms (134 · 430 · 471) | | < 50 ms |
+| *Mi equipo* del Dual Team, subárbol de ≤ 20.000 nodos | (la mide la Tarea 14) | | < 2 s |
 
 ---
 
@@ -231,7 +231,7 @@ Rutas abreviadas: todos los proyectos llevan el prefijo `MLMConquerorGlobalEditi
 - Create: `MLMConquerorGlobalEdition.BizCenter.Tests/Rendimiento/SqlServerMedicionPlanMTests.cs`
 - Modify: `docs/superpowers/plans/2026-10-17-plan-m-rendimiento-pedidos-y-arboles.md` (tabla «Mediciones», columna «Antes»)
 
-- [ ] **Step 1: Escribir las pruebas**
+- [x] **Step 1: Escribir las pruebas**
 
 ```csharp
 using System.Data;
@@ -351,12 +351,12 @@ public class SqlServerMedicionPlanMTests
 }
 ```
 
-- [ ] **Step 2: Ejecutarlas y anotar la línea base**
+- [x] **Step 2: Ejecutarlas y anotar la línea base**
 
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter SqlServerMedicionPlanMTests --logger "console;verbosity=detailed" -nologo`
 Expected: FAIL en las cuatro (o en la mayoría), con las líneas «… → mediana N ms» en la salida. Copiar cada mediana a la columna «Antes» de la tabla «Mediciones» de este plan. Si alguna sale `Skipped`, es que SQL Server no está accesible: hay que arreglarlo antes de seguir.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add MLMConquerorGlobalEdition.BizCenter.Tests/Rendimiento/SqlServerMedicionPlanMTests.cs \
@@ -2904,6 +2904,16 @@ git commit -m "Plan M: medicion despues anotada en el plan"
    - Ejecutar el relleno de la Tarea 10 hasta obtener `SinNode = 0` e `Incoherentes = 0`.
 2. **Despliegue 2:** solo con las dos cifras a 0 y R10 comprobado en Docker.
 3. **RCSI en producción:** solo con R6 y R7 resueltos (planes aparte), los servicios parados y el script de la Tarea 17.
+
+---
+
+## Desviaciones durante la ejecución
+
+Lo que no encajaba con el plan escrito y cómo se adaptó, respetando su intención.
+
+- **Rama y Plan K (R13).** La rama real es `plan-m-rendimiento`, que sale de `master` d24e103 con el Plan K ya fusionado. Su migración `CuotaAnual` crea `AnnualFeePayments.OrderId` como `nvarchar(450)` **sin** FK a `Orders`, así que no choca con el Bloque 1.
+- **Hechos medidos, repetidos el 2026-10-17 antes de la Tarea 4.** `Orders` tiene ahora 306.134 filas. `Orders.MemberId` llega a 20 caracteres en 2 filas: son restos `TST-…` de pruebas de SQL Server (`CreatedBy = sql-test`/`sql-a`). Caben en `nvarchar(20)`, así que no cambia nada. `OrderDetails` tiene 202.161 filas y `PaymentHistories` 22.768. Los huérfanos y las sombras siguen a 0, y los grupos de `OrderNo` duplicados siguen siendo 68.
+- **Tarea 1.** *Clientes* de la raíz ya cumplía el objetivo antes del plan (mediana de 526 ms), así que su prueba pasa en la línea base. Las otras tres fallan, como se esperaba.
 
 ---
 
