@@ -73,7 +73,7 @@
 | *Clientes*, alcance Equipo, raíz, página 1 | 526 ms (1.146 · 526 · 477): ya cumple | | < 3 s |
 | *Eventos*, «todo el equipo», raíz, rejilla + totales | 6.180 ms (6.602 · 6.180 · 3.906) | | < 3 s |
 | Comprobación de `OrderNo` (`AnyAsync`) | 430 ms (134 · 430 · 471) | | < 50 ms |
-| *Mi equipo* del Dual Team, subárbol de ≤ 20.000 nodos | (la mide la Tarea 14) | | < 2 s |
+| *Mi equipo* del Dual Team, subárbol de ≤ 20.000 nodos | 675–926 ms con la ruta (AMB-962514, 19.335 nodos; ver «Desviaciones») | | < 2 s |
 
 ---
 
@@ -2403,7 +2403,7 @@ git commit -m "Progreso de rango, nodos disponibles, custodia de tokens, todo el
 - Create: `MLMConquerorGlobalEdition.Repository/Queries/DualSubtree.cs`
 - Test: `MLMConquerorGlobalEdition.BizCenter.Tests/Rendimiento/SqlServerDualSubtreeTests.cs`
 
-- [ ] **Step 1: Escribir las pruebas que fallan**
+- [x] **Step 1: Escribir las pruebas que fallan**
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -2506,7 +2506,7 @@ public class SqlServerDualSubtreeTests
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter SqlServerDualSubtreeTests -nologo`
 Expected: FAIL de compilación.
 
-- [ ] **Step 2: Implementar**
+- [x] **Step 2: Implementar**
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -2569,12 +2569,12 @@ public static class DualSubtree
 }
 ```
 
-- [ ] **Step 3: Ejecutar y ver que pasan**
+- [x] **Step 3: Ejecutar y ver que pasan**
 
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter SqlServerDualSubtreeTests -nologo`
 Expected: PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add MLMConquerorGlobalEdition.Repository/Queries/DualSubtree.cs \
@@ -2591,7 +2591,7 @@ git commit -m "DualSubtree: descendientes de un nodo binario con su profundidad 
 - Modify: `MLMConquerorGlobalEdition.BizCenter.Tests/Reportes/CalificadoEnLosEquiposTests.cs:24` (`Rangos` pasa a `internal`)
 - Modify: `MLMConquerorGlobalEdition.BizCenter.Tests/Rendimiento/SqlServerDualSubtreeTests.cs`
 
-- [ ] **Step 1: Escribir las pruebas que fallan**
+- [x] **Step 1: Escribir las pruebas que fallan**
 
 En `CalificadoEnLosEquiposTests.cs`, cambiar `private static RankComputationService Rangos(` por `internal static RankComputationService Rangos(`.
 
@@ -2653,7 +2653,7 @@ Añadir a `SqlServerDualSubtreeTests` (y los `using` `System.Data`, `System.Diag
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter "SqlServerDualSubtreeTests.Mi_equipo" -nologo`
 Expected: la primera puede pasar ya, porque el camino por la ruta da el mismo resultado: queda como prueba de equivalencia. La segunda debe FALLAR por tiempo, o pasar muy justa. Anotar su cifra como «Antes» en la última fila de la tabla «Mediciones».
 
-- [ ] **Step 2: Implementar**
+- [x] **Step 2: Implementar**
 
 En `DualTeamService.cs` (y `using MLMConquerorGlobalEdition.Repository.Queries;` si falta), sustituir `BuildMyTeamRowQueryable` completo por:
 
@@ -2700,12 +2700,12 @@ En `DualTeamService.cs` (y `using MLMConquerorGlobalEdition.Repository.Queries;`
 
 En `GetMyTeamAsync`, sustituir `var q = BuildMyTeamRowQueryable(myNode.HierarchyPath, memberId);` por `var q = await MyTeamRowsAsync(myNode, memberId, ct);`. En `GetMyTeamGridAsync`, sustituir `var q     = BuildMyTeamRowQueryable(myNode.HierarchyPath, memberId);` por `var q     = await MyTeamRowsAsync(myNode, memberId, ct);`. `BuildDualViewsForPageAsync` no cambia: sigue sacando nivel y pierna de la ruta, pero solo para las filas de la página.
 
-- [ ] **Step 3: Ejecutar las pruebas**
+- [x] **Step 3: Ejecutar las pruebas**
 
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter "SqlServerDualSubtreeTests|CalificadoEnLosEquiposTests" -nologo`
 Expected: PASS. Anotar la cifra de `Mi_equipo_de_un_subarbol_normal_cabe_en_tiempo` como «Después» en la tabla.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add MLMConquerorGlobalEdition.Repository/Services/Teams/DualTeamService.cs \
@@ -3035,6 +3035,24 @@ Lo que no encajaba con el plan escrito y cómo se adaptó, respetando su intenci
   - **M7:** el webhook rechaza también un `provider` de más de 100 caracteres (`PaymentHistory.GatewayNameMaxLength`; la columna sigue en `nvarchar(max)`). Comentario corregido: no todas las pasarelas dejan de reintentar un 4xx.
   - **M9 y M10:** la revisión pide solo una nota en el plan, y el mensaje no dice su contenido. Quedan pendientes de que el coordinador las precise.
   - **Guarda del relleno:** comprueba que la base se llama `MLMConquerorGlobalEditionDb`. Si en producción tiene otro nombre, hay que ajustarla antes de la ventana.
+
+- **Bloque 4 (Tareas 14–15).**
+  - `DualSubtree.DescendantsAsync` acepta además una pierna opcional: la CTE arranca solo por ese hijo. Es la reducción por pierna de D4, con prueba propia. La reducción por fecha ya la hace *Cambios de estado* del Dual Team (J17) y no cambia; *Mi equipo* no filtra por pierna en SQL, porque la pierna se calcula por página.
+  - **Mi equipo del Dual Team:**
+    - La forma del plan (ids devueltos a la aplicación y vueltos a mandar con `EF.Parameter(ids).Contains`, `OPENJSON`) tardaba **unos 2 s** con 19.335 nodos. Con la ruta (`LIKE` sobre 119.433 filas) tardaba 675–926 ms.
+    - Se cambió a `DualSubtree.MaterializeAsync`: la CTE deja los ids en la tabla temporal `#dual_subtree` de la conexión y la rejilla (COUNT y página) se une a ella con `DualSubtree.Materialized` (`FromSqlRaw` componible). Resultado: **0,8–1,5 s**, por debajo del objetivo de 2 s.
+    - La tabla se crea en un lote sin parámetros, porque dentro de `sp_executesql` desaparecería al terminar la llamada. La conexión del contexto queda abierta hasta que este se libera.
+    - En local, la ruta es casi igual de rápida porque la tabla es pequeña. La CTE escala con el tamaño del subárbol y no con el de la tabla.
+  - La prueba de tiempo busca el subárbol más grande que cabe en la CTE (AMB-962514, 19.335 nodos), no el primero que encuentra: la versión del plan daba con un equipo de 3 personas.
+  - **Tareas 16–18 no se hacen;** la activación de RCSI la hace el coordinador. Sí está el script versionado de la Tarea 17 (`Scripts/sql/plan-m/03-activar-rcsi.sql`), sin ejecutar.
+- **Medición final** con AMB-700829 y mediana de 3, todas en verde:
+  - *Actividad*: 6 ms.
+  - *Clientes*: 205 ms.
+  - *Eventos*: 842 ms.
+  - *Mi equipo*: 707 ms.
+  - Comprobación de `OrderNo`: 1 ms.
+  - *Mi equipo* del Dual Team: 1.505 ms con 19.335 nodos.
+- **Prueba intermitente (otra vez):** `EntraxQrPaymentTests.Caducado_o_fallido…(Expired)` es una prueba de bUnit que depende del tiempo de pintado. Falló una vez en la suite completa y pasó al relanzarla. No toca nada de este plan.
 
 ---
 
