@@ -18,6 +18,9 @@ public sealed record AnnualFeeChargeOutcome(
     string? PaymentHistoryId = null,
     string? FailureReason    = null);
 
+/// <summary>Quién paga (siempre del token), con qué identidad queda el rastro y qué pide.</summary>
+public sealed record AnnualFeePayNowInput(string MemberId, string Actor, MLMConquerorGlobalEdition.SharedKernel.Billing.PayAnnualFeeRequest Request);
+
 /// <summary>El cobro de la cuota anual del Biz Center (Plan K).</summary>
 public interface IAnnualFeeChargeService
 {
@@ -26,4 +29,14 @@ public interface IAnnualFeeChargeService
     /// llega un estado con Purpose = AnnualFee. <paramref name="force"/>: el bill-now de soporte.
     /// </summary>
     Task<Result<AnnualFeeChargeOutcome>> ChargeDueAsync(string billingStateId, bool force, CancellationToken ct = default);
+
+    /// <summary>"Pagar ahora" del miembro del token (K14). Misma clave = mismo resultado (K10).</summary>
+    Task<Result<MLMConquerorGlobalEdition.SharedKernel.Billing.AnnualFeePaymentResultDto>> PayNowAsync(
+        AnnualFeePayNowInput input, CancellationToken ct = default);
+
+    /// <summary>
+    /// ¿Esta clave ya tiene un pago de este miembro, en el estado que sea? Con ella, PayNowAsync solo
+    /// devuelve lo que ya pasó: el controlador no quema un permiso de step-up en una repetición.
+    /// </summary>
+    Task<bool> HasPaymentAsync(string memberId, string? idempotencyKey, CancellationToken ct = default);
 }
