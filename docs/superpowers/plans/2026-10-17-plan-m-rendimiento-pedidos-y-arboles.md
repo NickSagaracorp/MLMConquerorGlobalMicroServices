@@ -1028,12 +1028,12 @@ git commit -m "Migracion PedidosAcotadosEIndices: columnas acotadas, OrderNo uni
 - Modify: `MLMConquerorGlobalEdition.Repository/Context/AppDbContext.cs`
 - Test: `MLMConquerorGlobalEdition.BizCenter.Tests/Rendimiento/NodoDeGenealogiaModeloTests.cs`
 
-- [ ] **Step 1: Comprobar que la versión del paquete existe**
+- [x] **Step 1: Comprobar que la versión del paquete existe**
 
 Run: `dotnet package search Microsoft.EntityFrameworkCore.SqlServer.HierarchyId --exact-match`
 Expected: aparece `10.0.11`, la versión de EF Core del repositorio. Si no aparece, usar la 10.0.x estable más alta que esté publicada y que sea igual a la de `Microsoft.EntityFrameworkCore.SqlServer`. Si no coinciden, parar y avisar.
 
-- [ ] **Step 2: Escribir las pruebas que fallan**
+- [x] **Step 2: Escribir las pruebas que fallan**
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -1101,7 +1101,7 @@ public class NodoDeGenealogiaModeloTests
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter NodoDeGenealogiaModeloTests -nologo`
 Expected: FAIL de compilación (`Node` no existe).
 
-- [ ] **Step 3: Paquetes**
+- [x] **Step 3: Paquetes**
 
 En `MLMConquerorGlobalEdition.Domain.csproj`, dentro de un `<ItemGroup>` (crearlo si no hay ninguno):
 
@@ -1116,7 +1116,7 @@ En `MLMConquerorGlobalEdition.Repository.csproj`, junto a `Microsoft.EntityFrame
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer.HierarchyId" Version="10.0.11" />
 ```
 
-- [ ] **Step 4: Entidad**
+- [x] **Step 4: Entidad**
 
 `GenealogyEntity.cs` completo:
 
@@ -1143,7 +1143,7 @@ public class GenealogyEntity : AuditChangesStringKey, ITreeNode
 }
 ```
 
-- [ ] **Step 5: Configuración**
+- [x] **Step 5: Configuración**
 
 `GenealogyConfiguration.cs` completo:
 
@@ -1185,7 +1185,7 @@ public class GenealogyConfiguration : IEntityTypeConfiguration<GenealogyEntity>
 }
 ```
 
-- [ ] **Step 6: `AppDbContext`**
+- [x] **Step 6: `AppDbContext`**
 
 Añadir los `using`:
 
@@ -1230,7 +1230,7 @@ Sustituir `OnModelCreating` y `OnConfiguring` por:
     }
 ```
 
-- [ ] **Step 7: Ejecutar y ver que pasan**
+- [x] **Step 7: Ejecutar y ver que pasan**
 
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter NodoDeGenealogiaModeloTests -nologo`
 Expected: PASS.
@@ -1241,7 +1241,7 @@ Expected: `0 Error(s)`.
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests -nologo` (suite InMemory del BizCenter)
 Expected: PASS. Ninguna prueba existente lee todavía `Node`.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add MLMConquerorGlobalEdition.Domain/MLMConquerorGlobalEdition.Domain.csproj \
@@ -1261,7 +1261,7 @@ git commit -m "GenealogyTree.Node hierarchyid en el modelo con indice unico filt
 - Create: `MLMConquerorGlobalEdition.Repository/Queries/GenealogyNodes.cs`
 - Test: `MLMConquerorGlobalEdition.BizCenter.Tests/Rendimiento/GenealogyNodesTests.cs`
 
-- [ ] **Step 1: Escribir las pruebas que fallan**
+- [x] **Step 1: Escribir las pruebas que fallan**
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -1332,7 +1332,7 @@ public class GenealogyNodesTests
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter GenealogyNodesTests -nologo`
 Expected: FAIL de compilación.
 
-- [ ] **Step 2: Implementar**
+- [x] **Step 2: Implementar**
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -1399,12 +1399,12 @@ public static class GenealogyNodes
 }
 ```
 
-- [ ] **Step 3: Ejecutar y ver que pasan**
+- [x] **Step 3: Ejecutar y ver que pasan**
 
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter GenealogyNodesTests -nologo`
 Expected: PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add MLMConquerorGlobalEdition.Repository/Queries/GenealogyNodes.cs \
@@ -1424,7 +1424,7 @@ git commit -m "GenealogyNodes.NextChildAsync: el Node de un nodo nuevo es el her
 - Test: `MLMConquerorGlobalEdition.Signups.Tests/Features/Signups/SignupAmbassadorHandlerTests.cs` (prueba nueva al final)
 - Create: `MLMConquerorGlobalEdition.BizCenter.Tests/Rendimiento/NodosDeGenealogiaTests.cs`
 
-- [ ] **Step 1: Escribir las pruebas que fallan**
+- [x] **Step 1: Escribir las pruebas que fallan**
 
 Al final de `SignupMemberHandlerTests` (antes de su última `}`):
 
@@ -1570,7 +1570,7 @@ Expected: FAIL (`Node` nulo).
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter NodosDeGenealogiaTests -nologo`
 Expected: FAIL en `Todo_nodo_de_inscripcion_nuevo_lleva_Node`, con los tres archivos.
 
-- [ ] **Step 2: Implementar en `SignupMemberHandler.cs`**
+- [x] **Step 2: Implementar en `SignupMemberHandler.cs`**
 
 Añadir `using MLMConquerorGlobalEdition.Repository.Queries;`. Sustituir:
 
@@ -1609,11 +1609,11 @@ por:
         catch (DbUpdateException ex) when ((IsDuplicateMemberIdViolation(ex) || GenealogyNodes.IsDuplicateNode(ex)) && idAttempt < 5)
 ```
 
-- [ ] **Step 3: Implementar en `SignupAmbassadorHandler.cs`**
+- [x] **Step 3: Implementar en `SignupAmbassadorHandler.cs`**
 
 Exactamente las mismas dos sustituciones que en el paso 2 (los bloques de origen son idénticos) y el mismo `using`.
 
-- [ ] **Step 4: Implementar en `RootAmbassadorSeeder.cs`**
+- [x] **Step 4: Implementar en `RootAmbassadorSeeder.cs`**
 
 Añadir `using MLMConquerorGlobalEdition.Repository.Queries;`. Sustituir:
 
@@ -1634,7 +1634,7 @@ por:
             Node           = await GenealogyNodes.NextChildAsync(db, null),
 ```
 
-- [ ] **Step 5: Ejecutar y ver que pasan**
+- [x] **Step 5: Ejecutar y ver que pasan**
 
 Run: `dotnet test MLMConquerorGlobalEdition.Signups.Tests --filter "SignupMemberHandlerTests|SignupAmbassadorHandlerTests" -nologo`
 Expected: PASS (también las anteriores).
@@ -1642,7 +1642,7 @@ Expected: PASS (también las anteriores).
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter "NodosDeGenealogiaTests|RutasConBarraFinalTests" -nologo`
 Expected: PASS. Si `Nadie_reescribe_GenealogyTree_en_bloque` señala un archivo, se revisa: si de verdad reescribe nodos de inscripción, parar y avisar; si es un falso positivo (la sentencia nombra la tabla pero actualiza otra), añadir una exclusión explícita con su motivo.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add MLMConquerorGlobalEdition.SignupAPI/Features/Signups/Commands/SignupAmbassador/SignupAmbassadorHandler.cs \
@@ -1662,7 +1662,7 @@ git commit -m "El alta y la semilla de la raiz escriben GenealogyTree.Node con G
 - Create: `MLMConquerorGlobalEdition.Repository/Migrations/*_NodoDeGenealogia.cs` (con `dotnet ef`)
 - Create: `MLMConquerorGlobalEdition.BizCenter.Tests/Rendimiento/SqlServerNodoDeGenealogiaTests.cs`
 
-- [ ] **Step 1: Escribir la prueba de esquema (falla hasta aplicar)**
+- [x] **Step 1: Escribir la prueba de esquema (falla hasta aplicar)**
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -1699,7 +1699,7 @@ public class SqlServerNodoDeGenealogiaTests
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter SqlServerNodoDeGenealogiaTests -nologo`
 Expected: FAIL.
 
-- [ ] **Step 2: Crear la migración**
+- [x] **Step 2: Crear la migración**
 
 Con el comando de la cabecera y el nombre `NodoDeGenealogia`. `Up` debe traer solo esto:
 - `AddColumn<HierarchyId>` `Node` (`hierarchyid`, admite nulos).
@@ -1712,16 +1712,16 @@ No lleva guarda: no altera ni trunca nada y es una operación de metadatos (R1).
 Run: `grep -c "UpdateData" MLMConquerorGlobalEdition.Repository/Migrations/*_NodoDeGenealogia.cs`
 Expected: `0`
 
-- [ ] **Step 3: Aplicar a la base local**
+- [x] **Step 3: Aplicar a la base local**
 
 Lanzar el comando de aplicar de la cabecera. Expected: `Applying migration '…_NodoDeGenealogia'.` y `Done.`
 
-- [ ] **Step 4: Ejecutar la prueba**
+- [x] **Step 4: Ejecutar la prueba**
 
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter SqlServerNodoDeGenealogiaTests -nologo`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add MLMConquerorGlobalEdition.Repository/Migrations/*_NodoDeGenealogia.cs \
@@ -1739,7 +1739,7 @@ git commit -m "Migracion NodoDeGenealogia: columna Node hierarchyid que admite n
 - Create: `Scripts/sql/plan-m/02-relleno-nodo-genealogia.sql`
 - Modify: `MLMConquerorGlobalEdition.BizCenter.Tests/Rendimiento/SqlServerNodoDeGenealogiaTests.cs`
 
-- [ ] **Step 1: Escribir las pruebas que fallan**
+- [x] **Step 1: Escribir las pruebas que fallan**
 
 Añadir a `SqlServerNodoDeGenealogiaTests` (y `using System.Data;`, `using MLMConquerorGlobalEdition.Repository.Queries;`):
 
@@ -1813,7 +1813,7 @@ Añadir a `SqlServerNodoDeGenealogiaTests` (y `using System.Data;`, `using MLMCo
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter SqlServerNodoDeGenealogiaTests -nologo`
 Expected: FAIL en las tres nuevas (todas las filas tienen `Node` nulo).
 
-- [ ] **Step 2: Escribir el script**
+- [x] **Step 2: Escribir el script**
 
 ```sql
 /*
@@ -1896,17 +1896,17 @@ SELECT
        OR (pp.Node IS NOT NULL AND c.Node.GetAncestor(1) <> pp.Node))) AS Incoherentes;
 ```
 
-- [ ] **Step 3: Ejecutarlo en local**
+- [x] **Step 3: Ejecutarlo en local**
 
 Run: `sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -i Scripts/sql/plan-m/02-relleno-nodo-genealogia.sql`
 Expected: unas 9 pasadas (8 niveles más la última, vacía). `Rellenadas 119446 filas en total` (o el número de filas de la tabla). Al final, `SinNode 0` e `Incoherentes 0`. Si se relanza, `Rellenadas 0`.
 
-- [ ] **Step 4: Ejecutar las pruebas**
+- [x] **Step 4: Ejecutar las pruebas**
 
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter SqlServerNodoDeGenealogiaTests -nologo`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add Scripts/sql/plan-m/02-relleno-nodo-genealogia.sql \
@@ -1928,7 +1928,7 @@ git commit -m "Script idempotente por lotes que rellena GenealogyTree.Node nivel
 - Test: `MLMConquerorGlobalEdition.BizCenter.Tests/Rendimiento/GenealogySubtreeTests.cs`
 - Create: `MLMConquerorGlobalEdition.BizCenter.Tests/Rendimiento/SqlServerPlanesDeEjecucionTests.cs`
 
-- [ ] **Step 1: Escribir las pruebas que fallan**
+- [x] **Step 1: Escribir las pruebas que fallan**
 
 `GenealogySubtreeTests.cs`:
 
@@ -2033,7 +2033,7 @@ public class SqlServerPlanesDeEjecucionTests
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter "GenealogySubtreeTests|SqlServerPlanesDeEjecucionTests" -nologo`
 Expected: FAIL de compilación (`CurrentUnder` no existe).
 
-- [ ] **Step 2: Implementar `GenealogySubtree`**
+- [x] **Step 2: Implementar `GenealogySubtree`**
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -2067,7 +2067,7 @@ public static class GenealogySubtree
 }
 ```
 
-- [ ] **Step 3: `ReportesDb.Nodo` rellena `Node`**
+- [x] **Step 3: `ReportesDb.Nodo` rellena `Node`**
 
 En `ReportesDb.cs`, añadir `using Microsoft.EntityFrameworkCore;` si falta, sustituir el cuerpo de `Nodo` por:
 
@@ -2125,7 +2125,7 @@ En `ReportesDb.cs`, añadir `using Microsoft.EntityFrameworkCore;` si falta, sus
 
 (En SQL Server, `hermanosGuardados` usa la consulta por `GetAncestor` sobre el árbol de prueba recién creado, que cuelga de una raíz al azar. Es pequeño y no afecta a la medición.)
 
-- [ ] **Step 4: Ejecutar y ver que pasan**
+- [x] **Step 4: Ejecutar y ver que pasan**
 
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter "GenealogySubtreeTests|SqlServerPlanesDeEjecucionTests|NodoDeGenealogiaModeloTests" -nologo`
 Expected: PASS.
@@ -2135,7 +2135,7 @@ Expected: PASS.
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests -nologo`
 Expected: PASS (las pruebas de reportes siguen leyendo la ruta).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add MLMConquerorGlobalEdition.Repository/Queries/GenealogySubtree.cs \
@@ -2158,7 +2158,7 @@ git commit -m "GenealogySubtree: nodo vigente de un miembro y nodos vigentes baj
 - Modify: `MLMConquerorGlobalEdition.Repository/Services/Commissions/CommissionsService.cs`
 - Test: las existentes (`Reportes/*`, `CalificadoEnLosEquiposTests`, `TeamHandlersTests`, `CommissionHandlersTests`) y `Rendimiento/SinPrefijoEnInscripcionTests.cs` (nuevo)
 
-- [ ] **Step 1: Escribir la regla que falla**
+- [x] **Step 1: Escribir la regla que falla**
 
 `SinPrefijoEnInscripcionTests.cs`:
 
@@ -2209,7 +2209,7 @@ public class SinPrefijoEnInscripcionTests
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter SinPrefijoEnInscripcionTests -nologo`
 Expected: FAIL con la lista de sitios. Debe incluir, como mínimo, los archivos de esta tarea y de la 13. Esa lista es la que hay que cumplir.
 
-- [ ] **Step 2: `EnrollmentTeamService.cs`**
+- [x] **Step 2: `EnrollmentTeamService.cs`**
 
 | Sitio | Antes | Después |
 |---|---|---|
@@ -2236,7 +2236,7 @@ y en el `select` que sigue, `Level = node!.Level - rootLevel,` → `Level = g.Le
 
 Si en el archivo ya no queda ningún uso de `TreePrefix`, se quita su `using` solo si lo marca el compilador como no usado.
 
-- [ ] **Step 3: `EnrollmentActivityService.cs`** (forma A, que parte de las altas del rango)
+- [x] **Step 3: `EnrollmentActivityService.cs`** (forma A, que parte de las altas del rango)
 
 | Antes | Después |
 |---|---|
@@ -2245,7 +2245,7 @@ Si en el archivo ya no queda ningún uso de `TreePrefix`, se quita su `using` so
 | `.Select(g => new { g.HierarchyPath, g.Level })` (`sponsorNode`, línea 79) | `.Select(g => new { g.Node, g.Level })` |
 | `where sponsorNode != null && sponsorNode.HierarchyPath.StartsWith(prefix)` | `where sponsorNode != null && sponsorNode.Node!.IsDescendantOf(root)` |
 
-- [ ] **Step 4: `EnrollmentTeamPointsService.cs`**
+- [x] **Step 4: `EnrollmentTeamPointsService.cs`**
 
 Sustituir:
 
@@ -2263,7 +2263,7 @@ por:
 
 y `.Where(g => g.HierarchyPath.StartsWith(subtreePrefix))` por `.Where(g => g.Node!.IsDescendantOf(root))`.
 
-- [ ] **Step 5: `TeamEventRegistrationsService.cs`**
+- [x] **Step 5: `TeamEventRegistrationsService.cs`**
 
 Sustituir `PrefixAsync` y `Team` completos por:
 
@@ -2281,7 +2281,7 @@ Sustituir `PrefixAsync` y `Team` completos por:
 
 En los dos llamadores (líneas 62 y 120): `var prefix = await PrefixAsync(memberId, ct);` → `var root = await RootAsync(memberId, ct);`, `if (prefix is null)` → `if (root is null)` y `Team(prefix)` → `Team(root)`. En las dos subconsultas `let node = …` (líneas 80–85 y 127–132), que siguen la forma A porque parten de las inscripciones del evento: `.Select(n => n.HierarchyPath)` → `.Select(n => n.Node)` y `where node != null && node.StartsWith(prefix)` → `where node != null && node.IsDescendantOf(root)`.
 
-- [ ] **Step 6: `TeamStatusChangesService.cs`** (`EnrollmentQueryAsync`, forma A)
+- [x] **Step 6: `TeamStatusChangesService.cs`** (`EnrollmentQueryAsync`, forma A)
 
 Sustituir:
 
@@ -2304,7 +2304,7 @@ por:
 
 y en la subconsulta `let node`: `.Select(g => g.HierarchyPath)` → `.Select(g => g.Node)` y `where node != null && node.StartsWith(prefix)` → `where node != null && node.IsDescendantOf(root)`. La parte binaria (líneas 125 en adelante) no cambia.
 
-- [ ] **Step 7: `CommissionsService.cs`**
+- [x] **Step 7: `CommissionsService.cs`**
 
 En los cinco métodos, justo después de calcular `hierarchyFilter` (o al principio, en `GetBoostBonusMemberSummaryAsync`), añadir la lectura del nodo vigente. El filtro de la ruta pasa a `Node`; `g.HierarchyPath` se sigue **seleccionando** donde lo use `GetLeg` (M15).
 
@@ -2318,7 +2318,7 @@ En los cinco métodos, justo después de calcular `hierarchyFilter` (o al princi
 
 En cada método, si `me` es `null`, se devuelve lo mismo que hoy cuando el subárbol sale vacío. Se mira el `return` del método y se repite.
 
-- [ ] **Step 8: Ejecutar las pruebas**
+- [x] **Step 8: Ejecutar las pruebas**
 
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests -nologo`
 Expected: PASS, salvo `SinPrefijoEnInscripcionTests`, que aún señala los archivos de la Tarea 13. Si falla una prueba que crea `GenealogyEntity` a mano (`TeamHandlersTests`, `DistribucionDeTokensTests`, `PropiedadEnElCentroDeNegociosTests`, `TransferTokenInstanceHandlerTests`, `GetDashboardStatsHandlerTests`, `CommissionHandlersTests`) porque sus nodos no tienen `Node`, se llama a `ReportesDb.RellenarNodos(db);` justo antes del `SaveChanges` que siembra el árbol. No se cambia ninguna aserción.
@@ -2326,7 +2326,7 @@ Expected: PASS, salvo `SinPrefijoEnInscripcionTests`, que aún señala los archi
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter "SqlServerActividadTests|SqlServerClientesTests|SqlServerEventosTests|SqlServerCambiosDeEstadoTests" -nologo`
 Expected: PASS (las pruebas de SQL Server crean sus nodos con `ReportesDb.Nodo`, que ya pone `Node`).
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add MLMConquerorGlobalEdition.Repository/Services/Teams/EnrollmentTeamService.cs \
@@ -2352,12 +2352,12 @@ git commit -m "Mi equipo, clientes, actividad, eventos, cambios de estado, punto
 - Modify: `MLMConquerorGlobalEdition.BizCenter/Features/Teams/GetVisualizerChildren/GetVisualizerChildrenHandler.cs:39-44`
 - Modify: `MLMConquerorGlobalEdition.AdminAPI/Controllers/AdminMemberCommissionsController.cs:205-214`
 
-- [ ] **Step 1: Comprobar que la regla sigue en rojo con estos archivos**
+- [x] **Step 1: Comprobar que la regla sigue en rojo con estos archivos**
 
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter SinPrefijoEnInscripcionTests -nologo`
 Expected: FAIL, y la lista contiene los seis archivos de esta tarea.
 
-- [ ] **Step 2: Sustituciones**
+- [x] **Step 2: Sustituciones**
 
 En cada archivo, añadir `using MLMConquerorGlobalEdition.Repository.Queries;` si falta.
 
@@ -2370,7 +2370,7 @@ En cada archivo, añadir `using MLMConquerorGlobalEdition.Repository.Queries;` s
 | `GetVisualizerChildrenHandler` | `var pattern = "/" + currentMemberId + "/";` y `.AnyAsync(g => g.MemberId == request.ParentMemberId && g.HierarchyPath.Contains(pattern), ct)` | `var me = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(currentMemberId, ct);` y `var isInSubtree = me is not null && await _db.GenealogyTree.AsNoTracking().AnyAsync(g => g.MemberId == request.ParentMemberId && g.Node!.IsDescendantOf(me), ct);` |
 | `AdminMemberCommissionsController` | `&& g.HierarchyPath.Contains(hierarchyFilter)` | antes de la consulta: `var me = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct);` (si es nulo, el resultado vacío que el método ya devuelve sin inscripciones) y `&& g.Node!.IsDescendantOf(me)`. `g.HierarchyPath` se sigue seleccionando para `GetLegMemberId` (M15) |
 
-- [ ] **Step 3: Ejecutar las pruebas**
+- [x] **Step 3: Ejecutar las pruebas**
 
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests -nologo`
 Expected: PASS, **incluida** `SinPrefijoEnInscripcionTests`. Si una prueba de estos manejadores falla porque sus nodos no tienen `Node`, se aplica `ReportesDb.RellenarNodos(db)` como en la Tarea 12.
@@ -2378,7 +2378,7 @@ Expected: PASS, **incluida** `SinPrefijoEnInscripcionTests`. Si una prueba de es
 Run: `dotnet test MLMConquerorGlobalEdition.RankEngine.Tests -nologo` y `dotnet test MLMConquerorGlobalEdition.AdminAPI.Tests -nologo`
 Expected: PASS. Si una prueba de estos proyectos crea nodos sin `Node` y falla, se asigna `Node = HierarchyId.Parse("/1/…/")` a mano en sus nodos (siguiendo su ruta) sin cambiar ninguna aserción.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add MLMConquerorGlobalEdition.RankEngine/Features/GetRankProgress/GetRankProgressHandler.cs \
@@ -2942,6 +2942,49 @@ Lo que no encajaba con el plan escrito y cómo se adaptó, respetando su intenci
       - por comisiones, guarda el pedido antes de `FundTokenPurchaseAsync`, dentro de la misma transacción.
     - En los dos servicios, un choque de `OrderNo` falla sin cobrar.
   - **Despliegue en producción:** M24 y «Condiciones de despliegue» dicen ahora tres cosas. El script se aplica solo con `sqlcmd -b`. Los servicios están parados durante la ventana. Ninguno arranca antes de que termine el script.
+- **Tarea 6: los paquetes.** `Microsoft.EntityFrameworkCore.SqlServer.HierarchyId` y `…SqlServer.Abstractions` están publicados en 10.0.11, la misma versión que EF Core del repositorio.
+- **Tarea 7: más de nueve hermanos.** Se añadió una prueba con diez o más hijos. Comprueba que el orden es por `Node` y no por su texto, también en InMemory, donde `Node` se guarda como texto.
+- **Tarea 9: SQL Server no admite un índice filtrado sobre una columna CLR.** `HasFilter("[Node] IS NOT NULL")` falla con el error 10619, y tampoco se puede filtrar por una columna calculada.
+  - **Solución:** el índice único es `(Node, NodeNullKey)`. `NodeNullKey AS CASE WHEN [Node] IS NULL THEN CAST([Id] AS varchar(100)) END` es una columna calculada y persistida, y el índice lleva `HasFilter(null)`.
+    - Las filas sin `Node` no chocan entre sí, porque cada una lleva su `Id`.
+    - Dos filas con el mismo `Node` chocan como `(Node, NULL)`, y `IsDuplicateNode` lo reconoce por el nombre del índice. Lo prueba `SqlServerNodoDeGenealogiaTests.El_indice_admite_muchos_nodos_nulos_y_rechaza_dos_iguales`.
+  - **Guarda nueva 51033:** la migración se detiene si algún `GenealogyTree.Id` mide más de 100 caracteres.
+  - **Contra R1:** `NodeLevel` y `NodeNullKey` son columnas persistidas, así que añadirlas escribe en cada fila. La migración no es solo de metadatos. En local tarda segundos; en producción va en la ventana de M24.
+- **Tarea 10: opciones de sesión en el relleno.** El script fija `QUOTED_IDENTIFIER`, `ARITHABORT` y el resto de opciones `SET` en su propio lote, porque hay índices sobre columnas calculadas y sqlcmd arranca con `QUOTED_IDENTIFIER OFF`. La guarda del nombre de la base pasa a 51034, porque 51031 ya la usa el script de duplicados.
+  - **Resultado en local:** 10 pasadas, 119.446 filas rellenadas, `SinNode 0` e `Incoherentes 0`. La segunda ejecución rellena 0.
+  - **Nodos:** el más largo ocupa 9 bytes y el nivel máximo es 8.
+- **Tarea 11: nodos de prueba sin padre.** `ReportesDb.NodoDesdeRuta` reserva el `Node` del padre cuando el padre todavía no existe, porque hay pruebas que crean el hijo antes que el padre o cuelgan nodos de un patrocinador que no está en el árbol. Cuando después se crea el padre, usa ese mismo `Node`. Los hijos se numeran detrás del último hermano, no por recuento.
+- **Tarea 13: un sitio que el plan no listaba.** `AdminMemberDualTeamController.GetAvailableForPlacement` filtraba el árbol de inscripción con `HierarchyPath.Contains`. Ahora va por `Node`.
+- **Tarea 13: cambios en pruebas existentes.**
+  - `TeamHandlersTests`: dos pruebas de `GetAllTeamMembers` no sembraban el nodo del que mira. Se añadió ese nodo.
+  - `GetAllTeamMembers` excluye ahora al propio miembro. Su prueba lo pedía («descendientes»), y el código antiguo solo lo cumplía porque al miembro le faltaba el nodo.
+  - `MemberStatisticSnapshotJobTests`, `TransferTokenInstanceHandlerTests` y `DistribucionDeTokensTests` llaman a `ReportesDb.RellenarNodos`.
+  - `RankEngine.Tests/EnrollmentTeamPointsServiceTests` asigna `Node` a mano.
+  - No se cambió ninguna aserción.
+- **Tareas 11–13: rendimiento con el equipo grande (corrección importante).**
+  - **La medición no medía el equipo grande.** `RaizAsync` elegía ROOT001, la raíz de nivel 0, que solo tiene **33** personas debajo. El equipo grande es el de **AMB-700829**, con 119.403. Ahora `RaizAsync` elige la raíz con más equipo.
+  - **El problema:** con AMB-700829 y la forma del plan (`IsDescendantOf`), *Clientes* tardaba 7,9 s y *Eventos* 11,3 s. Hay tres causas, medidas con los planes reales:
+    1. EF manda `IsDescendantOf(@p) = CAST(1 AS bit)`. Con parámetro, SQL Server no lo convierte en un *seek*; con `= 1`, sí.
+    2. Con `IsDescendantOf` en el filtro, SQL Server estima **1 fila** para cualquier subárbol. Elige entonces bucles con búsquedas por clave: 9 s para contar 119.400 filas, frente a 46 ms con el rango.
+    3. El mismo SQL sirve a equipos de 30 personas y de 119.400. El plan en caché del pequeño hacía que el grande tardara 3–6 s.
+  - **La corrección:**
+    - `GenealogySubtree.Under(root)` lee el equipo como el rango `[root, hermano siguiente)` del índice, sin `IsDescendantOf`.
+    - El rango es exacto porque los ordinales son siempre enteros. Lo vigila `SqlServerNodoDeGenealogiaTests.Ningun_Node_tiene_ordinales_fraccionarios`.
+    - `IX_GenealogyTree_Node` incluye también `CreationDate` e `IsDeleted`, para que cubra `CurrentUnder`. La migración `NodoDeGenealogia` se regeneró, porque solo estaba aplicada en local, y el relleno se relanzó.
+    - `RecompileTaggedQueriesInterceptor`, registrado en `AppDbContext`, añade `OPTION (RECOMPILE)` a las consultas que pasan por `Under`, para que cada tamaño de equipo tenga su plan.
+    - Todas las consultas que filtran filas del árbol por equipo usan `Under` o `CurrentUnder`. La forma A, la subconsulta sobre un conjunto pequeño, sigue con `IsDescendantOf`.
+  - **Vigilancia:**
+    - Una regla de `SinPrefijoEnInscripcionTests` prohíbe `g.Node.IsDescendantOf` sobre filas.
+    - `SqlServerPlanesDeEjecucionTests` lee el plan **real**: el mismo comando de EF, con parámetros y con el interceptor, bajo `SET STATISTICS XML`.
+  - **Pendiente a escala:** para un equipo pequeño, la subconsulta del nodo vigente (R8) se resuelve con un *hash* que recorre `IX_GenealogyTree_Node` entero: unos 120 ms en local, que crecerán con millones de nodos. Con `RECOMPILE` el optimizador debería elegir bucles cuando el rango es pequeño, pero conviene vigilarlo con datos reales. Si no lo hace, la propuesta es una columna «nodo vigente» mantenida por el alta.
+- **Medición tras los Bloques 1–3,** con la raíz del equipo grande (AMB-700829) y mediana de 3. No hay «antes» para AMB-700829, porque la línea base se midió con ROOT001. La columna «Después» la rellena la Tarea 18.
+  - *Actividad* de 3 meses: **8 ms**.
+  - *Clientes*, equipo: **188 ms**.
+  - *Eventos*, todo el equipo: **594 ms**.
+  - Comprobación de `OrderNo`: **2 ms**.
+  - Las cuatro pruebas de medición pasan.
+- **Servicios del worktree `-run`.** Corren con el código de 3df58ff, sin el Bloque 2, así que sus altas crean nodos de inscripción con `Node` nulo. Cuando se actualicen hay que relanzar `02-relleno-nodo-genealogia.sql`, que es idempotente. En este momento hay 0 nulos.
+- **Prueba intermitente:** `EntraxQrPaymentTests.Caducado_o_fallido_ofrece_un_QR_nuevo_u_otro_metodo(Expired)` falló una vez con la suite completa y pasó sola y en la siguiente ejecución completa. No tiene relación con este plan.
 
 ---
 
