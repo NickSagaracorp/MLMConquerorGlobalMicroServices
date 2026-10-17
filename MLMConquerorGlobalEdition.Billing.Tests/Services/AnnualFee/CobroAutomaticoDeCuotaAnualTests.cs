@@ -259,7 +259,8 @@ public class CobroAutomaticoDeCuotaAnualTests
         (await Servicio(db).ChargeDueAsync("anual-" + Miembro, force: false)).Value!.Outcome
             .Should().Be(AnnualFeeOutcomes.Skipped);
 
-        var forzado = await Servicio(db, encendido: false).ChargeDueAsync("anual-" + Miembro, force: true);
+        // Revisión I-3: el forzado también exige el interruptor encendido.
+        var forzado = await Servicio(db).ChargeDueAsync("anual-" + Miembro, force: true);
 
         forzado.Value!.Outcome.Should().Be(AnnualFeeOutcomes.Success);
         (await EstadoAsync(db)).Status.Should().Be(RecurringBillingStatus.Active);

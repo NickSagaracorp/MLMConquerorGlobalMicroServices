@@ -71,7 +71,8 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
 
     public async Task<Result<AnnualFeeChargeOutcome>> ChargeDueAsync(string billingStateId, bool force, CancellationToken ct = default)
     {
-        if (!force && !AutoChargeEnabled)
+        // Revisión I-3: también el cobro forzado (bill-now de soporte) exige el interruptor encendido.
+        if (!AutoChargeEnabled)
             return Skipped(AnnualFeeErrors.AutoChargeDisabled);
 
         var state = await _db.SubscriptionBillingStates
@@ -85,15 +86,16 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
             return Skipped("Billing state is Stopped.");
 
         var now    = _clock.Now;
+        var cycle  = state.NextBillingDate.Date;
         var member = await _db.MemberProfiles.AsNoTracking().FirstOrDefaultAsync(m => m.MemberId == state.MemberId, ct);
 
         var decision = AnnualFeeEligibility.ForAutomaticCharge(
             await AnnualFeeMemberQueries.FactsAsync(_db, state.MemberId, ct), state.NextBillingDate, state.LastSuccessfulBillingDate, now, force);
         if (decision.Kind != AnnualFeeDecisionKind.Charge)
         {
-            ApplyDecision(state, decision, now);
-            await _db.SaveChangesAsync(ct);
-            return Skipped(decision.Reason);
+            var written = await WriteStateUnderGateAsync(state, cycle, skipIfLivePayment: true,
+                s => ApplyDecision(s, decision, now), ct);
+            return written == StateWrite.Busy ? BusyResult(state) : Skipped(decision.Reason);
         }
 
         var price = await AnnualFeePlanQueries.PriceAsync(_db, state.Plan, ct);
@@ -102,37 +104,130 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
 
         if (force && state.Status == RecurringBillingStatus.Stopped)
         {
-            // Como el procesador: forzar revive un estado parado. Se guarda ya, porque bajo el candado el
-            // estado se relee de la base y un cambio sin guardar se perdería.
-            state.Status              = RecurringBillingStatus.Active;
-            state.CurrentAttemptIndex = 0;
-            state.LastUpdateDate      = now;
-            state.LastUpdateBy        = AutoActor;
-            await _db.SaveChangesAsync(ct);
+            // Como el procesador: forzar revive un estado parado. Bajo el candado y releyendo (I-1).
+            var revived = await WriteStateUnderGateAsync(state, cycle, skipIfLivePayment: true, s =>
+            {
+                s.Status              = RecurringBillingStatus.Active;
+                s.CurrentAttemptIndex = 0;
+                s.LastUpdateDate      = now;
+                s.LastUpdateBy        = AutoActor;
+            }, ct);
+            if (revived == StateWrite.Busy) return BusyResult(state);
+            if (revived == StateWrite.Moved) return Skipped(AnnualFeeErrors.InProgress);
         }
 
         var rule = force ? DueRule.Any : DueRule.Due;
+        Settled settled;
         try
         {
             // 1. Un token de cuota, si lo hay: siempre (K6).
-            var settled = await SettleWithTokenAsync(state, price, AnnualFeePaymentSource.Automatic, null, AutoActor, rule, ct);
+            settled = await SettleWithTokenAsync(state, price, AnnualFeePaymentSource.Automatic, null, AutoActor, rule, ct);
 
             // 2. Comisiones y 3. eWallet, solo con la preferencia (K7).
             if (settled.Kind == SettleKind.NotPossible && member!.FeesFromBalance)
                 settled = await SettleWithCommissionsAsync(state, price, AnnualFeePaymentSource.Automatic, null, AutoActor, rule, ct);
             if (settled.Kind == SettleKind.NotPossible && member!.FeesFromBalance)
                 settled = await SettleWithEWalletAsync(state, price, AnnualFeePaymentSource.Automatic, null, AutoActor, rule, ct);
-
-            if (settled.Kind != SettleKind.NotPossible)
-                return Outcome(settled);
         }
         catch (MemberFundsBusyException)
         {
-            return Result<AnnualFeeChargeOutcome>.Failure(AnnualFeeErrors.Busy,
-                $"Funds of member {state.MemberId} are busy; the annual fee will be retried on the next pass.");
+            return BusyResult(state);
         }
 
-        return await RecordNoFundsAsync(state, price, member!, ct);
+        switch (settled.Kind)
+        {
+            case SettleKind.Paid:
+            case SettleKind.Review:
+                return Outcome(settled);
+
+            case SettleKind.Blocked:
+            {
+                // Revisión M-1: bloqueado (pago en curso o en revisión, clave repetida…) se mira mañana. Si el
+                // ciclo ya se movió (alguien lo pagó), no se escribe nada.
+                var postponed = await WriteStateUnderGateAsync(state, cycle, skipIfLivePayment: false,
+                    s => Postpone(s, settled.Code, now), ct);
+                return postponed == StateWrite.Busy ? BusyResult(state) : Outcome(settled);
+            }
+        }
+
+        // Revisión I-2: un eWallet que no responde no es "sin fondos": se mira mañana sin gastar cadencia.
+        if (settled.Code == AnnualFeeErrors.EWalletUnavailable)
+        {
+            var postponed = await WriteStateUnderGateAsync(state, cycle, skipIfLivePayment: true,
+                s => Postpone(s, AnnualFeeErrors.EWalletUnavailable, now), ct);
+            return postponed == StateWrite.Busy ? BusyResult(state) : Skipped(AnnualFeeErrors.EWalletUnavailable);
+        }
+
+        return await RecordNoFundsAsync(state, cycle, price, member!, ct);
+    }
+
+    private Result<AnnualFeeChargeOutcome> BusyResult(SubscriptionBillingState state) =>
+        Result<AnnualFeeChargeOutcome>.Failure(AnnualFeeErrors.Busy,
+            $"Funds of member {state.MemberId} are busy; the annual fee will be retried on the next pass.");
+
+    private static void Postpone(SubscriptionBillingState state, string? reason, DateTime now)
+    {
+        state.NextAttemptDate    = now.Date.AddDays(1);
+        state.LastFailureReason  = reason;
+        state.LastAttemptOutcome = "Skipped";
+        state.LastUpdateDate     = now;
+        state.LastUpdateBy       = AutoActor;
+    }
+
+    private enum StateWrite { Written, Moved, Busy }
+
+    /// <summary>
+    /// Revisión I-1: toda escritura del estado sin cobro va bajo el candado del miembro y releyendo. Si el
+    /// ciclo ya no es <paramref name="cycle"/> (alguien lo pagó o lo movió) o, con
+    /// <paramref name="skipIfLivePayment"/>, hay un pago vivo para él, no se escribe nada. Un choque de
+    /// concurrencia (RowVersion) se trata igual: se relee y no se escribe.
+    /// </summary>
+    private async Task<StateWrite> WriteStateUnderGateAsync(
+        SubscriptionBillingState state, DateTime cycle, bool skipIfLivePayment, Action<SubscriptionBillingState> mutate,
+        CancellationToken ct)
+    {
+        var before = Tracked();
+        IDbContextTransaction tx;
+        try
+        {
+            tx = await _gate.EnterAsync(state.MemberId, ct);
+        }
+        catch (MemberFundsBusyException)
+        {
+            return StateWrite.Busy;
+        }
+
+        await using (tx)
+        {
+            try
+            {
+                await _db.Entry(state).ReloadAsync(ct);
+                var moved = state.NextBillingDate.Date != cycle.Date
+                            || (skipIfLivePayment
+                                && await AnnualFeePaymentQueries.LiveForCycle(_db, state.Id, cycle).AnyAsync(ct));
+                if (moved)
+                {
+                    await SafeRollbackAsync(tx, state.MemberId);
+                    return StateWrite.Moved;
+                }
+
+                mutate(state);
+                await _db.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+                return StateWrite.Written;
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                _logger.LogWarning(ex, "Cuota anual {StateId}: el estado cambió mientras se escribía; no se toca.", state.Id);
+                await AbortUnderGateAsync(tx, state.MemberId, before);
+                return StateWrite.Moved;
+            }
+            catch (Exception)
+            {
+                await AbortUnderGateAsync(tx, state.MemberId, before);
+                throw;
+            }
+        }
     }
 
     // ── Formas de pago (bajo el candado) ─────────────────────────────────────
@@ -387,24 +482,35 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
 
     // ── Sin fondos, decisiones y resultados ──────────────────────────────────
 
-    /// <summary>Intento fallido: la cadencia del plan y, agotada, Stopped (MarkExpired). Ni pedido ni membresía.</summary>
+    /// <summary>
+    /// Intento fallido: la cadencia del plan y, agotada, Stopped (MarkExpired). Ni pedido ni membresía. Bajo
+    /// el candado y releyendo (I-1): si el ciclo se pagó o se movió mientras tanto, no se gasta el reintento.
+    /// </summary>
     private async Task<Result<AnnualFeeChargeOutcome>> RecordNoFundsAsync(
-        SubscriptionBillingState state, AnnualFeePrice price, MemberProfile member, CancellationToken ct)
+        SubscriptionBillingState state, DateTime cycle, AnnualFeePrice price, MemberProfile member, CancellationToken ct)
     {
         var now = _clock.Now;
-        _scheduler.Advance(state, state.Plan!, succeeded: false, attemptDate: now);
-        state.LastFailureReason = AnnualFeeErrors.NoFunds;
-        state.LastUpdateDate    = now;
-        state.LastUpdateBy      = AutoActor;
+        var written = await WriteStateUnderGateAsync(state, cycle, skipIfLivePayment: true, s =>
+        {
+            var attemptIndex = s.CurrentAttemptIndex + 1;
+            _scheduler.Advance(s, s.Plan!, succeeded: false, attemptDate: now);
+            s.LastFailureReason = AnnualFeeErrors.NoFunds;
+            s.LastUpdateDate    = now;
+            s.LastUpdateBy      = AutoActor;
 
-        AddAttempt(state, price.ProductId,
-            member.FeesFromBalance ? RecurringFundingSource.CommissionBalance : RecurringFundingSource.Token,
-            RecurringAttemptOutcome.Failed, price.Amount, orderId: null, paymentHistoryId: null,
-            tokenTransactionId: null, commissionDebitId: null, AnnualFeeErrors.NoFunds, now, AutoActor);
+            AddAttempt(s, price.ProductId,
+                member.FeesFromBalance ? RecurringFundingSource.CommissionBalance : RecurringFundingSource.Token,
+                RecurringAttemptOutcome.Failed, price.Amount, orderId: null, paymentHistoryId: null,
+                tokenTransactionId: null, commissionDebitId: null, AnnualFeeErrors.NoFunds, now, AutoActor, attemptIndex);
+        }, ct);
 
-        await _db.SaveChangesAsync(ct);
-        return Result<AnnualFeeChargeOutcome>.Success(
-            new AnnualFeeChargeOutcome(AnnualFeeOutcomes.Failed, FailureReason: AnnualFeeErrors.NoFunds));
+        return written switch
+        {
+            StateWrite.Written => Result<AnnualFeeChargeOutcome>.Success(
+                new AnnualFeeChargeOutcome(AnnualFeeOutcomes.Failed, FailureReason: AnnualFeeErrors.NoFunds)),
+            StateWrite.Busy    => BusyResult(state),
+            _                  => Skipped(AnnualFeeErrors.InProgress)
+        };
     }
 
     /// <summary>Lo que se hace con el estado cuando una exclusión impide cobrar hoy (K5). No es un intento.</summary>
@@ -534,14 +640,14 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
     private void AddAttempt(
         SubscriptionBillingState state, string productId, RecurringFundingSource source, RecurringAttemptOutcome outcome,
         decimal amount, string? orderId, string? paymentHistoryId, long? tokenTransactionId, string? commissionDebitId,
-        string? failureReason, DateTime now, string actor)
+        string? failureReason, DateTime now, string actor, int? attemptIndex = null)
     {
         _db.RecurringBillingAttempts.Add(new RecurringBillingAttempt
         {
             SubscriptionBillingStateId   = state.Id,
             MemberId                     = state.MemberId,
             ProductId                    = productId,
-            AttemptIndex                 = state.CurrentAttemptIndex,
+            AttemptIndex                 = attemptIndex ?? state.CurrentAttemptIndex,
             AttemptedAt                  = now,
             Amount                       = amount,
             FundingSource                = source,
