@@ -151,6 +151,41 @@ public class EnrollmentActivityServiceTests
     }
 
     [Fact]
+    public async Task Un_patrocinador_cuenta_por_su_nodo_mas_reciente()
+    {
+        // R8: B se fue del equipo (su nodo bajo YO es obsoleto) y no cuenta; A tiene además un nodo
+        // obsoleto y no sale dos veces.
+        await using var db = await EquipoAsync();
+        ReportesDb.Miembro(db, "AMB-000003", "AMB-000099", alta: new DateTime(2025, 1, 10));
+        await ReportesDb.NodoObsoletoAsync(db, "AMB-000003", Yo, ReportesDb.Ruta(Yo, "AMB-000003"), 2);
+        ReportesDb.Nodo(db, "AMB-000003", "AMB-000099", ReportesDb.Ruta("AMB-000099", "AMB-000003"), 2);
+        await ReportesDb.NodoObsoletoAsync(db, A, Yo, ReportesDb.Ruta(Yo, "AMB-000000", A), 3);
+        ReportesDb.Miembro(db, "AMB-90000B", "AMB-000003", alta: new DateTime(2026, 3, 10));
+        await db.SaveChangesAsync();
+
+        var r = await Servicio(db).GetGridAsync(Yo, Desde, Hasta, Pagina());
+
+        r.Value!.Items.Select(f => f.MemberId).Should().BeEquivalentTo(new[] { Yo, A });
+        r.Value.Items.Single(f => f.MemberId == A).Level.Should().Be(1, "el nivel es el del nodo más reciente");
+    }
+
+    [Fact]
+    public async Task El_prefijo_del_que_mira_no_casa_con_un_id_que_empieza_igual()
+    {
+        await using var db = ReportesDb.Nueva();
+        ReportesDb.Miembro(db, Yo, alta: new DateTime(2025, 1, 10));
+        ReportesDb.Miembro(db, "AMB-0000019", alta: new DateTime(2025, 1, 10));
+        ReportesDb.Nodo(db, Yo,            null, "/" + Yo, 1);
+        ReportesDb.Nodo(db, "AMB-0000019", null, ReportesDb.Ruta("AMB-0000019"), 1);
+        ReportesDb.Miembro(db, "AMB-90000Z", "AMB-0000019", alta: new DateTime(2026, 3, 10));
+        await db.SaveChangesAsync();
+
+        var r = await Servicio(db).GetGridAsync(Yo, Desde, Hasta, Pagina());
+
+        r.Value!.Items.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Las_columnas_son_los_niveles_1_a_4_con_su_nombre()
     {
         await using var db = await EquipoAsync();

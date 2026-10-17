@@ -142,9 +142,10 @@ public class EnrollmentTeamService : IEnrollmentTeamService
     private IQueryable<EnrollmentMyTeamMemberView> BuildMyTeamQueryable(
         string pathPrefix, int rootLevel, string memberId)
     {
+        var prefix = TreePrefix.Of(pathPrefix);
         return
             from g in _db.GenealogyTree.AsNoTracking()
-            where g.HierarchyPath.StartsWith(pathPrefix) && g.MemberId != memberId
+            where g.HierarchyPath.StartsWith(prefix) && g.MemberId != memberId
             join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
             select new EnrollmentMyTeamMemberView
             {
@@ -402,7 +403,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
             .Select(s => s.EnrollmentPoints)
             .FirstOrDefaultAsync(ct);
 
-        var pathPrefix  = branchNode.HierarchyPath;
+        var pathPrefix  = TreePrefix.Of(branchNode.HierarchyPath);
         var branchLevel = branchNode.Level;
 
         var downlineNodes = await _db.GenealogyTree.AsNoTracking()
@@ -588,11 +589,19 @@ public class EnrollmentTeamService : IEnrollmentTeamService
                 };
         }
 
+        // Se parte del perfil y la pertenencia la decide el nodo MÁS RECIENTE del cliente (R8): un
+        // JOIN directo a GenealogyTree duplicaría a quien tiene dos nodos y metería a quien se fue
+        // con un nodo obsoleto bajo el prefijo. El prefijo acaba siempre en "/" (TreePrefix).
+        var prefix = TreePrefix.Of(pathPrefix);
         return
-            from g in _db.GenealogyTree.AsNoTracking()
-            where g.HierarchyPath.StartsWith(pathPrefix) && g.MemberId != memberId
-            join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
-            where m.MemberType == MemberType.ExternalMember
+            from m in _db.MemberProfiles.AsNoTracking()
+            where m.MemberType == MemberType.ExternalMember && m.MemberId != memberId
+            let node = _db.GenealogyTree
+                .Where(g => g.MemberId == m.MemberId)
+                .OrderByDescending(g => g.CreationDate)
+                .Select(g => new { g.HierarchyPath, g.Level })
+                .FirstOrDefault()
+            where node != null && node.HierarchyPath.StartsWith(prefix)
             select new EnrollmentCustomerView
             {
                 MemberId        = m.MemberId,
@@ -600,7 +609,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
                 Email           = m.SponsorMemberId == memberId ? m.Email : null,
                 Phone           = m.SponsorMemberId == memberId ? m.Phone : null,
                 Country         = m.Country,
-                Level           = g.Level - rootLevel,
+                Level           = node!.Level - rootLevel,
                 IsPersonal      = m.SponsorMemberId == memberId,
                 EnrollDate      = m.EnrollDate,
                 SponsorMemberId = m.SponsorMemberId,

@@ -47,6 +47,28 @@ public static class SqlServerReportes
     public static AppDbContext Db() =>
         new(new DbContextOptionsBuilder<AppDbContext>().UseSqlServer(ConnectionString).Options);
 
+    /// <summary>
+    /// Repite la prueba entera (con su transacción) si SQL Server la elige víctima de un deadlock
+    /// (error 1205), hasta cinco intentos. Solo cubre eso: con servicios levantados contra la base
+    /// local, una lectura que recorre Orders u OrderDetails sin índice (R16) choca con sus
+    /// inserciones; no es un fallo de la lógica que se prueba. Cualquier otro error sale al primero.
+    /// </summary>
+    public static async Task ConReintentoAsync(Func<Task> prueba, int intentos = 5)
+    {
+        for (var intento = 1; ; intento++)
+        {
+            try
+            {
+                await prueba();
+                return;
+            }
+            catch (SqlException ex) when (ex.Number == 1205 && intento < intentos)
+            {
+                await Task.Delay(1000 * intento);
+            }
+        }
+    }
+
     /// <summary>Un MemberId sintético de 14 caracteres (cabe en los 20 de la columna) que no choca con nada real.</summary>
     public static string NuevoId(string prefijo = "TJ") =>
         (prefijo + Guid.NewGuid().ToString("N")).Substring(0, 14).ToUpperInvariant();

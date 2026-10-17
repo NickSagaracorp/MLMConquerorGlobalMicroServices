@@ -10,12 +10,13 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 
 /// <inheritdoc />
 /// <remarks>
-/// En SQL: las altas del rango cuyo patrocinador está en el equipo (prefijo de genealogía del que
-/// mira, él incluido), sus órdenes con productos de membresía y el nivel más alto de cada orden
-/// (<see cref="OrderMembershipLevelQueries"/>), todo unido por JOIN y no por Contains. En memoria:
-/// la orden de alta de cada inscrito (la primera), el pivote por tipo y nivel, la búsqueda, el
-/// orden y la página. El rango de actividad (3 meses hacia atrás como mucho, N4) acota cuántas
-/// altas se traen (R5).
+/// En SQL, cuatro consultas: las altas del rango cuyo patrocinador está en el equipo (prefijo de
+/// genealogía del que mira, él incluido, por el nodo más reciente de cada patrocinador, R8), las
+/// órdenes de membresía de esos inscritos con el nivel más alto de cada una (la regla de
+/// <see cref="OrderMembershipLevelQueries"/>), y los nombres y puntos de los patrocinadores. En
+/// memoria: la orden de alta de cada inscrito (la primera), el pivote por tipo y nivel, la
+/// búsqueda, el orden y la página. El rango de actividad (3 meses hacia atrás como mucho, N4)
+/// acota cuántas altas se traen (R5); los Contains van sobre esas filas ya materializadas (R16).
 /// </remarks>
 public sealed class EnrollmentActivityService : IEnrollmentActivityService
 {
@@ -63,50 +64,65 @@ public sealed class EnrollmentActivityService : IEnrollmentActivityService
 
         var start  = range.Start;
         var end    = range.End;
-        var prefix = me.HierarchyPath;
+        var prefix = TreePrefix.Of(me.HierarchyPath);
 
-        var enrolled =
-            from m in _db.MemberProfiles.AsNoTracking()
-            where m.EnrollDate >= start && m.EnrollDate < end && m.SponsorMemberId != null
-            join s in _db.GenealogyTree.AsNoTracking() on m.SponsorMemberId equals s.MemberId
-            where s.HierarchyPath.StartsWith(prefix)
-            select new { m.MemberId, SponsorMemberId = m.SponsorMemberId!, m.MemberType, SponsorLevel = s.Level };
-
-        var rows = (await enrolled.ToListAsync(ct)).DistinctBy(r => r.MemberId).ToList();
+        // Las altas del rango cuyo patrocinador está en el equipo. La pertenencia del patrocinador
+        // la decide su nodo MÁS RECIENTE (R8): un JOIN directo a GenealogyTree contaría dos veces a
+        // quien tiene dos nodos y metería a quien se fue con un nodo obsoleto bajo el prefijo.
+        // Se materializa UNA vez (R16): todo lo demás sale de estas filas, sin repetir la consulta.
+        var rows = await (
+                from m in _db.MemberProfiles.AsNoTracking()
+                where m.EnrollDate >= start && m.EnrollDate < end && m.SponsorMemberId != null
+                let sponsorNode = _db.GenealogyTree
+                    .Where(g => g.MemberId == m.SponsorMemberId)
+                    .OrderByDescending(g => g.CreationDate)
+                    .Select(g => new { g.HierarchyPath, g.Level })
+                    .FirstOrDefault()
+                where sponsorNode != null && sponsorNode.HierarchyPath.StartsWith(prefix)
+                select new
+                {
+                    m.MemberId,
+                    SponsorMemberId = m.SponsorMemberId!,
+                    m.MemberType,
+                    SponsorLevel    = sponsorNode!.Level
+                })
+            .ToListAsync(ct);
         if (rows.Count == 0) return Result<PagedResult<EnrollmentActivityRowView>>.Success(Empty(request));
+
+        var enrolledIds = rows.Select(r => r.MemberId).Distinct().ToList();
+        var sponsorIds  = rows.Select(r => r.SponsorMemberId).Distinct().ToList();
 
         // Corrección de Nick N2: el nivel del inscrito lo da su ORDEN DE ALTA (la primera suya con
         // productos de membresía), el más alto de sus productos. Ni la suscripción ni una compra
         // posterior lo mueven de columna. No se filtra por estado del pedido: el alta ocurrió.
-        var enrolledIds = enrolled.Select(e => e.MemberId).Distinct();
-        var membershipOrders =
-            from o in _db.Orders.AsNoTracking()
-            join id in enrolledIds on o.MemberId equals id
-            where _db.OrderDetails.Any(od => od.OrderId == o.Id
-                    && _db.Products.Any(p => p.Id == od.ProductId && p.MembershipLevelId != null))
-            select new { o.Id, o.MemberId, o.OrderDate, o.CreationDate };
+        // Una sola consulta (R16): las órdenes de membresía de los inscritos con el nivel más alto
+        // de cada una, la misma regla que OrderMembershipLevelQueries (g.Max()); la primera de cada
+        // miembro se elige en memoria.
+        var membershipOrders = await (
+                from o in _db.Orders.AsNoTracking()
+                where enrolledIds.Contains(o.MemberId)
+                join od in _db.OrderDetails.AsNoTracking() on o.Id equals od.OrderId
+                join p in _db.Products.AsNoTracking() on od.ProductId equals p.Id
+                where p.MembershipLevelId != null
+                group p.MembershipLevelId!.Value by new { o.Id, o.MemberId, o.OrderDate, o.CreationDate } into g
+                select new { g.Key.MemberId, g.Key.OrderDate, g.Key.CreationDate, LevelId = g.Max() })
+            .ToListAsync(ct);
 
-        var levelByOrder = await _db.GetHighestMembershipLevelIdsAsync(membershipOrders.Select(o => o.Id), ct);
-        var signupLevel = (await membershipOrders.ToListAsync(ct))
+        var signupLevel = membershipOrders
             .GroupBy(o => o.MemberId)
             .ToDictionary(
                 g => g.Key,
-                g => levelByOrder.GetValueOrDefault(
-                    g.OrderBy(o => o.OrderDate).ThenBy(o => o.CreationDate).First().Id));
+                g => g.OrderBy(o => o.OrderDate).ThenBy(o => o.CreationDate).First().LevelId);
 
-        var sponsorIds = enrolled.Select(e => e.SponsorMemberId).Distinct();
-
-        var names = await (
-                from p in _db.MemberProfiles.AsNoTracking()
-                join id in sponsorIds on p.MemberId equals id
-                select new { p.MemberId, FullName = p.FirstName + " " + p.LastName })
+        var names = await _db.MemberProfiles.AsNoTracking()
+            .Where(p => sponsorIds.Contains(p.MemberId))
+            .Select(p => new { p.MemberId, FullName = p.FirstName + " " + p.LastName })
             .ToDictionaryAsync(x => x.MemberId, x => x.FullName, ct);
 
-        var points = (await (
-                from st in _db.MemberStatistics.AsNoTracking()
-                join id in sponsorIds on st.MemberId equals id
-                select new { st.MemberId, st.EnrollmentPoints })
-            .ToListAsync(ct))
+        var points = (await _db.MemberStatistics.AsNoTracking()
+                .Where(st => sponsorIds.Contains(st.MemberId))
+                .Select(st => new { st.MemberId, st.EnrollmentPoints })
+                .ToListAsync(ct))
             .GroupBy(x => x.MemberId)
             .ToDictionary(g => g.Key, g => g.First().EnrollmentPoints);
 

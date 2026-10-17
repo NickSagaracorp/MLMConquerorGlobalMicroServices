@@ -124,6 +124,44 @@ public class ClientesDelEquipoTests
             "sin orden, la reserva es el nivel de la suscripción");
     }
 
+    [Fact]
+    public async Task Un_cliente_con_dos_nodos_sale_una_vez_y_por_su_nodo_mas_reciente()
+    {
+        // R8: C3 tiene un nodo obsoleto bajo YO y el actual bajo OTRO: ya no es del equipo.
+        // C4 tiene dos nodos bajo YO: sale una vez, con el nivel del más reciente.
+        await using var db = await EquipoAsync();
+        ReportesDb.Miembro(db, "MBR-000003", "AMB-000099", MemberType.ExternalMember);
+        ReportesDb.Miembro(db, "MBR-000004", "AMB-000002", MemberType.ExternalMember);
+        await ReportesDb.NodoObsoletoAsync(db, "MBR-000003", Yo, ReportesDb.Ruta(Yo, "MBR-000003"), 2);
+        await ReportesDb.NodoObsoletoAsync(db, "MBR-000004", Yo, ReportesDb.Ruta(Yo, "MBR-000004"), 2);
+        ReportesDb.Nodo(db, "MBR-000003", "AMB-000099", ReportesDb.Ruta("AMB-000099", "MBR-000003"), 2);
+        ReportesDb.Nodo(db, "MBR-000004", "AMB-000002", ReportesDb.Ruta(Yo, "AMB-000002", "MBR-000004"), 3);
+        await db.SaveChangesAsync();
+
+        var r = (await Servicio(db).GetCustomersGridAsync(Yo, Pagina(), CustomerScope.Team)).Items.ToList();
+
+        r.Should().NotContain(c => c.MemberId == "MBR-000003");
+        r.Where(c => c.MemberId == "MBR-000004").Should().ContainSingle().Which.Level.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task El_prefijo_del_que_mira_no_casa_con_un_id_que_empieza_igual()
+    {
+        // Si la ruta del que mira no acabara en barra, "/AMB-000001" casaría con "/AMB-0000019/...".
+        await using var db = ReportesDb.Nueva();
+        ReportesDb.Miembro(db, Yo);
+        ReportesDb.Miembro(db, "AMB-0000019");
+        ReportesDb.Miembro(db, "MBR-000077", "AMB-0000019", MemberType.ExternalMember);
+        ReportesDb.Nodo(db, Yo,            null,          "/" + Yo, 1);
+        ReportesDb.Nodo(db, "AMB-0000019", null,          ReportesDb.Ruta("AMB-0000019"), 1);
+        ReportesDb.Nodo(db, "MBR-000077",  "AMB-0000019", ReportesDb.Ruta("AMB-0000019", "MBR-000077"), 2);
+        await db.SaveChangesAsync();
+
+        var r = await Servicio(db).GetCustomersGridAsync(Yo, Pagina(), CustomerScope.Team);
+
+        r.TotalCount.Should().Be(0);
+    }
+
     [Theory]
     [InlineData("personal", CustomerScope.Personal)]
     [InlineData("PERSONAL", CustomerScope.Personal)]

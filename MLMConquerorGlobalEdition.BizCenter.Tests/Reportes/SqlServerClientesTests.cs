@@ -13,7 +13,7 @@ namespace MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 public class SqlServerClientesTests
 {
     [SqlServerFact]
-    public async Task Los_dos_alcances_y_el_contacto_anulado_funcionan_en_SQL()
+    public Task Los_dos_alcances_y_el_contacto_anulado_funcionan_en_SQL() => SqlServerReportes.ConReintentoAsync(async () =>
     {
         await using var db = SqlServerReportes.Db();
         await using var tx = await db.Database.BeginTransactionAsync();
@@ -48,10 +48,41 @@ public class SqlServerClientesTests
         busqueda.TotalCount.Should().Be(0, "el correo del cliente ajeno está anulado en la proyección");
 
         await tx.RollbackAsync();
-    }
+    });
 
     [SqlServerFact]
-    public async Task El_indice_de_patrocinador_y_fecha_existe()
+    public Task Un_cliente_con_dos_nodos_cuenta_por_el_mas_reciente_en_SQL() => SqlServerReportes.ConReintentoAsync(async () =>
+    {
+        // R8: el nodo obsoleto bajo YO no lo mete en el equipo; dos nodos bajo YO no lo duplican.
+        await using var db = SqlServerReportes.Db();
+        await using var tx = await db.Database.BeginTransactionAsync();
+        var yo    = SqlServerReportes.NuevoId();
+        var otro  = SqlServerReportes.NuevoId();
+        var fuera = SqlServerReportes.NuevoId("TC");
+        var doble = SqlServerReportes.NuevoId("TC");
+        ReportesDb.Miembro(db, yo);
+        ReportesDb.Miembro(db, otro);
+        ReportesDb.Miembro(db, fuera, otro, MemberType.ExternalMember);
+        ReportesDb.Miembro(db, doble, yo,   MemberType.ExternalMember);
+        ReportesDb.Nodo(db, yo,   null, ReportesDb.Ruta(yo), 1);
+        ReportesDb.Nodo(db, otro, null, ReportesDb.Ruta(otro), 1);
+        await ReportesDb.NodoObsoletoAsync(db, fuera, yo, ReportesDb.Ruta(yo, fuera), 2);
+        await ReportesDb.NodoObsoletoAsync(db, doble, yo, ReportesDb.Ruta(yo, "X", doble), 3);
+        ReportesDb.Nodo(db, fuera, otro, ReportesDb.Ruta(otro, fuera), 2);
+        ReportesDb.Nodo(db, doble, yo,   ReportesDb.Ruta(yo, doble), 2);
+        await db.SaveChangesAsync();
+
+        var equipo = (await ClientesDelEquipoTests.Servicio(db)
+            .GetCustomersGridAsync(yo, new GridDataRequest { PageSize = 50 }, CustomerScope.Team)).Items.ToList();
+
+        equipo.Should().ContainSingle().Which.MemberId.Should().Be(doble);
+        equipo.Single().Level.Should().Be(1);
+
+        await tx.RollbackAsync();
+    });
+
+    [SqlServerFact]
+    public Task El_indice_de_patrocinador_y_fecha_existe() => SqlServerReportes.ConReintentoAsync(async () =>
     {
         await using var db = SqlServerReportes.Db();
 
@@ -62,10 +93,10 @@ public class SqlServerClientesTests
             """).SingleAsync();
 
         n.Should().Be(1, "la migración IndicePatrocinadorYFechaDeAlta tiene que estar aplicada en local");
-    }
+    });
 
     [SqlServerFact]
-    public async Task El_patrocinador_mide_como_los_ids_del_arbol_con_los_que_se_une()
+    public Task El_patrocinador_mide_como_los_ids_del_arbol_con_los_que_se_une() => SqlServerReportes.ConReintentoAsync(async () =>
     {
         await using var db = SqlServerReportes.Db();
 
@@ -76,5 +107,5 @@ public class SqlServerClientesTests
             """).ToListAsync();
 
         longitudes.Should().Equal(450, 450);
-    }
+    });
 }

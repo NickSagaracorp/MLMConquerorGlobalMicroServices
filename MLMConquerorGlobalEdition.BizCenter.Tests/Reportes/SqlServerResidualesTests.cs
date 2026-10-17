@@ -11,7 +11,7 @@ namespace MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 public class SqlServerResidualesTests
 {
     [SqlServerFact]
-    public async Task El_historial_y_el_grafico_se_traducen_a_SQL()
+    public Task El_historial_y_el_grafico_se_traducen_a_SQL() => SqlServerReportes.ConReintentoAsync(async () =>
     {
         await using var db = SqlServerReportes.Db();
         await using var tx = await db.Database.BeginTransactionAsync();
@@ -36,10 +36,10 @@ public class SqlServerResidualesTests
         grafico.Select(p => p.Amount).Should().Equal(15m, 0m);
 
         await tx.RollbackAsync();
-    }
+    });
 
     [SqlServerFact]
-    public async Task El_indice_por_beneficiario_y_fecha_existe()
+    public Task El_indice_por_beneficiario_y_fecha_existe() => SqlServerReportes.ConReintentoAsync(async () =>
     {
         await using var db = SqlServerReportes.Db();
 
@@ -61,5 +61,5 @@ public class SqlServerResidualesTests
 
         incluidas.Should().BeEquivalentTo(new[] { "Amount", "Status" },
             "la migración IndiceResidualesConImporteYEstado tiene que estar aplicada en local");
-    }
+    });
 }

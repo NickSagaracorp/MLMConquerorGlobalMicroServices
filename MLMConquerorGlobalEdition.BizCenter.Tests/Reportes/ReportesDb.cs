@@ -76,6 +76,21 @@ public static class ReportesDb
         return nodo;
     }
 
+    /// <summary>
+    /// Un nodo de inscripción OBSOLETO (R8): un miembro puede tener dos nodos y manda el más
+    /// reciente. Se guarda y después se le pone una fecha de creación antigua con una segunda
+    /// escritura, porque AuditInterceptor sella CreationDate al añadir.
+    /// </summary>
+    public static async Task<GenealogyEntity> NodoObsoletoAsync(
+        AppDbContext db, string memberId, string? padre, string ruta, int nivel)
+    {
+        var nodo = Nodo(db, memberId, padre, ruta, nivel);
+        await db.SaveChangesAsync();
+        nodo.CreationDate = new DateTime(2020, 1, 1);
+        await db.SaveChangesAsync();
+        return nodo;
+    }
+
     public static DualTeamEntity NodoBinario(AppDbContext db, string memberId, string? padre, string ruta, TreeSide lado)
     {
         var nodo = new DualTeamEntity
