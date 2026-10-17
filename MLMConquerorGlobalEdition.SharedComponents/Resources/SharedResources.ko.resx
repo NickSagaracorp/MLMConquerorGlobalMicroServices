@@ -1448,4 +1448,13 @@
   <data name="Changes.NoHistory" xml:space="preserve"><value>아직 기록된 변경이 없습니다</value></data>
   <data name="Reports.Left" xml:space="preserve"><value>왼쪽</value></data>
   <data name="Reports.Right" xml:space="preserve"><value>오른쪽</value></data>
+  <data name="Sidebar.Events" xml:space="preserve"><value>이벤트</value></data>
+  <data name="PageTitle.TeamEvents" xml:space="preserve"><value>팀 이벤트</value></data>
+  <data name="Events.Select" xml:space="preserve"><value>이벤트</value></data>
+  <data name="Events.None" xml:space="preserve"><value>진행 중인 이벤트가 없습니다.</value></data>
+  <data name="Events.RegisteredOnly" xml:space="preserve"><value>등록자만</value></data>
+  <data name="Events.Registered" xml:space="preserve"><value>등록자</value></data>
+  <data name="Events.Tickets" xml:space="preserve"><value>티켓</value></data>
+  <data name="Events.RegistrationDate" xml:space="preserve"><value>등록일</value></data>
+  <data name="Events.ImportPending" xml:space="preserve"><value>이벤트 등록은 티켓 플랫폼에서 가져온 후 여기에 표시됩니다.</value></data>
 </root>

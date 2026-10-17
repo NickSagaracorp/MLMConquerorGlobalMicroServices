@@ -34,7 +34,10 @@ public class TextosDeReportesTests
         "Changes.LastName", "Changes.ChangedOn", "Changes.NoHistory",
         "Reports.BizCenterStatus", "Reports.MembershipStatus", "Reports.Qualified", "Common.Yes", "Common.No",
         "Reports.Sponsor", "Reports.DualTeamUpline", "Reports.Leg", "Reports.Left", "Reports.Right", "Sidebar.DualTeam",
-        // (claves de los bloques siguientes)
+        // Bloque 6 — Eventos del equipo
+        "Sidebar.Events", "PageTitle.TeamEvents", "Events.Select", "Events.None",
+        "Events.RegisteredOnly", "Events.Registered", "Events.Tickets", "Events.RegistrationDate",
+        "Events.ImportPending", "Reports.EnrollmentDate", "Reports.Rank",
     };
 
     public static IEnumerable<object[]> Archivos() => Culturas.Select(c => new object[] { c });

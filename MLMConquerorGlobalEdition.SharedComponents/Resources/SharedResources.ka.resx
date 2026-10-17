@@ -1384,4 +1384,13 @@
   <data name="Common.No" xml:space="preserve"><value>არა</value></data>
   <data name="Reports.Left" xml:space="preserve"><value>მარცხენა</value></data>
   <data name="Reports.Right" xml:space="preserve"><value>მარჯვენა</value></data>
+  <data name="Sidebar.Events" xml:space="preserve"><value>ღონისძიებები</value></data>
+  <data name="PageTitle.TeamEvents" xml:space="preserve"><value>გუნდის ღონისძიებები</value></data>
+  <data name="Events.Select" xml:space="preserve"><value>ღონისძიება</value></data>
+  <data name="Events.None" xml:space="preserve"><value>აქტიური ღონისძიებები არ არის.</value></data>
+  <data name="Events.RegisteredOnly" xml:space="preserve"><value>მხოლოდ რეგისტრირებულები</value></data>
+  <data name="Events.Registered" xml:space="preserve"><value>რეგისტრირებული</value></data>
+  <data name="Events.Tickets" xml:space="preserve"><value>ბილეთები</value></data>
+  <data name="Events.RegistrationDate" xml:space="preserve"><value>რეგისტრაციის თარიღი</value></data>
+  <data name="Events.ImportPending" xml:space="preserve"><value>ღონისძიებებზე რეგისტრაციები აქ გამოჩნდება ბილეთების პლატფორმიდან იმპორტის შემდეგ.</value></data>
 </root>

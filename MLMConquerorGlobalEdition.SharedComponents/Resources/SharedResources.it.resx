@@ -1448,4 +1448,13 @@
   <data name="Changes.NoHistory" xml:space="preserve"><value>Nessuna modifica registrata finora</value></data>
   <data name="Reports.Left" xml:space="preserve"><value>Sinistra</value></data>
   <data name="Reports.Right" xml:space="preserve"><value>Destra</value></data>
+  <data name="Sidebar.Events" xml:space="preserve"><value>Eventi</value></data>
+  <data name="PageTitle.TeamEvents" xml:space="preserve"><value>Eventi del team</value></data>
+  <data name="Events.Select" xml:space="preserve"><value>Evento</value></data>
+  <data name="Events.None" xml:space="preserve"><value>Non ci sono eventi attivi.</value></data>
+  <data name="Events.RegisteredOnly" xml:space="preserve"><value>Solo iscritti</value></data>
+  <data name="Events.Registered" xml:space="preserve"><value>Iscritti</value></data>
+  <data name="Events.Tickets" xml:space="preserve"><value>Biglietti</value></data>
+  <data name="Events.RegistrationDate" xml:space="preserve"><value>Data di iscrizione</value></data>
+  <data name="Events.ImportPending" xml:space="preserve"><value>Le iscrizioni agli eventi compariranno qui una volta importate dalla piattaforma dei biglietti.</value></data>
 </root>

@@ -1384,4 +1384,13 @@
   <data name="Common.No" xml:space="preserve"><value>否</value></data>
   <data name="Reports.Left" xml:space="preserve"><value>左</value></data>
   <data name="Reports.Right" xml:space="preserve"><value>右</value></data>
+  <data name="Sidebar.Events" xml:space="preserve"><value>活动</value></data>
+  <data name="PageTitle.TeamEvents" xml:space="preserve"><value>团队活动</value></data>
+  <data name="Events.Select" xml:space="preserve"><value>活动</value></data>
+  <data name="Events.None" xml:space="preserve"><value>没有进行中的活动。</value></data>
+  <data name="Events.RegisteredOnly" xml:space="preserve"><value>仅已报名</value></data>
+  <data name="Events.Registered" xml:space="preserve"><value>已报名</value></data>
+  <data name="Events.Tickets" xml:space="preserve"><value>门票</value></data>
+  <data name="Events.RegistrationDate" xml:space="preserve"><value>报名日期</value></data>
+  <data name="Events.ImportPending" xml:space="preserve"><value>活动报名从票务平台导入后将显示在这里。</value></data>
 </root>

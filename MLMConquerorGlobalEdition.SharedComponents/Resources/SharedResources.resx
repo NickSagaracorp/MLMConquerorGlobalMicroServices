@@ -1546,4 +1546,13 @@
   <data name="Changes.LastName" xml:space="preserve"><value>Last name</value></data>
   <data name="Changes.ChangedOn" xml:space="preserve"><value>Changed on {0}</value></data>
   <data name="Changes.NoHistory" xml:space="preserve"><value>No change recorded yet</value></data>
+  <data name="Sidebar.Events" xml:space="preserve"><value>Events</value></data>
+  <data name="PageTitle.TeamEvents" xml:space="preserve"><value>Team events</value></data>
+  <data name="Events.Select" xml:space="preserve"><value>Event</value></data>
+  <data name="Events.None" xml:space="preserve"><value>There are no active events.</value></data>
+  <data name="Events.RegisteredOnly" xml:space="preserve"><value>Registered only</value></data>
+  <data name="Events.Registered" xml:space="preserve"><value>Registered</value></data>
+  <data name="Events.Tickets" xml:space="preserve"><value>Tickets</value></data>
+  <data name="Events.RegistrationDate" xml:space="preserve"><value>Registration date</value></data>
+  <data name="Events.ImportPending" xml:space="preserve"><value>Event registrations will appear here once they are imported from the ticketing platform.</value></data>
 </root>
