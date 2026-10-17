@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.Billing.Services.CardGateway;
 using MLMConquerorGlobalEdition.Billing.Services.Routing;
+using MLMConquerorGlobalEdition.Billing.Services.Tokens;
 using MLMConquerorGlobalEdition.Domain.Entities.Billing;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
@@ -10,6 +11,7 @@ using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Services.Funds;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Billing;
 
 namespace MLMConquerorGlobalEdition.Billing.Services.Recurring;
 
@@ -486,6 +488,21 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
                 FundingSource   = "CreditCard",
                 PaymentHistoryId = outcome.PaymentHistoryId
             });
+        }
+
+        // Plan K (regla de Nick: nunca se cobra con el stub). El gateway de Spreedly todavía devuelve un
+        // "éxito" simulado. Eso no es dinero: ni se renueva ni avanza el estado, para que el día que el
+        // cobro sea real se intente de verdad. El pedido se cancela. El PaymentHistory que el orquestador
+        // ya escribió queda (es suyo): §13 dice cómo encontrarlo.
+        if (CardChargeOutcomes.IsSimulated(outcome.GatewayTransactionId))
+        {
+            _logger.LogCritical(
+                "Renovación {StateId} de {MemberId}: la tarjeta devolvió un cobro simulado ({TxId}). No se renueva; " +
+                "el cobro con tarjeta del motor no puede darse por bueno mientras el gateway sea un stub.",
+                state.Id, state.MemberId, outcome.GatewayTransactionId);
+            await CancelOrderAsync(order, now, ct);
+            return Result<RecurringBillingProcessorResult>.Failure(TokenPurchaseErrors.CardSimulatedCharge,
+                "The card gateway returned a simulated charge; the renewal was not applied.");
         }
 
         // Immediate success
