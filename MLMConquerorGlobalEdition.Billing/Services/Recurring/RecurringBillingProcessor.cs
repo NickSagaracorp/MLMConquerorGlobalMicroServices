@@ -97,9 +97,12 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
                 state.Status        = RecurringBillingStatus.Stopped;
                 state.LastUpdateDate = now;
                 state.LastUpdateBy   = Actor;
+
+                // El estado terminal de la membresía va en el MISMO guardado que la parada: antes se
+                // aplicaba después del SaveChanges y solo se persistía si el contexto volvía a guardar.
+                await ApplyTerminalMembershipStatusAsync(state, plan, ct);
                 await _db.SaveChangesAsync(ct);
 
-                await ApplyTerminalMembershipStatusAsync(state, plan, ct);
                 return Result<RecurringBillingProcessorResult>.Success(new RecurringBillingProcessorResult
                 {
                     BillingStateId = billingStateId,
