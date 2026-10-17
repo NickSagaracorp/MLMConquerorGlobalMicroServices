@@ -53,45 +53,73 @@ public sealed class AnnualFeeStateEnrollment : IAnnualFeeStateEnrollment
 
         var planId  = plan.Id;
         var created = 0;
+        // Los que fallaron fila a fila en esta ejecución: no se vuelven a pedir (si no, el lote siguiente
+        // los traería otra vez y la ejecución no avanzaría).
+        var failed  = new List<string>();
 
         for (var batch = 0; batch < maxBatches; batch++)
         {
             var candidates = await MissingAmbassadors()
+                .Where(m => !failed.Contains(m.MemberId))
                 .OrderBy(m => m.MemberId)
                 .Select(m => new { m.MemberId, m.EnrollDate })
                 .Take(batchSize)
                 .ToListAsync(ct);
             if (candidates.Count == 0) break;
 
-            var now = _clock.Now;
-            foreach (var c in candidates)
-                _db.SubscriptionBillingStates.Add(NewState(c.MemberId, c.EnrollDate, planId, now));
+            var now    = _clock.Now;
+            var states = candidates.Select(c => NewState(c.MemberId, c.EnrollDate, planId, now)).ToList();
+            _db.SubscriptionBillingStates.AddRange(states);
 
             try
             {
                 await _db.SaveChangesAsync(ct);
-                created += candidates.Count;
+                created += states.Count;
+                Detach(states);
             }
             catch (DbUpdateException ex) when (ex is not DbUpdateConcurrencyException)
             {
-                // Otra instancia creó alguno a la vez (índice único). Se para aquí; la siguiente ejecución
-                // sigue donde quede. No se reintenta en bucle: si el fallo fuera otro, se repetiría igual.
-                _db.ChangeTracker.Clear();
-                _logger.LogWarning(ex, "Cuota anual: un lote de alta chocó al guardar; se seguirá en la siguiente ejecución.");
-                break;
+                // Revisión M1: el lote entero no se pierde por una fila. Se suelta lo añadido (solo lo
+                // nuestro: no se limpia el contexto) y se reintenta de uno en uno; la que vuelva a fallar
+                // (otra instancia la creó, o un dato que la base rechaza) se registra y se salta.
+                Detach(states);
+                _logger.LogWarning(ex, "Cuota anual: un lote de {Count} altas falló al guardar; se reintenta fila a fila.", states.Count);
+
+                foreach (var c in candidates)
+                {
+                    var one = NewState(c.MemberId, c.EnrollDate, planId, now);
+                    _db.SubscriptionBillingStates.Add(one);
+                    try
+                    {
+                        await _db.SaveChangesAsync(ct);
+                        created++;
+                    }
+                    catch (DbUpdateException rowEx) when (rowEx is not DbUpdateConcurrencyException)
+                    {
+                        failed.Add(c.MemberId);
+                        _logger.LogError(rowEx, "Cuota anual: no se pudo crear el estado de {MemberId}.", c.MemberId);
+                    }
+                    finally
+                    {
+                        Detach(new[] { one });
+                    }
+                }
             }
 
-            _db.ChangeTracker.Clear();
             if (candidates.Count < batchSize) break;
         }
 
+        if (failed.Count > 0)
+            _logger.LogError("Cuota anual: {Count} estados no se pudieron crear en esta ejecución: {MemberIds}.",
+                failed.Count, string.Join(", ", failed.Take(50)));
         return created;
     }
 
     public async Task<SubscriptionBillingState?> EnsureForMemberAsync(string memberId, CancellationToken ct = default)
     {
-        var existing = await StateWithPlan().FirstOrDefaultAsync(s => s.MemberId == memberId, ct);
-        if (existing is not null) return existing;
+        // Con los borrados: el índice único los incluye, así que uno borrado también "existe".
+        var existing = await AnyStateWithPlan().FirstOrDefaultAsync(s => s.MemberId == memberId, ct);
+        if (existing is not null) return Usable(existing, memberId);
 
         var plan = await AnnualFeePlanQueries.ActivePlanAsync(_db, ct);
         if (plan is null) return null;
@@ -110,16 +138,40 @@ public sealed class AnnualFeeStateEnrollment : IAnnualFeeStateEnrollment
         }
         catch (DbUpdateException ex) when (ex is not DbUpdateConcurrencyException)
         {
-            // Lo creó otra petición a la vez: se usa el suyo.
-            _db.ChangeTracker.Clear();
+            // Revisión I4: solo se suelta lo que añadimos (el contexto puede ser compartido). Si otra
+            // petición lo creó a la vez, la fila está y se usa la suya; si no hay fila, el fallo era otro
+            // y se relanza: no se traga.
+            Detach(new[] { state });
+            var theirs = await AnyStateWithPlan().FirstOrDefaultAsync(s => s.MemberId == memberId, ct);
+            if (theirs is null) throw;
             _logger.LogInformation(ex, "Cuota anual: el estado de {MemberId} lo creó otra petición a la vez.", memberId);
+            return Usable(theirs, memberId);
         }
 
-        return await StateWithPlan().FirstOrDefaultAsync(s => s.MemberId == memberId, ct);
+        return await AnyStateWithPlan().FirstOrDefaultAsync(s => s.MemberId == memberId && !s.IsDeleted, ct);
     }
 
-    private IQueryable<SubscriptionBillingState> StateWithPlan() =>
+    /// <summary>
+    /// Un estado borrado no se restaura ni se sustituye: alguien lo borró a propósito y restaurarlo en
+    /// silencio volvería a cobrar. Se informa y el miembro queda sin estado hasta que alguien lo revise.
+    /// </summary>
+    private SubscriptionBillingState? Usable(SubscriptionBillingState state, string memberId)
+    {
+        if (!state.IsDeleted) return state;
+        _logger.LogWarning(
+            "Cuota anual: el estado {StateId} de {MemberId} está borrado; no se restaura ni se crea otro.",
+            state.Id, memberId);
+        return null;
+    }
+
+    private void Detach(IEnumerable<SubscriptionBillingState> states)
+    {
+        foreach (var s in states) _db.Entry(s).State = EntityState.Detached;
+    }
+
+    private IQueryable<SubscriptionBillingState> AnyStateWithPlan() =>
         _db.SubscriptionBillingStates
+           .IgnoreQueryFilters()
            .Include(s => s.Plan).ThenInclude(p => p!.PlanProducts)
            .Where(s => s.Purpose == BillingStatePurpose.AnnualFee);
 

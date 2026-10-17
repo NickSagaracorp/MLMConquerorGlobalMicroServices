@@ -151,4 +151,88 @@ public class AnnualFeeStateEnrollmentTests
 
         (await Servicio(db).EnsureMissingAsync(1000, 10)).Should().Be(0);
     }
+
+    // ── Choques y fallos al guardar (revisión I4 y M1) ─────────────────────────
+
+    private static int EstadosNuevos(Microsoft.EntityFrameworkCore.DbContext c) =>
+        c.ChangeTracker.Entries<MLMConquerorGlobalEdition.Domain.Entities.Billing.SubscriptionBillingState>()
+         .Count(e => e.State == EntityState.Added);
+
+    [Fact]
+    public async Task Si_otra_peticion_lo_crea_a_la_vez_devuelve_el_suyo_sin_limpiar_el_contexto()
+    {
+        var nombre = Guid.NewGuid().ToString();
+        var fallos = new MLMConquerorGlobalEdition.Billing.Tests.Helpers.SaveFaults();
+        await using var db = CuotaAnualDb.Nueva(nombre, fallos);
+        await CuotaAnualDb.PlanAsync(db);
+        var perfil = await CuotaAnualDb.MiembroAsync(db, "AMB-1");
+        fallos.FailWhen(c => EstadosNuevos(c) > 0, times: 1, make: _ =>
+        {
+            using var otra = CuotaAnualDb.Nueva(nombre);
+            otra.SubscriptionBillingStates.Add(new MLMConquerorGlobalEdition.Domain.Entities.Billing.SubscriptionBillingState
+            {
+                Id = "el-de-la-otra", Purpose = BillingStatePurpose.AnnualFee, MemberId = "AMB-1",
+                RecurringBillingPlanId = CuotaAnualDb.PlanAnual, BillingAnchorDate = new DateTime(2026, 6, 5),
+                NextBillingDate = new DateTime(2028, 6, 5), NextAttemptDate = new DateTime(2028, 6, 5), CreatedBy = "otra"
+            });
+            otra.SaveChanges();
+            return new DbUpdateException("Cannot insert duplicate key row (UX_SubscriptionBillingStates_AnnualFeeMember).");
+        });
+
+        var estado = await Servicio(db).EnsureForMemberAsync("AMB-1");
+
+        estado!.Id.Should().Be("el-de-la-otra");
+        db.Entry(perfil).State.Should().Be(EntityState.Unchanged);
+        (await db.SubscriptionBillingStates.CountAsync()).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Si_el_guardado_falla_y_no_hay_fila_relanza()
+    {
+        var fallos = new MLMConquerorGlobalEdition.Billing.Tests.Helpers.SaveFaults();
+        await using var db = CuotaAnualDb.Nueva(interceptor: fallos);
+        await CuotaAnualDb.PlanAsync(db);
+        await CuotaAnualDb.MiembroAsync(db, "AMB-1");
+        fallos.FailWhen(c => EstadosNuevos(c) > 0, times: 1);
+
+        var act = () => Servicio(db).EnsureForMemberAsync("AMB-1");
+
+        await act.Should().ThrowAsync<DbUpdateException>();
+        EstadosNuevos(db).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Un_estado_borrado_no_se_resucita_para_un_miembro()
+    {
+        // Alguien lo borró a propósito: no se crea otro (el índice único lo impediría) ni se restaura en
+        // silencio, que volvería a cobrar. Se informa en el registro y no hay estado.
+        await using var db = CuotaAnualDb.Nueva();
+        await CuotaAnualDb.PlanAsync(db);
+        await CuotaAnualDb.MiembroAsync(db, "AMB-1");
+        var e = await CuotaAnualDb.EstadoAsync(db, "AMB-1");
+        e.IsDeleted = true;
+        await db.SaveChangesAsync();
+
+        (await Servicio(db).EnsureForMemberAsync("AMB-1")).Should().BeNull();
+        (await db.SubscriptionBillingStates.IgnoreQueryFilters().CountAsync()).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Si_falla_un_lote_reintenta_fila_a_fila_y_salta_solo_la_que_falla()
+    {
+        var fallos = new MLMConquerorGlobalEdition.Billing.Tests.Helpers.SaveFaults();
+        await using var db = CuotaAnualDb.Nueva(interceptor: fallos);
+        await CuotaAnualDb.PlanAsync(db);
+        foreach (var m in new[] { "AMB-1", "AMB-2", "AMB-MAL", "AMB-3" }) await CuotaAnualDb.MiembroAsync(db, m);
+        fallos.FailWhen(c => EstadosNuevos(c) > 1
+            || c.ChangeTracker.Entries<MLMConquerorGlobalEdition.Domain.Entities.Billing.SubscriptionBillingState>()
+                .Any(x => x.State == EntityState.Added && x.Entity.MemberId == "AMB-MAL"));
+
+        var creados = await Servicio(db).EnsureMissingAsync(1000, 10);
+
+        creados.Should().Be(3);
+        (await db.SubscriptionBillingStates.Select(s => s.MemberId).OrderBy(x => x).ToListAsync())
+            .Should().Equal("AMB-1", "AMB-2", "AMB-3");
+        EstadosNuevos(db).Should().Be(0);
+    }
 }
