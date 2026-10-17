@@ -58,7 +58,7 @@
 | R2 | **Picos de aniversarios.** En local, 109.000 Ambassadors cumplen años entre el 3 y el 8 de junio (datos sintéticos): el 2027-06-05 serían 40.000 cobros en una noche, cada uno con lecturas de comisiones y quizá una llamada a i-Payout. | Los estados anuales entran en el mismo planificador por lotes y trabajadores que Travel Advantage. El cobro con eWallet hace dos llamadas a i-Payout por miembro; con el interruptor apagado no hay cobros hasta que Nick decida. §13 pide medir el primer ciclo con el interruptor encendido en un entorno de prueba. |
 | R3 | **Migración al arrancar.** `CuotaAnual` altera `SubscriptionBillingStates` (118.263 filas: columna a anulable, columna nueva, índices nuevos y `CHECK`), añade una columna con valor por defecto a `MemberProfiles` (~119.400 filas) y crea una tabla. Todos los servicios la aplican al arrancar. | Columnas con valor por defecto constante (metadatos en SQL Server). Dos guardas que se niegan a migrar con datos contradictorios: `THROW 51010` (más de un plan «Lifestyle Ambassador (Annual)») y `THROW 51011` (ya hay estados por suscripción en ese plan). Nada se estrecha. Desplegar fuera de horas de tráfico; en local, aplicar a mano antes de arrancar nada. |
 | R4 | **Otros caminos que renuevan.** Apagar `MembershipAutoRenewalJob` no borra `POST api/v1/billing/memberships/renew` (`BillingController`), que sigue llamando a `RenewMembershipHandler` para el miembro del token o el personal. El `bill-now` del Admin está roto (no registra el procesador). AdminAPI referencia el proyecto Billing, y MVC puede descubrir sus controladores (también el nuevo `AnnualFeeController`), que allí no tienen sus servicios. | El endpoint manual no cobra cuotas anuales (no conoce los estados anuales) y queda anotado (P4). `bill-now` del Admin: fuera de alcance. §13.16 comprueba que `POST /api/v1/billing/annual-fee/pay` contra AdminAPI no mueve nada (404 o 500 sin efectos). |
-| R5 | **Membresías en `HoldByBilling`** (106.185 en local). La cuota anual es independiente de la membresía y Nick fijó cinco exclusiones cerradas; una membresía en espera no es una de ellas. Esos miembros tendrán estado anual y se les cobrará en su aniversario si tienen saldo, aunque no puedan estar calificados (la membresía activa es condición de «Calificado»). | Se crean sus estados igual (K5) y se pregunta (P2). Con el interruptor apagado no se les cobra nada hasta la respuesta. |
+| R5 | **Membresías en `HoldByBilling`** (106.185 en local, casi todos los Ambassadors). **Decisión de Nick (2026-10-17): una membresía en `HoldByBilling` queda excluida de la cuota anual; mientras esté así no se cobra** (ni en automático ni con «Pagar ahora»). El riesgo pasa a ser el contrario: el día que una membresía sale de la espera, su cuota puede estar vencida desde hace meses y se cobra en la siguiente pasada; con K4 revisado, el siguiente vencimiento es un año desde ese cobro, así que no se cobra dos veces seguidas. | Se crean sus estados igual (K3) para que estén listos al salir de la espera. `AnnualFeeEligibility` los pospone a diario (`MEMBERSHIP_ON_HOLD`, sin avanzar el vencimiento ni escribir intentos) y «Pagar ahora» responde `ANNUAL_FEE_MEMBERSHIP_ON_HOLD`. La membresía que cuenta es la vigente del miembro: su suscripción no borrada más reciente por `StartDate` y luego `CreationDate`, la misma regla que usa `QualificationService` (`AnnualFeeMemberQueries.FactsAsync`). |
 | R6 | **«Al día» sin haber pagado aquí.** Un Ambassador antiguo recibe un estado con vencimiento en su próximo aniversario; hasta entonces su estado está «al día» y cuenta como anualidad pagada en «Calificado», aunque nunca haya pagado en este sistema (lo pagó, o no, en MWR Life). | Es la consecuencia de no migrar datos y de no cobrar hacia atrás (K3, K16). Pregunta P1 con la alternativa (exigir un cobro registrado). Solo afecta a lo que se ve (Plan J: «Calificado» no mueve comisiones ni rangos). |
 | R7 | **Cambio de comportamiento en Travel Advantage.** El débito de comisiones del motor pasa a mirar el saldo **gastable** (`GetSpendableAsync`, como la compra de tokens) en lugar del disponible: las comisiones reservadas por un pago o aún no pagables ya no pagan renovaciones. Habrá menos renovaciones pagadas con comisiones y más intentos con tarjeta (que fallan o son simulados). | Es lo correcto: con el disponible, el mismo dinero podía pagar un payout y una renovación (K18). Se anota en §13 y se pide confirmación (K18 en el informe). |
 | R8 | **Token sin consumir en el camino de Travel Advantage.** `FundWithCommissionBalanceAsync` emite un `TokenTransaction` `EarnedRenewal` (sin código) y suma 1 al saldo del token del plan, pero nadie lo consume: cada renovación pagada con comisiones deja un token de regalo en el saldo. | Fuera de alcance (es Travel Advantage); la cuota anual **no** usa ese método (K9, Tarea 10). Pregunta P5. |
@@ -76,24 +76,30 @@
 
 **De Nick (vinculantes):** cobro aparte de $99 por Ambassador con un segundo estado de cobro anual; ancla en la inscripción + 1 año; exclusiones del legado (cancelada, menos de un año, suspendida, cobrada hace poco, `KeepQualified`); un solo motor (`RecurringBillingProcessor`) y `MembershipAutoRenewalJob` apagado; «Pagar ahora» con comisiones, eWallet o token, sin tarjeta hasta el Plan I y nunca con el stub; preferencia por miembro de pagar las cuotas con tokens, con orden token → comisiones → eWallet; la anualidad cuenta como pagada si el estado anual está al día; miembro del token, step-up y bloqueo bajo suplantación en los pagos con saldo, candado, idempotencia y conciliación, hora de servidor, componentes unificados, ids de al menos `nvarchar(100)`, migraciones pequeñas con guardas, sin migrar datos del legado.
 
+**De Nick, 2026-10-17 (mandan sobre lo de abajo):**
+
+1. **`HoldByBilling` excluida.** Una membresía en `HoldByBilling` queda excluida de la cuota anual: mientras esté así no se cobra (K5, K14, R5, P2).
+2. **El saldo paga por defecto.** El cobro automático usa por defecto el saldo: sin token, primero comisiones y después eWallet. El miembro puede desactivarlo (K6, K7, P3).
+3. **Pago tardío reancla.** El próximo vencimiento es un año desde la fecha de pago, sin gracia de 30 días que conserve el aniversario. El pago adelantado (desde 30 días antes) suma un año al vencimiento actual para no hacer perder días al miembro (K4).
+
 **Tomadas aquí (con su porqué):**
 
 | # | Decisión | Por qué |
 |---|---|---|
 | K1 | **El estado anual es un `SubscriptionBillingState` con `Purpose = AnnualFee` y `MembershipSubscriptionId` nulo**, uno por miembro (índice único filtrado `UX_SubscriptionBillingStates_AnnualFeeMember`, `[Purpose] = 2`). Un `CHECK` exige suscripción en los de membresía y la prohíbe en los anuales. | No hay suscripción de nivel 1 a la que colgarlo (ninguna en local). Siendo un `SubscriptionBillingState`, el planificador, los trabajadores y el barrido lo recogen sin cambios: un solo motor. El `CHECK` hace imposible que un estado anual mueva una membresía (el procesador usa la suscripción para renovar) y el índice, que se cree dos veces. |
 | K2 | **El plan anual se marca con `RecurringBillingPlan.IsAnnualFeePlan`** (único filtrado). La migración marca «Lifestyle Ambassador (Annual)» y el seeder lo hace al crearlo. El plan marcado **nunca** crea estados por suscripción (`RecurringBillingEnrollmentService` y el barrido lo saltan). | Hoy, una suscripción de nivel 1 crearía un estado de membresía en el plan 2 y la cuota se cobraría dos veces (como membresía y como cuota). Marcar el plan es explícito; buscarlo por nombre en cada sitio, frágil. |
-| K3 | **Alta de los estados por un trabajo idempotente** (`AnnualFeeStateEnrollmentJob`, diario a las 4:30 UTC, antes del planificador) por lotes de 1.000, más la creación al vuelo cuando el miembro pulsa «Pagar ahora». **No** una migración de datos ni la creación perezosa al leer. Primer vencimiento = el **primer aniversario de la inscripción que no haya pasado** al crear el estado. Se crean para todo Ambassador no borrado y no `Terminated` (también los `Pending`, los suspendidos y los que tienen la membresía en espera). | Una migración de datos corre en cada arranque de ocho servicios y no se puede parar ni reintentar; la creación perezosa al leer haría escribir a un `GET` y no serviría al planificador, que necesita la fila para encontrar lo que vence. El trabajo se puede lanzar a mano desde Hangfire tras el despliegue, se detiene sin daño y se repite sin duplicar (índice único). No cobrar hacia atrás evita R1. |
-| K4 | **Ancla y ciclo.** El ciclo se identifica por su fecha de vencimiento (`CycleDueDate`). Al cobrar: si se paga antes del vencimiento o hasta 30 días después (`AnnualFeeRules.AnniversaryGraceDays`), el siguiente vence el mismo aniversario del año siguiente; si se paga más tarde (estado parado y pago meses después), el siguiente vence un año después del pago. | Respeta el ancla de la inscripción en la operación normal (la cadencia del plan dura 17 días) y no regala meses a quien paga tarde, como hacía el legado (`Today.AddYears(1)`). |
-| K5 | **Exclusiones del cobro automático** (`AnnualFeeEligibility.ForAutomaticCharge`, en este orden): (1) **cancelada** = perfil inexistente o borrado, o no Ambassador, o `Terminated` → el estado pasa a `Stopped` y no se vuelve a mirar; (2) **menos de un año** = hoy antes del primer aniversario → se reprograma al aniversario; (3) **suspendida** (`Suspended`) o **pendiente de activar** (`Pending`) → se mira mañana; (4) **cobrada hace poco** = último cobro hace menos de 11 meses (`AnnualFeeRules.RecentlyBilledMonths`) → se reprograma a un año del último cobro; (5) **`KeepQualified`** → se mira mañana, sin cobrar y **sin avanzar** el vencimiento (no cuenta como pagada: califica por la marca). `Inactive` se cobra. Saltar una exclusión no escribe `RecurringBillingAttempts` (no es un intento). | Es la lista de Nick con el orden del legado. «Terminada no reactivable» (decisiones de paridad). Sin `SuspendUntil` en este sistema, una suspensión se vuelve a mirar a diario. No avanzar con `KeepQualified` evita que, al quitar la marca, el miembro parezca pagado sin haber pagado. |
+| K3 | **Alta de los estados por un trabajo idempotente** (`AnnualFeeStateEnrollmentJob`, diario a las 4:30 UTC, antes del planificador) por lotes de 1.000, más la creación al vuelo cuando el miembro pulsa «Pagar ahora». **No** una migración de datos ni la creación perezosa al leer. Primer vencimiento = el **primer aniversario de la inscripción que no haya pasado** al crear el estado. Se crean para todo Ambassador no borrado y no `Terminated` (también los `Pending`, los suspendidos y los que tienen la membresía en `HoldByBilling`, a los que no se cobra mientras sigan así: K5). Si el trabajo se registra en Hangfire, el primer despliegue no lo dispara: se lanza a mano (ver Tarea 8). | Una migración de datos corre en cada arranque de ocho servicios y no se puede parar ni reintentar; la creación perezosa al leer haría escribir a un `GET` y no serviría al planificador, que necesita la fila para encontrar lo que vence. El trabajo se puede lanzar a mano desde Hangfire tras el despliegue, se detiene sin daño y se repite sin duplicar (índice único). No cobrar hacia atrás evita R1. |
+| K4 | **Ancla y ciclo (revisado por Nick el 2026-10-17).** El ciclo se identifica por su fecha de vencimiento (`CycleDueDate`). Al cobrar: **pago tardío** (cualquier día después del vencimiento, también un reintento de la cadencia al día siguiente) → el siguiente vence **un año desde la fecha de pago**; **pago puntual o adelantado** (el día del vencimiento o antes, dentro de la ventana de «Pagar ahora» de 30 días) → el siguiente vence **un año después del vencimiento actual**. No hay gracia que conserve el aniversario. | Decisión de Nick: quien paga tarde reancla a su fecha de pago (como el legado, `Today.AddYears(1)`). El adelantado suma al vencimiento actual para que pagar antes no haga perder días al miembro (si se reanclara al pago, quien paga 30 días antes perdería 30 días de cuota). La ventana de 30 días (K14) impide prepagar años. |
+| K5 | **Exclusiones del cobro automático** (`AnnualFeeEligibility.ForAutomaticCharge`, en este orden): (1) **cancelada** = perfil inexistente o borrado, o no Ambassador, o `Terminated` → el estado pasa a `Stopped` y no se vuelve a mirar; (2) **menos de un año** = hoy antes del primer aniversario → se reprograma al aniversario; (3) **suspendida** (`Suspended`) o **pendiente de activar** (`Pending`) → se mira mañana; (3b) **membresía en `HoldByBilling`** (decisión de Nick del 2026-10-17; la membresía vigente, ver R5) → se mira mañana, sin cobrar y sin avanzar el vencimiento; (4) **cobrada hace poco** = último cobro hace menos de 11 meses (`AnnualFeeRules.RecentlyBilledMonths`) → se reprograma a un año del último cobro; (5) **`KeepQualified`** → se mira mañana, sin cobrar y **sin avanzar** el vencimiento (no cuenta como pagada: califica por la marca). `Inactive` se cobra. Saltar una exclusión no escribe `RecurringBillingAttempts` (no es un intento). | Es la lista de Nick con el orden del legado. «Terminada no reactivable» (decisiones de paridad). Sin `SuspendUntil` en este sistema, una suspensión se vuelve a mirar a diario. No avanzar con `KeepQualified` evita que, al quitar la marca, el miembro parezca pagado sin haber pagado. La exclusión por `HoldByBilling` la añadió Nick el 2026-10-17 (R5): es temporal como la suspensión, así que tampoco avanza el vencimiento. |
 | K6 | **Orden del cobro automático: token → comisiones → eWallet.** El token de cuota se usa siempre que exista; comisiones y eWallet solo con la preferencia encendida. Sin nada de eso: intento fallido y cadencia del plan. | Es el orden de Nick y el del legado (que después probaba la tarjeta, aquí fuera). |
-| K7 | **Semántica de la preferencia: `MemberProfile.FeesFromBalance`** («usar mis comisiones y mi eWallet para pagar mis cuotas cuando no tenga un token de cuota»), `bit` por defecto **1**. En el legado, «pagar con tokens» era convertir Daily Pay en un token de la cuota y gastarlo (`BizCenterFeeTokenDailyDeduction`): la preferencia `DailyTokenDeduction` autorizaba esa conversión para Travel Advantage, y para la cuota anual ni se miraba. Aquí la preferencia autoriza lo mismo (cobrar con saldo), sin el token intermedio, y **sí** se respeta. Apagada, solo se usan tokens de cuota que el miembro ya tenga. | Por defecto encendida porque es lo que hacía el legado con la cuota (cobraba siempre del saldo) y porque, sin tarjeta, apagarla dejaría sin pagar a casi todos. El token intermedio no aporta nada (se crearía y se gastaría en el mismo guardado) y deja un token suelto si algo falla a mitad. Confirmar con Nick (P3). |
+| K7 | **Semántica de la preferencia: `MemberProfile.FeesFromBalance`** («usar mis comisiones y mi eWallet para pagar mis cuotas cuando no tenga un token de cuota»), `bit` por defecto **1**. En el legado, «pagar con tokens» era convertir Daily Pay en un token de la cuota y gastarlo (`BizCenterFeeTokenDailyDeduction`): la preferencia `DailyTokenDeduction` autorizaba esa conversión para Travel Advantage, y para la cuota anual ni se miraba. Aquí la preferencia autoriza lo mismo (cobrar con saldo), sin el token intermedio, y **sí** se respeta. Apagada, solo se usan tokens de cuota que el miembro ya tenga. | Por defecto encendida porque es lo que hacía el legado con la cuota (cobraba siempre del saldo) y porque, sin tarjeta, apagarla dejaría sin pagar a casi todos. El token intermedio no aporta nada (se crearía y se gastaría en el mismo guardado) y deja un token suelto si algo falla a mitad. **Confirmado por Nick el 2026-10-17** (P3): el cobro automático usa por defecto el saldo (sin token, primero comisiones y después eWallet) y el miembro puede desactivarlo. |
 | K8 | **Tokens que pagan la cuota: 23 «Annual: Biz Center» y luego 10 «Annual Fee»** (los dos de categoría Annual que otorgan el producto 5), el más antiguo primero (`AnnualFeeRules.FeeTokenTypeIds`). **No** el 24 «Legacy Biz Center Fee» (no otorga producto y en el legado era solo de cuentas «legacy», que aquí no existen) ni el 103 (token del plan que emitiría el camino de Travel Advantage). Se pueden comprar en `/tokens` (Plan F, $99) y distribuir a la línea descendente, como en el legado (`AssignedToLCID`). Una instancia distribuida a otro deja de ser de quien la compró y paga la cuota del nuevo dueño. | Los ids son de `HasData` (estables en todos los entornos). El legado gastaba los tokens propios y los asignados. |
 | K9 | **Pedido de la cuota sin `OrderDetails`.** Con saldo: pedido de $99 `Paid` y su `PaymentHistory` (`CommissionBalance` o `eWallet`). Con token: pedido de $0 `Paid`, sin `PaymentHistory`, con el código del token en las notas y en el pago. El débito de comisiones usa un método nuevo, `FundAnnualFeeAsync`, que comparte núcleo con `FundTokenPurchaseAsync` (débito + `PaymentHistory`, sin emitir tokens). | Un `OrderDetail` con el producto 5 (nivel 1) haría que el pedido contara como pedido de membresía para el nivel por la orden del Plan J, sumara puntos de rango (se suman de los `OrderDetails`) y pudiera disparar comisiones. Con token no se mueve dinero en el momento: un `PaymentHistory` de $99 mentiría. `FundWithCommissionBalanceAsync` no sirve: emite un token que nadie consume (R8). |
 | K10 | **Idempotencia y doble cobro en la base.** Cada cobro es una fila de `AnnualFeePayments` con dos índices únicos filtrados: `(MemberId, IdempotencyKey)` cuando hay clave («Pagar ahora») y `(SubscriptionBillingStateId, CycleDueDate)` para los pagos vivos (`Pending`, `Completed`, `NeedsReconciliation`). | Con el segundo, ni dos instancias de Billing sin candado compartido pueden dejar dos cobros vivos del mismo ciclo. El primero es el contrato de reintento de la pantalla (misma clave = mismo resultado), como `TokenPurchases`. |
 | K11 | **eWallet en dos fases, como la compra de tokens:** (1) bajo el candado se reserva el pago `Pending` y el pedido `Processing`; (2) con el candado otra vez, se relee el saldo real, se debita en i-Payout, se verifica por saldo y se cierra `Completed`, `Failed` o `NeedsReconciliation`. Lo dudoso nunca se reintenta. Un barrido pasa a conciliar los `Pending` de más de 30 minutos (`Billing:AnnualFee:StalePendingMinutes`). Tesorería cierra con `POST api/v1/billing/annual-fee/payments/{id}/reconcile` (roles `SuperAdmin`, `Admin`, `BillingManager`). | Mismo patrón probado del Plan F; el candado en la fase 2 es lo que hace fiable la verificación por saldo. |
 | K12 | **Fallo sin fondos:** se aplica la cadencia del plan (`1,1,1,2,2,5,5`) y, agotada, el estado queda `Stopped` (`MarkExpired`). **No** se toca la membresía ni `MemberProfile.Status`: la consecuencia es «No calificado» (después del primer año). «Pagar ahora» revive un estado parado. | El legado marcaba al agente inactivo («no calificado»); aquí eso lo calcula `QualificationService`. Tocar la membresía mezclaría la cuota con Travel Advantage (K1). |
 | K13 | **Interruptor `Billing:AnnualFee:AutoChargeEnabled`**, apagado por defecto y leído en cada llamada. Apagado, el motor devuelve `Skipped` sin escribir nada; «Pagar ahora» funciona igual. | Desplegar sin cobrar (R1, R2, R5), revisar los estados y encender cuando Nick diga. Leerlo en cada llamada permite apagarlo sin reiniciar. |
-| K14 | **«Pagar ahora»:** solo cuentas `Active`, sin `KeepQualified` (`ANNUAL_FEE_WAIVED`), y solo si el vencimiento cae dentro de los próximos 30 días o ya pasó (`AnnualFeeRules.PayAheadDays`; si no, `ANNUAL_FEE_NOT_DUE`). **Step-up para los tres métodos**, también el token (`member.annual-fee.pay-from-balance`), y 403 bajo suplantación en el BizCenter y en Billing. Tarjeta: `400 ANNUAL_FEE_METHOD_NOT_SUPPORTED`. | Un token es dinero ya pagado y una sesión robada podría gastarlo. La ventana evita prepagar años y que un pago temprano mueva el ancla (K4). |
+| K14 | **«Pagar ahora»:** solo cuentas `Active`, sin `KeepQualified` (`ANNUAL_FEE_WAIVED`), con la membresía vigente fuera de `HoldByBilling` (`ANNUAL_FEE_MEMBERSHIP_ON_HOLD`, R5), y solo si el vencimiento cae dentro de los próximos 30 días o ya pasó (`AnnualFeeRules.PayAheadDays`; si no, `ANNUAL_FEE_NOT_DUE`). **Step-up para los tres métodos**, también el token (`member.annual-fee.pay-from-balance`), y 403 bajo suplantación en el BizCenter y en Billing. Tarjeta: `400 ANNUAL_FEE_METHOD_NOT_SUPPORTED`. | Un token es dinero ya pagado y una sesión robada podría gastarlo. La ventana evita prepagar años; un pago adelantado suma un año al vencimiento actual (K4), así que pagar antes no hace perder días. Con la membresía en `HoldByBilling` no hay cuota que cobrar (decisión de Nick), tampoco a petición del miembro. |
 | K15 | **La preferencia se cambia sin step-up**, con 403 bajo suplantación. | Encenderla autoriza a pagar la cuota propia con el saldo propio: el dinero no sale hacia nadie más. Pregunta P9 por si Nick quiere step-up también aquí. |
 | K16 | **«Anualidad pagada» = el estado anual tiene `NextBillingDate` posterior a hoy** (`BillingStateAnnualFeeStatus`). Se borra `AnnualFeeNotModeled` y una guarda comprueba que BizCenter y AdminAPI registran la implementación real. | Es «el estado anual al día» de Nick. Un estado `Stopped` o con el ciclo vencido sin pagar no está al día; uno con el pago a conciliar tampoco (el estado no avanzó). |
 | K17 | **`MembershipAutoRenewalJob` se apaga con `RecurringJob.RemoveIfExists("membership-auto-renewal")`** (como `commission-payout`); la clase sigue registrada. | `RemoveIfExists` también lo borra de la base de Hangfire si un despliegue anterior lo dejó programado; quitar solo el `AddOrUpdate` lo dejaría vivo allí. |
@@ -128,8 +134,8 @@ No bloquean el plan: cada una tiene un valor por defecto que el plan implementa 
 | # | Pregunta | Qué hace el plan mientras tanto |
 |---|---|---|
 | P1 | Un Ambassador antiguo al que se le crea el estado a mitad de ciclo, ¿cuenta como «anualidad pagada» hasta su próximo aniversario aunque no haya pagado en este sistema? | Sí (R6, K16): el estado está al día. La alternativa es exigir `LastSuccessfulBillingDate` no nulo en `BillingStateAnnualFeeStatus` (una condición más en la consulta). |
-| P2 | ¿Se cobra la cuota a quien tiene la membresía en `HoldByBilling` (o `Expired`, `Cancelled`)? | Sí: las cinco exclusiones son cerradas (R5). Añadir la exclusión es una línea en `AnnualFeeEligibility.ForAutomaticCharge`. |
-| P3 | ¿La preferencia «pagar mis cuotas con mi saldo» empieza encendida para todos? | Sí (K7). Cambiarla es el `defaultValue` de la migración y el inicializador de la propiedad. |
+| P2 | ¿Se cobra la cuota a quien tiene la membresía en `HoldByBilling` (o `Expired`, `Cancelled`)? | **Resuelta (Nick, 2026-10-17): `HoldByBilling` queda excluida**; mientras esté así no se cobra (K5, K14, R5). `Expired` y `Cancelled` siguen sin ser exclusión: Nick solo nombró `HoldByBilling`. |
+| P3 | ¿La preferencia «pagar mis cuotas con mi saldo» empieza encendida para todos? | **Resuelta (Nick, 2026-10-17): sí**, encendida por defecto y desactivable por el miembro (K7). |
 | P4 | ¿Se retira o se limita a tesorería `POST api/v1/billing/memberships/renew`? | Se deja como está (R4). |
 | P5 | `FundWithCommissionBalanceAsync` deja un token de regalo en cada renovación de Travel Advantage pagada con comisiones. ¿Es intencionado? | No se toca (R8). |
 | P6 | ¿Hace falta un importe de cuota por miembro (el legado tenía `BizCenterDueAmount`)? | No: el del plan o el del producto. |
@@ -2253,11 +2259,14 @@ public class AnnualFeeScheduleTests
         => AnnualFeeSchedule.FirstDueOnCreation(D(alta), D(ahora)).Should().Be(D(esperado));
 
     [Theory]
+    // K4 revisado por Nick (2026-10-17): puntual o adelantado suma un año al vencimiento; tarde, un año desde el pago.
+    [InlineData("2027-06-05", "2027-05-06 10:00", "2028-06-05")] // 30 días antes: no pierde días
     [InlineData("2027-06-05", "2027-05-20 10:00", "2028-06-05")] // antes del vencimiento
-    [InlineData("2027-06-05", "2027-06-05 06:00", "2028-06-05")] // el mismo día
-    [InlineData("2027-06-05", "2027-07-05 23:00", "2028-06-05")] // 30 días tarde: se conserva el aniversario
-    [InlineData("2027-06-05", "2027-07-06 08:00", "2028-07-06")] // 31 días tarde: se re-ancla al pago
+    [InlineData("2027-06-05", "2027-06-05 23:59", "2028-06-05")] // el mismo día
+    [InlineData("2027-06-05", "2027-06-06 05:00", "2028-06-06")] // un día tarde (reintento): se re-ancla al pago
+    [InlineData("2027-06-05", "2027-07-05 23:00", "2028-07-05")] // 30 días tarde: sin gracia, se re-ancla
     [InlineData("2027-06-05", "2028-01-15 12:00", "2029-01-15")] // estado parado y pago meses después
+    [InlineData("2027-02-28", "2028-02-29 12:00", "2029-02-28")] // tarde un 29 de febrero
     public void El_siguiente_vencimiento_tras_pagar(string ciclo, string pagado, string esperado)
         => AnnualFeeSchedule.NextDueAfterPayment(D(ciclo), D(pagado)).Should().Be(D(esperado));
 
@@ -2441,6 +2450,8 @@ public class AnnualFeeEligibilityTests
 }
 ```
 
+> **Revisado por las decisiones de Nick (2026-10-17).** Además de lo que sigue: `AnnualFeeMemberFacts` lleva un sexto campo, `MembershipOnHold` (la membresía vigente está en `HoldByBilling`); `ForAutomaticCharge` devuelve `Postpone` con `ReasonMembershipOnHold = "MEMBERSHIP_ON_HOLD"` justo después de suspendida/pendiente (paso 3b de K5) y `ForPayNow` devuelve `AnnualFeeErrors.MembershipOnHold = "ANNUAL_FEE_MEMBERSHIP_ON_HOLD"` después de `AccountNotActive`. Los hechos se leen con `AnnualFeeMemberQueries.FactsAsync(db, memberId)` (Repository): el perfil y la membresía vigente (suscripción no borrada más reciente por `StartDate` y `CreationDate`, como `QualificationService`). Las Tareas 12, 14 y 20 usan `FactsAsync` en lugar de `AnnualFeeMemberFacts.Of(member)`. Pruebas en `AnnualFeeEligibilityTests` y `AnnualFeeMemberQueriesTests`.
+
 - [ ] **Step 2: Ejecutar y ver que fallan**
 
 Run: `dotnet test MLMConquerorGlobalEdition.Billing.Tests --filter "AnnualFeeScheduleTests|AnnualFeeEligibilityTests" -nologo`
@@ -2473,9 +2484,6 @@ public static class AnnualFeeRules
 
     /// <summary>"Pagar ahora" vale desde estos días antes del vencimiento (K14).</summary>
     public const int PayAheadDays = 30;
-
-    /// <summary>Pagada hasta estos días después del vencimiento, el siguiente vence el mismo aniversario (K4).</summary>
-    public const int AnniversaryGraceDays = 30;
 
     /// <summary>"Cobrada hace poco": el último cobro fue hace menos de estos meses (K5).</summary>
     public const int RecentlyBilledMonths = 11;
@@ -2664,15 +2672,15 @@ public static class AnnualFeeSchedule
     }
 
     /// <summary>
-    /// El siguiente vencimiento después de pagar el ciclo <paramref name="cycleDue"/> (K4): antes del
-    /// vencimiento o hasta <see cref="AnnualFeeRules.AnniversaryGraceDays"/> días después, el mismo
-    /// aniversario del año siguiente; más tarde, un año después del pago (lo que hacía el legado).
+    /// El siguiente vencimiento después de pagar el ciclo <paramref name="cycleDue"/> (K4, revisado por
+    /// Nick el 2026-10-17): pagado el día del vencimiento o antes, un año después del vencimiento (pagar
+    /// antes no hace perder días); pagado después, un año desde el pago (sin gracia que conserve el aniversario).
     /// </summary>
     public static DateTime NextDueAfterPayment(DateTime cycleDue, DateTime paidAt)
     {
         var due  = cycleDue.Date;
         var paid = paidAt.Date;
-        return paid <= due.AddDays(AnnualFeeRules.AnniversaryGraceDays) ? due.AddYears(1) : paid.AddYears(1);
+        return paid <= due ? due.AddYears(1) : paid.AddYears(1);
     }
 
     /// <summary>¿Se puede pagar ya? Desde <see cref="AnnualFeeRules.PayAheadDays"/> días antes del vencimiento.</summary>
@@ -3371,6 +3379,8 @@ En `MLMConquerorGlobalEdition.Billing/Program.cs`, justo después de `builder.Se
 // candado de fondos que trae AddPayoutServices.
 builder.Services.AddAnnualFeeServices();
 ```
+
+> **Revisado (2026-10-17).** El trabajo se registra **apagado**: con `Billing:AnnualFee:EnrollmentJobEnabled` en `false` (por defecto, sin clave en `appsettings`) se programa con `Cron.Never()`, así que no corre ni al arrancar ni de madrugada, pero sale en el panel de Hangfire y se puede lanzar a mano («Trigger now»). Con la clave en `true` se programa a las 4:30 UTC como dice abajo. Encenderlo es una decisión de despliegue, como `AutoChargeEnabled`. En esta ronda no se ejecuta contra la base local.
 
 y, justo después del `RecurringJob.RemoveIfExists("membership-auto-renewal");` de la Tarea 1, añadir:
 
@@ -4147,8 +4157,9 @@ public class CobroAutomaticoDeCuotaAnualTests
         (await db.TokenTransactions.SingleAsync(t => t.ReferenceId == "CUOTA-1")).UsedOnOrderId.Should().Be(pedido.Id);
 
         var estado = await EstadoAsync(db);
-        estado.NextBillingDate.Should().Be(new DateTime(2028, 6, 5));
-        estado.NextAttemptDate.Should().Be(new DateTime(2028, 6, 5));
+        // K4 revisado: el ciclo vencía el 2027-06-05 y se paga el 2027-06-10 (tarde): un año desde el pago.
+        estado.NextBillingDate.Should().Be(new DateTime(2028, 6, 10));
+        estado.NextAttemptDate.Should().Be(new DateTime(2028, 6, 10));
         estado.LastSuccessfulBillingDate.Should().Be(Ahora);
         estado.Status.Should().Be(RecurringBillingStatus.Active);
 
@@ -4177,7 +4188,7 @@ public class CobroAutomaticoDeCuotaAnualTests
         (await db.Orders.SingleAsync()).TotalAmount.Should().Be(99m);
         (await db.CommissionEarnings.SingleAsync(e => e.Amount < 0)).Amount.Should().Be(-99m);
         (await db.RecurringBillingAttempts.SingleAsync()).CommissionDeductionEarningId.Should().NotBeNull();
-        (await EstadoAsync(db)).NextBillingDate.Should().Be(new DateTime(2028, 6, 5));
+        (await EstadoAsync(db)).NextBillingDate.Should().Be(new DateTime(2028, 6, 10)); // K4 revisado: tarde
     }
 
     [Fact]
@@ -4519,7 +4530,7 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
         var member = await _db.MemberProfiles.AsNoTracking().FirstOrDefaultAsync(m => m.MemberId == state.MemberId, ct);
 
         var decision = AnnualFeeEligibility.ForAutomaticCharge(
-            AnnualFeeMemberFacts.Of(member), state.NextBillingDate, state.LastSuccessfulBillingDate, now, force);
+            await AnnualFeeMemberQueries.FactsAsync(_db, state.MemberId, ct), state.NextBillingDate, state.LastSuccessfulBillingDate, now, force);
         if (decision.Kind != AnnualFeeDecisionKind.Charge)
         {
             ApplyDecision(state, decision, now);
@@ -5012,7 +5023,7 @@ public class CobroDeCuotaConEWalletTests
         ph.Amount.Should().Be(99m);
         pago.PaymentHistoryId.Should().Be(ph.Id);
         (await db.Orders.SingleAsync()).Status.Should().Be(OrderStatus.Paid);
-        (await db.SubscriptionBillingStates.AsNoTracking().SingleAsync()).NextBillingDate.Should().Be(new DateTime(2028, 6, 5));
+        (await db.SubscriptionBillingStates.AsNoTracking().SingleAsync()).NextBillingDate.Should().Be(new DateTime(2028, 6, 10)); // K4 revisado
         (await db.RecurringBillingAttempts.SingleAsync()).FundingSource.Should().Be(RecurringFundingSource.EWallet);
     }
 
@@ -5490,7 +5501,7 @@ public class PagarAhoraTests
         r.Value.Amount.Should().Be(0m);
         r.Value.TokenCode.Should().Be("CUOTA-9");
         r.Value.CycleDueDate.Should().Be(new DateTime(2027, 6, 5));
-        r.Value.NextDueDate.Should().Be(new DateTime(2028, 6, 5));
+        r.Value.NextDueDate.Should().Be(new DateTime(2028, 6, 10)); // K4 revisado: pagado tarde, un año desde el pago
         (await db.AnnualFeePayments.SingleAsync()).Source.Should().Be(AnnualFeePaymentSource.PayNow);
     }
 
@@ -5763,7 +5774,8 @@ public sealed partial class AnnualFeeChargeService
         if (state is null)
             return PayFail(AnnualFeeErrors.PlanNotConfigured, "The annual fee is not configured.");
 
-        var refusal = AnnualFeeEligibility.ForPayNow(AnnualFeeMemberFacts.Of(member), state.NextBillingDate, _clock.Now);
+        var refusal = AnnualFeeEligibility.ForPayNow(
+            await AnnualFeeMemberQueries.FactsAsync(_db, input.MemberId, ct), state.NextBillingDate, _clock.Now);
         if (refusal is not null)
             return PayFail(refusal, "The annual fee cannot be paid right now.");
 
@@ -5968,7 +5980,7 @@ public class ConciliacionDeCuotaAnualTests
         (await db.Orders.SingleAsync()).Status.Should().Be(OrderStatus.Paid);
 
         var estado = await db.SubscriptionBillingStates.AsNoTracking().SingleAsync();
-        estado.NextBillingDate.Should().Be(new DateTime(2028, 6, 5));
+        estado.NextBillingDate.Should().Be(new DateTime(2028, 6, 6)); // K4 revisado: debitado un día tarde
         estado.LastSuccessfulBillingDate.Should().Be(new DateTime(2027, 6, 6, 5, 0, 0));
     }
 
@@ -7771,7 +7783,7 @@ public sealed class AnnualFeeOverviewService : IAnnualFeeOverviewService
     public async Task<AnnualFeeOverviewDto> GetAsync(string memberId, CancellationToken ct = default)
     {
         var member = await _db.MemberProfiles.AsNoTracking().FirstOrDefaultAsync(m => m.MemberId == memberId, ct);
-        var facts  = AnnualFeeMemberFacts.Of(member);
+        var facts  = await AnnualFeeMemberQueries.FactsAsync(_db, memberId, ct); // con la membresía en HoldByBilling (R5)
         if (!facts.Exists || facts.MemberType != MemberType.Ambassador)
             return new AnnualFeeOverviewDto();
 
@@ -9520,7 +9532,7 @@ emitido para A.
 | 13.15 | Conciliar sin rol | `POST …/annual-fee/payments/{id}/reconcile` con un token de soporte (`SupportLevel1`) y con el de A | `403` en los dos | ☐ |
 | 13.16 | Billing a través de AdminAPI | `POST https://localhost:7002/api/v1/billing/annual-fee/pay` con `TOKEN_A` | `404`, `401` o `500` sin efectos: nada en `AnnualFeePayments` (R4) | ☐ |
 | 13.17 | Cobro automático apagado | con el interruptor en `false`, lanzar `recurring-billing-sweep` desde Hangfire | los estados de cuota que vencen hoy no se cobran; ni pedidos ni pagos nuevos | ☐ |
-| 13.18 | Exclusiones | con el interruptor en `true` y un estado vencido por cada caso (cuenta `Terminated`, `Suspended`, inscrita hace menos de un año, `KeepQualified`, cobro hace 2 meses), lanzar el barrido | `Stopped` / mañana / aniversario / mañana / a un año del cobro; ningún cobro | ☐ |
+| 13.18 | Exclusiones | con el interruptor en `true` y un estado vencido por cada caso (cuenta `Terminated`, `Suspended`, membresía en `HoldByBilling`, inscrita hace menos de un año, `KeepQualified`, cobro hace 2 meses), lanzar el barrido | `Stopped` / mañana / aniversario / mañana / a un año del cobro; ningún cobro | ☐ |
 | 13.19 | Orden de cobro | A con token y comisiones, el interruptor encendido, barrido | se gasta el token (`TokenTransactions` `Used` con el pedido); las comisiones no se tocan | ☐ |
 | 13.20 | Preferencia apagada | A sin token, con comisiones y `FeesFromBalance = 0`, barrido | intento `Failed` (`ANNUAL_FEE_NO_FUNDS`), sin débito; la membresía y `MemberProfiles.Status` no cambian | ☐ |
 | 13.21 | Un solo motor | `/hangfire` → *Recurring jobs* | no está `membership-auto-renewal`; sí `recurring-billing-planning`, `recurring-billing-sweep`, `annual-fee-state-enrollment` y `annual-fee-stale-pending` | ☐ |
