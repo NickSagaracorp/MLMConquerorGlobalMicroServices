@@ -1,0 +1,241 @@
+@inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
+
+@using System.Globalization
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Grid
+@using Syncfusion.Blazor
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Data
+
+@*
+    Cambios de estado (Plan J). UN componente para las tres vistas: lo que cambia entre ellas
+    (qué endpoint, migas, columna de pierna) sale del parámetro Scope. Estado actual y fecha del
+    último cambio; «Calificado» es el valor actual (IQualificationService, sin «desde cuándo»).
+    Las columnas enriquecidas no se ordenan ni se filtran en el servidor (R6). El rango sigue la
+    regla común de 366 días (J12); el límite de 3 meses es solo de Actividad.
+*@
+
+@if (ShowBreadcrumb) { <BreadcrumbNav Items="@Breadcrumb" /> }
+
+<div class="card bg-white border-0 rounded-3 mb-4 status-changes" data-scope="@Scope">
+    <div class="card-body p-0">
+        <div class="d-flex align-items-end flex-wrap gap-2 p-3">
+            <div>
+                <label class="form-label fs-12 mb-1 fw-medium" for="chg-from">@L["Common.From"]</label>
+                <input id="chg-from" type="date" class="form-control form-control-sm" @bind="_from" />
+            </div>
+            <div>
+                <label class="form-label fs-12 mb-1 fw-medium" for="chg-to">@L["Common.To"]</label>
+                <input id="chg-to" type="date" class="form-control form-control-sm" @bind="_to" />
+            </div>
+            <button class="btn btn-primary btn-sm" disabled="@(!_ready)" @onclick="ApplyAsync">@L["Reports.Apply"]</button>
+        </div>
+
+        @if (_message is not null)
+        {
+            <div class="alert alert-warning mx-3">@_message</div>
+        }
+
+        @if (_ready)
+        {
+            <SfGrid TValue="ChangeDto" @ref="_grid"
+                    AllowPaging="true" AllowSorting="true" AllowResizing="true"
+                    AllowFiltering="true" GridLines="GridLine.Horizontal">
+                <SfDataManager Adaptor="Adaptors.CustomAdaptor">
+                    <ServerGridAdaptor TValue="ChangeDto"
+                                       Http="Http"
+                                       Endpoint="@($"{ApiBaseUrl}/changes/{Scope}/grid")"
+                                       QueryStringProvider="RangeQuery"
+                                       OnServerError="OnServerErrorAsync"
+                                       AccessTokenProvider="GetTokenAsync" />
+                </SfDataManager>
+                <GridPageSettings PageSize="20" PageSizes="@(new int[]{20,50,100})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn Field="@nameof(ChangeDto.FirstName)" HeaderText="@L["Changes.FirstName"]" Width="130" Type="ColumnType.String" />
+                    <GridColumn Field="@nameof(ChangeDto.LastName)" HeaderText="@L["Changes.LastName"]" Width="130" Type="ColumnType.String" />
+                    <GridColumn Field="@nameof(ChangeDto.MemberId)" HeaderText="@L["Reports.Id"]" Width="120" Type="ColumnType.String" />
+
+                    <GridColumn Field="@nameof(ChangeDto.AccountStatus)" HeaderText="@L["Reports.BizCenterStatus"]" Width="150" Type="ColumnType.String">
+                        <Template>
+                            @{ var c = (ChangeDto)context; }
+                            <StatusBadge Status="@c.AccountStatus" />
+                            <div class="fs-12 text-muted">@ChangedOn(c.AccountStatusChangedAt)</div>
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn Field="@nameof(ChangeDto.MembershipStatus)" HeaderText="@L["Reports.MembershipStatus"]" Width="190"
+                                AllowSorting="false" AllowFiltering="false">
+                        <Template>
+                            @{ var c = (ChangeDto)context; }
+                            <StatusBadge Status="@c.MembershipStatus" />
+                            <div class="fs-12">@(c.MembershipLevelName ?? "—")</div>
+                            <div class="fs-12 text-muted">@ChangedOn(c.MembershipStatusChangedAt)</div>
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn Field="@nameof(ChangeDto.IsQualified)" HeaderText="@L["Reports.Qualified"]" Width="110"
+                                AllowSorting="false" AllowFiltering="false">
+                        <Template>
+                            @{ var c = (ChangeDto)context; }
+                            <span class="badge @(c.IsQualified ? "bg-success" : "bg-secondary")">@(c.IsQualified ? L["Common.Yes"] : L["Common.No"])</span>
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn Field="@nameof(ChangeDto.SponsorMemberId)" HeaderText="@L["Reports.Sponsor"]" Width="160" Type="ColumnType.String">
+                        <Template>
+                            @{ var c = (ChangeDto)context; }
+                            @(c.SponsorFullName ?? c.SponsorMemberId ?? "—")
+                        </Template>
+                    </GridColumn>
+
+                    <GridColumn Field="@nameof(ChangeDto.DualUplineMemberId)" HeaderText="@L["Reports.DualTeamUpline"]" Width="160"
+                                AllowSorting="false" AllowFiltering="false">
+                        <Template>
+                            @{ var c = (ChangeDto)context; }
+                            @(c.DualUplineFullName ?? c.DualUplineMemberId ?? "—")
+                        </Template>
+                    </GridColumn>
+
+                    @if (IsDual)
+                    {
+                        <GridColumn Field="@nameof(ChangeDto.Leg)" HeaderText="@L["Reports.Leg"]" Width="90" TextAlign="TextAlign.Center"
+                                    AllowSorting="false" AllowFiltering="false">
+                            <Template>@LegText(((ChangeDto)context).Leg)</Template>
+                        </GridColumn>
+                    }
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>"enrollment", "dual" o "customers": la vista y el segmento de la ruta del API.</summary>
+    [Parameter, EditorRequired] public string Scope { get; set; } = "enrollment";
+
+    /// <summary>Raíz del API de equipo, p. ej. "api/v1/bizcenter/team".</summary>
+    [Parameter] public string ApiBaseUrl     { get; set; } = "api/v1/bizcenter/team";
+    [Parameter] public bool   ShowBreadcrumb { get; set; } = true;
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private SfGrid<ChangeDto>? _grid;
+    private DateTime _from;
+    private DateTime _to;
+    private DateTime _appliedFrom;
+    private DateTime _appliedTo;
+    private DateTime _activityMinFrom;
+    private int      _maxDays = 366;
+    private bool     _ready;
+    private string?  _message;
+
+    private bool IsDual => string.Equals(Scope, "dual", StringComparison.OrdinalIgnoreCase);
+
+    private List<BreadcrumbNav.BreadcrumbItem> Breadcrumb => Scope.ToLowerInvariant() switch
+    {
+        "dual"      => new() { new(L["Nav.Dashboard"], "/dashboard"), new(L["Sidebar.DualTeam"]),       new(L["Sidebar.StatusChanges"]) },
+        "customers" => new() { new(L["Nav.Dashboard"], "/dashboard"), new(L["Sidebar.EnrollmentTeam"]), new(L["Sidebar.CustomerChanges"]) },
+        _           => new() { new(L["Nav.Dashboard"], "/dashboard"), new(L["Sidebar.EnrollmentTeam"]), new(L["Sidebar.StatusChanges"]) }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var setup = await Http.GetFromJsonAsync<ApiWrapper<SetupDto>>($"{ApiBaseUrl}/reports/setup");
+            if (setup?.Success == true && setup.Data is not null)
+            {
+                _from            = _appliedFrom = setup.Data.DefaultFrom;
+                _to              = _appliedTo   = setup.Data.DefaultTo;
+                _maxDays         = setup.Data.MaxRangeDays;
+                _activityMinFrom = setup.Data.ActivityMinFrom;
+                _ready           = true;
+            }
+            else
+            {
+                _message = L["Common.Error"];
+            }
+        }
+        catch (Exception)
+        {
+            _message = L["Common.Error"];
+        }
+    }
+
+    private string ChangedOn(DateTime? at) =>
+        at is { } d ? L["Changes.ChangedOn", d.ToString("d", CultureInfo.CurrentUICulture)] : L["Changes.NoHistory"];
+
+    private string LegText(string? leg) => leg switch
+    {
+        "Left"  => L["Reports.Left"],
+        "Right" => L["Reports.Right"],
+        _       => "—"
+    };
+
+    private string? RangeQuery() =>
+        $"from={_appliedFrom.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}&to={_appliedTo.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
+
+    /// <summary>Un 400 de la rejilla (rango rechazado por el servidor) se explica con su texto.</summary>
+    private Task OnServerErrorAsync(string? errorCode)
+    {
+        var (key, arg) = ReportRangeCheck.FromServerCode(errorCode, _activityMinFrom, _maxDays);
+        _message = arg is null ? L[key] : L[key, arg];
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ApplyAsync()
+    {
+        if (ReportRangeCheck.Problem(_from, _to, _maxDays) is { } problem)
+        {
+            _message = problem.Arg is null ? L[problem.Key] : L[problem.Key, problem.Arg];
+            return;
+        }
+
+        _message     = null;
+        _appliedFrom = _from;
+        _appliedTo   = _to;
+        if (_grid is not null) await _grid.Refresh();
+    }
+
+    // Igual que EnrollmentTeamCustomers: el Bearer para la MAUI; en las webs lo pone el manejador.
+    private async Task<string?> GetTokenAsync()
+    {
+        if (AuthState is null) return null;
+        var state = await AuthState;
+        return state.User.FindFirst("access_token")?.Value;
+    }
+
+    private sealed class ApiWrapper<T> { public bool Success { get; set; } public T? Data { get; set; } }
+
+    private sealed class SetupDto
+    {
+        public DateTime DefaultFrom     { get; set; }
+        public DateTime DefaultTo       { get; set; }
+        public int      MaxRangeDays    { get; set; }
+        public DateTime ActivityMinFrom { get; set; }
+    }
+
+    public sealed class ChangeDto
+    {
+        public string    MemberId                  { get; set; } = string.Empty;
+        public string    FirstName                 { get; set; } = string.Empty;
+        public string    LastName                  { get; set; } = string.Empty;
+        public DateTime  EnrollDate                { get; set; }
+        public string    AccountStatus             { get; set; } = string.Empty;
+        public DateTime? AccountStatusChangedAt    { get; set; }
+        public string    MembershipStatus          { get; set; } = string.Empty;
+        public string?   MembershipLevelName       { get; set; }
+        public DateTime? MembershipStatusChangedAt { get; set; }
+        public bool      IsQualified               { get; set; }
+        public string?   SponsorMemberId           { get; set; }
+        public string?   SponsorFullName           { get; set; }
+        public string?   DualUplineMemberId        { get; set; }
+        public string?   DualUplineFullName        { get; set; }
+        public string?   Leg                       { get; set; }
+    }
+}

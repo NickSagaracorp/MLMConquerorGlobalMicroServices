@@ -2,9 +2,11 @@ using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
+using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Grid;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.SharedKernel;
 
@@ -16,15 +18,18 @@ public class EnrollmentTeamService : IEnrollmentTeamService
     private readonly AppDbContext                  _db;
     private readonly IRankComputationService       _ranks;
     private readonly IEnrollmentTeamPointsService  _etPoints;
+    private readonly IQualificationService         _qualification;
 
     public EnrollmentTeamService(
         AppDbContext db,
         IRankComputationService ranks,
-        IEnrollmentTeamPointsService etPoints)
+        IEnrollmentTeamPointsService etPoints,
+        IQualificationService qualification)
     {
-        _db       = db;
-        _ranks    = ranks;
-        _etPoints = etPoints;
+        _db            = db;
+        _ranks         = ranks;
+        _etPoints      = etPoints;
+        _qualification = qualification;
     }
 
     /// <summary>
@@ -140,9 +145,10 @@ public class EnrollmentTeamService : IEnrollmentTeamService
     private IQueryable<EnrollmentMyTeamMemberView> BuildMyTeamQueryable(
         string pathPrefix, int rootLevel, string memberId)
     {
+        var prefix = TreePrefix.Of(pathPrefix);
         return
             from g in _db.GenealogyTree.AsNoTracking()
-            where g.HierarchyPath.StartsWith(pathPrefix) && g.MemberId != memberId
+            where g.HierarchyPath.StartsWith(prefix) && g.MemberId != memberId
             join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
             select new EnrollmentMyTeamMemberView
             {
@@ -169,6 +175,9 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         var rows = items as IList<EnrollmentMyTeamMemberView> ?? items.ToList();
         if (rows.Count == 0) return;
         var ids = rows.Select(r => r.MemberId).ToList();
+
+        // «Calificado» con la regla de Nick (Plan J, N3), no «la suscripción está activa».
+        var qualified = await _qualification.AreQualifiedAsync(ids, ct);
 
         var subscriptions = await _db.MembershipSubscriptions.AsNoTracking()
             .Include(s => s.MembershipLevel)
@@ -237,7 +246,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
             row.DualUplineMemberId   = dual?.ParentMemberId;
             row.DualUplineFullName   = uplineName;
             row.MembershipStatus     = sub?.SubscriptionStatus.ToString() ?? "None";
-            row.IsQualified          = sub?.SubscriptionStatus == MembershipStatus.Active;
+            row.IsQualified          = qualified.GetValueOrDefault(row.MemberId);
             row.MembershipLevelName  = sub?.MembershipLevel?.Name;
             row.CurrentRankName      = cr?.RankDefinition?.Name;
             row.RankDate             = cr?.AchievedAt;
@@ -400,7 +409,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
             .Select(s => s.EnrollmentPoints)
             .FirstOrDefaultAsync(ct);
 
-        var pathPrefix  = branchNode.HierarchyPath;
+        var pathPrefix  = TreePrefix.Of(branchNode.HierarchyPath);
         var branchLevel = branchNode.Level;
 
         var downlineNodes = await _db.GenealogyTree.AsNoTracking()
@@ -443,6 +452,10 @@ public class EnrollmentTeamService : IEnrollmentTeamService
             .ToListAsync(ct);
         var statsMap = stats.ToDictionary(s => s.MemberId, s => s.EnrollmentPoints);
 
+        // «Calificado» con la regla de Nick (Plan J, N3), solo para los embajadores que se listan.
+        var qualified = await _qualification.AreQualifiedAsync(
+            profiles.Where(p => p.MemberType == MemberType.Ambassador).Select(p => p.MemberId).ToList(), ct);
+
         var ambassadors = profiles
             .Where(p => p.MemberType == MemberType.Ambassador)
             .OrderBy(p => levelMap.TryGetValue(p.MemberId, out var l) ? l : 0)
@@ -457,7 +470,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
                     FullName            = $"{p.FirstName} {p.LastName}",
                     AccountStatus       = p.AccountStatus,
                     MembershipStatus    = sub?.SubscriptionStatus.ToString() ?? "None",
-                    IsQualified         = sub?.SubscriptionStatus == MembershipStatus.Active,
+                    IsQualified         = qualified.GetValueOrDefault(p.MemberId),
                     MembershipLevelName = sub?.MembershipLevel?.Name,
                     EnrollmentPoints    = statsMap.TryGetValue(p.MemberId, out var pts) ? pts : 0
                 };
@@ -507,11 +520,10 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         string memberId, int page, int pageSize, string? search,
         CancellationToken ct = default)
     {
-        var myNode = await _db.GenealogyTree.AsNoTracking()
-            .FirstOrDefaultAsync(g => g.MemberId == memberId, ct);
+        var myNode = await MyGenealogyNodeAsync(memberId, ct);
         if (myNode is null) return new PagedResult<EnrollmentCustomerView>();
 
-        var q = BuildCustomerQueryable(myNode.HierarchyPath);
+        var q = BuildCustomerQueryable(memberId, myNode.HierarchyPath, myNode.Level, CustomerScope.Team);
         if (!string.IsNullOrWhiteSpace(search))
         {
             var s = search.ToLower();
@@ -530,44 +542,85 @@ public class EnrollmentTeamService : IEnrollmentTeamService
     }
 
     /// <summary>
-    /// Server-side grid read over the viewer's external-member customers — DB-side
-    /// search/filter/sort/count/page on a light projection, page-only enrichment (was a
-    /// whole-subtree Contains(allIds) load + in-memory page).
+    /// Server-side grid read over the viewer's customers — DB-side search/filter/sort/count/page on
+    /// a light projection, page-only enrichment. <paramref name="scope"/> chooses personal customers
+    /// or the whole enrollment downline (Plan J).
     /// </summary>
     public async Task<PagedResult<EnrollmentCustomerView>> GetCustomersGridAsync(
-        string memberId, GridDataRequest request, CancellationToken ct = default)
+        string memberId, GridDataRequest request, CustomerScope scope, CancellationToken ct = default)
     {
-        var myNode = await _db.GenealogyTree.AsNoTracking()
-            .FirstOrDefaultAsync(g => g.MemberId == memberId, ct);
+        var myNode = await MyGenealogyNodeAsync(memberId, ct);
         if (myNode is null) return new PagedResult<EnrollmentCustomerView>();
 
         if (!request.Sorts.Any(s => CustomerSearchableFields.Contains(s.Field, StringComparer.OrdinalIgnoreCase)
                                  || string.Equals(s.Field, nameof(EnrollmentCustomerView.EnrollDate), StringComparison.OrdinalIgnoreCase)))
             request.Sorts.Add(new GridSort { Field = nameof(EnrollmentCustomerView.EnrollDate), Direction = "desc" });
 
-        var q      = BuildCustomerQueryable(myNode.HierarchyPath);
+        var q      = BuildCustomerQueryable(memberId, myNode.HierarchyPath, myNode.Level, scope);
         var result = await q.ToGridResultAsync(request, CustomerSearchableFields, ct: ct);
         await EnrichCustomerPageAsync(result.Items, ct);
         return result;
     }
 
-    /// <summary>Light DB projection of the viewer's external-member customers (profile columns
-    /// only). Enriched columns (sponsor name, membership, points) filled per-page by
-    /// <see cref="EnrichCustomerPageAsync"/>.</summary>
-    private IQueryable<EnrollmentCustomerView> BuildCustomerQueryable(string pathPrefix)
+    /// <summary>The viewer's most recent genealogy node: a member can have two (see e4af288, R8).</summary>
+    private Task<GenealogyEntity?> MyGenealogyNodeAsync(string memberId, CancellationToken ct) =>
+        _db.GenealogyTree.AsNoTracking()
+            .Where(g => g.MemberId == memberId)
+            .OrderByDescending(g => g.CreationDate)
+            .FirstOrDefaultAsync(ct);
+
+    /// <summary>
+    /// Light DB projection of the viewer's external-member customers. Email and phone are nulled
+    /// IN THE PROJECTION (a SQL CASE) for customers the viewer did not enroll, so the grid's search
+    /// and column filters run on the redacted value and cannot reveal that a non-personal customer
+    /// with a given e-mail exists (Plan J, J8). Enriched columns are filled per page by
+    /// <see cref="EnrichCustomerPageAsync"/>.
+    /// </summary>
+    private IQueryable<EnrollmentCustomerView> BuildCustomerQueryable(
+        string memberId, string pathPrefix, int rootLevel, CustomerScope scope)
     {
+        if (scope == CustomerScope.Personal)
+        {
+            return
+                from m in _db.MemberProfiles.AsNoTracking()
+                where m.SponsorMemberId == memberId && m.MemberType == MemberType.ExternalMember
+                select new EnrollmentCustomerView
+                {
+                    MemberId        = m.MemberId,
+                    FullName        = m.FirstName + " " + m.LastName,
+                    Email           = m.Email,
+                    Phone           = m.Phone,
+                    Country         = m.Country,
+                    Level           = 1,
+                    IsPersonal      = true,
+                    EnrollDate      = m.EnrollDate,
+                    SponsorMemberId = m.SponsorMemberId,
+                    AccountStatus   = m.Status.ToString()
+                };
+        }
+
+        // Se parte del perfil y la pertenencia la decide el nodo MÁS RECIENTE del cliente (R8): un
+        // JOIN directo a GenealogyTree duplicaría a quien tiene dos nodos y metería a quien se fue
+        // con un nodo obsoleto bajo el prefijo. El prefijo acaba siempre en "/" (TreePrefix).
+        var prefix = TreePrefix.Of(pathPrefix);
         return
-            from g in _db.GenealogyTree.AsNoTracking()
-            where g.HierarchyPath.StartsWith(pathPrefix)
-            join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
-            where m.MemberType == MemberType.ExternalMember
+            from m in _db.MemberProfiles.AsNoTracking()
+            where m.MemberType == MemberType.ExternalMember && m.MemberId != memberId
+            let node = _db.GenealogyTree
+                .Where(g => g.MemberId == m.MemberId)
+                .OrderByDescending(g => g.CreationDate)
+                .Select(g => new { g.HierarchyPath, g.Level })
+                .FirstOrDefault()
+            where node != null && node.HierarchyPath.StartsWith(prefix)
             select new EnrollmentCustomerView
             {
                 MemberId        = m.MemberId,
                 FullName        = m.FirstName + " " + m.LastName,
-                Email           = m.Email,
-                Phone           = m.Phone,
+                Email           = m.SponsorMemberId == memberId ? m.Email : null,
+                Phone           = m.SponsorMemberId == memberId ? m.Phone : null,
                 Country         = m.Country,
+                Level           = node!.Level - rootLevel,
+                IsPersonal      = m.SponsorMemberId == memberId,
                 EnrollDate      = m.EnrollDate,
                 SponsorMemberId = m.SponsorMemberId,
                 AccountStatus   = m.Status.ToString()
@@ -582,10 +635,15 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         var ids = rows.Select(r => r.MemberId).ToList();
 
         var subs = await _db.MembershipSubscriptions.AsNoTracking()
-            .Include(s => s.MembershipLevel)
             .Where(s => ids.Contains(s.MemberId))
             .OrderByDescending(s => s.StartDate).ToListAsync(ct);
         var subMap = subs.GroupBy(s => s.MemberId).ToDictionary(g => g.Key, g => g.First());
+
+        // Plan J, corrección N2: el nivel lo da el producto de la orden de la suscripción actual
+        // (el más alto), no el MembershipLevelId de la suscripción, que solo es la reserva.
+        var levelBySub = await _db.GetMembershipLevelIdsBySubscriptionAsync(subMap.Values.ToList(), ct);
+        var levelNames = await _db.MembershipLevels.AsNoTracking()
+            .ToDictionaryAsync(l => l.Id, l => l.Name, ct);
 
         var statsMap = await _db.MemberStatistics.AsNoTracking()
             .Where(s => ids.Contains(s.MemberId))
@@ -605,7 +663,9 @@ public class EnrollmentTeamService : IEnrollmentTeamService
             nameMap.TryGetValue(row.SponsorMemberId ?? "", out var sponsorName);
             row.SponsorFullName  = sponsorName;
             row.MembershipStatus = sub?.SubscriptionStatus.ToString() ?? "None";
-            row.MembershipLevel  = sub?.MembershipLevel?.Name;
+            row.MembershipLevel  = sub is not null && levelBySub.TryGetValue(sub.Id, out var levelId)
+                ? levelNames.GetValueOrDefault(levelId)
+                : null;
             row.PersonalPoints   = stat?.PersonalPoints ?? 0;
         }
     }

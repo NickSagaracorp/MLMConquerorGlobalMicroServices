@@ -5604,6 +5604,10 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("EarnedDate");
 
+                    b.HasIndex("BeneficiaryMemberId", "EarnedDate");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("BeneficiaryMemberId", "EarnedDate"), new[] { "Amount", "Status" });
+
                     b.HasIndex("BeneficiaryMemberId", "Status");
 
                     b.ToTable("DailyResidualEarnings");
@@ -6195,6 +6199,64 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("CorporateEvents");
+                });
+
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Events.CorporateEventRegistration", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EventId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ExternalRef")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("MemberId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<decimal?>("Price")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("RegisteredAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("Tickets")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MemberId");
+
+                    b.HasIndex("EventId", "ExternalRef")
+                        .IsUnique();
+
+                    b.HasIndex("EventId", "MemberId");
+
+                    b.ToTable("CorporateEventRegistrations");
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Events.CorporatePromo", b =>
@@ -7975,6 +8037,11 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<bool>("IsPhonePublic")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("KeepQualified")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -8017,7 +8084,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("SponsorMemberId")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("SsnEncrypted")
                         .HasMaxLength(512)
@@ -8049,6 +8117,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .IsUnique()
                         .HasFilter("[BinaryNodeId] IS NOT NULL");
 
+                    b.HasIndex("EnrollDate");
+
                     b.HasIndex("EnrollmentNodeId")
                         .IsUnique()
                         .HasFilter("[EnrollmentNodeId] IS NOT NULL");
@@ -8062,6 +8132,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("UserId")
                         .IsUnique();
+
+                    b.HasIndex("SponsorMemberId", "EnrollDate");
 
                     b.ToTable("MemberProfiles");
                 });
@@ -8354,7 +8426,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.Property<string>("MemberId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("MemberProfileId")
                         .HasColumnType("nvarchar(450)");
@@ -8370,7 +8443,11 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ChangedAt");
+
                     b.HasIndex("MemberProfileId");
+
+                    b.HasIndex("MemberId", "ChangedAt");
 
                     b.ToTable("MemberStatusHistories");
                 });
@@ -8525,6 +8602,53 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasIndex("MembershipLevelId");
 
                     b.ToTable("MembershipLevelBenefits");
+                });
+
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Membership.MembershipStatusHistory", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("ChangedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("MemberId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("MembershipLevelId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NewStatus")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("OldStatus")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SubscriptionId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChangedAt");
+
+                    b.HasIndex("MemberId", "ChangedAt");
+
+                    b.ToTable("MembershipStatusHistories");
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Membership.MembershipSubscription", b =>
@@ -16893,6 +17017,22 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .IsRequired();
 
                     b.Navigation("Contest");
+                });
+
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Events.CorporateEventRegistration", b =>
+                {
+                    b.HasOne("MLMConquerorGlobalEdition.Domain.Entities.Events.CorporateEvent", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MLMConquerorGlobalEdition.Domain.Entities.Member.MemberProfile", null)
+                        .WithMany()
+                        .HasForeignKey("MemberId")
+                        .HasPrincipalKey("MemberId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.General.Country", b =>

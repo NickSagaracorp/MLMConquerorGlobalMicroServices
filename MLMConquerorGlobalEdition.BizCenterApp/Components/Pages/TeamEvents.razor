@@ -1,0 +1,7 @@
+@page "/events"
+@attribute [Authorize(Roles = "Ambassador,ExternalMember")]
+@inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
+
+<PageTitle>@L["PageTitle.TeamEvents"]</PageTitle>
+
+<TeamEventRegistrations />

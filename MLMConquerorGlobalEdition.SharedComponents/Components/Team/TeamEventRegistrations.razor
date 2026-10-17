@@ -1,0 +1,202 @@
+@inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
+
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Localization
+@using MLMConquerorGlobalEdition.SharedComponents.Resources
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Grid
+@using Syncfusion.Blazor
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Data
+
+@*
+    Eventos del equipo (Plan J). Componente único: la ruta del API entra por parámetro. El equipo
+    lo decide el servidor con el token; aquí se elige el evento y si se ve solo a los inscritos.
+    Todavía no hay importación de inscripciones (corrección de Nick N5): la tabla sale vacía y un
+    aviso lo explica hasta que el evento tenga alguna.
+*@
+
+@if (ShowBreadcrumb) { <BreadcrumbNav Items="@_breadcrumb" /> }
+
+<div class="card bg-white border-0 rounded-3 mb-4 team-events">
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <LoadingSpinner IsLoading="true" />
+        }
+        else if (_events.Count == 0)
+        {
+            <div class="text-center text-muted py-5 team-events-none">@L["Events.None"]</div>
+        }
+        else
+        {
+            <div class="d-flex align-items-end flex-wrap gap-3 p-3">
+                <div>
+                    <label class="form-label fs-12 mb-1 fw-medium" for="ev-select">@L["Events.Select"]</label>
+                    <select id="ev-select" class="form-select form-select-sm" value="@_eventId" @onchange="OnEventChange">
+                        @foreach (var ev in _events)
+                        {
+                            <option value="@ev.Id">@ev.Title — @ev.EventDate.ToString("d")</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-check mb-1">
+                    <input id="ev-registered-only" class="form-check-input" type="checkbox"
+                           checked="@_registeredOnly" @onchange="OnRegisteredOnlyChange" />
+                    <label class="form-check-label" for="ev-registered-only">@L["Events.RegisteredOnly"]</label>
+                </div>
+                <div class="ms-auto d-flex gap-4">
+                    <div><span class="text-muted fs-12 d-block">@L["Events.Registered"]</span><span class="fw-semibold">@(_totals?.Registered.ToString("N0") ?? "—")</span></div>
+                    <div><span class="text-muted fs-12 d-block">@L["Events.Tickets"]</span><span class="fw-semibold">@(_totals?.Tickets.ToString("N0") ?? "—")</span></div>
+                </div>
+            </div>
+
+            @if (_totals is { Registered: 0 })
+            {
+                <p class="small text-muted px-3 mb-2 team-events-import-pending">@L["Events.ImportPending"]</p>
+            }
+
+            <SfGrid @key="_eventId" TValue="RegistrationDto" @ref="_grid"
+                    AllowPaging="true" AllowSorting="true" AllowResizing="true"
+                    AllowFiltering="true" GridLines="GridLine.Horizontal">
+                <SfDataManager Adaptor="Adaptors.CustomAdaptor">
+                    <ServerGridAdaptor TValue="RegistrationDto"
+                                       Http="Http"
+                                       Endpoint="@($"{ApiBaseUrl}/events/{Uri.EscapeDataString(_eventId)}/team-registrations/grid")"
+                                       QueryStringProvider="FilterQuery"
+                                       AccessTokenProvider="GetTokenAsync" />
+                </SfDataManager>
+                <GridPageSettings PageSize="20" PageSizes="@(new int[]{20,50,100})" />
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel" />
+                <GridColumns>
+                    <GridColumn Field="@nameof(RegistrationDto.FirstName)" HeaderText="@L["Changes.FirstName"]" Width="130" Type="ColumnType.String" />
+                    <GridColumn Field="@nameof(RegistrationDto.LastName)" HeaderText="@L["Changes.LastName"]" Width="130" Type="ColumnType.String" />
+                    <GridColumn Field="@nameof(RegistrationDto.EnrollDate)" HeaderText="@L["Reports.EnrollmentDate"]" Width="120" Format="d" Type="ColumnType.Date" />
+                    <GridColumn Field="@nameof(RegistrationDto.IsQualified)" HeaderText="@L["Reports.Qualified"]" Width="100" TextAlign="TextAlign.Center"
+                                AllowSorting="false" AllowFiltering="false">
+                        <Template>@(((RegistrationDto)context).IsQualified ? L["Common.Yes"] : L["Common.No"])</Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(RegistrationDto.RankName)" HeaderText="@L["Reports.Rank"]" Width="130"
+                                AllowSorting="false" AllowFiltering="false">
+                        <Template>@(((RegistrationDto)context).RankName ?? "—")</Template>
+                    </GridColumn>
+                    <GridColumn Field="@nameof(RegistrationDto.RegisteredAt)" HeaderText="@L["Events.RegistrationDate"]" Width="130" Format="d" Type="ColumnType.Date" />
+                    <GridColumn Field="@nameof(RegistrationDto.Tickets)" HeaderText="@L["Events.Tickets"]" Width="90" TextAlign="TextAlign.Right" Type="ColumnType.Integer" />
+                    <GridColumn Field="@nameof(RegistrationDto.Registered)" HeaderText="@L["Events.Registered"]" Width="100" TextAlign="TextAlign.Center" Type="ColumnType.Boolean">
+                        <Template>@(((RegistrationDto)context).Registered ? L["Common.Yes"] : L["Common.No"])</Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>Raíz del API, p. ej. "api/v1/bizcenter".</summary>
+    [Parameter] public string ApiBaseUrl     { get; set; } = "api/v1/bizcenter";
+    [Parameter] public bool   ShowBreadcrumb { get; set; } = true;
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private SfGrid<RegistrationDto>? _grid;
+    private bool             _loading = true;
+    private List<EventDto>   _events  = new();
+    private string           _eventId = string.Empty;
+    private bool             _registeredOnly = true;
+    private TotalsDto?       _totals;
+
+    private List<BreadcrumbNav.BreadcrumbItem> _breadcrumb => new()
+    {
+        new(L["Nav.Dashboard"], "/dashboard"),
+        new(L["Sidebar.Events"])
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<List<EventDto>>>($"{ApiBaseUrl}/events");
+            _events = resp?.Data ?? new();
+            if (_events.Count > 0)
+            {
+                _eventId = _events[0].Id;
+                await LoadTotalsAsync();
+            }
+        }
+        catch (Exception)
+        {
+            _events = new();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadTotalsAsync()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ApiWrapper<TotalsDto>>(
+                $"{ApiBaseUrl}/events/{Uri.EscapeDataString(_eventId)}/team-registrations/totals");
+            _totals = resp?.Data;
+        }
+        catch (Exception)
+        {
+            _totals = null;
+        }
+    }
+
+    private string? FilterQuery() => $"registeredOnly={(_registeredOnly ? "true" : "false")}";
+
+    private async Task OnEventChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _eventId = e.Value?.ToString() ?? string.Empty;
+        _totals  = null;
+        await LoadTotalsAsync();   // el @key del grid lo recrea con el endpoint del evento nuevo
+    }
+
+    private async Task OnRegisteredOnlyChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        _registeredOnly = e.Value is bool b && b;
+        if (_grid is not null) await _grid.Refresh();
+    }
+
+    // Igual que EnrollmentTeamCustomers: el Bearer para la MAUI; en las webs lo pone el manejador.
+    private async Task<string?> GetTokenAsync()
+    {
+        if (AuthState is null) return null;
+        var state = await AuthState;
+        return state.User.FindFirst("access_token")?.Value;
+    }
+
+    private sealed class ApiWrapper<T> { public bool Success { get; set; } public T? Data { get; set; } }
+
+    private sealed class EventDto
+    {
+        public string   Id        { get; set; } = string.Empty;
+        public string   Title     { get; set; } = string.Empty;
+        public DateTime EventDate { get; set; }
+        public string?  Location  { get; set; }
+    }
+
+    private sealed class TotalsDto
+    {
+        public int Registered { get; set; }
+        public int Tickets    { get; set; }
+    }
+
+    public sealed class RegistrationDto
+    {
+        public string    MemberId     { get; set; } = string.Empty;
+        public string    FirstName    { get; set; } = string.Empty;
+        public string    LastName     { get; set; } = string.Empty;
+        public DateTime  EnrollDate   { get; set; }
+        public bool      IsQualified  { get; set; }
+        public string?   RankName     { get; set; }
+        public bool      Registered   { get; set; }
+        public DateTime? RegisteredAt { get; set; }
+        public int       Tickets      { get; set; }
+    }
+}

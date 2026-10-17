@@ -91,9 +91,15 @@ public class EnrollmentCustomerView
 {
     public string   MemberId         { get; set; } = string.Empty;
     public string   FullName         { get; set; } = string.Empty;
-    public string   Email            { get; set; } = string.Empty;
+    /// <summary>Solo de los clientes personales del que mira (Plan J); null para el resto del equipo.</summary>
+    public string?  Email            { get; set; }
+    /// <summary>Igual que <see cref="Email"/>.</summary>
     public string?  Phone            { get; set; }
     public string   Country          { get; set; } = string.Empty;
+    /// <summary>Nivel relativo al que mira: 1 = lo inscribió él.</summary>
+    public int      Level            { get; set; }
+    /// <summary>Lo inscribió directamente el que mira.</summary>
+    public bool     IsPersonal       { get; set; }
     public DateTime EnrollDate       { get; set; }
     public string?  SponsorMemberId  { get; set; }
     public string?  SponsorFullName  { get; set; }

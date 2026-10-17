@@ -6,6 +6,7 @@
 @using Microsoft.Extensions.Localization
 @using Microsoft.JSInterop
 @using MLMConquerorGlobalEdition.SharedComponents.Resources
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Commissions
 @implements IAsyncDisposable
 
 @if (ShowBreadcrumb) { <BreadcrumbNav Items="@_breadcrumb" /> }
@@ -416,135 +417,16 @@
 </div>
 
 @* ═══════════════════════════════════════════════════════════════════════════
-   SECTION 4 — Daily Residuals table with date filter
+   SECTION 4 — Residuales diarios (Plan J): componente propio sobre
+   DailyResidualEarnings. Año, mes, totales y paginación viven allí.
    ══════════════════════════════════════════════════════════════════════════ *@
-<div class="card bg-white border-0 rounded-3 mb-4">
-    <div class="card-body p-0">
-
-        @* Search + date filter header *@
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-4">
-            <div class="position-relative table-src-form me-0">
-                <input type="text"
-                       class="form-control"
-                       placeholder="@L["Team.SearchPlaceholderHere"]"
-                       value="@_residualSearch"
-                       @oninput="OnResidualSearchInput" />
-                <i class="ri-search-line position-absolute top-50 start-0 translate-middle-y"></i>
-            </div>
-            <div class="d-flex gap-2 flex-wrap">
-                <div>
-                    <label class="form-label fs-12 mb-1 fw-medium">@L["Common.Year"]</label>
-                    <select class="form-select form-select-sm"
-                            value="@_selectedYear"
-                            @onchange="OnYearChange">
-                        @foreach (var y in _yearOptions)
-                        {
-                            <option value="@y">@y</option>
-                        }
-                    </select>
-                </div>
-                <div>
-                    <label class="form-label fs-12 mb-1 fw-medium">@L["Common.Month"]</label>
-                    <select class="form-select form-select-sm"
-                            value="@_selectedMonth"
-                            @onchange="OnMonthChange">
-                        <option value="0">@L["Common.AllMonths"]</option>
-                        @for (var m = 1; m <= 12; m++)
-                        {
-                            var mo = m;
-                            <option value="@mo">@(CapitalizeFirst(CultureInfo.CurrentUICulture.DateTimeFormat.GetMonthName(mo)))</option>
-                        }
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        @if (_residualsLoading)
-        {
-            <LoadingSpinner IsLoading="true" />
-        }
-        else if (_residualsError is not null)
-        {
-            <div class="alert alert-danger m-3">@_residualsError</div>
-        }
-        else
-        {
-            <div class="default-table-area style-two default-table-width">
-                <div class="table-responsive">
-                    <table class="table align-middle">
-                        <thead>
-                            <tr>
-                                <th>@L["Reports.EarnedDate"]</th>
-                                <th>@L["Common.Amount"]</th>
-                                <th>@L["Common.Status"]</th>
-                                <th>@L["Reports.EligiblePoints"]</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @if (!_residuals.Any())
-                            {
-                                <tr>
-                                    <td colspan="4" class="text-center text-muted py-4">@L["Team.NoResidualEarnings"]</td>
-                                </tr>
-                            }
-                            @foreach (var r in _residuals)
-                            {
-                                <tr>
-                                    <td class="text-body">@r.EarnedDate.ToString("MMM dd, yyyy")</td>
-                                    <td class="text-body fw-semibold text-success">$@r.Amount.ToString("F2")</td>
-                                    <td>@RenderResidualStatusBadge(r.Status)</td>
-                                    <td class="text-body">@r.EligiblePoints.ToString("N0")</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-
-                @* Pagination *@
-                <div class="p-4 pt-lg-4">
-                    <div class="d-flex justify-content-center justify-content-sm-between align-items-center text-center flex-wrap gap-2 showing-wrap">
-                        <span class="fs-12 fw-medium">@L["Reports.Showing"] @_residuals.Count @L["Common.Of"] @_residualTotal @L["Reports.Results"]</span>
-                        @if (_residualTotalPages > 1)
-                        {
-                            <nav>
-                                <ul class="pagination mb-0 justify-content-center">
-                                    <li class="page-item @(_residualPage <= 1 ? "disabled" : "")">
-                                        <button class="page-link icon" @onclick="() => LoadResidualsAsync(_residualPage - 1)">
-                                            <i class="ri-arrow-left-s-line"></i>
-                                        </button>
-                                    </li>
-                                    @for (var pg = 1; pg <= _residualTotalPages; pg++)
-                                    {
-                                        var p = pg;
-                                        <li class="page-item @(p == _residualPage ? "active" : "")">
-                                            <button class="page-link" @onclick="() => LoadResidualsAsync(p)">@p</button>
-                                        </li>
-                                    }
-                                    <li class="page-item @(_residualPage >= _residualTotalPages ? "disabled" : "")">
-                                        <button class="page-link icon" @onclick="() => LoadResidualsAsync(_residualPage + 1)">
-                                            <i class="ri-arrow-right-s-line"></i>
-                                        </button>
-                                    </li>
-                                </ul>
-                            </nav>
-                        }
-                    </div>
-                </div>
-            </div>
-        }
-    </div>
-</div>
+<DailyResidualHistory ApiBaseUrl="@ApiBaseUrl" />
 
 @code {
     // ── Parameters ───────────────────────────────────────────────────────────
     [Parameter, EditorRequired] public string MemberProfileId { get; set; } = string.Empty;
     [Parameter] public string    ApiBaseUrl     { get; set; } = "api/v1/bizcenter";
     [Parameter] public bool      ShowBreadcrumb { get; set; } = true;
-
-    /// <summary>Member's enrollment date — drives the lower bound of the year
-    /// dropdown so the user can only pick years where they could have earned.
-    /// Falls back to (CurrentYear - 5) when the parent did not pass it.</summary>
-    [Parameter] public DateTime? EnrollDate     { get; set; }
 
     // ── Section 1 state — ranks ───────────────────────────────────────────────
     private bool              _rankLoading  = true;
@@ -558,19 +440,6 @@
     private bool                  _membersLoading = true;
     private string?               _membersError;
     private List<TeamMemberRowDto> _members       = new();
-
-    // ── Section 4 state — residuals table ────────────────────────────────────
-    private bool              _residualsLoading   = true;
-    private string?           _residualsError;
-    private List<DualResidualDto> _residuals      = new();
-    private string?           _residualSearch;
-    private int               _selectedYear;
-    private int               _selectedMonth;     // 0 = all months
-    private List<int>         _yearOptions        = new();
-    private int               _residualPage       = 1;
-    private int               _residualTotal;
-    private int               _residualTotalPages;
-    private const int         ResidualPageSize    = 10;
 
     // ── Section 2B state — residuals chart ────────────────────────────────────
     private bool                     _chartLoading  = true;
@@ -597,19 +466,6 @@
     {
         if (string.IsNullOrEmpty(MemberProfileId)) return;
 
-        // Build year dropdown range once: from the member's enrollment year
-        // (or CurrentYear - 5 fallback) up to the current year. Default the
-        // selection to the current year + "all months" so the table reflects
-        // the most recent activity on first paint.
-        var nowYear   = DateTime.UtcNow.Year;
-        var startYear = EnrollDate?.Year is int ey && ey <= nowYear ? ey : nowYear - 5;
-        if (startYear > nowYear) startYear = nowYear;
-
-        var newOptions = Enumerable.Range(startYear, nowYear - startYear + 1).Reverse().ToList();
-        if (!_yearOptions.SequenceEqual(newOptions)) _yearOptions = newOptions;
-        if (_selectedYear == 0)  _selectedYear  = nowYear;
-        if (_selectedMonth < 0)  _selectedMonth = 0;
-
         // Each member gets a unique chart container id so two instances on
         // the same page (admin impersonation) don't fight for the same DOM
         // node.
@@ -620,7 +476,6 @@
             LoadRankDataAsync(),
             LoadResidualSummaryAsync(),
             LoadMembersAsync(),
-            LoadResidualsAsync(1),
             LoadChartDataAsync(),
             LoadDtTrendAsync());
     }
@@ -694,71 +549,6 @@
             _membersError = $"{L["Team.ApiErrorPrefix"]} {ex.Message}";
         }
         finally { _membersLoading = false; }
-    }
-
-    private async Task LoadResidualsAsync(int page)
-    {
-        _residualPage    = page;
-        _residualsLoading = true;
-        _residualsError   = null;
-        StateHasChanged();
-        try
-        {
-            var url = $"{ApiBaseUrl}/commissions/dual-residual?page={page}&pageSize={ResidualPageSize}";
-            if (!string.IsNullOrWhiteSpace(_residualSearch))
-                url += $"&search={Uri.EscapeDataString(_residualSearch)}";
-            if (_selectedYear > 0)
-                url += $"&year={_selectedYear}";
-            if (_selectedMonth >= 1 && _selectedMonth <= 12)
-                url += $"&month={_selectedMonth}";
-
-            var resp = await Http.GetFromJsonAsync<ApiWrapper<PagedData<DualResidualDto>>>(url);
-            if (resp?.Success == true && resp.Data is not null)
-            {
-                _residuals          = resp.Data.Items;
-                _residualTotal      = resp.Data.TotalCount;
-                _residualTotalPages = (int)Math.Ceiling((double)_residualTotal / ResidualPageSize);
-            }
-            else
-            {
-                _residualsError = L["Team.LoadFailedResiduals"];
-            }
-        }
-        catch (Exception ex)
-        {
-            _residualsError = $"{L["Team.ApiErrorPrefix"]} {ex.Message}";
-        }
-        finally { _residualsLoading = false; }
-    }
-
-    // ── Search / filter handlers ──────────────────────────────────────────────
-    private System.Threading.CancellationTokenSource? _searchCts;
-
-    private async Task OnResidualSearchInput(Microsoft.AspNetCore.Components.ChangeEventArgs e)
-    {
-        _residualSearch = e.Value?.ToString();
-        _searchCts?.Cancel();
-        _searchCts = new System.Threading.CancellationTokenSource();
-        var token = _searchCts.Token;
-        try
-        {
-            await Task.Delay(350, token);
-            if (!token.IsCancellationRequested)
-                await LoadResidualsAsync(1);
-        }
-        catch (TaskCanceledException) { /* debounced */ }
-    }
-
-    private async Task OnYearChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
-    {
-        if (int.TryParse(e.Value?.ToString(), out var y)) _selectedYear = y;
-        await LoadResidualsAsync(1);
-    }
-
-    private async Task OnMonthChange(Microsoft.AspNetCore.Components.ChangeEventArgs e)
-    {
-        if (int.TryParse(e.Value?.ToString(), out var m)) _selectedMonth = m;
-        await LoadResidualsAsync(1);
     }
 
     // ── Chart loader + JSInterop ─────────────────────────────────────────────
@@ -862,12 +652,6 @@
         catch { /* circuit may already be down */ }
     }
 
-    /// <summary>Some cultures (es, fr, it...) report month names lowercase.
-    /// Capitalize the first letter so the dropdown reads consistently across
-    /// languages.</summary>
-    private static string CapitalizeFirst(string s) =>
-        string.IsNullOrEmpty(s) ? s : char.ToUpper(s[0]) + s.Substring(1);
-
     // ── Render helpers ───────────────────────────────────────────────────────
     private RenderFragment RenderDonut(int pct, int value) => __builder =>
     {
@@ -921,18 +705,6 @@
         }
     };
 
-    private RenderFragment RenderResidualStatusBadge(string status) => __builder =>
-    {
-        var cls = status?.ToLower() switch
-        {
-            "paid"      => "success",
-            "pending"   => "warning",
-            "cancelled" => "danger",
-            _           => "secondary"
-        };
-        <span class="badge bg-@cls bg-opacity-10 text-@cls p-2 fs-12 fw-normal">@(status ?? "—")</span>
-    };
-
     // "X / Y" pair formatter. Threshold == 0 means the dimension does not apply
     // at this rank — show "—" instead of "0 / 0" so the user is not misled into
     // chasing a non-existent target. Null threshold (rank data still loading)
@@ -956,7 +728,6 @@
 
     // ── DTOs ─────────────────────────────────────────────────────────────────
     private class ApiWrapper<T> { public bool Success { get; set; } public T? Data { get; set; } }
-    private class PagedData<T>  { public List<T> Items { get; set; } = new(); public int TotalCount { get; set; } }
 
     private class MonthlyAmountDto
     {
@@ -1014,10 +785,4 @@
         public int     NextRankEligiblePoints    { get; set; }
         public int     NextRankEligiblePct       { get; set; }
     }
-
-    private record DualResidualDto(
-        DateTime EarnedDate,
-        decimal  Amount,
-        string   Status,
-        int      EligiblePoints);
 }

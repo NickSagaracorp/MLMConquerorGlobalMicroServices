@@ -67,6 +67,8 @@ public class SqlServerEntraxSettlementTests : IAsyncLifetime
             DELETE FROM PaymentHistories WHERE OrderId = {o};
             DELETE FROM CryptoPaymentConfirmations WHERE OrderId = {o};
             DELETE FROM MemberStatisticDeltas WHERE SourceMemberId = {m};
+            DELETE FROM MembershipStatusHistories WHERE MemberId = {m};
+            DELETE FROM MemberStatusHistories WHERE MemberId = {m};
             DELETE FROM MembershipSubscriptions WHERE MemberId = {m};
             DELETE FROM Orders WHERE Id = {o} OR Id = {o2};
             DELETE FROM MemberProfiles WHERE MemberId = {m};");

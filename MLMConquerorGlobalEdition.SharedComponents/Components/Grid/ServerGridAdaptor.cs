@@ -89,6 +89,14 @@ public class ServerGridAdaptor<TValue> : DataAdaptor
     /// </summary>
     [Parameter] public Func<Task<string?>>? AccessTokenProvider { get; set; }
 
+    /// <summary>
+    /// Opcional (Plan J). Si se pasa, una respuesta que no es 2xx NO lanza: se entrega el
+    /// <c>errorCode</c> del cuerpo (o null si no lo trae) y la lectura devuelve una página vacía,
+    /// para que el anfitrión explique el rechazo (p. ej. un rango de fechas no admitido). Sin él, el
+    /// adaptador falla como siempre.
+    /// </summary>
+    [Parameter] public Func<string?, Task>? OnServerError { get; set; }
+
     private HttpClient Client => Http ?? InjectedHttp;
 
     /// <inheritdoc />
@@ -125,6 +133,23 @@ public class ServerGridAdaptor<TValue> : DataAdaptor
             httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var resp = await Client.SendAsync(httpRequest).ConfigureAwait(false);
+        if (!resp.IsSuccessStatusCode && OnServerError is not null)
+        {
+            string? errorCode = null;
+            try
+            {
+                var error = await resp.Content
+                    .ReadFromJsonAsync<GridApiResponse<GridPagedResult<TValue>>>()
+                    .ConfigureAwait(false);
+                errorCode = error?.ErrorCode;
+            }
+            catch { /* cuerpo que no es JSON: se avisa sin código */ }
+
+            await OnServerError(errorCode).ConfigureAwait(false);
+            return dm.RequiresCounts
+                ? new DataResult { Result = new List<TValue>(), Count = 0 }
+                : new List<TValue>();
+        }
         resp.EnsureSuccessStatusCode();
 
         var payload = await resp.Content

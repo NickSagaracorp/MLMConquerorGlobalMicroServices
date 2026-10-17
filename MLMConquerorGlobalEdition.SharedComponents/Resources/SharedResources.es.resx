@@ -1447,4 +1447,50 @@
   <data name="Tokens.CardExpired" xml:space="preserve"><value>Vencida</value></data>
   <data name="Tokens.PaymentMethodsAria" xml:space="preserve"><value>Método de pago</value></data>
   <data name="Tokens.CopyCode" xml:space="preserve"><value>Copiar el código {0}</value></data>
+  <data name="Sidebar.MyLinks" xml:space="preserve"><value>Mis enlaces</value></data>
+  <data name="PageTitle.MyLinks" xml:space="preserve"><value>Mis enlaces</value></data>
+  <data name="MyLinks.Personal" xml:space="preserve"><value>Tus enlaces personales</value></data>
+  <data name="MyLinks.Corporate" xml:space="preserve"><value>Sitios corporativos</value></data>
+  <data name="MyLinks.Copy" xml:space="preserve"><value>Copiar</value></data>
+  <data name="MyLinks.Copied" xml:space="preserve"><value>Copiado</value></data>
+  <data name="MyLinks.NoSlug" xml:space="preserve"><value>Configura el nombre de tu sitio web en tu perfil para obtener tus enlaces personales.</value></data>
+  <data name="MyLinks.GoToProfile" xml:space="preserve"><value>Ir a mi perfil</value></data>
+  <data name="MyLinks.LoadFailed" xml:space="preserve"><value>No pudimos cargar tus enlaces. Inténtalo de nuevo.</value></data>
+  <data name="Reports.PeriodTotal" xml:space="preserve"><value>Total del periodo</value></data>
+  <data name="Reports.Comment" xml:space="preserve"><value>Comentario</value></data>
+  <data name="Reports.Consolidated" xml:space="preserve"><value>Consolidado</value></data>
+  <data name="Common.Year" xml:space="preserve"><value>Año</value></data>
+  <data name="Common.Month" xml:space="preserve"><value>Mes</value></data>
+  <data name="Common.AllMonths" xml:space="preserve"><value>Todos los meses</value></data>
+  <data name="Team.CustomersScopePersonal" xml:space="preserve"><value>Personales</value></data>
+  <data name="Team.CustomersScopeTeam" xml:space="preserve"><value>Todo el equipo</value></data>
+  <data name="Team.ContactOnlyPersonal" xml:space="preserve"><value>Los datos de contacto solo se muestran de tus clientes personales.</value></data>
+  <data name="Sidebar.Activity" xml:space="preserve"><value>Actividad</value></data>
+  <data name="PageTitle.EnrollmentActivity" xml:space="preserve"><value>Actividad de inscripción</value></data>
+  <data name="Activity.OtherLevel" xml:space="preserve"><value>Otros</value></data>
+  <data name="Reports.RangeInvalid" xml:space="preserve"><value>La fecha final tiene que ser igual o posterior a la inicial.</value></data>
+  <data name="Reports.RangeTooLong" xml:space="preserve"><value>El rango de fechas no puede superar {0} días.</value></data>
+  <data name="Reports.RangeTooOld" xml:space="preserve"><value>La fecha inicial no puede ser anterior al {0} (tres meses atrás).</value></data>
+  <data name="Reports.RangeInFuture" xml:space="preserve"><value>La fecha final no puede ser posterior a hoy.</value></data>
+  <data name="Reports.Apply" xml:space="preserve"><value>Aplicar</value></data>
+  <data name="Sidebar.StatusChanges" xml:space="preserve"><value>Cambios de estado</value></data>
+  <data name="Sidebar.CustomerChanges" xml:space="preserve"><value>Cambios de clientes</value></data>
+  <data name="PageTitle.EnrollmentChanges" xml:space="preserve"><value>Cambios de estado del equipo de inscripción</value></data>
+  <data name="PageTitle.DualTeamChanges" xml:space="preserve"><value>Cambios de estado del Dual Team</value></data>
+  <data name="PageTitle.CustomerChanges" xml:space="preserve"><value>Cambios de estado de clientes</value></data>
+  <data name="Changes.FirstName" xml:space="preserve"><value>Nombre</value></data>
+  <data name="Changes.LastName" xml:space="preserve"><value>Apellido</value></data>
+  <data name="Changes.ChangedOn" xml:space="preserve"><value>Cambió el {0}</value></data>
+  <data name="Changes.NoHistory" xml:space="preserve"><value>Aún no hay cambios registrados</value></data>
+  <data name="Reports.Left" xml:space="preserve"><value>Izquierda</value></data>
+  <data name="Reports.Right" xml:space="preserve"><value>Derecha</value></data>
+  <data name="Sidebar.Events" xml:space="preserve"><value>Eventos</value></data>
+  <data name="PageTitle.TeamEvents" xml:space="preserve"><value>Eventos del equipo</value></data>
+  <data name="Events.Select" xml:space="preserve"><value>Evento</value></data>
+  <data name="Events.None" xml:space="preserve"><value>No hay eventos activos.</value></data>
+  <data name="Events.RegisteredOnly" xml:space="preserve"><value>Solo inscritos</value></data>
+  <data name="Events.Registered" xml:space="preserve"><value>Inscritos</value></data>
+  <data name="Events.Tickets" xml:space="preserve"><value>Entradas</value></data>
+  <data name="Events.RegistrationDate" xml:space="preserve"><value>Fecha de registro</value></data>
+  <data name="Events.ImportPending" xml:space="preserve"><value>Las inscripciones a los eventos aparecerán aquí cuando se importen desde la plataforma de entradas.</value></data>
 </root>

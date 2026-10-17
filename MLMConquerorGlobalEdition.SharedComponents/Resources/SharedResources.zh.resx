@@ -1342,4 +1342,55 @@
   <data name="Tokens.CardExpired" xml:space="preserve"><value>已过期</value></data>
   <data name="Tokens.PaymentMethodsAria" xml:space="preserve"><value>付款方式</value></data>
   <data name="Tokens.CopyCode" xml:space="preserve"><value>复制代码 {0}</value></data>
+  <data name="Sidebar.MyLinks" xml:space="preserve"><value>我的链接</value></data>
+  <data name="PageTitle.MyLinks" xml:space="preserve"><value>我的链接</value></data>
+  <data name="MyLinks.Personal" xml:space="preserve"><value>您的个人链接</value></data>
+  <data name="MyLinks.Corporate" xml:space="preserve"><value>公司网站</value></data>
+  <data name="MyLinks.Copy" xml:space="preserve"><value>复制</value></data>
+  <data name="MyLinks.Copied" xml:space="preserve"><value>已复制</value></data>
+  <data name="MyLinks.NoSlug" xml:space="preserve"><value>请在个人资料中设置您的网站名称以获取个人链接。</value></data>
+  <data name="MyLinks.GoToProfile" xml:space="preserve"><value>前往我的资料</value></data>
+  <data name="MyLinks.LoadFailed" xml:space="preserve"><value>无法加载您的链接，请重试。</value></data>
+  <data name="Reports.PeriodTotal" xml:space="preserve"><value>期间合计</value></data>
+  <data name="Reports.Comment" xml:space="preserve"><value>备注</value></data>
+  <data name="Reports.Consolidated" xml:space="preserve"><value>已合并</value></data>
+  <data name="Common.Year" xml:space="preserve"><value>年份</value></data>
+  <data name="Common.Month" xml:space="preserve"><value>月份</value></data>
+  <data name="Common.AllMonths" xml:space="preserve"><value>所有月份</value></data>
+  <data name="Common.Of" xml:space="preserve"><value>/</value></data>
+  <data name="Common.Amount" xml:space="preserve"><value>金额</value></data>
+  <data name="Team.CustomersScopePersonal" xml:space="preserve"><value>个人</value></data>
+  <data name="Team.CustomersScopeTeam" xml:space="preserve"><value>整个团队</value></data>
+  <data name="Team.ContactOnlyPersonal" xml:space="preserve"><value>仅显示您个人客户的联系方式。</value></data>
+  <data name="Sidebar.Activity" xml:space="preserve"><value>注册动态</value></data>
+  <data name="PageTitle.EnrollmentActivity" xml:space="preserve"><value>注册动态</value></data>
+  <data name="Activity.OtherLevel" xml:space="preserve"><value>其他</value></data>
+  <data name="Reports.RangeInvalid" xml:space="preserve"><value>结束日期必须等于或晚于开始日期。</value></data>
+  <data name="Reports.RangeTooLong" xml:space="preserve"><value>日期范围不能超过 {0} 天。</value></data>
+  <data name="Reports.RangeTooOld" xml:space="preserve"><value>开始日期不能早于 {0}（三个月前）。</value></data>
+  <data name="Reports.RangeInFuture" xml:space="preserve"><value>结束日期不能晚于今天。</value></data>
+  <data name="Reports.Apply" xml:space="preserve"><value>应用</value></data>
+  <data name="Common.Error" xml:space="preserve"><value>错误</value></data>
+  <data name="Sidebar.StatusChanges" xml:space="preserve"><value>状态变更</value></data>
+  <data name="Sidebar.CustomerChanges" xml:space="preserve"><value>客户变更</value></data>
+  <data name="PageTitle.EnrollmentChanges" xml:space="preserve"><value>注册团队状态变更</value></data>
+  <data name="PageTitle.DualTeamChanges" xml:space="preserve"><value>双轨团队状态变更</value></data>
+  <data name="PageTitle.CustomerChanges" xml:space="preserve"><value>客户状态变更</value></data>
+  <data name="Changes.FirstName" xml:space="preserve"><value>名</value></data>
+  <data name="Changes.LastName" xml:space="preserve"><value>姓</value></data>
+  <data name="Changes.ChangedOn" xml:space="preserve"><value>变更于 {0}</value></data>
+  <data name="Changes.NoHistory" xml:space="preserve"><value>暂无变更记录</value></data>
+  <data name="Common.Yes" xml:space="preserve"><value>是</value></data>
+  <data name="Common.No" xml:space="preserve"><value>否</value></data>
+  <data name="Reports.Left" xml:space="preserve"><value>左</value></data>
+  <data name="Reports.Right" xml:space="preserve"><value>右</value></data>
+  <data name="Sidebar.Events" xml:space="preserve"><value>活动</value></data>
+  <data name="PageTitle.TeamEvents" xml:space="preserve"><value>团队活动</value></data>
+  <data name="Events.Select" xml:space="preserve"><value>活动</value></data>
+  <data name="Events.None" xml:space="preserve"><value>没有进行中的活动。</value></data>
+  <data name="Events.RegisteredOnly" xml:space="preserve"><value>仅已报名</value></data>
+  <data name="Events.Registered" xml:space="preserve"><value>已报名</value></data>
+  <data name="Events.Tickets" xml:space="preserve"><value>门票</value></data>
+  <data name="Events.RegistrationDate" xml:space="preserve"><value>报名日期</value></data>
+  <data name="Events.ImportPending" xml:space="preserve"><value>活动报名从票务平台导入后将显示在这里。</value></data>
 </root>

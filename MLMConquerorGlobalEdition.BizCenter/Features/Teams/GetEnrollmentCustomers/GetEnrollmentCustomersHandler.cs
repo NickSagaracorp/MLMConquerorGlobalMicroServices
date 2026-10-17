@@ -37,6 +37,7 @@ public class GetEnrollmentCustomersHandler
                 Email            = c.Email,
                 Phone            = c.Phone,
                 Country          = c.Country,
+                Level            = c.Level,
                 EnrollDate       = c.EnrollDate,
                 SponsorMemberId  = c.SponsorMemberId,
                 SponsorFullName  = c.SponsorFullName,

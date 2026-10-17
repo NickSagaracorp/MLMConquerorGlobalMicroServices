@@ -4,6 +4,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Tokens;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Services.Funds;
+using MLMConquerorGlobalEdition.Repository.Queries;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Features.Tokens;
 
@@ -33,7 +34,7 @@ internal static class TokenCustody
         if (sender is null || string.IsNullOrEmpty(sender.HierarchyPath))
             return new TeamCheck(null, false);
 
-        var senderPath = sender.HierarchyPath.EndsWith('/') ? sender.HierarchyPath : sender.HierarchyPath + "/";
+        var senderPath = TreePrefix.Of(sender.HierarchyPath);
         var storedSender = sender.MemberId;
 
         var inTeam = await db.GenealogyTree.AsNoTracking()

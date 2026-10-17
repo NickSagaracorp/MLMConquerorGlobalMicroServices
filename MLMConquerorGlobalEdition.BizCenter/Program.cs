@@ -94,6 +94,11 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.I
                             MLMConquerorGlobalEdition.Repository.Services.Teams.DualTreeNodeService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IEnrollmentTeamService,
                             MLMConquerorGlobalEdition.Repository.Services.Teams.EnrollmentTeamService>();
+// «Calificado» (Plan J, N3): un solo servicio. La anualidad no existe todavía (Plan K).
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IAnnualFeeStatus,
+                            MLMConquerorGlobalEdition.Repository.Services.Teams.AnnualFeeNotModeled>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IQualificationService,
+                            MLMConquerorGlobalEdition.Repository.Services.Teams.QualificationService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTeamService,
                             MLMConquerorGlobalEdition.Repository.Services.Teams.DualTeamService>();
 
@@ -104,6 +109,26 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Trees.I
                             MLMConquerorGlobalEdition.Repository.Services.Trees.DualTeamPointsRecalculator>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Commissions.ICommissionsService,
                             MLMConquerorGlobalEdition.Repository.Services.Commissions.CommissionsService>();
+
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Commissions.IDailyResidualReportService,
+                            MLMConquerorGlobalEdition.Repository.Services.Commissions.DailyResidualReportService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IEnrollmentActivityService,
+                            MLMConquerorGlobalEdition.Repository.Services.Teams.EnrollmentActivityService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.ITeamStatusChangesService,
+                            MLMConquerorGlobalEdition.Repository.Services.Teams.TeamStatusChangesService>();
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Events.ITeamEventRegistrationsService,
+                            MLMConquerorGlobalEdition.Repository.Services.Events.TeamEventRegistrationsService>();
+
+// "Mis enlaces" (Plan J): plantillas de appsettings validadas al arrancar. Con una plantilla
+// inválida el BizCenter no arranca (R11). Sin sección no hay enlaces, y arranca. Un
+// appsettings.{Entorno}.json fusiona la lista POR ÍNDICE (no la sustituye): para cambiarla en un
+// entorno hay que repetirla entera.
+MLMConquerorGlobalEdition.Repository.Services.Links.MyLinksServiceCollectionExtensions.AddMyLinks(
+    builder.Services,
+    builder.Configuration
+        .GetSection(MLMConquerorGlobalEdition.Repository.Services.Links.MyLinksOptions.SectionName)
+        .Get<MLMConquerorGlobalEdition.Repository.Services.Links.MyLinksOptions>()
+    ?? new MLMConquerorGlobalEdition.Repository.Services.Links.MyLinksOptions());
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Wallets.IMemberWalletService,
                             MLMConquerorGlobalEdition.Repository.Services.Wallets.MemberWalletService>();
 

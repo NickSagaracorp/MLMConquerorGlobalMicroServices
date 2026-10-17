@@ -50,6 +50,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
 
     public DbSet<MemberProfile> MemberProfiles => Set<MemberProfile>();
     public DbSet<MemberStatusHistory> MemberStatusHistories => Set<MemberStatusHistory>();
+    public DbSet<MembershipStatusHistory> MembershipStatusHistories => Set<MembershipStatusHistory>();
     public DbSet<MemberAddressHistory> MemberAddressHistories => Set<MemberAddressHistory>();
     public DbSet<MemberCredentialChangeLog> MemberCredentialChangeLogs => Set<MemberCredentialChangeLog>();
     public DbSet<MemberIdentificationType> MemberIdentificationTypes => Set<MemberIdentificationType>();
@@ -108,6 +109,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     public DbSet<TokenPurchase> TokenPurchases => Set<TokenPurchase>();
 
     public DbSet<CorporateEvent> CorporateEvents => Set<CorporateEvent>();
+    public DbSet<CorporateEventRegistration> CorporateEventRegistrations => Set<CorporateEventRegistration>();
     public DbSet<CorporatePromo> CorporatePromos => Set<CorporatePromo>();
     public DbSet<CorporateContest> CorporateContests => Set<CorporateContest>();
     public DbSet<CorporateContestTranslation> CorporateContestTranslations => Set<CorporateContestTranslation>();
@@ -190,6 +192,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     {
         // SecurityFactorsInterceptor va aquí y no en el registro de cada anfitrión por la misma
         // razón que existe: un anfitrión que se olvidara de añadirlo cambiaría factores sin sellar.
-        optionsBuilder.AddInterceptors(new AuditInterceptor(), new SecurityFactorsInterceptor());
+        // StatusHistoryInterceptor (Plan J), por lo mismo: un anfitrión sin él cambiaría estados
+        // sin dejar historial.
+        optionsBuilder.AddInterceptors(
+            new AuditInterceptor(), new SecurityFactorsInterceptor(), new StatusHistoryInterceptor());
     }
 }

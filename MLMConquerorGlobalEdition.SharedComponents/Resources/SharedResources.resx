@@ -1514,4 +1514,45 @@
   <data name="Tokens.CardExpired" xml:space="preserve"><value>Expired</value></data>
   <data name="Tokens.PaymentMethodsAria" xml:space="preserve"><value>Payment method</value></data>
   <data name="Tokens.CopyCode" xml:space="preserve"><value>Copy code {0}</value></data>
+  <data name="Sidebar.MyLinks" xml:space="preserve"><value>My Links</value></data>
+  <data name="PageTitle.MyLinks" xml:space="preserve"><value>My Links</value></data>
+  <data name="MyLinks.Personal" xml:space="preserve"><value>Your personal links</value></data>
+  <data name="MyLinks.Corporate" xml:space="preserve"><value>Corporate sites</value></data>
+  <data name="MyLinks.Copy" xml:space="preserve"><value>Copy</value></data>
+  <data name="MyLinks.Copied" xml:space="preserve"><value>Copied</value></data>
+  <data name="MyLinks.NoSlug" xml:space="preserve"><value>Set up your website name in your profile to get your personal links.</value></data>
+  <data name="MyLinks.GoToProfile" xml:space="preserve"><value>Go to my profile</value></data>
+  <data name="MyLinks.LoadFailed" xml:space="preserve"><value>We couldn't load your links. Please try again.</value></data>
+  <data name="Reports.PeriodTotal" xml:space="preserve"><value>Period total</value></data>
+  <data name="Reports.Comment" xml:space="preserve"><value>Comment</value></data>
+  <data name="Reports.Consolidated" xml:space="preserve"><value>Consolidated</value></data>
+  <data name="Team.CustomersScopePersonal" xml:space="preserve"><value>Personal</value></data>
+  <data name="Team.CustomersScopeTeam" xml:space="preserve"><value>Whole team</value></data>
+  <data name="Team.ContactOnlyPersonal" xml:space="preserve"><value>Contact details are shown only for your personal customers.</value></data>
+  <data name="Sidebar.Activity" xml:space="preserve"><value>Activity</value></data>
+  <data name="PageTitle.EnrollmentActivity" xml:space="preserve"><value>Enrollment activity</value></data>
+  <data name="Activity.OtherLevel" xml:space="preserve"><value>Other</value></data>
+  <data name="Reports.RangeInvalid" xml:space="preserve"><value>The end date must be on or after the start date.</value></data>
+  <data name="Reports.RangeTooLong" xml:space="preserve"><value>The date range can't exceed {0} days.</value></data>
+  <data name="Reports.RangeTooOld" xml:space="preserve"><value>The start date can't be earlier than {0} (three months back).</value></data>
+  <data name="Reports.RangeInFuture" xml:space="preserve"><value>The end date can't be later than today.</value></data>
+  <data name="Reports.Apply" xml:space="preserve"><value>Apply</value></data>
+  <data name="Sidebar.StatusChanges" xml:space="preserve"><value>Status changes</value></data>
+  <data name="Sidebar.CustomerChanges" xml:space="preserve"><value>Customer changes</value></data>
+  <data name="PageTitle.EnrollmentChanges" xml:space="preserve"><value>Enrollment team status changes</value></data>
+  <data name="PageTitle.DualTeamChanges" xml:space="preserve"><value>Dual Team status changes</value></data>
+  <data name="PageTitle.CustomerChanges" xml:space="preserve"><value>Customer status changes</value></data>
+  <data name="Changes.FirstName" xml:space="preserve"><value>First name</value></data>
+  <data name="Changes.LastName" xml:space="preserve"><value>Last name</value></data>
+  <data name="Changes.ChangedOn" xml:space="preserve"><value>Changed on {0}</value></data>
+  <data name="Changes.NoHistory" xml:space="preserve"><value>No change recorded yet</value></data>
+  <data name="Sidebar.Events" xml:space="preserve"><value>Events</value></data>
+  <data name="PageTitle.TeamEvents" xml:space="preserve"><value>Team events</value></data>
+  <data name="Events.Select" xml:space="preserve"><value>Event</value></data>
+  <data name="Events.None" xml:space="preserve"><value>There are no active events.</value></data>
+  <data name="Events.RegisteredOnly" xml:space="preserve"><value>Registered only</value></data>
+  <data name="Events.Registered" xml:space="preserve"><value>Registered</value></data>
+  <data name="Events.Tickets" xml:space="preserve"><value>Tickets</value></data>
+  <data name="Events.RegistrationDate" xml:space="preserve"><value>Registration date</value></data>
+  <data name="Events.ImportPending" xml:space="preserve"><value>Event registrations will appear here once they are imported from the ticketing platform.</value></data>
 </root>

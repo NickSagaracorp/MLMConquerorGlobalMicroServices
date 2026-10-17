@@ -103,12 +103,18 @@ public class TeamController : ControllerBase
         return Ok(ApiResponse<PagedResult<EnrollmentMyTeamMemberView>>.Ok(result));
     }
 
-    /// <summary>POST /api/v1/bizcenter/team/enrollment/customers/grid</summary>
+    /// <summary>POST /api/v1/bizcenter/team/enrollment/customers/grid?scope=personal|team</summary>
+    /// <remarks>
+    /// Plan J: <c>scope=personal</c> lista solo los clientes que inscribió el miembro del token;
+    /// cualquier otro valor, todo su equipo de inscripción. El contacto solo sale de los personales.
+    /// </remarks>
     [HttpPost("enrollment/customers/grid")]
     [ReadOnlySafe]
-    public async Task<IActionResult> GetEnrollmentCustomersGrid([FromBody] GridDataRequest request, CancellationToken ct = default)
+    public async Task<IActionResult> GetEnrollmentCustomersGrid(
+        [FromBody] GridDataRequest request, [FromQuery] string? scope = null, CancellationToken ct = default)
     {
-        var result = await _enrollment.GetCustomersGridAsync(_currentUser.MemberId, request, ct);
+        var result = await _enrollment.GetCustomersGridAsync(
+            _currentUser.MemberId, request, CustomerScopes.Parse(scope), ct);
         return Ok(ApiResponse<PagedResult<EnrollmentCustomerView>>.Ok(result));
     }
 

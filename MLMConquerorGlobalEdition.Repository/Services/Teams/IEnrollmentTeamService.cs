@@ -31,8 +31,12 @@ public interface IEnrollmentTeamService
         CancellationToken ct = default);
 
     /// <summary>Server-side grid read over all customers in the viewer's enrollment downline.</summary>
+    /// <remarks>
+    /// Plan J: <paramref name="scope"/> elige los clientes personales o todo el equipo de
+    /// inscripción; el contacto solo sale de los personales.
+    /// </remarks>
     Task<PagedResult<EnrollmentCustomerView>> GetCustomersGridAsync(
-        string memberId, GridDataRequest request, CancellationToken ct = default);
+        string memberId, GridDataRequest request, CustomerScope scope, CancellationToken ct = default);
 
     Task<EnrollmentVisualizerStatsView> GetVisualizerStatsAsync(
         string memberId, CancellationToken ct = default);

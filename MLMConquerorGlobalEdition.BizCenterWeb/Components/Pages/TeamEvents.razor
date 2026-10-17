@@ -1,0 +1,8 @@
+@page "/events"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
+
+<PageTitle>@L["PageTitle.TeamEvents"]</PageTitle>
+
+<TeamEventRegistrations />

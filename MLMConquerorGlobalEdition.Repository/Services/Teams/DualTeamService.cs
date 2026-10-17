@@ -6,6 +6,7 @@ using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.Repository.Queries;
 
 namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 
@@ -14,11 +15,13 @@ public class DualTeamService : IDualTeamService
 {
     private readonly AppDbContext            _db;
     private readonly IRankComputationService _ranks;
+    private readonly IQualificationService   _qualification;
 
-    public DualTeamService(AppDbContext db, IRankComputationService ranks)
+    public DualTeamService(AppDbContext db, IRankComputationService ranks, IQualificationService qualification)
     {
-        _db    = db;
-        _ranks = ranks;
+        _db            = db;
+        _ranks         = ranks;
+        _qualification = qualification;
     }
 
     /// <summary>String columns the dual-team grid search box matches against.</summary>
@@ -133,9 +136,10 @@ public class DualTeamService : IDualTeamService
 
     private IQueryable<DualMyTeamRow> BuildMyTeamRowQueryable(string pathPrefix, string memberId)
     {
+        var prefix = TreePrefix.Of(pathPrefix);
         return
             from d in _db.DualTeamTree.AsNoTracking()
-            where d.HierarchyPath.StartsWith(pathPrefix) && d.MemberId != memberId
+            where d.HierarchyPath.StartsWith(prefix) && d.MemberId != memberId
             join m in _db.MemberProfiles.AsNoTracking() on d.MemberId equals m.MemberId
             select new DualMyTeamRow
             {
@@ -165,6 +169,9 @@ public class DualTeamService : IDualTeamService
 
         var rootDepth = SegmentCount(pathPrefix);
         var ids       = rows.Select(r => r.MemberId).ToList();
+
+        // «Calificado» con la regla de Nick (Plan J, N3), no «la suscripción está activa».
+        var qualified = await _qualification.AreQualifiedAsync(ids, ct);
 
         // Gateway children of the viewer (≤2): their Side is the leg of any descendant whose
         // path passes through them (the first segment after the viewer's path).
@@ -245,7 +252,7 @@ public class DualTeamService : IDualTeamService
                 DualUplineFullName   = uplineName,
                 AccountStatus        = r.AccountStatus,
                 MembershipStatus     = sub?.SubscriptionStatus.ToString() ?? "None",
-                IsQualified          = sub?.SubscriptionStatus == MembershipStatus.Active,
+                IsQualified          = qualified.GetValueOrDefault(r.MemberId),
                 MembershipLevelName  = sub?.MembershipLevel?.Name,
                 CurrentRankName      = cr?.RankDefinition?.Name,
                 RankDate             = cr?.AchievedAt,
@@ -301,6 +308,7 @@ public class DualTeamService : IDualTeamService
         var rootPath = await _db.DualTeamTree.AsNoTracking()
             .Where(d => d.MemberId == rootMemberId).Select(d => d.HierarchyPath).FirstOrDefaultAsync(ct);
         if (string.IsNullOrEmpty(rootPath)) return new();
+        rootPath = TreePrefix.Of(rootPath);
 
         var s = term.Trim().ToLower();
         var matches = await (
@@ -358,11 +366,12 @@ public class DualTeamService : IDualTeamService
             .Select(d => new { d.MemberId, d.HierarchyPath })
             .FirstOrDefaultAsync(ct);
         if (gateway is null) return null;
+        var gatewayPrefix = TreePrefix.Of(gateway.HierarchyPath);
 
         // Deepest descendant on this leg — longest path string is the deepest (each level adds a
         // segment). Approximate but monotonic with depth, which is all a "jump to deepest" needs.
         var deepest = await _db.DualTeamTree.AsNoTracking()
-            .Where(d => d.HierarchyPath.StartsWith(gateway.HierarchyPath))
+            .Where(d => d.HierarchyPath.StartsWith(gatewayPrefix))
             .OrderByDescending(d => d.HierarchyPath.Length)
             .Select(d => new { d.MemberId, d.HierarchyPath })
             .FirstOrDefaultAsync(ct)

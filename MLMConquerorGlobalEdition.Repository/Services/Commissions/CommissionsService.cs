@@ -4,6 +4,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
 namespace MLMConquerorGlobalEdition.Repository.Services.Commissions;
 
@@ -21,15 +22,21 @@ public class CommissionsService : ICommissionsService
     // Comp plan: Elite=6 pts, Turbo=6 pts, VIP=1 pt per active subscription.
     private static readonly Dictionary<int, int> LevelPoints = new() { [2] = 1, [3] = 6, [4] = 6 };
 
-    private readonly AppDbContext _db;
+    private readonly AppDbContext      _db;
+    private readonly IDateTimeProvider _clock;
 
-    public CommissionsService(AppDbContext db) => _db = db;
+    /// <param name="clock">Hora de servidor (Plan J): el "ahora" de todo el servicio sale de aquí.</param>
+    public CommissionsService(AppDbContext db, IDateTimeProvider clock)
+    {
+        _db    = db;
+        _clock = clock;
+    }
 
     // ─── Summary ───────────────────────────────────────────────────────────
     public async Task<CommissionSummaryView> GetSummaryAsync(
         string memberId, CancellationToken ct = default)
     {
-        var currentYear = DateTime.UtcNow.Year;
+        var currentYear = _clock.Now.Year;
 
         var earnings = await _db.CommissionEarnings
             .AsNoTracking()
@@ -290,29 +297,27 @@ public class CommissionsService : ICommissionsService
         string memberId, int months, CancellationToken ct = default)
     {
         if (months <= 0) months = 6;
+        months = Math.Min(months, 24);
 
-        // Anchor on the first day of the current month (UTC). Build the
-        // window backwards so the user always sees the current month as the
-        // last bar even when there has been no recent activity.
-        var anchor    = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        // Plan J: el gráfico lee DailyResidualEarnings, que es lo que escribe el motor de residuales.
+        // CommissionEarnings de la categoría 3 mezcla débitos negativos y consolidaciones.
+        // Ancla en el día 1 del mes en curso según la hora del SERVIDOR; la ventana va hacia atrás
+        // para que el último punto sea siempre el mes en curso, aunque no haya actividad.
+        var now       = _clock.Now;
+        var anchor    = new DateTime(now.Year, now.Month, 1);
         var rangeFrom = anchor.AddMonths(-(months - 1));
         var rangeTo   = anchor.AddMonths(1);    // exclusive upper bound
 
-        var raw = await _db.CommissionEarnings.AsNoTracking()
-            .Where(c => c.BeneficiaryMemberId == memberId
-                     && c.Status              != CommissionEarningStatus.Cancelled
-                     && c.EarnedDate          >= rangeFrom
-                     && c.EarnedDate          <  rangeTo)
-            .Join(
-                _db.CommissionTypes.Where(t => t.CommissionCategoryId == DualTeamResidualCategoryId),
-                c   => c.CommissionTypeId,
-                ct2 => ct2.Id,
-                (c, _) => new { c.EarnedDate, c.Amount })
+        var raw = await _db.DailyResidualEarnings.AsNoTracking()
+            .Where(e => e.BeneficiaryMemberId == memberId
+                     && e.Status              != CommissionEarningStatus.Cancelled
+                     && e.EarnedDate          >= rangeFrom
+                     && e.EarnedDate          <  rangeTo)
+            .GroupBy(e => new { e.EarnedDate.Year, e.EarnedDate.Month })
+            .Select(g => new { g.Key.Year, g.Key.Month, Amount = g.Sum(e => e.Amount) })
             .ToListAsync(ct);
 
-        var bucketed = raw
-            .GroupBy(r => new { r.EarnedDate.Year, r.EarnedDate.Month })
-            .ToDictionary(g => (g.Key.Year, g.Key.Month), g => g.Sum(x => x.Amount));
+        var bucketed = raw.ToDictionary(r => (r.Year, r.Month), r => r.Amount);
 
         var series = new List<MonthlyAmountView>(months);
         for (var i = 0; i < months; i++)
@@ -335,7 +340,7 @@ public class CommissionsService : ICommissionsService
     public async Task<CommissionBonusSummaryView> GetFastStartBonusSummaryAsync(
         string memberId, CancellationToken ct = default)
     {
-        var now = DateTime.Now;
+        var now = _clock.Now;
 
         // 1. Eligible sponsored member IDs (only active Elite / Turbo memberships count)
         var eligibleMemberIds = await _db.MembershipSubscriptions
@@ -559,7 +564,7 @@ public class CommissionsService : ICommissionsService
     public async Task<BoostBonusWeekStatsView> GetBoostBonusWeekStatsAsync(
         string memberId, CancellationToken ct = default)
     {
-        var today      = DateTime.UtcNow;
+        var today      = _clock.Now;
         var dayOfWeek  = (int)today.DayOfWeek;
         var daysToMon  = dayOfWeek == 0 ? -6 : -(dayOfWeek - 1);
         var weekStart  = today.AddDays(daysToMon).Date;
@@ -711,7 +716,7 @@ public class CommissionsService : ICommissionsService
     public async Task<CarBonusStatsView> GetCarBonusStatsAsync(
         string memberId, CancellationToken ct = default)
     {
-        var today = DateTime.UtcNow;
+        var today = _clock.Now;
 
         // Resolve Car Bonus threshold from CommissionType config
         var carBonusType = await _db.CommissionTypes

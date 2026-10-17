@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 
 namespace MLMConquerorGlobalEdition.Repository.Services.Ranks;
 
@@ -65,12 +66,13 @@ public sealed class EnrollmentTeamPointsService : IEnrollmentTeamPointsService
             .FirstOrDefaultAsync(g => g.MemberId == memberId, ct);
         if (node is null)
             return 0;
+        var subtreePrefix = TreePrefix.Of(node.HierarchyPath);
 
         // EnrollmentPoints = the member's OWN points + every downline member's points.
         // So the recompute sums completed-order points over the whole subtree
         // INCLUDING the member themselves.
         var subtreeIds = await _db.GenealogyTree.AsNoTracking()
-            .Where(g => g.HierarchyPath.StartsWith(node.HierarchyPath))
+            .Where(g => g.HierarchyPath.StartsWith(subtreePrefix))
             .Select(g => g.MemberId)
             .ToListAsync(ct);
 
