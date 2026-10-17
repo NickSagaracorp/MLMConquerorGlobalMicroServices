@@ -12,6 +12,7 @@ using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Domain.Exceptions;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Identity;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs;
@@ -221,10 +222,15 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
                 .FirstOrDefaultAsync(g => g.MemberId == sponsorMemberId, ct);
         }
 
+        // Plan M: el Node cuelga del nodo del patrocinador (o es una raíz nueva si no tiene nodo).
+        // Si el patrocinador aún no tiene Node (relleno pendiente), queda nulo y lo pondrá el relleno.
+        var genealogyNodeId = await GenealogyNodes.NextChildAsync(_db, sponsorNode?.MemberId, ct);
+
         var genealogyNode = new GenealogyEntity
         {
             MemberId       = memberId,
             ParentMemberId = sponsorMemberId,
+            Node           = genealogyNodeId,
             HierarchyPath  = sponsorNode is not null
                 ? $"{sponsorNode.HierarchyPath}{memberId}/"
                 : $"/{memberId}/",
@@ -329,7 +335,9 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
             await _db.SaveChangesAsync(ct);
             break; // saved cleanly
         }
-        catch (DbUpdateException ex) when (IsDuplicateMemberIdViolation(ex) && idAttempt < 5)
+        // Plan M (R5): dos altas simultáneas bajo el mismo patrocinador pueden calcular el mismo Node;
+        // el índice único rechaza a la segunda, que reintenta con el siguiente ordinal.
+        catch (DbUpdateException ex) when ((IsDuplicateMemberIdViolation(ex) || GenealogyNodes.IsDuplicateNode(ex)) && idAttempt < 5)
         {
             // Concurrent MemberId collision — drop the rejected batch and rebuild with a fresh id.
             _db.ChangeTracker.Clear();
