@@ -8,6 +8,7 @@ using MLMConquerorGlobalEdition.RankEngine.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.Repository.Queries;
 
 namespace MLMConquerorGlobalEdition.RankEngine.Features.GetRankProgress;
 
@@ -120,7 +121,7 @@ public class GetRankProgressHandler : IRequestHandler<GetRankProgressQuery, Resu
 
         if (memberGenealogyNode is not null)
         {
-            var subtreePath = memberGenealogyNode.HierarchyPath;
+            var subtreePath = TreePrefix.Of(memberGenealogyNode.HierarchyPath);
 
             // Qualified = members with at least one active subscription in subtree
             var subtreeMembers = await _db.GenealogyTree
@@ -138,7 +139,7 @@ public class GetRankProgressHandler : IRequestHandler<GetRankProgressQuery, Resu
         // Placement qualified members in dual tree subtree
         if (dualNode is not null)
         {
-            var dualSubtreePath = dualNode.HierarchyPath;
+            var dualSubtreePath = TreePrefix.Of(dualNode.HierarchyPath);
             var dualSubtreeMembers = await _db.DualTeamTree
                 .AsNoTracking()
                 .Where(d => d.HierarchyPath.StartsWith(dualSubtreePath) && d.MemberId != memberId)

@@ -6,6 +6,7 @@ using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.Repository.Queries;
 
 namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 
@@ -133,9 +134,10 @@ public class DualTeamService : IDualTeamService
 
     private IQueryable<DualMyTeamRow> BuildMyTeamRowQueryable(string pathPrefix, string memberId)
     {
+        var prefix = TreePrefix.Of(pathPrefix);
         return
             from d in _db.DualTeamTree.AsNoTracking()
-            where d.HierarchyPath.StartsWith(pathPrefix) && d.MemberId != memberId
+            where d.HierarchyPath.StartsWith(prefix) && d.MemberId != memberId
             join m in _db.MemberProfiles.AsNoTracking() on d.MemberId equals m.MemberId
             select new DualMyTeamRow
             {
@@ -301,6 +303,7 @@ public class DualTeamService : IDualTeamService
         var rootPath = await _db.DualTeamTree.AsNoTracking()
             .Where(d => d.MemberId == rootMemberId).Select(d => d.HierarchyPath).FirstOrDefaultAsync(ct);
         if (string.IsNullOrEmpty(rootPath)) return new();
+        rootPath = TreePrefix.Of(rootPath);
 
         var s = term.Trim().ToLower();
         var matches = await (
@@ -358,11 +361,12 @@ public class DualTeamService : IDualTeamService
             .Select(d => new { d.MemberId, d.HierarchyPath })
             .FirstOrDefaultAsync(ct);
         if (gateway is null) return null;
+        var gatewayPrefix = TreePrefix.Of(gateway.HierarchyPath);
 
         // Deepest descendant on this leg — longest path string is the deepest (each level adds a
         // segment). Approximate but monotonic with depth, which is all a "jump to deepest" needs.
         var deepest = await _db.DualTeamTree.AsNoTracking()
-            .Where(d => d.HierarchyPath.StartsWith(gateway.HierarchyPath))
+            .Where(d => d.HierarchyPath.StartsWith(gatewayPrefix))
             .OrderByDescending(d => d.HierarchyPath.Length)
             .Select(d => new { d.MemberId, d.HierarchyPath })
             .FirstOrDefaultAsync(ct)

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel.Security;
+using MLMConquerorGlobalEdition.Repository.Queries;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Services;
 
@@ -78,12 +79,15 @@ public sealed class DownlineGuard : IDownlineGuard
     public Task<bool> PuedeVerNodoBinarioAsync(ClaimsPrincipal? user, string? memberId, CancellationToken ct) =>
         SuyoOPersonalO(user, memberId, async (propio, objetivo) =>
         {
-            var raiz = await _db.DualTeamTree.AsNoTracking()
+            // El nodo más reciente del que mira (R8) y un prefijo que acaba en "/" (TreePrefix).
+            var ruta = await _db.DualTeamTree.AsNoTracking()
                 .Where(d => d.MemberId == propio)
+                .OrderByDescending(d => d.CreationDate)
                 .Select(d => d.HierarchyPath)
                 .FirstOrDefaultAsync(ct);
 
-            if (string.IsNullOrEmpty(raiz)) return false;
+            if (string.IsNullOrEmpty(ruta)) return false;
+            var raiz = TreePrefix.Of(ruta);
 
             return await _db.DualTeamTree.AsNoTracking()
                 .AnyAsync(d => d.MemberId == objetivo && d.HierarchyPath.StartsWith(raiz), ct);
@@ -92,12 +96,15 @@ public sealed class DownlineGuard : IDownlineGuard
     public Task<bool> PuedeVerRamaDePatrocinioAsync(ClaimsPrincipal? user, string? memberId, CancellationToken ct) =>
         SuyoOPersonalO(user, memberId, async (propio, objetivo) =>
         {
-            var raiz = await _db.GenealogyTree.AsNoTracking()
+            // El nodo más reciente del que mira (R8) y un prefijo que acaba en "/" (TreePrefix).
+            var ruta = await _db.GenealogyTree.AsNoTracking()
                 .Where(g => g.MemberId == propio)
+                .OrderByDescending(g => g.CreationDate)
                 .Select(g => g.HierarchyPath)
                 .FirstOrDefaultAsync(ct);
 
-            if (string.IsNullOrEmpty(raiz)) return false;
+            if (string.IsNullOrEmpty(ruta)) return false;
+            var raiz = TreePrefix.Of(ruta);
 
             return await _db.GenealogyTree.AsNoTracking()
                 .AnyAsync(g => g.MemberId == objetivo && g.HierarchyPath.StartsWith(raiz), ct);

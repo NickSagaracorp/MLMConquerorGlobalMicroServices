@@ -5,6 +5,7 @@ using MLMConquerorGlobalEdition.BizCenter.Services;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.Repository.Queries;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Features.Placement.GetAvailableNodes;
 
@@ -145,11 +146,12 @@ public class GetAvailableNodesHandler
 
         if (sponsorGenNode is null)
             return new List<string> { sponsorMemberId };
+        var sponsorPrefix = TreePrefix.Of(sponsorGenNode.HierarchyPath);
 
         // All descendants in enrollment tree using HierarchyPath
         var descendants = await _db.GenealogyTree
             .AsNoTracking()
-            .Where(g => g.HierarchyPath.StartsWith(sponsorGenNode.HierarchyPath))
+            .Where(g => g.HierarchyPath.StartsWith(sponsorPrefix))
             .Select(g => g.MemberId)
             .ToListAsync(ct);
 

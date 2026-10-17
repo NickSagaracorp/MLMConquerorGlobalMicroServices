@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.Repository.Queries;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 
@@ -38,7 +39,7 @@ public class NetworkController : ControllerBase
             return NotFound(ApiResponse<object>.Fail("NODE_NOT_FOUND", $"Member '{memberId}' not found in dual team tree."));
 
         // Load a subtree using the HierarchyPath prefix — much more efficient than recursive queries
-        var pathPrefix = root.HierarchyPath;
+        var pathPrefix = TreePrefix.Of(root.HierarchyPath);
         var allNodes = await _db.DualTeamTree.AsNoTracking()
             .Where(n => n.HierarchyPath.StartsWith(pathPrefix))
             .ToListAsync(ct);
@@ -75,8 +76,8 @@ public class NetworkController : ControllerBase
             var rightChildren = allNodes.Where(n => n.ParentMemberId == mid && n.Side == TreeSide.Right).ToList();
 
             // Count total in each leg
-            int leftCount = allNodes.Count(n => n.HierarchyPath.StartsWith(pathPrefix) && leftChildren.Any(lc => n.HierarchyPath.StartsWith(lc.HierarchyPath)));
-            int rightCount = allNodes.Count(n => n.HierarchyPath.StartsWith(pathPrefix) && rightChildren.Any(rc => n.HierarchyPath.StartsWith(rc.HierarchyPath)));
+            int leftCount = allNodes.Count(n => n.HierarchyPath.StartsWith(pathPrefix) && leftChildren.Any(lc => n.HierarchyPath.StartsWith(TreePrefix.Of(lc.HierarchyPath))));
+            int rightCount = allNodes.Count(n => n.HierarchyPath.StartsWith(pathPrefix) && rightChildren.Any(rc => n.HierarchyPath.StartsWith(TreePrefix.Of(rc.HierarchyPath))));
 
             BinaryNodeDto? leftNode = null;
             BinaryNodeDto? rightNode = null;

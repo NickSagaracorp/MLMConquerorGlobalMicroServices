@@ -9,6 +9,7 @@ using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.Repository.Queries;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Controllers;
 
@@ -87,7 +88,7 @@ public class AdminMemberDualTeamController : ControllerBase
         if (rootNode is null)
             return Ok(ApiResponse<PagedResult<DualTeamMemberDto>>.Ok(new PagedResult<DualTeamMemberDto>()));
 
-        var pathPrefix = rootNode.HierarchyPath;
+        var pathPrefix = TreePrefix.Of(rootNode.HierarchyPath);
         var rootDepth  = pathPrefix.Split('/', StringSplitOptions.RemoveEmptyEntries).Length;
 
         // 2. Page the binary subtree at the DB (join DualTeamTree subtree → profiles), instead
