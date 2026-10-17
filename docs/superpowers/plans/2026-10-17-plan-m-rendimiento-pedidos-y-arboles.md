@@ -2857,7 +2857,7 @@ git commit -m "Script versionado que activa READ_COMMITTED_SNAPSHOT con los serv
 - [ ] **Step 3: Activación en la base LOCAL (la ejecuta el coordinador o Nick, no el implementador)**
 
 1. Parar los servicios del worktree `-run` y cualquier otra conexión a la base local.
-2. Run: `sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -I -i Scripts/sql/plan-m/03-activar-rcsi.sql`
+2. Run: `sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -I -v Confirmo=LOCAL -i Scripts/sql/plan-m/03-activar-rcsi.sql` (en producción, `-v Confirmo=PRODUCCION_R6_R7_RESUELTOS`; revisión I-2)
    Expected: una fila `MLMConquerorGlobalEditionDb 1 OFF` y `VersionStoreMB` con un número pequeño. Si sale 51041, quedan sesiones abiertas.
 3. Verificar: `sqlcmd -S . -d master -E -C -W -I -Q "SELECT name, is_read_committed_snapshot_on FROM sys.databases WHERE name = N'MLMConquerorGlobalEditionDb'"`. Expected: `1`.
 4. Repetir las pruebas de candados: `dotnet test MLMConquerorGlobalEdition.Signups.Tests --filter SqlServerReclamoConcurrenteTests -nologo` y `dotnet test MLMConquerorGlobalEdition.Billing.Tests --filter SqlServerMemberFundsGateTests -nologo`. Expected: PASS.
