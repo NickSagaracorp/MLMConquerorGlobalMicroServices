@@ -1394,4 +1394,43 @@
   <data name="Events.RegistrationDate" xml:space="preserve"><value>报名日期</value></data>
   <data name="Events.ImportPending" xml:space="preserve"><value>活动报名从票务平台导入后将显示在这里。</value></data>
   <data name="StepUp.WhyAnnualFee" xml:space="preserve"><value>为了您的安全，支付年费前请输入验证码。</value></data>
+  <data name="AnnualFee.Title" xml:space="preserve"><value>Biz Center 年费</value></data>
+  <data name="AnnualFee.LoadFailed" xml:space="preserve"><value>无法加载您的年费信息。请稍后重试。</value></data>
+  <data name="AnnualFee.NotApplicable" xml:space="preserve"><value>只有 Ambassador 需要缴纳 Biz Center 年费。</value></data>
+  <data name="AnnualFee.Status.UpToDate" xml:space="preserve"><value>已缴清</value></data>
+  <data name="AnnualFee.Status.DueSoon" xml:space="preserve"><value>即将到期</value></data>
+  <data name="AnnualFee.Status.Due" xml:space="preserve"><value>已到期</value></data>
+  <data name="AnnualFee.Status.UnderReview" xml:space="preserve"><value>审核中</value></data>
+  <data name="AnnualFee.Status.Waived" xml:space="preserve"><value>已豁免</value></data>
+  <data name="AnnualFee.Status.NotApplicable" xml:space="preserve"><value>不适用</value></data>
+  <data name="AnnualFee.NextDue" xml:space="preserve"><value>下次到期日</value></data>
+  <data name="AnnualFee.LastPaid" xml:space="preserve"><value>上次付款</value></data>
+  <data name="AnnualFee.TokensAvailable" xml:space="preserve"><value>可用年费代币</value></data>
+  <data name="AnnualFee.Preference" xml:space="preserve"><value>用我的佣金和 eWallet 支付费用</value></data>
+  <data name="AnnualFee.PreferenceHelp" xml:space="preserve"><value>如果您没有年费代币，到期日我们会先使用您的佣金，然后使用您的 eWallet。</value></data>
+  <data name="AnnualFee.PreferenceSaved" xml:space="preserve"><value>偏好已保存。</value></data>
+  <data name="AnnualFee.PayWith" xml:space="preserve"><value>支付方式</value></data>
+  <data name="AnnualFee.Method.Token" xml:space="preserve"><value>年费代币</value></data>
+  <data name="AnnualFee.Method.CommissionBalance" xml:space="preserve"><value>佣金</value></data>
+  <data name="AnnualFee.Method.EWallet" xml:space="preserve"><value>eWallet</value></data>
+  <data name="AnnualFee.CardSoon" xml:space="preserve"><value>银行卡支付即将上线。</value></data>
+  <data name="AnnualFee.PayNow" xml:space="preserve"><value>立即支付</value></data>
+  <data name="AnnualFee.Retry" xml:space="preserve"><value>重试支付</value></data>
+  <data name="AnnualFee.Paid" xml:space="preserve"><value>年费已支付。您的下次到期日为 {0}。</value></data>
+  <data name="AnnualFee.ReadOnly" xml:space="preserve"><value>只读。</value></data>
+  <data name="AnnualFee.Error.NotDue" xml:space="preserve"><value>您的年费尚未到期。到期前 30 天起即可支付。</value></data>
+  <data name="AnnualFee.Error.AlreadyPaid" xml:space="preserve"><value>本周期的年费已支付。</value></data>
+  <data name="AnnualFee.Error.InProgress" xml:space="preserve"><value>本周期的一笔付款仍在处理中。请稍候再试。</value></data>
+  <data name="AnnualFee.Error.NeedsReview" xml:space="preserve"><value>本周期的一笔付款正在审核。请勿重复支付；如有需要我们会联系您。</value></data>
+  <data name="AnnualFee.Error.NoToken" xml:space="preserve"><value>您没有可用的年费代币。</value></data>
+  <data name="AnnualFee.Error.InsufficientCommissions" xml:space="preserve"><value>您的佣金余额不足以支付年费。</value></data>
+  <data name="AnnualFee.Error.EWallet" xml:space="preserve"><value>无法从您的 eWallet 扣款。请检查余额和账户，或选择其他方式。</value></data>
+  <data name="AnnualFee.Error.Waived" xml:space="preserve"><value>您无需支付年费。</value></data>
+  <data name="AnnualFee.Error.AccountNotActive" xml:space="preserve"><value>只有活跃账户才能支付年费。</value></data>
+  <data name="AnnualFee.Error.Busy" xml:space="preserve"><value>您的账户有另一笔付款正在进行。请稍后再试。</value></data>
+  <data name="AnnualFee.Error.Impersonation" xml:space="preserve"><value>代理会员期间无法支付或更改年费。</value></data>
+  <data name="AnnualFee.Error.StepUp" xml:space="preserve"><value>无法使用该验证码。请重新获取验证码后再试。</value></data>
+  <data name="AnnualFee.Error.Unavailable" xml:space="preserve"><value>无法确认付款。请重试：我们会识别这笔付款，不会重复扣款。</value></data>
+  <data name="AnnualFee.Error.Generic" xml:space="preserve"><value>无法支付年费。请稍后重试。</value></data>
+  <data name="AnnualFee.Error.MembershipOnHold" xml:space="preserve"><value>您的会员资格处于暂停状态，目前无需支付年费。</value></data>
 </root>

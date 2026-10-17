@@ -1458,4 +1458,43 @@
   <data name="Events.RegistrationDate" xml:space="preserve"><value>Anmeldedatum</value></data>
   <data name="Events.ImportPending" xml:space="preserve"><value>Die Anmeldungen zu den Veranstaltungen erscheinen hier, sobald sie aus der Ticketplattform importiert wurden.</value></data>
   <data name="StepUp.WhyAnnualFee" xml:space="preserve"><value>Geben Sie zu Ihrer Sicherheit einen Bestätigungscode ein, bevor Sie Ihre Jahresgebühr bezahlen.</value></data>
+  <data name="AnnualFee.Title" xml:space="preserve"><value>Jahresgebühr des Biz Center</value></data>
+  <data name="AnnualFee.LoadFailed" xml:space="preserve"><value>Ihre Jahresgebühr konnte nicht geladen werden. Versuchen Sie es später erneut.</value></data>
+  <data name="AnnualFee.NotApplicable" xml:space="preserve"><value>Nur Ambassadors zahlen die Jahresgebühr des Biz Center.</value></data>
+  <data name="AnnualFee.Status.UpToDate" xml:space="preserve"><value>Aktuell</value></data>
+  <data name="AnnualFee.Status.DueSoon" xml:space="preserve"><value>Bald fällig</value></data>
+  <data name="AnnualFee.Status.Due" xml:space="preserve"><value>Fällig</value></data>
+  <data name="AnnualFee.Status.UnderReview" xml:space="preserve"><value>In Prüfung</value></data>
+  <data name="AnnualFee.Status.Waived" xml:space="preserve"><value>Befreit</value></data>
+  <data name="AnnualFee.Status.NotApplicable" xml:space="preserve"><value>Nicht zutreffend</value></data>
+  <data name="AnnualFee.NextDue" xml:space="preserve"><value>Nächste Fälligkeit</value></data>
+  <data name="AnnualFee.LastPaid" xml:space="preserve"><value>Letzte Zahlung</value></data>
+  <data name="AnnualFee.TokensAvailable" xml:space="preserve"><value>Verfügbare Gebühren-Token</value></data>
+  <data name="AnnualFee.Preference" xml:space="preserve"><value>Meine Gebühren mit meinen Provisionen und meiner eWallet bezahlen</value></data>
+  <data name="AnnualFee.PreferenceHelp" xml:space="preserve"><value>Wenn Sie kein Gebühren-Token haben, verwenden wir am Fälligkeitstag zuerst Ihre Provisionen und dann Ihre eWallet.</value></data>
+  <data name="AnnualFee.PreferenceSaved" xml:space="preserve"><value>Einstellung gespeichert.</value></data>
+  <data name="AnnualFee.PayWith" xml:space="preserve"><value>Bezahlen mit</value></data>
+  <data name="AnnualFee.Method.Token" xml:space="preserve"><value>Gebühren-Token</value></data>
+  <data name="AnnualFee.Method.CommissionBalance" xml:space="preserve"><value>Provisionen</value></data>
+  <data name="AnnualFee.Method.EWallet" xml:space="preserve"><value>eWallet</value></data>
+  <data name="AnnualFee.CardSoon" xml:space="preserve"><value>Kartenzahlung ist bald verfügbar.</value></data>
+  <data name="AnnualFee.PayNow" xml:space="preserve"><value>Jetzt bezahlen</value></data>
+  <data name="AnnualFee.Retry" xml:space="preserve"><value>Zahlung erneut versuchen</value></data>
+  <data name="AnnualFee.Paid" xml:space="preserve"><value>Jahresgebühr bezahlt. Ihre nächste Fälligkeit ist am {0}.</value></data>
+  <data name="AnnualFee.ReadOnly" xml:space="preserve"><value>Nur Lesezugriff.</value></data>
+  <data name="AnnualFee.Error.NotDue" xml:space="preserve"><value>Ihre Jahresgebühr ist noch nicht fällig. Sie können sie ab 30 Tage vor der Fälligkeit bezahlen.</value></data>
+  <data name="AnnualFee.Error.AlreadyPaid" xml:space="preserve"><value>Die Jahresgebühr für diesen Zeitraum ist bereits bezahlt.</value></data>
+  <data name="AnnualFee.Error.InProgress" xml:space="preserve"><value>Eine Zahlung für diesen Zeitraum wird noch verarbeitet. Warten Sie einen Moment und versuchen Sie es erneut.</value></data>
+  <data name="AnnualFee.Error.NeedsReview" xml:space="preserve"><value>Eine Zahlung für diesen Zeitraum wird geprüft. Zahlen Sie nicht erneut; wir melden uns bei Bedarf.</value></data>
+  <data name="AnnualFee.Error.NoToken" xml:space="preserve"><value>Sie haben kein Gebühren-Token verfügbar.</value></data>
+  <data name="AnnualFee.Error.InsufficientCommissions" xml:space="preserve"><value>Ihr Provisionsguthaben reicht nicht für die Jahresgebühr.</value></data>
+  <data name="AnnualFee.Error.EWallet" xml:space="preserve"><value>Ihre eWallet konnte nicht belastet werden. Prüfen Sie Guthaben und Konto oder wählen Sie eine andere Zahlungsart.</value></data>
+  <data name="AnnualFee.Error.Waived" xml:space="preserve"><value>Sie müssen die Jahresgebühr nicht bezahlen.</value></data>
+  <data name="AnnualFee.Error.AccountNotActive" xml:space="preserve"><value>Nur aktive Konten können die Jahresgebühr bezahlen.</value></data>
+  <data name="AnnualFee.Error.Busy" xml:space="preserve"><value>Auf Ihrem Konto läuft gerade eine andere Zahlung. Versuchen Sie es gleich noch einmal.</value></data>
+  <data name="AnnualFee.Error.Impersonation" xml:space="preserve"><value>Die Jahresgebühr kann nicht bezahlt oder geändert werden, während ein Mitglied vertreten wird.</value></data>
+  <data name="AnnualFee.Error.StepUp" xml:space="preserve"><value>Der Bestätigungscode konnte nicht verwendet werden. Fordern Sie einen neuen an und versuchen Sie es erneut.</value></data>
+  <data name="AnnualFee.Error.Unavailable" xml:space="preserve"><value>Die Zahlung konnte nicht bestätigt werden. Versuchen Sie es erneut: Wir erkennen sie und belasten Sie nicht doppelt.</value></data>
+  <data name="AnnualFee.Error.Generic" xml:space="preserve"><value>Die Jahresgebühr konnte nicht bezahlt werden. Versuchen Sie es später erneut.</value></data>
+  <data name="AnnualFee.Error.MembershipOnHold" xml:space="preserve"><value>Ihre Mitgliedschaft ist pausiert, daher ist derzeit keine Jahresgebühr zu zahlen.</value></data>
 </root>

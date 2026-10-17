@@ -1458,4 +1458,43 @@
   <data name="Events.RegistrationDate" xml:space="preserve"><value>Date d'inscription</value></data>
   <data name="Events.ImportPending" xml:space="preserve"><value>Les inscriptions aux événements apparaîtront ici une fois importées depuis la plateforme de billetterie.</value></data>
   <data name="StepUp.WhyAnnualFee" xml:space="preserve"><value>Pour votre sécurité, saisissez un code de vérification avant de payer votre cotisation annuelle.</value></data>
+  <data name="AnnualFee.Title" xml:space="preserve"><value>Cotisation annuelle du Biz Center</value></data>
+  <data name="AnnualFee.LoadFailed" xml:space="preserve"><value>Nous n'avons pas pu charger votre cotisation annuelle. Réessayez plus tard.</value></data>
+  <data name="AnnualFee.NotApplicable" xml:space="preserve"><value>Seuls les Ambassadors paient la cotisation annuelle du Biz Center.</value></data>
+  <data name="AnnualFee.Status.UpToDate" xml:space="preserve"><value>À jour</value></data>
+  <data name="AnnualFee.Status.DueSoon" xml:space="preserve"><value>Échéance proche</value></data>
+  <data name="AnnualFee.Status.Due" xml:space="preserve"><value>Échue</value></data>
+  <data name="AnnualFee.Status.UnderReview" xml:space="preserve"><value>En cours de vérification</value></data>
+  <data name="AnnualFee.Status.Waived" xml:space="preserve"><value>Exonérée</value></data>
+  <data name="AnnualFee.Status.NotApplicable" xml:space="preserve"><value>Non applicable</value></data>
+  <data name="AnnualFee.NextDue" xml:space="preserve"><value>Prochaine échéance</value></data>
+  <data name="AnnualFee.LastPaid" xml:space="preserve"><value>Dernier paiement</value></data>
+  <data name="AnnualFee.TokensAvailable" xml:space="preserve"><value>Jetons de cotisation disponibles</value></data>
+  <data name="AnnualFee.Preference" xml:space="preserve"><value>Payer mes cotisations avec mes commissions et mon eWallet</value></data>
+  <data name="AnnualFee.PreferenceHelp" xml:space="preserve"><value>Si vous n'avez pas de jeton de cotisation, le jour de l'échéance nous utiliserons d'abord vos commissions, puis votre eWallet.</value></data>
+  <data name="AnnualFee.PreferenceSaved" xml:space="preserve"><value>Préférence enregistrée.</value></data>
+  <data name="AnnualFee.PayWith" xml:space="preserve"><value>Payer avec</value></data>
+  <data name="AnnualFee.Method.Token" xml:space="preserve"><value>Jeton de cotisation</value></data>
+  <data name="AnnualFee.Method.CommissionBalance" xml:space="preserve"><value>Commissions</value></data>
+  <data name="AnnualFee.Method.EWallet" xml:space="preserve"><value>eWallet</value></data>
+  <data name="AnnualFee.CardSoon" xml:space="preserve"><value>Le paiement par carte sera bientôt disponible.</value></data>
+  <data name="AnnualFee.PayNow" xml:space="preserve"><value>Payer maintenant</value></data>
+  <data name="AnnualFee.Retry" xml:space="preserve"><value>Réessayer le paiement</value></data>
+  <data name="AnnualFee.Paid" xml:space="preserve"><value>Cotisation annuelle payée. Votre prochaine échéance est le {0}.</value></data>
+  <data name="AnnualFee.ReadOnly" xml:space="preserve"><value>Lecture seule.</value></data>
+  <data name="AnnualFee.Error.NotDue" xml:space="preserve"><value>Votre cotisation annuelle n'est pas encore due. Vous pourrez la payer à partir de 30 jours avant l'échéance.</value></data>
+  <data name="AnnualFee.Error.AlreadyPaid" xml:space="preserve"><value>La cotisation annuelle de ce cycle est déjà payée.</value></data>
+  <data name="AnnualFee.Error.InProgress" xml:space="preserve"><value>Un paiement de ce cycle est encore en cours de traitement. Patientez un instant et réessayez.</value></data>
+  <data name="AnnualFee.Error.NeedsReview" xml:space="preserve"><value>Un paiement de ce cycle est en cours de vérification. Ne payez pas à nouveau ; nous vous contacterons si nécessaire.</value></data>
+  <data name="AnnualFee.Error.NoToken" xml:space="preserve"><value>Vous n'avez aucun jeton de cotisation disponible.</value></data>
+  <data name="AnnualFee.Error.InsufficientCommissions" xml:space="preserve"><value>Votre solde de commissions ne suffit pas pour payer la cotisation annuelle.</value></data>
+  <data name="AnnualFee.Error.EWallet" xml:space="preserve"><value>Nous n'avons pas pu débiter votre eWallet. Vérifiez votre solde et votre compte, ou choisissez un autre moyen.</value></data>
+  <data name="AnnualFee.Error.Waived" xml:space="preserve"><value>Vous n'avez pas besoin de payer la cotisation annuelle.</value></data>
+  <data name="AnnualFee.Error.AccountNotActive" xml:space="preserve"><value>Seuls les comptes actifs peuvent payer la cotisation annuelle.</value></data>
+  <data name="AnnualFee.Error.Busy" xml:space="preserve"><value>Un autre paiement est en cours sur votre compte. Réessayez dans un instant.</value></data>
+  <data name="AnnualFee.Error.Impersonation" xml:space="preserve"><value>La cotisation annuelle ne peut être ni payée ni modifiée en mode d'emprunt d'identité.</value></data>
+  <data name="AnnualFee.Error.StepUp" xml:space="preserve"><value>Le code de vérification n'a pas pu être utilisé. Demandez-en un nouveau et réessayez.</value></data>
+  <data name="AnnualFee.Error.Unavailable" xml:space="preserve"><value>Nous n'avons pas pu confirmer le paiement. Réessayez : nous le reconnaîtrons et ne vous débiterons pas deux fois.</value></data>
+  <data name="AnnualFee.Error.Generic" xml:space="preserve"><value>La cotisation annuelle n'a pas pu être payée. Réessayez plus tard.</value></data>
+  <data name="AnnualFee.Error.MembershipOnHold" xml:space="preserve"><value>Votre adhésion est suspendue : aucune cotisation annuelle n'est à payer pour le moment.</value></data>
 </root>

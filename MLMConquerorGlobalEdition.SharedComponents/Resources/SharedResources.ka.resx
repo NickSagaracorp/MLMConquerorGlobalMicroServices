@@ -1394,4 +1394,43 @@
   <data name="Events.RegistrationDate" xml:space="preserve"><value>რეგისტრაციის თარიღი</value></data>
   <data name="Events.ImportPending" xml:space="preserve"><value>ღონისძიებებზე რეგისტრაციები აქ გამოჩნდება ბილეთების პლატფორმიდან იმპორტის შემდეგ.</value></data>
   <data name="StepUp.WhyAnnualFee" xml:space="preserve"><value>უსაფრთხოებისთვის, წლიური გადასახადის გადახდამდე შეიყვანეთ დამადასტურებელი კოდი.</value></data>
+  <data name="AnnualFee.Title" xml:space="preserve"><value>Biz Center-ის წლიური გადასახადი</value></data>
+  <data name="AnnualFee.LoadFailed" xml:space="preserve"><value>თქვენი წლიური გადასახადის ჩატვირთვა ვერ მოხერხდა. სცადეთ მოგვიანებით.</value></data>
+  <data name="AnnualFee.NotApplicable" xml:space="preserve"><value>Biz Center-ის წლიურ გადასახადს მხოლოდ Ambassador-ები იხდიან.</value></data>
+  <data name="AnnualFee.Status.UpToDate" xml:space="preserve"><value>გადახდილია</value></data>
+  <data name="AnnualFee.Status.DueSoon" xml:space="preserve"><value>ვადა მალე გადის</value></data>
+  <data name="AnnualFee.Status.Due" xml:space="preserve"><value>ვადა გასულია</value></data>
+  <data name="AnnualFee.Status.UnderReview" xml:space="preserve"><value>განხილვაშია</value></data>
+  <data name="AnnualFee.Status.Waived" xml:space="preserve"><value>გათავისუფლებულია</value></data>
+  <data name="AnnualFee.Status.NotApplicable" xml:space="preserve"><value>არ ეხება</value></data>
+  <data name="AnnualFee.NextDue" xml:space="preserve"><value>შემდეგი გადახდის ვადა</value></data>
+  <data name="AnnualFee.LastPaid" xml:space="preserve"><value>ბოლო გადახდა</value></data>
+  <data name="AnnualFee.TokensAvailable" xml:space="preserve"><value>ხელმისაწვდომი გადასახადის ტოკენები</value></data>
+  <data name="AnnualFee.Preference" xml:space="preserve"><value>ჩემი გადასახადების გადახდა საკომისიოებით და eWallet-ით</value></data>
+  <data name="AnnualFee.PreferenceHelp" xml:space="preserve"><value>თუ გადასახადის ტოკენი არ გაქვთ, ვადის დღეს ჯერ თქვენს საკომისიოებს გამოვიყენებთ, შემდეგ კი eWallet-ს.</value></data>
+  <data name="AnnualFee.PreferenceSaved" xml:space="preserve"><value>პარამეტრი შენახულია.</value></data>
+  <data name="AnnualFee.PayWith" xml:space="preserve"><value>გადახდის საშუალება</value></data>
+  <data name="AnnualFee.Method.Token" xml:space="preserve"><value>გადასახადის ტოკენი</value></data>
+  <data name="AnnualFee.Method.CommissionBalance" xml:space="preserve"><value>საკომისიოები</value></data>
+  <data name="AnnualFee.Method.EWallet" xml:space="preserve"><value>eWallet</value></data>
+  <data name="AnnualFee.CardSoon" xml:space="preserve"><value>ბარათით გადახდა მალე იქნება ხელმისაწვდომი.</value></data>
+  <data name="AnnualFee.PayNow" xml:space="preserve"><value>გადახდა ახლავე</value></data>
+  <data name="AnnualFee.Retry" xml:space="preserve"><value>გადახდის ხელახლა ცდა</value></data>
+  <data name="AnnualFee.Paid" xml:space="preserve"><value>წლიური გადასახადი გადახდილია. შემდეგი ვადაა {0}.</value></data>
+  <data name="AnnualFee.ReadOnly" xml:space="preserve"><value>მხოლოდ წაკითხვა.</value></data>
+  <data name="AnnualFee.Error.NotDue" xml:space="preserve"><value>თქვენი წლიური გადასახადის ვადა ჯერ არ დამდგარა. მისი გადახდა ვადამდე 30 დღით ადრე შეგეძლებათ.</value></data>
+  <data name="AnnualFee.Error.AlreadyPaid" xml:space="preserve"><value>ამ ციკლის წლიური გადასახადი უკვე გადახდილია.</value></data>
+  <data name="AnnualFee.Error.InProgress" xml:space="preserve"><value>ამ ციკლის გადახდა ჯერ კიდევ მუშავდება. მოიცადეთ და სცადეთ ხელახლა.</value></data>
+  <data name="AnnualFee.Error.NeedsReview" xml:space="preserve"><value>ამ ციკლის გადახდა განხილვაშია. ხელახლა ნუ გადაიხდით; საჭიროების შემთხვევაში დაგიკავშირდებით.</value></data>
+  <data name="AnnualFee.Error.NoToken" xml:space="preserve"><value>ხელმისაწვდომი გადასახადის ტოკენი არ გაქვთ.</value></data>
+  <data name="AnnualFee.Error.InsufficientCommissions" xml:space="preserve"><value>საკომისიოების ნაშთი არ კმარა წლიური გადასახადის გადასახდელად.</value></data>
+  <data name="AnnualFee.Error.EWallet" xml:space="preserve"><value>eWallet-დან ჩამოჭრა ვერ მოხერხდა. შეამოწმეთ ნაშთი და ანგარიში, ან აირჩიეთ სხვა საშუალება.</value></data>
+  <data name="AnnualFee.Error.Waived" xml:space="preserve"><value>წლიური გადასახადის გადახდა არ გჭირდებათ.</value></data>
+  <data name="AnnualFee.Error.AccountNotActive" xml:space="preserve"><value>წლიური გადასახადის გადახდა მხოლოდ აქტიურ ანგარიშებს შეუძლიათ.</value></data>
+  <data name="AnnualFee.Error.Busy" xml:space="preserve"><value>თქვენს ანგარიშზე სხვა გადახდა მიმდინარეობს. სცადეთ ცოტა ხანში.</value></data>
+  <data name="AnnualFee.Error.Impersonation" xml:space="preserve"><value>წევრის სახელით მოქმედებისას წლიური გადასახადის გადახდა ან შეცვლა შეუძლებელია.</value></data>
+  <data name="AnnualFee.Error.StepUp" xml:space="preserve"><value>დამადასტურებელი კოდის გამოყენება ვერ მოხერხდა. მოითხოვეთ ახალი კოდი და სცადეთ ხელახლა.</value></data>
+  <data name="AnnualFee.Error.Unavailable" xml:space="preserve"><value>გადახდის დადასტურება ვერ მოხერხდა. სცადეთ ხელახლა: ვიცნობთ მას და ორჯერ არ ჩამოგეჭრებათ.</value></data>
+  <data name="AnnualFee.Error.Generic" xml:space="preserve"><value>წლიური გადასახადის გადახდა ვერ მოხერხდა. სცადეთ მოგვიანებით.</value></data>
+  <data name="AnnualFee.Error.MembershipOnHold" xml:space="preserve"><value>თქვენი წევრობა შეჩერებულია, ამიტომ ახლა წლიური გადასახადის გადახდა საჭირო არ არის.</value></data>
 </root>
