@@ -754,3 +754,104 @@ Cada uno era un fallo real de la integración de Entrax en MWR Life. Se prueban 
 | 10.45 | La firma se comparaba con `==` | revisar `EntraxSignature.VerifyCallback` | HMAC-SHA256 sobre el cuerpo crudo, comparado con `CryptographicOperations.FixedTimeEquals` | ✔ (2026-10-16, revisión del código): `HMACSHA256.HashData` sobre el cuerpo crudo y `CryptographicOperations.FixedTimeEquals` |
 | 10.46 | Endpoints anónimos que devolvían `ex.ToString()` | provocar errores en los anónimos: callback firmado con un cuerpo que no es JSON, `entrax-status` con la base parada | `400 INVALID_CALLBACK`, o `500 INTERNAL_ERROR` ("An unexpected error occurred." y el `traceId`) sin traza ni texto de la excepción; el detalle solo en el log | ✔ en parte (2026-10-16, por API con el fake): un cuerpo que no es JSON → `400 INVALID_CALLBACK`; los `500` salen con "An unexpected error occurred." y sin traza, pero con el `traceId` vacío. Con la base parada no se probó (es la SQL Server local compartida) |
 | 10.47 | Conversión de divisa con el tipo de cambio de Spreedly (y USD mandados como rublos si fallaba) | mirar la petición del QR y `EntraxPayments` | el QR se pide **en USD** y nunca convertimos la divisa: `AmountRub` y `ExchangeRate` los da Entrax. Un QR que vuelve en otra moneda o por otro importe no se muestra (`502 ENTRAX_UNAVAILABLE` y `Critical`), y un pago en otra moneda va a `ToReview` `CURRENCY_MISMATCH` | ✔ en parte (2026-10-16, por API con el fake): el QR se pide en USD y `AmountRub` y `ExchangeRate` los da el proveedor (95,50 del fake). El `502` por otra moneda y `CURRENCY_MISMATCH` no se pueden provocar con el fake |
+
+## 12. Reportes del BizCenter (Plan J)
+
+Qué protege: seis reportes nuevos o arreglados en el BizCenter: *Mis enlaces*, *Residuales diarios*,
+*Clientes del equipo* (Personales/Equipo), *Actividad por fechas*, *Cambios de estado* (inscripción,
+Dual Team y clientes) y *Eventos del equipo* (solo el reporte: la importación de inscripciones queda
+para otro plan). Tres reglas que estas pruebas comprueban: **el miembro sale siempre del token**
+(ningún endpoint nuevo acepta `memberId`), **el alcance lo pone el servidor** (el nodo de genealogía
+**más reciente** del que mira y de cada miembro, con un prefijo que acaba siempre en «/»; en el
+binario, fecha primero y pertenencia después) y **la hora es la del servidor**. Plan:
+`docs/superpowers/plans/2026-10-16-plan-j-reportes-bizcenter.md`.
+
+Endpoints (BizCenter, `https://localhost:7003` en Development, salvo el de AdminAPI):
+
+| Endpoint | Qué hace |
+|---|---|
+| `GET api/v1/bizcenter/my-links` | enlaces personales (con el slug del token) y corporativos |
+| `GET api/v1/bizcenter/commissions/dual-residual/daily?year=&month=&page=&pageSize=` | historial de `DailyResidualEarnings` con totales |
+| `POST api/v1/bizcenter/team/enrollment/customers/grid?scope=personal\|team` | clientes; contacto solo de los personales |
+| `GET api/v1/bizcenter/team/reports/setup` | rango por defecto, tope común (366 días) y primer día de *Actividad* (hoy − 3 meses) |
+| `GET api/v1/bizcenter/team/enrollment/activity/columns` y `POST …/activity/grid?from=&to=` | actividad por fechas |
+| `POST api/v1/bizcenter/team/changes/{enrollment\|dual\|customers}/grid?from=&to=` | cambios de estado |
+| `GET api/v1/bizcenter/events`, `POST events/{id}/team-registrations/grid?registeredOnly=`, `GET events/{id}/team-registrations/totals` | eventos del equipo |
+| `GET api/v1/admin/members/{memberId}/commissions/dual-residual/daily` y `POST …/team/enrollment/customers/grid?scope=` — AdminAPI | lo mismo para el perfil de miembro del Admin |
+
+**Condiciones de despliegue:**
+
+- **Orden de las migraciones** (todas las aplica `MigrateAsync` al arrancar cualquier servicio):
+  `IndiceResidualesPorBeneficiarioYFecha`, `IndiceResidualesConImporteYEstado`,
+  `IndicePatrocinadorYFechaDeAlta`, `IndiceFechaDeAlta`, `HistorialDeEstados`,
+  `MarcaMantenerCalificado`, `InscripcionesAEventos`. Alteran o indexan tablas de ~120.000 filas:
+  desplegar fuera de horas de tráfico. `IndicePatrocinadorYFechaDeAlta` pasa
+  `MemberProfiles.SponsorMemberId` a `nvarchar(450)` y `HistorialDeEstados` hace lo mismo con
+  `MemberStatusHistories.MemberId`; las dos se niegan a truncar (`THROW 51001` y `51003` si algún
+  valor pasa de 450 caracteres).
+- **`GenealogyTree.HierarchyPath` no se toca** en este plan (sin índice: mejora de rendimiento futura).
+- **R16, riesgo de producción.** *Actividad*, *Clientes* y *Cambios de estado* leen `Orders` y
+  `OrderDetails` enteros (sin índice en `Orders.MemberId` ni en `OrderDetails.OrderId`). En
+  `READ COMMITTED` sin snapshot pueden chocar con la facturación, y la víctima de un *deadlock*
+  puede ser el escritor (una renovación o un cobro). Antes de desplegar, comprobar en producción
+  `SELECT is_read_committed_snapshot_on FROM sys.databases WHERE name = DB_NAME()` (en la base local
+  es `0`) y decidir con Nick: índices de pedidos, `READ_COMMITTED_SNAPSHOT` o ambos. Resultado en
+  producción: ________.
+- **«Calificado» sin anualidad.** «Calificado» = membresía activa Y (alta hace menos de 12 meses, O
+  anualidad pagada, O `MemberProfile.KeepQualified`). La anualidad todavía no está modelada (Plan K):
+  **mientras tanto, todo miembro que se inscribió hace más de 12 meses y no tiene `KeepQualified`
+  sale como «No calificado»** en *Mi equipo*, el detalle de una rama, *Mi equipo* del Dual Team,
+  *Cambios de estado* y *Eventos*. Solo afecta a lo que se ve en pantalla (no a comisiones ni a
+  rangos). Avisar a soporte antes de desplegar; la marca `KeepQualified` no se edita aún desde el Admin.
+- **Dominios de *Mis enlaces*** confirmados por Nick (pregunta P1) en `MyLinks:Links` del
+  `appsettings.json` del BizCenter. Una plantilla inválida impide arrancar el BizCenter. Un
+  `appsettings.{Entorno}.json` fusiona la lista **por índice**: para cambiarla hay que repetirla entera.
+- **El historial de estados empieza al desplegar el Bloque 5.** Antes, *Cambios de estado* sale vacío
+  y las fechas de «último cambio» de la membresía son las de reserva (la propia del estado). Fecha del
+  despliegue: ________.
+- **Primer ciclo de facturación recurrente tras el Bloque 5**: comparar su duración con la del
+  anterior (el interceptor recorre el `ChangeTracker` en cada guardado y añade una fila por cambio de
+  estado, R14 y R17).
+- **Eventos sin importación**: el reporte sale vacío hasta que exista el importador (plan aparte).
+- **Fuera de este plan, pendiente**: índices de `Orders.OrderNo`, `Orders.MemberId` y
+  `OrderDetails.OrderId` (R9 y R16); retirar `commissions/dual-residual` (J29).
+
+### Pruebas
+
+Preparación: SignupAPI (`https://localhost:7005`), BizCenter (`https://localhost:7003`),
+BizCenterWeb (`https://localhost:7004`), AdminAPI (`https://localhost:7002`) y AdminWeb
+(`https://localhost:7001`) arrancados con el perfil `https` contra la base local, con las siete
+migraciones aplicadas. Dos embajadores sin relación entre sí (A y B), un descendiente de A con
+clientes en dos niveles, y un administrador. `TOKEN_A` es el Bearer de A.
+
+| # | Qué se prueba | Cómo | Resultado esperado | ✔ |
+|---|---|---|---|---|
+| 12.1 | IDOR en *Mis enlaces* | `GET /api/v1/bizcenter/my-links?memberId={B}` con `TOKEN_A` | los enlaces de A (con el slug de A); el parámetro se ignora | ☐ |
+| 12.2 | IDOR en residuales | `GET /api/v1/bizcenter/commissions/dual-residual/daily?memberId={B}&year=2026` con `TOKEN_A` | el historial de A | ☐ |
+| 12.3 | IDOR en las rejillas | añadir `?memberId={B}` y `"memberId":"{B}"` al cuerpo de `POST team/enrollment/activity/grid`, `team/changes/enrollment/grid`, `team/changes/dual/grid`, `team/changes/customers/grid`, `team/enrollment/customers/grid` y `events/{id}/team-registrations/grid` con `TOKEN_A` | se ignoran: siempre el equipo de A (lo vigila además `MiembroDelTokenTests`) | ☐ |
+| 12.4 | Alcance del equipo de inscripción | con `TOKEN_A`, actividad y cambios de inscripción en un rango donde B y la upline de A tienen altas y cambios | nunca aparecen B, su equipo ni la upline de A; la fila de A en actividad tiene nivel 0 | ☐ |
+| 12.5 | Nodo obsoleto (R8) | un miembro con un nodo antiguo bajo A y el actual bajo B | no sale en los reportes de A ni lo deja ver `DownlineGuard` | ☐ |
+| 12.6 | Prefijo con barra | dos embajadores `X-1` y `X-10`; con el token de `X-1` | nada del equipo de `X-10` en ningún reporte ni guarda | ☐ |
+| 12.7 | Alcance del Dual Team | un miembro del binario de A que no es de su inscripción y otro fuera de los dos, ambos con cambios en el rango | el primero sale en `changes/dual` (con su pierna) y no en `changes/enrollment`; el segundo en ninguna | ☐ |
+| 12.8 | Contacto solo de personales | `POST team/enrollment/customers/grid` (sin `scope`) con `TOKEN_A` | `email` y `phone` solo en los clientes de nivel 1; `null` en los demás. Con `?scope=personal`, solo los de nivel 1 | ☐ |
+| 12.9 | La búsqueda no delata | el mismo endpoint con `"search"` = parte del correo de un cliente de nivel 2, y con un filtro de columna `Email contains` ese texto | 0 resultados en los dos | ☐ |
+| 12.10 | El `GET` antiguo también | `GET /api/v1/bizcenter/team/enrollment/customers` con `TOKEN_A` | mismo anulado que 12.8 | ☐ |
+| 12.11 | Rango de *Actividad* | `from` de hace 4 meses; `to` de mañana; `to` anterior a `from` | `400 REPORT_RANGE_TOO_OLD`; `400 REPORT_RANGE_IN_FUTURE`; `400 REPORT_RANGE_INVALID`; la pantalla muestra el texto de cada uno | ☐ |
+| 12.12 | Rango de *Cambios de estado* | `from=2024-01-01&to=2025-01-01`; un rango de 6 meses atrás | `400 REPORT_RANGE_TOO_LONG`; el de 6 meses vale (el límite de 3 meses es solo de *Actividad*) | ☐ |
+| 12.13 | Vista desconocida | `POST team/changes/binary/grid` | `404 REPORT_SCOPE_NOT_FOUND` | ☐ |
+| 12.14 | La ruta binaria no sale | respuesta de `team/changes/dual/grid` en las herramientas del navegador | sin `dualPath` ni ninguna ruta del árbol | ☐ |
+| 12.15 | Evento que no se ve | `events/{id de un evento desactivado}/team-registrations/grid` y `/totals` | `404 EVENT_NOT_FOUND`; `GET events` no lo lista | ☐ |
+| 12.16 | Eventos sin importación | un evento activo sin inscripciones | rejilla vacía, totales 0 y el aviso de que aparecerán cuando se importen | ☐ |
+| 12.17 | Totales del equipo | inscripciones (sembradas a mano en SQL) de miembros fuera del equipo de A en el mismo evento | no cuentan ni en filas ni en totales | ☐ |
+| 12.18 | Suplantación de solo lectura | un administrador suplanta a A con token de solo lectura y abre las pantallas del plan | las rejillas `POST` responden `200` (`ReadOnlySafe`) con datos de A; ningún endpoint del plan escribe | ☐ |
+| 12.19 | Suplantación y enlaces | durante la suplantación, *Mis enlaces* | el slug del suplantado; copiar no escribe nada | ☐ |
+| 12.20 | Plantilla de enlace inválida | arrancar BizCenter con `MyLinks__Links__0__Url=http://mwrlife.com/{slug}` | no arranca: `InvalidOperationException` «[MyLinks] … https» | ☐ |
+| 12.21 | Slug con caracteres raros | un slug con espacio o acento | sale escapado en la URL (`%20`, `%C3%B3`) | ☐ |
+| 12.22 | Residuales sin débitos | comparar el total del mes con `SELECT SUM(Amount) FROM DailyResidualEarnings WHERE BeneficiaryMemberId = @A AND Status <> 3 AND EarnedDate >= @desde AND EarnedDate < @hasta` | coinciden; no aparecen débitos negativos ni consolidaciones de `CommissionEarnings`; las filas `Paid` se rotulan «Consolidado» | ☐ |
+| 12.23 | Hora de servidor | cambiar la zona horaria del navegador a UTC+14 y volver a abrir residuales, actividad y cambios | el año por defecto y los rangos por defecto no cambian (son del servidor) | ☐ |
+| 12.24 | Historial | cambiar desde el Admin el estado de A con un motivo; activar un alta; forzar que una renovación pase a `HoldByBilling` | una sola fila en `MemberStatusHistories` con el motivo; una fila `Pending → Active`; una fila en `MembershipStatusHistories` con autor `system` si el guardado no puso `LastUpdateBy` | ☐ |
+| 12.25 | Corte de facturación | un estado de facturación que pase el tope de días sin facturar | el estado queda `Stopped` y la membresía en `HoldByBilling` (o `Expired` según el plan), guardado en el mismo paso | ☐ |
+| 12.26 | «Calificado» | un miembro activo inscrito hace más de 12 meses, sin `KeepQualified`; después con `KeepQualified = 1` (en SQL) | «No calificado» y luego «Calificado» en *Mi equipo* y *Cambios de estado* | ☐ |
+| 12.27 | Nivel por la orden | un miembro cuya orden de alta lleva Lifestyle Ambassador y Elite y cuya suscripción dice otro nivel | *Actividad* lo cuenta en la columna Elite; *Clientes* y *Cambios de estado* muestran Elite | ☐ |
+| 12.28 | Menú | abrir `/team/residuals`, `/team/dual-changes`, `/team/enrollment/activity`, `/team/enrollment/changes`, `/team/enrollment/customer-changes`, `/events` y `/my-links` | cada grupo correcto queda abierto y la entrada marcada; las mismas rutas existen en la app MAUI | ☐ |
+| 12.29 | Primer ciclo de facturación tras el Bloque 5 | comparar la duración del ciclo con el anterior | sin degradación apreciable | ☐ |
