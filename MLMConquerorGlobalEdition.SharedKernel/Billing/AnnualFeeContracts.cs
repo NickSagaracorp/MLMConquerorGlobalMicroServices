@@ -24,7 +24,10 @@ public static class AnnualFeeRules
     /// <summary>"Cobrada hace poco": el último cobro fue hace menos de estos meses (K5).</summary>
     public const int RecentlyBilledMonths = 11;
 
-    /// <summary>¿Cobra el motor la cuota en el aniversario? Apagado por defecto (K13). Se lee en cada llamada.</summary>
+    /// <summary>
+    /// ¿Cobra el motor la cuota en el aniversario? Apagado por defecto (K13); también el cobro forzado de
+    /// soporte lo exige (revisión I-3). "Pagar ahora" no depende de él. Se lee en cada llamada.
+    /// </summary>
     public const string AutoChargeEnabledConfigKey = "Billing:AnnualFee:AutoChargeEnabled";
 
     /// <summary>Minutos que un pago de cuota puede seguir Pending antes de pasar a conciliar (K11).</summary>

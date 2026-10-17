@@ -7,7 +7,9 @@ public static class AnnualFeeServiceCollectionExtensions
 {
     /// <summary>
     /// Registra la cuota anual (Plan K). Va en un método para que la prueba de DI ejercite este mismo
-    /// registro. Supone el reloj de Billing que registra Program.cs. El Bloque 3 añade aquí el cobro.
+    /// registro (AnnualFeeDiTests). Supone lo que Program.cs registra antes: el reloj de Billing,
+    /// AddPayoutServices (el candado de fondos), AddTokenPurchaseServices (los fondos eWallet),
+    /// ICommissionBalanceService e IRecurringBillingScheduler.
     /// </summary>
     public static IServiceCollection AddAnnualFeeServices(this IServiceCollection services)
     {

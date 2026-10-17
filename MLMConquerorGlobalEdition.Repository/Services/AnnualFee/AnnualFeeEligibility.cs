@@ -122,8 +122,10 @@ public static class AnnualFeeEligibility
     }
 
     /// <summary>
-    /// ¿Puede el miembro pulsar "Pagar ahora"? Null si sí; si no, el código de AnnualFeeErrors. Lo que
-    /// depende de pagos ya hechos (pagada, en curso, en revisión) lo mira quien tiene la base.
+    /// ¿Puede el miembro pulsar "Pagar ahora"? Null si sí; si no, el código de AnnualFeeErrors. Solo
+    /// Ambassadors con la cuenta activa (o inactiva por haber cancelado la membresía: decisión de Nick,
+    /// M-8), sin KeepQualified, con la membresía fuera de HoldByBilling y dentro de la ventana de 30 días.
+    /// Lo que depende de pagos ya hechos (pagada, en curso, en revisión) lo mira quien tiene la base.
     /// </summary>
     public static string? ForPayNow(AnnualFeeMemberFacts member, DateTime nextBillingDate, DateTime now)
     {

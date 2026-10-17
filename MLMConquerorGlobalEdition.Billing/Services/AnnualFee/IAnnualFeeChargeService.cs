@@ -26,7 +26,9 @@ public interface IAnnualFeeChargeService
 {
     /// <summary>
     /// El cobro automático de un estado de cuota anual. Lo llama RecurringBillingProcessor cuando le
-    /// llega un estado con Purpose = AnnualFee. <paramref name="force"/>: el bill-now de soporte.
+    /// llega un estado con Purpose = AnnualFee. <paramref name="force"/>: el bill-now de soporte, que
+    /// cobra aunque no venza pero también exige Billing:AnnualFee:AutoChargeEnabled (revisión I-3) y respeta
+    /// las exclusiones.
     /// </summary>
     Task<Result<AnnualFeeChargeOutcome>> ChargeDueAsync(string billingStateId, bool force, CancellationToken ct = default);
 

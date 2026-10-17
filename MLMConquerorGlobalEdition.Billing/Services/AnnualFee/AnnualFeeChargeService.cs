@@ -27,7 +27,9 @@ namespace MLMConquerorGlobalEdition.Billing.Services.AnnualFee;
 ///
 /// Bajo el candado se relee el estado y se comprueba que el ciclo no esté ya pagado, en curso o en
 /// revisión: un "Pagar ahora" y el motor no pueden cobrar el mismo ciclo. Un fallo sin fondos aplica la
-/// cadencia del plan; nunca toca la membresía (K12).
+/// cadencia del plan; nunca toca la membresía (K12). Lo que el cobro automático escribe en el estado sin
+/// cobrar (exclusiones, sin fondos, bloqueos) va también bajo el candado y releyendo (revisión I-1), y
+/// cualquier excepción bajo el candado deshace y suelta lo añadido sin limpiar el contexto compartido (C-1).
 /// </summary>
 public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
 {
