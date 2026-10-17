@@ -28,7 +28,24 @@ public class AnnualFeeScheduleTests
     [InlineData("2027-06-05", "2028-01-15 12:00", "2029-01-15")] // estado parado y pago meses después
     [InlineData("2027-02-28", "2028-02-29 12:00", "2029-02-28")] // tarde un 29 de febrero
     public void El_siguiente_vencimiento_tras_pagar(string ciclo, string pagado, string esperado)
-        => AnnualFeeSchedule.NextDueAfterPayment(D(ciclo), D(pagado)).Should().Be(D(esperado));
+        => AnnualFeeSchedule.NextDueAfterPayment(D(ciclo), D(pagado), anchor: D(ciclo).AddYears(-1)).Should().Be(D(esperado));
+
+    // Revisión M3: a tiempo, el siguiente sale del ancla (la inscripción o el último re-anclaje), no del
+    // vencimiento: un 29 de febrero vuelve a ser 29 en los años bisiestos.
+    [Theory]
+    [InlineData("2024-02-29", "2025-02-28", "2025-02-20 10:00", "2026-02-28")]
+    [InlineData("2024-02-29", "2027-02-28", "2027-02-28 10:00", "2028-02-29")] // vuelve al 29
+    [InlineData("2024-02-29", "2028-02-29", "2028-02-01 10:00", "2029-02-28")]
+    [InlineData("2026-06-05", "2027-06-05", "2027-06-05 10:00", "2028-06-05")]
+    [InlineData("2026-06-05", "2028-01-10", "2028-01-10 10:00", "2029-01-10")] // vencimiento fuera del ancla (cobrada hace poco): +1 año, sin perder meses
+    public void A_tiempo_el_siguiente_sale_del_ancla(string ancla, string ciclo, string pagado, string esperado)
+        => AnnualFeeSchedule.NextDueAfterPayment(D(ciclo), D(pagado), D(ancla)).Should().Be(D(esperado));
+
+    [Theory]
+    [InlineData("2024-02-29", "2027-02-28", "2027-02-28 10:00", "2024-02-29")] // a tiempo: el ancla se queda
+    [InlineData("2024-02-29", "2027-02-28", "2027-03-02 10:00", "2027-03-02")] // tarde: el ancla pasa al pago
+    public void El_ancla_tras_pagar(string ancla, string ciclo, string pagado, string esperado)
+        => AnnualFeeSchedule.AnchorAfterPayment(D(ciclo), D(pagado), D(ancla)).Should().Be(D(esperado));
 
     [Theory]
     [InlineData("2027-07-10", "2027-06-10 09:00", true)]  // vence en 30 días

@@ -29,15 +29,29 @@ public static class AnnualFeeSchedule
 
     /// <summary>
     /// El siguiente vencimiento después de pagar el ciclo <paramref name="cycleDue"/> (K4, revisado por
-    /// Nick el 2026-10-17): pagado el día del vencimiento o antes, un año después del vencimiento (pagar
-    /// antes no hace perder días); pagado después, un año desde el pago (sin gracia que conserve el aniversario).
+    /// Nick el 2026-10-17): pagado el día del vencimiento o antes, el siguiente aniversario del ancla
+    /// (pagar antes no hace perder días); pagado después, un año desde el pago (sin gracia que conserve el
+    /// aniversario). A tiempo se calcula desde el ancla y no desde el vencimiento (revisión M3): así un
+    /// 29 de febrero vuelve a ser 29 en los bisiestos en lugar de quedarse en 28 para siempre.
     /// </summary>
-    public static DateTime NextDueAfterPayment(DateTime cycleDue, DateTime paidAt)
+    /// <param name="anchor">BillingAnchorDate del estado: la inscripción o el último re-anclaje.</param>
+    public static DateTime NextDueAfterPayment(DateTime cycleDue, DateTime paidAt, DateTime anchor)
     {
         var due  = cycleDue.Date;
         var paid = paidAt.Date;
-        return paid <= due ? due.AddYears(1) : paid.AddYears(1);
+        if (paid > due) return paid.AddYears(1);
+
+        // Solo si el vencimiento es un aniversario del ancla. Si no lo es (lo movió "cobrada hace poco"),
+        // contar desde el ancla le quitaría meses al miembro: entonces, un año desde el vencimiento.
+        var a = anchor.Date;
+        for (var years = 1; a.AddYears(years) <= due; years++)
+            if (a.AddYears(years) == due) return a.AddYears(years + 1);
+        return due.AddYears(1);
     }
+
+    /// <summary>El ancla tras pagar: la misma si se pagó a tiempo; la fecha de pago si se pagó tarde (K4).</summary>
+    public static DateTime AnchorAfterPayment(DateTime cycleDue, DateTime paidAt, DateTime anchor) =>
+        paidAt.Date > cycleDue.Date ? paidAt.Date : anchor.Date;
 
     /// <summary>¿Se puede pagar ya? Desde <see cref="AnnualFeeRules.PayAheadDays"/> días antes del vencimiento.</summary>
     public static bool IsPayable(DateTime nextDue, DateTime now) =>
