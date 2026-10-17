@@ -111,6 +111,28 @@
 | K23 | Columnas nuevas: `AnnualFeePayments.MemberId nvarchar(100)`, `SubscriptionBillingStateId`, `OrderId` y `PaymentHistoryId nvarchar(450)`, `CreatedBy`/`LastUpdateBy nvarchar(256)` (pueden ser un correo). `SubscriptionBillingStates.MembershipSubscriptionId` sigue en `nvarchar(100)`, ahora anulable. | Regla de ids (aclarada por Nick; R12 ya no es un riesgo). |
 | K24 | **Los pagos de la cuota quedan en `RecurringBillingAttempts`** (automáticos y «Pagar ahora»), con dos valores nuevos de `RecurringFundingSource`: `EWallet = 3` y `Token = 4`. Un fallo sin fondos se registra con `CommissionBalance` si la preferencia está encendida y `Token` si no. | Soporte ve en un solo registro todo lo que pasó con un estado, también desde el listado del Admin. |
 
+## Revisión de los Bloques 1 y 2 (2026-10-17)
+
+Arreglos de la revisión, ya hechos en código. Lo que el Bloque 3 tiene que respetar va en negrita.
+
+| # | Qué | Cómo quedó |
+|---|---|---|
+| C1 | Saldo de la renovación con comisiones | Saldo **gastable** (`GetSpendableAsync`), aprobado por Nick (K18, R7). Las comisiones reservadas por un `PayoutAttempt` no fallido y las de `PaymentDate` futura no pagan renovaciones. **La cuota (Tarea 10) usa también el gastable y va bajo `IMemberFundsGate`.** |
+| C2 | El motor cobraba a quien canceló | `MembershipBillingStops` (Repository): una suscripción `Cancelled`, con `IsAutoRenew = false` y la `CancellationDate` cumplida, o `IsFree`, para su estado sin cobrar (`MEMBERSHIP_CANCELLED` / `MEMBERSHIP_FREE`), también forzado, sin tocar la membresía. `CancelMembershipHandler` (cancelación inmediata) y `ProcessScheduledCancellationsJob` paran el estado en el mismo guardado. `IsAutoRenew = false` sin fecha **no** para: muchas filas lo tienen así por defecto. En local, 0 estados vivos afectados. |
+| C3 | `DelayedFallbackChargeJob` | **Bloqueante del Plan I**: el cobro diferido no cierra el pedido ni avanza el estado ni la suscripción, y un fallo no lo marca en el estado. Se dejó solo el rechazo de `IsSimulated` (fallo `CARD_SIMULATED_CHARGE`, sin `PaymentHistory`). Mientras `Billing:Recurring:CardEnabled` esté apagado el motor no llama al orquestador, así que no programa cobros diferidos. Hay que cerrarlo antes de encender la tarjeta. |
+| I1 | Tarjeta simulada en el motor | `Billing:Recurring:CardEnabled` (`RecurringCardSwitch`), `false` por defecto y leído en cada llamada. Apagado: el motor no llama al gateway; intento `Failed` con `CARD_DISABLED`, `Advance(succeeded: false)` (cadencia normal), motivo en `LastFailureReason`, pedido cancelado y sin `PaymentHistory`. Encendido, un éxito simulado es lo mismo con `CARD_SIMULATED_CHARGE`. |
+| I2 | `POST api/v1/billing/memberships/renew` | Con el mismo interruptor apagado, la ruta de tarjeta (EE. UU. y Canadá) responde `CARD_DISABLED` sin crear pedido. La ruta de wallet del legado (resto de países) **no se toca**: no es tarjeta; sigue sin candado ni estado (P4). |
+| I3 | Lo que deja de cobrarse al apagar `MembershipAutoRenewalJob` | Ver §13, condición «Lo que deja de renovarse». |
+| I4 | `EnsureForMemberAsync` | Sin `ChangeTracker.Clear()`: tras un choque se suelta solo lo añadido. Busca con `IgnoreQueryFilters`. Un estado borrado **no se restaura ni se sustituye**: se informa en el registro y el miembro queda sin estado («Pagar ahora» lo verá como sin cuota configurada). Si tras el choque no hay fila, se relanza. |
+| M1 | Lote de alta que falla | Se reintenta fila a fila; las que fallen se registran y se saltan en esa ejecución. |
+| M2 | Motor y estados de cuota | **El planificador, los trabajadores y el barrido filtran `Purpose == Membership`, y el procesador salta los estados de cuota. La Tarea 16 tiene que quitar los cuatro filtros y el salto cuando delegue en `AnnualFeeChargeService`.** |
+| M3 | 29 de febrero | **`AnnualFeeSchedule.NextDueAfterPayment(cycleDue, paidAt, anchor)` y `AnchorAfterPayment(...)`.** A tiempo, el siguiente sale del ancla (si el vencimiento es un aniversario suyo; si no, vencimiento + 1 año). Tarde, pago + 1 año y **el ancla pasa a la fecha de pago: la Tarea 12 debe actualizar `BillingAnchorDate`**. |
+| M4 | Perfil que falta o deja de ser Ambassador | `Postpone` (`PROFILE_MISSING`, `NOT_AN_AMBASSADOR`). Solo `Terminated` para. |
+| M5 | Clave del alta de estados | `AnnualFeeRules.EnrollmentJobEnabledConfigKey`; el cron en UTC está documentado en `Program.cs`. |
+| M6 | Robustez del candado | Pedido ocupado cancelado con `CancellationToken.None`; un fallo al deshacer se registra sin tapar el resultado. La espera de 15 s del candado en serie se acepta: solo se choca con un pago, una compra o la cuota del **mismo** miembro, y lo ocupado se reintenta en la siguiente pasada. |
+| M7 | Pruebas contra SQL Server | Fecha fija; esquema de la cuota (índice único por miembro, `CHECK` en los dos sentidos, un solo plan de cuota). |
+| M8 | Admin | `Purpose` en el listado de estados. |
+
 ## Fuera de alcance
 
 - **Tarjeta** en la cuota anual (automática o «Pagar ahora»): Plan I (3DS con Spreedly).
@@ -9486,16 +9508,57 @@ Trabajos de Hangfire (Billing): `annual-fee-state-enrollment` (4:30 UTC, alta de
   Fecha de encendido en producción: ________.
 - **La tarjeta sigue apagada** (`Billing:TokenPurchase:CardEnabled = false`, `Signup:CardEnabled = false`)
   y la cuota no la acepta en ningún caso.
-- **Rastro del stub (R10)**: los `PaymentHistory` simulados que el orquestador escribió antes de que el
-  motor rechazara la renovación:
+- **Tarjeta de las renovaciones apagada** (`Billing:Recurring:CardEnabled`, por defecto `false`; revisión
+  I1/I2). Con ella apagada, una renovación sin saldo gastable suficiente falla con `CARD_DISABLED` y sigue
+  la cadencia del plan; agotado el tope de 90 días sin cobrar, el estado se para y la membresía pasa a
+  `HoldByBilling`. No se enciende hasta el Plan I **y** hasta cerrar `DelayedFallbackChargeJob` (C3).
+  Comprobado que no está en ningún `appsettings`: ________.
+- **Rastro del stub (R10)**: los `PaymentHistory` simulados que ya existan, con su pedido y su intento
+  de gateway (los escribieron el orquestador, el cobro diferido o la renovación manual cuando la tarjeta
+  no estaba apagada):
 
   ```sql
-  SELECT Id, OrderId, MemberId, Amount, GatewayName, GatewayTransactionId, CreationDate
-  FROM PaymentHistories WHERE GatewayTransactionId LIKE 'simulated-%' OR GatewayTransactionId LIKE 'STUB-%'
-  ORDER BY CreationDate DESC;
+  SELECT ph.Id, ph.OrderId, ph.MemberId, ph.Amount, ph.GatewayName, ph.GatewayTransactionId, ph.CreationDate,
+         o.OrderNo, o.Status AS EstadoPedido, o.MembershipSubscriptionId
+  FROM PaymentHistories ph WITH (NOLOCK)
+  LEFT JOIN Orders o WITH (NOLOCK) ON o.Id = ph.OrderId
+  WHERE ph.GatewayTransactionId LIKE 'simulated%' OR ph.GatewayTransactionId LIKE 'STUB-%'
+  ORDER BY ph.CreationDate DESC;
+
+  SELECT COUNT(*) AS intentosSimulados FROM GatewayChargeAttempts WITH (NOLOCK)
+  WHERE GatewayTransactionId LIKE 'simulated%' OR GatewayTransactionId LIKE 'STUB-%';
+
+  -- Renovaciones dadas por cobradas con dinero inventado antes del Bloque 1 (pedido Paid con pago simulado):
+  SELECT o.Id, o.OrderNo, o.MemberId, o.TotalAmount, o.MembershipSubscriptionId, o.OrderDate
+  FROM Orders o WITH (NOLOCK) JOIN PaymentHistories ph WITH (NOLOCK) ON ph.OrderId = o.Id
+  WHERE o.Status = 2 AND (ph.GatewayTransactionId LIKE 'simulated%' OR ph.GatewayTransactionId LIKE 'STUB-%');
   ```
 
-  Pasar el resultado a tesorería: no son dinero. Resultado en producción: ________.
+  Pasar el resultado a tesorería: no son dinero. En local (2026-10-17): 0. Resultado en producción: ________.
+- **Lo que deja de renovarse al apagar `MembershipAutoRenewalJob`** (revisión I3). El job renovaba toda
+  suscripción activa con `IsAutoRenew`, sin `CancellationDate`, no gratuita y con `StartDate` de hace
+  30 días o más, tuviera o no estado de cobro, por `RenewMembershipHandler`. Al apagarlo dejan de
+  renovarse por esa vía:
+  1. **Las Ambassador de nivel 1** (Lifestyle Ambassador): el plan anual no crea estados por suscripción
+     (K2), así que el motor no las renueva. Las sustituye la cuota anual del Bloque 3.
+  2. **La ruta de wallet del legado** (miembros fuera de EE. UU. y Canadá): el job cobraba con la wallet
+     preferida (`IGatewayResolver`, p. ej. eWallet) sin candado ni estado. El motor no tiene esa ruta: esas
+     renovaciones ya solo se pagan con comisiones (saldo gastable) o fallan con `CARD_DISABLED`.
+  3. **Los 33 estados `Stopped` con la membresía `Active` de R13**: el job los renovaba por su cuenta; el
+     motor no los mira. Siguen activos sin pagar hasta que Nick decida (consulta de §12).
+
+  ```sql
+  -- Activas que renovaba el job y no tienen estado vivo en el motor (o lo tienen parado):
+  SELECT m.MembershipLevelId, COUNT(*) AS suscripciones
+  FROM MembershipSubscriptions m WITH (NOLOCK)
+  LEFT JOIN SubscriptionBillingStates s WITH (NOLOCK) ON s.MembershipSubscriptionId = m.Id AND s.Purpose = 1
+  WHERE m.SubscriptionStatus = 1 AND m.IsAutoRenew = 1 AND m.CancellationDate IS NULL AND m.IsFree = 0
+    AND m.IsDeleted = 0 AND (s.Id IS NULL OR s.Status = 4)
+  GROUP BY m.MembershipLevelId;
+  ```
+
+  En local (2026-10-17): 33, todas de nivel 3 (son las de R13); ninguna de nivel 1 ni sin estado.
+  Resultado en producción: ________.
 - **«Calificado» con la anualidad real**: los Ambassadors con más de 12 meses cuyo estado de cuota vence
   en el futuro pasan a «Calificado» (P1); los que tienen el ciclo vencido sin pagar, no. Avisar a
   soporte. En local solo hay 2 Ambassadors con más de un año.
