@@ -46,8 +46,15 @@ public class NodoDeGenealogiaModeloTests
         // optimizador prefiere recorrer la tabla a hacer un seek con búsquedas en la clave agrupada.
         profundidad.GetIncludeProperties().Should().BeEquivalentTo("MemberId", "Level", "CreationDate", "IsDeleted");
         tipo.FindProperty("NodeNullKey")!.GetComputedColumnSql()
-            .Should().Be("CASE WHEN [Node] IS NULL THEN CAST([Id] AS varchar(100)) END");
+            .Should().Be("CASE WHEN [Node] IS NULL THEN CAST([Id] AS nvarchar(100)) END"); // revisión M8
         tipo.FindProperty("NodeNullKey")!.GetIsStored().Should().BeTrue();
+
+        // Revisión M5: los hermanos de un nodo se buscan por ParentMemberId y se leen por Node.
+        tipo.GetIndexes().Single(i => i.Properties.Select(p => p.Name).SequenceEqual(new[] { "ParentMemberId" }))
+            .GetIncludeProperties().Should().BeEquivalentTo("Node");
+        // Revisión M4: GenealogySubtree.Under es exacto solo con ordinales enteros.
+        tipo.GetCheckConstraints().Should().ContainSingle(c => c.Name == "CK_GenealogyTree_Node_OrdinalesEnteros"
+            && c.Sql == "[Node] IS NULL OR CHARINDEX('.', [Node].ToString()) = 0");
 
         tipo.FindProperty("NodeLevel")!.GetComputedColumnSql().Should().Be("[Node].GetLevel()");
         tipo.GetIndexes().Should().Contain(i => i.Properties.Select(p => p.Name).SequenceEqual(new[] { "NodeLevel", "Node" }));

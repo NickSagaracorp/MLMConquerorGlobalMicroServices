@@ -13,7 +13,7 @@ using Microsoft.SqlServer.Types;
 namespace MLMConquerorGlobalEdition.Repository.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261017194840_NodoDeGenealogia")]
+    [Migration("20261017215312_NodoDeGenealogia")]
     partial class NodoDeGenealogia
     {
         /// <inheritdoc />
@@ -16227,8 +16227,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.Property<string>("NodeNullKey")
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("varchar(100)")
-                        .HasComputedColumnSql("CASE WHEN [Node] IS NULL THEN CAST([Id] AS varchar(100)) END", true);
+                        .HasColumnType("nvarchar(100)")
+                        .HasComputedColumnSql("CASE WHEN [Node] IS NULL THEN CAST([Id] AS nvarchar(100)) END", true);
 
                     b.Property<string>("ParentMemberId")
                         .HasColumnType("nvarchar(450)");
@@ -16240,6 +16240,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("ParentMemberId");
 
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("ParentMemberId"), new[] { "Node" });
+
                     b.HasIndex("MemberId", "CreationDate");
 
                     b.HasIndex("Node", "NodeNullKey")
@@ -16250,7 +16252,10 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("NodeLevel", "Node");
 
-                    b.ToTable("GenealogyTree");
+                    b.ToTable("GenealogyTree", t =>
+                        {
+                            t.HasCheckConstraint("CK_GenealogyTree_Node_OrdinalesEnteros", "[Node] IS NULL OR CHARINDEX('.', [Node].ToString()) = 0");
+                        });
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Tree.GhostPointEntity", b =>

@@ -60,7 +60,8 @@ public class SqlServerNodoDeGenealogiaTests
           (SELECT COUNT(*) FROM GenealogyTree WHERE Node IS NULL) AS SinNode,
           (SELECT COUNT(*) FROM GenealogyTree c
            OUTER APPLY (SELECT TOP (1) p.Node FROM GenealogyTree p
-                        WHERE p.MemberId = c.ParentMemberId ORDER BY p.CreationDate DESC) pp
+                        WHERE p.MemberId = c.ParentMemberId AND p.IsDeleted = 0
+                        ORDER BY p.CreationDate DESC, p.Id DESC) pp            -- el nodo vigente, como el alta
            WHERE c.Node IS NOT NULL
              AND ((pp.Node IS NULL AND c.Node.GetLevel() <> 1)
                OR (pp.Node IS NOT NULL AND c.Node.GetAncestor(1) <> pp.Node))) AS Incoherentes

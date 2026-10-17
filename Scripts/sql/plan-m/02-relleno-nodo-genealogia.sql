@@ -1,18 +1,33 @@
 /*
-Plan M, Tarea 10 (M14, R1). Rellena GenealogyTree.Node a partir de ParentMemberId.
-- Idempotente: solo toca filas con Node NULL cuyo padre ya tiene Node, o que son raices (sin padre o
-  con un padre que no existe). Cada pasada avanza un nivel; se puede cortar y relanzar.
-- Por lotes de @Lote filas, cada lote en su transaccion.
-- Ordinales como GenealogyNodes.NextChildAsync: ultimo ordinal del grupo + ROW_NUMBER por (CreationDate, Id).
-- Si un alta simultanea ocupa un Node, el lote falla (indice unico) y basta con relanzar.
-- En local: solo MLMConquerorGlobalEditionDb. En produccion: ventana con poco trafico, tras la migracion
-  NodoDeGenealogia y ANTES del despliegue 2 (Bloque 3).
-- Como ejecutarlo (siempre con -b, que detiene sqlcmd en el primer error):
-    sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -i Scripts/sql/plan-m/02-relleno-nodo-genealogia.sql
+Plan M, Tarea 10 (M14, R1), rehecho en la revision de las Tareas 6-13 (I1) para que escale a millones.
+Rellena GenealogyTree.Node a partir de ParentMemberId con los MISMOS ordinales que el alta
+(GenealogyNodes.NextChildAsync):
+  - el padre es el nodo vigente del patrocinador: el vivo mas reciente, con desempate por Id;
+  - el ordinal es el siguiente al ultimo hermano (vivos y borrados), en orden de (CreationDate, Id);
+  - sin padre en el arbol (o sin patrocinador), una raiz nueva detras de la ultima raiz.
+
+Como trabaja:
+  1. Calcula los nodos en una tabla temporal estrecha #nodos(Id, MemberId, Node, Nivel), nivel a nivel.
+     La primera pasada mira una vez las filas sin Node (raices nuevas e hijos de nodos ya rellenados en
+     una ejecucion anterior); cada pasada siguiente lee SOLO los hijos de la anterior, por
+     IX_GenealogyTree_ParentMemberId. No toca GenealogyTree hasta el paso 2.
+  2. Aplica #nodos por lotes de 4.000 filas en orden de clave, cada lote en su propia transaccion.
+  3. ALTER INDEX IX_GenealogyTree_Node REBUILD y UPDATE STATISTICS GenealogyTree WITH FULLSCAN.
+  4. Comprobacion de despliegue: SinNode = 0 e Incoherentes = 0.
+
+Idempotente: solo toca filas con Node NULL; relanzado sin nada pendiente no cambia nada.
+
+SE EJECUTA CON LAS ALTAS PARADAS: en la ventana de despliegue del Plan M, con todos los servicios
+parados, despues del script de migraciones y antes de arrancarlos (ver "Condiciones de despliegue").
+Un alta concurrente podria ocupar un ordinal calculado aqui.
+
+Como ejecutarlo (siempre con -b, que detiene sqlcmd en el primer error, e -I, QUOTED_IDENTIFIER ON):
+    sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -I -i Scripts/sql/plan-m/02-relleno-nodo-genealogia.sql
 */
--- sqlcmd arranca con QUOTED_IDENTIFIER OFF. GenealogyTree tiene indices sobre columnas calculadas
--- (NodeLevel, NodeNullKey) y un UPDATE con esa opcion apagada falla con 1934. Se fijan en su propio
--- lote porque QUOTED_IDENTIFIER se aplica al compilar.
+-- GenealogyTree tiene indices sobre columnas calculadas (NodeLevel, NodeNullKey) y un CHECK con un
+-- metodo de hierarchyid: con QUOTED_IDENTIFIER u otra de estas opciones apagada, un UPDATE falla
+-- con 1934. Se fijan en su propio lote porque QUOTED_IDENTIFIER se aplica al compilar (sqlcmd sin -I
+-- arranca con OFF).
 SET QUOTED_IDENTIFIER ON;
 SET ANSI_NULLS ON;
 SET ANSI_PADDING ON;
@@ -28,65 +43,135 @@ SET XACT_ABORT ON;
 IF DB_NAME() <> N'MLMConquerorGlobalEditionDb'
     THROW 51034, N'Este script es solo para MLMConquerorGlobalEditionDb.', 1;
 
-DECLARE @Lote int = 50000, @Hechas int = 1, @Total int = 0;
+DECLARE @Inicio datetime2 = SYSDATETIME();   -- solo para medir lo que tarda; hora de servidor
+DECLARE @Nivel int = 0, @Nuevas int = 1, @Calculadas int = 0, @Aplicadas int = 0, @Lote int = 4000;
 
-WHILE @Hechas > 0
+-- ── 1. Calculo en #nodos ─────────────────────────────────────────────────────────────────────────
+DROP TABLE IF EXISTS #nodos;
+CREATE TABLE #nodos (
+    Id       nvarchar(450) NOT NULL PRIMARY KEY,
+    MemberId nvarchar(450) NOT NULL,
+    Node     hierarchyid   NOT NULL,
+    Nivel    int           NOT NULL);
+CREATE INDEX IX_nodos_Nivel ON #nodos (Nivel) INCLUDE (MemberId, Node);
+
+-- Las filas a calcular en cada pasada, con su padre ya resuelto.
+DROP TABLE IF EXISTS #pasada;
+CREATE TABLE #pasada (
+    Id           nvarchar(450) NOT NULL PRIMARY KEY,
+    CreationDate datetime2     NOT NULL,
+    PadreId      nvarchar(450) NULL,       -- MemberId del padre; NULL = raiz nueva
+    PadreNode    hierarchyid   NOT NULL);  -- hierarchyid::GetRoot() para las raices
+
+WHILE @Nuevas > 0
 BEGIN
-    BEGIN TRAN;
+    TRUNCATE TABLE #pasada;
 
-    DROP TABLE IF EXISTS #lote;
+    IF @Nivel = 0
+        -- Primera pasada: una lectura de las filas sin Node. Entran las raices nuevas (sin patrocinador
+        -- o con uno que no esta vivo en el arbol) y los hijos de un nodo vigente que ya tiene Node.
+        INSERT INTO #pasada (Id, CreationDate, PadreId, PadreNode)
+        SELECT c.Id, c.CreationDate,
+               CASE WHEN pp.Id IS NULL THEN NULL ELSE pp.MemberId END,
+               ISNULL(pp.Node, hierarchyid::GetRoot())
+        FROM GenealogyTree c
+        OUTER APPLY (SELECT TOP (1) p.Id, p.MemberId, p.Node
+                     FROM GenealogyTree p
+                     WHERE p.MemberId = c.ParentMemberId AND p.IsDeleted = 0
+                     ORDER BY p.CreationDate DESC, p.Id DESC) pp
+        WHERE c.Node IS NULL
+          AND (pp.Id IS NULL OR pp.Node IS NOT NULL);
+    ELSE
+        -- Siguientes pasadas: solo los hijos de los nodos calculados en la pasada anterior, y solo si
+        -- ese nodo es el vigente de su miembro (como en el alta).
+        INSERT INTO #pasada (Id, CreationDate, PadreId, PadreNode)
+        SELECT c.Id, c.CreationDate, prev.MemberId, prev.Node
+        FROM #nodos prev
+        JOIN GenealogyTree c ON c.ParentMemberId = prev.MemberId AND c.Node IS NULL
+        WHERE prev.Nivel = @Nivel - 1
+          AND prev.Id = (SELECT TOP (1) p.Id FROM GenealogyTree p
+                         WHERE p.MemberId = prev.MemberId AND p.IsDeleted = 0
+                         ORDER BY p.CreationDate DESC, p.Id DESC)
+          AND NOT EXISTS (SELECT 1 FROM #nodos n WHERE n.Id = c.Id);
 
-    SELECT TOP (@Lote) c.Id, c.CreationDate, pp.MemberId AS PadreId, pp.Node AS PadreNode
-    INTO   #lote
-    FROM   GenealogyTree c
-    OUTER APPLY (SELECT TOP (1) p.MemberId, p.Node
-                 FROM GenealogyTree p
-                 WHERE p.MemberId = c.ParentMemberId
-                 ORDER BY p.CreationDate DESC) pp           -- nodo mas reciente del padre (R8 del Plan J)
-    WHERE  c.Node IS NULL
-      AND  (pp.MemberId IS NULL OR pp.Node IS NOT NULL);    -- raiz, huerfano o padre ya rellenado
-
-    SET @Hechas = @@ROWCOUNT;
-
-    IF @Hechas > 0
-    BEGIN
-        ;WITH grupos AS (
-            SELECT DISTINCT l.PadreId, ISNULL(l.PadreNode, hierarchyid::GetRoot()) AS PadreNode
-            FROM #lote l
-        ), ultimos AS (
-            SELECT g.PadreId, g.PadreNode,
-                   (SELECT MAX(h.Node) FROM GenealogyTree h
-                    WHERE h.Node IS NOT NULL
-                      AND h.Node.GetAncestor(1) = g.PadreNode
-                      AND (g.PadreId IS NULL OR h.ParentMemberId = g.PadreId)) AS Ultimo
-            FROM grupos g
-        ), nuevos AS (
-            SELECT l.Id, u.PadreNode,
-                   ISNULL(CAST(REVERSE(SUBSTRING(REVERSE(u.Ultimo.ToString()), 2,
+    -- Ordinales: el ultimo hermano ya guardado (vivos y borrados) mas ROW_NUMBER por (CreationDate, Id).
+    ;WITH grupos AS (
+        SELECT DISTINCT PadreId, PadreNode FROM #pasada
+    ), ultimos AS (
+        SELECT g.PadreId, g.PadreNode,
+               CASE WHEN g.PadreId IS NULL
+                    THEN (SELECT MAX(h.Node) FROM GenealogyTree h
+                          WHERE h.NodeLevel = 1)                                   -- IX_GenealogyTree_NodeLevel_Node
+                    ELSE (SELECT MAX(h.Node) FROM GenealogyTree h
+                          WHERE h.ParentMemberId = g.PadreId AND h.Node IS NOT NULL
+                            AND h.Node.GetAncestor(1) = g.PadreNode)               -- IX_GenealogyTree_ParentMemberId
+               END AS Ultimo
+        FROM grupos g
+    )
+    INSERT INTO #nodos (Id, MemberId, Node, Nivel)
+    SELECT p.Id, c.MemberId,
+           hierarchyid::Parse(u.PadreNode.ToString()
+               + CAST(ISNULL(CAST(REVERSE(SUBSTRING(REVERSE(u.Ultimo.ToString()), 2,
                           CHARINDEX('/', REVERSE(u.Ultimo.ToString()), 2) - 2)) AS int), 0)
-                   + ROW_NUMBER() OVER (PARTITION BY u.PadreId ORDER BY l.CreationDate, l.Id) AS Ordinal
-            FROM #lote l
-            JOIN ultimos u ON u.PadreId = l.PadreId OR (u.PadreId IS NULL AND l.PadreId IS NULL)
-        )
-        UPDATE g
-        SET    g.Node = hierarchyid::Parse(n.PadreNode.ToString() + CAST(n.Ordinal AS varchar(12)) + '/')
-        FROM   GenealogyTree g
-        JOIN   nuevos n ON n.Id = g.Id
-        WHERE  g.Node IS NULL;
+                      + ROW_NUMBER() OVER (PARTITION BY p.PadreId ORDER BY p.CreationDate, p.Id) AS varchar(12))
+               + '/'),
+           @Nivel
+    FROM #pasada p
+    JOIN GenealogyTree c ON c.Id = p.Id
+    JOIN ultimos u ON (u.PadreId = p.PadreId) OR (u.PadreId IS NULL AND p.PadreId IS NULL);
 
-        SET @Total += @@ROWCOUNT;
-    END
-
-    COMMIT;
-    RAISERROR(N'Rellenadas %d filas en total', 0, 1, @Total) WITH NOWAIT;
+    SET @Nuevas = @@ROWCOUNT;
+    SET @Calculadas += @Nuevas;
+    IF @Nuevas > 0
+        RAISERROR(N'Nivel %d: %d nodos calculados', 0, 1, @Nivel, @Nuevas) WITH NOWAIT;
+    SET @Nivel += 1;
 END
 
--- Condicion de despliegue del Bloque 3 (R17): las dos cifras a 0.
+DECLARE @MsCalculo int = DATEDIFF(MILLISECOND, @Inicio, SYSDATETIME());
+RAISERROR(N'Calculo: %d ms', 0, 1, @MsCalculo) WITH NOWAIT;
+
+-- ── 2. Aplicacion por lotes en orden de clave ───────────────────────────────────────────────────
+DECLARE @Desde nvarchar(450) = N'', @Hasta nvarchar(450), @Filas int;
+WHILE 1 = 1
+BEGIN
+    SELECT @Hasta = MAX(Id) FROM (SELECT TOP (@Lote) Id FROM #nodos WHERE Id > @Desde ORDER BY Id) x;
+    IF @Hasta IS NULL BREAK;
+
+    BEGIN TRAN;
+    UPDATE g
+    SET    g.Node = n.Node
+    FROM   GenealogyTree g
+    JOIN   #nodos n ON n.Id = g.Id
+    WHERE  n.Id > @Desde AND n.Id <= @Hasta AND g.Node IS NULL;
+    SET @Filas = @@ROWCOUNT;
+    COMMIT;
+
+    SET @Aplicadas += @Filas;
+    SET @Desde = @Hasta;
+END
+RAISERROR(N'Calculados %d nodos, aplicados %d', 0, 1, @Calculadas, @Aplicadas) WITH NOWAIT;
+DECLARE @MsAplicado int = DATEDIFF(MILLISECOND, @Inicio, SYSDATETIME());
+RAISERROR(N'Calculo y aplicacion: %d ms', 0, 1, @MsAplicado) WITH NOWAIT;
+
+-- ── 3. Indice y estadisticas ────────────────────────────────────────────────────────────────────
+-- El indice se creo con todos los Node a NULL y el relleno lo deja fragmentado; las estadisticas
+-- de entonces no sirven para estimar los rangos del equipo.
+IF @Aplicadas > 0
+BEGIN
+    ALTER INDEX IX_GenealogyTree_Node ON GenealogyTree REBUILD;
+    UPDATE STATISTICS GenealogyTree WITH FULLSCAN;
+END
+
+DECLARE @Ms int = DATEDIFF(MILLISECOND, @Inicio, SYSDATETIME());
+RAISERROR(N'Tiempo total: %d ms', 0, 1, @Ms) WITH NOWAIT;
+
+-- ── 4. Condicion de despliegue (R17): las dos cifras a 0 ────────────────────────────────────────
 SELECT
   (SELECT COUNT(*) FROM GenealogyTree WHERE Node IS NULL) AS SinNode,
   (SELECT COUNT(*) FROM GenealogyTree c
    OUTER APPLY (SELECT TOP (1) p.Node FROM GenealogyTree p
-                WHERE p.MemberId = c.ParentMemberId ORDER BY p.CreationDate DESC) pp
+                WHERE p.MemberId = c.ParentMemberId AND p.IsDeleted = 0
+                ORDER BY p.CreationDate DESC, p.Id DESC) pp
    WHERE c.Node IS NOT NULL
      AND ((pp.Node IS NULL AND c.Node.GetLevel() <> 1)
        OR (pp.Node IS NOT NULL AND c.Node.GetAncestor(1) <> pp.Node))) AS Incoherentes;
