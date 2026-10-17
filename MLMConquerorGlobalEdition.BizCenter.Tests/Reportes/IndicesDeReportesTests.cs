@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
+using MLMConquerorGlobalEdition.Domain.Entities.Events;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 
@@ -79,6 +80,16 @@ public class IndicesDeReportesTests
         propiedad.IsNullable.Should().BeFalse();
         propiedad.GetDefaultValue().Should().Be(false);
         new MemberProfile().KeepQualified.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Inscripciones_a_eventos_unicas_por_evento_y_referencia_externa()
+    {
+        using var db = ReportesDb.Nueva();
+        db.Model.FindEntityType(typeof(CorporateEventRegistration))!.GetIndexes()
+            .Should().Contain(i => i.IsUnique
+                && i.Properties.Select(p => p.Name).SequenceEqual(new[] { "EventId", "ExternalRef" }));
+        TieneIndice(typeof(CorporateEventRegistration), "EventId", "MemberId").Should().BeTrue();
     }
 
     // (índices de los bloques siguientes)

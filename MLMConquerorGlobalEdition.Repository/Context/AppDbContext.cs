@@ -109,6 +109,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     public DbSet<TokenPurchase> TokenPurchases => Set<TokenPurchase>();
 
     public DbSet<CorporateEvent> CorporateEvents => Set<CorporateEvent>();
+    public DbSet<CorporateEventRegistration> CorporateEventRegistrations => Set<CorporateEventRegistration>();
     public DbSet<CorporatePromo> CorporatePromos => Set<CorporatePromo>();
     public DbSet<CorporateContest> CorporateContests => Set<CorporateContest>();
     public DbSet<CorporateContestTranslation> CorporateContestTranslations => Set<CorporateContestTranslation>();
