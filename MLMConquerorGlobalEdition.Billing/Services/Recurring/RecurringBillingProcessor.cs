@@ -56,6 +56,9 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
     /// <summary>La membresía es gratuita: el estado se para sin cobrar.</summary>
     public const string ReasonMembershipFree = MembershipBillingStops.ReasonMembershipFree;
 
+    /// <summary>La suscripción del estado está borrada o no existe: el estado se para (revisión M-9).</summary>
+    public const string ReasonSubscriptionMissing = MembershipBillingStops.ReasonSubscriptionMissing;
+
     public RecurringBillingProcessor(
         AppDbContext db,
         ICommissionBalanceService commissionBalance,
@@ -124,7 +127,11 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
         // el tope de días sin cobrar le pondría HoldByBilling o Expired encima de la cancelación).
         var subscriptionToCheck = await _db.MembershipSubscriptions.AsNoTracking()
             .FirstOrDefaultAsync(s => s.Id == state.MembershipSubscriptionId && !s.IsDeleted, ct);
-        var notBillable = subscriptionToCheck is null ? null : MembershipBillingStops.WhyNotBillable(subscriptionToCheck, now);
+        // Revisión M-9: sin suscripción (borrada o inexistente) no hay nada que renovar; se para con su
+        // motivo en vez de fallar SUBSCRIPTION_NOT_FOUND en cada pasada.
+        var notBillable = subscriptionToCheck is null
+            ? MembershipBillingStops.ReasonSubscriptionMissing
+            : MembershipBillingStops.WhyNotBillable(subscriptionToCheck, now);
         if (notBillable is not null)
         {
             MembershipBillingStops.Stop(state, notBillable, now, Actor);

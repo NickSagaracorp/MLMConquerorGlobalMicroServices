@@ -16,6 +16,9 @@ public static class MembershipBillingStops
     public const string ReasonMembershipCancelled = "MEMBERSHIP_CANCELLED";
     public const string ReasonMembershipFree      = "MEMBERSHIP_FREE";
 
+    /// <summary>La suscripción del estado está borrada o no existe: no hay nada que renovar.</summary>
+    public const string ReasonSubscriptionMissing = "SUBSCRIPTION_MISSING";
+
     /// <summary>
     /// Null si la suscripción se puede cobrar; si no, el motivo. Cancelada, con la cancelación programada
     /// ya cumplida (IsAutoRenew apagado y CancellationDate hoy o antes, en hora de servidor) o gratuita.

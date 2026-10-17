@@ -133,4 +133,29 @@ public class MotorNoCobraCanceladasTests
 
         r.Value!.Outcome.Should().Be("Success");
     }
+
+    [Theory]
+    [InlineData(true)]   // la suscripción está borrada
+    [InlineData(false)]  // la suscripción no existe
+    public async Task Sin_suscripcion_se_para_con_su_motivo_en_vez_de_fallar_cada_pasada(bool borrada)
+    {
+        // Revisión M-9: antes devolvía SUBSCRIPTION_NOT_FOUND y el estado volvía a entrar cada día.
+        await using var db = await SembrarAsync(s => s.IsDeleted = borrada);
+        if (!borrada)
+        {
+            var sub = await db.MembershipSubscriptions.SingleAsync();
+            db.MembershipSubscriptions.Remove(sub);
+            await db.SaveChangesAsync();
+        }
+
+        var r = await Procesador(db).ProcessAsync("estado-1");
+
+        r.IsSuccess.Should().BeTrue();
+        r.Value!.Outcome.Should().Be("Skipped");
+        r.Value.FailureReason.Should().Be(RecurringBillingProcessor.ReasonSubscriptionMissing);
+        var estado = await db.SubscriptionBillingStates.AsNoTracking().SingleAsync();
+        estado.Status.Should().Be(RecurringBillingStatus.Stopped);
+        estado.LastFailureReason.Should().Be(RecurringBillingProcessor.ReasonSubscriptionMissing);
+        (await db.Orders.CountAsync()).Should().Be(0);
+    }
 }
