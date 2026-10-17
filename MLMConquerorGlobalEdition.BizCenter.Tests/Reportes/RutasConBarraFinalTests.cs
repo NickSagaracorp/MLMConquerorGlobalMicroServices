@@ -9,7 +9,8 @@ namespace MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 /// (2) los sitios que escriben HierarchyPath son los que se revisaron (Plan J). Uno nuevo hace
 /// fallar la prueba: hay que comprobar que su ruta acaba en "/" y añadirlo aquí.
 /// Lo que la prueba NO ve es el valor de una variable (newPath, relative, ChildPath...): eso se
-/// revisó a mano una vez y queda anotado en el plan.
+/// revisó a mano una vez y queda anotado en el plan. Tampoco ve un ExecuteUpdate con
+/// SetProperty(x => x.HierarchyPath, ...); hoy no hay ninguno. El barrido incluye Scripts/.
 /// </summary>
 public class RutasConBarraFinalTests
 {
@@ -29,6 +30,9 @@ public class RutasConBarraFinalTests
         ["MLMConquerorGlobalEdition.SignupAPI/Features/Placement/Commands/PlaceMember/PlaceMemberHandler.cs"]         = 1,
         ["MLMConquerorGlobalEdition.SignupAPI/Features/Signups/Commands/SignupAmbassador/SignupAmbassadorHandler.cs"] = 2,
         ["MLMConquerorGlobalEdition.SignupAPI/Features/Signups/Commands/SignupMember/SignupMemberHandler.cs"]         = 1,
+        // UPDATE en SQL con un parámetro; revisado a mano: la ruta se construye con "/" al principio
+        // y al final (BuildPath, StringBuilder("/") ... Append('/')).
+        ["Scripts/FixDualTeamPaths/Program.cs"]                                                                       = 1,
     };
 
     private static IEnumerable<(string Archivo, string Valor)> Escrituras()
@@ -37,7 +41,9 @@ public class RutasConBarraFinalTests
         var sep  = Path.DirectorySeparatorChar;
 
         foreach (var proyecto in Directory.GetDirectories(raiz, "MLMConquerorGlobalEdition.*")
-                     .Where(d => !d.EndsWith(".Tests", StringComparison.Ordinal)))
+                     .Where(d => !d.EndsWith(".Tests", StringComparison.Ordinal))
+                     .Append(Path.Combine(raiz, "Scripts"))
+                     .Where(Directory.Exists))
         foreach (var archivo in Directory.EnumerateFiles(proyecto, "*.cs", SearchOption.AllDirectories))
         {
             if (archivo.Contains($"{sep}obj{sep}") || archivo.Contains($"{sep}bin{sep}")
