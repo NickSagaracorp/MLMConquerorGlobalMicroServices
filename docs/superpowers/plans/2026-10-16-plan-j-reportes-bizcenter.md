@@ -6205,7 +6205,7 @@ git commit -m "Historial de estados al guardar: StatusHistoryInterceptor registr
 
 ---
 
-### Task 29: Qué es «Calificado» (`QualificationTimeline`)
+### Task 29: Qué es «Calificado» (sustituida por `IQualificationService`)
 
 > **SUSTITUIDA (corrección de Nick N3).** En lugar de `QualificationTimeline` se crea un servicio compartido `IQualificationService` / `QualificationService` en `Repository/Services/Teams` con `IsQualifiedAsync(memberId)` y una versión por lote para una página de miembros: **membresía activa** (suscripción actual `Active`) **Y** (a) `EnrollDate > Now − 12 meses` (hora de servidor, `IDateTimeProvider`), **o** (b) `IAnnualFeeStatus.HasPaidCurrentAnnualFeeAsync` (punto de extensión; la única implementación, `AnnualFeeNotModeled`, devuelve `false` hasta el Plan K y lo dice en su `<summary>`), **o** (c) `MemberProfile.KeepQualified`. Pruebas: cada rama por separado, el borde exacto de los 12 meses, y que sin membresía activa nada califica. `EnrollmentTeamService` y `DualTeamService` pasan a usarlo para su `IsQualified`. No hay «Calificado desde».
 
@@ -7582,6 +7582,13 @@ git commit -m "Pruebas contra SQL Server de las tres vistas de cambios de estado
 ```
 
 **Fin del Bloque 5.** Una migración (`HistorialDeEstados`). Las Tareas 27 y 28 se pueden fusionar y desplegar antes que el resto del bloque (R4).
+
+> **Hecho (Bloque 5), con estas diferencias respecto al texto de arriba:**
+> - Dos migraciones: `HistorialDeEstados` (guarda `DATALENGTH/2 > 450`, código 51003) y `MarcaMantenerCalificado` (`MemberProfile.KeepQualified`, `bit` con valor por defecto `0`).
+> - La Tarea 29 es `IQualificationService` + `IAnnualFeeStatus` (`AnnualFeeNotModeled`, siempre `false` hasta el Plan K); no existe `QualificationTimeline`. El borde de los 12 meses es estricto (`EnrollDate > Now − 12 meses`). Lo usan *Cambios de estado*, *Mi equipo* de inscripción, el detalle de una rama y *Mi equipo* del Dual Team.
+> - *Cambios de estado* decide la pertenencia (las tres vistas) por el nodo **más reciente** de cada miembro (R8) y con `TreePrefix`; la fecha de reserva sin historial vive en `TeamStatusChangesService.StatusDate`. El nivel sale de la orden (N2) y el rango es el común de 366 días.
+> - Páginas también en `BizCenterApp`. El componente enseña el código del rango si el servidor responde 400 (`OnServerError`).
+> - Las pruebas de Entrax contra SQL Server de Signups borran ahora también las filas de historial que el interceptor escribe al sembrar.
 
 ---
 
