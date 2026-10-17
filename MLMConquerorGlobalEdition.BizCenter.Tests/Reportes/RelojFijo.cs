@@ -12,5 +12,9 @@ public sealed class RelojFijo : IDateTimeProvider
 
     public DateTime Now { get; set; }
 
-    public DateTime UtcNow => Now.ToUniversalTime();
+    /// <summary>
+    /// La hora fija tomada como UTC, sin convertir: ToUniversalTime() dependía de la zona horaria
+    /// de la máquina que corre la prueba.
+    /// </summary>
+    public DateTime UtcNow => DateTime.SpecifyKind(Now, DateTimeKind.Utc);
 }

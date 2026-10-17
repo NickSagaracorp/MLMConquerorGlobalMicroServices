@@ -18,6 +18,16 @@ public sealed class SqlServerFactAttribute : FactAttribute
 }
 
 /// <summary>
+/// Colección de las pruebas de reportes contra SQL Server: xUnit no las ejecuta en paralelo entre
+/// sí, para que no compitan por las mismas tablas ni ensucien la medición de la raíz (R5/R16).
+/// </summary>
+[CollectionDefinition(Nombre, DisableParallelization = true)]
+public sealed class SqlServerReportesCollection
+{
+    public const string Nombre = "SqlServerReportes";
+}
+
+/// <summary>
 /// La base local de desarrollo (o la de MLM_TEST_SQLSERVER). Cada prueba abre una transacción,
 /// siembra con <see cref="ReportesDb"/>, consulta con el mismo contexto y la deshace: no deja datos.
 /// Necesita las migraciones del plan aplicadas en local (paso explícito de cada tarea de migración).

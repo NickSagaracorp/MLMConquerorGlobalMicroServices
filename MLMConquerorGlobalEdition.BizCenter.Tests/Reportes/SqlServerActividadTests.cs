@@ -12,6 +12,7 @@ namespace MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 /// membresía y su nivel más alto (N2) se traducen a SQL, y cuánto tarda la raíz real con el rango
 /// máximo de Actividad (3 meses, N4).
 /// </summary>
+[Collection(SqlServerReportesCollection.Nombre)]
 public class SqlServerActividadTests
 {
     private readonly ITestOutputHelper _salida;

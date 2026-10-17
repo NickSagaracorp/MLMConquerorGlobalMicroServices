@@ -10,6 +10,7 @@ namespace MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 /// El CASE del contacto, los dos alcances y el nivel por la orden (N2) se traducen a SQL; el
 /// índice de patrocinador y fecha existe.
 /// </summary>
+[Collection(SqlServerReportesCollection.Nombre)]
 public class SqlServerClientesTests
 {
     [SqlServerFact]

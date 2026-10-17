@@ -8,6 +8,7 @@ namespace MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 /// Lo que InMemory no prueba: que el GroupBy por estado, el enum.ToString() de la proyección y el
 /// GroupBy por año y mes del gráfico se traducen a SQL, y que el índice existe en la base.
 /// </summary>
+[Collection(SqlServerReportesCollection.Nombre)]
 public class SqlServerResidualesTests
 {
     [SqlServerFact]

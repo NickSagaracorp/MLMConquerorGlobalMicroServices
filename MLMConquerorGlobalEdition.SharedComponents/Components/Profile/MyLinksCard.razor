@@ -95,6 +95,7 @@
 
         _copiedKey = link.Key;
         _copiedCts?.Cancel();
+        _copiedCts?.Dispose();
         var cts = _copiedCts = new CancellationTokenSource();
         StateHasChanged();
 
@@ -110,7 +111,12 @@
         if (_copiedKey == link.Key) _copiedKey = null;
     }
 
-    public void Dispose() => _copiedCts?.Cancel();
+    public void Dispose()
+    {
+        _copiedCts?.Cancel();
+        _copiedCts?.Dispose();
+        _copiedCts = null;
+    }
 
     private RenderFragment RenderList(List<LinkDto> links) => __builder =>
     {
