@@ -8021,8 +8021,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("SponsorMemberId")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("SsnEncrypted")
                         .HasMaxLength(512)

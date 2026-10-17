@@ -63,4 +63,18 @@ public class SqlServerClientesTests
 
         n.Should().Be(1, "la migración IndicePatrocinadorYFechaDeAlta tiene que estar aplicada en local");
     }
+
+    [SqlServerFact]
+    public async Task El_patrocinador_mide_como_los_ids_del_arbol_con_los_que_se_une()
+    {
+        await using var db = SqlServerReportes.Db();
+
+        var longitudes = await db.Database.SqlQuery<int>($"""
+            SELECT c.max_length / 2 AS [Value] FROM sys.columns c
+            WHERE (c.object_id = OBJECT_ID('MemberProfiles') AND c.name = 'SponsorMemberId')
+               OR (c.object_id = OBJECT_ID('GenealogyTree')  AND c.name = 'MemberId')
+            """).ToListAsync();
+
+        longitudes.Should().Equal(450, 450);
+    }
 }

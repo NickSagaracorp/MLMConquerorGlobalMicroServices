@@ -11,16 +11,16 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             // Plan J (R2): no estrechar la columna si algún valor no cabe; mejor fallar el despliegue
-            // que truncar un patrocinador.
+            // que truncar un patrocinador. 450 es la longitud de GenealogyTree.MemberId, con el que se une.
             migrationBuilder.Sql(@"
-IF EXISTS (SELECT 1 FROM [MemberProfiles] WHERE LEN([SponsorMemberId]) > 20)
-    THROW 51001, N'MemberProfiles.SponsorMemberId tiene valores de mas de 20 caracteres: revisar antes de migrar (Plan J, Tarea 18).', 1;");
+IF EXISTS (SELECT 1 FROM [MemberProfiles] WHERE LEN([SponsorMemberId]) > 450)
+    THROW 51001, N'MemberProfiles.SponsorMemberId tiene valores de mas de 450 caracteres: revisar antes de migrar (Plan J, Tarea 18).', 1;");
 
             migrationBuilder.AlterColumn<string>(
                 name: "SponsorMemberId",
                 table: "MemberProfiles",
-                type: "nvarchar(20)",
-                maxLength: 20,
+                type: "nvarchar(450)",
+                maxLength: 450,
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "nvarchar(max)",
@@ -45,8 +45,8 @@ IF EXISTS (SELECT 1 FROM [MemberProfiles] WHERE LEN([SponsorMemberId]) > 20)
                 type: "nvarchar(max)",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(20)",
-                oldMaxLength: 20,
+                oldType: "nvarchar(450)",
+                oldMaxLength: 450,
                 oldNullable: true);
         }
     }

@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MLMConquerorGlobalEdition.Repository.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261016232343_IndiceFechaDeAlta")]
+    [Migration("20261017001236_IndiceFechaDeAlta")]
     partial class IndiceFechaDeAlta
     {
         /// <inheritdoc />
@@ -8024,8 +8024,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("SponsorMemberId")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("SsnEncrypted")
                         .HasMaxLength(512)

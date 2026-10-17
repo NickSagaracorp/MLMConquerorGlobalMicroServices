@@ -36,13 +36,18 @@ public class IndicesDeReportesTests
         indice.GetIncludeProperties().Should().BeEquivalentTo("Amount", "Status");
     }
 
+    /// <summary>
+    /// SponsorMemberId a nvarchar(450): la longitud de GenealogyTree.MemberId/ParentMemberId y
+    /// DualTeamTree, con los que se une, y la máxima que admite índice. En la solución del cliente
+    /// hay patrocinadores de 50 caracteres: nvarchar(20) los habría rechazado (corrección de Nick).
+    /// </summary>
     [Fact]
-    public void Perfiles_por_patrocinador_y_fecha_de_alta_con_patrocinador_de_veinte()
+    public void Perfiles_por_patrocinador_y_fecha_de_alta_con_patrocinador_de_450()
     {
         TieneIndice(typeof(MemberProfile), "SponsorMemberId", "EnrollDate").Should().BeTrue();
         using var db = ReportesDb.Nueva();
         db.Model.FindEntityType(typeof(MemberProfile))!.FindProperty("SponsorMemberId")!
-            .GetMaxLength().Should().Be(20);
+            .GetMaxLength().Should().Be(450);
     }
 
     [Fact]
