@@ -42,11 +42,23 @@ public class AnnualFeeEligibilityTests
     }
 
     [Fact]
-    public void Sin_perfil_o_si_ya_no_es_Ambassador_tambien_se_para()
+    public void Sin_perfil_o_si_ya_no_es_Ambassador_se_pospone_y_no_se_para()
     {
-        Automatico(AnnualFeeMemberFacts.Missing).Kind.Should().Be(AnnualFeeDecisionKind.Stop);
-        Automatico(Miembro(tipo: MemberType.ExternalMember)).Kind.Should().Be(AnnualFeeDecisionKind.Stop);
+        // Revisión M4: solo Terminated para para siempre. Un perfil que falta, borrado o que dejó de ser
+        // Ambassador puede ser un error de datos que se corrige: se vuelve a mirar mañana sin cobrar.
+        var sinPerfil = Automatico(AnnualFeeMemberFacts.Missing);
+        sinPerfil.Kind.Should().Be(AnnualFeeDecisionKind.Postpone);
+        sinPerfil.Reason.Should().Be(AnnualFeeEligibility.ReasonProfileMissing);
+
+        var cliente = Automatico(Miembro(tipo: MemberType.ExternalMember));
+        cliente.Kind.Should().Be(AnnualFeeDecisionKind.Postpone);
+        cliente.Reason.Should().Be(AnnualFeeEligibility.ReasonNotAnAmbassador);
     }
+
+    [Fact]
+    public void Un_cliente_terminado_tampoco_se_para_porque_no_es_Ambassador()
+        => Automatico(Miembro(MemberAccountStatus.Terminated, tipo: MemberType.ExternalMember)).Kind
+            .Should().Be(AnnualFeeDecisionKind.Postpone);
 
     [Fact]
     public void Con_menos_de_un_anio_se_reprograma_a_su_aniversario()

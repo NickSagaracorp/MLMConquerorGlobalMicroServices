@@ -49,6 +49,8 @@ public sealed record AnnualFeeDecision(AnnualFeeDecisionKind Kind, string? Reaso
 public static class AnnualFeeEligibility
 {
     public const string ReasonAccountClosed  = "ACCOUNT_CLOSED";
+    public const string ReasonProfileMissing = "PROFILE_MISSING";
+    public const string ReasonNotAnAmbassador = "NOT_AN_AMBASSADOR";
     public const string ReasonUnderOneYear   = "UNDER_ONE_YEAR";
     public const string ReasonSuspended      = "ACCOUNT_SUSPENDED";
     public const string ReasonAccountPending = "ACCOUNT_PENDING";
@@ -68,8 +70,15 @@ public static class AnnualFeeEligibility
     {
         var today = now.Date;
 
-        // 1. Cancelada, o ya no es Ambassador: no se cobra nunca más. Terminada no se reactiva.
-        if (!member.Exists || member.MemberType != MemberType.Ambassador || member.Status == MemberAccountStatus.Terminated)
+        // 0. Sin perfil (o borrado) o que ya no es Ambassador: no se cobra hoy y se vuelve a mirar
+        //    mañana (revisión M4). Puede ser un dato que se corrige; parar sería para siempre.
+        if (!member.Exists)
+            return new(AnnualFeeDecisionKind.Postpone, ReasonProfileMissing);
+        if (member.MemberType != MemberType.Ambassador)
+            return new(AnnualFeeDecisionKind.Postpone, ReasonNotAnAmbassador);
+
+        // 1. Cancelada: no se cobra nunca más. Terminada no se reactiva (decisiones de paridad).
+        if (member.Status == MemberAccountStatus.Terminated)
             return new(AnnualFeeDecisionKind.Stop, ReasonAccountClosed);
 
         // 2. Menos de un año: el primer cobro es el aniversario.
