@@ -45,24 +45,33 @@ public sealed partial class AnnualFeeChargeService
         DateTime cycle;
         await using (var tx = await _gate.EnterAsync(state.MemberId, ct))
         {
-            var blocked = await BlockedUnderGateAsync(state, key, rule, now, ct);
-            if (blocked is not null)
-            {
-                await SafeRollbackAsync(tx, state.MemberId);
-                return Settled.Blocked(blocked);
-            }
-
-            cycle   = state.NextBillingDate.Date;
-            order   = NewOrder(state.MemberId, charge, cycle, actor, now);
-            payment = NewPayment(state, cycle, charge, AnnualFeePaymentMethod.EWallet, source, key, order, actor, now);
             try
             {
-                await _db.SaveChangesAsync(ct);
-                await tx.CommitAsync(ct);
+                var blocked = await BlockedUnderGateAsync(state, key, rule, now, ct);
+                if (blocked is not null)
+                {
+                    await SafeRollbackAsync(tx, state.MemberId);
+                    return Settled.Blocked(blocked);
+                }
+
+                cycle   = state.NextBillingDate.Date;
+                order   = NewOrder(state.MemberId, charge, cycle, actor, now);
+                payment = NewPayment(state, cycle, charge, AnnualFeePaymentMethod.EWallet, source, key, order, actor, now);
+                try
+                {
+                    await _db.SaveChangesAsync(ct);
+                    await tx.CommitAsync(ct);
+                }
+                catch (DbUpdateException ex) when (ex is not DbUpdateConcurrencyException)
+                {
+                    return await BlockAfterCollisionAsync(tx, state.MemberId, key, before1, ex);
+                }
             }
-            catch (DbUpdateException ex) when (ex is not DbUpdateConcurrencyException)
+            catch (Exception)
             {
-                return await BlockAfterCollisionAsync(tx, state.MemberId, key, before1, ex);
+                // Revisión C-1: nada a medias en el contexto compartido; se relanza.
+                await AbortUnderGateAsync(tx, state.MemberId, before1);
+                throw;
             }
         }
 

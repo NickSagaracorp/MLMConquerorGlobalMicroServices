@@ -30,7 +30,8 @@ public class CobroAutomaticoDeCuotaAnualTests
     private static readonly DateTime Vence = new(2027, 6, 5);
 
     internal static AnnualFeeChargeService Servicio(
-        AppDbContext db, bool encendido = true, IMemberFundsGate? candado = null, Mock<IEWalletFunds>? ewallet = null)
+        AppDbContext db, bool encendido = true, IMemberFundsGate? candado = null, Mock<IEWalletFunds>? ewallet = null,
+        IAnnualFeeTokenConsumer? tokens = null, ICommissionBalanceService? comisiones = null)
     {
         var reloj  = CuotaAnualDb.Reloj();
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
@@ -39,8 +40,8 @@ public class CobroAutomaticoDeCuotaAnualTests
         }).Build();
 
         return new AnnualFeeChargeService(
-            db, reloj, candado ?? new TransactionOnlyGate(db), new CommissionBalanceService(db, reloj),
-            (ewallet ?? new Mock<IEWalletFunds>()).Object, new AnnualFeeTokenConsumer(db),
+            db, reloj, candado ?? new TransactionOnlyGate(db), comisiones ?? new CommissionBalanceService(db, reloj),
+            (ewallet ?? new Mock<IEWalletFunds>()).Object, tokens ?? new AnnualFeeTokenConsumer(db),
             new AnnualFeeStateEnrollment(db, reloj, NullLogger<AnnualFeeStateEnrollment>.Instance),
             new RecurringBillingScheduler(), config, NullLogger<AnnualFeeChargeService>.Instance);
     }

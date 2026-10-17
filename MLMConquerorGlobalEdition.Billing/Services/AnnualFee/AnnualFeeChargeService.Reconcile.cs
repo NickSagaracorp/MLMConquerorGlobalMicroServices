@@ -21,55 +21,65 @@ public sealed partial class AnnualFeeChargeService
 
         try
         {
+            var before = Tracked();
             await using var tx = await _gate.EnterAsync(memberId, ct);
-
-            var payment = await _db.AnnualFeePayments.FirstAsync(p => p.Id == paymentId, ct);
-            if (payment.Status != AnnualFeePaymentStatus.NeedsReconciliation)
+            try
             {
-                await SafeRollbackAsync(tx, memberId);
-                return PayFail(AnnualFeeErrors.NotUnderReview, "This payment is not under review.");
-            }
 
-            var order = await _db.Orders.FirstAsync(o => o.Id == payment.OrderId, ct);
-            var state = await _db.SubscriptionBillingStates
-                .Include(s => s.Plan).ThenInclude(p => p!.PlanProducts)
-                .FirstAsync(s => s.Id == payment.SubscriptionBillingStateId, ct);
-            var now = _clock.Now;
-
-            if (request.Charged)
-            {
-                var history = AddEWalletPaymentHistory(order, payment.Amount,
-                    string.IsNullOrWhiteSpace(request.GatewayReference) ? payment.Id : request.GatewayReference.Trim(), actor, now);
-                payment.Complete(history.Id, now, actor);
-                MarkPaid(order, actor, now);
-
-                if (state.NextBillingDate.Date == payment.CycleDueDate.Date)
+                var payment = await _db.AnnualFeePayments.FirstAsync(p => p.Id == paymentId, ct);
+                if (payment.Status != AnnualFeePaymentStatus.NeedsReconciliation)
                 {
-                    // El débito se hizo el día del pago, no hoy: el siguiente vencimiento se cuenta desde entonces.
-                    AdvanceOnSuccess(state, payment.CycleDueDate, payment.CreationDate, now, actor);
-                    var productId = state.Plan!.PlanProducts.OrderBy(pp => pp.Id).Select(pp => pp.ProductId).FirstOrDefault() ?? string.Empty;
-                    AddAttempt(state, productId, RecurringFundingSource.EWallet, RecurringAttemptOutcome.Success, payment.Amount,
-                        order.Id, history.Id, tokenTransactionId: null, commissionDebitId: null, failureReason: null, now, actor);
+                    await SafeRollbackAsync(tx, memberId);
+                    return PayFail(AnnualFeeErrors.NotUnderReview, "This payment is not under review.");
+                }
+
+                var order = await _db.Orders.FirstAsync(o => o.Id == payment.OrderId, ct);
+                var state = await _db.SubscriptionBillingStates
+                    .Include(s => s.Plan).ThenInclude(p => p!.PlanProducts)
+                    .FirstAsync(s => s.Id == payment.SubscriptionBillingStateId, ct);
+                var now = _clock.Now;
+
+                if (request.Charged)
+                {
+                    var history = AddEWalletPaymentHistory(order, payment.Amount,
+                        string.IsNullOrWhiteSpace(request.GatewayReference) ? payment.Id : request.GatewayReference.Trim(), actor, now);
+                    payment.Complete(history.Id, now, actor);
+                    MarkPaid(order, actor, now);
+
+                    if (state.NextBillingDate.Date == payment.CycleDueDate.Date)
+                    {
+                        // El débito se hizo el día del pago, no hoy: el siguiente vencimiento se cuenta desde entonces.
+                        AdvanceOnSuccess(state, payment.CycleDueDate, payment.CreationDate, now, actor);
+                        var productId = state.Plan!.PlanProducts.OrderBy(pp => pp.Id).Select(pp => pp.ProductId).FirstOrDefault() ?? string.Empty;
+                        AddAttempt(state, productId, RecurringFundingSource.EWallet, RecurringAttemptOutcome.Success, payment.Amount,
+                            order.Id, history.Id, tokenTransactionId: null, commissionDebitId: null, failureReason: null, now, actor);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Cuota anual {PaymentId}: conciliada como cobrada, pero el estado ya vence el {Due} y no el {Cycle}; no se mueve.",
+                            payment.Id, state.NextBillingDate, payment.CycleDueDate);
+                    }
                 }
                 else
                 {
-                    _logger.LogWarning("Cuota anual {PaymentId}: conciliada como cobrada, pero el estado ya vence el {Due} y no el {Cycle}; no se mueve.",
-                        payment.Id, state.NextBillingDate, payment.CycleDueDate);
+                    payment.Fail(AnnualFeeErrors.NotCharged, now, actor);
+                    Cancel(order, actor, now);
                 }
+
+                payment.Notes = string.IsNullOrWhiteSpace(request.Notes)
+                    ? payment.Notes
+                    : string.IsNullOrWhiteSpace(payment.Notes) ? request.Notes.Trim() : $"{payment.Notes} | {request.Notes.Trim()}";
+
+                await _db.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+                return Result<AnnualFeePaymentResultDto>.Success(ToResult(payment, order, state.NextBillingDate));
             }
-            else
+            catch (Exception)
             {
-                payment.Fail(AnnualFeeErrors.NotCharged, now, actor);
-                Cancel(order, actor, now);
+                // Revisión C-1: nada a medias en el contexto; se relanza.
+                await AbortUnderGateAsync(tx, memberId, before);
+                throw;
             }
-
-            payment.Notes = string.IsNullOrWhiteSpace(request.Notes)
-                ? payment.Notes
-                : string.IsNullOrWhiteSpace(payment.Notes) ? request.Notes.Trim() : $"{payment.Notes} | {request.Notes.Trim()}";
-
-            await _db.SaveChangesAsync(ct);
-            await tx.CommitAsync(ct);
-            return Result<AnnualFeePaymentResultDto>.Success(ToResult(payment, order, state.NextBillingDate));
         }
         catch (MemberFundsBusyException)
         {

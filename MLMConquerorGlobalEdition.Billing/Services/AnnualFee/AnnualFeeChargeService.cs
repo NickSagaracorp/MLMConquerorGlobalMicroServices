@@ -157,34 +157,45 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
         var now    = _clock.Now;
         var before = Tracked();
         await using var tx = await _gate.EnterAsync(state.MemberId, ct);
-
-        var blocked = await BlockedUnderGateAsync(state, key, rule, now, ct);
-        if (blocked is not null)
+        try
         {
-            await SafeRollbackAsync(tx, state.MemberId);
-            return Settled.Blocked(blocked);
-        }
 
-        var instance = await _tokens.FindAsync(state.MemberId, now, ct);
-        if (instance is null)
+            var blocked = await BlockedUnderGateAsync(state, key, rule, now, ct);
+            if (blocked is not null)
+            {
+                await SafeRollbackAsync(tx, state.MemberId);
+                return Settled.Blocked(blocked);
+            }
+
+            var instance = await _tokens.FindAsync(state.MemberId, now, ct);
+            if (instance is null)
+            {
+                await SafeRollbackAsync(tx, state.MemberId);
+                return Settled.NotPossible(AnnualFeeErrors.NoFeeToken);
+            }
+
+            var cycle   = state.NextBillingDate.Date;
+            var order   = NewOrder(state.MemberId, 0m, cycle, actor, now);
+            var payment = NewPayment(state, cycle, 0m, AnnualFeePaymentMethod.Token, source, key, order, actor, now);
+            var token   = await _tokens.ConsumeAsync(instance, order.Id, actor, now, ct);
+
+            order.Notes = $"{order.Notes} — paid with token {token.Code}";
+            payment.CompleteWithToken(token.TokenTransactionId, token.Code, now, actor);
+            MarkPaid(order, actor, now);
+            AdvanceOnSuccess(state, cycle, now, now, actor);
+            AddAttempt(state, price.ProductId, RecurringFundingSource.Token, RecurringAttemptOutcome.Success, 0m,
+                order.Id, paymentHistoryId: null, token.TokenTransactionId, commissionDebitId: null, failureReason: null, now, actor);
+
+            return await CommitOrBlockAsync(tx, Settled.Paid(payment, order, AnnualFeeMethods.Token), key, before, ct);
+        }
+        catch (Exception)
         {
-            await SafeRollbackAsync(tx, state.MemberId);
-            return Settled.NotPossible(AnnualFeeErrors.NoFeeToken);
+            // Revisión C-1: cualquier otra excepción bajo el candado (no un choque de índice, que se
+            // trata dentro) deshace, suelta lo añadido y relee lo tocado, y se relanza. El contexto
+            // lo comparte el trabajador: su siguiente SaveChanges no puede guardar nada a medias.
+            await AbortUnderGateAsync(tx, state.MemberId, before);
+            throw;
         }
-
-        var cycle   = state.NextBillingDate.Date;
-        var order   = NewOrder(state.MemberId, 0m, cycle, actor, now);
-        var payment = NewPayment(state, cycle, 0m, AnnualFeePaymentMethod.Token, source, key, order, actor, now);
-        var token   = await _tokens.ConsumeAsync(instance, order.Id, actor, now, ct);
-
-        order.Notes = $"{order.Notes} — paid with token {token.Code}";
-        payment.CompleteWithToken(token.TokenTransactionId, token.Code, now, actor);
-        MarkPaid(order, actor, now);
-        AdvanceOnSuccess(state, cycle, now, now, actor);
-        AddAttempt(state, price.ProductId, RecurringFundingSource.Token, RecurringAttemptOutcome.Success, 0m,
-            order.Id, paymentHistoryId: null, token.TokenTransactionId, commissionDebitId: null, failureReason: null, now, actor);
-
-        return await CommitOrBlockAsync(tx, Settled.Paid(payment, order, AnnualFeeMethods.Token), key, before, ct);
     }
 
     private async Task<Settled> SettleWithCommissionsAsync(
@@ -194,52 +205,63 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
         var now    = _clock.Now;
         var before = Tracked();
         await using var tx = await _gate.EnterAsync(state.MemberId, ct);
-
-        var blocked = await BlockedUnderGateAsync(state, key, rule, now, ct);
-        if (blocked is not null)
-        {
-            await SafeRollbackAsync(tx, state.MemberId);
-            return Settled.Blocked(blocked);
-        }
-
-        var spendable = await _commissions.GetSpendableAsync(state.MemberId, ct);
-        if (spendable < price.Amount)
-        {
-            await SafeRollbackAsync(tx, state.MemberId);
-            return Settled.NotPossible(AnnualFeeErrors.InsufficientCommissionBalance);
-        }
-
-        var cycle   = state.NextBillingDate.Date;
-        var order   = NewOrder(state.MemberId, price.Amount, cycle, actor, now);
-        var payment = NewPayment(state, cycle, price.Amount, AnnualFeePaymentMethod.CommissionBalance, source, key, order, actor, now);
-
-        Result<CommissionDebit> fund;
         try
         {
-            // Guarda a la vez el pedido, el pago (aún Pending), el débito y su PaymentHistory.
-            fund = await _commissions.FundAnnualFeeAsync(state.MemberId, price.Amount, order.Id, actor, ct);
+
+            var blocked = await BlockedUnderGateAsync(state, key, rule, now, ct);
+            if (blocked is not null)
+            {
+                await SafeRollbackAsync(tx, state.MemberId);
+                return Settled.Blocked(blocked);
+            }
+
+            var spendable = await _commissions.GetSpendableAsync(state.MemberId, ct);
+            if (spendable < price.Amount)
+            {
+                await SafeRollbackAsync(tx, state.MemberId);
+                return Settled.NotPossible(AnnualFeeErrors.InsufficientCommissionBalance);
+            }
+
+            var cycle   = state.NextBillingDate.Date;
+            var order   = NewOrder(state.MemberId, price.Amount, cycle, actor, now);
+            var payment = NewPayment(state, cycle, price.Amount, AnnualFeePaymentMethod.CommissionBalance, source, key, order, actor, now);
+
+            Result<CommissionDebit> fund;
+            try
+            {
+                // Guarda a la vez el pedido, el pago (aún Pending), el débito y su PaymentHistory.
+                fund = await _commissions.FundAnnualFeeAsync(state.MemberId, price.Amount, order.Id, actor, ct);
+            }
+            catch (DbUpdateException ex) when (ex is not DbUpdateConcurrencyException)
+            {
+                return await BlockAfterCollisionAsync(tx, state.MemberId, key, before, ex);
+            }
+
+            if (!fund.IsSuccess)
+            {
+                // El saldo se miró bajo el candado: no debería pasar. El débito no escribió nada.
+                await SafeRollbackAsync(tx, state.MemberId);
+                await ForgetAfterRollbackAsync(before);
+                return Settled.Blocked(fund.ErrorCode ?? AnnualFeeErrors.InsufficientCommissionBalance);
+            }
+
+            payment.Complete(fund.Value!.PaymentHistoryId, now, actor);
+            MarkPaid(order, actor, now);
+            AdvanceOnSuccess(state, cycle, now, now, actor);
+            AddAttempt(state, price.ProductId, RecurringFundingSource.CommissionBalance, RecurringAttemptOutcome.Success,
+                price.Amount, order.Id, fund.Value.PaymentHistoryId, tokenTransactionId: null, fund.Value.DebitEarningId,
+                failureReason: null, now, actor);
+
+            return await CommitOrBlockAsync(tx, Settled.Paid(payment, order, AnnualFeeMethods.CommissionBalance), key, before, ct);
         }
-        catch (DbUpdateException ex) when (ex is not DbUpdateConcurrencyException)
+        catch (Exception)
         {
-            return await BlockAfterCollisionAsync(tx, state.MemberId, key, before, ex);
+            // Revisión C-1: cualquier otra excepción bajo el candado (no un choque de índice, que se
+            // trata dentro) deshace, suelta lo añadido y relee lo tocado, y se relanza. El contexto
+            // lo comparte el trabajador: su siguiente SaveChanges no puede guardar nada a medias.
+            await AbortUnderGateAsync(tx, state.MemberId, before);
+            throw;
         }
-
-        if (!fund.IsSuccess)
-        {
-            // El saldo se miró bajo el candado: no debería pasar. El débito no escribió nada.
-            await SafeRollbackAsync(tx, state.MemberId);
-            await ForgetAfterRollbackAsync(before);
-            return Settled.Blocked(fund.ErrorCode ?? AnnualFeeErrors.InsufficientCommissionBalance);
-        }
-
-        payment.Complete(fund.Value!.PaymentHistoryId, now, actor);
-        MarkPaid(order, actor, now);
-        AdvanceOnSuccess(state, cycle, now, now, actor);
-        AddAttempt(state, price.ProductId, RecurringFundingSource.CommissionBalance, RecurringAttemptOutcome.Success,
-            price.Amount, order.Id, fund.Value.PaymentHistoryId, tokenTransactionId: null, fund.Value.DebitEarningId,
-            failureReason: null, now, actor);
-
-        return await CommitOrBlockAsync(tx, Settled.Paid(payment, order, AnnualFeeMethods.CommissionBalance), key, before, ct);
     }
 
     /// <summary>
@@ -317,7 +339,39 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
         foreach (var entry in _db.ChangeTracker.Entries().ToList())
         {
             if (!before.Contains(entry.Entity)) entry.State = EntityState.Detached;
-            else if (entry.State != EntityState.Detached) await entry.ReloadAsync(CancellationToken.None);
+            // Revisión M-2: solo se releen los tipos que escribe el cobro de la cuota; lo demás que tenga
+            // cargado quien llama (el trozo del trabajador, el lote) no lo tocó esta transacción.
+            else if (entry.State != EntityState.Detached && TouchedTypes.Contains(entry.Metadata.ClrType))
+                await entry.ReloadAsync(CancellationToken.None);
+        }
+    }
+
+    /// <summary>Lo que escribe el cobro de la cuota dentro del candado (y nada más se relee al deshacer).</summary>
+    private static readonly HashSet<Type> TouchedTypes =
+    [
+        typeof(SubscriptionBillingState), typeof(Orders), typeof(AnnualFeePayment), typeof(PaymentHistory),
+        typeof(RecurringBillingAttempt), typeof(MLMConquerorGlobalEdition.Domain.Entities.Tokens.TokenTransaction),
+        typeof(MLMConquerorGlobalEdition.Domain.Entities.Tokens.TokenBalance),
+        typeof(MLMConquerorGlobalEdition.Domain.Entities.Commission.CommissionEarning),
+        typeof(MLMConquerorGlobalEdition.Domain.Entities.Commission.DailyResidualEarning)
+    ];
+
+    /// <summary>
+    /// Deshace la transacción del candado y olvida lo que se escribió dentro, sin que un fallo al olvidar
+    /// tape la excepción que se va a relanzar (revisión C-1).
+    /// </summary>
+    private async Task AbortUnderGateAsync(IDbContextTransaction tx, string memberId, HashSet<object> before)
+    {
+        await SafeRollbackAsync(tx, memberId);
+        try
+        {
+            await ForgetAfterRollbackAsync(before);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Cuota anual de {MemberId}: no se pudo olvidar lo escrito tras deshacer.", memberId);
+            foreach (var entry in _db.ChangeTracker.Entries().Where(e => e.State is EntityState.Added).ToList())
+                entry.State = EntityState.Detached;
         }
     }
 

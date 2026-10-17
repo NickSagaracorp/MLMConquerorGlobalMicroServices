@@ -194,6 +194,8 @@ public class RecurringChargeWorker : IRecurringChargeWorker
                     "RecurringChargeWorker: unhandled exception processing state {StateId}.",
                     stateRef.Id);
                 processed++;
+                // Plan K (C-1): lo que el caso dejó sin guardar no se cuela en el siguiente ni en el cierre.
+                await PendingChanges.DiscardAsync(_db, _logger);
             }
         }
 

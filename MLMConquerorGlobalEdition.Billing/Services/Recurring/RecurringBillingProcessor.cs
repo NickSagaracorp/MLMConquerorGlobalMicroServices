@@ -329,10 +329,21 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
         {
             if (!before.Contains(entry.Entity))
                 entry.State = EntityState.Detached;
-            else
+            // Revisión M-2: solo los tipos que escribe la renovación con comisiones.
+            else if (RenewalTouchedTypes.Contains(entry.Metadata.ClrType))
                 await entry.ReloadAsync(CancellationToken.None);
         }
     }
+
+    private static readonly HashSet<Type> RenewalTouchedTypes =
+    [
+        typeof(SubscriptionBillingState), typeof(MembershipSubscription), typeof(Orders), typeof(OrderDetail),
+        typeof(PaymentHistory), typeof(RecurringBillingAttempt),
+        typeof(MLMConquerorGlobalEdition.Domain.Entities.Tokens.TokenTransaction),
+        typeof(MLMConquerorGlobalEdition.Domain.Entities.Tokens.TokenBalance),
+        typeof(MLMConquerorGlobalEdition.Domain.Entities.Commission.CommissionEarning),
+        typeof(MLMConquerorGlobalEdition.Domain.Entities.Commission.DailyResidualEarning)
+    ];
 
     /// <summary>Cancela el pedido (creado y guardado antes del candado) si sigue en Processing.</summary>
     private async Task CancelOrderAfterRollbackAsync(Orders order, DateTime now)

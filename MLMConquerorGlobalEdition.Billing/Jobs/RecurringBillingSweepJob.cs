@@ -125,6 +125,8 @@ public class RecurringBillingSweepJob
                 failed++;
                 _logger.LogError(ex,
                     "RecurringBillingSweepJob: unhandled exception processing state {StateId}.", stateId);
+                // Plan K (C-1): lo que el caso dejó sin guardar no se cuela en el siguiente.
+                await PendingChanges.DiscardAsync(_db, _logger);
             }
         }
 
