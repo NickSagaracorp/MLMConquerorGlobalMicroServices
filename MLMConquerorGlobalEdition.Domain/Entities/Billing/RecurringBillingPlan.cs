@@ -52,6 +52,13 @@ public class RecurringBillingPlan : AuditChangesIntKey
 
     public bool IsActive { get; set; } = true;
 
+    /// <summary>
+    /// El plan de la cuota anual del Biz Center (Plan K, K2). Como mucho uno
+    /// (UX_RecurringBillingPlans_AnnualFee). Sus estados son por miembro (Purpose = AnnualFee) y nunca
+    /// se crean desde una suscripción: RecurringBillingEnrollmentService y el barrido lo saltan.
+    /// </summary>
+    public bool IsAnnualFeePlan { get; set; }
+
     // Navigation
     public ICollection<RecurringBillingPlanProduct> PlanProducts { get; set; } = new List<RecurringBillingPlanProduct>();
 

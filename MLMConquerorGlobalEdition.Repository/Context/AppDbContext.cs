@@ -143,6 +143,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     public DbSet<RecurringBillingPlanProduct> RecurringBillingPlanProducts => Set<RecurringBillingPlanProduct>();
     public DbSet<SubscriptionBillingState>    SubscriptionBillingStates    => Set<SubscriptionBillingState>();
     public DbSet<RecurringBillingAttempt>     RecurringBillingAttempts     => Set<RecurringBillingAttempt>();
+    public DbSet<AnnualFeePayment>            AnnualFeePayments            => Set<AnnualFeePayment>();
 
     // ── High-Volume Recurring Billing Pipeline (§10) ──────────────────────
     public DbSet<RecurringBillingBatch>       RecurringBillingBatches      => Set<RecurringBillingBatch>();

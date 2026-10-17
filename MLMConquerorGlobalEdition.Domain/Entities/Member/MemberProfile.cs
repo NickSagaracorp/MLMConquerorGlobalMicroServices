@@ -50,6 +50,14 @@ public class MemberProfile : AuditChangesStringKey, IAuditable
     /// Por defecto false. Editarla desde el Admin queda fuera del Plan J.
     /// </summary>
     public bool KeepQualified { get; set; }
+
+    /// <summary>
+    /// Preferencia de pagar las cuotas con el saldo (Plan K, K7; confirmada por Nick). Encendida: si no
+    /// hay un token de cuota, el cobro automático usa las comisiones y después la eWallet. Apagada: solo
+    /// tokens de cuota que el miembro ya tenga. Equivale a la DailyTokenDeduction del legado ("usar
+    /// comisiones para pagar"), que en la cuota anual el legado ni consultaba; aquí sí se respeta.
+    /// </summary>
+    public bool FeesFromBalance { get; set; } = true;
     public string? ProfilePhotoUrl { get; set; }
 
     /// <summary>

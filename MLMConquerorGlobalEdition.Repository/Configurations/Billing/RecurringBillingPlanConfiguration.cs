@@ -17,6 +17,12 @@ public class RecurringBillingPlanConfiguration : IEntityTypeConfiguration<Recurr
         builder.Property(x => x.LastUpdateBy).HasMaxLength(100);
 
         builder.HasIndex(x => x.IsActive);
+
+        // Plan K (K2): como mucho un plan de cuota anual.
+        builder.Property(x => x.IsAnnualFeePlan).IsRequired().HasDefaultValue(false);
+        builder.HasIndex(x => x.IsAnnualFeePlan, "UX_RecurringBillingPlans_AnnualFee")
+               .IsUnique()
+               .HasFilter("[IsAnnualFeePlan] = 1");
         builder.HasIndex(x => x.CycleType);
 
         builder.HasMany(x => x.PlanProducts)
