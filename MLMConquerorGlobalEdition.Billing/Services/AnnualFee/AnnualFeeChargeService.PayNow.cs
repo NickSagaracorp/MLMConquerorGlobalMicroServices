@@ -47,7 +47,7 @@ public sealed partial class AnnualFeeChargeService
             return PayFail(AnnualFeeErrors.PlanNotConfigured, "The annual fee is not configured.");
 
         var refusal = AnnualFeeEligibility.ForPayNow(
-            await AnnualFeeMemberQueries.FactsAsync(_db, input.MemberId, ct), state.NextBillingDate, _clock.Now);
+            await AnnualFeeMemberQueries.FactsAsync(_db, input.MemberId, _clock.Now, ct), state.NextBillingDate, _clock.Now);
         if (refusal is not null)
             return PayFail(refusal, "The annual fee cannot be paid right now.");
 

@@ -90,7 +90,7 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
         var member = await _db.MemberProfiles.AsNoTracking().FirstOrDefaultAsync(m => m.MemberId == state.MemberId, ct);
 
         var decision = AnnualFeeEligibility.ForAutomaticCharge(
-            await AnnualFeeMemberQueries.FactsAsync(_db, state.MemberId, ct), state.NextBillingDate, state.LastSuccessfulBillingDate, now, force);
+            await AnnualFeeMemberQueries.FactsAsync(_db, state.MemberId, now, ct), state.NextBillingDate, state.LastSuccessfulBillingDate, now, force);
         if (decision.Kind != AnnualFeeDecisionKind.Charge)
         {
             var written = await WriteStateUnderGateAsync(state, cycle, skipIfLivePayment: true,

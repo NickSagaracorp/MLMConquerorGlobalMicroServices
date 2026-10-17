@@ -369,4 +369,28 @@ public class CobroAutomaticoDeCuotaAnualTests
         r.Value!.Outcome.Should().Be(AnnualFeeOutcomes.Failed);
         (await db.CommissionEarnings.CountAsync(e => e.Amount < 0)).Should().Be(0);
     }
+
+    [Fact]
+    public async Task Con_la_membresia_cancelada_no_se_cobra_y_se_mira_manana()
+    {
+        // Decisión de Nick (M-8): quien canceló no paga la cuota en automático hasta que reactive.
+        await using var db = await ConMiembroAsync(estado: MemberAccountStatus.Inactive);
+        await CuotaAnualDb.TokenAsync(db, Miembro);
+        await CuotaAnualDb.ComisionAsync(db, Miembro, 150m);
+        db.MembershipSubscriptions.Add(new MembershipSubscription
+        {
+            Id = "sub-ta", MemberId = Miembro, MembershipLevelId = 3, SubscriptionStatus = MembershipStatus.Cancelled,
+            StartDate = Ahora.AddDays(-100), CreatedBy = "prueba"
+        });
+        await db.SaveChangesAsync();
+
+        var r = await Servicio(db).ChargeDueAsync("anual-" + Miembro, force: false);
+
+        r.Value!.Outcome.Should().Be(AnnualFeeOutcomes.Skipped);
+        r.Value.FailureReason.Should().Be(MLMConquerorGlobalEdition.Repository.Services.AnnualFee.AnnualFeeEligibility.ReasonMembershipCancelled);
+        (await db.AnnualFeePayments.CountAsync()).Should().Be(0);
+        var estado = await EstadoAsync(db);
+        estado.NextAttemptDate.Should().Be(Ahora.Date.AddDays(1));
+        estado.NextBillingDate.Should().Be(Vence);
+    }
 }

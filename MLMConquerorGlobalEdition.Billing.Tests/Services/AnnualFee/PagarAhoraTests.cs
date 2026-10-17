@@ -273,4 +273,20 @@ public class PagarAhoraTests
         r.Value.NextDueDate.Should().Be(new DateTime(2028, 7, 5));
         (await db.SubscriptionBillingStates.AsNoTracking().SingleAsync()).BillingAnchorDate.Should().Be(new DateTime(2026, 6, 5));
     }
+
+    [Fact]
+    public async Task Quien_cancelo_la_membresia_puede_pagar_ahora_para_mantener_su_Biz_Center()
+    {
+        // Decisión de Nick (M-8): el cobro automático se pospone, pero Pagar ahora sigue disponible.
+        await using var db = await ConMiembroAsync(estado: MemberAccountStatus.Inactive);
+        await CuotaAnualDb.TokenAsync(db, Miembro);
+        db.MembershipSubscriptions.Add(new MembershipSubscription
+        {
+            MemberId = Miembro, MembershipLevelId = 3, SubscriptionStatus = MembershipStatus.Cancelled,
+            StartDate = CuotaAnualDb.Ahora.AddDays(-100), CreatedBy = "prueba"
+        });
+        await db.SaveChangesAsync();
+
+        (await Pagar(db, AnnualFeeMethods.Token)).IsSuccess.Should().BeTrue();
+    }
 }

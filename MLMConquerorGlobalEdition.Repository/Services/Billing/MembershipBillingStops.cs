@@ -23,12 +23,19 @@ public static class MembershipBillingStops
     /// </summary>
     public static string? WhyNotBillable(MembershipSubscription subscription, DateTime now)
     {
-        if (subscription.SubscriptionStatus == MembershipStatus.Cancelled) return ReasonMembershipCancelled;
-        if (!subscription.IsAutoRenew && subscription.CancellationDate is { } c && c.Date <= now.Date)
+        if (IsCancelled(subscription.SubscriptionStatus, subscription.IsAutoRenew, subscription.CancellationDate, now))
             return ReasonMembershipCancelled;
         if (subscription.IsFree) return ReasonMembershipFree;
         return null;
     }
+
+    /// <summary>
+    /// ¿Está cancelada? Cancelled, o la cancelación programada ya cumplida (IsAutoRenew apagado y
+    /// CancellationDate hoy o antes, en hora de servidor). La misma regla para el motor y para la cuota.
+    /// </summary>
+    public static bool IsCancelled(MembershipStatus status, bool isAutoRenew, DateTime? cancellationDate, DateTime now) =>
+        status == MembershipStatus.Cancelled
+        || (!isAutoRenew && cancellationDate is { } c && c.Date <= now.Date);
 
     /// <summary>Para el estado (lo deja rastreado; guarda quien llama).</summary>
     public static void Stop(SubscriptionBillingState state, string reason, DateTime now, string actor)

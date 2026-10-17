@@ -31,18 +31,19 @@ public class AnnualFeeMemberQueriesTests
         return db;
     }
 
-    private static void Suscripcion(AppDbContext db, MembershipStatus estado, DateTime inicio, bool borrada = false)
+    private static void Suscripcion(AppDbContext db, MembershipStatus estado, DateTime inicio, bool borrada = false,
+        bool renueva = true, DateTime? cancelacion = null)
         => db.MembershipSubscriptions.Add(new MembershipSubscription
         {
             MemberId = Miembro, MembershipLevelId = 3, SubscriptionStatus = estado, StartDate = inicio,
-            IsDeleted = borrada, CreatedBy = "prueba"
+            IsDeleted = borrada, IsAutoRenew = renueva, CancellationDate = cancelacion, CreatedBy = "prueba"
         });
 
     [Fact]
     public async Task Sin_perfil_es_como_no_tenerlo()
     {
         await using var db = TestDbContextFactory.Create();
-        (await AnnualFeeMemberQueries.FactsAsync(db, "NADIE")).Exists.Should().BeFalse();
+        (await AnnualFeeMemberQueries.FactsAsync(db, "NADIE", Hoy)).Exists.Should().BeFalse();
     }
 
     [Fact]
@@ -50,10 +51,10 @@ public class AnnualFeeMemberQueriesTests
     {
         await using var db = await ConPerfilAsync();
 
-        var f = await AnnualFeeMemberQueries.FactsAsync(db, Miembro);
+        var f = await AnnualFeeMemberQueries.FactsAsync(db, Miembro, Hoy);
 
         f.Should().Be(new AnnualFeeMemberFacts(true, MemberType.Ambassador, MemberAccountStatus.Active,
-            new DateTime(2026, 6, 5), true, false));
+            new DateTime(2026, 6, 5), true, false, false));
     }
 
     [Fact]
@@ -64,7 +65,7 @@ public class AnnualFeeMemberQueriesTests
         Suscripcion(db, MembershipStatus.HoldByBilling, Hoy.AddMonths(-2));
         await db.SaveChangesAsync();
 
-        (await AnnualFeeMemberQueries.FactsAsync(db, Miembro)).MembershipOnHold.Should().BeTrue();
+        (await AnnualFeeMemberQueries.FactsAsync(db, Miembro, Hoy)).MembershipOnHold.Should().BeTrue();
     }
 
     [Fact]
@@ -75,7 +76,7 @@ public class AnnualFeeMemberQueriesTests
         Suscripcion(db, MembershipStatus.Active, Hoy.AddMonths(-2));
         await db.SaveChangesAsync();
 
-        (await AnnualFeeMemberQueries.FactsAsync(db, Miembro)).MembershipOnHold.Should().BeFalse();
+        (await AnnualFeeMemberQueries.FactsAsync(db, Miembro, Hoy)).MembershipOnHold.Should().BeFalse();
     }
 
     [Fact]
@@ -89,7 +90,7 @@ public class AnnualFeeMemberQueriesTests
         Suscripcion(db, MembershipStatus.HoldByBilling, Hoy.AddMonths(-2));
         await db.SaveChangesAsync();
 
-        (await AnnualFeeMemberQueries.FactsAsync(db, Miembro)).MembershipOnHold.Should().BeTrue();
+        (await AnnualFeeMemberQueries.FactsAsync(db, Miembro, Hoy)).MembershipOnHold.Should().BeTrue();
     }
 
     [Fact]
@@ -100,7 +101,7 @@ public class AnnualFeeMemberQueriesTests
         Suscripcion(db, MembershipStatus.HoldByBilling, Hoy.AddMonths(-2), borrada: true);
         await db.SaveChangesAsync();
 
-        (await AnnualFeeMemberQueries.FactsAsync(db, Miembro)).MembershipOnHold.Should().BeFalse();
+        (await AnnualFeeMemberQueries.FactsAsync(db, Miembro, Hoy)).MembershipOnHold.Should().BeFalse();
     }
 
     [Theory]
@@ -113,6 +114,43 @@ public class AnnualFeeMemberQueriesTests
         Suscripcion(db, estado, Hoy.AddMonths(-2));
         await db.SaveChangesAsync();
 
-        (await AnnualFeeMemberQueries.FactsAsync(db, Miembro)).MembershipOnHold.Should().BeFalse();
+        (await AnnualFeeMemberQueries.FactsAsync(db, Miembro, Hoy)).MembershipOnHold.Should().BeFalse();
+    }
+
+    // ── Membresía cancelada (decisión de Nick, M-8) ──────────────────────────────
+
+    [Fact]
+    public async Task La_membresia_vigente_cancelada_cuenta_como_cancelada()
+    {
+        await using var db = await ConPerfilAsync();
+        Suscripcion(db, MembershipStatus.Cancelled, Hoy.AddMonths(-2), renueva: false);
+        await db.SaveChangesAsync();
+
+        var f = await AnnualFeeMemberQueries.FactsAsync(db, Miembro, Hoy);
+        f.MembershipCancelled.Should().BeTrue();
+        f.MembershipOnHold.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(-1, true)]  // la cancelación programada ya se cumplió
+    [InlineData(0, true)]   // se cumple hoy
+    [InlineData(5, false)]  // aún no
+    public async Task La_cancelacion_programada_cuenta_cuando_se_cumple(int dias, bool esperado)
+    {
+        await using var db = await ConPerfilAsync();
+        Suscripcion(db, MembershipStatus.Active, Hoy.AddMonths(-2), renueva: false, cancelacion: Hoy.AddDays(dias));
+        await db.SaveChangesAsync();
+
+        (await AnnualFeeMemberQueries.FactsAsync(db, Miembro, Hoy)).MembershipCancelled.Should().Be(esperado);
+    }
+
+    [Fact]
+    public async Task Sin_renovacion_automatica_pero_sin_fecha_no_esta_cancelada()
+    {
+        await using var db = await ConPerfilAsync();
+        Suscripcion(db, MembershipStatus.Active, Hoy.AddMonths(-2), renueva: false);
+        await db.SaveChangesAsync();
+
+        (await AnnualFeeMemberQueries.FactsAsync(db, Miembro, Hoy)).MembershipCancelled.Should().BeFalse();
     }
 }

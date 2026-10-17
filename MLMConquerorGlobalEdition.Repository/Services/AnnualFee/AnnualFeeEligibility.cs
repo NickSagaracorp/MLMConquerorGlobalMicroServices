@@ -11,15 +11,16 @@ namespace MLMConquerorGlobalEdition.Repository.Services.AnnualFee;
 /// </summary>
 public sealed record AnnualFeeMemberFacts(
     bool Exists, MemberType MemberType, MemberAccountStatus Status, DateTime EnrollDate, bool KeepQualified,
-    bool MembershipOnHold = false)
+    bool MembershipOnHold = false, bool MembershipCancelled = false)
 {
     public static readonly AnnualFeeMemberFacts Missing =
         new(false, MemberType.Ambassador, MemberAccountStatus.Terminated, DateTime.MinValue, false);
 
-    public static AnnualFeeMemberFacts Of(MemberProfile? profile, bool membershipOnHold = false) =>
+    public static AnnualFeeMemberFacts Of(MemberProfile? profile, bool membershipOnHold = false, bool membershipCancelled = false) =>
         profile is null || profile.IsDeleted
             ? Missing
-            : new(true, profile.MemberType, profile.Status, profile.EnrollDate, profile.KeepQualified, membershipOnHold);
+            : new(true, profile.MemberType, profile.Status, profile.EnrollDate, profile.KeepQualified,
+                  membershipOnHold, membershipCancelled);
 }
 
 public enum AnnualFeeDecisionKind
@@ -55,6 +56,7 @@ public static class AnnualFeeEligibility
     public const string ReasonSuspended      = "ACCOUNT_SUSPENDED";
     public const string ReasonAccountPending = "ACCOUNT_PENDING";
     public const string ReasonMembershipOnHold = "MEMBERSHIP_ON_HOLD";
+    public const string ReasonMembershipCancelled = "MEMBERSHIP_CANCELLED";
     public const string ReasonRecentlyBilled = "RECENTLY_BILLED";
     public const string ReasonKeepQualified  = "KEEP_QUALIFIED";
     public const string ReasonNotDue         = "NOT_DUE";
@@ -98,6 +100,11 @@ public static class AnnualFeeEligibility
         if (member.MembershipOnHold)
             return new(AnnualFeeDecisionKind.Postpone, ReasonMembershipOnHold);
 
+        // 3c. Membresía cancelada (decisión de Nick, M-8): no se cobra en automático hasta que reactive,
+        //     sin mover el vencimiento. "Pagar ahora" sí sigue disponible (ForPayNow).
+        if (member.MembershipCancelled)
+            return new(AnnualFeeDecisionKind.Postpone, ReasonMembershipCancelled);
+
         // 4. Cobrada hace poco.
         if (lastSuccessfulBilling is { } last && last.Date > today.AddMonths(-AnnualFeeRules.RecentlyBilledMonths))
             return new(AnnualFeeDecisionKind.Reschedule, ReasonRecentlyBilled,
@@ -121,7 +128,10 @@ public static class AnnualFeeEligibility
     public static string? ForPayNow(AnnualFeeMemberFacts member, DateTime nextBillingDate, DateTime now)
     {
         if (!member.Exists || member.MemberType != MemberType.Ambassador) return AnnualFeeErrors.NotApplicable;
-        if (member.Status != MemberAccountStatus.Active)                  return AnnualFeeErrors.AccountNotActive;
+        // Quien canceló la membresía (su cuenta queda Inactive) puede pagar para mantener su Biz Center
+        // (decisión de Nick, M-8). Cualquier otra cuenta no activa, no.
+        var cancelledButInactive = member.MembershipCancelled && member.Status == MemberAccountStatus.Inactive;
+        if (member.Status != MemberAccountStatus.Active && !cancelledButInactive) return AnnualFeeErrors.AccountNotActive;
         if (member.MembershipOnHold)                                      return AnnualFeeErrors.MembershipOnHold;
         if (member.KeepQualified)                                         return AnnualFeeErrors.Waived;
         if (!AnnualFeeSchedule.IsPayable(nextBillingDate, now))           return AnnualFeeErrors.NotDue;

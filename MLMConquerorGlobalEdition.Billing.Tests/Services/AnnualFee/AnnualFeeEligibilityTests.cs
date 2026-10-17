@@ -19,8 +19,8 @@ public class AnnualFeeEligibilityTests
 
     private static AnnualFeeMemberFacts Miembro(
         MemberAccountStatus estado = MemberAccountStatus.Active, DateTime? alta = null, bool mantener = false,
-        MemberType tipo = MemberType.Ambassador, bool enEspera = false)
-        => new(true, tipo, estado, alta ?? new DateTime(2026, 6, 5), mantener, enEspera);
+        MemberType tipo = MemberType.Ambassador, bool enEspera = false, bool cancelada = false)
+        => new(true, tipo, estado, alta ?? new DateTime(2026, 6, 5), mantener, enEspera, cancelada);
 
     private static AnnualFeeDecision Automatico(AnnualFeeMemberFacts m, DateTime? vence = null, DateTime? ultimo = null, bool forzado = false)
         => AnnualFeeEligibility.ForAutomaticCharge(m, vence ?? Vence, ultimo, Ahora, forzado);
@@ -216,4 +216,31 @@ public class AnnualFeeEligibilityTests
     public void Los_hechos_llevan_la_espera_de_la_membresia()
         => AnnualFeeMemberFacts.Of(new MemberProfile { MemberType = MemberType.Ambassador }, membershipOnHold: true)
             .MembershipOnHold.Should().BeTrue();
+
+    // ── Membresía cancelada (decisión de Nick, M-8) ──────────────────────────────
+
+    [Theory]
+    [InlineData(MemberAccountStatus.Active)]
+    [InlineData(MemberAccountStatus.Inactive)] // cancelar deja la cuenta Inactive
+    public void Con_la_membresia_cancelada_no_se_cobra_en_automatico_y_se_mira_manana(MemberAccountStatus estado)
+    {
+        var d = Automatico(Miembro(estado, cancelada: true));
+        d.Kind.Should().Be(AnnualFeeDecisionKind.Postpone);
+        d.Reason.Should().Be(AnnualFeeEligibility.ReasonMembershipCancelled);
+        d.NextDue.Should().BeNull();
+    }
+
+    [Fact]
+    public void Forzado_tampoco_cobra_con_la_membresia_cancelada()
+        => Automatico(Miembro(cancelada: true), forzado: true).Kind.Should().Be(AnnualFeeDecisionKind.Postpone);
+
+    [Theory]
+    [InlineData(MemberAccountStatus.Active)]
+    [InlineData(MemberAccountStatus.Inactive)]
+    public void Con_la_membresia_cancelada_Pagar_ahora_sigue_disponible(MemberAccountStatus estado)
+        => AnnualFeeEligibility.ForPayNow(Miembro(estado, cancelada: true), Vence, Ahora).Should().BeNull();
+
+    [Fact]
+    public void Inactiva_sin_membresia_cancelada_sigue_sin_poder_pagar_ahora()
+        => AnnualFeeEligibility.ForPayNow(Miembro(MemberAccountStatus.Inactive), Vence, Ahora).Should().Be(AnnualFeeErrors.AccountNotActive);
 }
