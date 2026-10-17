@@ -19,7 +19,8 @@ public sealed partial class AnnualFeeChargeService
     public Task<bool> HasPaymentAsync(string memberId, string? idempotencyKey, CancellationToken ct = default) =>
         string.IsNullOrWhiteSpace(memberId) || string.IsNullOrWhiteSpace(idempotencyKey)
             ? Task.FromResult(false)
-            : _db.AnnualFeePayments.AsNoTracking()
+            // Revisión M-6: con los borrados lógicos, como el índice único de la clave.
+            : _db.AnnualFeePayments.IgnoreQueryFilters().AsNoTracking()
                  .AnyAsync(p => p.MemberId == memberId && p.IdempotencyKey == idempotencyKey, ct);
 
     public async Task<Result<AnnualFeePaymentResultDto>> PayNowAsync(AnnualFeePayNowInput input, CancellationToken ct = default)
@@ -96,9 +97,14 @@ public sealed partial class AnnualFeeChargeService
     private async Task<Result<AnnualFeePaymentResultDto>?> ReplayAsync(
         string memberId, string key, AnnualFeePaymentMethod method, CancellationToken ct)
     {
-        var existing = await _db.AnnualFeePayments.AsNoTracking()
+        // Revisión M-6: con los borrados lógicos, como el índice único de la clave. Una clave de un pago
+        // borrado está usada: no se puede reutilizar ni devolver lo que ya no existe.
+        var existing = await _db.AnnualFeePayments.IgnoreQueryFilters().AsNoTracking()
             .FirstOrDefaultAsync(p => p.MemberId == memberId && p.IdempotencyKey == key, ct);
         if (existing is null) return null;
+        if (existing.IsDeleted)
+            return PayFail(AnnualFeeErrors.IdempotencyKeyReused,
+                "This idempotency key was already used. Start a new one.");
 
         if (existing.Method != method)
             return PayFail(AnnualFeeErrors.IdempotencyKeyReused,

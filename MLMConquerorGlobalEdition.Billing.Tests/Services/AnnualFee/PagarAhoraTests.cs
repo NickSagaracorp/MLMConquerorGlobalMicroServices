@@ -289,4 +289,26 @@ public class PagarAhoraTests
 
         (await Pagar(db, AnnualFeeMethods.Token)).IsSuccess.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task La_clave_de_un_pago_borrado_sigue_usada_como_en_el_indice_unico()
+    {
+        // Revisión M-6: UX_AnnualFeePayments_Member_IdempotencyKey incluye los borrados lógicos. La
+        // idempotencia también los ve: si no, el reintento chocaría con el índice en SQL Server.
+        await using var db = await ConMiembroAsync();
+        await CuotaAnualDb.ComisionAsync(db, Miembro, 500m);
+        db.AnnualFeePayments.Add(new MLMConquerorGlobalEdition.Domain.Entities.Billing.AnnualFeePayment
+        {
+            MemberId = Miembro, SubscriptionBillingStateId = "anual-" + Miembro, CycleDueDate = new DateTime(2026, 6, 5),
+            Amount = 99m, Method = AnnualFeePaymentMethod.CommissionBalance, Source = AnnualFeePaymentSource.PayNow,
+            Status = AnnualFeePaymentStatus.Completed, OrderId = "ord-borrado", IdempotencyKey = "clave-borrada",
+            IsDeleted = true, CreatedBy = "prueba"
+        });
+        await db.SaveChangesAsync();
+        var s = CobroAutomaticoDeCuotaAnualTests.Servicio(db);
+
+        (await s.HasPaymentAsync(Miembro, "clave-borrada")).Should().BeTrue();
+        (await Pagar(db, AnnualFeeMethods.CommissionBalance, "clave-borrada")).ErrorCode.Should().Be(AnnualFeeErrors.IdempotencyKeyReused);
+        (await db.CommissionEarnings.CountAsync(e => e.Amount < 0)).Should().Be(0);
+    }
 }

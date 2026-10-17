@@ -370,7 +370,8 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
         await _db.Entry(state).ReloadAsync(ct);
 
         if (key is not null
-            && await _db.AnnualFeePayments.AsNoTracking().AnyAsync(p => p.MemberId == state.MemberId && p.IdempotencyKey == key, ct))
+            && await _db.AnnualFeePayments.IgnoreQueryFilters().AsNoTracking()
+                   .AnyAsync(p => p.MemberId == state.MemberId && p.IdempotencyKey == key, ct))
             return ReplayCode;
 
         var cycle = state.NextBillingDate.Date;
