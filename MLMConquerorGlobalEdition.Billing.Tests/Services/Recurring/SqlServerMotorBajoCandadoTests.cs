@@ -30,6 +30,9 @@ public class SqlServerMotorBajoCandadoTests : IAsyncLifetime
     private readonly string _planName = $"test-plan-k-{Guid.NewGuid():N}";
     private const int NivelElite = 3;
 
+    /// <summary>Fecha fija (revisión M7): la prueba no depende del día en que se ejecute.</summary>
+    private static readonly DateTime Ahora = new(2026, 10, 20, 9, 0, 0);
+
     public Task InitializeAsync() => Task.CompletedTask;
 
     /// <summary>
@@ -79,7 +82,7 @@ public class SqlServerMotorBajoCandadoTests : IAsyncLifetime
     private async Task<string> SembrarAsync(int? tipoDeToken)
     {
         await using var db = Db();
-        var now = DateTime.Now;
+        var now = Ahora;
         db.MemberProfiles.Add(new MemberProfile
         {
             MemberId = _member, UserId = Guid.NewGuid(), Email = $"{_member}@example.com", FirstName = "Prueba", LastName = "PlanK",
@@ -122,7 +125,7 @@ public class SqlServerMotorBajoCandadoTests : IAsyncLifetime
     private static RecurringBillingProcessor Procesador(AppDbContext db, int lockTimeoutMs = 120_000)
     {
         var reloj = new Mock<IDateTimeProvider>();
-        reloj.Setup(r => r.Now).Returns(() => DateTime.Now);
+        reloj.Setup(r => r.Now).Returns(Ahora);
         var ruta = new Mock<IGatewayRouter>();
         ruta.Setup(r => r.ResolveAsync(It.IsAny<GatewayRoutingContext>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<GatewayRoutingPlan>.Failure("NO_ROUTE", "Sin ruta en la prueba."));
@@ -238,6 +241,6 @@ public class SqlServerMotorBajoCandadoTests : IAsyncLifetime
         await using var check = Db();
         (await EstadosDePedidosAsync()).Should().NotBeEmpty().And.OnlyContain(s => s == OrderStatus.Cancelled);
         (await check.SubscriptionBillingStates.AsNoTracking().SingleAsync(s => s.Id == stateId))
-            .NextAttemptDate.Should().Be(DateTime.Now.Date);
+            .NextAttemptDate.Should().Be(Ahora.Date);
     }
 }
