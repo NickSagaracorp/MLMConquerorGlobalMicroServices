@@ -12,6 +12,8 @@ public static class AnnualFeeServiceCollectionExtensions
     public static IServiceCollection AddAnnualFeeServices(this IServiceCollection services)
     {
         services.AddScoped<IAnnualFeeStateEnrollment, AnnualFeeStateEnrollment>();
+        services.AddScoped<IAnnualFeeTokenConsumer, AnnualFeeTokenConsumer>();
+        services.AddScoped<IAnnualFeeChargeService, AnnualFeeChargeService>();
         services.AddScoped<AnnualFeeStateEnrollmentJob>();
         return services;
     }
