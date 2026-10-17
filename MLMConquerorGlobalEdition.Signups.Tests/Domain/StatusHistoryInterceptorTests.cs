@@ -136,4 +136,67 @@ public class StatusHistoryInterceptorTests
         (fila.SubscriptionId, fila.MembershipLevelId, fila.OldStatus, fila.NewStatus)
             .Should().Be((id, 3, (MembershipStatus?)MembershipStatus.Pending, MembershipStatus.Active));
     }
+
+    [Fact]
+    public async Task Un_LastUpdateBy_que_no_cambio_en_este_guardado_no_es_el_autor()
+    {
+        // Quien tocó el perfil la última vez no es quien cambia ahora el estado: si este guardado no
+        // pone LastUpdateBy, el autor es «system», no el de antes.
+        await SeedAsync();
+        await using (var db = NewContext())
+        {
+            var perfil = await db.MemberProfiles.SingleAsync();
+            perfil.LastUpdateBy = "admin-antiguo";
+            perfil.FirstName    = "Ana María";
+            await db.SaveChangesAsync();
+        }
+
+        await using (var db = NewContext())
+        {
+            var perfil = await db.MemberProfiles.SingleAsync();
+            perfil.Status = MemberAccountStatus.Suspended;
+            await db.SaveChangesAsync();
+        }
+
+        await using (var db = NewContext())
+        {
+            var suscripcion = await db.MembershipSubscriptions.SingleAsync();
+            suscripcion.LastUpdateBy = "billing-antiguo";
+            suscripcion.IsAutoRenew  = true;
+            await db.SaveChangesAsync();
+        }
+
+        await using (var db = NewContext())
+        {
+            var suscripcion = await db.MembershipSubscriptions.SingleAsync();
+            suscripcion.SubscriptionStatus = MembershipStatus.HoldByBilling;
+            await db.SaveChangesAsync();
+        }
+
+        await using var lectura = NewContext();
+        (await lectura.MemberStatusHistories.SingleAsync()).CreatedBy.Should().Be("system");
+        (await lectura.MembershipStatusHistories.SingleAsync(h => h.OldStatus != null)).CreatedBy.Should().Be("system");
+    }
+
+    [Fact]
+    public async Task No_duplica_la_fila_de_membresia_si_el_guardado_ya_la_trae()
+    {
+        var id = await SeedAsync();
+
+        await using (var db = NewContext())
+        {
+            var suscripcion = await db.MembershipSubscriptions.SingleAsync();
+            suscripcion.SubscriptionStatus = MembershipStatus.Active;
+            db.MembershipStatusHistories.Add(new MembershipStatusHistory
+            {
+                MemberId = MemberId, SubscriptionId = id, MembershipLevelId = 3,
+                OldStatus = MembershipStatus.Pending, NewStatus = MembershipStatus.Active,
+                ChangedAt = DateTime.Now, CreatedBy = "manejador"
+            });
+            await db.SaveChangesAsync();
+        }
+
+        await using var lectura = NewContext();
+        (await lectura.MembershipStatusHistories.SingleAsync(h => h.OldStatus != null)).CreatedBy.Should().Be("manejador");
+    }
 }

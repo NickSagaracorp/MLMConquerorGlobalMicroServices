@@ -21,7 +21,12 @@ namespace MLMConquerorGlobalEdition.Repository.Interceptors;
 /// modificadas aunque no cambien (mismo criterio que SecurityFactorsInterceptor).
 ///
 /// NO DUPLICA: si el mismo guardado ya trae una MemberStatusHistory añadida para ese miembro y ese
-/// estado nuevo, es la del manejador, con su motivo, y se respeta.
+/// estado nuevo (o una MembershipStatusHistory para esa suscripción y ese estado nuevo), es la del
+/// manejador, con su motivo, y se respeta.
+///
+/// AUTOR: en un cambio, solo es <c>LastUpdateBy</c> si este mismo guardado lo puso (se modificó y su
+/// valor cambió); si no, quien tocó la fila la última vez no es quien cambia ahora el estado y el
+/// autor es <see cref="SystemActor"/>. En un alta, el autor es <c>CreatedBy</c>.
 ///
 /// NO VE ExecuteUpdate NI SQL CRUDO: lo vigila EstadosSinInterceptorTests.
 ///
@@ -64,6 +69,12 @@ public sealed class StatusHistoryInterceptor : SaveChangesInterceptor
             .Select(h => (h.MemberId, h.NewStatus))
             .ToHashSet();
 
+        var membershipWrittenByHandler = entries
+            .Where(e => e.State == EntityState.Added && e.Entity is MembershipStatusHistory)
+            .Select(e => (MembershipStatusHistory)e.Entity)
+            .Select(h => (h.SubscriptionId, h.NewStatus))
+            .ToHashSet();
+
         var accountRows    = new List<MemberStatusHistory>();
         var membershipRows = new List<MembershipStatusHistory>();
 
@@ -84,21 +95,25 @@ public sealed class StatusHistoryInterceptor : SaveChangesInterceptor
                         NewStatus    = profile.Status,
                         ChangedAt    = now,
                         CreationDate = now,
-                        CreatedBy    = Actor(profile.LastUpdateBy)
+                        CreatedBy    = ChangedBy(entry, nameof(MemberProfile.LastUpdateBy))
                     });
                     break;
                 }
 
                 case MembershipSubscription subscription when entry.State == EntityState.Added:
-                    membershipRows.Add(Row(subscription, null, now));
+                    if (membershipWrittenByHandler.Contains((subscription.Id, subscription.SubscriptionStatus))) break;
+                    membershipRows.Add(Row(subscription, null, now, Actor(subscription.CreatedBy)));
                     break;
 
                 case MembershipSubscription subscription when entry.State == EntityState.Modified:
                 {
                     var status = entry.Property(nameof(MembershipSubscription.SubscriptionStatus));
-                    if (!ValueChanged(status)) break;
+                    if (!ValueChanged(status)
+                        || membershipWrittenByHandler.Contains((subscription.Id, subscription.SubscriptionStatus)))
+                        break;
 
-                    membershipRows.Add(Row(subscription, (MembershipStatus)status.OriginalValue!, now));
+                    membershipRows.Add(Row(subscription, (MembershipStatus)status.OriginalValue!, now,
+                        ChangedBy(entry, nameof(MembershipSubscription.LastUpdateBy))));
                     break;
                 }
             }
@@ -108,7 +123,7 @@ public sealed class StatusHistoryInterceptor : SaveChangesInterceptor
         if (membershipRows.Count > 0) context.Set<MembershipStatusHistory>().AddRange(membershipRows);
     }
 
-    private static MembershipStatusHistory Row(MembershipSubscription s, MembershipStatus? oldStatus, DateTime now) => new()
+    private static MembershipStatusHistory Row(MembershipSubscription s, MembershipStatus? oldStatus, DateTime now, string actor) => new()
     {
         MemberId          = s.MemberId,
         SubscriptionId    = s.Id,
@@ -117,8 +132,15 @@ public sealed class StatusHistoryInterceptor : SaveChangesInterceptor
         NewStatus         = s.SubscriptionStatus,
         ChangedAt         = now,
         CreationDate      = now,
-        CreatedBy         = Actor(s.LastUpdateBy ?? s.CreatedBy)
+        CreatedBy         = actor
     };
+
+    /// <summary>El LastUpdateBy de la fila solo si este guardado lo cambió; si no, «system».</summary>
+    private static string ChangedBy(EntityEntry entry, string lastUpdateBy)
+    {
+        var property = entry.Property(lastUpdateBy);
+        return ValueChanged(property) ? Actor(property.CurrentValue as string) : SystemActor;
+    }
 
     private static bool ValueChanged(PropertyEntry property) =>
         property.IsModified && !Equals(property.OriginalValue, property.CurrentValue);
