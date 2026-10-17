@@ -5,6 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <!-- Plan M: excluye por defecto las pruebas de tiempo (Categoria=Medicion); pasar otro runsettings la sustituye. -->
+    <RunSettingsFilePath>$(MSBuildProjectDirectory)/BizCenter.Tests.runsettings</RunSettingsFilePath>
   </PropertyGroup>
 
   <ItemGroup>

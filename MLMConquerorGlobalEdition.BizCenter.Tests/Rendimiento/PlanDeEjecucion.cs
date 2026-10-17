@@ -12,8 +12,18 @@ public static class PlanDeEjecucion
         await conexion.OpenAsync();
         await using (var activar = new SqlCommand("SET SHOWPLAN_XML ON", conexion))
             await activar.ExecuteNonQueryAsync();
-        await using var consulta = new SqlCommand(sql, conexion);
-        return (string?)await consulta.ExecuteScalarAsync() ?? string.Empty;
+        try
+        {
+            await using var consulta = new SqlCommand(sql, conexion);
+            return (string?)await consulta.ExecuteScalarAsync() ?? string.Empty;
+        }
+        finally
+        {
+            // La conexión vuelve al pool: sin esto, la siguiente prueba que la reciba no ejecutaría
+            // nada y solo obtendría planes.
+            await using var desactivar = new SqlCommand("SET SHOWPLAN_XML OFF", conexion);
+            await desactivar.ExecuteNonQueryAsync();
+        }
     }
 
     public const string Seek = "PhysicalOp=\"Index Seek\"";

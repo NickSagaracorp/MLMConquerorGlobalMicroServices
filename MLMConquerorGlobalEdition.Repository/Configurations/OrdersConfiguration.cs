@@ -13,6 +13,10 @@ public class OrdersConfiguration : IEntityTypeConfiguration<OrdersEntity>
 {
     public void Configure(EntityTypeBuilder<OrdersEntity> builder)
     {
+        // Longitudes de MemberId (Plan M): aquí 20, exactamente MemberProfiles.MemberId (AK, nvarchar(20)),
+        // porque Orders se une siempre al perfil y la guarda 51022 lo comprueba. PaymentHistories y
+        // MemberStatistics van a 100 (sin FK, holgura para lo que mande una pasarela o un job), y los
+        // árboles y SponsorMemberId a 450 (Plan J). Si el formato AMB-###### crece (R14), basta con 20.
         builder.Property(o => o.MemberId).HasMaxLength(20).IsRequired();
         builder.Property(o => o.OrderNo).HasMaxLength(OrderNumberHelper.MaxLength);
         builder.Property(o => o.MembershipSubscriptionId).HasMaxLength(450);

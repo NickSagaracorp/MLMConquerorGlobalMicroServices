@@ -13,6 +13,8 @@ public class MemberStatisticConfiguration : IEntityTypeConfiguration<MemberStati
 {
     public void Configure(EntityTypeBuilder<MemberStatisticEntity> builder)
     {
+        // 100, no 20 como MemberProfiles.MemberId: sin FK y con holgura, igual que PaymentHistories (ver la
+        // nota de longitudes de OrdersConfiguration). Hoy miden 10 como mucho; la guarda 51028 lo comprueba.
         builder.Property(s => s.MemberId).HasMaxLength(100).IsRequired();
         builder.HasIndex(s => s.MemberId);
     }

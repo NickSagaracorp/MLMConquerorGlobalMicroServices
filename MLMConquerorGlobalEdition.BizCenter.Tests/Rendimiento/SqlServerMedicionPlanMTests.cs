@@ -16,10 +16,18 @@ namespace MLMConquerorGlobalEdition.BizCenter.Tests.Rendimiento;
 /// tres ejecuciones y su mediana, y falla si la mediana pasa del objetivo. ANTES del plan fallan: es
 /// la línea base. En ReadUncommitted, como las de Reportes: se mide la consulta, no los bloqueos de
 /// los servicios que haya levantados.
+///
+/// Son pruebas de tiempo: dependen de la máquina y de la carga, así que no corren con la suite.
+/// <c>BizCenter.Tests.runsettings</c> las excluye por defecto (<c>Categoria!=Medicion</c>). Para medir:
+/// <code>dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --settings MLMConquerorGlobalEdition.BizCenter.Tests/Medicion.runsettings --logger "console;verbosity=detailed"</code>
 /// </summary>
 [Collection(SqlServerReportesCollection.Nombre)]
+[Trait(Categoria, Medicion)]
 public class SqlServerMedicionPlanMTests
 {
+    public const string Categoria = "Categoria";
+    public const string Medicion  = "Medicion";
+
     public static readonly TimeSpan ObjetivoReporte = TimeSpan.FromSeconds(3);
     public static readonly TimeSpan ObjetivoOrderNo = TimeSpan.FromMilliseconds(50);
 
@@ -29,7 +37,9 @@ public class SqlServerMedicionPlanMTests
 
     internal static Task<string> RaizAsync(AppDbContext db) =>
         db.GenealogyTree.AsNoTracking()
-            .Where(g => g.ParentMemberId == null).OrderBy(g => g.Level).Select(g => g.MemberId).FirstAsync();
+            .Where(g => g.ParentMemberId == null)
+            .OrderBy(g => g.Level).ThenBy(g => g.MemberId) // determinista: hay varias raíces de nivel 1
+            .Select(g => g.MemberId).FirstAsync();
 
     private async Task<TimeSpan> MedianaAsync(string que, Func<Task> paso)
     {
