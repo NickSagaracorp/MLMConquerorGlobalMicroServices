@@ -9924,11 +9924,22 @@ git commit -m "Pruebas contra SQL Server de los eventos del equipo, del indice u
 
 **Fin del Bloque 6.** Una migración (`InscripcionesAEventos`).
 
+> **Hecho (Bloque 6, solo el reporte, N5):** entidad y migración `InscripcionesAEventos`
+> (`MemberId` de 20, como `MemberProfiles.MemberId`, a la que apunta la clave foránea); servicio con
+> la pertenencia por el nodo más reciente (R8), `TreePrefix` y «Calificado» de `IQualificationService`;
+> endpoints; componente con selector de evento, totales y un aviso (`Events.ImportPending`) de que las
+> inscripciones aparecerán cuando se importen; páginas en BizCenterWeb y BizCenterApp; pruebas
+> SQL Server del reporte y del índice único. Sin importador, sin pantalla del Admin y sin sus pruebas.
+> Rendimiento: *todo el equipo* y los totales recorren los perfiles con una subconsulta por miembro
+> para su nodo más reciente; con el equipo de la raíz conviene medirlo antes de desplegar.
+
 ---
 
 # Cierre
 
 ### Task 43: Pruebas de seguridad, §12
+
+> **Hecho:** §12 escrita con el estado real (siete migraciones, rangos de N4 y J12, R8 y prefijo con barra, eventos sin importación, «Calificado» de N3 con el aviso del Plan K, R16 en producción, corte de facturación).
 
 > **Corrección de Nick.** §12 no lleva filas de importación CSV (N5) ni de `GENEALOGY_TOO_DEEP`/`HierarchyPath` (N1); los rangos son los de N4 y «Calificado» el de N3.
 
