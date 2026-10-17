@@ -19,7 +19,8 @@ public class ClientesDelEquipoTests
         db,
         new RankComputationService(db, new RankQualificationService(
             db, new EnrollmentTeamPointsService(db), new PersonalCustomerPointsService(db))),
-        new EnrollmentTeamPointsService(db));
+        new EnrollmentTeamPointsService(db),
+        CalificadoEnLosEquiposTests.Calificacion(db));
 
     /// <summary>
     /// YO ─┬─ C1 (cliente personal de YO)

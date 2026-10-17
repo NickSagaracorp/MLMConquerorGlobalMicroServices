@@ -15,11 +15,13 @@ public class DualTeamService : IDualTeamService
 {
     private readonly AppDbContext            _db;
     private readonly IRankComputationService _ranks;
+    private readonly IQualificationService   _qualification;
 
-    public DualTeamService(AppDbContext db, IRankComputationService ranks)
+    public DualTeamService(AppDbContext db, IRankComputationService ranks, IQualificationService qualification)
     {
-        _db    = db;
-        _ranks = ranks;
+        _db            = db;
+        _ranks         = ranks;
+        _qualification = qualification;
     }
 
     /// <summary>String columns the dual-team grid search box matches against.</summary>
@@ -168,6 +170,9 @@ public class DualTeamService : IDualTeamService
         var rootDepth = SegmentCount(pathPrefix);
         var ids       = rows.Select(r => r.MemberId).ToList();
 
+        // «Calificado» con la regla de Nick (Plan J, N3), no «la suscripción está activa».
+        var qualified = await _qualification.AreQualifiedAsync(ids, ct);
+
         // Gateway children of the viewer (≤2): their Side is the leg of any descendant whose
         // path passes through them (the first segment after the viewer's path).
         var legByGatewayId = await _db.DualTeamTree.AsNoTracking()
@@ -247,7 +252,7 @@ public class DualTeamService : IDualTeamService
                 DualUplineFullName   = uplineName,
                 AccountStatus        = r.AccountStatus,
                 MembershipStatus     = sub?.SubscriptionStatus.ToString() ?? "None",
-                IsQualified          = sub?.SubscriptionStatus == MembershipStatus.Active,
+                IsQualified          = qualified.GetValueOrDefault(r.MemberId),
                 MembershipLevelName  = sub?.MembershipLevel?.Name,
                 CurrentRankName      = cr?.RankDefinition?.Name,
                 RankDate             = cr?.AchievedAt,

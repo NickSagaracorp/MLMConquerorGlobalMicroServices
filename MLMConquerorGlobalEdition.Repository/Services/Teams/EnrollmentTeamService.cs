@@ -18,15 +18,18 @@ public class EnrollmentTeamService : IEnrollmentTeamService
     private readonly AppDbContext                  _db;
     private readonly IRankComputationService       _ranks;
     private readonly IEnrollmentTeamPointsService  _etPoints;
+    private readonly IQualificationService         _qualification;
 
     public EnrollmentTeamService(
         AppDbContext db,
         IRankComputationService ranks,
-        IEnrollmentTeamPointsService etPoints)
+        IEnrollmentTeamPointsService etPoints,
+        IQualificationService qualification)
     {
-        _db       = db;
-        _ranks    = ranks;
-        _etPoints = etPoints;
+        _db            = db;
+        _ranks         = ranks;
+        _etPoints      = etPoints;
+        _qualification = qualification;
     }
 
     /// <summary>
@@ -173,6 +176,9 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         if (rows.Count == 0) return;
         var ids = rows.Select(r => r.MemberId).ToList();
 
+        // «Calificado» con la regla de Nick (Plan J, N3), no «la suscripción está activa».
+        var qualified = await _qualification.AreQualifiedAsync(ids, ct);
+
         var subscriptions = await _db.MembershipSubscriptions.AsNoTracking()
             .Include(s => s.MembershipLevel)
             .Where(s => ids.Contains(s.MemberId) && s.SubscriptionStatus != MembershipStatus.Cancelled)
@@ -240,7 +246,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
             row.DualUplineMemberId   = dual?.ParentMemberId;
             row.DualUplineFullName   = uplineName;
             row.MembershipStatus     = sub?.SubscriptionStatus.ToString() ?? "None";
-            row.IsQualified          = sub?.SubscriptionStatus == MembershipStatus.Active;
+            row.IsQualified          = qualified.GetValueOrDefault(row.MemberId);
             row.MembershipLevelName  = sub?.MembershipLevel?.Name;
             row.CurrentRankName      = cr?.RankDefinition?.Name;
             row.RankDate             = cr?.AchievedAt;
@@ -446,6 +452,10 @@ public class EnrollmentTeamService : IEnrollmentTeamService
             .ToListAsync(ct);
         var statsMap = stats.ToDictionary(s => s.MemberId, s => s.EnrollmentPoints);
 
+        // «Calificado» con la regla de Nick (Plan J, N3), solo para los embajadores que se listan.
+        var qualified = await _qualification.AreQualifiedAsync(
+            profiles.Where(p => p.MemberType == MemberType.Ambassador).Select(p => p.MemberId).ToList(), ct);
+
         var ambassadors = profiles
             .Where(p => p.MemberType == MemberType.Ambassador)
             .OrderBy(p => levelMap.TryGetValue(p.MemberId, out var l) ? l : 0)
@@ -460,7 +470,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
                     FullName            = $"{p.FirstName} {p.LastName}",
                     AccountStatus       = p.AccountStatus,
                     MembershipStatus    = sub?.SubscriptionStatus.ToString() ?? "None",
-                    IsQualified         = sub?.SubscriptionStatus == MembershipStatus.Active,
+                    IsQualified         = qualified.GetValueOrDefault(p.MemberId),
                     MembershipLevelName = sub?.MembershipLevel?.Name,
                     EnrollmentPoints    = statsMap.TryGetValue(p.MemberId, out var pts) ? pts : 0
                 };
