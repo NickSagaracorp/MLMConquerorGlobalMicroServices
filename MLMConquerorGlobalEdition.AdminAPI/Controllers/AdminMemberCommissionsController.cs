@@ -5,6 +5,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.Repository.Services.Commissions;
 using MLMConquerorGlobalEdition.SharedKernel;
 
@@ -203,6 +204,7 @@ public class AdminMemberCommissionsController : ControllerBase
 
         int[] eligibleLevelIds = [3, 4];
         var hierarchyFilter    = $"/{memberId}/";
+        var me                 = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct); // Plan M: equipo por Node
 
         var rawEnrollments = await (
             from mp  in _db.MemberProfiles.AsNoTracking()
@@ -212,7 +214,7 @@ public class AdminMemberCommissionsController : ControllerBase
             where mp.EnrollDate >= weekStart
                && mp.EnrollDate <  weekEnd
                && eligibleLevelIds.Contains(sub.MembershipLevelId)
-               && g.HierarchyPath.Contains(hierarchyFilter)
+               && me != null && g.Node!.IsDescendantOf(me)
             select new
             {
                 mp.MemberId,

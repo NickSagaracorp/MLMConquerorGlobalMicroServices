@@ -11,6 +11,7 @@ using MLMConquerorGlobalEdition.BizCenter.DTOs.Tokens;
 using MLMConquerorGlobalEdition.BizCenter.Features.Tokens.DistributeToken;
 using MLMConquerorGlobalEdition.BizCenter.Features.Tokens.TransferTokenInstance;
 using MLMConquerorGlobalEdition.BizCenter.Services;
+using MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Tokens;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
@@ -125,6 +126,7 @@ public class DistribucionDeTokensTests : IDisposable
             Id = Guid.NewGuid().ToString(), MemberId = Sender, TokenTypeId = Type,
             Balance = senderBalance ?? instances.Length, CreatedBy = "seed", CreationDate = Now
         });
+        ReportesDb.RellenarNodos(_db); // Plan M: el equipo se mira por Node
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
     }
@@ -340,6 +342,7 @@ public class DistribucionDeTokensTests : IDisposable
             MemberId = id, ParentMemberId = "X", HierarchyPath = path, Level = path.Count(c => c == '/') - 1,
             CreatedBy = "seed", CreationDate = nodo ?? Now
         });
+        ReportesDb.RellenarNodos(_db);
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
     }
@@ -394,6 +397,7 @@ public class DistribucionDeTokensTests : IDisposable
             CreatedBy = "seed", CreationDate = Now.AddYears(-3)
         });
         _db.GenealogyTree.Single(g => g.MemberId == Outsider).HierarchyPath = $"/{Outsider}/{Sender}/{Outsider}/";
+        ReportesDb.RellenarNodos(_db);
         await _db.SaveChangesAsync();
         // El contexto pone la fecha de alta al guardar: se fija a mano para que este nodo sea el viejo.
         _db.GenealogyTree.Single(g => g.HierarchyPath == $"/{Outsider}/{Sender}/").CreationDate = Now.AddYears(-3);

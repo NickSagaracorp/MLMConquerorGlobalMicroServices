@@ -413,11 +413,12 @@ public class AdminMemberDualTeamController : ControllerBase
         // → 32s / 500 for a top-rank member). Now: one JOIN over the subtree + NOT EXISTS for
         // "not placed", a cap, and a single batched floating-children count.
         take = Math.Clamp(take, 1, 500);
-        var hierarchyFilter = $"/{memberId}/";
+        // Plan M: el equipo de inscripción por el Node vigente del miembro (seek), no por un LIKE sobre la ruta.
+        var me = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct);
 
         var q =
             from g in _db.GenealogyTree.AsNoTracking()
-            where g.HierarchyPath.Contains(hierarchyFilter)
+            where me != null && g.Node!.IsDescendantOf(me)
             join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
             where m.MemberId != memberId
                && m.MemberType == MemberType.Ambassador

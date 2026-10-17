@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.BizCenter.DTOs.Teams;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.Repository.Services.Teams;
 using MLMConquerorGlobalEdition.SharedKernel;
 using ICurrentUserService = MLMConquerorGlobalEdition.BizCenter.Services.ICurrentUserService;
@@ -38,10 +39,12 @@ public class GetVisualizerChildrenHandler
         // Ownership check — parent must be the current user or somewhere in their subtree.
         if (request.ParentMemberId != currentMemberId)
         {
-            var pattern = "/" + currentMemberId + "/";
-            var isInSubtree = await _db.GenealogyTree.AsNoTracking()
-                .AnyAsync(g => g.MemberId == request.ParentMemberId
-                            && g.HierarchyPath.Contains(pattern), ct);
+            // Plan M: por el Node vigente del que mira; sin nodo no hay subárbol (falla cerrado).
+            var me = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(currentMemberId, ct);
+            var isInSubtree = me is not null
+                && await _db.GenealogyTree.AsNoTracking()
+                    .AnyAsync(g => g.MemberId == request.ParentMemberId
+                                && g.Node!.IsDescendantOf(me), ct);
             if (!isInSubtree)
                 return Result<IEnumerable<EnrollmentVisualizerNodeDto>>
                     .Failure("VISUALIZER_ACCESS_DENIED",

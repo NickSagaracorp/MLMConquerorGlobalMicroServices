@@ -121,12 +121,12 @@ public class GetRankProgressHandler : IRequestHandler<GetRankProgressQuery, Resu
 
         if (memberGenealogyNode is not null)
         {
-            var subtreePath = TreePrefix.Of(memberGenealogyNode.HierarchyPath);
+            var subtreeRoot = memberGenealogyNode.Node; // Plan M: el equipo por Node
 
             // Qualified = members with at least one active subscription in subtree
             var subtreeMembers = await _db.GenealogyTree
                 .AsNoTracking()
-                .Where(g => g.HierarchyPath.StartsWith(subtreePath) && g.MemberId != memberId)
+                .Where(g => subtreeRoot != null && g.Node!.IsDescendantOf(subtreeRoot) && g.MemberId != memberId)
                 .Select(g => g.MemberId)
                 .ToListAsync(ct);
 
