@@ -153,13 +153,13 @@ Con `READ_COMMITTED_SNAPSHOT ON`, una lectura en `READ COMMITTED` deja de tomar 
 | M21 | **`UseHierarchyId()` se activa en `AppDbContext.OnConfiguring`**, solo si el proveedor es SQL Server, junto a los interceptores. | Se hace en un solo sitio en lugar de en ocho `Program.cs`, la fábrica de diseño y los ayudantes de pruebas. Un anfitrión que lo olvidara fallaría al construir el modelo. Usa `SqlServerOptionsExtension`, que es una API interna, así que lleva `#pragma warning disable EF1001` y una prueba que lo vigila (Tarea 6). |
 | M22 | **RCSI con un script, fuera de EF** (`Scripts/sql/plan-m/03-activar-rcsi.sql`). El script se niega a seguir si hay otras sesiones en la base y usa `ALTER DATABASE CURRENT … WITH ROLLBACK IMMEDIATE`. | Necesita acceso exclusivo y no puede ir dentro de una transacción. Dentro de una migración cortaría las conexiones de los ocho servicios al arrancar. |
 | M23 | **`HierarchyPath` no se acorta** (ni a `varchar(1700)` ni a `nvarchar(850)`). | Con `Node` indexado, la ruta deja de filtrarse. |
-| M24 | **En producción, las tres migraciones se aplican con un script idempotente y `sqlcmd`** antes de desplegar los servicios: `PedidosAcotadosEIndices` y `NodoDeGenealogia` en el despliegue 1, y ninguna en el 2. Si `DeploymentScripts/migrate-rds.sql` es el que se usa para RDS, se regenera con `--idempotent`. | R8. |
+| M24 | **En producción, las tres migraciones se aplican con un script idempotente y `sqlcmd`** antes de desplegar los servicios: `PedidosAcotadosEIndices` y `NodoDeGenealogia` en el despliegue 1, y ninguna en el 2. Si `DeploymentScripts/migrate-rds.sql` es el que se usa para RDS, se regenera con `--idempotent`. | R8. **Revisión:** solo con `sqlcmd -b` (nunca SSMS ni sin `-b`), con los servicios parados durante la ventana y sin arrancar ninguno hasta que el script termine (ver «Condiciones de despliegue»). |
 
 ## Fuera de alcance
 
 - **Retirar `HierarchyPath`** del árbol de inscripción y poner `Node NOT NULL`. Incluye pasar la ascendencia a `Node.GetAncestor` y que las pruebas creen los nodos con `Node`. Es el plan siguiente (D3, paso 2).
 - **Reparar los 939 huecos repetidos del binario** y crear `UX_DualTeamTree_ParentMemberId_Side`. Es condición para activar RCSI en producción (R6). Plan aparte; decide Nick qué hijo se queda.
-- **Índice único de `PaymentHistories (GatewayName, GatewayTransactionId)`** (R7, M7) y validación de longitud en los webhooks (R16).
+- **Índice único de `PaymentHistories (GatewayName, GatewayTransactionId)`** (R7, M7). La validación de longitud del webhook de pagos (R16) sí entró, tras la revisión de las Tareas 1–5.
 - **Otras lecturas binarias** que siguen recorriendo la ruta: `NetworkController` (carga el subárbol entero aunque pinte 6 niveles), `DualTeamService.SearchBinarySubtreeAsync` y `GetDeepestNodeAsync`, `PlacementService`, los `PlaceMemberHandler` y `GetRankProgressHandler` (parte binaria). *Cambios de estado* del Dual Team ya reduce primero por fecha (Plan J, J17) y no cambia.
 - **`CalculateCarBonusHandler`**, que carga en memoria todas las suscripciones activas con su ruta. Es un trabajo por lotes; se revisará con datos reales.
 - **El espacio de `MemberId`** (R14).
@@ -2899,7 +2899,10 @@ git commit -m "Plan M: medicion despues anotada en el plan"
 **Condiciones de despliegue (resumen):**
 1. **Despliegue 1:**
    - En producción, ejecutar antes la consulta de duplicados de la Tarea 4. Si hay alguno, decide Nick.
-   - Aplicar `PedidosAcotadosEIndices` y `NodoDeGenealogia` con un script idempotente y `sqlcmd`, en una ventana sin tráfico (M24, R8).
+   - Aplicar `PedidosAcotadosEIndices` y `NodoDeGenealogia` con un script idempotente (`dotnet ef migrations script --idempotent`) **solo con `sqlcmd -b`** (M24, R8):
+     - nunca desde SSMS ni con `sqlcmd` sin `-b`: sin `-b`, un `THROW` de una guarda (51020–51028) no detiene `sqlcmd` y los lotes siguientes se ejecutarían igual;
+     - **todos los servicios parados** durante la ventana;
+     - **ningún servicio arranca antes** de que el script termine bien: cada uno ejecuta `MigrateAsync` al arrancar, con el *timeout* de 30 s de EF, y se pondría a aplicar las mismas migraciones sobre tablas grandes, chocando con el script o dejando la tabla bloqueada.
    - Desplegar los servicios.
    - Ejecutar el relleno de la Tarea 10 hasta obtener `SinNode = 0` e `Incoherentes = 0`.
 2. **Despliegue 2:** solo con las dos cifras a 0 y R10 comprobado en Docker.
@@ -2924,6 +2927,21 @@ Lo que no encajaba con el plan escrito y cómo se adaptó, respetando su intenci
   - Comprobación de `OrderNo`: de 430 ms a **1 ms** (281 · 1 · 1).
   - *Eventos* con todo el equipo sigue por encima del objetivo: **4.454 ms** (5.617 · 4.454 · 2.367). Depende del árbol (Bloques 2 y 3).
 - **Tarea 5: los servicios del worktree `-run`.** Corren con el modelo antiguo contra la base local. Tras la migración, cualquier consulta suya que cargue `OrderDetails`, `PaymentHistories` o `MembershipSubscriptions` pedirá columnas que ya no existen (`OrdersId`, `LastOrderId1`) y fallará con «Invalid column name» hasta que se actualicen.
+- **Revisión de las Tareas 1–5 (arreglos).**
+  - **Webhook de pagos (R16):** `ProcessPaymentWebhookHandler` rechaza con `WEBHOOK_FIELD_TOO_LONG` (400, que la pasarela no reintenta) un `TransactionId`, `OrderId` o `MemberId` más largo que su columna, antes de tocar la base. Las longitudes viven en `PaymentHistory` (`OrderIdMaxLength`, `MemberIdMaxLength`, `GatewayTransactionIdMaxLength`) y las usa la configuración. Prueba: `Signups.Tests/Webhooks/LongitudesDelWebhookDePagoTests`.
+  - **Script de duplicados:** exige `-v Confirmo=LOCAL` y que `SERVERPROPERTY('MachineName') = HOST_NAME()` (51030 y 51031), además del nombre de la base (51029). Fija `QUOTED_IDENTIFIER ON`, porque sqlcmd arranca con OFF y, con el índice filtrado, un `UPDATE` de `Orders` falla con 1934. Si `-Dn` está ocupado, prueba el siguiente sufijo. Se probó dentro de una transacción deshecha: con `-D1` ocupado, el duplicado recibió `-D2`.
+  - **`Scripts/UpdateExistingOrderNumbers.sql`:** lleva un aviso. Numera desde `ORD000001` sin mirar los que existen, así que con el índice único chocaría. Hoy no hay pedidos sin número.
+  - **Pruebas de medición:** llevan `[Trait("Categoria", "Medicion")]` y `BizCenter.Tests.runsettings` (`RunSettingsFilePath` del `.csproj`) las excluye por defecto. Ese filtro se combina con `--filter`. Para medir: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --settings MLMConquerorGlobalEdition.BizCenter.Tests/Medicion.runsettings --logger "console;verbosity=detailed"`.
+  - **Otros arreglos menores:** la raíz se elige con un orden determinista (`Level`, luego `MemberId`). `SHOWPLAN_XML OFF` va en un `finally`. `SqlServerPedidosTests` comprueba en la base las claves y el `INCLUDE` de `IX_DualTeamTree_ParentMemberId`. Hay comentarios sobre las longitudes de `MemberId` en `OrdersConfiguration` y `MemberStatisticConfiguration`.
+  - **Cuota anual y compra de tokens guardan el pedido antes de cobrar (verificado, sin cambios).**
+    - `AnnualFeeChargeService`:
+      - por token y por comisiones, pedido y cobro van en la misma transacción bajo el candado, y un choque se deshace entero;
+      - por eWallet, la fase 1 guarda y confirma el pedido antes del débito de la fase 2.
+    - `TokenPurchaseService`:
+      - por eWallet, tarjeta y cripto, `SaveReservationAsync` confirma el pedido en la fase 1, antes de cobrar;
+      - por comisiones, guarda el pedido antes de `FundTokenPurchaseAsync`, dentro de la misma transacción.
+    - En los dos servicios, un choque de `OrderNo` falla sin cobrar.
+  - **Despliegue en producción:** M24 y «Condiciones de despliegue» dicen ahora tres cosas. El script se aplica solo con `sqlcmd -b`. Los servicios están parados durante la ventana. Ninguno arranca antes de que termine el script.
 
 ---
 
