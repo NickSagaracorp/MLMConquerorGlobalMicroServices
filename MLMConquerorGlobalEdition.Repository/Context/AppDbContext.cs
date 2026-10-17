@@ -191,6 +191,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     {
         // SecurityFactorsInterceptor va aquí y no en el registro de cada anfitrión por la misma
         // razón que existe: un anfitrión que se olvidara de añadirlo cambiaría factores sin sellar.
-        optionsBuilder.AddInterceptors(new AuditInterceptor(), new SecurityFactorsInterceptor());
+        // StatusHistoryInterceptor (Plan J), por lo mismo: un anfitrión sin él cambiaría estados
+        // sin dejar historial.
+        optionsBuilder.AddInterceptors(
+            new AuditInterceptor(), new SecurityFactorsInterceptor(), new StatusHistoryInterceptor());
     }
 }
