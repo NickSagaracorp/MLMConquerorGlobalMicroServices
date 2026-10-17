@@ -200,4 +200,38 @@ public class MotorBajoCandadoTests
         estado.LastSuccessfulBillingDate.Should().BeNull();
         estado.NextAttemptDate.Should().Be(Ahora.Date);
     }
+
+    /// <summary>Un candado cuya transacción falla al deshacer (conexión caída a mitad).</summary>
+    private sealed class RollbackRotoGate(AppDbContext db) : IMemberFundsGate
+    {
+        public async Task<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction> EnterAsync(string memberId, CancellationToken ct = default)
+            => new TxRota(await db.Database.BeginTransactionAsync(ct));
+
+        public Task<bool> TryAcquireAsync(string memberId, TimeSpan timeout, CancellationToken ct = default) => Task.FromResult(true);
+
+        private sealed class TxRota(Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction inner)
+            : Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction
+        {
+            public Guid TransactionId => inner.TransactionId;
+            public void Commit() => inner.Commit();
+            public Task CommitAsync(CancellationToken ct = default) => inner.CommitAsync(ct);
+            public void Rollback() => throw new InvalidOperationException("Conexión caída al deshacer.");
+            public Task RollbackAsync(CancellationToken ct = default) => throw new InvalidOperationException("Conexión caída al deshacer.");
+            public void Dispose() => inner.Dispose();
+            public ValueTask DisposeAsync() => inner.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task Si_deshacer_falla_sin_haber_movido_nada_sigue_a_la_tarjeta_sin_romper()
+    {
+        // Revisión M6: un RollbackAsync que falla no tapa el resultado: sin saldo no se movió nada.
+        await using var db = await SembrarAsync(50m, Ahora.AddDays(-1));
+
+        var r = await Procesador(db, new RollbackRotoGate(db)).ProcessAsync("estado-1");
+
+        r.Value!.Outcome.Should().Be("Failed");
+        r.Value.FailureReason.Should().StartWith(RecurringCardSwitch.CardDisabledCode);
+        (await db.CommissionEarnings.CountAsync(e => e.Amount < 0)).Should().Be(0);
+    }
 }

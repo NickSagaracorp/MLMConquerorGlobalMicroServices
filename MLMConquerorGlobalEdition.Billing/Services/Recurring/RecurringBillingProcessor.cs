@@ -231,6 +231,10 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
         // lo comparte quien llama (el trabajador guarda su trozo al final).
         var before = _db.ChangeTracker.Entries().Select(e => e.Entity).ToHashSet(ReferenceEqualityComparer.Instance);
 
+        // Espera del candado (revisión M6): SqlServerMemberFundsGate espera hasta 15 s. En el trabajador va
+        // en serie, así que un miembro ocupado retrasa su trozo como mucho 15 s. Es aceptable: el candado
+        // solo lo toman a la vez un pago, una compra de tokens o la cuota de ESE miembro, que de madrugada
+        // es raro; y lo ocupado no se pierde, se reintenta en la siguiente pasada (MEMBER_FUNDS_BUSY).
         IDbContextTransaction tx;
         try
         {
@@ -241,7 +245,9 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
             _logger.LogWarning(
                 "Renovación {StateId} de {MemberId}: el candado de fondos está ocupado; se reintenta en la siguiente pasada.",
                 state.Id, state.MemberId);
-            await CancelOrderAsync(order, now, ct);
+            // Sin el token de la llamada: el pedido ya está creado y tiene que quedar cancelado aunque
+            // se esté cancelando la pasada (revisión M6).
+            await CancelOrderAsync(order, now, CancellationToken.None);
             return Result<RecurringBillingProcessorResult>.Failure(MemberFundsBusyCode,
                 $"Funds of member {state.MemberId} are busy; the renewal will be retried on the next pass.");
         }
@@ -251,7 +257,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
             var spendable = await _commissionBalance.GetSpendableAsync(state.MemberId, ct);
             if (spendable < amountDue)
             {
-                await tx.RollbackAsync(CancellationToken.None);
+                await SafeRollbackAsync(tx, state);
                 return null;
             }
 
@@ -266,14 +272,14 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
                     return result;
                 }
 
-                await tx.RollbackAsync(CancellationToken.None);
+                await SafeRollbackAsync(tx, state);
                 await ForgetRolledBackAsync(before);
                 await CancelOrderAfterRollbackAsync(order, now);
                 return result;
             }
             catch (Exception original)
             {
-                await tx.RollbackAsync(CancellationToken.None);
+                await SafeRollbackAsync(tx, state);
                 try
                 {
                     await ForgetRolledBackAsync(before);
@@ -289,6 +295,23 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
                 }
                 throw;
             }
+        }
+    }
+
+    /// <summary>
+    /// Deshace sin que un fallo al deshacer (conexión caída) tape lo demás (revisión M6). Si la
+    /// conexión se cayó, SQL Server ya deshizo la transacción al cerrar la sesión; se registra y sigue.
+    /// </summary>
+    private async Task SafeRollbackAsync(IDbContextTransaction tx, SubscriptionBillingState state)
+    {
+        try
+        {
+            await tx.RollbackAsync(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Renovación {StateId} de {MemberId}: falló al deshacer la transacción del candado.",
+                state.Id, state.MemberId);
         }
     }
 

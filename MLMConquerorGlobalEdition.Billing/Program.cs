@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Cryptography;
 using MLMConquerorGlobalEdition.SharedKernel.Configuration;
+using AnnualFeeRules = MLMConquerorGlobalEdition.SharedKernel.Billing.AnnualFeeRules;
 using Microsoft.OpenApi.Models;
 using MLMConquerorGlobalEdition.Billing.Extensions;
 using MLMConquerorGlobalEdition.Billing.Jobs;
@@ -305,13 +306,14 @@ app.UseHangfireDashboard("/hangfire");
 RecurringJob.RemoveIfExists("membership-auto-renewal");
 
 // Alta de los estados de cuota anual que falten (Plan K, K3). APAGADA por defecto: sin
-// "Billing:AnnualFee:EnrollmentJobEnabled" = true se registra con Cron.Never(), asi que no corre al
+// Billing:AnnualFee:EnrollmentJobEnabled = true se registra con Cron.Never(), asi que no corre al
 // arrancar ni de madrugada, pero sale en el panel de Hangfire para lanzarla a mano. Encendida, diaria
-// a las 4:30 UTC, antes del planificador de las 5:00.
+// a las 4:30 UTC, antes del planificador de las 5:00 UTC. El cron va en UTC como los demas trabajos
+// (Hangfire); las fechas de negocio que escribe el trabajo son de servidor (IDateTimeProvider.Now).
 RecurringJob.AddOrUpdate<AnnualFeeStateEnrollmentJob>(
     "annual-fee-state-enrollment",
     job => job.ExecuteAsync(CancellationToken.None),
-    app.Configuration.GetValue<bool>("Billing:AnnualFee:EnrollmentJobEnabled")
+    app.Configuration.GetValue<bool>(AnnualFeeRules.EnrollmentJobEnabledConfigKey)
         ? "30 4 * * *"              // Diario a las 4:30 UTC
         : Cron.Never(),
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });

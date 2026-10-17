@@ -25,7 +25,8 @@ public class UnSoloMotorDeRenovacionTests
     {
         // Plan K (Tarea 8, revisada): sin la clave en true se programa con Cron.Never(): sale en el panel
         // de Hangfire para lanzarlo a mano, pero no corre al arrancar ni de madrugada.
-        Programa.Should().Contain("\"Billing:AnnualFee:EnrollmentJobEnabled\"");
+        Programa.Should().Contain("GetValue<bool>(AnnualFeeRules.EnrollmentJobEnabledConfigKey)");
+        Programa.Should().NotContain("\"Billing:AnnualFee:EnrollmentJobEnabled\""); // la clave, de la constante (M5)
         Programa.Should().Contain("AddOrUpdate<AnnualFeeStateEnrollmentJob>");
         Programa.Should().Contain("Cron.Never()");
         Programa.Should().NotContain("Enqueue<AnnualFeeStateEnrollmentJob>");
