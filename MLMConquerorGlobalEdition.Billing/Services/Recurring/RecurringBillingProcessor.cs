@@ -164,9 +164,8 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
 
         // 6. Commission-balance first? Bajo el candado de fondos del miembro (Plan K, K18): sin candado,
         //    un pago (PayoutOrchestrator) o una compra de tokens podía gastar las mismas comisiones a la
-        //    vez. El saldo se lee DENTRO del candado. El criterio sigue siendo el disponible
-        //    (GetAvailableAsync): pasar al gastable cambiaría qué renovaciones se pagan con comisiones y
-        //    está pendiente de Nick (Plan K, R7).
+        //    vez. El saldo se lee DENTRO del candado y es el GASTABLE (GetSpendableAsync, aprobado por
+        //    Nick, K18/R7): sin las comisiones reservadas por un pago en curso ni las aún no pagables.
         if (plan.PayFromCommissionBalanceFirst)
         {
             var funded = await TryCommissionFundedAsync(
@@ -180,7 +179,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
     }
 
     /// <summary>
-    /// Paga con comisiones bajo el candado del miembro. Null = el saldo no alcanza y se pasa a la
+    /// Paga con comisiones bajo el candado del miembro. Null = el saldo gastable no alcanza y se pasa a la
     /// tarjeta. Ocupado = se cancela el pedido y no se toca el estado. Si algo falla dentro, se deshace
     /// entero (también el débito, que FundWithCommissionBalanceAsync escribe antes de comprobar el tipo
     /// de token) y el pedido se cancela después.
@@ -218,8 +217,8 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
 
         await using (tx)
         {
-            var balance = await _commissionBalance.GetAvailableAsync(state.MemberId, ct);
-            if (balance.Available < amountDue)
+            var spendable = await _commissionBalance.GetSpendableAsync(state.MemberId, ct);
+            if (spendable < amountDue)
             {
                 await tx.RollbackAsync(CancellationToken.None);
                 return null;

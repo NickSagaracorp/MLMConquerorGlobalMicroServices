@@ -6,6 +6,7 @@ using MLMConquerorGlobalEdition.Billing.Services;
 using MLMConquerorGlobalEdition.Billing.Services.Recurring;
 using MLMConquerorGlobalEdition.Billing.Services.Routing;
 using MLMConquerorGlobalEdition.Billing.Tests.Helpers;
+using MLMConquerorGlobalEdition.Domain.Constants;
 using MLMConquerorGlobalEdition.Domain.Entities.Billing;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
@@ -19,10 +20,9 @@ namespace MLMConquerorGlobalEdition.Billing.Tests.Services.Recurring;
 
 /// <summary>
 /// Plan K (K18): la renovación de Travel Advantage pagada con comisiones toma el candado de fondos del
-/// miembro, igual que la compra de tokens. Sin candado, un pago y una renovación podían gastar las
-/// mismas comisiones a la vez. El criterio de saldo NO cambia en esta ronda (sigue siendo el
-/// disponible): pasar al gastable cambia qué renovaciones se pagan con comisiones y Nick no lo ha
-/// confirmado (R7, K18).
+/// miembro y mira el saldo GASTABLE, igual que la compra de tokens (aprobado por Nick, K18): sin las
+/// comisiones reservadas por un pago en curso ni las que aún no son pagables. Sin candado, un pago y
+/// una renovación podían gastar las mismas comisiones a la vez.
 /// </summary>
 public class MotorBajoCandadoTests
 {
@@ -95,16 +95,43 @@ public class MotorBajoCandadoTests
     }
 
     [Fact]
-    public async Task Mientras_Nick_no_confirme_K18_el_criterio_sigue_siendo_el_saldo_disponible()
+    public async Task Las_comisiones_que_aun_no_son_pagables_no_pagan_la_renovacion()
     {
-        // Comisiones aún no pagables (PaymentDate futura): el saldo disponible las cuenta y hoy pagan la
-        // renovación. Pasar al saldo gastable lo cambiaría; queda pendiente de Nick (R7).
         await using var db = await SembrarAsync(200m, Ahora.AddDays(5));
 
         var r = await Procesador(db, new TransactionOnlyGate(db)).ProcessAsync("estado-1");
 
-        r.IsSuccess.Should().BeTrue();
-        r.Value!.FundingSource.Should().Be("CommissionBalance");
+        // Sin saldo gastable pasa a la tarjeta, que en la prueba no tiene ruta.
+        r.IsSuccess.Should().BeFalse();
+        r.ErrorCode.Should().Be("NO_ROUTE");
+        (await db.CommissionEarnings.CountAsync(e => e.Amount < 0)).Should().Be(0);
+    }
+
+    [Theory]
+    [InlineData(PayoutOutcome.Pending, false)]
+    [InlineData(PayoutOutcome.Success, false)]
+    [InlineData(PayoutOutcome.Failed, true)]
+    public async Task Las_comisiones_reservadas_por_un_pago_no_fallido_no_pagan_la_renovacion(string resultado, bool paga)
+    {
+        await using var db = await SembrarAsync(200m, Ahora.AddDays(-1));
+        var comision = await db.CommissionEarnings.SingleAsync();
+        var pago = new PayoutAttempt
+        {
+            MemberId = Miembro, AmountUsd = 200m, Outcome = resultado, PayoutAccountSnapshot = "x",
+            ProcessDateUtc = Ahora, AttemptedAtUtc = Ahora, EarningsCount = 1, CreatedBy = "prueba"
+        };
+        db.PayoutAttempts.Add(pago);
+        await db.SaveChangesAsync();
+        db.PayoutAttemptEarnings.Add(new PayoutAttemptEarning
+        {
+            PayoutAttemptId = pago.Id, CommissionEarningId = comision.Id, Amount = 200m, CreatedBy = "prueba"
+        });
+        await db.SaveChangesAsync();
+
+        var r = await Procesador(db, new TransactionOnlyGate(db)).ProcessAsync("estado-1");
+
+        r.IsSuccess.Should().Be(paga);
+        (await db.CommissionEarnings.CountAsync(e => e.Amount < 0)).Should().Be(paga ? 1 : 0);
     }
 
     [Fact]
