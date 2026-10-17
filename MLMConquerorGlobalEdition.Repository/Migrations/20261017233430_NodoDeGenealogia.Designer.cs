@@ -13,7 +13,7 @@ using Microsoft.SqlServer.Types;
 namespace MLMConquerorGlobalEdition.Repository.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261017215312_NodoDeGenealogia")]
+    [Migration("20261017233430_NodoDeGenealogia")]
     partial class NodoDeGenealogia
     {
         /// <inheritdoc />

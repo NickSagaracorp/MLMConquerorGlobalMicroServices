@@ -17,9 +17,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 IF EXISTS (SELECT 1 FROM [GenealogyTree] WHERE DATALENGTH([Id]) / 2 > 100)
     THROW 51033, N'GenealogyTree.Id tiene valores de mas de 100 caracteres: no caben en NodeNullKey (Plan M, Tarea 9).', 1;");
 
-            migrationBuilder.DropIndex(
-                name: "IX_GenealogyTree_ParentMemberId",
-                table: "GenealogyTree");
+            // Revisión M-h: como el de DualTeamTree en PedidosAcotadosEIndices, se suelta solo si existe (una base
+            // con deriva podría no tenerlo) y se recrea más abajo con INCLUDE (Node).
+            migrationBuilder.Sql("DROP INDEX IF EXISTS [IX_GenealogyTree_ParentMemberId] ON [GenealogyTree];");
 
             migrationBuilder.AddColumn<SqlHierarchyId>(
                 name: "Node",

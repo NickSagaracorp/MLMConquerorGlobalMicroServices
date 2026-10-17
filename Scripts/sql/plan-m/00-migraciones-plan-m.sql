@@ -382,7 +382,7 @@ GO
 BEGIN TRANSACTION;
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20261017215312_NodoDeGenealogia'
+    WHERE [MigrationId] = N'20261017233430_NodoDeGenealogia'
 )
 BEGIN
 
@@ -392,15 +392,15 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20261017215312_NodoDeGenealogia'
+    WHERE [MigrationId] = N'20261017233430_NodoDeGenealogia'
 )
 BEGIN
-    DROP INDEX [IX_GenealogyTree_ParentMemberId] ON [GenealogyTree];
+    DROP INDEX IF EXISTS [IX_GenealogyTree_ParentMemberId] ON [GenealogyTree];
 END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20261017215312_NodoDeGenealogia'
+    WHERE [MigrationId] = N'20261017233430_NodoDeGenealogia'
 )
 BEGIN
     ALTER TABLE [GenealogyTree] ADD [Node] hierarchyid NULL;
@@ -408,7 +408,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20261017215312_NodoDeGenealogia'
+    WHERE [MigrationId] = N'20261017233430_NodoDeGenealogia'
 )
 BEGIN
     EXEC(N'ALTER TABLE [GenealogyTree] ADD [NodeLevel] AS [Node].GetLevel() PERSISTED');
@@ -416,7 +416,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20261017215312_NodoDeGenealogia'
+    WHERE [MigrationId] = N'20261017233430_NodoDeGenealogia'
 )
 BEGIN
     EXEC(N'ALTER TABLE [GenealogyTree] ADD [NodeNullKey] AS CASE WHEN [Node] IS NULL THEN CAST([Id] AS nvarchar(100)) END PERSISTED');
@@ -424,7 +424,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20261017215312_NodoDeGenealogia'
+    WHERE [MigrationId] = N'20261017233430_NodoDeGenealogia'
 )
 BEGIN
     CREATE UNIQUE INDEX [IX_GenealogyTree_Node] ON [GenealogyTree] ([Node], [NodeNullKey]) INCLUDE ([MemberId], [Level], [CreationDate], [IsDeleted]);
@@ -432,7 +432,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20261017215312_NodoDeGenealogia'
+    WHERE [MigrationId] = N'20261017233430_NodoDeGenealogia'
 )
 BEGIN
     CREATE INDEX [IX_GenealogyTree_NodeLevel_Node] ON [GenealogyTree] ([NodeLevel], [Node]);
@@ -440,7 +440,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20261017215312_NodoDeGenealogia'
+    WHERE [MigrationId] = N'20261017233430_NodoDeGenealogia'
 )
 BEGIN
     CREATE INDEX [IX_GenealogyTree_ParentMemberId] ON [GenealogyTree] ([ParentMemberId]) INCLUDE ([Node]);
@@ -448,7 +448,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20261017215312_NodoDeGenealogia'
+    WHERE [MigrationId] = N'20261017233430_NodoDeGenealogia'
 )
 BEGIN
     EXEC(N'ALTER TABLE [GenealogyTree] ADD CONSTRAINT [CK_GenealogyTree_Node_OrdinalesEnteros] CHECK ([Node] IS NULL OR CHARINDEX(''.'', [Node].ToString()) = 0)');
@@ -456,11 +456,11 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20261017215312_NodoDeGenealogia'
+    WHERE [MigrationId] = N'20261017233430_NodoDeGenealogia'
 )
 BEGIN
     INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
-    VALUES (N'20261017215312_NodoDeGenealogia', N'10.0.11');
+    VALUES (N'20261017233430_NodoDeGenealogia', N'10.0.11');
 END;
 
 COMMIT;

@@ -7,19 +7,30 @@ Rellena GenealogyTree.Node a partir de ParentMemberId con los MISMOS ordinales q
   - sin padre en el arbol (o sin patrocinador), una raiz nueva detras de la ultima raiz.
 
 Como trabaja:
+  0. Deshace lo incoherente que dejara una ejecucion interrumpida: pone Node = NULL en las filas cuyo
+     Node no cuelga del nodo vigente de su padre, en bucle hasta que no quede ninguna (al soltar un
+     padre, sus hijos pasan a ser incoherentes). Es seguro porque las altas estan paradas.
   1. Calcula los nodos en una tabla temporal estrecha #nodos(Id, MemberId, Node, Nivel), nivel a nivel.
      La primera pasada mira una vez las filas sin Node (raices nuevas e hijos de nodos ya rellenados en
      una ejecucion anterior); cada pasada siguiente lee SOLO los hijos de la anterior, por
      IX_GenealogyTree_ParentMemberId. No toca GenealogyTree hasta el paso 2.
-  2. Aplica #nodos por lotes de 4.000 filas en orden de clave, cada lote en su propia transaccion.
+  2. Aplica #nodos nivel a nivel y, dentro de cada nivel, por lotes de 4.000 filas en orden de Id,
+     cada lote en su propia transaccion. Un padre se confirma siempre antes que sus hijos: si la
+     ejecucion se corta, lo aplicado es coherente y el relanzado sigue desde ahi.
   3. ALTER INDEX IX_GenealogyTree_Node REBUILD y UPDATE STATISTICS GenealogyTree WITH FULLSCAN.
-  4. Comprobacion de despliegue: SinNode = 0 e Incoherentes = 0.
+  4. Comprobacion de despliegue: SinNode = 0 e Incoherentes = 0. Si no, THROW 51035: con sqlcmd -b el
+     despliegue se corta y los servicios no se arrancan.
 
-Idempotente: solo toca filas con Node NULL; relanzado sin nada pendiente no cambia nada.
+Idempotente: el paso 0 solo suelta lo incoherente y el resto solo toca filas con Node NULL; relanzado
+sin nada pendiente no cambia nada, y relanzado tras un corte termina coherente.
 
 SE EJECUTA CON LAS ALTAS PARADAS: en la ventana de despliegue del Plan M, con todos los servicios
 parados, despues del script de migraciones y antes de arrancarlos (ver "Condiciones de despliegue").
 Un alta concurrente podria ocupar un ordinal calculado aqui.
+
+RECUPERACION FULL: cada lote es una transaccion corta, pero el total escribe todo GenealogyTree y el
+REBUILD reescribe el indice. Con el modelo de recuperacion FULL hay que mantener las copias del log
+durante la ventana (o el log crece sin limite hasta la siguiente).
 
 Como ejecutarlo (siempre con -b, que detiene sqlcmd en el primer error, e -I, QUOTED_IDENTIFIER ON):
     sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -I -i Scripts/sql/plan-m/02-relleno-nodo-genealogia.sql
@@ -45,6 +56,26 @@ IF DB_NAME() <> N'MLMConquerorGlobalEditionDb'
 
 DECLARE @Inicio datetime2 = SYSDATETIME();   -- solo para medir lo que tarda; hora de servidor
 DECLARE @Nivel int = 0, @Nuevas int = 1, @Calculadas int = 0, @Aplicadas int = 0, @Lote int = 4000;
+
+-- ── 0. Deshacer lo incoherente de una ejecucion interrumpida ────────────────────────────────────
+DECLARE @Soltadas int = 1, @SoltadasTotal int = 0;
+WHILE @Soltadas > 0
+BEGIN
+    UPDATE c
+    SET    c.Node = NULL
+    FROM   GenealogyTree c
+    OUTER APPLY (SELECT TOP (1) p.Id, p.Node FROM GenealogyTree p
+                 WHERE p.MemberId = c.ParentMemberId AND p.IsDeleted = 0
+                 ORDER BY p.CreationDate DESC, p.Id DESC) pp
+    WHERE  c.Node IS NOT NULL
+      AND ((pp.Id IS NULL AND c.Node.GetLevel() <> 1)                       -- sin padre vivo: debe ser raiz
+        OR (pp.Id IS NOT NULL AND pp.Node IS NULL)                          -- su padre no tiene Node
+        OR (pp.Node IS NOT NULL AND c.Node.GetAncestor(1) <> pp.Node));     -- cuelga de otro nodo
+    SET @Soltadas = @@ROWCOUNT;
+    SET @SoltadasTotal += @Soltadas;
+END
+IF @SoltadasTotal > 0
+    RAISERROR(N'Paso 0: %d nodos incoherentes soltados (Node = NULL) para recalcularlos', 0, 1, @SoltadasTotal) WITH NOWAIT;
 
 -- ── 1. Calculo en #nodos ─────────────────────────────────────────────────────────────────────────
 DROP TABLE IF EXISTS #nodos;
@@ -130,24 +161,34 @@ END
 DECLARE @MsCalculo int = DATEDIFF(MILLISECOND, @Inicio, SYSDATETIME());
 RAISERROR(N'Calculo: %d ms', 0, 1, @MsCalculo) WITH NOWAIT;
 
--- ── 2. Aplicacion por lotes en orden de clave ───────────────────────────────────────────────────
-DECLARE @Desde nvarchar(450) = N'', @Hasta nvarchar(450), @Filas int;
-WHILE 1 = 1
+-- ── 2. Aplicacion nivel a nivel y, dentro de cada nivel, por lotes en orden de Id ───────────────
+-- Un padre (nivel n) se confirma siempre antes que sus hijos (nivel n + 1): un corte deja lo aplicado
+-- coherente y el relanzado continua sin dejar subarboles colgando de un ordinal que cambie.
+DECLARE @Desde nvarchar(450), @Hasta nvarchar(450), @Filas int, @NivelAplicado int = 0, @MaxNivel int;
+SELECT @MaxNivel = MAX(Nivel) FROM #nodos;
+WHILE @NivelAplicado <= ISNULL(@MaxNivel, -1)
 BEGIN
-    SELECT @Hasta = MAX(Id) FROM (SELECT TOP (@Lote) Id FROM #nodos WHERE Id > @Desde ORDER BY Id) x;
-    IF @Hasta IS NULL BREAK;
+    SET @Desde = N'';
+    WHILE 1 = 1
+    BEGIN
+        SET @Hasta = NULL;
+        SELECT @Hasta = MAX(Id) FROM (SELECT TOP (@Lote) Id FROM #nodos
+                                      WHERE Nivel = @NivelAplicado AND Id > @Desde ORDER BY Id) x;
+        IF @Hasta IS NULL BREAK;
 
-    BEGIN TRAN;
-    UPDATE g
-    SET    g.Node = n.Node
-    FROM   GenealogyTree g
-    JOIN   #nodos n ON n.Id = g.Id
-    WHERE  n.Id > @Desde AND n.Id <= @Hasta AND g.Node IS NULL;
-    SET @Filas = @@ROWCOUNT;
-    COMMIT;
+        BEGIN TRAN;
+        UPDATE g
+        SET    g.Node = n.Node
+        FROM   GenealogyTree g
+        JOIN   #nodos n ON n.Id = g.Id
+        WHERE  n.Nivel = @NivelAplicado AND n.Id > @Desde AND n.Id <= @Hasta AND g.Node IS NULL;
+        SET @Filas = @@ROWCOUNT;
+        COMMIT;
 
-    SET @Aplicadas += @Filas;
-    SET @Desde = @Hasta;
+        SET @Aplicadas += @Filas;
+        SET @Desde = @Hasta;
+    END
+    SET @NivelAplicado += 1;
 END
 RAISERROR(N'Calculados %d nodos, aplicados %d', 0, 1, @Calculadas, @Aplicadas) WITH NOWAIT;
 DECLARE @MsAplicado int = DATEDIFF(MILLISECOND, @Inicio, SYSDATETIME());
@@ -165,13 +206,22 @@ END
 DECLARE @Ms int = DATEDIFF(MILLISECOND, @Inicio, SYSDATETIME());
 RAISERROR(N'Tiempo total: %d ms', 0, 1, @Ms) WITH NOWAIT;
 
--- ── 4. Condicion de despliegue (R17): las dos cifras a 0 ────────────────────────────────────────
-SELECT
-  (SELECT COUNT(*) FROM GenealogyTree WHERE Node IS NULL) AS SinNode,
-  (SELECT COUNT(*) FROM GenealogyTree c
-   OUTER APPLY (SELECT TOP (1) p.Node FROM GenealogyTree p
-                WHERE p.MemberId = c.ParentMemberId AND p.IsDeleted = 0
-                ORDER BY p.CreationDate DESC, p.Id DESC) pp
-   WHERE c.Node IS NOT NULL
-     AND ((pp.Node IS NULL AND c.Node.GetLevel() <> 1)
-       OR (pp.Node IS NOT NULL AND c.Node.GetAncestor(1) <> pp.Node))) AS Incoherentes;
+-- ── 4. Condicion de despliegue (R17): las dos cifras a 0; si no, se corta el despliegue ──────────
+DECLARE @SinNode int, @Incoherentes int;
+SELECT @SinNode = COUNT(*) FROM GenealogyTree WHERE Node IS NULL;
+SELECT @Incoherentes = COUNT(*) FROM GenealogyTree c
+OUTER APPLY (SELECT TOP (1) p.Node FROM GenealogyTree p
+             WHERE p.MemberId = c.ParentMemberId AND p.IsDeleted = 0
+             ORDER BY p.CreationDate DESC, p.Id DESC) pp
+WHERE c.Node IS NOT NULL
+  AND ((pp.Node IS NULL AND c.Node.GetLevel() <> 1)
+    OR (pp.Node IS NOT NULL AND c.Node.GetAncestor(1) <> pp.Node));
+
+SELECT @SinNode AS SinNode, @Incoherentes AS Incoherentes;
+
+IF @SinNode <> 0 OR @Incoherentes <> 0
+BEGIN
+    DECLARE @Msg nvarchar(200) = CONCAT(N'Relleno incompleto: SinNode = ', @SinNode, N', Incoherentes = ', @Incoherentes,
+                                        N'. No arrancar los servicios (Plan M, condiciones de despliegue).');
+    THROW 51035, @Msg, 1;
+END
