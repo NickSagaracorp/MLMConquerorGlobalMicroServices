@@ -32,6 +32,12 @@ public static class AnnualFeeRules
 
     public const int DefaultStalePendingMinutes = 30;
 
+    /// <summary>
+    /// ¿Programa Billing el alta diaria de estados de cuota? Apagado por defecto: el trabajo se registra
+    /// con Cron.Never() y solo corre si alguien lo lanza a mano desde Hangfire (Plan K, Tarea 8).
+    /// </summary>
+    public const string EnrollmentJobEnabledConfigKey = "Billing:AnnualFee:EnrollmentJobEnabled";
+
     /// <summary>Estados de cuota que el trabajo de alta crea por guardado (K3).</summary>
     public const int EnrollmentBatchSize = 1000;
 

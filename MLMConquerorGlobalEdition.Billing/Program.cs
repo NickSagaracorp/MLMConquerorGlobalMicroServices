@@ -124,6 +124,9 @@ builder.Services.AddPayoutServices();
 // serializando el dinero del mismo miembro.
 builder.Services.AddTokenPurchaseServices();
 
+// ── Cuota anual del Biz Center (Plan K) ──────────────────────────────────
+builder.Services.AddAnnualFeeServices();
+
 builder.Services.AddScoped<MembershipAutoRenewalJob>();
 builder.Services.AddScoped<CommissionPayoutJob>();
 builder.Services.AddScoped<ExchangeRateRefreshJob>();
@@ -300,6 +303,18 @@ app.UseHangfireDashboard("/hangfire");
 // tambien de la base de Hangfire si un despliegue anterior lo dejo programado (quitar solo el
 // AddOrUpdate lo dejaria vivo alli). La clase sigue registrada, como CommissionPayoutJob.
 RecurringJob.RemoveIfExists("membership-auto-renewal");
+
+// Alta de los estados de cuota anual que falten (Plan K, K3). APAGADA por defecto: sin
+// "Billing:AnnualFee:EnrollmentJobEnabled" = true se registra con Cron.Never(), asi que no corre al
+// arrancar ni de madrugada, pero sale en el panel de Hangfire para lanzarla a mano. Encendida, diaria
+// a las 4:30 UTC, antes del planificador de las 5:00.
+RecurringJob.AddOrUpdate<AnnualFeeStateEnrollmentJob>(
+    "annual-fee-state-enrollment",
+    job => job.ExecuteAsync(CancellationToken.None),
+    app.Configuration.GetValue<bool>("Billing:AnnualFee:EnrollmentJobEnabled")
+        ? "30 4 * * *"              // Diario a las 4:30 UTC
+        : Cron.Never(),
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
 // Hourly exchange-rate refresh
 RecurringJob.AddOrUpdate<ExchangeRateRefreshJob>(

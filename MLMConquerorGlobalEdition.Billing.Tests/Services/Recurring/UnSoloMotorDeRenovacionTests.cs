@@ -21,6 +21,25 @@ public class UnSoloMotorDeRenovacionTests
         => Programa.Should().Contain("RecurringJob.RemoveIfExists(\"membership-auto-renewal\");");
 
     [Fact]
+    public void El_alta_de_estados_de_cuota_anual_se_registra_apagada_salvo_que_se_encienda()
+    {
+        // Plan K (Tarea 8, revisada): sin la clave en true se programa con Cron.Never(): sale en el panel
+        // de Hangfire para lanzarlo a mano, pero no corre al arrancar ni de madrugada.
+        Programa.Should().Contain("\"Billing:AnnualFee:EnrollmentJobEnabled\"");
+        Programa.Should().Contain("AddOrUpdate<AnnualFeeStateEnrollmentJob>");
+        Programa.Should().Contain("Cron.Never()");
+        Programa.Should().NotContain("Enqueue<AnnualFeeStateEnrollmentJob>");
+        Programa.Should().NotContain("TriggerJob(\"annual-fee-state-enrollment\")");
+    }
+
+    [Fact]
+    public void Ningun_appsettings_enciende_el_alta_de_estados()
+    {
+        foreach (var f in Directory.GetFiles(Path.Combine(Repositorio.Raiz(), "MLMConquerorGlobalEdition.Billing"), "appsettings*.json"))
+            File.ReadAllText(f).Should().NotContain("EnrollmentJobEnabled", because: f);
+    }
+
+    [Fact]
     public void El_motor_que_se_queda_sigue_programado()
     {
         Programa.Should().Contain("AddOrUpdate<RecurringBillingPlanningJob>");
