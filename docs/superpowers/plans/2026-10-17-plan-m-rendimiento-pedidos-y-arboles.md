@@ -830,7 +830,7 @@ FROM (SELECT OrderNo FROM Orders WHERE OrderNo IS NOT NULL GROUP BY OrderNo HAVI
 
 - [x] **Step 3: Ejecutarlo en local**
 
-Run: `sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -i Scripts/sql/plan-m/01-orderno-duplicados.sql`
+Run: `sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -v Confirmo=LOCAL -i Scripts/sql/plan-m/01-orderno-duplicados.sql` (tras la revisión: sin `-v Confirmo=LOCAL`, con otra base o contra un servidor que no sea la máquina local, el script termina en `THROW` 51029–51031 sin tocar nada; si un sufijo `-Dn` ya está ocupado prueba el siguiente)
 Expected: `Pedidos renumerados: 84` (152 filas menos 68 grupos) y `GruposDuplicadosRestantes 0`. Ejecutarlo otra vez da `Pedidos renumerados: 0`.
 
 - [x] **Step 4: Commit**
