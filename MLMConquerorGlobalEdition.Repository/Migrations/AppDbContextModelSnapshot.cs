@@ -8434,7 +8434,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.Property<string>("MemberId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<int>("PersonalPoints")
                         .HasColumnType("int");
@@ -8446,6 +8447,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("MemberId");
 
                     b.ToTable("MemberStatistics");
                 });
@@ -8834,9 +8837,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("LastOrderId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("LastOrderId1")
+                        .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("LastUpdateBy")
@@ -8872,7 +8873,7 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("LastOrderId1");
+                    b.HasIndex("LastOrderId");
 
                     b.HasIndex("MemberId");
 
@@ -9178,14 +9179,13 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.Property<string>("OrderId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("OrdersId")
+                        .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("ProductId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
@@ -9195,7 +9195,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("OrdersId");
+                    b.HasIndex("OrderId");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("OrderId"), new[] { "ProductId", "Quantity", "UnitPrice" });
 
                     b.ToTable("OrderDetails");
                 });
@@ -9232,10 +9234,12 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.Property<string>("MemberId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("MembershipSubscriptionId")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
@@ -9244,7 +9248,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("OrderNo")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
 
                     b.Property<byte[]>("RowVersion")
                         .HasColumnType("varbinary(max)");
@@ -9256,6 +9261,20 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("MembershipSubscriptionId");
+
+                    b.HasIndex("OrderDate");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("OrderDate"), new[] { "Status", "TotalAmount" });
+
+                    b.HasIndex("OrderNo")
+                        .IsUnique()
+                        .HasFilter("[OrderNo] IS NOT NULL");
+
+                    b.HasIndex("MemberId", "OrderDate");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("MemberId", "OrderDate"), new[] { "Status", "CreationDate", "IsDeleted" });
 
                     b.ToTable("Orders");
                 });
@@ -9289,7 +9308,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("GatewayTransactionId")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
@@ -9302,13 +9322,12 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.Property<string>("MemberId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("OrderId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("OrdersId")
+                        .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTime?>("ProcessedAt")
@@ -9322,7 +9341,13 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("OrdersId");
+                    b.HasIndex("GatewayTransactionId");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("MemberId", "TransactionStatus");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("MemberId", "TransactionStatus"), new[] { "ProcessedAt" });
 
                     b.ToTable("PaymentHistories");
                 });
@@ -16092,6 +16117,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("ParentMemberId");
 
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("ParentMemberId"), new[] { "MemberId", "Side", "IsDeleted" });
+
                     b.HasIndex(new[] { "MemberId" }, "IX_DualTeamTree_MemberId_Lookup");
 
                     b.ToTable("DualTeamTree");
@@ -17287,7 +17314,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                 {
                     b.HasOne("MLMConquerorGlobalEdition.Domain.Entities.Orders.Orders", "LastOrder")
                         .WithMany()
-                        .HasForeignKey("LastOrderId1");
+                        .HasForeignKey("LastOrderId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("MLMConquerorGlobalEdition.Domain.Entities.Member.MemberProfile", null)
                         .WithMany("MembershipHistory")
@@ -17311,14 +17339,9 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                 {
                     b.HasOne("MLMConquerorGlobalEdition.Domain.Entities.Orders.Orders", null)
                         .WithMany("OrderDetails")
-                        .HasForeignKey("OrdersId");
-                });
-
-            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Orders.PaymentHistory", b =>
-                {
-                    b.HasOne("MLMConquerorGlobalEdition.Domain.Entities.Orders.Orders", null)
-                        .WithMany("Payments")
-                        .HasForeignKey("OrdersId");
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Orders.Product", b =>
@@ -17666,8 +17689,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Orders.Orders", b =>
                 {
                     b.Navigation("OrderDetails");
-
-                    b.Navigation("Payments");
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Orders.Product", b =>

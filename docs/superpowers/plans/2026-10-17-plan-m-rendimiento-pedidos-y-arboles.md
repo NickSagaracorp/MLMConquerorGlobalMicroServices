@@ -374,7 +374,7 @@ git commit -m "Plan M: pruebas de medicion con objetivo (actividad, clientes y e
 - Modify: `MLMConquerorGlobalEdition.SharedKernel/OrderNumberHelper.cs`
 - Create: `MLMConquerorGlobalEdition.Domain.Tests/OrderNumberHelperTests.cs`
 
-- [ ] **Step 1: Escribir las pruebas que fallan**
+- [x] **Step 1: Escribir las pruebas que fallan**
 
 ```csharp
 using MLMConquerorGlobalEdition.SharedKernel;
@@ -404,12 +404,12 @@ public class OrderNumberHelperTests
 }
 ```
 
-- [ ] **Step 2: Ejecutar y ver que fallan**
+- [x] **Step 2: Ejecutar y ver que fallan**
 
 Run: `dotnet test MLMConquerorGlobalEdition.Domain.Tests --filter OrderNumberHelperTests -nologo`
 Expected: FAIL de compilación (`MaxLength` no existe).
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 En `OrderNumberHelper.cs`, añadir dentro de la clase, antes de `Generate`:
 
@@ -439,12 +439,12 @@ por:
                      .Take(MaxInitials));
 ```
 
-- [ ] **Step 4: Ejecutar y ver que pasan**
+- [x] **Step 4: Ejecutar y ver que pasan**
 
 Run: `dotnet test MLMConquerorGlobalEdition.Domain.Tests --filter OrderNumberHelperTests -nologo`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add MLMConquerorGlobalEdition.SharedKernel/OrderNumberHelper.cs \
@@ -466,7 +466,7 @@ git commit -m "OrderNumberHelper limita las iniciales a 8 y expone MaxLength = 4
 - Modify: `MLMConquerorGlobalEdition.Domain/Entities/Orders/Orders.cs`
 - Test: `MLMConquerorGlobalEdition.BizCenter.Tests/Rendimiento/IndicesDePedidosTests.cs`
 
-- [ ] **Step 1: Escribir las pruebas que fallan**
+- [x] **Step 1: Escribir las pruebas que fallan**
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -581,12 +581,12 @@ public class IndicesDePedidosTests
 }
 ```
 
-- [ ] **Step 2: Ejecutar y ver que fallan**
+- [x] **Step 2: Ejecutar y ver que fallan**
 
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter IndicesDePedidosTests -nologo`
 Expected: FAIL (longitudes nulas, índices inexistentes, `OrdersId` presente).
 
-- [ ] **Step 3: Quitar la navegación sin uso**
+- [x] **Step 3: Quitar la navegación sin uso**
 
 En `Orders.cs`, borrar la línea:
 
@@ -596,7 +596,7 @@ En `Orders.cs`, borrar la línea:
 
 (Nadie la usa; comprobado con `grep -rn "\.Payments\b"`. Volver a comprobarlo antes de borrar.)
 
-- [ ] **Step 4: Crear las configuraciones**
+- [x] **Step 4: Crear las configuraciones**
 
 `OrdersConfiguration.cs`:
 
@@ -752,7 +752,7 @@ por:
         builder.HasIndex(x => x.ParentMemberId).IncludeProperties(x => new { x.MemberId, x.Side, x.IsDeleted });
 ```
 
-- [ ] **Step 5: Ejecutar y ver que pasan**
+- [x] **Step 5: Ejecutar y ver que pasan**
 
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter IndicesDePedidosTests -nologo`
 Expected: PASS.
@@ -760,7 +760,7 @@ Expected: PASS.
 Run: `dotnet build MLMConquerorGlobalEdition.slnx -v q -nologo`
 Expected: `0 Error(s)`. Si algo usaba `Orders.Payments`, el compilador lo dice: parar y avisar.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add MLMConquerorGlobalEdition.Repository/Configurations/OrdersConfiguration.cs \
@@ -781,12 +781,12 @@ git commit -m "Pedidos, lineas, pagos, suscripciones y estadisticas con longitud
 **Files:**
 - Create: `Scripts/sql/plan-m/01-orderno-duplicados.sql`
 
-- [ ] **Step 1: Comprobar que hay duplicados (estado de partida)**
+- [x] **Step 1: Comprobar que hay duplicados (estado de partida)**
 
 Run: `sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -W -Q "SET NOCOUNT ON; SELECT COUNT(*) AS Grupos FROM (SELECT OrderNo FROM Orders WHERE OrderNo IS NOT NULL GROUP BY OrderNo HAVING COUNT(*) > 1) d"`
 Expected: `68` o un número parecido (no 0). Si sale un deadlock (1205), repetir.
 
-- [ ] **Step 2: Escribir el script**
+- [x] **Step 2: Escribir el script**
 
 ```sql
 /*
@@ -828,12 +828,12 @@ SELECT COUNT(*) AS GruposDuplicadosRestantes
 FROM (SELECT OrderNo FROM Orders WHERE OrderNo IS NOT NULL GROUP BY OrderNo HAVING COUNT(*) > 1) x;
 ```
 
-- [ ] **Step 3: Ejecutarlo en local**
+- [x] **Step 3: Ejecutarlo en local**
 
 Run: `sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -i Scripts/sql/plan-m/01-orderno-duplicados.sql`
 Expected: `Pedidos renumerados: 84` (152 filas menos 68 grupos) y `GruposDuplicadosRestantes 0`. Ejecutarlo otra vez da `Pedidos renumerados: 0`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add Scripts/sql/plan-m/01-orderno-duplicados.sql
@@ -849,7 +849,7 @@ git commit -m "Script idempotente que renumera los OrderNo duplicados de la base
 - Create: `MLMConquerorGlobalEdition.BizCenter.Tests/Rendimiento/PlanDeEjecucion.cs`
 - Create: `MLMConquerorGlobalEdition.BizCenter.Tests/Rendimiento/SqlServerPedidosTests.cs`
 
-- [ ] **Step 1: Escribir las pruebas contra SQL Server (fallan hasta aplicar)**
+- [x] **Step 1: Escribir las pruebas contra SQL Server (fallan hasta aplicar)**
 
 `PlanDeEjecucion.cs`:
 
@@ -953,7 +953,7 @@ public class SqlServerPedidosTests
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter SqlServerPedidosTests -nologo`
 Expected: FAIL (columnas en -1, sombras presentes).
 
-- [ ] **Step 2: Crear la migración**
+- [x] **Step 2: Crear la migración**
 
 Usar el comando de la cabecera con el nombre `PedidosAcotadosEIndices`. `Up` debe traer solo lo siguiente:
 - `DropForeignKey`, `DropIndex` y `DropColumn` de `OrderDetails.OrdersId`, `PaymentHistories.OrdersId` y `MembershipSubscriptions.LastOrderId1`.
@@ -961,7 +961,7 @@ Usar el comando de la cabecera con el nombre `PedidosAcotadosEIndices`. `Up` deb
 - `CreateIndex` de los índices de la Tarea 3, y `DropIndex` + `CreateIndex` de `IX_DualTeamTree_ParentMemberId`.
 - `AddForeignKey` de `FK_OrderDetails_Orders_OrderId` y `FK_MembershipSubscriptions_Orders_LastOrderId`.
 
-- [ ] **Step 3: Añadir la guarda al principio de `Up`**
+- [x] **Step 3: Añadir la guarda al principio de `Up`**
 
 ```csharp
         // Plan M (R8, M24): ninguna alteración trunca ni crea una clave sobre datos que no la cumplen.
@@ -993,17 +993,17 @@ Expected: `0`
 Run: `dotnet build MLMConquerorGlobalEdition.Repository -v q -nologo`
 Expected: `0 Error(s)`
 
-- [ ] **Step 4: Aplicar a la base local**
+- [x] **Step 4: Aplicar a la base local**
 
 Antes, comprobar que la Tarea 4 se ejecutó (`GruposDuplicadosRestantes 0`). Después, lanzar el comando de aplicar de la cabecera.
 Expected: `Applying migration '…_PedidosAcotadosEIndices'.` y `Done.` Si sale 51021, falta la Tarea 4. Si se agota el tiempo en una guarda, parar los servicios locales y repetir (R8).
 
-- [ ] **Step 5: Ejecutar las pruebas**
+- [x] **Step 5: Ejecutar las pruebas**
 
 Run: `dotnet test MLMConquerorGlobalEdition.BizCenter.Tests --filter "SqlServerPedidosTests|SqlServerMedicionPlanMTests.Comprobacion_de_numero_de_pedido" -nologo`
 Expected: PASS. La comprobación de `OrderNo` ya baja de 50 ms.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add MLMConquerorGlobalEdition.Repository/Migrations/*_PedidosAcotadosEIndices.cs \
@@ -2914,6 +2914,16 @@ Lo que no encajaba con el plan escrito y cómo se adaptó, respetando su intenci
 - **Rama y Plan K (R13).** La rama real es `plan-m-rendimiento`, que sale de `master` d24e103 con el Plan K ya fusionado. Su migración `CuotaAnual` crea `AnnualFeePayments.OrderId` como `nvarchar(450)` **sin** FK a `Orders`, así que no choca con el Bloque 1.
 - **Hechos medidos, repetidos el 2026-10-17 antes de la Tarea 4.** `Orders` tiene ahora 306.134 filas. `Orders.MemberId` llega a 20 caracteres en 2 filas: son restos `TST-…` de pruebas de SQL Server (`CreatedBy = sql-test`/`sql-a`). Caben en `nvarchar(20)`, así que no cambia nada. `OrderDetails` tiene 202.161 filas y `PaymentHistories` 22.768. Los huérfanos y las sombras siguen a 0, y los grupos de `OrderNo` duplicados siguen siendo 68.
 - **Tarea 1.** *Clientes* de la raíz ya cumplía el objetivo antes del plan (mediana de 526 ms), así que su prueba pasa en la línea base. Las otras tres fallan, como se esperaba.
+- **Tarea 2: dos generadores más de `OrderNo`, sin bucle de unicidad.** Además de los seis bucles de M3, el Plan K y la compra de tokens generan el número sin comprobarlo: `AnnualFeeChargeService` (`"Annual Fee"`) y `TokenPurchaseService` (`"Token Purchase"`). Con el índice único, un choque (456.976 combinaciones por milisegundo) fallaría cerrado con `DbUpdateException` en vez de duplicar el número. No se cambia nada.
+- **Tarea 4.** Se ejecutó en local: `Pedidos renumerados: 84` y `GruposDuplicadosRestantes 0`. La segunda ejecución da 0, como se esperaba.
+- **Tarea 5: deriva en la base local.** `IX_DualTeamTree_ParentMemberId` no existía en local, aunque lo crea `MakeHierarchyPathUnboundedDropPathIndex` y está en el *snapshot*. Alguien lo borró a mano, y el primer intento de aplicar falló con 3701 y se deshizo entero. En `Up`, el `DropIndex` generado se cambió por `DROP INDEX IF EXISTS`, que vale para las dos situaciones. Antes de producción conviene comprobar si allí existe (no cambia el resultado).
+- **Tarea 5: guarda probada.** Dentro de una transacción con `XACT_ABORT`, se alargó un `OrderNo` a 41 caracteres y la guarda lanzó 51020 y lo deshizo todo.
+- **Tarea 5: medición intermedia, tras aplicar `PedidosAcotadosEIndices`.** Es la misma prueba de la Tarea 1; la columna «Después» la rellena la Tarea 18.
+  - *Actividad*: de 5.307 ms a **17 ms** (162 · 17 · 16).
+  - *Clientes*: de 526 ms a **84 ms** (575 · 84 · 69).
+  - Comprobación de `OrderNo`: de 430 ms a **1 ms** (281 · 1 · 1).
+  - *Eventos* con todo el equipo sigue por encima del objetivo: **4.454 ms** (5.617 · 4.454 · 2.367). Depende del árbol (Bloques 2 y 3).
+- **Tarea 5: los servicios del worktree `-run`.** Corren con el modelo antiguo contra la base local. Tras la migración, cualquier consulta suya que cargue `OrderDetails`, `PaymentHistories` o `MembershipSubscriptions` pedirá columnas que ya no existen (`OrdersId`, `LastOrderId1`) y fallará con «Invalid column name» hasta que se actualicen.
 
 ---
 
