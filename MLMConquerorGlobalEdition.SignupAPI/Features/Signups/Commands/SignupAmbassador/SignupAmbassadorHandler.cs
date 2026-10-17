@@ -223,7 +223,10 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
         }
 
         // Plan M: el Node cuelga del nodo del patrocinador (o es una raíz nueva si no tiene nodo).
-        // Si el patrocinador aún no tiene Node (relleno pendiente), queda nulo y lo pondrá el relleno.
+        // Si el nodo vigente del patrocinador no tiene Node, NextChildAsync lanza: el alta no crea un nodo
+        // invisible (revisión I4). El candado del patrocinador (revisión I3) abarca el cálculo y el
+        // SaveChanges: dos altas a la vez bajo el mismo patrocinador no calculan el mismo Node.
+        await using var childrenTx = await GenealogyChildrenGate.EnterAsync(_db, sponsorNode?.MemberId, ct);
         var genealogyNodeId = await GenealogyNodes.NextChildAsync(_db, sponsorNode?.MemberId, ct);
 
         var genealogyNode = new GenealogyEntity
@@ -333,6 +336,8 @@ public class SignupAmbassadorHandler : IRequestHandler<SignupAmbassadorCommand, 
         }
 
             await _db.SaveChangesAsync(ct);
+            if (childrenTx is not null)
+                await childrenTx.CommitAsync(ct);
             break; // saved cleanly
         }
         // Plan M (R5): dos altas simultáneas bajo el mismo patrocinador pueden calcular el mismo Node;

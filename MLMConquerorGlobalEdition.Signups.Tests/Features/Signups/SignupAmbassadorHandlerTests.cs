@@ -395,6 +395,7 @@ public class SignupAmbassadorHandlerTests
         {
             MemberId      = "AMB-000001",
             HierarchyPath = "/AMB-000001/",
+            Node          = HierarchyId.Parse("/1/"), // Plan M: sin Node el alta falla cerrado (I4)
             Level         = 1,
             CreatedBy     = "seed",
             CreationDate  = FixedNow,
@@ -428,6 +429,7 @@ public class SignupAmbassadorHandlerTests
         {
             MemberId      = "AMB-000001",
             HierarchyPath = "/AMB-000001/",
+            Node          = HierarchyId.Parse("/1/"), // Plan M: sin Node el alta falla cerrado (I4)
             Level         = 1,
             CreatedBy     = "seed",
             CreationDate  = FixedNow,
@@ -551,6 +553,7 @@ public class SignupAmbassadorHandlerTests
         {
             MemberId      = "AMB-000001",
             HierarchyPath = "/AMB-000001/",
+            Node          = HierarchyId.Parse("/1/"), // Plan M: sin Node el alta falla cerrado (I4)
             Level         = 1,
             CreatedBy     = "seed",
             CreationDate  = FixedNow,
@@ -758,7 +761,7 @@ public class SignupAmbassadorHandlerTests
         await db.GenealogyTree.AddAsync(new GenealogyEntity
         {
             MemberId       = "AMB-000099",
-            HierarchyPath  = "/AMB-000099/",
+            HierarchyPath  = "/AMB-000099/", Node = HierarchyId.Parse("/1/"), // Plan M: sin Node el alta falla cerrado (I4)
             Level          = 1,
             CreatedBy      = "seed",
             CreationDate   = FixedNow,
@@ -824,7 +827,7 @@ public class SignupAmbassadorHandlerTests
         await db.MemberProfiles.AddAsync(sponsor);
         await db.MembershipLevels.AddAsync(BuildLevel());
         await db.GenealogyTree.AddAsync(new GenealogyEntity {
-            MemberId = "AMB-000077", HierarchyPath = "/AMB-000077/", Level = 1,
+            MemberId = "AMB-000077", HierarchyPath = "/AMB-000077/", Node = HierarchyId.Parse("/1/"), Level = 1, // Plan M: sin Node el alta falla cerrado (I4)
             CreatedBy = "seed", CreationDate = FixedNow, LastUpdateDate = FixedNow });
         await db.SaveChangesAsync();
 

@@ -309,6 +309,7 @@ public class SignupMemberHandlerTests
         {
             MemberId       = "AMB-000001",
             HierarchyPath  = "/AMB-000001/",
+            Node           = HierarchyId.Parse("/1/"), // Plan M: sin Node el alta falla cerrado (I4)
             Level          = 1,
             CreatedBy      = "seed",
             CreationDate   = FixedNow,
@@ -341,7 +342,7 @@ public class SignupMemberHandlerTests
         await db.GenealogyTree.AddAsync(new GenealogyEntity
         {
             MemberId       = "AMB-000001",
-            HierarchyPath  = "/AMB-000001/",
+            HierarchyPath  = "/AMB-000001/", Node = HierarchyId.Parse("/1/"), // Plan M: sin Node el alta falla cerrado (I4)
             Level          = 1,
             CreatedBy      = "seed",
             CreationDate   = FixedNow,
@@ -467,7 +468,7 @@ public class SignupMemberHandlerTests
         await db.GenealogyTree.AddAsync(new GenealogyEntity
         {
             MemberId       = "AMB-000001",
-            HierarchyPath  = "/AMB-000001/",
+            HierarchyPath  = "/AMB-000001/", Node = HierarchyId.Parse("/1/"), // Plan M: sin Node el alta falla cerrado (I4)
             Level          = 1,
             CreatedBy      = "seed",
             CreationDate   = FixedNow,
