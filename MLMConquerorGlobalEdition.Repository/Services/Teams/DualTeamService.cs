@@ -63,7 +63,8 @@ public class DualTeamService : IDualTeamService
             .FirstOrDefaultAsync(d => d.MemberId == memberId, ct);
         if (myNode is null) return new PagedResult<DualTeamMyTeamMemberView>();
 
-        var q = await MyTeamRowsAsync(myNode, memberId, ct);
+        var (q, subarbol) = await MyTeamRowsAsync(myNode, memberId, ct);
+        await using var materializado = subarbol;
         if (!string.IsNullOrWhiteSpace(search))
         {
             var s = search.ToLower();
@@ -106,7 +107,8 @@ public class DualTeamService : IDualTeamService
                                  || string.Equals(s.Field, nameof(DualMyTeamRow.EnrollDate), StringComparison.OrdinalIgnoreCase)))
             request.Sorts.Add(new GridSort { Field = nameof(DualMyTeamRow.EnrollDate), Direction = "desc" });
 
-        var q     = await MyTeamRowsAsync(myNode, memberId, ct);
+        var (q, subarbol) = await MyTeamRowsAsync(myNode, memberId, ct);
+        await using var materializado = subarbol;
         var paged = await q.ToGridResultAsync(request, DualRowSearchableFields, ct: ct);
 
         var items = await BuildDualViewsForPageAsync(paged.Items.ToList(), myNode.HierarchyPath, memberId, ct);
@@ -139,20 +141,26 @@ public class DualTeamService : IDualTeamService
     /// Plan M (M19): un subárbol normal sale de la CTE de DualSubtree y la rejilla filtra por esos ids;
     /// la raíz o un equipo de más de MaxRowsForCte (o InMemory) siguen con el prefijo de la ruta.
     /// </summary>
-    private async Task<IQueryable<DualMyTeamRow>> MyTeamRowsAsync(
+    /// <remarks>
+    /// Revisión I-3: el camino se decide ANTES de materializar, con un recuento barato hasta el tope
+    /// (DualSubtree.CountUpToAsync). Los equipos de más de MaxRowsForCte siguen por la ruta, que no tiene
+    /// índice y no escala: pendiente de un plan aparte. El resultado se libera al acabar la consulta: borra
+    /// la tabla temporal.
+    /// </remarks>
+    private async Task<(IQueryable<DualMyTeamRow> Rows, DualSubtree.MaterializedSubtree? Subtree)> MyTeamRowsAsync(
         DualTeamEntity myNode, string memberId, CancellationToken ct)
     {
-        var cuantos = await DualSubtree.MaterializeAsync(_db, memberId, DualSubtree.MaxRowsForCte, ct: ct);
-        if (cuantos is null)
+        var sub = await DualSubtree.MaterializeAsync(_db, memberId, DualSubtree.MaxRowsForCte, ct: ct);
+        if (sub is null)
         {
             var prefix = TreePrefix.Of(myNode.HierarchyPath);
-            return Project(_db.DualTeamTree.AsNoTracking()
-                .Where(d => d.HierarchyPath.StartsWith(prefix) && d.MemberId != memberId));
+            return (Project(_db.DualTeamTree.AsNoTracking()
+                .Where(d => d.HierarchyPath.StartsWith(prefix) && d.MemberId != memberId)), null);
         }
 
         // Los ids quedan en una tabla temporal de la conexión: la rejilla (COUNT y página) se une a ella
         // en SQL, sin devolver 20.000 ids ni mandarlos de vuelta como parámetro en cada consulta.
-        return Project(DualSubtree.Materialized(_db).AsNoTracking().Where(d => d.MemberId != memberId));
+        return (Project(sub.Nodes.AsNoTracking().Where(d => d.MemberId != memberId)), sub);
     }
 
     private IQueryable<DualMyTeamRow> Project(IQueryable<DualTeamEntity> nodes) =>

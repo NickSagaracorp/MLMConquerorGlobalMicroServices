@@ -150,4 +150,39 @@ public class SqlServerMedicionPlanMTests
         t.Should().BeLessThan(ObjetivoOrderNo);
         await tx.RollbackAsync();
     });
+
+    /// <summary>
+    /// Revisión I-3: Mi equipo del Dual Team por los dos caminos. El subárbol más grande que cabe en la
+    /// CTE (tope de 20.000) va por la CTE; la raíz del binario, por la ruta. Objetivo del plan: 2 s para
+    /// el primero; la raíz se mide con el de los reportes (3 s) y queda anotada como pendiente de escala.
+    /// </summary>
+    [SqlServerFact]
+    public Task Mi_equipo_dual_de_un_subarbol_que_cabe_en_la_CTE() => SqlServerReportes.ConReintentoAsync(async () =>
+    {
+        await using var db = SqlServerReportes.Db();
+        await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.ReadUncommitted);
+        var (miembro, nodos) = await SqlServerDualSubtreeTests.SubarbolMayorQueCabeEnLaCteAsync(db);
+        var servicio = new DualTeamService(db, CalificadoEnLosEquiposTests.Rangos(db), CalificadoEnLosEquiposTests.Calificacion(db));
+
+        var t = await MedianaAsync($"Mi equipo Dual {miembro} ({nodos} nodos, CTE)", () =>
+            servicio.GetMyTeamGridAsync(miembro, new GridDataRequest { PageSize = 20 }));
+
+        t.Should().BeLessThan(TimeSpan.FromSeconds(2));
+        await tx.RollbackAsync();
+    });
+
+    [SqlServerFact]
+    public Task Mi_equipo_dual_de_la_raiz_por_la_ruta() => SqlServerReportes.ConReintentoAsync(async () =>
+    {
+        await using var db = SqlServerReportes.Db();
+        await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.ReadUncommitted);
+        var raiz = await RaizAsync(db);
+        var servicio = new DualTeamService(db, CalificadoEnLosEquiposTests.Rangos(db), CalificadoEnLosEquiposTests.Calificacion(db));
+
+        var t = await MedianaAsync($"Mi equipo Dual {raiz} (raíz, ruta)", () =>
+            servicio.GetMyTeamGridAsync(raiz, new GridDataRequest { PageSize = 20 }));
+
+        t.Should().BeLessThan(ObjetivoReporte);
+        await tx.RollbackAsync();
+    });
 }

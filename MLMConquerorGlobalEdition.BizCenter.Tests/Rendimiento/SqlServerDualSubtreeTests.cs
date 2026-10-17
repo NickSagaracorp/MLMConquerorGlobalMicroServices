@@ -140,41 +140,88 @@ public class SqlServerDualSubtreeTests
         await tx.RollbackAsync();
     });
 
+    /// <summary>
+    /// El subárbol binario más grande que cabe en la CTE: desde la raíz más grande se baja por el hijo que aún
+    /// no cabe, y cuando todos caben se queda con el mayor (con un equipo de 3 la medición no decía nada).
+    /// Con el recuento barato de DualSubtree.CountUpToAsync. En local: AMB-962514, 19.335 nodos.
+    /// </summary>
+    internal static async Task<(string MemberId, int Nodos)> SubarbolMayorQueCabeEnLaCteAsync(Repository.Context.AppDbContext db)
+    {
+        var raices = await db.DualTeamTree.AsNoTracking().Where(d => d.ParentMemberId == null)
+            .OrderBy(d => d.MemberId).Select(d => d.MemberId).ToListAsync();
+        var actual = raices.First();
+        foreach (var r in raices)
+            if (await DualSubtree.CountUpToAsync(db, r, DualSubtree.MaxRowsForCte) is null) { actual = r; break; }
+        var cuantos = await DualSubtree.CountUpToAsync(db, actual, DualSubtree.MaxRowsForCte);
+        for (var i = 0; i < 2000 && cuantos is null; i++)
+        {
+            var hijos = await db.DualTeamTree.AsNoTracking().Where(d => d.ParentMemberId == actual)
+                .OrderBy(d => d.MemberId).Select(d => d.MemberId).ToListAsync();
+            var medidos = new List<(string Id, int? Nodos)>();
+            foreach (var h in hijos)
+                medidos.Add((h, await DualSubtree.CountUpToAsync(db, h, DualSubtree.MaxRowsForCte)));
+            var grande = medidos.FirstOrDefault(m => m.Nodos is null);
+            if (grande.Id is not null) { actual = grande.Id; continue; }
+            (actual, cuantos) = medidos.OrderByDescending(m => m.Nodos).First();
+        }
+        cuantos.Should().NotBeNull();
+        return (actual, cuantos!.Value);
+    }
+
     [SqlServerFact]
     public Task Mi_equipo_de_un_subarbol_normal_cabe_en_tiempo() => SqlServerReportes.ConReintentoAsync(async () =>
     {
         await using var db = SqlServerReportes.Db();
         await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.ReadUncommitted);
-        // El subárbol más grande que cabe en la CTE: desde la raíz más grande se baja por el hijo que aún no
-        // cabe, y cuando los dos caben se queda con el mayor (revisión: la medición con un equipo de 3 no decía nada).
-        var raices = await db.DualTeamTree.AsNoTracking().Where(d => d.ParentMemberId == null)
-            .OrderBy(d => d.MemberId).Select(d => d.MemberId).ToListAsync();
-        var actual = raices.First();
-        foreach (var r in raices)
-            if (await DualSubtree.DescendantsAsync(db, r, DualSubtree.MaxRowsForCte) is null) { actual = r; break; }
-        IReadOnlyList<DualSubtree.Row>? sub = await DualSubtree.DescendantsAsync(db, actual, DualSubtree.MaxRowsForCte);
-        for (var i = 0; i < 2000 && sub is null; i++)
-        {
-            var hijos = await db.DualTeamTree.AsNoTracking().Where(d => d.ParentMemberId == actual)
-                .OrderBy(d => d.MemberId).Select(d => d.MemberId).ToListAsync();
-            var medidos = new List<(string Id, IReadOnlyList<DualSubtree.Row>? Sub)>();
-            foreach (var h in hijos)
-                medidos.Add((h, await DualSubtree.DescendantsAsync(db, h, DualSubtree.MaxRowsForCte)));
-            var grande = medidos.FirstOrDefault(m => m.Sub is null);
-            if (grande.Id is not null) { actual = grande.Id; continue; }
-            var mayor = medidos.OrderByDescending(m => m.Sub!.Count).First();
-            actual = mayor.Id; sub = mayor.Sub;
-        }
-        sub.Should().NotBeNull();
+        var (actual, cuantos) = await SubarbolMayorQueCabeEnLaCteAsync(db);
         var servicio = new DualTeamService(db, CalificadoEnLosEquiposTests.Rangos(db), CalificadoEnLosEquiposTests.Calificacion(db));
 
         var cronometro = Stopwatch.StartNew();
         var pagina = await servicio.GetMyTeamGridAsync(actual, new GridDataRequest { PageSize = 20 });
         cronometro.Stop();
 
-        _salida.WriteLine($"Mi equipo Dual de {actual}: {sub!.Count} nodos, {pagina.TotalCount} filas en {cronometro.ElapsedMilliseconds} ms");
-        pagina.TotalCount.Should().Be(sub.Count);
+        _salida.WriteLine($"Mi equipo Dual de {actual}: {cuantos} nodos, {pagina.TotalCount} filas en {cronometro.ElapsedMilliseconds} ms");
+        pagina.TotalCount.Should().Be(cuantos);
         cronometro.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(2));
+        await tx.RollbackAsync();
+    });
+
+    /// <summary>Revisión M-a: un ciclo en el binario no da un 500; el recuento cae del lado del tope y se usa la ruta.</summary>
+    [SqlServerFact]
+    public Task Un_ciclo_no_rompe_ni_el_recuento_ni_la_materializacion() => SqlServerReportes.ConReintentoAsync(async () =>
+    {
+        await using var db = SqlServerReportes.Db();
+        await using var tx = await db.Database.BeginTransactionAsync();
+        var a = SqlServerReportes.NuevoId(); var b = SqlServerReportes.NuevoId();
+        ReportesDb.NodoBinario(db, a, b, ReportesDb.Ruta(a), TreeSide.Left);   // a cuelga de b...
+        ReportesDb.NodoBinario(db, b, a, ReportesDb.Ruta(b), TreeSide.Left);   // ...y b de a
+        await db.SaveChangesAsync();
+
+        (await DualSubtree.CountUpToAsync(db, a, 100)).Should().BeNull();
+        (await DualSubtree.MaterializeAsync(db, a, 100)).Should().BeNull();
+        (await DualSubtree.DescendantsAsync(db, a, 100)).Should().BeNull();
+        await tx.RollbackAsync();
+    });
+
+    /// <summary>Revisión M-b: la tabla temporal solo se lee a través del resultado y se borra al liberarlo.</summary>
+    [SqlServerFact]
+    public Task La_tabla_temporal_se_borra_al_liberar_el_resultado() => SqlServerReportes.ConReintentoAsync(async () =>
+    {
+        await using var db = SqlServerReportes.Db();
+        await using var tx = await db.Database.BeginTransactionAsync();
+        var r = SqlServerReportes.NuevoId(); var a = SqlServerReportes.NuevoId();
+        ReportesDb.NodoBinario(db, r, null, ReportesDb.Ruta(r), TreeSide.Left);
+        ReportesDb.NodoBinario(db, a, r, ReportesDb.Ruta(r, a), TreeSide.Right);
+        await db.SaveChangesAsync();
+
+        var sub = await DualSubtree.MaterializeAsync(db, r, 100);
+        sub!.Count.Should().Be(1);
+        (await sub.Nodes.Select(d => d.MemberId).ToListAsync()).Should().Equal(a);
+        await sub.DisposeAsync();
+
+        FluentActions.Invoking(() => sub.Nodes).Should().Throw<ObjectDisposedException>();
+        (await db.Database.SqlQuery<int>($"SELECT COUNT(*) AS [Value] FROM tempdb.sys.objects WHERE name LIKE '#dual_subtree%' AND object_id = OBJECT_ID('tempdb..#dual_subtree')").SingleAsync())
+            .Should().Be(0);
         await tx.RollbackAsync();
     });
 }
