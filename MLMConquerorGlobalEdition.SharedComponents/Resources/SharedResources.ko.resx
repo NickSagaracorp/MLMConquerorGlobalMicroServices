@@ -1437,4 +1437,15 @@
   <data name="Reports.RangeTooOld" xml:space="preserve"><value>시작일은 {0}(3개월 전)보다 이전일 수 없습니다.</value></data>
   <data name="Reports.RangeInFuture" xml:space="preserve"><value>종료일은 오늘 이후일 수 없습니다.</value></data>
   <data name="Reports.Apply" xml:space="preserve"><value>적용</value></data>
+  <data name="Sidebar.StatusChanges" xml:space="preserve"><value>상태 변경</value></data>
+  <data name="Sidebar.CustomerChanges" xml:space="preserve"><value>고객 변경</value></data>
+  <data name="PageTitle.EnrollmentChanges" xml:space="preserve"><value>등록 팀 상태 변경</value></data>
+  <data name="PageTitle.DualTeamChanges" xml:space="preserve"><value>듀얼 팀 상태 변경</value></data>
+  <data name="PageTitle.CustomerChanges" xml:space="preserve"><value>고객 상태 변경</value></data>
+  <data name="Changes.FirstName" xml:space="preserve"><value>이름</value></data>
+  <data name="Changes.LastName" xml:space="preserve"><value>성</value></data>
+  <data name="Changes.ChangedOn" xml:space="preserve"><value>{0}에 변경됨</value></data>
+  <data name="Changes.NoHistory" xml:space="preserve"><value>아직 기록된 변경이 없습니다</value></data>
+  <data name="Reports.Left" xml:space="preserve"><value>왼쪽</value></data>
+  <data name="Reports.Right" xml:space="preserve"><value>오른쪽</value></data>
 </root>

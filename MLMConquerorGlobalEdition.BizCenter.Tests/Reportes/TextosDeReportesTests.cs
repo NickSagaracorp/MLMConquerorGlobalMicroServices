@@ -28,6 +28,12 @@ public class TextosDeReportesTests
         "Reports.RangeInvalid", "Reports.RangeTooLong", "Reports.RangeTooOld", "Reports.RangeInFuture",
         "Reports.Apply", "Common.Error", "Common.From", "Common.To", "Reports.Name", "Reports.Id",
         "Reports.Level", "Reports.Ambassadors", "Common.Customers", "Reports.EnrollTeamPoints",
+        // Bloque 5 — Cambios de estado
+        "Sidebar.StatusChanges", "Sidebar.CustomerChanges", "PageTitle.EnrollmentChanges",
+        "PageTitle.DualTeamChanges", "PageTitle.CustomerChanges", "Changes.FirstName",
+        "Changes.LastName", "Changes.ChangedOn", "Changes.NoHistory",
+        "Reports.BizCenterStatus", "Reports.MembershipStatus", "Reports.Qualified", "Common.Yes", "Common.No",
+        "Reports.Sponsor", "Reports.DualTeamUpline", "Reports.Leg", "Reports.Left", "Reports.Right", "Sidebar.DualTeam",
         // (claves de los bloques siguientes)
     };
 

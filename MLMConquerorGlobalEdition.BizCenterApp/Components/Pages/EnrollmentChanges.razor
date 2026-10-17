@@ -1,0 +1,7 @@
+@page "/team/enrollment/changes"
+@attribute [Authorize(Roles = "Ambassador,ExternalMember")]
+@inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
+
+<PageTitle>@L["PageTitle.EnrollmentChanges"]</PageTitle>
+
+<TeamStatusChangesGrid Scope="enrollment" />

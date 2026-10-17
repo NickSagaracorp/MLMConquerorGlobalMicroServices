@@ -1,0 +1,7 @@
+@page "/team/dual-changes"
+@attribute [Authorize(Roles = "Ambassador,ExternalMember")]
+@inject Microsoft.Extensions.Localization.IStringLocalizer<MLMConquerorGlobalEdition.SharedComponents.Resources.SharedResources> L
+
+<PageTitle>@L["PageTitle.DualTeamChanges"]</PageTitle>
+
+<TeamStatusChangesGrid Scope="dual" />

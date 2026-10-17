@@ -1437,4 +1437,15 @@
   <data name="Reports.RangeTooOld" xml:space="preserve"><value>Das Startdatum darf nicht vor dem {0} liegen (drei Monate zurück).</value></data>
   <data name="Reports.RangeInFuture" xml:space="preserve"><value>Das Enddatum darf nicht nach dem heutigen Tag liegen.</value></data>
   <data name="Reports.Apply" xml:space="preserve"><value>Anwenden</value></data>
+  <data name="Sidebar.StatusChanges" xml:space="preserve"><value>Statusänderungen</value></data>
+  <data name="Sidebar.CustomerChanges" xml:space="preserve"><value>Kundenänderungen</value></data>
+  <data name="PageTitle.EnrollmentChanges" xml:space="preserve"><value>Statusänderungen im Anmeldeteam</value></data>
+  <data name="PageTitle.DualTeamChanges" xml:space="preserve"><value>Statusänderungen im Dual Team</value></data>
+  <data name="PageTitle.CustomerChanges" xml:space="preserve"><value>Statusänderungen bei Kunden</value></data>
+  <data name="Changes.FirstName" xml:space="preserve"><value>Vorname</value></data>
+  <data name="Changes.LastName" xml:space="preserve"><value>Nachname</value></data>
+  <data name="Changes.ChangedOn" xml:space="preserve"><value>Geändert am {0}</value></data>
+  <data name="Changes.NoHistory" xml:space="preserve"><value>Noch keine Änderung erfasst</value></data>
+  <data name="Reports.Left" xml:space="preserve"><value>Links</value></data>
+  <data name="Reports.Right" xml:space="preserve"><value>Rechts</value></data>
 </root>

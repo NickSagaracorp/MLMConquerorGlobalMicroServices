@@ -1371,4 +1371,17 @@
   <data name="Reports.RangeInFuture" xml:space="preserve"><value>დასრულების თარიღი არ შეიძლება იყოს დღევანდელზე გვიან.</value></data>
   <data name="Reports.Apply" xml:space="preserve"><value>გამოყენება</value></data>
   <data name="Common.Error" xml:space="preserve"><value>შეცდომა</value></data>
+  <data name="Sidebar.StatusChanges" xml:space="preserve"><value>სტატუსის ცვლილებები</value></data>
+  <data name="Sidebar.CustomerChanges" xml:space="preserve"><value>კლიენტების ცვლილებები</value></data>
+  <data name="PageTitle.EnrollmentChanges" xml:space="preserve"><value>რეგისტრაციის გუნდის სტატუსის ცვლილებები</value></data>
+  <data name="PageTitle.DualTeamChanges" xml:space="preserve"><value>Dual Team-ის სტატუსის ცვლილებები</value></data>
+  <data name="PageTitle.CustomerChanges" xml:space="preserve"><value>კლიენტების სტატუსის ცვლილებები</value></data>
+  <data name="Changes.FirstName" xml:space="preserve"><value>სახელი</value></data>
+  <data name="Changes.LastName" xml:space="preserve"><value>გვარი</value></data>
+  <data name="Changes.ChangedOn" xml:space="preserve"><value>შეიცვალა {0}</value></data>
+  <data name="Changes.NoHistory" xml:space="preserve"><value>ცვლილება ჯერ არ დაფიქსირებულა</value></data>
+  <data name="Common.Yes" xml:space="preserve"><value>დიახ</value></data>
+  <data name="Common.No" xml:space="preserve"><value>არა</value></data>
+  <data name="Reports.Left" xml:space="preserve"><value>მარცხენა</value></data>
+  <data name="Reports.Right" xml:space="preserve"><value>მარჯვენა</value></data>
 </root>

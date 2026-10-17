@@ -1371,4 +1371,17 @@
   <data name="Reports.RangeInFuture" xml:space="preserve"><value>结束日期不能晚于今天。</value></data>
   <data name="Reports.Apply" xml:space="preserve"><value>应用</value></data>
   <data name="Common.Error" xml:space="preserve"><value>错误</value></data>
+  <data name="Sidebar.StatusChanges" xml:space="preserve"><value>状态变更</value></data>
+  <data name="Sidebar.CustomerChanges" xml:space="preserve"><value>客户变更</value></data>
+  <data name="PageTitle.EnrollmentChanges" xml:space="preserve"><value>注册团队状态变更</value></data>
+  <data name="PageTitle.DualTeamChanges" xml:space="preserve"><value>双轨团队状态变更</value></data>
+  <data name="PageTitle.CustomerChanges" xml:space="preserve"><value>客户状态变更</value></data>
+  <data name="Changes.FirstName" xml:space="preserve"><value>名</value></data>
+  <data name="Changes.LastName" xml:space="preserve"><value>姓</value></data>
+  <data name="Changes.ChangedOn" xml:space="preserve"><value>变更于 {0}</value></data>
+  <data name="Changes.NoHistory" xml:space="preserve"><value>暂无变更记录</value></data>
+  <data name="Common.Yes" xml:space="preserve"><value>是</value></data>
+  <data name="Common.No" xml:space="preserve"><value>否</value></data>
+  <data name="Reports.Left" xml:space="preserve"><value>左</value></data>
+  <data name="Reports.Right" xml:space="preserve"><value>右</value></data>
 </root>

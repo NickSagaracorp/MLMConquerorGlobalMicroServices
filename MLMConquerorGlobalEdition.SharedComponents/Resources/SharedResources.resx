@@ -1537,4 +1537,13 @@
   <data name="Reports.RangeTooOld" xml:space="preserve"><value>The start date can't be earlier than {0} (three months back).</value></data>
   <data name="Reports.RangeInFuture" xml:space="preserve"><value>The end date can't be later than today.</value></data>
   <data name="Reports.Apply" xml:space="preserve"><value>Apply</value></data>
+  <data name="Sidebar.StatusChanges" xml:space="preserve"><value>Status changes</value></data>
+  <data name="Sidebar.CustomerChanges" xml:space="preserve"><value>Customer changes</value></data>
+  <data name="PageTitle.EnrollmentChanges" xml:space="preserve"><value>Enrollment team status changes</value></data>
+  <data name="PageTitle.DualTeamChanges" xml:space="preserve"><value>Dual Team status changes</value></data>
+  <data name="PageTitle.CustomerChanges" xml:space="preserve"><value>Customer status changes</value></data>
+  <data name="Changes.FirstName" xml:space="preserve"><value>First name</value></data>
+  <data name="Changes.LastName" xml:space="preserve"><value>Last name</value></data>
+  <data name="Changes.ChangedOn" xml:space="preserve"><value>Changed on {0}</value></data>
+  <data name="Changes.NoHistory" xml:space="preserve"><value>No change recorded yet</value></data>
 </root>

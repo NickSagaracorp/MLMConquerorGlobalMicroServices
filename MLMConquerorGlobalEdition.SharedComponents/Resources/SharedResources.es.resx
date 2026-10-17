@@ -1473,4 +1473,15 @@
   <data name="Reports.RangeTooOld" xml:space="preserve"><value>La fecha inicial no puede ser anterior al {0} (tres meses atrás).</value></data>
   <data name="Reports.RangeInFuture" xml:space="preserve"><value>La fecha final no puede ser posterior a hoy.</value></data>
   <data name="Reports.Apply" xml:space="preserve"><value>Aplicar</value></data>
+  <data name="Sidebar.StatusChanges" xml:space="preserve"><value>Cambios de estado</value></data>
+  <data name="Sidebar.CustomerChanges" xml:space="preserve"><value>Cambios de clientes</value></data>
+  <data name="PageTitle.EnrollmentChanges" xml:space="preserve"><value>Cambios de estado del equipo de inscripción</value></data>
+  <data name="PageTitle.DualTeamChanges" xml:space="preserve"><value>Cambios de estado del Dual Team</value></data>
+  <data name="PageTitle.CustomerChanges" xml:space="preserve"><value>Cambios de estado de clientes</value></data>
+  <data name="Changes.FirstName" xml:space="preserve"><value>Nombre</value></data>
+  <data name="Changes.LastName" xml:space="preserve"><value>Apellido</value></data>
+  <data name="Changes.ChangedOn" xml:space="preserve"><value>Cambió el {0}</value></data>
+  <data name="Changes.NoHistory" xml:space="preserve"><value>Aún no hay cambios registrados</value></data>
+  <data name="Reports.Left" xml:space="preserve"><value>Izquierda</value></data>
+  <data name="Reports.Right" xml:space="preserve"><value>Derecha</value></data>
 </root>
