@@ -50,6 +50,7 @@ public class AnnualFeeCardTests : BunitContext
     private const string Pagado = """{"success":true,"data":{"paymentId":"p1","status":"Completed","method":"Token","amount":0,"nextDueDate":"2028-06-20T00:00:00"}}""";
 
     private readonly List<(string Metodo, string Ruta, string? Cuerpo, string? Permiso)> _peticiones = new();
+    private bool _falloPreferencia;
 
     private IRenderedComponent<AnnualFeeCard> Montar(
         Func<HttpRequestMessage, string?, HttpResponseMessage?>? pago = null, bool soloLectura = false,
@@ -61,7 +62,10 @@ public class AnnualFeeCardTests : BunitContext
             _peticiones.Add((r.Method.Method, r.RequestUri!.AbsolutePath, cuerpo, permiso));
             if (r.Method == HttpMethod.Get && r.RequestUri.AbsolutePath.EndsWith("/billing/annual-fee")) return Json(HttpStatusCode.OK, resumen);
             if (r.Method == HttpMethod.Get && r.RequestUri.AbsolutePath.EndsWith("/wallet/balances")) return Json(HttpStatusCode.OK, Fondos);
-            if (r.Method == HttpMethod.Put) return Json(HttpStatusCode.OK, """{"success":true,"data":{"feesFromBalance":false}}""");
+            if (r.Method == HttpMethod.Put)
+                return _falloPreferencia
+                    ? Json(HttpStatusCode.InternalServerError, """{"success":false,"errorCode":"INTERNAL_ERROR"}""")
+                    : Json(HttpStatusCode.OK, """{"success":true,"data":{"feesFromBalance":false}}""");
             return pago?.Invoke(r, cuerpo) ?? Json(HttpStatusCode.OK, Pagado);
         })) { BaseAddress = new Uri("https://api.pruebas/") };
 
@@ -196,4 +200,40 @@ public class AnnualFeeCardTests : BunitContext
 
     private static string Metodo(string? cuerpo) =>
         JsonDocument.Parse(cuerpo!).RootElement.GetProperty("method").GetString()!;
+
+    // ── Revisión final (M-a, M-b) ──────────────────────────────────────────────
+
+    [Fact]
+    public void En_revision_no_se_conserva_el_intento_ni_se_ofrece_reintentar()
+    {
+        var t = Montar(pago: (_, _) => Json(HttpStatusCode.BadRequest, """{"success":false,"errorCode":"ANNUAL_FEE_NEEDS_REVIEW"}"""));
+        t.WaitForAssertion(() => t.Find(".annual-fee-pay-button"));
+
+        _ = t.Find(".annual-fee-pay-button").ClickAsync(new());
+
+        t.WaitForAssertion(() => t.Find(".annual-fee-error").TextContent.Should().Contain("AnnualFee.Error.NeedsReview"));
+        t.Find(".annual-fee-pay-button").TextContent.Should().Contain("AnnualFee.PayNow").And.NotContain("AnnualFee.Retry");
+        // Se vuelve a pedir el resumen para enseñar el estado real (en revisión).
+        _peticiones.Count(p => p.Metodo == "GET" && p.Ruta.EndsWith("/billing/annual-fee")).Should().BeGreaterThanOrEqualTo(2);
+    }
+
+    [Fact]
+    public void Si_falla_guardar_la_preferencia_el_interruptor_vuelve_a_su_valor()
+    {
+        var t = Montar();
+        t.WaitForAssertion(() => t.Find(".annual-fee-preference"));
+        var antes = t.Find(".annual-fee-preference");
+        var versionAntes = antes.GetAttribute("data-version");
+
+        // El PUT falla (500): la preferencia sigue encendida en el servidor.
+        _falloPreferencia = true;
+        antes.Change(false);
+
+        t.WaitForAssertion(() => t.Find(".annual-fee-error"));
+        var despues = t.Find(".annual-fee-preference");
+        despues.HasAttribute("checked").Should().BeTrue();
+        // Se vuelve a pintar el control (otra clave de render), para que el navegador lo enseñe encendido.
+        despues.GetAttribute("data-version").Should().NotBe(versionAntes);
+        t.FindAll(".annual-fee-preference-saved").Should().BeEmpty();
+    }
 }

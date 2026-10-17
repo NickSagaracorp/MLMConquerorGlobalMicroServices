@@ -36,10 +36,13 @@ public static class AnnualFeeMessages
     };
 
     /// <summary>
-    /// ¿El intento quedó sin resolver? En curso, en revisión o Billing sin contestar: se repite con la
-    /// MISMA clave (Billing devuelve lo que ya hizo). Lo demás es definitivo y el siguiente lleva otra.
+    /// ¿El intento quedó sin resolver? En curso, ocupado o Billing sin contestar, más la regla común con
+    /// la compra de tokens (BillingRetry: step-up rechazado o un 5xx de resultado desconocido): se repite
+    /// con la MISMA clave y Billing devuelve lo que ya hizo. EN REVISIÓN NO (revisión final, M-b): hay un
+    /// pago a conciliar para el ciclo y repetir no sirve; la tarjeta vuelve a leer el estado. Lo demás es
+    /// definitivo y el siguiente intento lleva otra clave.
     /// </summary>
     public static bool KeepsKey(string? errorCode, HttpStatusCode status) =>
-        errorCode is AnnualFeeErrors.InProgress or AnnualFeeErrors.NeedsReview or TokenPurchaseErrors.BillingUnavailable
-        || (errorCode is null && (int)status >= 500);
+        errorCode is AnnualFeeErrors.InProgress or AnnualFeeErrors.Busy or TokenPurchaseErrors.BillingUnavailable
+        || Billing.BillingRetry.UnknownOrNotExecuted(errorCode, status);
 }

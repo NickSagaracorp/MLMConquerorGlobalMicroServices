@@ -49,4 +49,34 @@ public class TextosDeCuotaAnualTests
                      .Select(f => (string)f.GetValue(null)!))
             Claves.Should().Contain(MLMConquerorGlobalEdition.SharedComponents.Components.Profile.AnnualFeeMessages.ErrorKeyFor(codigo));
     }
+
+    // ── Revisión final (M-c): la misma regla de conservar la clave que en tokens ─────────
+
+    [Theory]
+    [InlineData("ANNUAL_FEE_IN_PROGRESS", 409, true)]
+    [InlineData("ANNUAL_FEE_BUSY", 409, true)]
+    [InlineData("BILLING_UNAVAILABLE", 502, true)]
+    [InlineData("STEP_UP_REQUIRED", 403, true)]
+    [InlineData("STEP_UP_INVALID", 403, true)]
+    [InlineData(null, 500, true)]
+    [InlineData("INTERNAL_ERROR", 500, true)]
+    [InlineData("BILLING_CONTRACT_ERROR", 502, false)]
+    [InlineData("ANNUAL_FEE_NEEDS_REVIEW", 400, false)] // M-b: en revisión no se repite el intento
+    [InlineData("ANNUAL_FEE_NOT_DUE", 400, false)]
+    [InlineData("IDEMPOTENCY_KEY_REUSED", 409, false)]
+    public void Conserva_la_clave_cuando_no_se_sabe_si_entro(string? codigo, int estado, bool conserva)
+        => MLMConquerorGlobalEdition.SharedComponents.Components.Profile.AnnualFeeMessages
+            .KeepsKey(codigo, (System.Net.HttpStatusCode)estado).Should().Be(conserva);
+
+    [Theory]
+    [InlineData("STEP_UP_REQUIRED", 403)]
+    [InlineData(null, 500)]
+    [InlineData("INTERNAL_ERROR", 503)]
+    [InlineData("BILLING_CONTRACT_ERROR", 502)]
+    public void La_parte_comun_coincide_con_la_de_tokens(string? codigo, int estado)
+    {
+        var s = (System.Net.HttpStatusCode)estado;
+        MLMConquerorGlobalEdition.SharedComponents.Components.Profile.AnnualFeeMessages.KeepsKey(codigo, s)
+            .Should().Be(MLMConquerorGlobalEdition.SharedComponents.Components.Tokens.TokenPurchaseMessages.KeepsKey(codigo, s));
+    }
 }

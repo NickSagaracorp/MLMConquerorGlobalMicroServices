@@ -65,7 +65,10 @@
             @if (CanAct)
             {
                 <div class="form-check form-switch mb-1">
-                    <input class="form-check-input annual-fee-preference" type="checkbox" role="switch" id="annualFeePreference"
+                    @* @key con versión: si guardar falla, se vuelve a crear el control para que el navegador enseñe
+                       el valor real (con el mismo "checked" Blazor no tocaría el DOM; revisión final, M-a). *@
+                    <input @key="_preferenceVersion" data-version="@_preferenceVersion"
+                           class="form-check-input annual-fee-preference" type="checkbox" role="switch" id="annualFeePreference"
                            checked="@_overview.FeesFromBalance" disabled="@_savingPreference" @onchange="OnPreferenceChangedAsync" />
                     <label class="form-check-label small" for="annualFeePreference">@L["AnnualFee.Preference"]</label>
                 </div>
@@ -142,6 +145,7 @@
     private PayAnnualFeeRequest? _pending;
     private bool _busy;
     private bool _savingPreference;
+    private int _preferenceVersion;
     private bool _preferenceSaved;
     private string? _errorKey;
     private AnnualFeePaymentResultDto? _result;
@@ -251,6 +255,9 @@
                     {
                         _pending = null;
                         _idempotencyKey = NewKey();
+                        // En revisión o ya pagada: el estado cambió; se vuelve a leer para enseñarlo.
+                        if (code is AnnualFeeErrors.NeedsReview or AnnualFeeErrors.AlreadyPaid)
+                            await LoadAsync();
                     }
                 }
             }
@@ -285,11 +292,13 @@
             else
             {
                 _errorKey = AnnualFeeMessages.ErrorKeyFor((await ReadAsync<object>(resp))?.ErrorCode);
+                _preferenceVersion++; // el interruptor vuelve a su valor real
             }
         }
         catch
         {
             _errorKey = "AnnualFee.Error.Unavailable";
+            _preferenceVersion++;
         }
         finally
         {
