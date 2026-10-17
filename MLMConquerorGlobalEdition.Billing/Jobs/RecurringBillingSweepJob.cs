@@ -68,7 +68,9 @@ public class RecurringBillingSweepJob
             .Where(s => (s.Status == RecurringBillingStatus.Active
                       || s.Status == RecurringBillingStatus.Retrying
                       || s.Status == RecurringBillingStatus.AwaitingAnniversaryRetry)
-                     && s.NextAttemptDate.Date <= today)
+                     && s.NextAttemptDate.Date <= today
+                     // Plan K (M2): solo membresías hasta que el Bloque 3 conecte el cobro de la cuota.
+                     && s.Purpose == BillingStatePurpose.Membership)
             .Select(s => new { s.Id, s.ShardKey })
             .ToListAsync(ct);
 

@@ -116,7 +116,9 @@ public class RecurringChargeWorker : IRecurringChargeWorker
                      && (s.Status == RecurringBillingStatus.Active
                       || s.Status == RecurringBillingStatus.Retrying
                       || s.Status == RecurringBillingStatus.AwaitingAnniversaryRetry)
-                     && s.NextAttemptDate.Date <= today)
+                     && s.NextAttemptDate.Date <= today
+                     // Plan K (M2): solo membresías hasta que el Bloque 3 conecte el cobro de la cuota.
+                     && s.Purpose == BillingStatePurpose.Membership)
             .OrderBy(s => s.ShardKey)
             .Select(s => new { s.Id, s.MemberId, s.MembershipSubscriptionId })
             .ToListAsync(ct);

@@ -109,7 +109,9 @@ public class RecurringBillingPlanner : IRecurringBillingPlanner
             .Where(s => (s.Status == RecurringBillingStatus.Active
                       || s.Status == RecurringBillingStatus.Retrying
                       || s.Status == RecurringBillingStatus.AwaitingAnniversaryRetry)
-                     && s.NextAttemptDate.Date <= today)
+                     && s.NextAttemptDate.Date <= today
+                     // Plan K (M2): solo membresías hasta que el Bloque 3 conecte el cobro de la cuota.
+                     && s.Purpose == BillingStatePurpose.Membership)
             .OrderBy(s => s.ShardKey)
             .Select(s => new { s.ShardKey, s.MemberId, s.RecurringBillingPlanId })
             .ToListAsync(ct);
@@ -268,7 +270,9 @@ public class RecurringBillingPlanner : IRecurringBillingPlanner
             .Where(s => (s.Status == RecurringBillingStatus.Active
                       || s.Status == RecurringBillingStatus.Retrying
                       || s.Status == RecurringBillingStatus.AwaitingAnniversaryRetry)
-                     && s.NextAttemptDate.Date <= today)
+                     && s.NextAttemptDate.Date <= today
+                     // Plan K (M2): solo membresías hasta que el Bloque 3 conecte el cobro de la cuota.
+                     && s.Purpose == BillingStatePurpose.Membership)
             .OrderBy(s => s.ShardKey)
             .Select(s => new { s.ShardKey, s.MemberId })
             .ToListAsync(ct);
