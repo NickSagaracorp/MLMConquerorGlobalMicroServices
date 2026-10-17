@@ -31,7 +31,7 @@ namespace MLMConquerorGlobalEdition.BizCenter.Services;
 /// inscribiste—. Cada ruta se cierra contra el árbol que ella misma recorre; usar el otro dejaría
 /// pasar exactamente a quien la pantalla no enseña.
 ///
-/// LA CONTENCIÓN SE MIRA POR <c>HierarchyPath</c>, que es como ya la miran
+/// LA CONTENCIÓN SE MIRA, en el binario, POR <c>HierarchyPath</c> (y en el de patrocinio por <c>Node</c>, Plan M), que es como ya la miran
 /// <c>GetAvailableNodesHandler</c>, <c>GetCarBonusBranchAsync</c> y el recalculador de piernas: la
 /// ruta de un descendiente empieza por la de su ancestro. No se recorre la cadena de padres a
 /// mano —eso serían N consultas y una respuesta distinta a la del resto del sistema—.
@@ -103,25 +103,14 @@ public sealed class DownlineGuard : IDownlineGuard
     public Task<bool> PuedeVerRamaDePatrocinioAsync(ClaimsPrincipal? user, string? memberId, CancellationToken ct) =>
         SuyoOPersonalO(user, memberId, async (propio, objetivo) =>
         {
-            // El nodo más reciente del que mira (R8) y un prefijo que acaba en "/" (TreePrefix).
-            var ruta = await _db.GenealogyTree.AsNoTracking()
-                .Where(g => g.MemberId == propio)
-                .OrderByDescending(g => g.CreationDate)
-                .Select(g => g.HierarchyPath)
-                .FirstOrDefaultAsync(ct);
+            // Plan M (revisión M6): por Node, como el resto de lecturas del árbol de patrocinio. El nodo
+            // vigente del que mira (R8); sin Node no hay red que abrir (falla cerrado).
+            var raiz = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(propio, ct);
+            if (raiz is null) return false;
 
-            if (string.IsNullOrEmpty(ruta)) return false;
-            var raiz = TreePrefix.Of(ruta);
-
-            // R8 también sobre el objetivo: cuenta su nodo más reciente, no uno antiguo que quedara
-            // bajo mi prefijo.
-            var rutaObjetivo = await _db.GenealogyTree.AsNoTracking()
-                .Where(g => g.MemberId == objetivo)
-                .OrderByDescending(g => g.CreationDate)
-                .Select(g => g.HierarchyPath)
-                .FirstOrDefaultAsync(ct);
-
-            return rutaObjetivo is not null && rutaObjetivo.StartsWith(raiz, StringComparison.Ordinal);
+            // R8 también sobre el objetivo: cuenta su nodo vigente, no uno antiguo que quedara bajo el mío.
+            var nodoObjetivo = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(objetivo, ct);
+            return nodoObjetivo is not null && nodoObjetivo.IsDescendantOf(raiz);
         });
 
     public Task<bool> PatrocinaAsync(ClaimsPrincipal? user, string? memberId, CancellationToken ct) =>

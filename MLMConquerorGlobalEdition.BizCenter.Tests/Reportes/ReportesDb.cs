@@ -115,11 +115,12 @@ public static class ReportesDb
             return HierarchyId.Parse($"/{Random.Shared.Next(1_000_000, int.MaxValue)}/");
 
         var rutaPadre = "/" + string.Join('/', segmentos[..^1]) + "/";
+        var rutaSinBarra = rutaPadre.TrimEnd('/'); // hay rutas antiguas guardadas sin la barra final
         var padre = db.GenealogyTree.Local
-                        .Where(g => g.HierarchyPath == rutaPadre && g.Node is not null)
+                        .Where(g => (g.HierarchyPath == rutaPadre || g.HierarchyPath == rutaSinBarra) && g.Node is not null)
                         .OrderByDescending(g => g.CreationDate).Select(g => g.Node).FirstOrDefault()
                     ?? db.GenealogyTree.AsNoTracking()
-                        .Where(g => g.HierarchyPath == rutaPadre && g.Node != null)
+                        .Where(g => (g.HierarchyPath == rutaPadre || g.HierarchyPath == rutaSinBarra) && g.Node != null)
                         .OrderByDescending(g => g.CreationDate).Select(g => g.Node).FirstOrDefault();
         if (padre is null)
         {

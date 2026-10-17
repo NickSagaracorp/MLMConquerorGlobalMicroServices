@@ -72,4 +72,48 @@ public class SinPrefijoEnInscripcionTests
 
         hallazgos.Should().BeEmpty("el equipo se acota con GenealogySubtree.Under (rango del índice), no con IsDescendantOf");
     }
+
+    private static readonly Regex RutaEnMemoria = new(
+        @"\b(?<fila>\w+)\s*\.\s*HierarchyPath\s*\.\s*(Contains|StartsWith)\s*\(|\b(path|ruta|node|hierarchyPath)\s*\.\s*(Contains|StartsWith)\s*\(",
+        RegexOptions.Compiled);
+
+    /// <summary>
+    /// Revisión M6: también en memoria. En un archivo que lee el árbol de inscripción, ninguna línea
+    /// filtra filas por la ruta de texto con Contains/StartsWith, aunque la sentencia no nombre
+    /// GenealogyTree (el bono de coche cargaba las filas y filtraba con x.HierarchyPath.Contains). Las
+    /// del binario (fila «d» o «dual…») no entran: el binario sigue con su ruta (Bloque 4).
+    /// </summary>
+    [Fact]
+    public void Nadie_filtra_en_memoria_filas_de_genealogia_por_la_ruta()
+    {
+        var raiz = ReportesDb.RaizDelRepositorio();
+        var sep  = Path.DirectorySeparatorChar;
+        var hallazgos = new List<string>();
+
+        foreach (var proyecto in Directory.GetDirectories(raiz, "MLMConquerorGlobalEdition.*")
+                     .Where(d => !d.EndsWith(".Tests", StringComparison.Ordinal)))
+        foreach (var archivo in Directory.EnumerateFiles(proyecto, "*.cs", SearchOption.AllDirectories))
+        {
+            if (archivo.Contains($"{sep}obj{sep}") || archivo.Contains($"{sep}bin{sep}")
+                || archivo.Contains($"{sep}Migrations{sep}"))
+                continue;
+
+            var texto = Comentario.Replace(File.ReadAllText(archivo), string.Empty);
+            if (!texto.Contains("GenealogyTree", StringComparison.Ordinal))
+                continue;
+
+            var relativo = Path.GetRelativePath(raiz, archivo).Replace('\\', '/');
+            foreach (var linea in texto.Split('\n'))
+            foreach (System.Text.RegularExpressions.Match m in RutaEnMemoria.Matches(linea))
+            {
+                var fila = m.Groups["fila"].Value;
+                if (fila == "d" || fila.StartsWith("dual", StringComparison.OrdinalIgnoreCase)
+                    || linea.Contains("Dual", StringComparison.Ordinal) || linea.Contains("dual", StringComparison.Ordinal))
+                    continue;
+                hallazgos.Add($"{relativo}: {linea.Trim()}");
+            }
+        }
+
+        hallazgos.Should().BeEmpty("las filas del árbol de inscripción se acotan por Node (GenealogySubtree), también en memoria");
+    }
 }

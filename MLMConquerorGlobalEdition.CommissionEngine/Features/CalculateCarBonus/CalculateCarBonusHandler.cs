@@ -6,6 +6,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.CommissionEngine.Features.CalculateCarBonus;
@@ -81,25 +82,47 @@ public class CalculateCarBonusHandler : IRequestHandler<CalculateCarBonusCommand
                 SkippedReasons        = ["No active Elite/Turbo ambassadors found."]
             });
 
-        // Load all genealogy paths once
-        var ambassadorSet = ambassadors.ToHashSet();
-
-        var allPaths = await _db.GenealogyTree
-            .AsNoTracking()
-            .Where(g => ambassadorSet.Contains(g.MemberId))
-            .Select(g => new { g.MemberId, g.HierarchyPath })
-            .ToListAsync(ct);
-
-        var pathByMember = allPaths.ToDictionary(x => x.MemberId, x => x.HierarchyPath);
-
-        // Load all active downline subscriptions (for team-point calculation)
-        var allActiveDownline = await (
-            from sub in _db.MembershipSubscriptions.AsNoTracking()
-            join g   in _db.GenealogyTree.AsNoTracking() on sub.MemberId equals g.MemberId
-            where sub.SubscriptionStatus == MembershipStatus.Active
-               && !sub.IsDeleted
-            select new { sub.MemberId, sub.MembershipLevelId, g.HierarchyPath }
+        // Plan M (revisión M6): el equipo de cada embajador es el rango de su Node en el árbol de
+        // inscripción (nodo vigente de cada miembro, CurrentUnder), no HierarchyPath.Contains en memoria.
+        // Un miembro con dos nodos (R8 del Plan J) cuenta una vez, por el vigente, y ya no revienta el
+        // ToDictionary. Los puntos de cada miembro salen de su suscripción activa más reciente.
+        var activos = await (
+            from g   in _db.GenealogyTree.AsNoTracking().CurrentUnder(HierarchyId.GetRoot())
+            join sub in _db.MembershipSubscriptions.AsNoTracking() on g.MemberId equals sub.MemberId
+            where sub.SubscriptionStatus == MembershipStatus.Active && !sub.IsDeleted
+            select new { g.MemberId, g.Node, sub.MembershipLevelId, sub.CreationDate }
         ).ToListAsync(ct);
+
+        // Un registro por miembro, ordenado por Node: el equipo de un nodo es un tramo contiguo
+        // [nodo, hermano siguiente) — exacto porque los ordinales son enteros (CHECK de NodoDeGenealogia).
+        var porNodo = activos
+            .GroupBy(a => a.MemberId)
+            .Select(grupo =>
+            {
+                var ultima = grupo.OrderByDescending(a => a.CreationDate).First();
+                return (ultima.MemberId, Node: ultima.Node!,
+                        Puntos: LevelPoints.TryGetValue(ultima.MembershipLevelId, out var p) ? p : 0);
+            })
+            .OrderBy(x => x.Node)
+            .ToList();
+        var nodos     = porNodo.Select(x => x.Node).ToList();
+        var acumulado = new int[porNodo.Count + 1];
+        for (var i = 0; i < porNodo.Count; i++)
+            acumulado[i + 1] = acumulado[i] + porNodo[i].Puntos;
+
+        int Desde(HierarchyId n)
+        {
+            var i = nodos.BinarySearch(n);
+            return i >= 0 ? i : ~i;
+        }
+
+        // El nodo vigente de cada embajador (pueden no tener suscripción activa propia en "activos").
+        var nodoDe = await _db.GenealogyTree.AsNoTracking()
+            .CurrentUnder(HierarchyId.GetRoot())
+            .Where(g => ambassadors.Contains(g.MemberId))
+            .Select(g => new { g.MemberId, g.Node })
+            .ToListAsync(ct);
+        var nodoPorEmbajador = nodoDe.GroupBy(x => x.MemberId).ToDictionary(x => x.Key, x => x.First().Node);
 
         var skipped   = new List<string>();
         var earnings  = new List<CommissionEarning>();
@@ -125,16 +148,20 @@ public class CalculateCarBonusHandler : IRequestHandler<CalculateCarBonusCommand
                 continue;
             }
 
-            // Calculate team enrollment points from active downline
-            var hierarchyFilter = $"/{ambassadorId}/";
-            var teamPoints = allActiveDownline
-                .Where(x => x.HierarchyPath.Contains(hierarchyFilter) && x.MemberId != ambassadorId)
-                .GroupBy(x => x.MemberId)
-                .Sum(g =>
-                {
-                    var latest = g.OrderByDescending(x => x.MemberId).First();
-                    return LevelPoints.TryGetValue(latest.MembershipLevelId, out var pts) ? pts : 0;
-                });
+            if (!nodoPorEmbajador.TryGetValue(ambassadorId, out var raiz) || raiz is null)
+            {
+                // Falla cerrado: sin Node no hay equipo que sumar (relleno pendiente).
+                skipped.Add($"{ambassadorId}: no enrollment Node (GenealogyTree.Node pending backfill).");
+                continue;
+            }
+
+            // Calculate team enrollment points from the active downline: el tramo de su Node sin él.
+            var padre     = raiz.GetAncestor(1);
+            var siguiente = padre?.GetDescendant(raiz, null);
+            var desde     = Desde(raiz);
+            var hasta     = siguiente is null ? porNodo.Count : Desde(siguiente);
+            var propios   = desde < porNodo.Count && porNodo[desde].Node == raiz ? porNodo[desde].Puntos : 0;
+            var teamPoints = acumulado[hasta] - acumulado[desde] - propios;
 
             if (teamPoints < carBonusType.TeamPoints)
             {
