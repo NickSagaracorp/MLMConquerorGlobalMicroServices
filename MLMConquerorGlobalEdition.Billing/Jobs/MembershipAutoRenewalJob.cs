@@ -10,12 +10,12 @@ using MLMConquerorGlobalEdition.Repository.Context;
 namespace MLMConquerorGlobalEdition.Billing.Jobs;
 
 /// <summary>
-/// HangFire recurring job — Daily 6:00 AM UTC.
-/// Renews all active subscriptions where:
-///   - IsAutoRenew = true
-///   - CancellationDate is null
-///   - IsFree = false
-///   - (StartDate + 30 days) &lt;= today (monthly renewal window elapsed)
+/// APAGADO (Plan K, decisión de Nick): ya no se programa. El único motor de renovación es
+/// RecurringBillingProcessor; con los dos, una suscripción podía cobrarse dos veces. Program.cs lo
+/// borra de Hangfire (RemoveIfExists("membership-auto-renewal")). Se conserva registrado por si hay que
+/// lanzarlo a mano en una emergencia, sabiendo que NO toma el candado de fondos ni es idempotente.
+/// Lo que hacía: renovar toda suscripción activa con IsAutoRenew, sin CancellationDate, no gratuita y
+/// con StartDate + 30 días &lt;= hoy.
 /// </summary>
 [Queue("billing")]
 public class MembershipAutoRenewalJob

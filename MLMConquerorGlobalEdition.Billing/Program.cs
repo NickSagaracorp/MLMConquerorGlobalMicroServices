@@ -1,4 +1,4 @@
-﻿using MLMConquerorGlobalEdition.SharedKernel.Server.Middleware;
+using MLMConquerorGlobalEdition.SharedKernel.Server.Middleware;
 using System.Text;
 using AspNetCoreRateLimit;
 using Hangfire;
@@ -294,11 +294,12 @@ app.MapControllers();
 
 app.UseHangfireDashboard("/hangfire");
 
-RecurringJob.AddOrUpdate<MembershipAutoRenewalJob>(
-    "membership-auto-renewal",
-    job => job.ExecuteAsync(CancellationToken.None),
-    "0 6 * * *",                    // Daily 6:00 AM UTC
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+// Plan K (decision de Nick): un solo motor de renovacion, RecurringBillingProcessor (planificador +
+// trabajadores + barrido). MembershipAutoRenewalJob renovaba por su cuenta TODA suscripcion activa con
+// StartDate <= hoy - 30, sin candado ni idempotencia: con los dos, doble cobro. RemoveIfExists lo borra
+// tambien de la base de Hangfire si un despliegue anterior lo dejo programado (quitar solo el
+// AddOrUpdate lo dejaria vivo alli). La clase sigue registrada, como CommissionPayoutJob.
+RecurringJob.RemoveIfExists("membership-auto-renewal");
 
 // Hourly exchange-rate refresh
 RecurringJob.AddOrUpdate<ExchangeRateRefreshJob>(
