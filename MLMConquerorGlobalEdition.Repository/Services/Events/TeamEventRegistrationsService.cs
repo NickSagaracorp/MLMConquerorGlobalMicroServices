@@ -70,19 +70,40 @@ public sealed class TeamEventRegistrationsService : ITeamEventRegistrationsServi
 
         var regs = _db.CorporateEventRegistrations.AsNoTracking().Where(r => r.EventId == eventId);
 
-        var query =
-            from m in Team(prefix)
-            where !registeredOnly || regs.Any(r => r.MemberId == m.MemberId)
-            select new TeamEventRegistrationView
-            {
-                MemberId     = m.MemberId,
-                FirstName    = m.FirstName,
-                LastName     = m.LastName,
-                EnrollDate   = m.EnrollDate,
-                Registered   = regs.Any(r => r.MemberId == m.MemberId),
-                RegisteredAt = regs.Where(r => r.MemberId == m.MemberId).Min(r => (DateTime?)r.RegisteredAt),
-                Tickets      = regs.Where(r => r.MemberId == m.MemberId).Sum(r => (int?)r.Tickets) ?? 0
-            };
+        // «Solo inscritos» parte de las inscripciones del EVENTO (pocas, por el índice (EventId,
+        // MemberId)), agrupadas por miembro, y solo sobre esas comprueba la pertenencia al equipo. «Todo
+        // el equipo» sí tiene que recorrer el equipo (R16: medido en SqlServerEventosTests).
+        var query = registeredOnly
+            ? from g in regs.GroupBy(r => r.MemberId)
+                  .Select(g => new { MemberId = g.Key, First = g.Min(r => r.RegisteredAt), Tickets = g.Sum(r => r.Tickets) })
+              join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
+              let node = _db.GenealogyTree
+                  .Where(n => n.MemberId == m.MemberId)
+                  .OrderByDescending(n => n.CreationDate)
+                  .Select(n => n.HierarchyPath)
+                  .FirstOrDefault()
+              where node != null && node.StartsWith(prefix)
+              select new TeamEventRegistrationView
+              {
+                  MemberId     = m.MemberId,
+                  FirstName    = m.FirstName,
+                  LastName     = m.LastName,
+                  EnrollDate   = m.EnrollDate,
+                  Registered   = true,
+                  RegisteredAt = g.First,
+                  Tickets      = g.Tickets
+              }
+            : from m in Team(prefix)
+              select new TeamEventRegistrationView
+              {
+                  MemberId     = m.MemberId,
+                  FirstName    = m.FirstName,
+                  LastName     = m.LastName,
+                  EnrollDate   = m.EnrollDate,
+                  Registered   = regs.Any(r => r.MemberId == m.MemberId),
+                  RegisteredAt = regs.Where(r => r.MemberId == m.MemberId).Min(r => (DateTime?)r.RegisteredAt),
+                  Tickets      = regs.Where(r => r.MemberId == m.MemberId).Sum(r => (int?)r.Tickets) ?? 0
+              };
 
         var page = await query.ToGridResultAsync(request, SearchableFields, ct: ct);
         var rows = page.Items as List<TeamEventRegistrationView> ?? page.Items.ToList();
@@ -99,9 +120,17 @@ public sealed class TeamEventRegistrationsService : ITeamEventRegistrationsServi
         var prefix = await PrefixAsync(memberId, ct);
         if (prefix is null) return Result<TeamEventTotalsView>.Success(new TeamEventTotalsView());
 
-        var teamIds = Team(prefix).Select(m => m.MemberId);
-        var inTeam  = _db.CorporateEventRegistrations.AsNoTracking()
-            .Where(r => r.EventId == eventId && teamIds.Contains(r.MemberId));
+        // Primero las inscripciones del evento y después, solo para ellas, la pertenencia al equipo.
+        var inTeam =
+            from r in _db.CorporateEventRegistrations.AsNoTracking()
+            where r.EventId == eventId
+            let node = _db.GenealogyTree
+                .Where(n => n.MemberId == r.MemberId)
+                .OrderByDescending(n => n.CreationDate)
+                .Select(n => n.HierarchyPath)
+                .FirstOrDefault()
+            where node != null && node.StartsWith(prefix)
+            select r;
 
         return Result<TeamEventTotalsView>.Success(new TeamEventTotalsView
         {

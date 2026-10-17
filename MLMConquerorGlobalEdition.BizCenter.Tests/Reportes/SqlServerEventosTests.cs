@@ -1,6 +1,10 @@
+using System.Data;
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+using MLMConquerorGlobalEdition.Domain.Entities.Events;
 using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.Repository.Services.Events;
+using Xunit.Abstractions;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 
@@ -13,6 +17,10 @@ namespace MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 [Collection(SqlServerReportesCollection.Nombre)]
 public class SqlServerEventosTests
 {
+    private readonly ITestOutputHelper _salida;
+
+    public SqlServerEventosTests(ITestOutputHelper salida) => _salida = salida;
+
     private static TeamEventRegistrationsServiceTests.Ids Nuevos() => new(
         SqlServerReportes.NuevoId(), SqlServerReportes.NuevoId(), SqlServerReportes.NuevoId(),
         SqlServerReportes.NuevoId(), SqlServerReportes.NuevoId(),
@@ -55,6 +63,40 @@ public class SqlServerEventosTests
         var act = () => db.SaveChangesAsync();
 
         await act.Should().ThrowAsync<DbUpdateException>("ya existe la referencia {0}-R1 para ese evento", id.Evento);
+        await tx.RollbackAsync();
+    });
+
+    /// <summary>
+    /// R16: mide la raíz real con un evento con inscripciones de unos pocos miembros de su equipo,
+    /// para «solo inscritos» y los totales. Freno grueso de 60 s, como en Actividad; la cifra se imprime.
+    /// En ReadUncommitted para medir la consulta y no los bloqueos de otros procesos.
+    /// </summary>
+    [SqlServerFact]
+    public Task La_raiz_con_un_evento_cabe_en_tiempo() => SqlServerReportes.ConReintentoAsync(async () =>
+    {
+        await using var db = SqlServerReportes.Db();
+        await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.ReadUncommitted);
+        var raiz = await db.GenealogyTree.AsNoTracking()
+            .Where(g => g.ParentMemberId == null).OrderBy(g => g.Level).Select(g => g.MemberId).FirstAsync();
+        var algunos = await db.GenealogyTree.AsNoTracking()
+            .Where(g => g.ParentMemberId == raiz).Select(g => g.MemberId).Take(5).ToListAsync();
+        var evento = "TJ-EV-" + Guid.NewGuid().ToString("N")[..12];
+        db.CorporateEvents.Add(new CorporateEvent { Id = evento, Title = "Medición", EventDate = new DateTime(2026, 12, 1), IsActive = true, CreatedBy = "prueba" });
+        await db.SaveChangesAsync();
+        foreach (var (m, i) in algunos.Append(raiz).Select((m, i) => (m, i)))
+            db.CorporateEventRegistrations.Add(TeamEventRegistrationsServiceTests.Inscripcion(evento, m, 1, new DateTime(2026, 3, 1), $"{evento}-{i}"));
+        await db.SaveChangesAsync();
+        var servicio = TeamEventRegistrationsServiceTests.Servicio(db);
+
+        var cronometro = Stopwatch.StartNew();
+        var rejilla = await servicio.GetGridAsync(raiz, evento, registeredOnly: true, new GridDataRequest { PageSize = 20 });
+        var totales = await servicio.GetTotalsAsync(raiz, evento);
+        cronometro.Stop();
+
+        _salida.WriteLine($"Eventos de {raiz}: {rejilla.Value!.TotalCount} inscritos, {totales.Value!.Tickets} entradas en {cronometro.ElapsedMilliseconds} ms");
+        rejilla.Value.TotalCount.Should().Be(algunos.Count + 1);
+        cronometro.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(60));
+
         await tx.RollbackAsync();
     });
 }
