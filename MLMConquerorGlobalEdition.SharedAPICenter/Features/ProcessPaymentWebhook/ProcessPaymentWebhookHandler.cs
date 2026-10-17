@@ -21,6 +21,8 @@ namespace MLMConquerorGlobalEdition.SharedAPICenter.Features.ProcessPaymentWebho
 /// </summary>
 public class ProcessPaymentWebhookHandler : IRequestHandler<ProcessPaymentWebhookCommand, Result<bool>>
 {
+    public const string FieldTooLongCode = "WEBHOOK_FIELD_TOO_LONG";
+
     private readonly AppDbContext _db;
     private readonly IDateTimeProvider _clock;
 
@@ -41,6 +43,15 @@ public class ProcessPaymentWebhookHandler : IRequestHandler<ProcessPaymentWebhoo
             return Result<bool>.Failure(
                 "WEBHOOK_UNKNOWN_EVENT",
                 $"Unknown payment event '{payload.Event}'.");
+
+        // Plan M (R16): las columnas de PaymentHistories están acotadas. Un campo que no cabe fallaría
+        // al guardar y la pasarela reintentaría sin fin; se rechaza aquí (400, que no se reintenta).
+        if (TooLong(payload.TransactionId, PaymentHistory.GatewayTransactionIdMaxLength)
+            || TooLong(payload.OrderId, PaymentHistory.OrderIdMaxLength)
+            || TooLong(payload.MemberId, PaymentHistory.MemberIdMaxLength))
+            return Result<bool>.Failure(
+                FieldTooLongCode,
+                "TransactionId, OrderId or MemberId exceeds the stored length.");
 
         var existing = await _db.PaymentHistories
             .FirstOrDefaultAsync(
@@ -100,6 +111,8 @@ public class ProcessPaymentWebhookHandler : IRequestHandler<ProcessPaymentWebhoo
         return Result<bool>.Success(true);
     }
 
+
+    private static bool TooLong(string? value, int maxLength) => value is not null && value.Length > maxLength;
 
     private static PaymentHistoryTransactionStatus? ResolveStatus(string eventName) =>
         eventName.ToLowerInvariant() switch

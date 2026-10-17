@@ -13,9 +13,9 @@ public class PaymentHistoryConfiguration : IEntityTypeConfiguration<PaymentHisto
 {
     public void Configure(EntityTypeBuilder<PaymentHistory> builder)
     {
-        builder.Property(p => p.OrderId).HasMaxLength(450).IsRequired();
-        builder.Property(p => p.MemberId).HasMaxLength(100).IsRequired();
-        builder.Property(p => p.GatewayTransactionId).HasMaxLength(200);
+        builder.Property(p => p.OrderId).HasMaxLength(PaymentHistory.OrderIdMaxLength).IsRequired();
+        builder.Property(p => p.MemberId).HasMaxLength(PaymentHistory.MemberIdMaxLength).IsRequired();
+        builder.Property(p => p.GatewayTransactionId).HasMaxLength(PaymentHistory.GatewayTransactionIdMaxLength);
 
         builder.HasIndex(p => p.OrderId);
         builder.HasIndex(p => new { p.MemberId, p.TransactionStatus }).IncludeProperties(p => p.ProcessedAt);
