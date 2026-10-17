@@ -1393,4 +1393,5 @@
   <data name="Events.Tickets" xml:space="preserve"><value>门票</value></data>
   <data name="Events.RegistrationDate" xml:space="preserve"><value>报名日期</value></data>
   <data name="Events.ImportPending" xml:space="preserve"><value>活动报名从票务平台导入后将显示在这里。</value></data>
+  <data name="StepUp.WhyAnnualFee" xml:space="preserve"><value>为了您的安全，支付年费前请输入验证码。</value></data>
 </root>

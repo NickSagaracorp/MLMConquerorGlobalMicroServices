@@ -17,10 +17,17 @@ public static class StepUpOperations
     /// <summary>Pagar tokens con saldo propio: comisiones o eWallet. Tarjeta y cripto no lo piden.</summary>
     public const string TokenPurchaseFromBalance = "member.tokens.purchase-from-balance";
 
+    /// <summary>
+    /// Pagar la cuota anual con lo que ya es del miembro: comisiones, eWallet o un token de cuota (Plan K).
+    /// El token también: es dinero ya pagado y una sesión robada podría gastarlo.
+    /// </summary>
+    public const string AnnualFeeFromBalance = "member.annual-fee.pay-from-balance";
+
     private static readonly HashSet<string> Known = new(StringComparer.Ordinal)
     {
         PayoutMethodChange,
-        TokenPurchaseFromBalance
+        TokenPurchaseFromBalance,
+        AnnualFeeFromBalance
     };
 
     public static bool IsKnown(string? operationKey) =>

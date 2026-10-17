@@ -1457,4 +1457,5 @@
   <data name="Events.Tickets" xml:space="preserve"><value>티켓</value></data>
   <data name="Events.RegistrationDate" xml:space="preserve"><value>등록일</value></data>
   <data name="Events.ImportPending" xml:space="preserve"><value>이벤트 등록은 티켓 플랫폼에서 가져온 후 여기에 표시됩니다.</value></data>
+  <data name="StepUp.WhyAnnualFee" xml:space="preserve"><value>보안을 위해 연회비를 결제하기 전에 인증 코드를 입력하세요.</value></data>
 </root>

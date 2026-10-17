@@ -1475,4 +1475,5 @@
   <data name="Events.Tickets" xml:space="preserve"><value>Ingressos</value></data>
   <data name="Events.RegistrationDate" xml:space="preserve"><value>Data de inscrição</value></data>
   <data name="Events.ImportPending" xml:space="preserve"><value>As inscrições nos eventos aparecerão aqui quando forem importadas da plataforma de ingressos.</value></data>
+  <data name="StepUp.WhyAnnualFee" xml:space="preserve"><value>Por segurança, digite um código de verificação antes de pagar sua taxa anual.</value></data>
 </root>

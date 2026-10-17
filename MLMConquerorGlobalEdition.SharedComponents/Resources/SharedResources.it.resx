@@ -1457,4 +1457,5 @@
   <data name="Events.Tickets" xml:space="preserve"><value>Biglietti</value></data>
   <data name="Events.RegistrationDate" xml:space="preserve"><value>Data di iscrizione</value></data>
   <data name="Events.ImportPending" xml:space="preserve"><value>Le iscrizioni agli eventi compariranno qui una volta importate dalla piattaforma dei biglietti.</value></data>
+  <data name="StepUp.WhyAnnualFee" xml:space="preserve"><value>Per sicurezza, inserisci un codice di verifica prima di pagare la quota annuale.</value></data>
 </root>
