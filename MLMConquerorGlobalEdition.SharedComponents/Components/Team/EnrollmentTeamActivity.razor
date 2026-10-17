@@ -51,6 +51,7 @@
                                        Http="Http"
                                        Endpoint="@($"{ApiBaseUrl}/enrollment/activity/grid")"
                                        QueryStringProvider="RangeQuery"
+                                       OnServerError="OnServerErrorAsync"
                                        AccessTokenProvider="GetTokenAsync" />
                 </SfDataManager>
                 <GridPageSettings PageSize="20" PageSizes="@(new int[]{20,50,100})" />
@@ -87,6 +88,7 @@
     private DateTime _appliedTo;
     private DateTime _minFrom;   // hoy − 3 meses, según el servidor
     private DateTime _today;     // hoy, según el servidor
+    private int      _maxRangeDays = 366;
     private bool     _ready;
     private string?  _message;
     private Dictionary<int, string> _columns = new();
@@ -111,6 +113,7 @@
                 _to      = _appliedTo   = setup.Data.DefaultTo;
                 _today   = setup.Data.DefaultTo;
                 _minFrom = setup.Data.ActivityMinFrom;
+                _maxRangeDays = setup.Data.MaxRangeDays;
                 _ready   = true;
             }
             else
@@ -133,6 +136,14 @@
 
     private string? RangeQuery() =>
         $"from={_appliedFrom.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}&to={_appliedTo.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
+
+    /// <summary>Un 400 de la rejilla (rango rechazado por el servidor) se explica con su texto.</summary>
+    private Task OnServerErrorAsync(string? errorCode)
+    {
+        var (key, arg) = ReportRangeCheck.FromServerCode(errorCode, _minFrom, _maxRangeDays);
+        _message = arg is null ? L[key] : L[key, arg];
+        return InvokeAsync(StateHasChanged);
+    }
 
     private async Task ApplyAsync()
     {

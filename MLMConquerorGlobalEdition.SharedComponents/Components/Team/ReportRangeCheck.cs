@@ -16,6 +16,20 @@ public static class ReportRangeCheck
     }
 
     /// <summary>
+    /// El texto que corresponde a un código de rango devuelto por el servidor en un 400 (la
+    /// pantalla ya avisó antes, pero el servidor manda: su reloj puede haber cambiado de día).
+    /// Cualquier otro código, o ninguno, es un error genérico.
+    /// </summary>
+    public static (string Key, object? Arg) FromServerCode(string? errorCode, DateTime minFrom, int maxDays) => errorCode switch
+    {
+        "REPORT_RANGE_INVALID"   => ("Reports.RangeInvalid", null),
+        "REPORT_RANGE_TOO_OLD"   => ("Reports.RangeTooOld", minFrom.ToString("d")),
+        "REPORT_RANGE_IN_FUTURE" => ("Reports.RangeInFuture", null),
+        "REPORT_RANGE_TOO_LONG"  => ("Reports.RangeTooLong", maxDays),
+        _                        => ("Common.Error", null)
+    };
+
+    /// <summary>
     /// Regla de Actividad por fechas (corrección de Nick N4): inicio no anterior a
     /// <paramref name="minFrom"/> (hoy − 3 meses) y fin no posterior a <paramref name="today"/>.
     /// </summary>

@@ -59,4 +59,6 @@ public sealed class GridApiResponse<T>
     public bool Success { get; set; }
     public T? Data { get; set; }
     public IEnumerable<string>? Errors { get; set; }
+    /// <summary>Código de error del servidor (p. ej. REPORT_RANGE_TOO_OLD), si lo trae.</summary>
+    public string? ErrorCode { get; set; }
 }
