@@ -25,7 +25,7 @@
 - **Miembro del token.** Ningún endpoint nuevo del BizCenter ni de Billing acepta `memberId` (ni ruta, ni query, ni cuerpo). Lo vigila `MiembroDelTokenTests` (ampliado en la Tarea 21). El Admin lee con el `memberId` de la ruta, como el resto de su perfil de miembro.
 - **Dinero.** Todo lo que mueve saldo o tokens del miembro va dentro de `IMemberFundsGate.EnterAsync`. Pagar con saldo (comisiones, eWallet o token) exige step-up y se rechaza bajo suplantación en el BizCenter **y** en Billing. Nunca se cobra con tarjeta: la tarjeta queda para el Plan I (3DS) y su gateway es un stub.
 - **Hora de servidor.** `IDateTimeProvider.Now` (el de Billing en Billing; el de SharedKernel en Repository). Las expresiones cron de Hangfire siguen en UTC, como las demás.
-- **Ids de miembro.** Toda columna nueva que guarde un id de miembro mide al menos `nvarchar(100)`; las que guardan ids de entidades, `nvarchar(450)`. Nada se estrecha. El cliente tiene ids de 50 caracteres.
+- **Ids de miembro (aclarado por Nick el 2026-10-17).** Los 50 caracteres eran del sitio replicado (`ReplicateSiteSlug`, ya `nvarchar(100)`), no del id del miembro: con la migración de datos cada miembro recibirá un `MemberId` de este sistema, tipo `AMB-123456`, de `nvarchar(20)`. Una columna nueva que guarde un `MemberId` con FK hacia `MemberProfiles.MemberId` sigue su longitud; sin FK, `nvarchar(100)` o `nvarchar(450)` valen. Los ids de entidades, `nvarchar(450)`. Nada se estrecha.
 - **Pruebas.** TDD con EF InMemory; `[SqlServerFact]` donde InMemory no reproduce la base (índices únicos filtrados, `CHECK`, `sp_getapplock`). Las de SQL Server usan un miembro sintético propio y borran lo que escriben.
 - **Migraciones.** Se crean con `dotnet ef migrations add`; **no** se aplican solas. Aplicarlas a la base local es un paso explícito, siempre con `--connection` y siempre contra `MLMConquerorGlobalEditionDb` local. Cualquier servicio que se arranque en local también las aplica (`MigrateAsync` en todos los `Program.cs`): se aplican a mano **antes** de arrancar nada.
 - **Textos.** Toda clave nueva va en los **nueve** `.resx` de `SharedComponents/Resources` (en, es, pt, fr, it, de, ko, zh, ka); el español, en tuteo. Lo vigila `TextosDeCuotaAnualTests`.
@@ -65,7 +65,7 @@
 | R9 | **eWallet sin el miembro delante.** El cobro automático con eWallet llama a i-Payout de madrugada. Un resultado dudoso queda `NeedsReconciliation`, no se reintenta y lo cierra tesorería por API. | Dos fases bajo el candado y verificación por saldo, como `TokenPurchaseService` (K11). Barrido de `Pending` a los 30 minutos (Tarea 15). No hay pantalla de conciliación en el Admin (P7). |
 | R10 | **Rastro del stub.** Cuando el gateway devuelve un éxito simulado, el orquestador ya escribió un `PaymentHistory` `Captured` antes de que el motor lo rechace (Tarea 3). | El pedido se cancela y el estado no avanza; el `PaymentHistory` simulado queda (lo escribe el orquestador, no el motor) y §13 da la consulta para encontrarlos (`GatewayTransactionId LIKE 'simulated-%'`). |
 | R11 | **`Orders.OrderNo` sin índice** (`nvarchar(max)`, 289.519 filas en local) y seis bucles de unicidad con `AnyAsync`. | La cuota anual **no** usa ese bucle: genera el número con `OrderNumberHelper.Generate("Annual Fee", now)` (456.976 combinaciones por milisegundo), como la compra de tokens (K20). Apagar `MembershipAutoRenewalJob` saca de la noche uno de los seis bucles (`RenewMembershipHandler`). El índice sigue pendiente de Nick. |
-| R12 | **Columnas de id estrechas que ya existen.** `MemberProfiles.MemberId` es `nvarchar(20)` y `TokenPurchases.MemberId` `nvarchar(36)`; el cliente tiene ids de 50. | No se estrecha nada nuevo: `AnnualFeePayments.MemberId` es `nvarchar(100)`, como `SubscriptionBillingStates.MemberId`. Ampliar las existentes queda fuera (condición previa anotada en §12). |
+| R12 | ~~Columnas de id estrechas que ya existen.~~ **Deja de ser un riesgo (Nick, 2026-10-17):** los ids de 50 caracteres eran del sitio replicado (`ReplicateSiteSlug`, ya `nvarchar(100)`); los miembros migrados recibirán un `MemberId` de este sistema de `nvarchar(20)`, así que `MemberProfiles.MemberId nvarchar(20)` y `TokenPurchases.MemberId nvarchar(36)` bastan. | Nada que hacer. `AnnualFeePayments.MemberId` queda en `nvarchar(100)`, como `SubscriptionBillingStates.MemberId`: no tiene FK a `MemberProfiles`, así que 100 vale. |
 | R13 | **Conciliación de §12 (Plan J).** Hay 33 estados de Travel Advantage `Stopped` con la membresía `Active`. Hoy `MembershipAutoRenewalJob` los sigue renovando por su cuenta (no mira estados). Al apagarlo, nadie los cobra y siguen activos sin pagar. | Antes de desplegar el Bloque 1, ejecutar la consulta de §12 y que Nick decida (§13 lo repite como condición). La consulta sigue valiendo con estados anuales: el `JOIN` con `MembershipSubscriptions` los excluye (su suscripción es nula); §13 le añade `AND s.Purpose = 1` para dejarlo explícito. |
 | R14 | InMemory no aplica índices únicos filtrados, `CHECK` ni `sp_getapplock`. | Tarea 18 contra SQL Server: los dos índices únicos, el `CHECK` y dos «Pagar ahora» simultáneos con el candado real. |
 | R15 | **Consumo de token frente a distribución.** El BizCenter distribuye y transfiere tokens; un token de cuota podría moverse a la vez que se consume. | Las dos cosas van bajo el mismo candado del miembro (el de distribuir lo toma el BizCenter desde el Plan F). El consumo relee la instancia dentro del candado. |
@@ -108,7 +108,7 @@
 | K20 | **Sin bucle de `AnyAsync` para `OrderNo`** en la cuota anual. El del procesador de Travel Advantage se queda: Nick no ha decidido sobre los índices. | R11. |
 | K21 | **Pantalla: `AnnualFeeCard`** en la columna derecha del perfil, bajo `MembershipCard`. En el BizCenter muestra estado, importe, vencimiento, último pago, tokens de cuota disponibles, la preferencia y «Pagar ahora» con los tres métodos y los saldos de `wallet/balances`. En el Admin y bajo suplantación, solo lectura. | Componente unificado en el sitio donde el miembro ya mira su membresía; sin página nueva ni entrada de menú. |
 | K22 | **Las reglas viven en Repository** (`AnnualFeeSchedule`, `AnnualFeeEligibility`, `AnnualFeePlanQueries`, `AnnualFeePaymentQueries`, `AnnualFeeTokenQueries`): Billing las usa para cobrar y el BizCenter para enseñar si se puede pagar y por qué no. | Una sola definición; la pantalla nunca dice «puedes pagar» cuando Billing va a decir que no. |
-| K23 | Columnas nuevas: `AnnualFeePayments.MemberId nvarchar(100)`, `SubscriptionBillingStateId`, `OrderId` y `PaymentHistoryId nvarchar(450)`, `CreatedBy`/`LastUpdateBy nvarchar(256)` (pueden ser un correo). `SubscriptionBillingStates.MembershipSubscriptionId` sigue en `nvarchar(100)`, ahora anulable. | Regla de ids (R12). |
+| K23 | Columnas nuevas: `AnnualFeePayments.MemberId nvarchar(100)`, `SubscriptionBillingStateId`, `OrderId` y `PaymentHistoryId nvarchar(450)`, `CreatedBy`/`LastUpdateBy nvarchar(256)` (pueden ser un correo). `SubscriptionBillingStates.MembershipSubscriptionId` sigue en `nvarchar(100)`, ahora anulable. | Regla de ids (aclarada por Nick; R12 ya no es un riesgo). |
 | K24 | **Los pagos de la cuota quedan en `RecurringBillingAttempts`** (automáticos y «Pagar ahora»), con dos valores nuevos de `RecurringFundingSource`: `EWallet = 3` y `Token = 4`. Un fallo sin fondos se registra con `CommissionBalance` si la preferencia está encendida y `Token` si no. | Soporte ve en un solo registro todo lo que pasó con un estado, también desde el listado del Admin. |
 
 ## Fuera de alcance
@@ -123,7 +123,6 @@
 - **Retirar o restringir `POST api/v1/billing/memberships/renew`** (R4, P4).
 - **El token sin consumir de `FundWithCommissionBalanceAsync`** en Travel Advantage (R8, P5).
 - **Registrar `IRecurringBillingProcessor` en AdminAPI** para que funcione el `bill-now` del Admin (R4).
-- **Ampliar `MemberProfiles.MemberId` y `TokenPurchases.MemberId`** (R12).
 - **Página de la cuota en `BizCenterApp` (MAUI)**: el componente es el mismo y se podrá montar después.
 - **La matriz de paridad.**
 
@@ -1449,7 +1448,7 @@ public class AnnualFeePaymentConfiguration : IEntityTypeConfiguration<AnnualFeeP
         builder.HasKey(x => x.Id);
         builder.Property(x => x.RowVersion).IsRowVersion();
 
-        // Ids de miembro: 100 como mínimo (el cliente tiene ids de 50). Ids de entidades: 450.
+        // Id de miembro sin FK a MemberProfiles: 100 (como SubscriptionBillingStates). Ids de entidades: 450.
         builder.Property(x => x.MemberId).IsRequired().HasMaxLength(100);
         builder.Property(x => x.SubscriptionBillingStateId).IsRequired().HasMaxLength(450);
         builder.Property(x => x.OrderId).IsRequired().HasMaxLength(450);
