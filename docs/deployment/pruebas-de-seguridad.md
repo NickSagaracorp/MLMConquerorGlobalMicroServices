@@ -812,7 +812,33 @@ Endpoints (BizCenter, `https://localhost:7003` en Development, salvo el de Admin
 - **Primer ciclo de facturación recurrente tras el Bloque 5**: comparar su duración con la del
   anterior (el interceptor recorre el `ChangeTracker` en cada guardado y añade una fila por cambio de
   estado, R14 y R17).
-- **Eventos sin importación**: el reporte sale vacío hasta que exista el importador (plan aparte).
+- **Eventos sin importación**: el reporte sale vacío hasta que exista el importador (plan aparte). Con
+  «Todo el equipo» recorre los perfiles del equipo (R16); «Solo inscritos» y los totales parten de
+  las inscripciones del evento. Medición de la raíz local: `SqlServerEventosTests`.
+- **Conciliación de facturación (fallo anterior al plan).** `RecurringBillingProcessor` dejaba
+  `Stopped` el estado de facturación pero la membresía seguía `Active` cuando se pasaba el tope de
+  días sin facturar (arreglado en este plan). Antes de desplegar, ejecutar en producción esta consulta
+  de **solo lectura** y pasar el resultado a Nick, que decide qué se hace con esas membresías; **no se
+  corrigen en silencio** ni con un script automático:
+
+  ```sql
+  -- SubscriptionBillingStates.Status 4 = Stopped (RecurringBillingStatus)
+  -- MembershipSubscriptions.SubscriptionStatus 1 = Active (MembershipStatus)
+  SELECT s.Id AS BillingStateId, s.MemberId, s.MembershipSubscriptionId, s.RecurringBillingPlanId,
+         s.LastSuccessfulBillingDate, s.LastUpdateDate, m.SubscriptionStatus, m.MembershipLevelId
+  FROM SubscriptionBillingStates s
+  JOIN MembershipSubscriptions m ON m.Id = s.MembershipSubscriptionId
+  WHERE s.Status = 4
+    AND m.SubscriptionStatus = 1
+    AND m.IsDeleted = 0
+  ORDER BY s.LastUpdateDate;
+  ```
+
+  En la base local devuelve 33 filas. Resultado en producción: ________.
+- **Antes del plan de importación de inscripciones**: decidir la longitud de
+  `MemberProfiles.MemberId` (hoy 20; el cliente tiene ids de hasta 50). Ampliarla obliga a soltar y
+  recrear las claves foráneas de `MembershipSubscriptions` y `CorporateEventRegistrations` y el índice
+  de la clave alterna.
 - **Fuera de este plan, pendiente**: índices de `Orders.OrderNo`, `Orders.MemberId` y
   `OrderDetails.OrderId` (R9 y R16); retirar `commissions/dual-residual` (J29).
 
@@ -849,7 +875,7 @@ clientes en dos niveles, y un administrador. `TOKEN_A` es el Bearer de A.
 | 12.21 | Slug con caracteres raros | un slug con espacio o acento | sale escapado en la URL (`%20`, `%C3%B3`) | ☐ |
 | 12.22 | Residuales sin débitos | comparar el total del mes con `SELECT SUM(Amount) FROM DailyResidualEarnings WHERE BeneficiaryMemberId = @A AND Status <> 3 AND EarnedDate >= @desde AND EarnedDate < @hasta` | coinciden; no aparecen débitos negativos ni consolidaciones de `CommissionEarnings`; las filas `Paid` se rotulan «Consolidado» | ☐ |
 | 12.23 | Hora de servidor | cambiar la zona horaria del navegador a UTC+14 y volver a abrir residuales, actividad y cambios | el año por defecto y los rangos por defecto no cambian (son del servidor) | ☐ |
-| 12.24 | Historial | cambiar desde el Admin el estado de A con un motivo; activar un alta; forzar que una renovación pase a `HoldByBilling` | una sola fila en `MemberStatusHistories` con el motivo; una fila `Pending → Active`; una fila en `MembershipStatusHistories` con autor `system` si el guardado no puso `LastUpdateBy` | ☐ |
+| 12.24 | Historial | cambiar desde el Admin el estado de A con un motivo; activar un alta; forzar que una renovación pase a `HoldByBilling` | una sola fila en `MemberStatusHistories` con el motivo; una fila `Pending → Active`; una fila en `MembershipStatusHistories` con autor `system` si el guardado no puso `LastUpdateBy`. Caso límite: si el guardado vuelve a poner el **mismo** `LastUpdateBy` que ya tenía la fila, no cuenta como cambio y el autor queda `system`; es a propósito, falla hacia el lado seguro (nunca atribuye el cambio a quien no lo hizo) | ☐ |
 | 12.25 | Corte de facturación | un estado de facturación que pase el tope de días sin facturar | el estado queda `Stopped` y la membresía en `HoldByBilling` (o `Expired` según el plan), guardado en el mismo paso | ☐ |
 | 12.26 | «Calificado» | un miembro activo inscrito hace más de 12 meses, sin `KeepQualified`; después con `KeepQualified = 1` (en SQL) | «No calificado» y luego «Calificado» en *Mi equipo* y *Cambios de estado* | ☐ |
 | 12.27 | Nivel por la orden | un miembro cuya orden de alta lleva Lifestyle Ambassador y Elite y cuya suscripción dice otro nivel | *Actividad* lo cuenta en la columna Elite; *Clientes* y *Cambios de estado* muestran Elite | ☐ |
