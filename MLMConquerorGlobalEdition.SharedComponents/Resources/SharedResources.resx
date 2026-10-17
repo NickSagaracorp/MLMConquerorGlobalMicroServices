@@ -1555,4 +1555,44 @@
   <data name="Events.Tickets" xml:space="preserve"><value>Tickets</value></data>
   <data name="Events.RegistrationDate" xml:space="preserve"><value>Registration date</value></data>
   <data name="Events.ImportPending" xml:space="preserve"><value>Event registrations will appear here once they are imported from the ticketing platform.</value></data>
+  <data name="StepUp.WhyAnnualFee" xml:space="preserve"><value>For your security, enter a verification code before paying your annual fee.</value></data>
+  <data name="AnnualFee.Title" xml:space="preserve"><value>Biz Center annual fee</value></data>
+  <data name="AnnualFee.LoadFailed" xml:space="preserve"><value>We couldn't load your annual fee. Try again later.</value></data>
+  <data name="AnnualFee.NotApplicable" xml:space="preserve"><value>Only Ambassadors pay the Biz Center annual fee.</value></data>
+  <data name="AnnualFee.Status.UpToDate" xml:space="preserve"><value>Up to date</value></data>
+  <data name="AnnualFee.Status.DueSoon" xml:space="preserve"><value>Due soon</value></data>
+  <data name="AnnualFee.Status.Due" xml:space="preserve"><value>Due</value></data>
+  <data name="AnnualFee.Status.UnderReview" xml:space="preserve"><value>Under review</value></data>
+  <data name="AnnualFee.Status.Waived" xml:space="preserve"><value>Waived</value></data>
+  <data name="AnnualFee.Status.NotApplicable" xml:space="preserve"><value>Not applicable</value></data>
+  <data name="AnnualFee.NextDue" xml:space="preserve"><value>Next due date</value></data>
+  <data name="AnnualFee.LastPaid" xml:space="preserve"><value>Last paid</value></data>
+  <data name="AnnualFee.TokensAvailable" xml:space="preserve"><value>Annual-fee tokens available</value></data>
+  <data name="AnnualFee.Preference" xml:space="preserve"><value>Pay my fees with my commissions and eWallet</value></data>
+  <data name="AnnualFee.PreferenceHelp" xml:space="preserve"><value>If you don't have an annual-fee token, on your due date we'll use your commissions first and then your eWallet.</value></data>
+  <data name="AnnualFee.PreferenceSaved" xml:space="preserve"><value>Preference saved.</value></data>
+  <data name="AnnualFee.PayWith" xml:space="preserve"><value>Pay with</value></data>
+  <data name="AnnualFee.Method.Token" xml:space="preserve"><value>Annual-fee token</value></data>
+  <data name="AnnualFee.Method.CommissionBalance" xml:space="preserve"><value>Commissions</value></data>
+  <data name="AnnualFee.Method.EWallet" xml:space="preserve"><value>eWallet</value></data>
+  <data name="AnnualFee.CardSoon" xml:space="preserve"><value>Card payments will be available soon.</value></data>
+  <data name="AnnualFee.PayNow" xml:space="preserve"><value>Pay now</value></data>
+  <data name="AnnualFee.Retry" xml:space="preserve"><value>Retry payment</value></data>
+  <data name="AnnualFee.Paid" xml:space="preserve"><value>Annual fee paid. Your next due date is {0}.</value></data>
+  <data name="AnnualFee.ReadOnly" xml:space="preserve"><value>Read only.</value></data>
+  <data name="AnnualFee.Error.NotDue" xml:space="preserve"><value>Your annual fee isn't due yet. You can pay it starting 30 days before the due date.</value></data>
+  <data name="AnnualFee.Error.AlreadyPaid" xml:space="preserve"><value>Your annual fee for this cycle is already paid.</value></data>
+  <data name="AnnualFee.Error.InProgress" xml:space="preserve"><value>A payment for this cycle is still being processed. Wait a moment and try again.</value></data>
+  <data name="AnnualFee.Error.NeedsReview" xml:space="preserve"><value>A payment for this cycle is being reviewed. Don't pay again; we'll contact you if needed.</value></data>
+  <data name="AnnualFee.Error.NoToken" xml:space="preserve"><value>You don't have an annual-fee token available.</value></data>
+  <data name="AnnualFee.Error.InsufficientCommissions" xml:space="preserve"><value>Your commission balance isn't enough to pay the annual fee.</value></data>
+  <data name="AnnualFee.Error.EWallet" xml:space="preserve"><value>We couldn't charge your eWallet. Check your balance and account, or choose another method.</value></data>
+  <data name="AnnualFee.Error.Waived" xml:space="preserve"><value>You don't need to pay the annual fee.</value></data>
+  <data name="AnnualFee.Error.AccountNotActive" xml:space="preserve"><value>Only active accounts can pay the annual fee.</value></data>
+  <data name="AnnualFee.Error.Busy" xml:space="preserve"><value>Another payment on your account is in progress. Try again in a moment.</value></data>
+  <data name="AnnualFee.Error.Impersonation" xml:space="preserve"><value>The annual fee can't be paid or changed while impersonating a member.</value></data>
+  <data name="AnnualFee.Error.StepUp" xml:space="preserve"><value>The verification code couldn't be used. Request a new code and try again.</value></data>
+  <data name="AnnualFee.Error.Unavailable" xml:space="preserve"><value>We couldn't confirm the payment. Try again: we'll recognize it and won't charge you twice.</value></data>
+  <data name="AnnualFee.Error.Generic" xml:space="preserve"><value>The annual fee couldn't be paid. Try again later.</value></data>
+  <data name="AnnualFee.Error.MembershipOnHold" xml:space="preserve"><value>Your membership is on hold, so there's no annual fee to pay right now.</value></data>
 </root>

@@ -1,0 +1,323 @@
+@using System.Net
+@using MLMConquerorGlobalEdition.SharedComponents.Components.Account.StepUp
+@using MLMConquerorGlobalEdition.SharedKernel.Billing
+@using MLMConquerorGlobalEdition.SharedKernel.Security
+@inject HttpClient Http
+@inject IStringLocalizer<SharedResources> L
+@inject IViewContextService ViewContext
+
+@*
+    Cuota anual del Biz Center (Plan K, K21). Componente unificado: lo monta el perfil en el BizCenter y
+    en el Admin; la ruta base la pone quien lo monta (ProfileApiPaths.ProfileBase) y en el Admin va en
+    solo lectura. Suplantando también es de solo lectura (el servidor lo rechaza igualmente).
+
+    PAGAR. Siempre con step-up (StepUpDialog + StepUpHttp): token, comisiones o eWallet. Sin tarjeta
+    hasta el Plan I. Un intento que acaba sin saber si entró (Billing no contestó, en curso, en revisión)
+    se guarda tal cual y el botón lo repite EXACTAMENTE, con la misma clave: Billing devuelve lo que ya
+    hizo y no cobra dos veces. Un fallo definitivo libera el intento y el siguiente lleva otra clave.
+*@
+
+@if (CanAct)
+{
+    <StepUpDialog @ref="_stepUp" />
+}
+
+<div class="card border-0 shadow-sm rounded-3 mb-4 annual-fee-card">
+    <div class="card-body p-4">
+        <h6 class="fs-18 mb-3 fw-semibold">
+            <i class="ri-calendar-check-line me-2 text-primary"></i>@L["AnnualFee.Title"]
+        </h6>
+
+        @if (_loadFailed)
+        {
+            <div class="alert alert-warning small mb-0 annual-fee-load-error" role="alert">@L["AnnualFee.LoadFailed"]</div>
+        }
+        else if (_overview is null)
+        {
+            <div class="text-muted small">…</div>
+        }
+        else if (!_overview.Applies)
+        {
+            <p class="text-muted small mb-0 annual-fee-na">@L["AnnualFee.NotApplicable"]</p>
+        }
+        else
+        {
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="badge fs-13 px-3 py-2 annual-fee-status @StatusClass">@L[$"AnnualFee.Status.{_overview.Status}"]</span>
+                <span class="fw-semibold annual-fee-amount">@Money.Usd(_overview.Amount)</span>
+            </div>
+
+            <div class="row g-2 small mb-3">
+                <div class="col-6">
+                    <div class="text-muted">@L["AnnualFee.NextDue"]</div>
+                    <div class="fw-medium annual-fee-next">@(_overview.NextDueDate?.ToString("MMM dd, yyyy", Us) ?? "—")</div>
+                </div>
+                <div class="col-6">
+                    <div class="text-muted">@L["AnnualFee.LastPaid"]</div>
+                    <div class="fw-medium annual-fee-last">@(_overview.LastPaidDate?.ToString("MMM dd, yyyy", Us) ?? "—")</div>
+                </div>
+                <div class="col-12">
+                    <div class="text-muted">@L["AnnualFee.TokensAvailable"]</div>
+                    <div class="fw-medium annual-fee-tokens">@_overview.AvailableFeeTokens</div>
+                </div>
+            </div>
+
+            @if (CanAct)
+            {
+                <div class="form-check form-switch mb-1">
+                    @* @key con versión: si guardar falla, se vuelve a crear el control para que el navegador enseñe
+                       el valor real (con el mismo "checked" Blazor no tocaría el DOM; revisión final, M-a). *@
+                    <input @key="_preferenceVersion" data-version="@_preferenceVersion"
+                           class="form-check-input annual-fee-preference" type="checkbox" role="switch" id="annualFeePreference"
+                           checked="@_overview.FeesFromBalance" disabled="@_savingPreference" @onchange="OnPreferenceChangedAsync" />
+                    <label class="form-check-label small" for="annualFeePreference">@L["AnnualFee.Preference"]</label>
+                </div>
+                <p class="text-muted small mb-3">@L["AnnualFee.PreferenceHelp"]</p>
+
+                @if (_overview.CanPayNow || _pending is not null)
+                {
+                    <div class="annual-fee-pay">
+                        <div class="small text-muted mb-1">@L["AnnualFee.PayWith"]</div>
+                        @foreach (var (method, key) in MethodList)
+                        {
+                            var id = $"af-{method}";
+                            <div class="form-check">
+                                <input class="form-check-input annual-fee-method" type="radio" name="annualFeeMethod" id="@id"
+                                       checked="@(_method == method)" disabled="@(!IsAvailable(method) || _pending is not null || _busy)"
+                                       @onchange="() => _method = method" />
+                                <label class="form-check-label small" for="@id">@L[key] @Detail(method)</label>
+                            </div>
+                        }
+                        <p class="text-muted small mt-1 mb-2 annual-fee-card-soon">@L["AnnualFee.CardSoon"]</p>
+                        <button type="button" class="btn btn-primary btn-sm annual-fee-pay-button" disabled="@(!CanPay)" @onclick="PayAsync">
+                            @(_pending is null ? L["AnnualFee.PayNow"] : L["AnnualFee.Retry"])
+                        </button>
+                    </div>
+                }
+                else if (_overview.NotPayableReason is { } reason)
+                {
+                    <p class="text-muted small mb-0 annual-fee-not-payable">@L[AnnualFeeMessages.ErrorKeyFor(reason)]</p>
+                }
+            }
+            else
+            {
+                <p class="text-muted small mb-0 annual-fee-readonly">@L["AnnualFee.ReadOnly"]</p>
+            }
+
+            @if (_errorKey is not null)
+            {
+                <div class="alert alert-danger small mt-3 mb-0 annual-fee-error" role="alert">@L[_errorKey]</div>
+            }
+            @if (_result is not null)
+            {
+                <div class="alert alert-success small mt-3 mb-0 annual-fee-paid" role="status">@L["AnnualFee.Paid", _result.NextDueDate.ToString("MMM dd, yyyy", Us)]</div>
+            }
+            @if (_preferenceSaved)
+            {
+                <div class="small text-success mt-2 annual-fee-preference-saved">@L["AnnualFee.PreferenceSaved"]</div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>"api/v1/bizcenter" para el miembro; "api/v1/admin/members/{id}" en el Admin.</summary>
+    [Parameter] public string ApiBaseUrl { get; set; } = "api/v1/bizcenter";
+
+    /// <summary>Solo enseñar (Admin). Suplantando se fuerza aunque no lo pidan.</summary>
+    [Parameter] public bool ReadOnly { get; set; }
+
+    private static readonly System.Globalization.CultureInfo Us = System.Globalization.CultureInfo.GetCultureInfo("en-US");
+
+    private static readonly (string Method, string Key)[] MethodList =
+    [
+        (AnnualFeeMethods.Token,             "AnnualFee.Method.Token"),
+        (AnnualFeeMethods.CommissionBalance, "AnnualFee.Method.CommissionBalance"),
+        (AnnualFeeMethods.EWallet,           "AnnualFee.Method.EWallet")
+    ];
+
+    private StepUpDialog _stepUp = default!;
+    private AnnualFeeOverviewDto? _overview;
+    private TokenPurchaseFundsDto? _funds;
+    private bool _loadFailed;
+    private string? _method;
+    private string _idempotencyKey = NewKey();
+    private PayAnnualFeeRequest? _pending;
+    private bool _busy;
+    private bool _savingPreference;
+    private int _preferenceVersion;
+    private bool _preferenceSaved;
+    private string? _errorKey;
+    private AnnualFeePaymentResultDto? _result;
+
+    private bool CanAct => !ReadOnly && !ViewContext.IsImpersonating;
+    private bool CanPay => !_busy && (_pending is not null || (_method is not null && IsAvailable(_method)));
+
+    private string StatusClass => _overview?.Status switch
+    {
+        AnnualFeeStatuses.UpToDate    => "bg-success-subtle text-success",
+        AnnualFeeStatuses.DueSoon     => "bg-warning text-dark",
+        AnnualFeeStatuses.Due         => "bg-danger-subtle text-danger",
+        AnnualFeeStatuses.UnderReview => "bg-info-subtle text-info",
+        _                             => "bg-secondary-subtle text-secondary"
+    };
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loadFailed = false;
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<Wrapper<AnnualFeeOverviewDto>>($"{ApiBaseUrl}/billing/annual-fee");
+            _overview = resp?.Success == true ? resp.Data : null;
+            _loadFailed = _overview is null;
+        }
+        catch
+        {
+            _loadFailed = true;
+            return;
+        }
+
+        if (!CanAct || _overview is not { Applies: true }) return;
+
+        // Los saldos solo hacen falta para elegir método; si no llegan, comisiones y eWallet quedan sin
+        // ofrecer (Billing los comprobaría igual) y el token sigue disponible.
+        try
+        {
+            var funds = await Http.GetFromJsonAsync<Wrapper<TokenPurchaseFundsDto>>($"{ApiBaseUrl}/wallet/balances");
+            _funds = funds?.Success == true ? funds.Data : null;
+        }
+        catch
+        {
+            _funds = null;
+        }
+
+        if (_method is null || !IsAvailable(_method))
+            _method = MethodList.Select(m => m.Method).FirstOrDefault(IsAvailable);
+    }
+
+    private bool IsAvailable(string method) => method switch
+    {
+        AnnualFeeMethods.Token             => (_overview?.AvailableFeeTokens ?? 0) > 0,
+        AnnualFeeMethods.CommissionBalance => _funds is not null && _overview?.Amount is decimal a && _funds.CommissionBalance >= a,
+        AnnualFeeMethods.EWallet           => _funds is { HasEWallet: true }
+                                              && (_funds.EWalletBalance is null || _overview?.Amount is not decimal b || _funds.EWalletBalance >= b),
+        _                                  => false
+    };
+
+    private string Detail(string method) => method switch
+    {
+        AnnualFeeMethods.Token             => $"({_overview?.AvailableFeeTokens ?? 0})",
+        AnnualFeeMethods.CommissionBalance => _funds is null ? string.Empty : $"({Money.Usd(_funds.CommissionBalance)})",
+        AnnualFeeMethods.EWallet           => _funds is { HasEWallet: true } ? $"({Money.Usd(_funds.EWalletBalance)})" : string.Empty,
+        _                                  => string.Empty
+    };
+
+    private async Task PayAsync()
+    {
+        // La guarda va antes del primer await: un segundo clic llega con _busy ya encendido.
+        if (!CanPay) return;
+
+        _busy = true;
+        _errorKey = null;
+        _result = null;
+        var request = _pending ?? new PayAnnualFeeRequest { Method = _method!, IdempotencyKey = _idempotencyKey };
+        try
+        {
+            HttpRequestMessage Build() =>
+                new(HttpMethod.Post, $"{ApiBaseUrl}/billing/annual-fee/pay") { Content = JsonContent.Create(request) };
+
+            var resp = await StepUpHttp.SendAsync(Http, StepUpOperations.AnnualFeeFromBalance, Build, _stepUp.RequireAsync);
+
+            // Canceló el código: no se ejecutó nada y la clave sigue valiendo.
+            if (resp is null) return;
+
+            using (resp)
+            {
+                var body = await ReadAsync<AnnualFeePaymentResultDto>(resp);
+                if (resp.IsSuccessStatusCode && body?.Success == true && body.Data is not null)
+                {
+                    _result = body.Data;
+                    _pending = null;
+                    _idempotencyKey = NewKey();
+                    await LoadAsync();
+                }
+                else
+                {
+                    var code = body?.ErrorCode;
+                    _errorKey = AnnualFeeMessages.ErrorKeyFor(code);
+                    if (AnnualFeeMessages.KeepsKey(code, resp.StatusCode))
+                    {
+                        _pending = request;
+                    }
+                    else
+                    {
+                        _pending = null;
+                        _idempotencyKey = NewKey();
+                        // En revisión o ya pagada: el estado cambió; se vuelve a leer para enseñarlo.
+                        if (code is AnnualFeeErrors.NeedsReview or AnnualFeeErrors.AlreadyPaid)
+                            await LoadAsync();
+                    }
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // No se sabe si entró (red, tiempo agotado): se guarda el intento para repetirlo tal cual.
+            _errorKey = "AnnualFee.Error.Unavailable";
+            _pending = request;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task OnPreferenceChangedAsync(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        var value = e.Value is bool b && b;
+        _savingPreference = true;
+        _preferenceSaved = false;
+        _errorKey = null;
+        try
+        {
+            using var resp = await Http.PutAsJsonAsync($"{ApiBaseUrl}/billing/annual-fee/preference",
+                new AnnualFeePreferenceRequest { FeesFromBalance = value });
+            if (resp.IsSuccessStatusCode)
+            {
+                _overview!.FeesFromBalance = value;
+                _preferenceSaved = true;
+            }
+            else
+            {
+                _errorKey = AnnualFeeMessages.ErrorKeyFor((await ReadAsync<object>(resp))?.ErrorCode);
+                _preferenceVersion++; // el interruptor vuelve a su valor real
+            }
+        }
+        catch
+        {
+            _errorKey = "AnnualFee.Error.Unavailable";
+            _preferenceVersion++;
+        }
+        finally
+        {
+            _savingPreference = false;
+        }
+    }
+
+    private static string NewKey() => Guid.NewGuid().ToString("N");
+
+    private static async Task<Wrapper<T>?> ReadAsync<T>(HttpResponseMessage resp)
+    {
+        try { return await resp.Content.ReadFromJsonAsync<Wrapper<T>>(); }
+        catch { return null; }
+    }
+
+    private sealed class Wrapper<T>
+    {
+        public bool Success { get; set; }
+        public T? Data { get; set; }
+        public string? ErrorCode { get; set; }
+    }
+}

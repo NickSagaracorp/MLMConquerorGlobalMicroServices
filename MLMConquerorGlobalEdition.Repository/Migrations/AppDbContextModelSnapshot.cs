@@ -22,6 +22,117 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Billing.AnnualFeePayment", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CycleDueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FailureCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LastUpdateBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime>("LastUpdateDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("MemberId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("Method")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("OrderId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("PaymentHistoryId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Source")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SubscriptionBillingStateId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("TokenCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<long?>("TokenTransactionId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId")
+                        .IsUnique();
+
+                    b.HasIndex("MemberId", "CreationDate");
+
+                    b.HasIndex("Status", "CreationDate");
+
+                    b.HasIndex(new[] { "SubscriptionBillingStateId", "CycleDueDate" }, "UX_AnnualFeePayments_LivePerCycle")
+                        .IsUnique()
+                        .HasFilter("[Status] IN (1, 2, 4)");
+
+                    b.HasIndex(new[] { "MemberId", "IdempotencyKey" }, "UX_AnnualFeePayments_Member_IdempotencyKey")
+                        .IsUnique()
+                        .HasFilter("[IdempotencyKey] IS NOT NULL");
+
+                    b.ToTable("AnnualFeePayments", (string)null);
+                });
+
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Billing.ApiCredential", b =>
                 {
                     b.Property<string>("Id")
@@ -1089,6 +1200,11 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsAnnualFeePlan")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("LastUpdateBy")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -1123,6 +1239,10 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasIndex("CycleType");
 
                     b.HasIndex("IsActive");
+
+                    b.HasIndex(new[] { "IsAnnualFeePlan" }, "UX_RecurringBillingPlans_AnnualFee")
+                        .IsUnique()
+                        .HasFilter("[IsAnnualFeePlan] = 1");
 
                     b.ToTable("RecurringBillingPlans");
                 });
@@ -1226,7 +1346,6 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("MembershipSubscriptionId")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
@@ -1235,6 +1354,11 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.Property<DateTime>("NextBillingDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("Purpose")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
 
                     b.Property<int>("RecurringBillingPlanId")
                         .HasColumnType("int");
@@ -1258,7 +1382,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasIndex("MemberId");
 
                     b.HasIndex("MembershipSubscriptionId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[MembershipSubscriptionId] IS NOT NULL");
 
                     b.HasIndex("RecurringBillingPlanId");
 
@@ -1267,7 +1392,14 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasIndex("Status", "NextAttemptDate");
 
-                    b.ToTable("SubscriptionBillingStates");
+                    b.HasIndex(new[] { "MemberId" }, "UX_SubscriptionBillingStates_AnnualFeeMember")
+                        .IsUnique()
+                        .HasFilter("[Purpose] = 2");
+
+                    b.ToTable("SubscriptionBillingStates", t =>
+                        {
+                            t.HasCheckConstraint("CK_SubscriptionBillingStates_Purpose", "([Purpose] = 1 AND [MembershipSubscriptionId] IS NOT NULL) OR ([Purpose] = 2 AND [MembershipSubscriptionId] IS NULL)");
+                        });
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Commission.CommissionCategory", b =>
@@ -8019,6 +8151,11 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.Property<string>("EnrollmentNodeId")
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<bool>("FeesFromBalance")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
 
                     b.Property<string>("FirstName")
                         .IsRequired()
@@ -16847,6 +16984,15 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
+                });
+
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Billing.AnnualFeePayment", b =>
+                {
+                    b.HasOne("MLMConquerorGlobalEdition.Domain.Entities.Billing.SubscriptionBillingState", null)
+                        .WithMany()
+                        .HasForeignKey("SubscriptionBillingStateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Billing.CountryGroupCountry", b =>

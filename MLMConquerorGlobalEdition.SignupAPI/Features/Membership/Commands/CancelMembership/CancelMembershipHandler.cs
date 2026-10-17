@@ -4,6 +4,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Billing;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SignupAPI.Services;
 
@@ -68,6 +69,10 @@ public class CancelMembershipHandler : IRequestHandler<CancelMembershipCommand, 
             }, ct);
 
             await ReverseUplineStatsAsync(command.MemberId, now, ct);
+
+            // Plan K (C2): el motor de renovación no debe volver a cobrar esta membresía.
+            await MembershipBillingStops.StopForSubscriptionsAsync(_db, new[] { subscription.Id },
+                MembershipBillingStops.ReasonMembershipCancelled, now, command.MemberId, ct);
 
             await TryReverseSponsorBonusIfEligibleAsync(command.MemberId, command.Reason, now, ct);
         }

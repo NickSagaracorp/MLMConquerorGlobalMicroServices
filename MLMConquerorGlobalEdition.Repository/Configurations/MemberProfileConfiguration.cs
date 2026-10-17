@@ -25,6 +25,11 @@ public class MemberProfileConfiguration : IEntityTypeConfiguration<MemberProfile
         // Plan J (N3): las filas que ya existen quedan sin la marca; nadie pasa a calificado solo.
         builder.Property(x => x.KeepQualified).IsRequired().HasDefaultValue(false);
 
+        // Plan K (K7): encendida por defecto, también para las filas que ya existen. HasSentinel(true):
+        // EF solo omite la columna al insertar cuando vale true (y entonces la base pone su 1); un false
+        // se manda siempre. Con el centinela por defecto (false) nunca se podría insertar un false.
+        builder.Property(x => x.FeesFromBalance).IsRequired().HasDefaultValue(true).HasSentinel(true);
+
         builder.Property(x => x.UserId).IsRequired();
         builder.HasIndex(x => x.UserId).IsUnique();
 

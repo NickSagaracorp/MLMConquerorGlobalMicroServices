@@ -52,6 +52,15 @@ public interface ICommissionBalanceService
     /// </summary>
     Task<Result<string>> FundTokenPurchaseAsync(
         string memberId, decimal amount, string orderId, string actor, CancellationToken ct = default);
+
+    /// <summary>
+    /// Paga la cuota anual con comisiones (Plan K, K9): consolida el residual si toca, escribe el débito
+    /// negativo ligado al pedido y el PaymentHistory, en un solo guardado. NO emite tokens ni toca el
+    /// pedido ni el pago de cuota: eso lo hace quien cobra, en la misma transacción y bajo el candado de
+    /// fondos del miembro. Falla sin escribir nada si el saldo gastable no alcanza.
+    /// </summary>
+    Task<Result<CommissionDebit>> FundAnnualFeeAsync(
+        string memberId, decimal amount, string orderId, string actor, CancellationToken ct = default);
 }
 
 public class CommissionBalanceSummary
@@ -70,3 +79,6 @@ public class CommissionFundResult
     public string PaymentHistoryId { get; init; } = string.Empty;
     public string? ConsolidatedEarningId { get; init; }
 }
+
+/// <summary>Lo que deja un débito de comisiones: su PaymentHistory y la fila negativa de CommissionEarnings.</summary>
+public sealed record CommissionDebit(string PaymentHistoryId, string DebitEarningId);

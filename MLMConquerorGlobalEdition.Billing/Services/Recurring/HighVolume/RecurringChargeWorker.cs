@@ -19,6 +19,7 @@ public class RecurringChargeWorker : IRecurringChargeWorker
     private readonly IRecurringBillingProcessor      _processor;
     private readonly IDateTimeProvider               _dateTime;
     private readonly ILogger<RecurringChargeWorker>  _logger;
+    private readonly Microsoft.Extensions.Configuration.IConfiguration? _configuration;
 
     private const string Actor = "recurring-charge-worker";
 
@@ -29,8 +30,10 @@ public class RecurringChargeWorker : IRecurringChargeWorker
         AppDbContext db,
         IRecurringBillingProcessor processor,
         IDateTimeProvider dateTime,
-        ILogger<RecurringChargeWorker> logger)
+        ILogger<RecurringChargeWorker> logger,
+        Microsoft.Extensions.Configuration.IConfiguration? configuration = null)
     {
+        _configuration = configuration;
         _db        = db;
         _processor = processor;
         _dateTime  = dateTime;
@@ -109,6 +112,8 @@ public class RecurringChargeWorker : IRecurringChargeWorker
         var processedSet = processedToday.ToHashSet();
 
         // ── Load due states in this shard range ───────────────────────────────
+        var includeAnnualFee = _configuration?.GetValue<bool>(
+            MLMConquerorGlobalEdition.SharedKernel.Billing.AnnualFeeRules.AutoChargeEnabledConfigKey) == true;
         var dueStateIds = await _db.SubscriptionBillingStates
             .AsNoTracking()
             .Where(s => s.ShardKey >= shard.IdRangeStart
@@ -116,7 +121,10 @@ public class RecurringChargeWorker : IRecurringChargeWorker
                      && (s.Status == RecurringBillingStatus.Active
                       || s.Status == RecurringBillingStatus.Retrying
                       || s.Status == RecurringBillingStatus.AwaitingAnniversaryRetry)
-                     && s.NextAttemptDate.Date <= today)
+                     && s.NextAttemptDate.Date <= today
+                     // Plan K: los estados de cuota anual solo entran con su cobro automático
+                     // encendido; apagado, su servicio no escribe nada y se repetirían cada día.
+                     && (s.Purpose == BillingStatePurpose.Membership || includeAnnualFee))
             .OrderBy(s => s.ShardKey)
             .Select(s => new { s.Id, s.MemberId, s.MembershipSubscriptionId })
             .ToListAsync(ct);
@@ -156,17 +164,41 @@ public class RecurringChargeWorker : IRecurringChargeWorker
                 {
                     case "Success":
                         succeeded++;
-                        await EmitActivatedEventsAsync(
-                            batchId, stateRef.Id, stateRef.MemberId,
-                            stateRef.MembershipSubscriptionId, result.Value.OrderId,
-                            now, ct);
+                        try
+                        {
+                            await EmitActivatedEventsAsync(
+                                batchId, stateRef.Id, stateRef.MemberId,
+                                stateRef.MembershipSubscriptionId, result.Value.OrderId,
+                                now, ct);
+                        }
+                        catch (Exception ex) when (ex is not OperationCanceledException)
+                        {
+                            // Plan K (revisión final, M-d): el cobro YA está hecho y no se deshace. Lo que falta son
+                            // los puntos y los disparadores de comisión: aviso propio para emitirlos a mano.
+                            _logger.LogCritical(ex,
+                                "RecurringChargeWorker: estado {StateId} de {MemberId} COBRADO (pedido {OrderId}) pero los eventos " +
+                                "de puntos y comisiones no se emitieron; hay que emitirlos a mano (lote {BatchId}).",
+                                stateRef.Id, stateRef.MemberId, result.Value.OrderId, batchId);
+                            await PendingChanges.DiscardAsync(_db, _logger);
+                        }
                         break;
 
                     case "Failed":
                         failed++;
-                        await EmitDeactivatedEventIfNeededAsync(
-                            batchId, stateRef.Id, stateRef.MemberId,
-                            stateRef.MembershipSubscriptionId, now, ct);
+                        try
+                        {
+                            await EmitDeactivatedEventIfNeededAsync(
+                                batchId, stateRef.Id, stateRef.MemberId,
+                                stateRef.MembershipSubscriptionId, now, ct);
+                        }
+                        catch (Exception ex) when (ex is not OperationCanceledException)
+                        {
+                            _logger.LogError(ex,
+                                "RecurringChargeWorker: estado {StateId} de {MemberId} falló el cobro y el evento de baja de " +
+                                "puntos no se emitió; hay que emitirlo a mano (lote {BatchId}).",
+                                stateRef.Id, stateRef.MemberId, batchId);
+                            await PendingChanges.DiscardAsync(_db, _logger);
+                        }
                         break;
 
                     case "Skipped":
@@ -186,6 +218,8 @@ public class RecurringChargeWorker : IRecurringChargeWorker
                     "RecurringChargeWorker: unhandled exception processing state {StateId}.",
                     stateRef.Id);
                 processed++;
+                // Plan K (C-1): lo que el caso dejó sin guardar no se cuela en el siguiente ni en el cierre.
+                await PendingChanges.DiscardAsync(_db, _logger);
             }
         }
 
@@ -221,11 +255,15 @@ public class RecurringChargeWorker : IRecurringChargeWorker
         string batchId,
         string billingStateId,
         string memberId,
-        string subscriptionId,
+        string? subscriptionId,
         string? orderId,
         DateTime now,
         CancellationToken ct)
     {
+        // Plan K: un estado de cuota anual no tiene suscripción. La cuota no aporta puntos ni dispara
+        // Fast Start ni Boost (su producto es CorporateFee).
+        if (subscriptionId is null) return;
+
         // Read contribution snapshot from the subscription (set on this renewal by the processor)
         var subscription = await _db.MembershipSubscriptions
             .AsNoTracking()
@@ -280,10 +318,13 @@ public class RecurringChargeWorker : IRecurringChargeWorker
         string batchId,
         string billingStateId,
         string memberId,
-        string subscriptionId,
+        string? subscriptionId,
         DateTime now,
         CancellationToken ct)
     {
+        // Plan K: sin suscripción no hay puntos que retirar (un fallo de la cuota no toca la membresía).
+        if (subscriptionId is null) return;
+
         // Only emit if state transitioned to Stopped as part of this failure
         var billingState = await _db.SubscriptionBillingStates
             .AsNoTracking()

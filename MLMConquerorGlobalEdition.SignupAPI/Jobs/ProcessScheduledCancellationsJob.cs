@@ -4,6 +4,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Billing;
 using MLMConquerorGlobalEdition.SignupAPI.Services;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Jobs;
@@ -141,6 +142,10 @@ public class ProcessScheduledCancellationsJob
 
         if (statusHistories.Count > 0)
             await _db.MemberStatusHistories.AddRangeAsync(statusHistories, ct);
+
+        // Plan K (C2): el motor de renovación no debe volver a cobrar estas membresías.
+        await MembershipBillingStops.StopForSubscriptionsAsync(_db, due.Select(s => s.Id).ToList(),
+            MembershipBillingStops.ReasonMembershipCancelled, now, "system", ct);
 
         // Load signup subscriptions for all cancelled members
         var signupSubs = await _db.MembershipSubscriptions

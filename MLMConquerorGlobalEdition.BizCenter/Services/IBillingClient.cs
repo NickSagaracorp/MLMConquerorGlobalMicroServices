@@ -18,6 +18,10 @@ public interface IBillingClient
     /// <summary>Retira una compra en cripto sin pagar del miembro del token (D18).</summary>
     Task<BillingResult<TokenPurchaseResultDto>> CancelTokenPurchaseAsync(
         string purchaseId, string bearerToken, CancellationToken ct = default);
+
+    /// <summary>"Pagar ahora" la cuota anual (Plan K). El permiso de step-up ya lo validó y quemó el filtro.</summary>
+    Task<BillingResult<AnnualFeePaymentResultDto>> PayAnnualFeeAsync(
+        PayAnnualFeeRequest request, string bearerToken, string? stepUpGrant, CancellationToken ct = default);
 }
 
 /// <summary>

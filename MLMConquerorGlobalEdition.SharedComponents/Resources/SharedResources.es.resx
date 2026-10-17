@@ -1493,4 +1493,44 @@
   <data name="Events.Tickets" xml:space="preserve"><value>Entradas</value></data>
   <data name="Events.RegistrationDate" xml:space="preserve"><value>Fecha de registro</value></data>
   <data name="Events.ImportPending" xml:space="preserve"><value>Las inscripciones a los eventos aparecerán aquí cuando se importen desde la plataforma de entradas.</value></data>
+  <data name="StepUp.WhyAnnualFee" xml:space="preserve"><value>Por seguridad, ingresa un código de verificación antes de pagar tu cuota anual.</value></data>
+  <data name="AnnualFee.Title" xml:space="preserve"><value>Cuota anual del Biz Center</value></data>
+  <data name="AnnualFee.LoadFailed" xml:space="preserve"><value>No pudimos cargar tu cuota anual. Inténtalo más tarde.</value></data>
+  <data name="AnnualFee.NotApplicable" xml:space="preserve"><value>Solo los Ambassadors pagan la cuota anual del Biz Center.</value></data>
+  <data name="AnnualFee.Status.UpToDate" xml:space="preserve"><value>Al día</value></data>
+  <data name="AnnualFee.Status.DueSoon" xml:space="preserve"><value>Vence pronto</value></data>
+  <data name="AnnualFee.Status.Due" xml:space="preserve"><value>Vencida</value></data>
+  <data name="AnnualFee.Status.UnderReview" xml:space="preserve"><value>En revisión</value></data>
+  <data name="AnnualFee.Status.Waived" xml:space="preserve"><value>Exenta</value></data>
+  <data name="AnnualFee.Status.NotApplicable" xml:space="preserve"><value>No aplica</value></data>
+  <data name="AnnualFee.NextDue" xml:space="preserve"><value>Próximo vencimiento</value></data>
+  <data name="AnnualFee.LastPaid" xml:space="preserve"><value>Último pago</value></data>
+  <data name="AnnualFee.TokensAvailable" xml:space="preserve"><value>Tokens de cuota disponibles</value></data>
+  <data name="AnnualFee.Preference" xml:space="preserve"><value>Pagar mis cuotas con mis comisiones y mi eWallet</value></data>
+  <data name="AnnualFee.PreferenceHelp" xml:space="preserve"><value>Si no tienes un token de cuota, el día del vencimiento usaremos primero tus comisiones y después tu eWallet.</value></data>
+  <data name="AnnualFee.PreferenceSaved" xml:space="preserve"><value>Preferencia guardada.</value></data>
+  <data name="AnnualFee.PayWith" xml:space="preserve"><value>Pagar con</value></data>
+  <data name="AnnualFee.Method.Token" xml:space="preserve"><value>Token de cuota</value></data>
+  <data name="AnnualFee.Method.CommissionBalance" xml:space="preserve"><value>Comisiones</value></data>
+  <data name="AnnualFee.Method.EWallet" xml:space="preserve"><value>eWallet</value></data>
+  <data name="AnnualFee.CardSoon" xml:space="preserve"><value>El pago con tarjeta estará disponible pronto.</value></data>
+  <data name="AnnualFee.PayNow" xml:space="preserve"><value>Pagar ahora</value></data>
+  <data name="AnnualFee.Retry" xml:space="preserve"><value>Reintentar el pago</value></data>
+  <data name="AnnualFee.Paid" xml:space="preserve"><value>Cuota anual pagada. Tu próximo vencimiento es el {0}.</value></data>
+  <data name="AnnualFee.ReadOnly" xml:space="preserve"><value>Solo lectura.</value></data>
+  <data name="AnnualFee.Error.NotDue" xml:space="preserve"><value>Tu cuota anual todavía no vence. Podrás pagarla desde 30 días antes del vencimiento.</value></data>
+  <data name="AnnualFee.Error.AlreadyPaid" xml:space="preserve"><value>La cuota anual de este ciclo ya está pagada.</value></data>
+  <data name="AnnualFee.Error.InProgress" xml:space="preserve"><value>Un pago de este ciclo todavía se está procesando. Espera un momento y vuelve a intentarlo.</value></data>
+  <data name="AnnualFee.Error.NeedsReview" xml:space="preserve"><value>Un pago de este ciclo está en revisión. No vuelvas a pagar; te contactaremos si hace falta.</value></data>
+  <data name="AnnualFee.Error.NoToken" xml:space="preserve"><value>No tienes ningún token de cuota disponible.</value></data>
+  <data name="AnnualFee.Error.InsufficientCommissions" xml:space="preserve"><value>Tu saldo de comisiones no alcanza para pagar la cuota anual.</value></data>
+  <data name="AnnualFee.Error.EWallet" xml:space="preserve"><value>No pudimos cobrar en tu eWallet. Revisa tu saldo y tu cuenta, o elige otro método.</value></data>
+  <data name="AnnualFee.Error.Waived" xml:space="preserve"><value>No necesitas pagar la cuota anual.</value></data>
+  <data name="AnnualFee.Error.AccountNotActive" xml:space="preserve"><value>Solo las cuentas activas pueden pagar la cuota anual.</value></data>
+  <data name="AnnualFee.Error.Busy" xml:space="preserve"><value>Hay otro pago en curso en tu cuenta. Inténtalo de nuevo en un momento.</value></data>
+  <data name="AnnualFee.Error.Impersonation" xml:space="preserve"><value>La cuota anual no se puede pagar ni cambiar mientras se suplanta a un miembro.</value></data>
+  <data name="AnnualFee.Error.StepUp" xml:space="preserve"><value>No se pudo usar el código de verificación. Pide uno nuevo y vuelve a intentarlo.</value></data>
+  <data name="AnnualFee.Error.Unavailable" xml:space="preserve"><value>No pudimos confirmar el pago. Vuelve a intentarlo: lo reconoceremos y no te cobraremos dos veces.</value></data>
+  <data name="AnnualFee.Error.Generic" xml:space="preserve"><value>No se pudo pagar la cuota anual. Inténtalo más tarde.</value></data>
+  <data name="AnnualFee.Error.MembershipOnHold" xml:space="preserve"><value>Tu membresía está en espera, así que ahora no hay cuota anual que pagar.</value></data>
 </root>

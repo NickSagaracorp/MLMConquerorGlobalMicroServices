@@ -1,4 +1,4 @@
-﻿using MLMConquerorGlobalEdition.SharedKernel.Server.Middleware;
+using MLMConquerorGlobalEdition.SharedKernel.Server.Middleware;
 using System.Text;
 using AspNetCoreRateLimit;
 using Hangfire;
@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Cryptography;
 using MLMConquerorGlobalEdition.SharedKernel.Configuration;
+using AnnualFeeRules = MLMConquerorGlobalEdition.SharedKernel.Billing.AnnualFeeRules;
 using Microsoft.OpenApi.Models;
 using MLMConquerorGlobalEdition.Billing.Extensions;
 using MLMConquerorGlobalEdition.Billing.Jobs;
@@ -123,6 +124,9 @@ builder.Services.AddPayoutServices();
 // (sp_getapplock, compartido con los pagos), que con varias instancias de Billing sigue
 // serializando el dinero del mismo miembro.
 builder.Services.AddTokenPurchaseServices();
+
+// ── Cuota anual del Biz Center (Plan K) ──────────────────────────────────
+builder.Services.AddAnnualFeeServices();
 
 builder.Services.AddScoped<MembershipAutoRenewalJob>();
 builder.Services.AddScoped<CommissionPayoutJob>();
@@ -294,10 +298,32 @@ app.MapControllers();
 
 app.UseHangfireDashboard("/hangfire");
 
-RecurringJob.AddOrUpdate<MembershipAutoRenewalJob>(
-    "membership-auto-renewal",
+// Plan K (decision de Nick): un solo motor de renovacion, RecurringBillingProcessor (planificador +
+// trabajadores + barrido). MembershipAutoRenewalJob renovaba por su cuenta TODA suscripcion activa con
+// StartDate <= hoy - 30, sin candado ni idempotencia: con los dos, doble cobro. RemoveIfExists lo borra
+// tambien de la base de Hangfire si un despliegue anterior lo dejo programado (quitar solo el
+// AddOrUpdate lo dejaria vivo alli). La clase sigue registrada, como CommissionPayoutJob.
+RecurringJob.RemoveIfExists("membership-auto-renewal");
+
+// Alta de los estados de cuota anual que falten (Plan K, K3). APAGADA por defecto: sin
+// Billing:AnnualFee:EnrollmentJobEnabled = true se registra con Cron.Never(), asi que no corre al
+// arrancar ni de madrugada, pero sale en el panel de Hangfire para lanzarla a mano. Encendida, diaria
+// a las 4:30 UTC, antes del planificador de las 5:00 UTC. El cron va en UTC como los demas trabajos
+// (Hangfire); las fechas de negocio que escribe el trabajo son de servidor (IDateTimeProvider.Now).
+RecurringJob.AddOrUpdate<AnnualFeeStateEnrollmentJob>(
+    "annual-fee-state-enrollment",
     job => job.ExecuteAsync(CancellationToken.None),
-    "0 6 * * *",                    // Daily 6:00 AM UTC
+    app.Configuration.GetValue<bool>(AnnualFeeRules.EnrollmentJobEnabledConfigKey)
+        ? "30 4 * * *"              // Diario a las 4:30 UTC
+        : Cron.Never(),
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+// Pagos de cuota anual que se quedaron Pending: a conciliar, nunca liberados (Plan K, K11). No mueve
+// dinero: solo cambia Pending a NeedsReconciliation para que tesorería lo mire.
+RecurringJob.AddOrUpdate<AnnualFeeStalePendingJob>(
+    "annual-fee-stale-pending",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "45 * * * *",                   // Cada hora, a los 45 (no coincide con los de tokens)
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
 // Hourly exchange-rate refresh

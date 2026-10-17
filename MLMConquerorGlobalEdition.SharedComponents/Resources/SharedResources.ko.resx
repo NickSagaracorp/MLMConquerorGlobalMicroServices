@@ -1457,4 +1457,44 @@
   <data name="Events.Tickets" xml:space="preserve"><value>티켓</value></data>
   <data name="Events.RegistrationDate" xml:space="preserve"><value>등록일</value></data>
   <data name="Events.ImportPending" xml:space="preserve"><value>이벤트 등록은 티켓 플랫폼에서 가져온 후 여기에 표시됩니다.</value></data>
+  <data name="StepUp.WhyAnnualFee" xml:space="preserve"><value>보안을 위해 연회비를 결제하기 전에 인증 코드를 입력하세요.</value></data>
+  <data name="AnnualFee.Title" xml:space="preserve"><value>Biz Center 연회비</value></data>
+  <data name="AnnualFee.LoadFailed" xml:space="preserve"><value>연회비 정보를 불러오지 못했습니다. 나중에 다시 시도하세요.</value></data>
+  <data name="AnnualFee.NotApplicable" xml:space="preserve"><value>Biz Center 연회비는 Ambassador만 납부합니다.</value></data>
+  <data name="AnnualFee.Status.UpToDate" xml:space="preserve"><value>납부 완료</value></data>
+  <data name="AnnualFee.Status.DueSoon" xml:space="preserve"><value>곧 만기</value></data>
+  <data name="AnnualFee.Status.Due" xml:space="preserve"><value>만기</value></data>
+  <data name="AnnualFee.Status.UnderReview" xml:space="preserve"><value>검토 중</value></data>
+  <data name="AnnualFee.Status.Waived" xml:space="preserve"><value>면제</value></data>
+  <data name="AnnualFee.Status.NotApplicable" xml:space="preserve"><value>해당 없음</value></data>
+  <data name="AnnualFee.NextDue" xml:space="preserve"><value>다음 만기일</value></data>
+  <data name="AnnualFee.LastPaid" xml:space="preserve"><value>마지막 결제</value></data>
+  <data name="AnnualFee.TokensAvailable" xml:space="preserve"><value>사용 가능한 연회비 토큰</value></data>
+  <data name="AnnualFee.Preference" xml:space="preserve"><value>수수료와 eWallet로 회비 결제</value></data>
+  <data name="AnnualFee.PreferenceHelp" xml:space="preserve"><value>연회비 토큰이 없으면 만기일에 수수료를 먼저 사용하고 그다음 eWallet을 사용합니다.</value></data>
+  <data name="AnnualFee.PreferenceSaved" xml:space="preserve"><value>설정이 저장되었습니다.</value></data>
+  <data name="AnnualFee.PayWith" xml:space="preserve"><value>결제 수단</value></data>
+  <data name="AnnualFee.Method.Token" xml:space="preserve"><value>연회비 토큰</value></data>
+  <data name="AnnualFee.Method.CommissionBalance" xml:space="preserve"><value>수수료</value></data>
+  <data name="AnnualFee.Method.EWallet" xml:space="preserve"><value>eWallet</value></data>
+  <data name="AnnualFee.CardSoon" xml:space="preserve"><value>카드 결제는 곧 제공됩니다.</value></data>
+  <data name="AnnualFee.PayNow" xml:space="preserve"><value>지금 결제</value></data>
+  <data name="AnnualFee.Retry" xml:space="preserve"><value>결제 다시 시도</value></data>
+  <data name="AnnualFee.Paid" xml:space="preserve"><value>연회비가 결제되었습니다. 다음 만기일은 {0}입니다.</value></data>
+  <data name="AnnualFee.ReadOnly" xml:space="preserve"><value>읽기 전용.</value></data>
+  <data name="AnnualFee.Error.NotDue" xml:space="preserve"><value>연회비 만기가 아직 아닙니다. 만기 30일 전부터 결제할 수 있습니다.</value></data>
+  <data name="AnnualFee.Error.AlreadyPaid" xml:space="preserve"><value>이번 주기의 연회비는 이미 결제되었습니다.</value></data>
+  <data name="AnnualFee.Error.InProgress" xml:space="preserve"><value>이번 주기의 결제가 아직 처리 중입니다. 잠시 후 다시 시도하세요.</value></data>
+  <data name="AnnualFee.Error.NeedsReview" xml:space="preserve"><value>이번 주기의 결제가 검토 중입니다. 다시 결제하지 마세요. 필요하면 연락드리겠습니다.</value></data>
+  <data name="AnnualFee.Error.NoToken" xml:space="preserve"><value>사용 가능한 연회비 토큰이 없습니다.</value></data>
+  <data name="AnnualFee.Error.InsufficientCommissions" xml:space="preserve"><value>수수료 잔액이 연회비를 결제하기에 부족합니다.</value></data>
+  <data name="AnnualFee.Error.EWallet" xml:space="preserve"><value>eWallet에서 결제하지 못했습니다. 잔액과 계정을 확인하거나 다른 방법을 선택하세요.</value></data>
+  <data name="AnnualFee.Error.Waived" xml:space="preserve"><value>연회비를 결제할 필요가 없습니다.</value></data>
+  <data name="AnnualFee.Error.AccountNotActive" xml:space="preserve"><value>활성 계정만 연회비를 결제할 수 있습니다.</value></data>
+  <data name="AnnualFee.Error.Busy" xml:space="preserve"><value>계정에서 다른 결제가 진행 중입니다. 잠시 후 다시 시도하세요.</value></data>
+  <data name="AnnualFee.Error.Impersonation" xml:space="preserve"><value>회원을 대리하는 동안에는 연회비를 결제하거나 변경할 수 없습니다.</value></data>
+  <data name="AnnualFee.Error.StepUp" xml:space="preserve"><value>인증 코드를 사용할 수 없습니다. 새 코드를 요청한 후 다시 시도하세요.</value></data>
+  <data name="AnnualFee.Error.Unavailable" xml:space="preserve"><value>결제를 확인하지 못했습니다. 다시 시도하세요. 결제를 인식하므로 중복 청구되지 않습니다.</value></data>
+  <data name="AnnualFee.Error.Generic" xml:space="preserve"><value>연회비를 결제하지 못했습니다. 나중에 다시 시도하세요.</value></data>
+  <data name="AnnualFee.Error.MembershipOnHold" xml:space="preserve"><value>멤버십이 보류 중이므로 지금은 납부할 연회비가 없습니다.</value></data>
 </root>

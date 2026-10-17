@@ -31,6 +31,10 @@ public static class StepUpMessages
     /// Por qué se pide el código, según la operación. El texto de siempre ("antes de cambiar a dónde
     /// se pagan tus comisiones") no sirve para pagar tokens con saldo.
     /// </summary>
-    public static string WhyKeyFor(string? operationKey) =>
-        operationKey == StepUpOperations.TokenPurchaseFromBalance ? "StepUp.WhyTokenPurchase" : "StepUp.Why";
+    public static string WhyKeyFor(string? operationKey) => operationKey switch
+    {
+        StepUpOperations.TokenPurchaseFromBalance => "StepUp.WhyTokenPurchase",
+        StepUpOperations.AnnualFeeFromBalance     => "StepUp.WhyAnnualFee",
+        _                                         => "StepUp.Why"
+    };
 }

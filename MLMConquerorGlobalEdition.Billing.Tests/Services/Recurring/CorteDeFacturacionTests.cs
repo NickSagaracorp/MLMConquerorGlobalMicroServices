@@ -59,6 +59,8 @@ public class CorteDeFacturacionTests
             new Mock<IGatewayRouter>().Object,
             new Mock<IGatewayChargeOrchestrator>().Object,
             new Mock<ICardBrandDetector>().Object,
+            new TransactionOnlyGate(db),
+            new Mock<MLMConquerorGlobalEdition.Billing.Services.AnnualFee.IAnnualFeeChargeService>().Object,
             reloj.Object,
             NullLogger<RecurringBillingProcessor>.Instance);
     }

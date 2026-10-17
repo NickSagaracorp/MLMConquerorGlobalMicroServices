@@ -61,6 +61,9 @@
                         <Template><a href="/admin/members/@(((StateDto)context).MemberId)" class="text-primary"><code class="small">@(((StateDto)context).MemberId)</code></a></Template>
                     </GridColumn>
                     <GridColumn Field="@nameof(StateDto.PlanName)" HeaderText="Plan" Width="180" />
+                    <GridColumn HeaderText="Purpose" Width="120" TextAlign="TextAlign.Center">
+                        <Template><span class="badge @(((StateDto)context).Purpose == "AnnualFee" ? "bg-info text-dark" : "bg-light text-dark")">@PurposeLabel(((StateDto)context).Purpose)</span></Template>
+                    </GridColumn>
                     <GridColumn HeaderText="Status" Width="160" TextAlign="TextAlign.Center">
                         <Template><span class="badge @StatusBadge(((StateDto)context).Status)">@StatusLabel(((StateDto)context).Status)</span></Template>
                     </GridColumn>
@@ -229,11 +232,15 @@
     { "Success" => "bg-success", "Failed" => "bg-danger", "Scheduled" => "bg-warning text-dark", _ => "bg-secondary" };
 
     // Enum-typed fields (Status, LastAttemptOutcome) arrive as enum NAMES from the API (JsonStringEnumConverter).
-    private record StateDto(string Id, string MemberId, string MembershipSubscriptionId, int RecurringBillingPlanId,
+    // MembershipSubscriptionId es null en los estados de cuota anual (Plan K): no tienen suscripción.
+    private record StateDto(string Id, string MemberId, string? MembershipSubscriptionId, int RecurringBillingPlanId,
         string PlanName, DateTime BillingAnchorDate, DateTime? LastSuccessfulBillingDate, DateTime NextBillingDate,
         int CurrentAttemptIndex, DateTime NextAttemptDate, string Status, DateTime? LastAttemptAt,
-        string? LastAttemptOutcome, string? LastFailureReason);
+        string? LastAttemptOutcome, string? LastFailureReason, string? Purpose = null);
     private record PlanItem(int Id, string Name);
+
+    // Purpose llega como nombre del enum (Membership / AnnualFee), igual que Status.
+    private static string PurposeLabel(string? p) => p == "AnnualFee" ? "Annual fee" : "Membership";
     private record BillNowResult(string BillingStateId, string Outcome, string? FundingSource, string? PaymentHistoryId, string? FailureReason);
     private record ApiResp<T>(bool Success, T? Data, IEnumerable<string>? Errors);
     private record Paged<T>(IEnumerable<T> Items, int TotalCount, int Page, int PageSize, int TotalPages);

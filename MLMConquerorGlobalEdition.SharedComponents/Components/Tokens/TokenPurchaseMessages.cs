@@ -22,8 +22,7 @@ public static class TokenPurchaseMessages
     /// (<c>PAYMENT_SERVICE_UNAVAILABLE</c>) o el BizCenter y Billing no se entienden
     /// (<c>BILLING_CONTRACT_ERROR</c>, <c>BILLING_AUTH_MISMATCH</c>). Cualquier otro 5xx conserva la clave.
     /// </summary>
-    private static readonly HashSet<string> DefinitiveServerErrors =
-        [BillingContractError, BillingAuthMismatch, PaymentServiceUnavailable];
+    // Los 5xx definitivos son los de BillingRetry.DefinitiveServerErrors (comunes con la cuota anual).
 
     public static string ErrorKeyFor(string? code) => code switch
     {
@@ -70,14 +69,13 @@ public static class TokenPurchaseMessages
     /// </summary>
     /// <remarks>
     /// Ante la duda, se conserva: un 5xx solo cierra la clave si su código está en
-    /// <see cref="DefinitiveServerErrors"/>. Los 4xx con código son definitivos salvo los de arriba
+    /// <see cref="Billing.BillingRetry.DefinitiveServerErrors"/>. Los 4xx con código son definitivos salvo los de arriba
     /// (<c>IDEMPOTENCY_KEY_REUSED</c>, <c>CARD_PAYMENTS_DISABLED</c>, el tope…). <c>STEP_UP_COOLDOWN</c>
     /// no está: el diálogo de step-up ya lo explica y no hay nada que repetir hasta que pase la espera.
     /// </remarks>
     public static bool KeepsKey(string? code, HttpStatusCode status) =>
         code is InProgress or Busy or BillingUnavailable or NeedsReview
-            or StepUpGrant.RequiredErrorCode or StepUpGrant.InvalidErrorCode
-        || ((int)status >= 500 && (string.IsNullOrEmpty(code) || !DefinitiveServerErrors.Contains(code)));
+        || Billing.BillingRetry.UnknownOrNotExecuted(code, status);
 
     /// <summary>
     /// Texto de un fallo al distribuir. Como <see cref="ErrorKeyFor"/>, salvo lo que en distribuir

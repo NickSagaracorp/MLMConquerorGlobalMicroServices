@@ -114,6 +114,9 @@
             <div class="col-12 col-xl-4">
                 <MembershipCard Snapshot="@_membershipSnapshot" />
 
+                @* Plan K: la cuota anual va aparte de la membresía. En el Admin, solo lectura. *@
+                <AnnualFeeCard ApiBaseUrl="@ProfileBase" ReadOnly="@IsAdminContext" />
+
                 @if (_canEdit)
                 {
                     @if (_canEditCredentials)

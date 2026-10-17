@@ -881,3 +881,178 @@ clientes en dos niveles, y un administrador. `TOKEN_A` es el Bearer de A.
 | 12.27 | Nivel por la orden | un miembro cuya orden de alta lleva Lifestyle Ambassador y Elite y cuya suscripción dice otro nivel | *Actividad* lo cuenta en la columna Elite; *Clientes* y *Cambios de estado* muestran Elite | ☐ |
 | 12.28 | Menú | abrir `/team/residuals`, `/team/dual-changes`, `/team/enrollment/activity`, `/team/enrollment/changes`, `/team/enrollment/customer-changes`, `/events` y `/my-links` | cada grupo correcto queda abierto y la entrada marcada; las mismas rutas existen en la app MAUI | ☐ |
 | 12.29 | Primer ciclo de facturación tras el Bloque 5 | comparar la duración del ciclo con el anterior | sin degradación apreciable | ☐ |
+
+## 13. Cuota anual del Biz Center (Plan K)
+
+Qué protege: la cuota anual de $99 de cada Ambassador, cobrada **aparte** de la membresía con un
+estado de cobro anual por miembro (`SubscriptionBillingStates` con `Purpose = 2` y sin suscripción),
+por el único motor de renovación que queda (`RecurringBillingProcessor`; `MembershipAutoRenewalJob`
+apagado), y el botón «Pagar ahora» del perfil. Cuatro reglas que estas pruebas comprueban: **quien paga
+sale del token** (ningún endpoint acepta `memberId`), **pagar con lo que ya es del miembro exige step-up
+y nunca se hace suplantando**, **un ciclo no se cobra dos veces** (candado de fondos + índice único de
+pagos vivos por ciclo) y **nunca se cobra con tarjeta** (la tarjeta queda para el Plan I y su gateway es
+un stub). Plan: `docs/superpowers/plans/2026-10-17-plan-k-cuota-anual.md`.
+
+Endpoints:
+
+| Endpoint | Qué hace |
+|---|---|
+| `GET api/v1/bizcenter/billing/annual-fee` (BizCenter, 7003) | resumen de la cuota del miembro del token |
+| `PUT api/v1/bizcenter/billing/annual-fee/preference` | pagar las cuotas con comisiones y eWallet (sí/no) |
+| `POST api/v1/bizcenter/billing/annual-fee/pay` | «Pagar ahora» (`Token`, `CommissionBalance`, `EWallet`); exige `X-Step-Up-Token` de `member.annual-fee.pay-from-balance` |
+| `POST api/v1/billing/annual-fee/pay` (Billing) | lo mismo, llamado por el BizCenter con el JWT del miembro; vuelve a validar y quema el permiso |
+| `POST api/v1/billing/annual-fee/payments/{id}/reconcile` (Billing) | tesorería (`SuperAdmin`, `Admin`, `BillingManager`) cierra un pago a conciliar |
+| `GET api/v1/admin/members/{memberId}/billing/annual-fee` (AdminAPI, 7002) | resumen en el perfil de miembro, solo lectura |
+
+Trabajos de Hangfire (Billing): `annual-fee-state-enrollment` (alta de estados; **registrado apagado**
+con `Cron.Never()` salvo `Billing:AnnualFee:EnrollmentJobEnabled = true`, que lo programa a las 4:30 UTC; se
+lanza a mano desde `/hangfire`), `annual-fee-stale-pending` (cada hora, a los 45; solo pasa `Pending` a
+conciliar). `membership-auto-renewal` ya no existe.
+
+**Condiciones de despliegue:**
+
+- **Encender el alta de estados y el cobro automático a la vez** (revisión final, I-A). En cuanto existe el
+  estado de cuota de un Ambassador, «anualidad pagada» (rama (b) de «Calificado») depende de él: el día de su
+  aniversario el estado vence y, si el cobro automático (`Billing:AnnualFee:AutoChargeEnabled`) sigue apagado
+  y el miembro no paga a mano con «Pagar ahora», **pierde esa rama** y puede pasar a «No calificado» (si no
+  tiene `KeepQualified` ni se inscribió hace menos de 12 meses). Cuanto más tiempo pase entre lanzar
+  `annual-fee-state-enrollment` y encender el cobro, más Ambassadors caen así. **Recomendación: encender los
+  dos a la vez** (lanzar el alta y poner el interruptor en `true` el mismo día). La decisión es de Nick.
+  Fechas: alta ________, cobro ________.
+- **Migración `CuotaAnual`** (la aplica `MigrateAsync` al arrancar cualquier servicio): altera
+  `SubscriptionBillingStates` (columna `MembershipSubscriptionId` a anulable, `Purpose`, índices y
+  `CHECK`), añade `FeesFromBalance` a `MemberProfiles` y `IsAnnualFeePlan` a `RecurringBillingPlans`, y
+  crea `AnnualFeePayments`. Se niega a migrar con `THROW 51010` (más de un plan «Lifestyle Ambassador
+  (Annual)») o `THROW 51011` (estados por suscripción en ese plan). Antes, en producción:
+
+  ```sql
+  SELECT COUNT(*) AS planesAnuales FROM RecurringBillingPlans WHERE Name = N'Lifestyle Ambassador (Annual)';
+  SELECT COUNT(*) AS estadosEnPlanAnual FROM SubscriptionBillingStates s
+  JOIN RecurringBillingPlans p ON p.Id = s.RecurringBillingPlanId WHERE p.Name = N'Lifestyle Ambassador (Annual)';
+  ```
+
+  Esperado: `1` y `0`. Resultado en producción: ________. Desplegar fuera de horas de tráfico.
+- **Conciliación de §12 antes del Bloque 1.** Apagar `MembershipAutoRenewalJob` deja de renovar por
+  esa vía los estados `Stopped` con la membresía `Active` (33 en local). Ejecutar antes la consulta de
+  §12, con `AND s.Purpose = 1` para dejar fuera los estados de cuota, y que Nick decida. Resultado: ____.
+- **`membership-auto-renewal` borrado de Hangfire**: tras el primer arranque de Billing con el Bloque 1,
+  en `/hangfire` → *Recurring jobs* no aparece. Comprobado: ________.
+- **Alta de estados**: tras desplegar el Bloque 2, lanzar a mano `annual-fee-state-enrollment` desde
+  `/hangfire` y comprobar:
+
+  ```sql
+  SELECT COUNT(*) AS ambassadors FROM MemberProfiles WHERE MemberType = 0 AND IsDeleted = 0 AND Status <> 4;
+  SELECT COUNT(*) AS estadosDeCuota FROM SubscriptionBillingStates WHERE Purpose = 2;
+  SELECT MIN(NextBillingDate) AS primerVencimiento FROM SubscriptionBillingStates WHERE Purpose = 2;
+  ```
+
+  Esperado: los dos recuentos iguales y el primer vencimiento **hoy o después** (no se cobra hacia
+  atrás). En local: ~119.445. Resultado en producción: ________.
+- **El cobro forzado también exige el interruptor** (revisión I-3): con `Billing:AnnualFee:AutoChargeEnabled` apagado, el
+  bill-now de soporte sobre un estado de cuota responde `Skipped` con `ANNUAL_FEE_AUTO_CHARGE_DISABLED` y no cobra.
+  «Pagar ahora» del miembro no depende del interruptor.
+- **Quien cancela no paga la cuota en automático** (decisión de Nick, M-8): con la membresía vigente cancelada, el cobro
+  se pospone cada día sin mover el vencimiento hasta que reactive; «Pagar ahora» sigue disponible. Comprobar con un
+  Ambassador de prueba que cancela: su estado de cuota queda con `LastFailureReason = MEMBERSHIP_CANCELLED` y sin
+  intentos. Comprobado: ________.
+- **Conciliación de la cuota** (revisión M-3/M-7): cada conciliación deja su línea `[reconciled … by …]` en las notas
+  del pago. Un `ANNUAL_FEE_RECONCILED_CYCLE_ALREADY_ADVANCED` es un posible doble cobro: revisar y devolver si procede.
+- **Cobro automático apagado** (`Billing:AnnualFee:AutoChargeEnabled`, por defecto `false`). Se enciende
+  solo cuando Nick lo diga (P10). Medir el primer ciclo con él encendido en un entorno de prueba (R2).
+  Fecha de encendido en producción: ________.
+- **La tarjeta sigue apagada** (`Billing:TokenPurchase:CardEnabled = false`, `Signup:CardEnabled = false`)
+  y la cuota no la acepta en ningún caso.
+- **Tarjeta de las renovaciones apagada** (`Billing:Recurring:CardEnabled`, por defecto `false`; revisión
+  I1/I2). Con ella apagada, una renovación sin saldo gastable suficiente falla con `CARD_DISABLED` y sigue
+  la cadencia del plan; agotado el tope de 90 días sin cobrar, el estado se para y la membresía pasa a
+  `HoldByBilling`. No se enciende hasta el Plan I **y** hasta cerrar `DelayedFallbackChargeJob` (C3).
+  Comprobado que no está en ningún `appsettings`: ________.
+- **Rastro del stub (R10)**: los `PaymentHistory` simulados que ya existan, con su pedido y su intento
+  de gateway (los escribieron el orquestador, el cobro diferido o la renovación manual cuando la tarjeta
+  no estaba apagada):
+
+  ```sql
+  SELECT ph.Id, ph.OrderId, ph.MemberId, ph.Amount, ph.GatewayName, ph.GatewayTransactionId, ph.CreationDate,
+         o.OrderNo, o.Status AS EstadoPedido, o.MembershipSubscriptionId
+  FROM PaymentHistories ph WITH (NOLOCK)
+  LEFT JOIN Orders o WITH (NOLOCK) ON o.Id = ph.OrderId
+  WHERE ph.GatewayTransactionId LIKE 'simulated%' OR ph.GatewayTransactionId LIKE 'STUB-%'
+  ORDER BY ph.CreationDate DESC;
+
+  SELECT COUNT(*) AS intentosSimulados FROM GatewayChargeAttempts WITH (NOLOCK)
+  WHERE GatewayTransactionId LIKE 'simulated%' OR GatewayTransactionId LIKE 'STUB-%';
+
+  -- Renovaciones dadas por cobradas con dinero inventado antes del Bloque 1 (pedido Paid con pago simulado):
+  SELECT o.Id, o.OrderNo, o.MemberId, o.TotalAmount, o.MembershipSubscriptionId, o.OrderDate
+  FROM Orders o WITH (NOLOCK) JOIN PaymentHistories ph WITH (NOLOCK) ON ph.OrderId = o.Id
+  WHERE o.Status = 2 AND (ph.GatewayTransactionId LIKE 'simulated%' OR ph.GatewayTransactionId LIKE 'STUB-%');
+  ```
+
+  Pasar el resultado a tesorería: no son dinero. En local (2026-10-17): 0. Resultado en producción: ________.
+- **Lo que deja de renovarse al apagar `MembershipAutoRenewalJob`** (revisión I3). El job renovaba toda
+  suscripción activa con `IsAutoRenew`, sin `CancellationDate`, no gratuita y con `StartDate` de hace
+  30 días o más, tuviera o no estado de cobro, por `RenewMembershipHandler`. Al apagarlo dejan de
+  renovarse por esa vía:
+  1. **Las Ambassador de nivel 1** (Lifestyle Ambassador): el plan anual no crea estados por suscripción
+     (K2), así que el motor no las renueva. Las sustituye la cuota anual del Bloque 3.
+  2. **La ruta de wallet del legado** (miembros fuera de EE. UU. y Canadá): el job cobraba con la wallet
+     preferida (`IGatewayResolver`, p. ej. eWallet) sin candado ni estado. El motor no tiene esa ruta: esas
+     renovaciones ya solo se pagan con comisiones (saldo gastable) o fallan con `CARD_DISABLED`.
+  3. **Los 33 estados `Stopped` con la membresía `Active` de R13**: el job los renovaba por su cuenta; el
+     motor no los mira. Siguen activos sin pagar hasta que Nick decida (consulta de §12).
+
+  ```sql
+  -- Activas que renovaba el job y no tienen estado vivo en el motor (o lo tienen parado):
+  SELECT m.MembershipLevelId, COUNT(*) AS suscripciones
+  FROM MembershipSubscriptions m WITH (NOLOCK)
+  LEFT JOIN SubscriptionBillingStates s WITH (NOLOCK) ON s.MembershipSubscriptionId = m.Id AND s.Purpose = 1
+  WHERE m.SubscriptionStatus = 1 AND m.IsAutoRenew = 1 AND m.CancellationDate IS NULL AND m.IsFree = 0
+    AND m.IsDeleted = 0 AND (s.Id IS NULL OR s.Status = 4)
+  GROUP BY m.MembershipLevelId;
+  ```
+
+  En local (2026-10-17): 33, todas de nivel 3 (son las de R13); ninguna de nivel 1 ni sin estado.
+  Resultado en producción: ________.
+- **«Calificado» con la anualidad real**: los Ambassadors con más de 12 meses cuyo estado de cuota vence
+  en el futuro pasan a «Calificado» (P1); los que tienen el ciclo vencido sin pagar, no. Avisar a
+  soporte. En local solo hay 2 Ambassadors con más de un año.
+- **Pendiente fuera de este plan**: índice de `Orders.OrderNo` (R11), `bill-now` del Admin sin registrar
+  (R4), `POST billing/memberships/renew` (P4), token sin consumir de `FundWithCommissionBalanceAsync` (R8).
+
+### Pruebas
+
+Preparación: SignupAPI (7005), Billing, BizCenter (7003), BizCenterWeb (7004), AdminAPI (7002) y
+AdminWeb (7001) arrancados con el perfil `https` contra la base local, con `CuotaAnual` aplicada y
+`annual-fee-state-enrollment` lanzado a mano desde `/hangfire`. Dos Ambassadors A y B; A con 150 de comisiones pagables y un token
+«Annual: Biz Center» (comprado en `/tokens` o sembrado en SQL); su estado de cuota puesto a vencer hoy
+(`UPDATE SubscriptionBillingStates SET NextBillingDate = CAST(GETDATE() AS date), NextAttemptDate = CAST(GETDATE() AS date) WHERE Purpose = 2 AND MemberId = @A`).
+`TOKEN_A` es el Bearer de A y `PERMISO_A` un permiso de step-up de `member.annual-fee.pay-from-balance`
+emitido para A.
+
+| # | Qué se prueba | Cómo | Resultado esperado | ✔ |
+|---|---|---|---|---|
+| 13.1 | IDOR en el resumen | `GET /api/v1/bizcenter/billing/annual-fee?memberId={B}` con `TOKEN_A` | el resumen de A; el parámetro se ignora | ☐ |
+| 13.2 | IDOR al pagar | `POST …/annual-fee/pay` con `TOKEN_A`, `PERMISO_A` y `"memberId":"{B}"` en el cuerpo | paga (o rechaza) la cuota de **A**; la de B no cambia | ☐ |
+| 13.3 | Sin step-up | `POST …/annual-fee/pay` con `TOKEN_A` y sin cabecera | `403 STEP_UP_REQUIRED`; nada en `AnnualFeePayments` | ☐ |
+| 13.4 | Permiso de otra operación | el mismo pago con un permiso de `member.tokens.purchase-from-balance` | `403 STEP_UP_INVALID` (BizCenter) y ningún pago | ☐ |
+| 13.5 | Permiso repetido | dos pagos con claves distintas y el mismo `PERMISO_A` | el segundo, `403 STEP_UP_INVALID` | ☐ |
+| 13.6 | Billing directo | `POST https://<billing>/api/v1/billing/annual-fee/pay` con `TOKEN_A`: sin permiso; con un permiso ya usado en el BizCenter | `403 STEP_UP_REQUIRED`; el segundo pasa una vez y la repetición con otra clave da `403 STEP_UP_INVALID` | ☐ |
+| 13.7 | Suplantación completa | un administrador suplanta a A (token completo) y llama a `pay` y a `preference` | `403 IMPERSONATION_CANNOT_PAY_ANNUAL_FEE` en BizCenter y en Billing; la tarjeta del perfil sale de solo lectura | ☐ |
+| 13.8 | Suplantación de solo lectura | lo mismo con token de solo lectura | `403 IMPERSONATION_READ_ONLY` (middleware); el `GET` funciona | ☐ |
+| 13.9 | Tarjeta | `pay` con `"method":"CreditCard"` y con `"Crypto"`, y con `"1"` | `400 ANNUAL_FEE_METHOD_NOT_SUPPORTED`; Billing no recibe nada | ☐ |
+| 13.10 | Idempotencia | dos `pay` con la misma clave y el mismo método (dos permisos) | el mismo `paymentId`; un solo pedido y un solo débito | ☐ |
+| 13.11 | Clave reutilizada | la misma clave con otro método | `409 IDEMPOTENCY_KEY_REUSED` | ☐ |
+| 13.12 | Doble pago del ciclo | dos `pay` a la vez con claves distintas (dos pestañas) | uno `200`; el otro `400 ANNUAL_FEE_NOT_DUE` o `409 ANNUAL_FEE_ALREADY_PAID`; un solo pago `Completed` | ☐ |
+| 13.13 | Ventana de pago | `pay` con el estado venciendo dentro de 31 días | `400 ANNUAL_FEE_NOT_DUE` | ☐ |
+| 13.14 | `KeepQualified` | `UPDATE MemberProfiles SET KeepQualified = 1 WHERE MemberId = @A` y `pay` | `400 ANNUAL_FEE_WAIVED`; la tarjeta dice «Exenta» | ☐ |
+| 13.15 | Conciliar sin rol | `POST …/annual-fee/payments/{id}/reconcile` con un token de soporte (`SupportLevel1`) y con el de A | `403` en los dos | ☐ |
+| 13.16 | Billing a través de AdminAPI | `POST https://localhost:7002/api/v1/billing/annual-fee/pay` con `TOKEN_A` | `404`, `401` o `500` sin efectos: nada en `AnnualFeePayments` (R4) | ☐ |
+| 13.17 | Cobro automático apagado | con el interruptor en `false`, lanzar `recurring-billing-sweep` desde Hangfire | los estados de cuota que vencen hoy no se cobran; ni pedidos ni pagos nuevos | ☐ |
+| 13.18 | Exclusiones | con el interruptor en `true` y un estado vencido por cada caso (cuenta `Terminated`, `Suspended`, membresía en `HoldByBilling`, membresía cancelada —`Cancelled` o con la cancelación programada cumplida—, inscrita hace menos de un año, `KeepQualified`, cobro hace 2 meses), lanzar el barrido | `Stopped` / mañana (`ACCOUNT_SUSPENDED`) / mañana (`MEMBERSHIP_ON_HOLD`) / mañana (`MEMBERSHIP_CANCELLED`) / aniversario / mañana (`KEEP_QUALIFIED`) / a un año del cobro; ningún cobro ni intento en `RecurringBillingAttempts`; con la membresía cancelada, «Pagar ahora» sigue disponible | ☐ |
+| 13.19 | Orden de cobro | A con token y comisiones, el interruptor encendido, barrido | se gasta el token (`TokenTransactions` `Used` con el pedido); las comisiones no se tocan | ☐ |
+| 13.20 | Preferencia apagada | A sin token, con comisiones y `FeesFromBalance = 0`, barrido | intento `Failed` (`ANNUAL_FEE_NO_FUNDS`), sin débito; la membresía y `MemberProfiles.Status` no cambian | ☐ |
+| 13.21 | Un solo motor | `/hangfire` → *Recurring jobs* | no está `membership-auto-renewal`; sí `recurring-billing-planning`, `recurring-billing-sweep`, `annual-fee-stale-pending` y `annual-fee-state-enrollment` (este con «Never» mientras `EnrollmentJobEnabled` no esté a `true`) | ☐ |
+| 13.22 | Tarjeta apagada y stub | una renovación de Travel Advantage sin comisiones: con `Billing:Recurring:CardEnabled` sin poner; después en `true` con el gateway de prueba | apagada: intento `Failed` con `CARD_DISABLED`, cadencia normal, pedido `Cancelled`, sin `PaymentHistory` y sin llamar al gateway. Encendida con el stub: intento `Failed` con `CARD_SIMULATED_CHARGE` (log `Critical`), cadencia normal, sin renovar | ☐ |
+| 13.23 | Candado en Travel Advantage | una compra de tokens con comisiones de A mientras el barrido renueva su Travel Advantage | nunca se gasta más de lo gastable; una de las dos espera o devuelve ocupado | ☐ |
+| 13.24 | Admin solo lectura | perfil de A en AdminWeb | la tarjeta sin botones ni interruptor; `GET api/v1/admin/members/{A}/billing/annual-fee` responde; no hay `POST`/`PUT` en esa ruta | ☐ |
+| 13.25 | Hora de servidor | cambiar la zona horaria del navegador a UTC+14 y abrir el perfil | el estado y el vencimiento no cambian | ☐ |

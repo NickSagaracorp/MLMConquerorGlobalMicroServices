@@ -3,6 +3,7 @@ using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Grid;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
+using MLMConquerorGlobalEdition.Repository.Services.AnnualFee;
 using MLMConquerorGlobalEdition.Repository.Services.Teams;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
@@ -18,8 +19,12 @@ public class CalificadoEnLosEquiposTests
     private const string Antiguo = "AMB-000002";
     private const string Nuevo   = "AMB-000003";
 
-    internal static QualificationService Calificacion(AppDbContext db) =>
-        new(db, new RelojFijo(new DateTime(2026, 10, 16, 12, 0, 0)), new AnnualFeeNotModeled());
+    // Sin estados de cuota en la siembra: nadie tiene la anualidad pagada, como antes del Plan K.
+    internal static QualificationService Calificacion(AppDbContext db)
+    {
+        var reloj = new RelojFijo(new DateTime(2026, 10, 16, 12, 0, 0));
+        return new(db, reloj, new BillingStateAnnualFeeStatus(db, reloj));
+    }
 
     private static RankComputationService Rangos(AppDbContext db) =>
         new(db, new RankQualificationService(db, new EnrollmentTeamPointsService(db), new PersonalCustomerPointsService(db)));

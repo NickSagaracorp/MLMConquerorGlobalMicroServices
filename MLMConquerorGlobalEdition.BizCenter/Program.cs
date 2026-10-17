@@ -94,9 +94,12 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.I
                             MLMConquerorGlobalEdition.Repository.Services.Teams.DualTreeNodeService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IEnrollmentTeamService,
                             MLMConquerorGlobalEdition.Repository.Services.Teams.EnrollmentTeamService>();
-// «Calificado» (Plan J, N3): un solo servicio. La anualidad no existe todavía (Plan K).
+// «Calificado» (Plan J, N3): un solo servicio. La anualidad pagada es el estado de cuota anual al día (Plan K).
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IAnnualFeeStatus,
-                            MLMConquerorGlobalEdition.Repository.Services.Teams.AnnualFeeNotModeled>();
+                            MLMConquerorGlobalEdition.Repository.Services.AnnualFee.BillingStateAnnualFeeStatus>();
+// Tarjeta de la cuota anual (Plan K): resumen y preferencia. El pago lo hace Billing.
+builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.AnnualFee.IAnnualFeeOverviewService,
+                            MLMConquerorGlobalEdition.Repository.Services.AnnualFee.AnnualFeeOverviewService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IQualificationService,
                             MLMConquerorGlobalEdition.Repository.Services.Teams.QualificationService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IDualTeamService,

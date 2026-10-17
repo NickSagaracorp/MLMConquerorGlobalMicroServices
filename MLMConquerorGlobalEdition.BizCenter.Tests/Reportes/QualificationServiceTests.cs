@@ -6,8 +6,8 @@ namespace MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 
 /// <summary>
 /// «Calificado» según Nick (corrección N3): membresía activa Y (inscrito hace menos de 12 meses, O
-/// anualidad pagada, O marca KeepQualified). La anualidad todavía no existe (Plan K): hoy la da
-/// AnnualFeeNotModeled, que siempre dice que no.
+/// anualidad pagada, O marca KeepQualified). La anualidad la da IAnnualFeeStatus; aquí se simula (la
+/// real, BillingStateAnnualFeeStatus, tiene sus pruebas en CuotaAnual).
 /// </summary>
 public class QualificationServiceTests
 {
@@ -21,7 +21,7 @@ public class QualificationServiceTests
     }
 
     private static QualificationService Servicio(AppDbContext db, IAnnualFeeStatus? anualidad = null) =>
-        new(db, Reloj, anualidad ?? new AnnualFeeNotModeled());
+        new(db, Reloj, anualidad ?? new AnualidadPagadaPor());
 
     private static async Task<AppDbContext> ConMiembroAsync(
         DateTime alta, MembershipStatus? estado, bool mantener = false, string id = "AMB-000001")
@@ -119,8 +119,4 @@ public class QualificationServiceTests
 
         r.Should().BeEquivalentTo(new Dictionary<string, bool> { ["AMB-000001"] = true, ["AMB-999999"] = false });
     }
-
-    [Fact]
-    public async Task La_anualidad_no_modelada_nunca_esta_pagada()
-        => (await new AnnualFeeNotModeled().PaidCurrentAnnualFeeAsync(new[] { "AMB-000001" })).Should().BeEmpty();
 }
