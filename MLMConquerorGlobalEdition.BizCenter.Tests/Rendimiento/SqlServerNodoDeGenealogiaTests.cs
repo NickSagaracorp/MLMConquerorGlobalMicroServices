@@ -118,4 +118,21 @@ public class SqlServerNodoDeGenealogiaTests
         (await db.GenealogyTree.IgnoreQueryFilters().AnyAsync(g => g.Node == otraRaiz)).Should().BeFalse();
         await tx.RollbackAsync();
     });
+
+    /// <summary>
+    /// GenealogySubtree.Under lee el equipo como el rango [nodo, hermano siguiente): solo es exacto si
+    /// ningún Node tiene un ordinal fraccionario («/1.1/», lo que da GetDescendant entre dos hermanos).
+    /// </summary>
+    [SqlServerFact]
+    public async Task Ningun_Node_tiene_ordinales_fraccionarios()
+    {
+        await using var db = SqlServerReportes.Db();
+
+        var fraccionarios = await db.Database.SqlQuery<int>($"""
+            SELECT COUNT(*) AS [Value] FROM GenealogyTree WITH (NOLOCK)
+            WHERE Node IS NOT NULL AND CHARINDEX('.', Node.ToString()) > 0
+            """).SingleAsync();
+
+        fraccionarios.Should().Be(0);
+    }
 }

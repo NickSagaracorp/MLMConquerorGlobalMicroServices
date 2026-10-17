@@ -5,6 +5,7 @@ using MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 using MLMConquerorGlobalEdition.Domain.Entities.Events;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Grid;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.Repository.Services.Teams;
 using MLMConquerorGlobalEdition.SharedKernel;
 using Xunit.Abstractions;
@@ -35,11 +36,22 @@ public class SqlServerMedicionPlanMTests
 
     public SqlServerMedicionPlanMTests(ITestOutputHelper salida) => _salida = salida;
 
-    internal static Task<string> RaizAsync(AppDbContext db) =>
-        db.GenealogyTree.AsNoTracking()
-            .Where(g => g.ParentMemberId == null)
-            .OrderBy(g => g.Level).ThenBy(g => g.MemberId) // determinista: hay varias raíces de nivel 1
-            .Select(g => g.MemberId).FirstAsync();
+    /// <summary>
+    /// La raíz con el equipo más grande (en local, AMB-700829, con unas 119.400 personas debajo). La de
+    /// nivel 0 (ROOT001) solo tiene unas decenas: medir con ella no dice nada del equipo grande, y así
+    /// se midió la línea base de la Tarea 1 (ver «Desviaciones»). Empate: por MemberId, determinista.
+    /// </summary>
+    internal static async Task<string> RaizAsync(AppDbContext db)
+    {
+        var raices = await db.GenealogyTree.AsNoTracking()
+            .Where(g => g.ParentMemberId == null && g.Node != null)
+            .Select(g => new { g.MemberId, g.Node })
+            .ToListAsync();
+        var equipos = new List<(string MemberId, int Equipo)>();
+        foreach (var r in raices)
+            equipos.Add((r.MemberId, await db.GenealogyTree.AsNoTracking().Under(r.Node).CountAsync()));
+        return equipos.OrderByDescending(e => e.Equipo).ThenBy(e => e.MemberId, StringComparer.Ordinal).First().MemberId;
+    }
 
     private async Task<TimeSpan> MedianaAsync(string que, Func<Task> paso)
     {

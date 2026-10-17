@@ -151,7 +151,7 @@ public class GetAvailableNodesHandler
         // All descendants in enrollment tree by Node (Plan M)
         var descendants = await _db.GenealogyTree
             .AsNoTracking()
-            .Where(g => g.Node!.IsDescendantOf(sponsorRoot))
+            .Under(sponsorRoot)
             .Select(g => g.MemberId)
             .ToListAsync(ct);
 

@@ -72,7 +72,7 @@ public sealed class EnrollmentTeamPointsService : IEnrollmentTeamPointsService
         // So the recompute sums completed-order points over the whole subtree
         // INCLUDING the member themselves.
         var subtreeIds = await _db.GenealogyTree.AsNoTracking()
-            .Where(g => g.Node!.IsDescendantOf(root))
+            .Under(root)
             .Select(g => g.MemberId)
             .ToListAsync(ct);
 

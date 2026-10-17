@@ -43,8 +43,8 @@ public class GetVisualizerChildrenHandler
             var me = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(currentMemberId, ct);
             var isInSubtree = me is not null
                 && await _db.GenealogyTree.AsNoTracking()
-                    .AnyAsync(g => g.MemberId == request.ParentMemberId
-                                && g.Node!.IsDescendantOf(me), ct);
+                    .Under(me)
+                    .AnyAsync(g => g.MemberId == request.ParentMemberId, ct);
             if (!isInSubtree)
                 return Result<IEnumerable<EnrollmentVisualizerNodeDto>>
                     .Failure("VISUALIZER_ACCESS_DENIED",

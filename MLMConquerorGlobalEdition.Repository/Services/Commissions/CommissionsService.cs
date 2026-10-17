@@ -538,7 +538,8 @@ public class CommissionsService : ICommissionsService
 
         var downlineMemberIds = await _db.GenealogyTree
             .AsNoTracking()
-            .Where(g => g.Node!.IsDescendantOf(me) && g.MemberId != memberId)
+            .Under(me)
+            .Where(g => g.MemberId != memberId)
             .Select(g => g.MemberId)
             .ToListAsync(ct);
 
@@ -596,13 +597,12 @@ public class CommissionsService : ICommissionsService
 
         var downlineEnrollments = await (
             from mp  in _db.MemberProfiles.AsNoTracking()
-            join g   in _db.GenealogyTree.AsNoTracking()           on mp.MemberId equals g.MemberId
+            join g   in _db.GenealogyTree.AsNoTracking().Under(me) on mp.MemberId equals g.MemberId
             join sub in _db.MembershipSubscriptions.AsNoTracking() on mp.MemberId equals sub.MemberId
             where mp.EnrollDate >= weekStart
                && mp.EnrollDate <  weekEnd
                && sub.SubscriptionStatus == MembershipStatus.Active
                && eligibleLevelIds.Contains(sub.MembershipLevelId)
-               && me != null && g.Node!.IsDescendantOf(me)
             select new { mp.MemberId, g.HierarchyPath }
         ).Distinct().ToListAsync(ct);
 
@@ -738,8 +738,8 @@ public class CommissionsService : ICommissionsService
         var me = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct); // Plan M: equipo por Node
 
         var activeSubs = await (
-            from g in _db.GenealogyTree.AsNoTracking()
-            where me != null && g.Node!.IsDescendantOf(me) && g.MemberId != memberId
+            from g in _db.GenealogyTree.AsNoTracking().Under(me)
+            where g.MemberId != memberId
             join s in _db.MembershipSubscriptions.AsNoTracking() on g.MemberId equals s.MemberId
             where s.SubscriptionStatus == MembershipStatus.Active && !s.IsDeleted
             select new { s.MemberId, s.MembershipLevelId, s.CreationDate }
@@ -783,8 +783,8 @@ public class CommissionsService : ICommissionsService
         // instead of loading ALL ~120k downline ids and re-querying 3× with Contains(allIds).
         // Members with no active sub contribute 0, so they are not part of this breakdown.
         var rows = await (
-            from g in _db.GenealogyTree.AsNoTracking()
-            where me != null && g.Node!.IsDescendantOf(me) && g.MemberId != memberId
+            from g in _db.GenealogyTree.AsNoTracking().Under(me)
+            where g.MemberId != memberId
             join s in _db.MembershipSubscriptions.AsNoTracking() on g.MemberId equals s.MemberId
             where s.SubscriptionStatus == MembershipStatus.Active && !s.IsDeleted
             join mp in _db.MemberProfiles.AsNoTracking() on g.MemberId equals mp.MemberId
@@ -824,8 +824,9 @@ public class CommissionsService : ICommissionsService
         // subscription) via a single JOIN — not "load all subtree ids then Contains(allIds) ×3".
         // Members without an active sub contribute 0 points and aren't part of the breakdown.
         var rows = await (
-            from g in _db.GenealogyTree.AsNoTracking()
-            where g.MemberId == branchMemberId || (me != null && g.Node!.IsDescendantOf(me))
+            from g in (me is null
+                ? _db.GenealogyTree.AsNoTracking().Where(x => x.MemberId == branchMemberId)
+                : _db.GenealogyTree.AsNoTracking().Under(me))   // la rama incluye al propio embajador
             join s in _db.MembershipSubscriptions.AsNoTracking() on g.MemberId equals s.MemberId
             where s.SubscriptionStatus == MembershipStatus.Active && !s.IsDeleted
             join mp in _db.MemberProfiles.AsNoTracking() on g.MemberId equals mp.MemberId

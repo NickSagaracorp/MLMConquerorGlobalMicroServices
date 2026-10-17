@@ -204,7 +204,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
         // StatusHistoryInterceptor (Plan J), por lo mismo: un anfitrión sin él cambiaría estados
         // sin dejar historial.
         optionsBuilder.AddInterceptors(
-            new AuditInterceptor(), new SecurityFactorsInterceptor(), new StatusHistoryInterceptor());
+            new AuditInterceptor(), new SecurityFactorsInterceptor(), new StatusHistoryInterceptor(),
+            // Plan M: OPTION (RECOMPILE) en las consultas del equipo (GenealogySubtree.Under).
+            new RecompileTaggedQueriesInterceptor());
 
         // Plan M (M21): GenealogyTree.Node es hierarchyid. Se activa aquí por la misma razón: un
         // anfitrión (o la fábrica de diseño, o un ayudante de pruebas) que lo olvidara fallaría al

@@ -10,6 +10,12 @@ namespace MLMConquerorGlobalEdition.Repository.Queries;
 /// </summary>
 public static class GenealogySubtree
 {
+    /// <summary>
+    /// Etiqueta (comentario SQL) de las consultas del equipo: RecompileTaggedQueriesInterceptor les añade
+    /// OPTION (RECOMPILE), porque el plan bueno depende del tamaño del equipo (Plan M).
+    /// </summary>
+    public const string RecompileTag = "GenealogySubtree.Under: recompilar por tamano de equipo";
+
     /// <summary>El Node vigente del miembro: el de su nodo más reciente (R8 del Plan J). Null si no tiene.</summary>
     public static Task<HierarchyId?> NodeOfAsync(
         this IQueryable<GenealogyEntity> tree, string memberId, CancellationToken ct = default) =>
@@ -19,11 +25,42 @@ public static class GenealogySubtree
             .FirstOrDefaultAsync(ct);
 
     /// <summary>
+    /// Todos los nodos (vigentes u obsoletos) que cuelgan de <paramref name="root"/>, él incluido; ninguno
+    /// si <paramref name="root"/> es null (quien no tiene Node no tiene equipo). Es el rango del índice en
+    /// profundidad: los descendientes de root van, en profundidad, entre root y su hermano siguiente.
+    /// <para>
+    /// No se escribe IsDescendantOf: EF lo manda como IsDescendantOf(@p) = CAST(1 AS bit), que con
+    /// parámetro no se convierte en seek, y con él en el filtro SQL Server estima una fila para cualquier
+    /// subárbol y elige bucles con búsquedas por clave. Medido en el Plan M con el equipo de 119.400
+    /// personas: 9 s con IsDescendantOf, 46 ms con el rango.
+    /// </para>
+    /// <para>
+    /// El rango es exacto porque los ordinales son enteros: solo los crean GenealogyNodes.NextChildAsync
+    /// (el siguiente al último hermano) y el relleno (02-relleno-nodo-genealogia.sql), y ninguno pone un
+    /// nodo ENTRE dos hermanos (el «/1.1/» que daría GetDescendant(a, b)). Lo vigila
+    /// SqlServerNodoDeGenealogiaTests. Cualquier consulta del equipo sobre GenealogyTree pasa por aquí.
+    /// </para>
+    /// </summary>
+    public static IQueryable<GenealogyEntity> Under(this IQueryable<GenealogyEntity> tree, HierarchyId? root)
+    {
+        if (root is null)
+            return tree.Where(g => false);
+
+        tree = tree.TagWith(RecompileTag);
+        var parent = root.GetAncestor(1);
+        if (parent is null)                      // la raíz de hierarchyid: el árbol entero
+            return tree.Where(g => g.Node != null);
+
+        var next = parent.GetDescendant(root, null);
+        return tree.Where(g => g.Node >= root && g.Node < next);
+    }
+
+    /// <summary>
     /// Los nodos VIGENTES (el más reciente de cada miembro) que cuelgan de <paramref name="root"/>, él
-    /// incluido. Parte del rango de IX_GenealogyTree_Node (seek) y descarta los obsoletos con el índice
-    /// (MemberId, CreationDate). Es la forma B: para el equipo entero.
+    /// incluido. Parte del rango de IX_GenealogyTree_Node (seek, <see cref="Under"/>) y descarta los
+    /// obsoletos con el índice (MemberId, CreationDate). Es la forma B: para el equipo entero.
     /// </summary>
     public static IQueryable<GenealogyEntity> CurrentUnder(this IQueryable<GenealogyEntity> tree, HierarchyId root) =>
-        tree.Where(g => g.Node!.IsDescendantOf(root)
-                     && !tree.Any(o => o.MemberId == g.MemberId && o.CreationDate > g.CreationDate));
+        tree.Under(root)
+            .Where(g => !tree.Any(o => o.MemberId == g.MemberId && o.CreationDate > g.CreationDate));
 }

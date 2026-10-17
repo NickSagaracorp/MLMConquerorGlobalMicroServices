@@ -146,8 +146,8 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         HierarchyId root, int rootLevel, string memberId)
     {
         return
-            from g in _db.GenealogyTree.AsNoTracking()
-            where g.Node!.IsDescendantOf(root) && g.MemberId != memberId
+            from g in _db.GenealogyTree.AsNoTracking().Under(root)
+            where g.MemberId != memberId
             join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
             select new EnrollmentMyTeamMemberView
             {
@@ -412,7 +412,8 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         var branchLevel = branchNode.Level;
 
         var downlineNodes = await _db.GenealogyTree.AsNoTracking()
-            .Where(g => g.Node!.IsDescendantOf(branchRoot) && g.MemberId != branchMemberId)
+            .Under(branchRoot)
+            .Where(g => g.MemberId != branchMemberId)
             .Select(g => new { g.MemberId, g.Level })
             .ToListAsync(ct);
 
@@ -675,8 +676,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         // Single grouped JOIN — count by status in SQL instead of pulling all 120k+ downline
         // ids into memory and re-querying with Contains(allIds).
         var statusCounts = await (
-            from g in _db.GenealogyTree.AsNoTracking()
-            where g.Node!.IsDescendantOf(me)
+            from g in _db.GenealogyTree.AsNoTracking().Under(me)
             join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
             group m by m.Status into grp
             select new { Status = grp.Key, Count = grp.Count() }

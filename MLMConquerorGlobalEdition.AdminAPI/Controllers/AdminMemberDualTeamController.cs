@@ -417,8 +417,7 @@ public class AdminMemberDualTeamController : ControllerBase
         var me = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct);
 
         var q =
-            from g in _db.GenealogyTree.AsNoTracking()
-            where me != null && g.Node!.IsDescendantOf(me)
+            from g in _db.GenealogyTree.AsNoTracking().Under(me)
             join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
             where m.MemberId != memberId
                && m.MemberType == MemberType.Ambassador

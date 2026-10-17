@@ -38,4 +38,38 @@ public class SinPrefijoEnInscripcionTests
 
         hallazgos.Should().BeEmpty("el equipo de inscripción se acota con Node.IsDescendantOf (Plan M), no con un LIKE sobre HierarchyPath");
     }
+
+    private static readonly Regex FilaPorIsDescendantOf =
+        new(@"\b[a-z]\d?\s*\.\s*Node!?\s*\.\s*IsDescendantOf\s*\(", RegexOptions.Compiled);
+
+    /// <summary>
+    /// Plan M (desviación de la Tarea 13): una fila del árbol (g, o…) no se filtra por equipo con
+    /// IsDescendantOf, sino con GenealogySubtree.Under/CurrentUnder. EF manda IsDescendantOf(@p) =
+    /// CAST(1 AS bit), que no hace seek y hace que SQL Server estime una fila para cualquier equipo:
+    /// 9 s con el de 119.400 personas frente a 46 ms con el rango de Under. La forma A (el Node de un
+    /// conjunto pequeño ya filtrado, en una subconsulta: «node.IsDescendantOf(root)») sí puede usarlo.
+    /// </summary>
+    [Fact]
+    public void Ninguna_fila_del_arbol_se_filtra_por_equipo_con_IsDescendantOf()
+    {
+        var raiz = ReportesDb.RaizDelRepositorio();
+        var sep  = Path.DirectorySeparatorChar;
+        var hallazgos = new List<string>();
+
+        foreach (var proyecto in Directory.GetDirectories(raiz, "MLMConquerorGlobalEdition.*")
+                     .Where(d => !d.EndsWith(".Tests", StringComparison.Ordinal)))
+        foreach (var archivo in Directory.EnumerateFiles(proyecto, "*.cs", SearchOption.AllDirectories))
+        {
+            if (archivo.Contains($"{sep}obj{sep}") || archivo.Contains($"{sep}bin{sep}")
+                || archivo.Contains($"{sep}Migrations{sep}")
+                || archivo.EndsWith($"{sep}Queries{sep}GenealogySubtree.cs", StringComparison.Ordinal))
+                continue;
+
+            var relativo = Path.GetRelativePath(raiz, archivo).Replace('\\', '/');
+            foreach (System.Text.RegularExpressions.Match m in FilaPorIsDescendantOf.Matches(Comentario.Replace(File.ReadAllText(archivo), string.Empty)))
+                hallazgos.Add($"{relativo}: {m.Value}");
+        }
+
+        hallazgos.Should().BeEmpty("el equipo se acota con GenealogySubtree.Under (rango del índice), no con IsDescendantOf");
+    }
 }

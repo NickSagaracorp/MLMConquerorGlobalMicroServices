@@ -126,7 +126,8 @@ public class GetRankProgressHandler : IRequestHandler<GetRankProgressQuery, Resu
             // Qualified = members with at least one active subscription in subtree
             var subtreeMembers = await _db.GenealogyTree
                 .AsNoTracking()
-                .Where(g => subtreeRoot != null && g.Node!.IsDescendantOf(subtreeRoot) && g.MemberId != memberId)
+                .Under(subtreeRoot)
+                .Where(g => g.MemberId != memberId)
                 .Select(g => g.MemberId)
                 .ToListAsync(ct);
 

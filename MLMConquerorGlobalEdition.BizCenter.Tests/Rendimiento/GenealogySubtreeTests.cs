@@ -53,4 +53,24 @@ public class GenealogySubtreeTests
         (await db.GenealogyTree.AsNoTracking().NodeOfAsync("AMB-3")).Should().Be(actual.Node);
         (await db.GenealogyTree.AsNoTracking().NodeOfAsync("NADIE")).Should().BeNull();
     }
+
+    [Fact]
+    public async Task Under_es_el_rango_del_indice_entre_el_nodo_y_su_hermano_siguiente()
+    {
+        await using var db = ReportesDb.Nueva();
+        foreach (var (id, nodo) in new[]
+                 {
+                     ("A", "/1/"), ("A1", "/1/1/"), ("A2", "/1/2/"), ("A21", "/1/2/1/"),
+                     ("B", "/2/"), ("B1", "/2/1/"),
+                 })
+            ReportesDb.Nodo(db, id, null, "/" + id + "/", 1).Node = HierarchyId.Parse(nodo);
+        await db.SaveChangesAsync();
+
+        (await db.GenealogyTree.Under(HierarchyId.Parse("/1/")).Select(g => g.MemberId).ToListAsync())
+            .Should().BeEquivalentTo("A", "A1", "A2", "A21");
+        (await db.GenealogyTree.Under(HierarchyId.Parse("/1/2/")).Select(g => g.MemberId).ToListAsync())
+            .Should().BeEquivalentTo("A2", "A21");
+        (await db.GenealogyTree.Under(HierarchyId.GetRoot()).CountAsync()).Should().Be(6);
+        (await db.GenealogyTree.Under(null).CountAsync()).Should().Be(0, "sin Node no hay equipo");
+    }
 }
