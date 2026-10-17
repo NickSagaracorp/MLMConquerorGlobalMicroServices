@@ -192,4 +192,17 @@ public class AnnualFeeOverviewServiceTests
 
         (await Servicio(db).GetAsync(Yo)).CanPayNow.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task Un_perfil_borrado_no_cambia_la_preferencia()
+    {
+        // Revisión final (M-e).
+        await using var db = await BaseAsync();
+        var perfil = await db.MemberProfiles.SingleAsync();
+        perfil.IsDeleted = true;
+        await db.SaveChangesAsync();
+
+        (await Servicio(db).SetFeesFromBalanceAsync(Yo, false, "user-1")).Should().BeFalse();
+        (await db.MemberProfiles.IgnoreQueryFilters().AsNoTracking().SingleAsync()).FeesFromBalance.Should().BeTrue();
+    }
 }

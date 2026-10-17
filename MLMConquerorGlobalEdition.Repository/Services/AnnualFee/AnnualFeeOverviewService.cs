@@ -91,7 +91,8 @@ public sealed class AnnualFeeOverviewService : IAnnualFeeOverviewService
     public async Task<bool> SetFeesFromBalanceAsync(string memberId, bool value, string actor, CancellationToken ct = default)
     {
         var member = await _db.MemberProfiles
-            .FirstOrDefaultAsync(m => m.MemberId == memberId && m.MemberType == MemberType.Ambassador, ct);
+            // Revisión final (M-e): explícito aunque haya filtro global, por si alguien lee sin filtros.
+            .FirstOrDefaultAsync(m => m.MemberId == memberId && m.MemberType == MemberType.Ambassador && !m.IsDeleted, ct);
         if (member is null) return false;
 
         member.FeesFromBalance = value;
