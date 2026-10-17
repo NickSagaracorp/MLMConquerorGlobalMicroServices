@@ -199,6 +199,18 @@ public class TeamStatusChangesServiceTests
     }
 
     [Fact]
+    public async Task Una_suscripcion_borrada_no_es_la_actual()
+    {
+        await using var db = await BaseAsync();
+        ReportesDb.Suscripcion(db, Ids.Fijos.E1, 4, MembershipStatus.Cancelled, new DateTime(2026, 3, 20)).IsDeleted = true;
+        await db.SaveChangesAsync();
+
+        var e1 = (await FilasAsync(db, StatusChangesScope.Enrollment)).Single(f => f.MemberId == Ids.Fijos.E1);
+
+        (e1.MembershipStatus, e1.MembershipLevelName).Should().Be(("Active", "Travel Advantage - Elite"));
+    }
+
+    [Fact]
     public async Task Un_miembro_con_un_nodo_obsoleto_en_el_equipo_no_sale()
     {
         // R8: FUERA tiene además un nodo antiguo bajo YO; manda el más reciente, que es de OTRO.

@@ -51,7 +51,7 @@ public sealed class QualificationService : IQualificationService
         if (ids.Count == 0) return new Dictionary<string, bool>();
 
         var activeNow = (await _db.MembershipSubscriptions.AsNoTracking()
-                .Where(s => ids.Contains(s.MemberId))
+                .Where(s => ids.Contains(s.MemberId) && !s.IsDeleted)
                 .Select(s => new { s.MemberId, s.SubscriptionStatus, s.StartDate, s.CreationDate })
                 .ToListAsync(ct))
             .GroupBy(s => s.MemberId)

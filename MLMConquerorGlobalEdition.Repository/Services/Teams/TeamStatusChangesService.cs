@@ -160,7 +160,7 @@ public sealed class TeamStatusChangesService : ITeamStatusChangesService
         var ids = rows.Select(r => r.MemberId).ToList();
 
         var current = (await _db.MembershipSubscriptions.AsNoTracking()
-                .Where(s => ids.Contains(s.MemberId))
+                .Where(s => ids.Contains(s.MemberId) && !s.IsDeleted)
                 .ToListAsync(ct))
             .GroupBy(s => s.MemberId)
             .ToDictionary(g => g.Key, g => g.OrderByDescending(s => s.StartDate).ThenByDescending(s => s.CreationDate).First());

@@ -101,6 +101,16 @@ public class QualificationServiceTests
     }
 
     [Fact]
+    public async Task Una_suscripcion_borrada_no_cuenta_como_la_actual()
+    {
+        await using var db = await ConMiembroAsync(new DateTime(2026, 5, 1), MembershipStatus.Active);
+        ReportesDb.Suscripcion(db, "AMB-000001", 3, MembershipStatus.Expired, new DateTime(2026, 9, 1)).IsDeleted = true;
+        await db.SaveChangesAsync();
+
+        (await Servicio(db).IsQualifiedAsync("AMB-000001")).Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Por_lote_responde_por_cada_miembro_pedido()
     {
         await using var db = await ConMiembroAsync(new DateTime(2026, 7, 1), MembershipStatus.Active);
