@@ -62,4 +62,34 @@ public class PrefijoDeSubarbolTests
         (await new DownlineGuard(db).PuedeVerRamaDePatrocinioAsync(Miembro("AMB-1"), "MBR-2", CancellationToken.None))
             .Should().BeFalse("su ruta actual es /AMB-7/AMB-1/ y MBR-2 cuelga de la antigua");
     }
+
+    [Fact]
+    public async Task Un_objetivo_que_se_fue_no_se_ve_aunque_le_quede_un_nodo_antiguo_bajo_mi_prefijo()
+    {
+        // R8 también sobre el objetivo: MBR-2 colgó de AMB-1, pero su nodo actual es de AMB-7.
+        await using var db = ReportesDb.Nueva();
+        ReportesDb.Nodo(db, "AMB-1", null, ReportesDb.Ruta("AMB-1"), 1);
+        await ReportesDb.NodoObsoletoAsync(db, "MBR-2", "AMB-1", ReportesDb.Ruta("AMB-1", "MBR-2"), 2);
+        ReportesDb.Nodo(db, "MBR-2", "AMB-7", ReportesDb.Ruta("AMB-7", "MBR-2"), 2);
+        await db.SaveChangesAsync();
+
+        (await new DownlineGuard(db).PuedeVerRamaDePatrocinioAsync(Miembro("AMB-1"), "MBR-2", CancellationToken.None))
+            .Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Un_objetivo_binario_que_se_fue_no_se_ve_aunque_le_quede_un_nodo_antiguo()
+    {
+        await using var db = ReportesDb.Nueva();
+        ReportesDb.NodoBinario(db, "AMB-1", null, ReportesDb.Ruta("AMB-1"), TreeSide.Left);
+        var antiguo = ReportesDb.NodoBinario(db, "MBR-2", "AMB-1", ReportesDb.Ruta("AMB-1", "MBR-2"), TreeSide.Left);
+        await db.SaveChangesAsync();
+        antiguo.CreationDate = new DateTime(2020, 1, 1);
+        await db.SaveChangesAsync();
+        ReportesDb.NodoBinario(db, "MBR-2", "AMB-7", ReportesDb.Ruta("AMB-7", "MBR-2"), TreeSide.Right);
+        await db.SaveChangesAsync();
+
+        (await new DownlineGuard(db).PuedeVerNodoBinarioAsync(Miembro("AMB-1"), "MBR-2", CancellationToken.None))
+            .Should().BeFalse();
+    }
 }

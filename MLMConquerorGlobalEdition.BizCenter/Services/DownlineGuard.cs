@@ -89,8 +89,15 @@ public sealed class DownlineGuard : IDownlineGuard
             if (string.IsNullOrEmpty(ruta)) return false;
             var raiz = TreePrefix.Of(ruta);
 
-            return await _db.DualTeamTree.AsNoTracking()
-                .AnyAsync(d => d.MemberId == objetivo && d.HierarchyPath.StartsWith(raiz), ct);
+            // R8 también sobre el objetivo: cuenta su nodo más reciente, no uno antiguo que quedara
+            // bajo mi prefijo.
+            var rutaObjetivo = await _db.DualTeamTree.AsNoTracking()
+                .Where(d => d.MemberId == objetivo)
+                .OrderByDescending(d => d.CreationDate)
+                .Select(d => d.HierarchyPath)
+                .FirstOrDefaultAsync(ct);
+
+            return rutaObjetivo is not null && rutaObjetivo.StartsWith(raiz, StringComparison.Ordinal);
         });
 
     public Task<bool> PuedeVerRamaDePatrocinioAsync(ClaimsPrincipal? user, string? memberId, CancellationToken ct) =>
@@ -106,8 +113,15 @@ public sealed class DownlineGuard : IDownlineGuard
             if (string.IsNullOrEmpty(ruta)) return false;
             var raiz = TreePrefix.Of(ruta);
 
-            return await _db.GenealogyTree.AsNoTracking()
-                .AnyAsync(g => g.MemberId == objetivo && g.HierarchyPath.StartsWith(raiz), ct);
+            // R8 también sobre el objetivo: cuenta su nodo más reciente, no uno antiguo que quedara
+            // bajo mi prefijo.
+            var rutaObjetivo = await _db.GenealogyTree.AsNoTracking()
+                .Where(g => g.MemberId == objetivo)
+                .OrderByDescending(g => g.CreationDate)
+                .Select(g => g.HierarchyPath)
+                .FirstOrDefaultAsync(ct);
+
+            return rutaObjetivo is not null && rutaObjetivo.StartsWith(raiz, StringComparison.Ordinal);
         });
 
     public Task<bool> PatrocinaAsync(ClaimsPrincipal? user, string? memberId, CancellationToken ct) =>
