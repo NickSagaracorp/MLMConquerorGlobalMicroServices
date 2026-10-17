@@ -7979,6 +7979,11 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.Property<bool>("IsPhonePublic")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("KeepQualified")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(100)

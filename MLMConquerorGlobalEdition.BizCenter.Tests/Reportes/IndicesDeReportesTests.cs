@@ -66,5 +66,20 @@ public class IndicesDeReportesTests
         db.Model.FindEntityType(historial)!.FindProperty("MemberId")!.GetMaxLength().Should().Be(450);
     }
 
+    /// <summary>
+    /// Corrección de Nick N3: la marca de mantener calificado existe, es obligatoria y las filas que ya
+    /// hay quedan en false (valor por defecto de la columna), así que nadie pasa a calificado solo.
+    /// </summary>
+    [Fact]
+    public void Perfiles_con_marca_de_mantener_calificado_por_defecto_false()
+    {
+        using var db = ReportesDb.Nueva();
+        var propiedad = db.Model.FindEntityType(typeof(MemberProfile))!.FindProperty(nameof(MemberProfile.KeepQualified))!;
+
+        propiedad.IsNullable.Should().BeFalse();
+        propiedad.GetDefaultValue().Should().Be(false);
+        new MemberProfile().KeepQualified.Should().BeFalse();
+    }
+
     // (índices de los bloques siguientes)
 }

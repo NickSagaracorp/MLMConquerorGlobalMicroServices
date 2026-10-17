@@ -22,6 +22,9 @@ public class MemberProfileConfiguration : IEntityTypeConfiguration<MemberProfile
         // Plan J: la actividad por fechas reduce primero por fecha de alta, sin patrocinador concreto.
         builder.HasIndex(x => x.EnrollDate);
 
+        // Plan J (N3): las filas que ya existen quedan sin la marca; nadie pasa a calificado solo.
+        builder.Property(x => x.KeepQualified).IsRequired().HasDefaultValue(false);
+
         builder.Property(x => x.UserId).IsRequired();
         builder.HasIndex(x => x.UserId).IsUnique();
 

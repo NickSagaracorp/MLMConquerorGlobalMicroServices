@@ -43,6 +43,13 @@ public class MemberProfile : AuditChangesStringKey, IAuditable
     public DateTime EnrollDate { get; set; }
     public string? SponsorMemberId { get; set; }
     public string? ReplicateSiteSlug { get; set; }
+
+    /// <summary>
+    /// Marca de mantener calificado (Plan J, corrección de Nick N3): con la membresía activa, cuenta
+    /// como calificado aunque se inscribiera hace más de 12 meses y no haya pagado la anualidad.
+    /// Por defecto false. Editarla desde el Admin queda fuera del Plan J.
+    /// </summary>
+    public bool KeepQualified { get; set; }
     public string? ProfilePhotoUrl { get; set; }
 
     /// <summary>
