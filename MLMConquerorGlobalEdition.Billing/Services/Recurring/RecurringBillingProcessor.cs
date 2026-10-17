@@ -9,6 +9,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Billing;
 using MLMConquerorGlobalEdition.Repository.Services.Funds;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Billing;
@@ -38,6 +39,12 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
     /// no se movió nada, el pedido se canceló y el estado sigue igual para la siguiente pasada.
     /// </summary>
     public const string MemberFundsBusyCode = "MEMBER_FUNDS_BUSY";
+
+    /// <summary>La membresía está cancelada o con la cancelación cumplida: el estado se para sin cobrar.</summary>
+    public const string ReasonMembershipCancelled = MembershipBillingStops.ReasonMembershipCancelled;
+
+    /// <summary>La membresía es gratuita: el estado se para sin cobrar.</summary>
+    public const string ReasonMembershipFree = MembershipBillingStops.ReasonMembershipFree;
 
     public RecurringBillingProcessor(
         AppDbContext db,
@@ -101,6 +108,26 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
                 BillingStateId = billingStateId,
                 Outcome        = "Skipped",
                 FailureReason  = "Billing state is Stopped."
+            });
+        }
+
+        // Plan K (revisión, C2): una membresía cancelada, con la cancelación cumplida o gratuita no se
+        // cobra, tampoco forzado. Se para el estado sin pedido ni intento y sin tocar la membresía (si no,
+        // el tope de días sin cobrar le pondría HoldByBilling o Expired encima de la cancelación).
+        var subscriptionToCheck = await _db.MembershipSubscriptions.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == state.MembershipSubscriptionId && !s.IsDeleted, ct);
+        var notBillable = subscriptionToCheck is null ? null : MembershipBillingStops.WhyNotBillable(subscriptionToCheck, now);
+        if (notBillable is not null)
+        {
+            MembershipBillingStops.Stop(state, notBillable, now, Actor);
+            await _db.SaveChangesAsync(ct);
+            _logger.LogInformation("Renovación {StateId} de {MemberId}: estado parado sin cobrar ({Reason}).",
+                state.Id, state.MemberId, notBillable);
+            return Result<RecurringBillingProcessorResult>.Success(new RecurringBillingProcessorResult
+            {
+                BillingStateId = billingStateId,
+                Outcome        = "Skipped",
+                FailureReason  = notBillable
             });
         }
 
