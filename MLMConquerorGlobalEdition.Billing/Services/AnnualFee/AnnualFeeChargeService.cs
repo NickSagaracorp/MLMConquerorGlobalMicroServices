@@ -117,9 +117,11 @@ public sealed partial class AnnualFeeChargeService : IAnnualFeeChargeService
             // 1. Un token de cuota, si lo hay: siempre (K6).
             var settled = await SettleWithTokenAsync(state, price, AnnualFeePaymentSource.Automatic, null, AutoActor, rule, ct);
 
-            // 2. Comisiones, solo con la preferencia (K7).
+            // 2. Comisiones y 3. eWallet, solo con la preferencia (K7).
             if (settled.Kind == SettleKind.NotPossible && member!.FeesFromBalance)
                 settled = await SettleWithCommissionsAsync(state, price, AnnualFeePaymentSource.Automatic, null, AutoActor, rule, ct);
+            if (settled.Kind == SettleKind.NotPossible && member!.FeesFromBalance)
+                settled = await SettleWithEWalletAsync(state, price, AnnualFeePaymentSource.Automatic, null, AutoActor, rule, ct);
 
             if (settled.Kind != SettleKind.NotPossible)
                 return Outcome(settled);
