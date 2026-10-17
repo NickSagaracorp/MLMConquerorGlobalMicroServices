@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using MLMConquerorGlobalEdition.Billing.Services;
@@ -18,10 +19,14 @@ using MLMConquerorGlobalEdition.SharedKernel.Billing;
 namespace MLMConquerorGlobalEdition.Billing.Tests.Services.Recurring;
 
 /// <summary>
-/// Regla de Nick: nunca se cobra con el stub. SpreedlyCardGatewayService devuelve un "éxito" con un id
-/// "simulated-…" y StubGatewayBase uno "STUB-…". Siendo RecurringBillingProcessor el único motor (Plan
-/// K), daría la renovación por pagada con dinero inventado. No se renueva, no avanza el estado y el
-/// pedido se cancela. El camino de comisiones (dinero real) no cambia.
+/// Regla de Nick: nunca se cobra con el stub (Plan K, K19 y revisión I1).
+/// <list type="bullet">
+///   <item>Con <c>Billing:Recurring:CardEnabled</c> apagado (por defecto) el motor no llama al gateway:
+///   intento Failed con CARD_DISABLED, cadencia normal y sin PaymentHistory.</item>
+///   <item>Encendido, un "éxito" simulado (ids "simulated-…" o "STUB-…") es un fallo: intento Failed con
+///   CARD_SIMULATED_CHARGE, cadencia normal, sin renovar.</item>
+///   <item>El camino de comisiones (dinero real) no cambia.</item>
+/// </list>
 /// </summary>
 public class RenovacionSimuladaTests
 {
@@ -46,7 +51,7 @@ public class RenovacionSimuladaTests
         db.MembershipSubscriptions.Add(new MembershipSubscription
         {
             Id = "sub-1", MemberId = "AMB-000001", MembershipLevelId = 3, SubscriptionStatus = MembershipStatus.Active,
-            StartDate = InicioAnterior, CreatedBy = "prueba"
+            StartDate = InicioAnterior, IsAutoRenew = true, CreatedBy = "prueba"
         });
         db.SubscriptionBillingStates.Add(new SubscriptionBillingState
         {
@@ -65,7 +70,14 @@ public class RenovacionSimuladaTests
         return db;
     }
 
-    private static RecurringBillingProcessor Procesador(AppDbContext db, string idDeTransaccion, string estado = "Success")
+    private static IConfiguration Tarjeta(bool encendida) =>
+        new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [RecurringCardSwitch.ConfigKey] = encendida ? "true" : "false"
+        }).Build();
+
+    private static (RecurringBillingProcessor Procesador, Mock<IGatewayChargeOrchestrator> Orquestador) Montar(
+        AppDbContext db, string idDeTransaccion, IConfiguration? configuracion)
     {
         var reloj = new Mock<IDateTimeProvider>();
         reloj.Setup(r => r.Now).Returns(Ahora);
@@ -80,42 +92,82 @@ public class RenovacionSimuladaTests
                 It.IsAny<OrchestratorChargeRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<OrchestratorChargeResult>.Success(new OrchestratorChargeResult
             {
-                Status = estado, GatewayTransactionId = idDeTransaccion, PaymentHistoryId = "ph-1", AmountCharged = 119.97m
+                Status = "Success", GatewayTransactionId = idDeTransaccion, PaymentHistoryId = "ph-1", AmountCharged = 119.97m
             }));
 
-        return new RecurringBillingProcessor(
+        var p = new RecurringBillingProcessor(
             db, new CommissionBalanceService(db, reloj.Object), new RecurringBillingScheduler(),
             ruta.Object, orquestador.Object, new Mock<ICardBrandDetector>().Object,
-            new TransactionOnlyGate(db), reloj.Object, NullLogger<RecurringBillingProcessor>.Instance);
+            new TransactionOnlyGate(db), reloj.Object, NullLogger<RecurringBillingProcessor>.Instance, configuracion);
+        return (p, orquestador);
+    }
+
+    private static async Task ComprobarFalloConCadenciaAsync(AppDbContext db, string codigo)
+    {
+        (await db.Orders.SingleAsync()).Status.Should().Be(OrderStatus.Cancelled);
+        var intento = await db.RecurringBillingAttempts.SingleAsync();
+        intento.Outcome.Should().Be(RecurringAttemptOutcome.Failed);
+        intento.FundingSource.Should().Be(RecurringFundingSource.CreditCard);
+        intento.FailureReason.Should().StartWith(codigo);
+        intento.PaymentHistoryId.Should().BeNull();
+
+        var estado = await db.SubscriptionBillingStates.AsNoTracking().SingleAsync();
+        estado.LastSuccessfulBillingDate.Should().BeNull();
+        estado.CurrentAttemptIndex.Should().Be(1);
+        estado.NextAttemptDate.Should().Be(Ahora.Date.AddDays(1)); // cadencia "1,2"
+        estado.LastFailureReason.Should().StartWith(codigo);
+        (await db.MembershipSubscriptions.AsNoTracking().SingleAsync()).StartDate.Should().Be(InicioAnterior);
+    }
+
+    [Fact]
+    public async Task Con_la_tarjeta_apagada_por_defecto_no_llama_al_gateway_y_sigue_la_cadencia()
+    {
+        await using var db = await SembrarAsync();
+        var (procesador, orquestador) = Montar(db, "ch_real", configuracion: null);
+
+        var r = await procesador.ProcessAsync("estado-1");
+
+        r.IsSuccess.Should().BeTrue();
+        r.Value!.Outcome.Should().Be("Failed");
+        r.Value.FailureReason.Should().StartWith(RecurringCardSwitch.CardDisabledCode);
+        orquestador.VerifyNoOtherCalls();
+        (await db.PaymentHistories.CountAsync()).Should().Be(0);
+        await ComprobarFalloConCadenciaAsync(db, RecurringCardSwitch.CardDisabledCode);
+    }
+
+    [Fact]
+    public async Task Con_la_tarjeta_apagada_explicitamente_tampoco()
+    {
+        await using var db = await SembrarAsync();
+        var (procesador, orquestador) = Montar(db, "ch_real", Tarjeta(false));
+
+        (await procesador.ProcessAsync("estado-1")).Value!.FailureReason.Should().StartWith(RecurringCardSwitch.CardDisabledCode);
+        orquestador.VerifyNoOtherCalls();
     }
 
     [Theory]
     [InlineData("simulated-7f3a")]
     [InlineData("STUB-NmiSpreedly-1")]
-    public async Task Un_exito_simulado_no_renueva_ni_avanza_el_estado(string idSimulado)
+    public async Task Encendida_un_exito_simulado_es_un_fallo_con_cadencia(string idSimulado)
     {
         await using var db = await SembrarAsync();
+        var (procesador, _) = Montar(db, idSimulado, Tarjeta(true));
 
-        var r = await Procesador(db, idSimulado).ProcessAsync("estado-1");
+        var r = await procesador.ProcessAsync("estado-1");
 
-        r.IsSuccess.Should().BeFalse();
-        r.ErrorCode.Should().Be(TokenPurchaseErrors.CardSimulatedCharge);
-        (await db.Orders.SingleAsync()).Status.Should().Be(OrderStatus.Cancelled);
-        (await db.RecurringBillingAttempts.CountAsync(a => a.Outcome == RecurringAttemptOutcome.Success)).Should().Be(0);
-
-        var estado = await db.SubscriptionBillingStates.AsNoTracking().SingleAsync();
-        estado.LastSuccessfulBillingDate.Should().BeNull();
-        estado.NextAttemptDate.Should().Be(Ahora.Date);
-        estado.CurrentAttemptIndex.Should().Be(0);
-        (await db.MembershipSubscriptions.AsNoTracking().SingleAsync()).StartDate.Should().Be(InicioAnterior);
+        r.IsSuccess.Should().BeTrue();
+        r.Value!.Outcome.Should().Be("Failed");
+        r.Value.FailureReason.Should().StartWith(TokenPurchaseErrors.CardSimulatedCharge);
+        await ComprobarFalloConCadenciaAsync(db, TokenPurchaseErrors.CardSimulatedCharge);
     }
 
     [Fact]
-    public async Task Un_cobro_real_sigue_renovando()
+    public async Task Encendida_un_cobro_real_sigue_renovando()
     {
         await using var db = await SembrarAsync();
+        var (procesador, _) = Montar(db, "ch_3Pq9real", Tarjeta(true));
 
-        var r = await Procesador(db, "ch_3Pq9real").ProcessAsync("estado-1");
+        var r = await procesador.ProcessAsync("estado-1");
 
         r.IsSuccess.Should().BeTrue();
         r.Value!.Outcome.Should().Be("Success");
@@ -123,14 +175,16 @@ public class RenovacionSimuladaTests
     }
 
     [Fact]
-    public async Task Con_comisiones_suficientes_paga_con_comisiones_y_ni_siquiera_llama_a_la_tarjeta()
+    public async Task Con_comisiones_suficientes_paga_con_comisiones_y_ni_siquiera_mira_la_tarjeta()
     {
         await using var db = await SembrarAsync(comisionesPrimero: true, comision: 500m);
+        var (procesador, orquestador) = Montar(db, "simulated-no-se-llega", configuracion: null);
 
-        var r = await Procesador(db, "simulated-no-se-llega").ProcessAsync("estado-1");
+        var r = await procesador.ProcessAsync("estado-1");
 
         r.IsSuccess.Should().BeTrue();
         r.Value!.FundingSource.Should().Be("CommissionBalance");
         (await db.Orders.SingleAsync()).Status.Should().Be(OrderStatus.Paid);
+        orquestador.VerifyNoOtherCalls();
     }
 }

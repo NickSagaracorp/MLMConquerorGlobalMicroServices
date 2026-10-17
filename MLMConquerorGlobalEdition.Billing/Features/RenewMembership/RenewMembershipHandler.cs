@@ -24,6 +24,7 @@ public class RenewMembershipHandler : IRequestHandler<RenewMembershipCommand, Re
     private readonly ICardBrandDetector         _brandDetector;
     private readonly ICurrentUserService        _currentUser;
     private readonly IDateTimeProvider          _dateTime;
+    private readonly Microsoft.Extensions.Configuration.IConfiguration? _configuration;
 
     public RenewMembershipHandler(
         AppDbContext db,
@@ -32,7 +33,8 @@ public class RenewMembershipHandler : IRequestHandler<RenewMembershipCommand, Re
         IGatewayChargeOrchestrator orchestrator,
         ICardBrandDetector brandDetector,
         ICurrentUserService currentUser,
-        IDateTimeProvider dateTime)
+        IDateTimeProvider dateTime,
+        Microsoft.Extensions.Configuration.IConfiguration? configuration = null)
     {
         _db                    = db;
         _legacyGatewayResolver = legacyGatewayResolver;
@@ -41,6 +43,7 @@ public class RenewMembershipHandler : IRequestHandler<RenewMembershipCommand, Re
         _brandDetector         = brandDetector;
         _currentUser           = currentUser;
         _dateTime              = dateTime;
+        _configuration         = configuration;
     }
 
     public async Task<Result<ChargeResponse>> Handle(RenewMembershipCommand command, CancellationToken ct)
@@ -90,6 +93,13 @@ public class RenewMembershipHandler : IRequestHandler<RenewMembershipCommand, Re
         // ── Routing path decision ──────────────────────────────────────────
         if (RecurringRoutedCountries.Contains(cardholderCountry))
         {
+            // Plan K (revisión I2): la tarjeta es un stub hasta el Plan I. Con el interruptor apagado (por
+            // defecto) no se crea pedido ni se llama al gateway: nada de renovaciones con dinero inventado.
+            if (!MLMConquerorGlobalEdition.Billing.Services.Recurring.RecurringCardSwitch.IsEnabled(_configuration))
+                return Result<ChargeResponse>.Failure(
+                    MLMConquerorGlobalEdition.Billing.Services.Recurring.RecurringCardSwitch.CardDisabledCode,
+                    "Card renewals are disabled until the card gateway is real (Plan I).");
+
             return await HandleWithRoutingEngineAsync(
                 req, subscription, renewalPrice, cardholderCountry, now, ct);
         }

@@ -76,6 +76,21 @@ public class DelayedFallbackChargeJob
 
         var result = await gateway.ChargeAsync(req, ct);
 
+        // Plan K (revisión C3): un "éxito" del stub no es dinero. Se registra como fallo, sin
+        // PaymentHistory. Pendiente para el Plan I (bloqueante antes de encender Billing:Recurring:CardEnabled):
+        // este trabajo no cierra el pedido ni avanza el estado ni la suscripción tras un cobro diferido.
+        var simulated = result.IsSuccess
+                        && Services.Tokens.CardChargeOutcomes.IsSimulated(result.Value?.GatewayTransactionId);
+        if (simulated)
+        {
+            _logger.LogCritical(
+                "DelayedFallbackChargeJob: {Proc} devolvió un cobro simulado ({TxId}) para {MemberId}; no cuenta como cobro.",
+                processor, result.Value!.GatewayTransactionId, memberId);
+            result = MLMConquerorGlobalEdition.SharedKernel.Result<GatewayChargeResult>.Failure(
+                MLMConquerorGlobalEdition.SharedKernel.Billing.TokenPurchaseErrors.CardSimulatedCharge,
+                $"{MLMConquerorGlobalEdition.SharedKernel.Billing.TokenPurchaseErrors.CardSimulatedCharge}: simulated charge {result.Value.GatewayTransactionId}.");
+        }
+
         var attempt = new GatewayChargeAttempt
         {
             RouteBucketKey       = routeBucketKey,

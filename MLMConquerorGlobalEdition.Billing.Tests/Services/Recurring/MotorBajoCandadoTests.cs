@@ -101,9 +101,9 @@ public class MotorBajoCandadoTests
 
         var r = await Procesador(db, new TransactionOnlyGate(db)).ProcessAsync("estado-1");
 
-        // Sin saldo gastable pasa a la tarjeta, que en la prueba no tiene ruta.
-        r.IsSuccess.Should().BeFalse();
-        r.ErrorCode.Should().Be("NO_ROUTE");
+        // Sin saldo gastable pasa a la tarjeta, que está apagada: fallo con cadencia.
+        r.Value!.Outcome.Should().Be("Failed");
+        r.Value.FailureReason.Should().StartWith(RecurringCardSwitch.CardDisabledCode);
         (await db.CommissionEarnings.CountAsync(e => e.Amount < 0)).Should().Be(0);
     }
 
@@ -130,7 +130,7 @@ public class MotorBajoCandadoTests
 
         var r = await Procesador(db, new TransactionOnlyGate(db)).ProcessAsync("estado-1");
 
-        r.IsSuccess.Should().Be(paga);
+        (r.Value!.Outcome == "Success").Should().Be(paga);
         (await db.CommissionEarnings.CountAsync(e => e.Amount < 0)).Should().Be(paga ? 1 : 0);
     }
 
@@ -142,9 +142,9 @@ public class MotorBajoCandadoTests
 
         var r = await Procesador(db, candado).ProcessAsync("estado-1");
 
-        // Sin saldo pasa a la tarjeta, que en la prueba no tiene ruta.
-        r.IsSuccess.Should().BeFalse();
-        r.ErrorCode.Should().Be("NO_ROUTE");
+        // Sin saldo pasa a la tarjeta, que está apagada: fallo con cadencia.
+        r.Value!.Outcome.Should().Be("Failed");
+        r.Value.FailureReason.Should().StartWith(RecurringCardSwitch.CardDisabledCode);
         candado.Entered.Should().Equal(Miembro);
         (await db.CommissionEarnings.CountAsync(e => e.Amount < 0)).Should().Be(0);
         (await db.Orders.SingleAsync()).Status.Should().Be(OrderStatus.Cancelled);

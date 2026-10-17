@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.Billing.Services.CardGateway;
 using MLMConquerorGlobalEdition.Billing.Services.Routing;
@@ -31,6 +32,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
     private readonly IMemberFundsGate _gate;
     private readonly IDateTimeProvider _dateTime;
     private readonly ILogger<RecurringBillingProcessor> _logger;
+    private readonly IConfiguration? _configuration;
 
     private const string Actor = "recurring-billing-engine";
 
@@ -55,7 +57,8 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
         ICardBrandDetector brandDetector,
         IMemberFundsGate gate,
         IDateTimeProvider dateTime,
-        ILogger<RecurringBillingProcessor> logger)
+        ILogger<RecurringBillingProcessor> logger,
+        IConfiguration? configuration = null)
     {
         _db               = db;
         _commissionBalance = commissionBalance;
@@ -66,6 +69,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
         _gate             = gate;
         _dateTime         = dateTime;
         _logger           = logger;
+        _configuration    = configuration;
     }
 
     public async Task<Result<RecurringBillingProcessorResult>> ProcessAsync(
@@ -407,6 +411,13 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
         DateTime now,
         CancellationToken ct)
     {
+        // Plan K (revisión I1): con la tarjeta apagada (por defecto, mientras el gateway sea un stub) ni
+        // se llama al gateway: sin PaymentHistory simulado. Es un fallo normal: intento Failed y cadencia.
+        if (!RecurringCardSwitch.IsEnabled(_configuration))
+            return await RecordCardFailureAsync(state, plan, order, productId, amountDue, now,
+                RecurringCardSwitch.CardDisabledCode,
+                "Recurring card billing is disabled until the card gateway is real (Plan I).", ct);
+
         // Determine cardholder country
         var memberProfile = await _db.MemberProfiles
             .AsNoTracking()
@@ -457,45 +468,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
         var chargeResult = await _orchestrator.ExecuteAsync(planResult.Value!, routingCtx, chargeReq, ct);
 
         if (!chargeResult.IsSuccess)
-        {
-            // Card charge failed
-            await CancelOrderAsync(order, now, ct);
-
-            _scheduler.Advance(state, plan, succeeded: false, attemptDate: now);
-            state.LastFailureReason = chargeResult.Error;
-            state.LastUpdateDate    = now;
-            state.LastUpdateBy      = Actor;
-
-            var failAttempt = new RecurringBillingAttempt
-            {
-                SubscriptionBillingStateId = state.Id,
-                MemberId                   = state.MemberId,
-                ProductId                  = productId,
-                AttemptIndex               = state.CurrentAttemptIndex,
-                AttemptedAt                = now,
-                Amount                     = amountDue,
-                FundingSource              = RecurringFundingSource.CreditCard,
-                Outcome                    = RecurringAttemptOutcome.Failed,
-                OrderId                    = order.Id,
-                FailureReason              = chargeResult.Error,
-                CreatedBy                  = Actor,
-                CreationDate               = now
-            };
-            _db.RecurringBillingAttempts.Add(failAttempt);
-
-            if (state.Status == RecurringBillingStatus.Stopped)
-                await ApplyTerminalMembershipStatusAsync(state, plan, ct);
-
-            await _db.SaveChangesAsync(ct);
-
-            return Result<RecurringBillingProcessorResult>.Success(new RecurringBillingProcessorResult
-            {
-                BillingStateId = state.Id,
-                Outcome        = "Failed",
-                FundingSource  = "CreditCard",
-                FailureReason  = chargeResult.Error
-            });
-        }
+            return await RecordCardFailureAsync(state, plan, order, productId, amountDue, now, null, chargeResult.Error, ct);
 
         var outcome = chargeResult.Value!;
 
@@ -528,19 +501,19 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
             });
         }
 
-        // Plan K (regla de Nick: nunca se cobra con el stub). El gateway de Spreedly todavía devuelve un
-        // "éxito" simulado. Eso no es dinero: ni se renueva ni avanza el estado, para que el día que el
-        // cobro sea real se intente de verdad. El pedido se cancela. El PaymentHistory que el orquestador
-        // ya escribió queda (es suyo): §13 dice cómo encontrarlo.
+        // Plan K (regla de Nick: nunca se cobra con el stub; revisión I1). Con la tarjeta encendida por
+        // error, el gateway de Spreedly devuelve un "éxito" simulado. Eso no es dinero: es un fallo normal
+        // (intento Failed y cadencia), sin renovar. El PaymentHistory que el orquestador ya escribió queda
+        // (es suyo): §13 da la consulta para encontrarlos.
         if (CardChargeOutcomes.IsSimulated(outcome.GatewayTransactionId))
         {
             _logger.LogCritical(
                 "Renovación {StateId} de {MemberId}: la tarjeta devolvió un cobro simulado ({TxId}). No se renueva; " +
                 "el cobro con tarjeta del motor no puede darse por bueno mientras el gateway sea un stub.",
                 state.Id, state.MemberId, outcome.GatewayTransactionId);
-            await CancelOrderAsync(order, now, ct);
-            return Result<RecurringBillingProcessorResult>.Failure(TokenPurchaseErrors.CardSimulatedCharge,
-                "The card gateway returned a simulated charge; the renewal was not applied.");
+            return await RecordCardFailureAsync(state, plan, order, productId, amountDue, now,
+                TokenPurchaseErrors.CardSimulatedCharge,
+                $"The card gateway returned a simulated charge ({outcome.GatewayTransactionId}); the renewal was not applied.", ct);
         }
 
         // Immediate success
@@ -583,6 +556,64 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
             FundingSource    = "CreditCard",
             PaymentHistoryId = outcome.PaymentHistoryId,
             OrderId          = order.Id
+        });
+    }
+
+    /// <summary>
+    /// Un intento con tarjeta que no cobró: cancela el pedido, avanza la cadencia del plan como fallo,
+    /// deja el motivo en el estado y en el intento (con el código delante si lo hay) y, si la cadencia
+    /// se agota, aplica el estado terminal de la membresía.
+    /// </summary>
+    private async Task<Result<RecurringBillingProcessorResult>> RecordCardFailureAsync(
+        SubscriptionBillingState state,
+        RecurringBillingPlan plan,
+        Orders order,
+        string productId,
+        decimal amountDue,
+        DateTime now,
+        string? code,
+        string? error,
+        CancellationToken ct)
+    {
+        var reason = code is null ? error : $"{code}: {error}";
+        if (reason is { Length: > 500 }) reason = reason[..500];
+
+        order.Status         = OrderStatus.Cancelled;
+        order.LastUpdateDate = now;
+        order.LastUpdateBy   = Actor;
+
+        _scheduler.Advance(state, plan, succeeded: false, attemptDate: now);
+        state.LastFailureReason = reason;
+        state.LastUpdateDate    = now;
+        state.LastUpdateBy      = Actor;
+
+        _db.RecurringBillingAttempts.Add(new RecurringBillingAttempt
+        {
+            SubscriptionBillingStateId = state.Id,
+            MemberId                   = state.MemberId,
+            ProductId                  = productId,
+            AttemptIndex               = state.CurrentAttemptIndex,
+            AttemptedAt                = now,
+            Amount                     = amountDue,
+            FundingSource              = RecurringFundingSource.CreditCard,
+            Outcome                    = RecurringAttemptOutcome.Failed,
+            OrderId                    = order.Id,
+            FailureReason              = reason,
+            CreatedBy                  = Actor,
+            CreationDate               = now
+        });
+
+        if (state.Status == RecurringBillingStatus.Stopped)
+            await ApplyTerminalMembershipStatusAsync(state, plan, ct);
+
+        await _db.SaveChangesAsync(ct);
+
+        return Result<RecurringBillingProcessorResult>.Success(new RecurringBillingProcessorResult
+        {
+            BillingStateId = state.Id,
+            Outcome        = "Failed",
+            FundingSource  = "CreditCard",
+            FailureReason  = reason
         });
     }
 
