@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using MLMConquerorGlobalEdition.Billing.Services.CardGateway;
 using MLMConquerorGlobalEdition.Billing.Services.Routing;
@@ -7,6 +8,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Funds;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.Billing.Services.Recurring;
@@ -23,10 +25,17 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
     private readonly IGatewayRouter _router;
     private readonly IGatewayChargeOrchestrator _orchestrator;
     private readonly ICardBrandDetector _brandDetector;
+    private readonly IMemberFundsGate _gate;
     private readonly IDateTimeProvider _dateTime;
     private readonly ILogger<RecurringBillingProcessor> _logger;
 
     private const string Actor = "recurring-billing-engine";
+
+    /// <summary>
+    /// El candado de fondos del miembro estaba tomado (un pago, una compra de tokens, otra renovación):
+    /// no se movió nada, el pedido se canceló y el estado sigue igual para la siguiente pasada.
+    /// </summary>
+    public const string MemberFundsBusyCode = "MEMBER_FUNDS_BUSY";
 
     public RecurringBillingProcessor(
         AppDbContext db,
@@ -35,6 +44,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
         IGatewayRouter router,
         IGatewayChargeOrchestrator orchestrator,
         ICardBrandDetector brandDetector,
+        IMemberFundsGate gate,
         IDateTimeProvider dateTime,
         ILogger<RecurringBillingProcessor> logger)
     {
@@ -44,6 +54,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
         _router           = router;
         _orchestrator     = orchestrator;
         _brandDetector    = brandDetector;
+        _gate             = gate;
         _dateTime         = dateTime;
         _logger           = logger;
     }
@@ -137,20 +148,130 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
         // 5. Create the renewal Order (Processing)
         var order = await CreateRenewalOrderAsync(state, subscription, productId, amountDue, now, ct);
 
-        // 6. Commission-balance first?
+        // 6. Commission-balance first? Bajo el candado de fondos del miembro (Plan K, K18): sin candado,
+        //    un pago (PayoutOrchestrator) o una compra de tokens podía gastar las mismas comisiones a la
+        //    vez. El saldo se lee DENTRO del candado. El criterio sigue siendo el disponible
+        //    (GetAvailableAsync): pasar al gastable cambiaría qué renovaciones se pagan con comisiones y
+        //    está pendiente de Nick (Plan K, R7).
         if (plan.PayFromCommissionBalanceFirst)
         {
-            var balance = await _commissionBalance.GetAvailableAsync(state.MemberId, ct);
-            if (balance.Available >= amountDue)
-            {
-                return await HandleCommissionFundedAsync(
-                    state, plan, planProduct, subscription, order, productId, amountDue, now, ct);
-            }
+            var funded = await TryCommissionFundedAsync(
+                state, plan, planProduct, subscription, order, productId, amountDue, now, ct);
+            if (funded is not null) return funded;
         }
 
         // 7. Fall through to card charge
         return await HandleCardChargeAsync(
             state, plan, subscription, order, productId, amountDue, now, ct);
+    }
+
+    /// <summary>
+    /// Paga con comisiones bajo el candado del miembro. Null = el saldo no alcanza y se pasa a la
+    /// tarjeta. Ocupado = se cancela el pedido y no se toca el estado. Si algo falla dentro, se deshace
+    /// entero (también el débito, que FundWithCommissionBalanceAsync escribe antes de comprobar el tipo
+    /// de token) y el pedido se cancela después.
+    /// </summary>
+    private async Task<Result<RecurringBillingProcessorResult>?> TryCommissionFundedAsync(
+        SubscriptionBillingState state,
+        RecurringBillingPlan plan,
+        RecurringBillingPlanProduct? planProduct,
+        MembershipSubscription subscription,
+        Orders order,
+        string productId,
+        decimal amountDue,
+        DateTime now,
+        CancellationToken ct)
+    {
+        // Lo que el contexto tiene cargado antes de entrar está guardado (el pedido se acaba de crear):
+        // si hay que deshacer, eso se relee y lo nuevo se suelta. No se limpia el contexto entero porque
+        // lo comparte quien llama (el trabajador guarda su trozo al final).
+        var before = _db.ChangeTracker.Entries().Select(e => e.Entity).ToHashSet(ReferenceEqualityComparer.Instance);
+
+        IDbContextTransaction tx;
+        try
+        {
+            tx = await _gate.EnterAsync(state.MemberId, ct);
+        }
+        catch (MemberFundsBusyException)
+        {
+            _logger.LogWarning(
+                "Renovación {StateId} de {MemberId}: el candado de fondos está ocupado; se reintenta en la siguiente pasada.",
+                state.Id, state.MemberId);
+            await CancelOrderAsync(order, now, ct);
+            return Result<RecurringBillingProcessorResult>.Failure(MemberFundsBusyCode,
+                $"Funds of member {state.MemberId} are busy; the renewal will be retried on the next pass.");
+        }
+
+        await using (tx)
+        {
+            var balance = await _commissionBalance.GetAvailableAsync(state.MemberId, ct);
+            if (balance.Available < amountDue)
+            {
+                await tx.RollbackAsync(CancellationToken.None);
+                return null;
+            }
+
+            try
+            {
+                var result = await HandleCommissionFundedAsync(
+                    state, plan, planProduct, subscription, order, productId, amountDue, now, ct);
+
+                if (result.IsSuccess)
+                {
+                    await tx.CommitAsync(ct);
+                    return result;
+                }
+
+                await tx.RollbackAsync(CancellationToken.None);
+                await ForgetRolledBackAsync(before);
+                await CancelOrderAfterRollbackAsync(order, now);
+                return result;
+            }
+            catch (Exception original)
+            {
+                await tx.RollbackAsync(CancellationToken.None);
+                try
+                {
+                    await ForgetRolledBackAsync(before);
+                    await CancelOrderAfterRollbackAsync(order, now);
+                }
+                catch (Exception cleanup)
+                {
+                    // Que la limpieza no tape el error de verdad. Lo deshecho, deshecho está; un pedido
+                    // que quede en Processing no cobra nada.
+                    _logger.LogError(cleanup,
+                        "Renovación {StateId} de {MemberId}: no se pudo cancelar el pedido {OrderId} tras deshacer ({Error}).",
+                        state.Id, state.MemberId, order.Id, original.Message);
+                }
+                throw;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Tras deshacer, lo que el contexto creía guardado dentro de la transacción ya no lo está: lo que
+    /// se añadió se suelta y lo que ya estaba se relee de la base.
+    /// </summary>
+    private async Task ForgetRolledBackAsync(HashSet<object> before)
+    {
+        foreach (var entry in _db.ChangeTracker.Entries().ToList())
+        {
+            if (!before.Contains(entry.Entity))
+                entry.State = EntityState.Detached;
+            else
+                await entry.ReloadAsync(CancellationToken.None);
+        }
+    }
+
+    /// <summary>Cancela el pedido (creado y guardado antes del candado) si sigue en Processing.</summary>
+    private async Task CancelOrderAfterRollbackAsync(Orders order, DateTime now)
+    {
+        if (_db.Entry(order).State == EntityState.Detached || order.Status != OrderStatus.Processing) return;
+
+        order.Status         = OrderStatus.Cancelled;
+        order.LastUpdateDate = now;
+        order.LastUpdateBy   = Actor;
+        await _db.SaveChangesAsync(CancellationToken.None);
     }
 
     // ── Commission-balance path ───────────────────────────────────────────────

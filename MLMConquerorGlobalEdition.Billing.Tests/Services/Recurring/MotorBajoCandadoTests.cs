@@ -1,0 +1,176 @@
+using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
+using MLMConquerorGlobalEdition.Billing.Services;
+using MLMConquerorGlobalEdition.Billing.Services.Recurring;
+using MLMConquerorGlobalEdition.Billing.Services.Routing;
+using MLMConquerorGlobalEdition.Billing.Tests.Helpers;
+using MLMConquerorGlobalEdition.Domain.Entities.Billing;
+using MLMConquerorGlobalEdition.Domain.Entities.Commission;
+using MLMConquerorGlobalEdition.Domain.Entities.Membership;
+using MLMConquerorGlobalEdition.Domain.Entities.Orders;
+using MLMConquerorGlobalEdition.Domain.Enums;
+using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Services.Funds;
+using MLMConquerorGlobalEdition.SharedKernel;
+
+namespace MLMConquerorGlobalEdition.Billing.Tests.Services.Recurring;
+
+/// <summary>
+/// Plan K (K18): la renovación de Travel Advantage pagada con comisiones toma el candado de fondos del
+/// miembro, igual que la compra de tokens. Sin candado, un pago y una renovación podían gastar las
+/// mismas comisiones a la vez. El criterio de saldo NO cambia en esta ronda (sigue siendo el
+/// disponible): pasar al gastable cambia qué renovaciones se pagan con comisiones y Nick no lo ha
+/// confirmado (R7, K18).
+/// </summary>
+public class MotorBajoCandadoTests
+{
+    private static readonly DateTime Ahora = new(2026, 10, 20, 9, 0, 0);
+    private const string Miembro = "AMB-000001";
+
+    private static async Task<AppDbContext> SembrarAsync(decimal comision, DateTime pagableDesde, int? tipoDeToken = 100)
+    {
+        var db = TestDbContextFactory.Create();
+        db.RecurringBillingPlans.Add(new RecurringBillingPlan
+        {
+            Id = 1, Name = "Travel Advantage", CycleType = RecurringCycleType.Every30Days, RetryCadenceDays = "1,2",
+            OnAllRetriesFail = RecurringFailurePolicy.RetryOnMonthlyAnniversary, StopAfterUnbilledDays = 90,
+            PayFromCommissionBalanceFirst = true, TokenTypeId = tipoDeToken, IsActive = true, CreatedBy = "prueba"
+        });
+        db.MembershipLevels.Add(new MembershipLevel { Id = 3, Name = "Travel Advantage - Elite", SortOrder = 3, CreatedBy = "prueba" });
+        db.Products.Add(new Product
+        {
+            Id = "prod-elite", Name = "Travel Advantage Elite", Description = "", ImageUrl = "", MembershipLevelId = 3,
+            MonthlyFee = 119.97m, SetupFee = 0m, IsActive = true, CreatedBy = "prueba"
+        });
+        db.MembershipSubscriptions.Add(new MembershipSubscription
+        {
+            Id = "sub-1", MemberId = Miembro, MembershipLevelId = 3, SubscriptionStatus = MembershipStatus.Active,
+            StartDate = Ahora.AddDays(-30), CreatedBy = "prueba"
+        });
+        db.SubscriptionBillingStates.Add(new SubscriptionBillingState
+        {
+            Id = "estado-1", MembershipSubscriptionId = "sub-1", MemberId = Miembro, RecurringBillingPlanId = 1,
+            BillingAnchorDate = Ahora.AddDays(-30), NextBillingDate = Ahora.Date, NextAttemptDate = Ahora.Date,
+            Status = RecurringBillingStatus.Active, CreatedBy = "prueba"
+        });
+        db.CommissionEarnings.Add(new CommissionEarning
+        {
+            BeneficiaryMemberId = Miembro, CommissionTypeId = 1, Amount = comision, Status = CommissionEarningStatus.Pending,
+            EarnedDate = pagableDesde.AddDays(-7), PaymentDate = pagableDesde, CreatedBy = "prueba"
+        });
+        await db.SaveChangesAsync();
+        return db;
+    }
+
+    private static RecurringBillingProcessor Procesador(AppDbContext db, IMemberFundsGate candado)
+    {
+        var reloj = new Mock<IDateTimeProvider>();
+        reloj.Setup(r => r.Now).Returns(Ahora);
+        var ruta = new Mock<IGatewayRouter>();
+        ruta.Setup(r => r.ResolveAsync(It.IsAny<GatewayRoutingContext>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<GatewayRoutingPlan>.Failure("NO_ROUTE", "Sin ruta en la prueba."));
+
+        return new RecurringBillingProcessor(
+            db, new CommissionBalanceService(db, reloj.Object), new RecurringBillingScheduler(),
+            ruta.Object, new Mock<IGatewayChargeOrchestrator>().Object, new Mock<ICardBrandDetector>().Object,
+            candado, reloj.Object, NullLogger<RecurringBillingProcessor>.Instance);
+    }
+
+    [Fact]
+    public async Task Con_saldo_paga_con_comisiones_dentro_del_candado()
+    {
+        await using var db = await SembrarAsync(200m, Ahora.AddDays(-1));
+        var candado = new TransactionOnlyGate(db);
+
+        var r = await Procesador(db, candado).ProcessAsync("estado-1");
+
+        r.IsSuccess.Should().BeTrue();
+        r.Value!.Outcome.Should().Be("Success");
+        r.Value.FundingSource.Should().Be("CommissionBalance");
+        candado.Entered.Should().Equal(Miembro);
+        (await db.Orders.SingleAsync()).Status.Should().Be(OrderStatus.Paid);
+        (await db.CommissionEarnings.SingleAsync(e => e.Amount < 0)).Amount.Should().Be(-119.97m);
+    }
+
+    [Fact]
+    public async Task Mientras_Nick_no_confirme_K18_el_criterio_sigue_siendo_el_saldo_disponible()
+    {
+        // Comisiones aún no pagables (PaymentDate futura): el saldo disponible las cuenta y hoy pagan la
+        // renovación. Pasar al saldo gastable lo cambiaría; queda pendiente de Nick (R7).
+        await using var db = await SembrarAsync(200m, Ahora.AddDays(5));
+
+        var r = await Procesador(db, new TransactionOnlyGate(db)).ProcessAsync("estado-1");
+
+        r.IsSuccess.Should().BeTrue();
+        r.Value!.FundingSource.Should().Be("CommissionBalance");
+    }
+
+    [Fact]
+    public async Task Sin_saldo_suficiente_mira_dentro_del_candado_y_pasa_a_la_tarjeta_sin_debitar()
+    {
+        await using var db = await SembrarAsync(50m, Ahora.AddDays(-1));
+        var candado = new TransactionOnlyGate(db);
+
+        var r = await Procesador(db, candado).ProcessAsync("estado-1");
+
+        // Sin saldo pasa a la tarjeta, que en la prueba no tiene ruta.
+        r.IsSuccess.Should().BeFalse();
+        r.ErrorCode.Should().Be("NO_ROUTE");
+        candado.Entered.Should().Equal(Miembro);
+        (await db.CommissionEarnings.CountAsync(e => e.Amount < 0)).Should().Be(0);
+        (await db.Orders.SingleAsync()).Status.Should().Be(OrderStatus.Cancelled);
+    }
+
+    [Fact]
+    public async Task Con_el_candado_ocupado_no_debita_ni_avanza_y_cancela_el_pedido()
+    {
+        await using var db = await SembrarAsync(200m, Ahora.AddDays(-1));
+
+        var r = await Procesador(db, new BusyGate()).ProcessAsync("estado-1");
+
+        r.IsSuccess.Should().BeFalse();
+        r.ErrorCode.Should().Be(RecurringBillingProcessor.MemberFundsBusyCode);
+        (await db.CommissionEarnings.CountAsync(e => e.Amount < 0)).Should().Be(0);
+        (await db.Orders.SingleAsync()).Status.Should().Be(OrderStatus.Cancelled);
+        (await db.RecurringBillingAttempts.CountAsync()).Should().Be(0);
+
+        var estado = await db.SubscriptionBillingStates.AsNoTracking().SingleAsync();
+        estado.NextAttemptDate.Should().Be(Ahora.Date);
+        estado.CurrentAttemptIndex.Should().Be(0);
+        estado.LastSuccessfulBillingDate.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Un_fallo_dentro_del_candado_cancela_el_pedido_sin_soltar_lo_que_el_trabajador_tiene_cargado()
+    {
+        // Plan sin tipo de token: FundWithCommissionBalanceAsync escribe el débito y luego falla. En SQL
+        // Server el débito se deshace (SqlServerMotorBajoCandadoTests); InMemory no deshace. Aquí se
+        // comprueba lo que InMemory sí ve: el pedido se cancela, el estado no avanza y lo que el
+        // trabajador tenía cargado en el mismo contexto (su trozo) sigue rastreado para guardarlo al final.
+        await using var db = await SembrarAsync(200m, Ahora.AddDays(-1), tipoDeToken: null);
+        db.RecurringBillingBatches.Add(new RecurringBillingBatch
+        {
+            Id = "lote", RunDate = Ahora.Date, Gateway = CardProcessor.NmiSpreedly, WorkerCount = 1,
+            ScheduledStartTime = Ahora, CaseCount = 1, Status = RecurringBillingBatchStatus.InProgress, CreatedBy = "prueba"
+        });
+        db.RecurringBillingBatchShards.Add(new RecurringBillingBatchShard
+        {
+            Id = "trozo", BatchId = "lote", ShardIndex = 0, IdRangeStart = 1, IdRangeEnd = 100,
+            Status = RecurringBillingBatchStatus.InProgress, CreatedBy = "prueba"
+        });
+        await db.SaveChangesAsync();
+        var trozo = await db.RecurringBillingBatchShards.SingleAsync();
+
+        var r = await Procesador(db, new TransactionOnlyGate(db)).ProcessAsync("estado-1");
+
+        r.IsSuccess.Should().BeFalse();
+        r.ErrorCode.Should().Be("NO_TOKEN_TYPE");
+        db.Entry(trozo).State.Should().Be(EntityState.Unchanged);
+        (await db.Orders.AsNoTracking().SingleAsync()).Status.Should().Be(OrderStatus.Cancelled);
+        var estado = await db.SubscriptionBillingStates.AsNoTracking().SingleAsync();
+        estado.LastSuccessfulBillingDate.Should().BeNull();
+        estado.NextAttemptDate.Should().Be(Ahora.Date);
+    }
+}
