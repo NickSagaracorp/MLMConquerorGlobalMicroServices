@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
+using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 
@@ -53,6 +54,17 @@ public class IndicesDeReportesTests
     [Fact]
     public void Perfiles_por_fecha_de_alta()
         => TieneIndice(typeof(MemberProfile), "EnrollDate").Should().BeTrue();
+
+    [Theory]
+    [InlineData(typeof(MemberStatusHistory))]
+    [InlineData(typeof(MembershipStatusHistory))]
+    public void Historiales_por_miembro_y_fecha_y_por_fecha(Type historial)
+    {
+        TieneIndice(historial, "MemberId", "ChangedAt").Should().BeTrue();
+        TieneIndice(historial, "ChangedAt").Should().BeTrue();
+        using var db = ReportesDb.Nueva();
+        db.Model.FindEntityType(historial)!.FindProperty("MemberId")!.GetMaxLength().Should().Be(450);
+    }
 
     // (índices de los bloques siguientes)
 }

@@ -50,6 +50,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
 
     public DbSet<MemberProfile> MemberProfiles => Set<MemberProfile>();
     public DbSet<MemberStatusHistory> MemberStatusHistories => Set<MemberStatusHistory>();
+    public DbSet<MembershipStatusHistory> MembershipStatusHistories => Set<MembershipStatusHistory>();
     public DbSet<MemberAddressHistory> MemberAddressHistories => Set<MemberAddressHistory>();
     public DbSet<MemberCredentialChangeLog> MemberCredentialChangeLogs => Set<MemberCredentialChangeLog>();
     public DbSet<MemberIdentificationType> MemberIdentificationTypes => Set<MemberIdentificationType>();

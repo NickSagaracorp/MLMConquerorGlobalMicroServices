@@ -8363,7 +8363,8 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.Property<string>("MemberId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("MemberProfileId")
                         .HasColumnType("nvarchar(450)");
@@ -8379,7 +8380,11 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ChangedAt");
+
                     b.HasIndex("MemberProfileId");
+
+                    b.HasIndex("MemberId", "ChangedAt");
 
                     b.ToTable("MemberStatusHistories");
                 });
@@ -8534,6 +8539,53 @@ namespace MLMConquerorGlobalEdition.Repository.Migrations
                     b.HasIndex("MembershipLevelId");
 
                     b.ToTable("MembershipLevelBenefits");
+                });
+
+            modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Membership.MembershipStatusHistory", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("ChangedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("MemberId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("MembershipLevelId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NewStatus")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("OldStatus")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SubscriptionId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChangedAt");
+
+                    b.HasIndex("MemberId", "ChangedAt");
+
+                    b.ToTable("MembershipStatusHistories");
                 });
 
             modelBuilder.Entity("MLMConquerorGlobalEdition.Domain.Entities.Membership.MembershipSubscription", b =>
