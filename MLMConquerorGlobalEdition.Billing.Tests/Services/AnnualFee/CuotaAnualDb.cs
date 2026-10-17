@@ -122,6 +122,10 @@ public static class CuotaAnualDb
         else
             saldo.Balance += 1;
         await db.SaveChangesAsync();
+
+        // AuditInterceptor pone CreationDate = ahora al insertar; la fecha pedida se fija después.
+        t.CreationDate = creado ?? Ahora.AddDays(-5);
+        await db.SaveChangesAsync();
         return t;
     }
 }
