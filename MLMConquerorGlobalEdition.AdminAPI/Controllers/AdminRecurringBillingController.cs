@@ -207,7 +207,7 @@ public class AdminRecurringBillingController : ControllerBase
                 s.Id, s.MemberId, s.MembershipSubscriptionId, s.RecurringBillingPlanId,
                 s.Plan!.Name, s.BillingAnchorDate, s.LastSuccessfulBillingDate,
                 s.NextBillingDate, s.CurrentAttemptIndex, s.NextAttemptDate,
-                s.Status, s.LastAttemptAt, s.LastAttemptOutcome, s.LastFailureReason))
+                s.Status, s.LastAttemptAt, s.LastAttemptOutcome, s.LastFailureReason, s.Purpose))
             .ToListAsync(ct);
 
         return Ok(ApiResponse<PagedResult<RecurringStateDto>>.Ok(new PagedResult<RecurringStateDto>
@@ -450,11 +450,11 @@ public class AdminRecurringBillingController : ControllerBase
     public record PlanProductFormDto(string ProductId, int? TokenTypeIdOverride);
 
     public record RecurringStateDto(
-        string Id, string MemberId, string MembershipSubscriptionId, int RecurringBillingPlanId,
+        string Id, string MemberId, string? MembershipSubscriptionId, int RecurringBillingPlanId,
         string PlanName, DateTime BillingAnchorDate, DateTime? LastSuccessfulBillingDate,
         DateTime NextBillingDate, int CurrentAttemptIndex, DateTime NextAttemptDate,
         RecurringBillingStatus Status, DateTime? LastAttemptAt, string? LastAttemptOutcome,
-        string? LastFailureReason);
+        string? LastFailureReason, BillingStatePurpose Purpose);
 
     public record RecurringAttemptDto(
         long Id, string SubscriptionBillingStateId, string MemberId, string ProductId,

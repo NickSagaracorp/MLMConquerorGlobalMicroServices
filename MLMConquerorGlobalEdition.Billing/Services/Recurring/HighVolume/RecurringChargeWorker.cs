@@ -221,11 +221,15 @@ public class RecurringChargeWorker : IRecurringChargeWorker
         string batchId,
         string billingStateId,
         string memberId,
-        string subscriptionId,
+        string? subscriptionId,
         string? orderId,
         DateTime now,
         CancellationToken ct)
     {
+        // Plan K: un estado de cuota anual no tiene suscripción. La cuota no aporta puntos ni dispara
+        // Fast Start ni Boost (su producto es CorporateFee).
+        if (subscriptionId is null) return;
+
         // Read contribution snapshot from the subscription (set on this renewal by the processor)
         var subscription = await _db.MembershipSubscriptions
             .AsNoTracking()
@@ -280,10 +284,13 @@ public class RecurringChargeWorker : IRecurringChargeWorker
         string batchId,
         string billingStateId,
         string memberId,
-        string subscriptionId,
+        string? subscriptionId,
         DateTime now,
         CancellationToken ct)
     {
+        // Plan K: sin suscripción no hay puntos que retirar (un fallo de la cuota no toca la membresía).
+        if (subscriptionId is null) return;
+
         // Only emit if state transitioned to Stopped as part of this failure
         var billingState = await _db.SubscriptionBillingStates
             .AsNoTracking()

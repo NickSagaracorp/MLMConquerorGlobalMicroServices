@@ -140,6 +140,7 @@ public class RecurringBillingSweepJob
             where sub.SubscriptionStatus == Domain.Entities.Membership.MembershipStatus.Active
                && !sub.IsDeleted
                && plan.IsActive
+               && !plan.IsAnnualFeePlan   // Plan K (K2): la cuota anual es por miembro, no por suscripción
                && !_db.SubscriptionBillingStates.Any(s => s.MembershipSubscriptionId == sub.Id)
             select sub
         ).ToListAsync(ct);

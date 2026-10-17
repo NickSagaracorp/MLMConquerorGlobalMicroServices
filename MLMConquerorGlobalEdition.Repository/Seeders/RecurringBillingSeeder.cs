@@ -335,8 +335,19 @@ public static class RecurringBillingSeeder
     private static async Task SeedLifestylePlanAsync(
         AppDbContext db, ILogger logger, DateTime now, int lifestyleTokenId)
     {
-        if (await db.RecurringBillingPlans.AnyAsync(p => p.Name == LifestylePlanName))
+        var existing = await db.RecurringBillingPlans.FirstOrDefaultAsync(p => p.Name == LifestylePlanName);
+        if (existing is not null)
         {
+            // Plan K (K2): es el plan de la cuota anual. La migración CuotaAnual ya lo marca; esto cubre
+            // una base que se siembre sin haber pasado por ella.
+            if (!existing.IsAnnualFeePlan && !await db.RecurringBillingPlans.AnyAsync(p => p.IsAnnualFeePlan))
+            {
+                existing.IsAnnualFeePlan = true;
+                await db.SaveChangesAsync();
+                logger.LogInformation("RecurringBillingSeeder: Plan '{Name}' marcado como plan de la cuota anual.", LifestylePlanName);
+                return;
+            }
+
             logger.LogInformation("RecurringBillingSeeder: Plan '{Name}' already exists — skipped.", LifestylePlanName);
             return;
         }
@@ -356,6 +367,7 @@ public static class RecurringBillingSeeder
             TokenTypeId               = lifestyleTokenId,
             FixedAmountOverride       = null,  // use Product.AnnualPrice
             IsActive                  = true,
+            IsAnnualFeePlan           = true,  // Plan K: el plan de la cuota anual del Biz Center
             CreatedBy                 = Actor,
             CreationDate              = now
         };

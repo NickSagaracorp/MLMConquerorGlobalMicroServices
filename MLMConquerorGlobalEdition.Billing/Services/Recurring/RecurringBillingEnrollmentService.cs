@@ -29,11 +29,12 @@ public class RecurringBillingEnrollmentService : IRecurringBillingEnrollmentServ
         if (productId is null)
             return; // no product linked — not a recurring-plan product
 
-        // Find the active plan that covers this product
+        // Find the active plan that covers this product. El plan de la cuota anual nunca crea estados por
+        // suscripción (Plan K, K2): sus estados son por miembro y los da de alta AnnualFeeStateEnrollment.
         var planProduct = await _db.RecurringBillingPlanProducts
             .AsNoTracking()
             .Include(pp => pp.Plan)
-            .FirstOrDefaultAsync(pp => pp.ProductId == productId && pp.Plan!.IsActive, ct);
+            .FirstOrDefaultAsync(pp => pp.ProductId == productId && pp.Plan!.IsActive && !pp.Plan.IsAnnualFeePlan, ct);
 
         if (planProduct?.Plan is null)
             return; // no active plan governs this product

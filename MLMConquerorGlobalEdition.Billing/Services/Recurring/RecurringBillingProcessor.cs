@@ -81,6 +81,18 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
 
         var plan = state.Plan!;
 
+        // Plan K: un estado de cuota anual no tiene suscripción que renovar. Hasta que el cobro de la
+        // cuota esté conectado (Bloque 3), el motor lo salta sin escribir nada, también forzado.
+        if (state.Purpose == BillingStatePurpose.AnnualFee)
+        {
+            return Result<RecurringBillingProcessorResult>.Success(new RecurringBillingProcessorResult
+            {
+                BillingStateId = billingStateId,
+                Outcome        = "Skipped",
+                FailureReason  = "Annual-fee billing state: not charged by the membership engine yet."
+            });
+        }
+
         // 2. If Stopped and not force-billing → skip
         if (state.Status == RecurringBillingStatus.Stopped && !forceBillNow)
         {

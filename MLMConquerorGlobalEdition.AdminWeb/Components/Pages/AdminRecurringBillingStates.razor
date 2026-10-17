@@ -229,7 +229,8 @@
     { "Success" => "bg-success", "Failed" => "bg-danger", "Scheduled" => "bg-warning text-dark", _ => "bg-secondary" };
 
     // Enum-typed fields (Status, LastAttemptOutcome) arrive as enum NAMES from the API (JsonStringEnumConverter).
-    private record StateDto(string Id, string MemberId, string MembershipSubscriptionId, int RecurringBillingPlanId,
+    // MembershipSubscriptionId es null en los estados de cuota anual (Plan K): no tienen suscripción.
+    private record StateDto(string Id, string MemberId, string? MembershipSubscriptionId, int RecurringBillingPlanId,
         string PlanName, DateTime BillingAnchorDate, DateTime? LastSuccessfulBillingDate, DateTime NextBillingDate,
         int CurrentAttemptIndex, DateTime NextAttemptDate, string Status, DateTime? LastAttemptAt,
         string? LastAttemptOutcome, string? LastFailureReason);
