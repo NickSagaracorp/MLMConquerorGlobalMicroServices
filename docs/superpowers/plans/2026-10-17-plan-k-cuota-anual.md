@@ -9489,11 +9489,21 @@ Endpoints:
 | `POST api/v1/billing/annual-fee/payments/{id}/reconcile` (Billing) | tesorería (`SuperAdmin`, `Admin`, `BillingManager`) cierra un pago a conciliar |
 | `GET api/v1/admin/members/{memberId}/billing/annual-fee` (AdminAPI, 7002) | resumen en el perfil de miembro, solo lectura |
 
-Trabajos de Hangfire (Billing): `annual-fee-state-enrollment` (4:30 UTC, alta de estados),
-`annual-fee-stale-pending` (cada hora, a los 45). `membership-auto-renewal` ya no existe.
+Trabajos de Hangfire (Billing): `annual-fee-state-enrollment` (alta de estados; **registrado apagado**
+con `Cron.Never()` salvo `Billing:AnnualFee:EnrollmentJobEnabled = true`, que lo programa a las 4:30 UTC; se
+lanza a mano desde `/hangfire`), `annual-fee-stale-pending` (cada hora, a los 45; solo pasa `Pending` a
+conciliar). `membership-auto-renewal` ya no existe.
 
 **Condiciones de despliegue:**
 
+- **Encender el alta de estados y el cobro automático a la vez** (revisión final, I-A). En cuanto existe el
+  estado de cuota de un Ambassador, «anualidad pagada» (rama (b) de «Calificado») depende de él: el día de su
+  aniversario el estado vence y, si el cobro automático (`Billing:AnnualFee:AutoChargeEnabled`) sigue apagado
+  y el miembro no paga a mano con «Pagar ahora», **pierde esa rama** y puede pasar a «No calificado» (si no
+  tiene `KeepQualified` ni se inscribió hace menos de 12 meses). Cuanto más tiempo pase entre lanzar
+  `annual-fee-state-enrollment` y encender el cobro, más Ambassadors caen así. **Recomendación: encender los
+  dos a la vez** (lanzar el alta y poner el interruptor en `true` el mismo día). La decisión es de Nick.
+  Fechas: alta ________, cobro ________.
 - **Migración `CuotaAnual`** (la aplica `MigrateAsync` al arrancar cualquier servicio): altera
   `SubscriptionBillingStates` (columna `MembershipSubscriptionId` a anulable, `Purpose`, índices y
   `CHECK`), añade `FeesFromBalance` a `MemberProfiles` y `IsAnnualFeePlan` a `RecurringBillingPlans`, y
@@ -9598,7 +9608,7 @@ Trabajos de Hangfire (Billing): `annual-fee-state-enrollment` (4:30 UTC, alta de
 
 Preparación: SignupAPI (7005), Billing, BizCenter (7003), BizCenterWeb (7004), AdminAPI (7002) y
 AdminWeb (7001) arrancados con el perfil `https` contra la base local, con `CuotaAnual` aplicada y
-`annual-fee-state-enrollment` lanzado. Dos Ambassadors A y B; A con 150 de comisiones pagables y un token
+`annual-fee-state-enrollment` lanzado a mano desde `/hangfire`. Dos Ambassadors A y B; A con 150 de comisiones pagables y un token
 «Annual: Biz Center» (comprado en `/tokens` o sembrado en SQL); su estado de cuota puesto a vencer hoy
 (`UPDATE SubscriptionBillingStates SET NextBillingDate = CAST(GETDATE() AS date), NextAttemptDate = CAST(GETDATE() AS date) WHERE Purpose = 2 AND MemberId = @A`).
 `TOKEN_A` es el Bearer de A y `PERMISO_A` un permiso de step-up de `member.annual-fee.pay-from-balance`
@@ -9623,11 +9633,11 @@ emitido para A.
 | 13.15 | Conciliar sin rol | `POST …/annual-fee/payments/{id}/reconcile` con un token de soporte (`SupportLevel1`) y con el de A | `403` en los dos | ☐ |
 | 13.16 | Billing a través de AdminAPI | `POST https://localhost:7002/api/v1/billing/annual-fee/pay` con `TOKEN_A` | `404`, `401` o `500` sin efectos: nada en `AnnualFeePayments` (R4) | ☐ |
 | 13.17 | Cobro automático apagado | con el interruptor en `false`, lanzar `recurring-billing-sweep` desde Hangfire | los estados de cuota que vencen hoy no se cobran; ni pedidos ni pagos nuevos | ☐ |
-| 13.18 | Exclusiones | con el interruptor en `true` y un estado vencido por cada caso (cuenta `Terminated`, `Suspended`, membresía en `HoldByBilling`, inscrita hace menos de un año, `KeepQualified`, cobro hace 2 meses), lanzar el barrido | `Stopped` / mañana / aniversario / mañana / a un año del cobro; ningún cobro | ☐ |
+| 13.18 | Exclusiones | con el interruptor en `true` y un estado vencido por cada caso (cuenta `Terminated`, `Suspended`, membresía en `HoldByBilling`, membresía cancelada —`Cancelled` o con la cancelación programada cumplida—, inscrita hace menos de un año, `KeepQualified`, cobro hace 2 meses), lanzar el barrido | `Stopped` / mañana (`ACCOUNT_SUSPENDED`) / mañana (`MEMBERSHIP_ON_HOLD`) / mañana (`MEMBERSHIP_CANCELLED`) / aniversario / mañana (`KEEP_QUALIFIED`) / a un año del cobro; ningún cobro ni intento en `RecurringBillingAttempts`; con la membresía cancelada, «Pagar ahora» sigue disponible | ☐ |
 | 13.19 | Orden de cobro | A con token y comisiones, el interruptor encendido, barrido | se gasta el token (`TokenTransactions` `Used` con el pedido); las comisiones no se tocan | ☐ |
 | 13.20 | Preferencia apagada | A sin token, con comisiones y `FeesFromBalance = 0`, barrido | intento `Failed` (`ANNUAL_FEE_NO_FUNDS`), sin débito; la membresía y `MemberProfiles.Status` no cambian | ☐ |
-| 13.21 | Un solo motor | `/hangfire` → *Recurring jobs* | no está `membership-auto-renewal`; sí `recurring-billing-planning`, `recurring-billing-sweep`, `annual-fee-state-enrollment` y `annual-fee-stale-pending` | ☐ |
-| 13.22 | Stub de tarjeta | una renovación de Travel Advantage sin comisiones con el gateway de prueba | la renovación **no** se aplica (`CARD_SIMULATED_CHARGE` en el log, pedido `Cancelled`, estado sin avanzar) | ☐ |
+| 13.21 | Un solo motor | `/hangfire` → *Recurring jobs* | no está `membership-auto-renewal`; sí `recurring-billing-planning`, `recurring-billing-sweep`, `annual-fee-stale-pending` y `annual-fee-state-enrollment` (este con «Never» mientras `EnrollmentJobEnabled` no esté a `true`) | ☐ |
+| 13.22 | Tarjeta apagada y stub | una renovación de Travel Advantage sin comisiones: con `Billing:Recurring:CardEnabled` sin poner; después en `true` con el gateway de prueba | apagada: intento `Failed` con `CARD_DISABLED`, cadencia normal, pedido `Cancelled`, sin `PaymentHistory` y sin llamar al gateway. Encendida con el stub: intento `Failed` con `CARD_SIMULATED_CHARGE` (log `Critical`), cadencia normal, sin renovar | ☐ |
 | 13.23 | Candado en Travel Advantage | una compra de tokens con comisiones de A mientras el barrido renueva su Travel Advantage | nunca se gasta más de lo gastable; una de las dos espera o devuelve ocupado | ☐ |
 | 13.24 | Admin solo lectura | perfil de A en AdminWeb | la tarjeta sin botones ni interruptor; `GET api/v1/admin/members/{A}/billing/annual-fee` responde; no hay `POST`/`PUT` en esa ruta | ☐ |
 | 13.25 | Hora de servidor | cambiar la zona horaria del navegador a UTC+14 y abrir el perfil | el estado y el vencimiento no cambian | ☐ |
