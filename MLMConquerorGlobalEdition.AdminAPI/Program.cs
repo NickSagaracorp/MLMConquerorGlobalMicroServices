@@ -83,7 +83,7 @@ builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.I
                             MLMConquerorGlobalEdition.Repository.Services.Teams.EnrollmentTeamService>();
 // «Calificado» (Plan J, N3): un solo servicio. La anualidad no existe todavía (Plan K).
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IAnnualFeeStatus,
-                            MLMConquerorGlobalEdition.Repository.Services.Teams.AnnualFeeNotModeled>();
+                            MLMConquerorGlobalEdition.Repository.Services.AnnualFee.BillingStateAnnualFeeStatus>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Teams.IQualificationService,
                             MLMConquerorGlobalEdition.Repository.Services.Teams.QualificationService>();
 builder.Services.AddScoped<MLMConquerorGlobalEdition.Repository.Services.Commissions.ICommissionsService,
