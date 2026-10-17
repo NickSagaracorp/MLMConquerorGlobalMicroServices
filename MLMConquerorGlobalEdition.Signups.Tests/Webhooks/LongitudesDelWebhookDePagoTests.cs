@@ -78,4 +78,18 @@ public class LongitudesDelWebhookDePagoTests
         PaymentHistory.MemberIdMaxLength.Should().Be(100);
         PaymentHistory.GatewayTransactionIdMaxLength.Should().Be(200);
     }
+
+    /// <summary>Revisión M7: el proveedor de la URL acaba en PaymentHistories.GatewayName; tampoco se acepta sin tope.</summary>
+    [Fact]
+    public async Task Un_proveedor_demasiado_largo_se_rechaza_sin_guardar()
+    {
+        await using var db = InMemoryDbHelper.Create();
+
+        var r = await Handler(db).Handle(new ProcessPaymentWebhookCommand(
+            new string('p', PaymentHistory.GatewayNameMaxLength + 1), Pago("TX-3")));
+
+        r.ErrorCode.Should().Be(ProcessPaymentWebhookHandler.FieldTooLongCode);
+        (await db.PaymentHistories.CountAsync()).Should().Be(0);
+        PaymentHistory.GatewayNameMaxLength.Should().Be(100);
+    }
 }

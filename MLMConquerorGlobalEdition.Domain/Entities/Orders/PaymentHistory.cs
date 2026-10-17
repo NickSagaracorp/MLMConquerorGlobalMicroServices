@@ -16,6 +16,12 @@ public class PaymentHistory : AuditChangesStringKey
     /// <summary>Longitud de PaymentHistories.GatewayTransactionId (Plan M, M7). Hoy miden 36 como mucho.</summary>
     public const int GatewayTransactionIdMaxLength = 200;
 
+    /// <summary>
+    /// Tope de GatewayName (el proveedor de la URL del webhook), revisión M7 del Plan M. La columna sigue en
+    /// nvarchar(max) (acotarla pide otra migración); el tope lo aplica el webhook al entrar.
+    /// </summary>
+    public const int GatewayNameMaxLength = 100;
+
     public string OrderId { get; set; } = string.Empty;
     public string MemberId { get; set; } = string.Empty;
     public decimal Amount { get; set; }

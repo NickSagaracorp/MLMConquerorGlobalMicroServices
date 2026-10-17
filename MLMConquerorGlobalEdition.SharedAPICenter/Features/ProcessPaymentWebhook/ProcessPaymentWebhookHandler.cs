@@ -44,14 +44,17 @@ public class ProcessPaymentWebhookHandler : IRequestHandler<ProcessPaymentWebhoo
                 "WEBHOOK_UNKNOWN_EVENT",
                 $"Unknown payment event '{payload.Event}'.");
 
-        // Plan M (R16): las columnas de PaymentHistories están acotadas. Un campo que no cabe fallaría
-        // al guardar y la pasarela reintentaría sin fin; se rechaza aquí (400, que no se reintenta).
-        if (TooLong(payload.TransactionId, PaymentHistory.GatewayTransactionIdMaxLength)
+        // Plan M (R16, revisión M7): las columnas de PaymentHistories están acotadas. Un campo que no cabe
+        // fallaría al guardar con un 500, que las pasarelas reintentan. Se rechaza aquí con un 400: la
+        // mayoría no reintenta un 4xx, aunque alguna sí lo hace; en ese caso cada reintento recibe el mismo
+        // 400 sin tocar la base.
+        if (TooLong(request.Provider, PaymentHistory.GatewayNameMaxLength)
+            || TooLong(payload.TransactionId, PaymentHistory.GatewayTransactionIdMaxLength)
             || TooLong(payload.OrderId, PaymentHistory.OrderIdMaxLength)
             || TooLong(payload.MemberId, PaymentHistory.MemberIdMaxLength))
             return Result<bool>.Failure(
                 FieldTooLongCode,
-                "TransactionId, OrderId or MemberId exceeds the stored length.");
+                "Provider, TransactionId, OrderId or MemberId exceeds the stored length.");
 
         var existing = await _db.PaymentHistories
             .FirstOrDefaultAsync(
