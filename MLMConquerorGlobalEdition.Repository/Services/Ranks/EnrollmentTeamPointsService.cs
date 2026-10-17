@@ -60,27 +60,23 @@ public sealed class EnrollmentTeamPointsService : IEnrollmentTeamPointsService
         return Math.Min(summed, requirement.EnrollmentTeam);
     }
 
-    public async Task<int> RecomputeEnrollmentPointsAsync(string memberId, CancellationToken ct = default)
+    public async Task<int?> RecomputeEnrollmentPointsAsync(string memberId, CancellationToken ct = default)
     {
-        var node = await _db.GenealogyTree.AsNoTracking()
-            .FirstOrDefaultAsync(g => g.MemberId == memberId, ct);
-        if (node?.Node is null)
-            return 0;
-        var root = node.Node;
+        // Plan M (revisión C1): sin nodo vigente con Node no hay dato. Quien persiste el resultado
+        // (MemberStatisticSnapshotJob) lo omite y lo registra; nunca escribe un 0 inventado.
+        var root = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct);
+        if (root is null)
+            return null;
 
-        // EnrollmentPoints = the member's OWN points + every downline member's points.
-        // So the recompute sums completed-order points over the whole subtree
-        // INCLUDING the member themselves.
-        var subtreeIds = await _db.GenealogyTree.AsNoTracking()
-            .Under(root)
-            .Select(g => g.MemberId)
-            .ToListAsync(ct);
-
+        // EnrollmentPoints = the member's OWN points + every downline member's points, over the
+        // CURRENT nodes of the subtree (Plan M, I5: a member with two nodes counts once), joined in SQL
+        // instead of shipping every downline id back as a Contains() list.
         return await (
-            from o in _db.Orders.AsNoTracking()
+            from g in _db.GenealogyTree.AsNoTracking().CurrentUnder(root)
+            join o in _db.Orders.AsNoTracking() on g.MemberId equals o.MemberId
             join od in _db.OrderDetails.AsNoTracking() on o.Id equals od.OrderId
             join p in _db.Products.AsNoTracking() on od.ProductId equals p.Id
-            where subtreeIds.Contains(o.MemberId) && o.Status == OrderStatus.Completed
+            where o.Status == OrderStatus.Completed
             select p.QualificationPoins
         ).SumAsync(ct);
     }

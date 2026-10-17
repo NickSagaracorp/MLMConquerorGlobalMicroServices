@@ -38,7 +38,7 @@ internal static class TokenCustody
         var storedSender = sender.MemberId;
 
         var inTeam = await db.GenealogyTree.AsNoTracking()
-            .Under(senderRoot)
+            .CurrentUnder(senderRoot)
             .AnyAsync(g => g.MemberId == recipientId
                         && g.MemberId != storedSender, ct);
         return new TeamCheck(storedSender, inTeam);

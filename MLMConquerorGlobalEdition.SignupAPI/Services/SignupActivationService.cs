@@ -4,6 +4,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.SignupAPI.Services;
@@ -62,7 +63,7 @@ public class SignupActivationService : ISignupActivationService
         {
             var sponsorNode = await _db.GenealogyTree
                 .AsNoTracking()
-                .FirstOrDefaultAsync(g => g.MemberId == member.SponsorMemberId, ct);
+                .CurrentOfAsync(member.SponsorMemberId, ct); // nodo vigente (Plan M, M2)
 
             if (sponsorNode is not null)
             {

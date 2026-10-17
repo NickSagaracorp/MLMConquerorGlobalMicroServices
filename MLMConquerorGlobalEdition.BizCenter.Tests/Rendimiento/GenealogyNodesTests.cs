@@ -37,14 +37,42 @@ public class GenealogyNodesTests
             "un ordinal no se reutiliza: el índice único no está filtrado por IsDeleted");
     }
 
+    /// <summary>Revisión I4: fallar cerrado. Un hijo de un padre sin Node no aparecería en ningún equipo.</summary>
     [Fact]
-    public async Task Si_el_padre_aun_no_tiene_nodo_devuelve_nulo()
+    public async Task Si_el_padre_tiene_nodos_pero_ninguno_con_Node_lanza_en_vez_de_crear_un_nodo_invisible()
     {
         await using var db = ReportesDb.Nueva();
         ReportesDb.Nodo(db, "AMB-1", null, "/AMB-1/", 1).Node = null;
         await db.SaveChangesAsync();
 
-        (await GenealogyNodes.NextChildAsync(db, "AMB-1")).Should().BeNull();
+        await FluentActions.Awaiting(() => GenealogyNodes.NextChildAsync(db, "AMB-1"))
+            .Should().ThrowAsync<InvalidOperationException>().WithMessage("*AMB-1*");
+    }
+
+    [Fact]
+    public async Task Un_padre_que_no_esta_en_el_arbol_da_una_raiz_nueva_como_su_ruta()
+    {
+        await using var db = ReportesDb.Nueva();
+        Nodo(db, "AMB-1", null, "/1/");
+        await db.SaveChangesAsync();
+
+        (await GenealogyNodes.NextChildAsync(db, "NADIE")).Should().Be(HierarchyId.Parse("/2/"));
+    }
+
+    /// <summary>Revisión M1: el padre se busca entre los nodos vivos; los hermanos, también entre los borrados.</summary>
+    [Fact]
+    public async Task Un_nodo_borrado_del_padre_no_es_su_nodo()
+    {
+        await using var db = ReportesDb.Nueva();
+        Nodo(db, "AMB-1", null, "/1/");
+        Nodo(db, "AMB-1", null, "/2/");
+        await db.SaveChangesAsync();
+        var reciente = await db.GenealogyTree.SingleAsync(g => g.Node == HierarchyId.Parse("/2/"));
+        reciente.IsDeleted    = true;
+        reciente.CreationDate = reciente.CreationDate.AddDays(1); // el más reciente, pero borrado
+        await db.SaveChangesAsync();
+
+        (await GenealogyNodes.NextChildAsync(db, "AMB-1")).Should().Be(HierarchyId.Parse("/1/1/"));
     }
 
     [Fact]

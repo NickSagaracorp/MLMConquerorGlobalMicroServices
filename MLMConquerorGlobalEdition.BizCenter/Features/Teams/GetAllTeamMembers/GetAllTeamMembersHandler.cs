@@ -29,7 +29,7 @@ public class GetAllTeamMembersHandler : IRequestHandler<GetAllTeamMembersQuery, 
         // ~120k descendant ids into memory and re-querying with Contains(allIds). Only the
         // requested page ever materializes.
         var query =
-            from g in _db.GenealogyTree.AsNoTracking().Under(me)
+            from g in _db.GenealogyTree.AsNoTracking().CurrentUnder(me)
             where g.MemberId != memberId // descendientes: él no
             join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
             orderby m.EnrollDate descending

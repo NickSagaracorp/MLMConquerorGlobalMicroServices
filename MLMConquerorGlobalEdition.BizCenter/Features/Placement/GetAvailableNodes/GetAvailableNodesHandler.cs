@@ -142,7 +142,7 @@ public class GetAvailableNodesHandler
     {
         var sponsorGenNode = await _db.GenealogyTree
             .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.MemberId == sponsorMemberId, ct);
+            .CurrentOfAsync(sponsorMemberId, ct); // nodo vigente (Plan M, M2)
 
         if (sponsorGenNode?.Node is null)
             return new List<string> { sponsorMemberId };
@@ -151,7 +151,7 @@ public class GetAvailableNodesHandler
         // All descendants in enrollment tree by Node (Plan M)
         var descendants = await _db.GenealogyTree
             .AsNoTracking()
-            .Under(sponsorRoot)
+            .CurrentUnder(sponsorRoot)
             .Select(g => g.MemberId)
             .ToListAsync(ct);
 

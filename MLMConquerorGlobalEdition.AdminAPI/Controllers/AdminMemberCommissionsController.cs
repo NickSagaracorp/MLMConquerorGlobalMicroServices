@@ -208,7 +208,7 @@ public class AdminMemberCommissionsController : ControllerBase
 
         var rawEnrollments = await (
             from mp  in _db.MemberProfiles.AsNoTracking()
-            join g   in _db.GenealogyTree.AsNoTracking().Under(me)  on mp.MemberId           equals g.MemberId
+            join g   in _db.GenealogyTree.AsNoTracking().CurrentUnder(me)  on mp.MemberId           equals g.MemberId
             join sub in _db.MembershipSubscriptions.AsNoTracking()  on mp.MemberId           equals sub.MemberId
             join ml  in _db.MembershipLevels.AsNoTracking()         on sub.MembershipLevelId equals ml.Id
             where mp.EnrollDate >= weekStart

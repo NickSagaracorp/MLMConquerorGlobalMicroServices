@@ -13,46 +13,58 @@ namespace MLMConquerorGlobalEdition.Repository.Queries;
 public static class GenealogyNodes
 {
     /// <summary>
-    /// El Node del siguiente hijo de <paramref name="parentMemberId"/> (null = una raíz nueva). Devuelve
-    /// null si el padre todavía no tiene Node (relleno inicial pendiente): el relleno lo pondrá.
-    /// Dos altas simultáneas bajo el mismo padre obtienen el mismo valor; el índice único
-    /// IX_GenealogyTree_Node rechaza a la segunda y el alta reintenta (IsDuplicateNode).
+    /// El Node del siguiente hijo de <paramref name="parentMemberId"/>. Una raíz nueva si es null o si el
+    /// padre no está en el árbol (la ruta del alta también lo hace raíz: «/{memberId}/», nivel 1).
+    /// <para>
+    /// Falla cerrado (revisión I4): si el nodo vigente del padre no tiene Node (relleno inicial pendiente), lanza InvalidOperationException. Un hijo sin Node no aparecería en ningún equipo.
+    /// </para>
+    /// <para>
+    /// El padre se busca entre los nodos vivos (filtro de borrado) y es el más reciente, con desempate
+    /// por Id (R8 del Plan J). Los hermanos, también entre los borrados: un ordinal no se reutiliza,
+    /// porque el índice único no filtra IsDeleted (revisión M1). Dos altas simultáneas bajo el mismo
+    /// padre las serializa el alta con GenealogyChildrenGate; el índice único IX_GenealogyTree_Node y
+    /// el reintento por IsDuplicateNode quedan como red de seguridad (R5).
+    /// </para>
     /// </summary>
-    public static async Task<HierarchyId?> NextChildAsync(
+    public static async Task<HierarchyId> NextChildAsync(
         AppDbContext db, string? parentMemberId, CancellationToken ct = default)
     {
-        // Con los borrados lógicos: un ordinal no se reutiliza (el índice único no filtra IsDeleted).
-        var arbol = db.GenealogyTree.AsNoTracking().IgnoreQueryFilters();
+        var todos = db.GenealogyTree.AsNoTracking().IgnoreQueryFilters();
 
-        if (parentMemberId is null)
+        if (parentMemberId is not null)
         {
-            // Hijas de la raíz de hierarchyid: índice (NodeLevel, Node), M12.
-            var ultimaRaiz = await arbol
-                .Where(g => g.Node != null && g.Node.GetLevel() == 1)
-                .OrderByDescending(g => g.Node)
-                .Select(g => g.Node)
+            var nodosDelPadre = await db.GenealogyTree.AsNoTracking()
+                .Where(g => g.MemberId == parentMemberId)
+                .OrderByDescending(g => g.CreationDate)
+                .ThenByDescending(g => g.Id)
+                .Select(g => new { g.Node })
                 .FirstOrDefaultAsync(ct);
-            return HierarchyId.GetRoot().GetDescendant(ultimaRaiz, null);
+
+            if (nodosDelPadre is not null)
+            {
+                var padre = nodosDelPadre.Node
+                    ?? throw new InvalidOperationException(
+                        $"El patrocinador {parentMemberId} está en el árbol de inscripción pero su nodo vigente no tiene Node " +
+                        "(relleno pendiente: Scripts/sql/plan-m/02-relleno-nodo-genealogia.sql). No se crea un nodo invisible.");
+
+                // Los hermanos por ParentMemberId (índice); GetAncestor descarta los que cuelgan de un
+                // nodo antiguo del mismo padre.
+                var ultimoHijo = await todos
+                    .Where(g => g.ParentMemberId == parentMemberId && g.Node != null && g.Node.GetAncestor(1) == padre)
+                    .OrderByDescending(g => g.Node)
+                    .Select(g => g.Node)
+                    .FirstOrDefaultAsync(ct);
+                return padre.GetDescendant(ultimoHijo, null);
+            }
         }
 
-        // El nodo más reciente del padre (R8 del Plan J).
-        var padre = await arbol
-            .Where(g => g.MemberId == parentMemberId && g.Node != null)
-            .OrderByDescending(g => g.CreationDate)
-            .Select(g => g.Node)
-            .FirstOrDefaultAsync(ct);
-        if (padre is null)
-            return null;
-
-        // Los hermanos por ParentMemberId (índice); GetAncestor descarta los que cuelgan de un nodo
-        // antiguo del mismo padre.
-        var ultimoHijo = await arbol
-            .Where(g => g.ParentMemberId == parentMemberId && g.Node != null && g.Node.GetAncestor(1) == padre)
+        // Hijas de la raíz de hierarchyid: índice (NodeLevel, Node), M12.
+        var ultimaRaiz = await todos
+            .Where(g => g.Node != null && g.Node.GetLevel() == 1)
             .OrderByDescending(g => g.Node)
             .Select(g => g.Node)
             .FirstOrDefaultAsync(ct);
-
-        return padre.GetDescendant(ultimoHijo, null);
+        return HierarchyId.GetRoot().GetDescendant(ultimaRaiz, null);
     }
 
     /// <summary>True si el guardado falló porque otro alta ya ocupó ese Node (R5).</summary>

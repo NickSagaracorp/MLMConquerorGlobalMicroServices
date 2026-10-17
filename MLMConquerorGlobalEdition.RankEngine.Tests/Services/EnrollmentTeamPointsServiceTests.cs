@@ -150,14 +150,15 @@ public class EnrollmentTeamPointsServiceTests
     }
 
     [Fact]
-    public async Task RecomputeEnrollmentPoints_WhenMemberHasNoGenealogyNode_ReturnsZero()
+    public async Task RecomputeEnrollmentPoints_WhenMemberHasNoGenealogyNode_ReturnsNoData()
     {
         await using var db = InMemoryDbHelper.Create();
         // Completely empty DB — no genealogy node for "GHOST".
         var svc = new EnrollmentTeamPointsService(db);
         var result = await svc.RecomputeEnrollmentPointsAsync("GHOST");
 
-        result.Should().Be(0);
+        // Plan M (revisión C1): sin nodo no hay dato; un 0 se persistiría como si el equipo no tuviera puntos.
+        result.Should().BeNull();
     }
 
     [Fact]

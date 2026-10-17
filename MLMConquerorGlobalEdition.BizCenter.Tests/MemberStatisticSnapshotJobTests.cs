@@ -138,4 +138,30 @@ public class MemberStatisticSnapshotJobTests : IDisposable
         var stat = await _db.MemberStatistics.SingleAsync(s => s.MemberId == "S");
         stat.QualifiedSponsoredMembers.Should().Be(2);
     }
+
+    /// <summary>
+    /// Plan M, revisión C1: sin Node no hay equipo que sumar. El job NO escribe 0 (borraría los puntos
+    /// de equipo de un miembro cuyo nodo aún no se ha rellenado): deja el valor y lo registra como error.
+    /// </summary>
+    [Fact]
+    public async Task ExecuteAsync_SinNode_NoEscribeCeroYRegistraUnError()
+    {
+        var sinNode = Geno("M", null, "/M/");
+        sinNode.Node = null;
+        await _db.GenealogyTree.AddAsync(sinNode);
+        await _db.MemberStatistics.AddAsync(Stat("M", enrollmentPoints: 999));
+        await _db.SaveChangesAsync();
+        var logger = new Mock<Microsoft.Extensions.Logging.ILogger<MemberStatisticSnapshotJob>>();
+
+        await new MemberStatisticSnapshotJob(_db, _dateTime.Object, logger.Object, new EnrollmentTeamPointsService(_db))
+            .ExecuteAsync(default);
+
+        (await _db.MemberStatistics.AsNoTracking().SingleAsync(s => s.MemberId == "M")).EnrollmentPoints.Should().Be(999);
+        logger.Verify(l => l.Log(
+            Microsoft.Extensions.Logging.LogLevel.Error,
+            It.IsAny<Microsoft.Extensions.Logging.EventId>(),
+            It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("M")),
+            It.IsAny<Exception?>(),
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
+    }
 }

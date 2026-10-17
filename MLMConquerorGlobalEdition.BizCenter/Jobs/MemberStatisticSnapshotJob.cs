@@ -85,9 +85,17 @@ public class MemberStatisticSnapshotJob
             // member; acceptable for a nightly batch. If the member base grows into
             // the tens of thousands, rewrite as a single set-based aggregate query.
             var recomputedEt = await _enrollmentPoints.RecomputeEnrollmentPointsAsync(stat.MemberId, ct);
-            if (stat.EnrollmentPoints != recomputedEt)
+            if (recomputedEt is null)
             {
-                stat.EnrollmentPoints = recomputedEt;
+                // Plan M (revisión C1): sin Node no hay equipo que sumar. No se escribe 0: se deja el valor
+                // y se avisa (relleno de GenealogyTree.Node pendiente o alta sin nodo).
+                _logger.LogError(
+                    "MemberStatisticSnapshotJob: {MemberId} no tiene nodo de inscripción con Node; EnrollmentPoints no se recalcula.",
+                    stat.MemberId);
+            }
+            else if (stat.EnrollmentPoints != recomputedEt.Value)
+            {
+                stat.EnrollmentPoints = recomputedEt.Value;
                 etUpdated++;
             }
         }

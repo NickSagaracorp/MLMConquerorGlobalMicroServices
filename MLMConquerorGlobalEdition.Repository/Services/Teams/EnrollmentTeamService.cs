@@ -78,7 +78,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         DateTime? from, DateTime? to, CancellationToken ct = default)
     {
         var myNode = await _db.GenealogyTree.AsNoTracking()
-            .FirstOrDefaultAsync(g => g.MemberId == memberId, ct);
+            .CurrentOfAsync(memberId, ct); // nodo vigente (Plan M, M2)
         if (myNode?.Node is null) return new PagedResult<EnrollmentMyTeamMemberView>();
 
         var query = BuildMyTeamQueryable(myNode.Node, myNode.Level, memberId);
@@ -118,7 +118,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         string memberId, GridDataRequest request, CancellationToken ct = default)
     {
         var myNode = await _db.GenealogyTree.AsNoTracking()
-            .FirstOrDefaultAsync(g => g.MemberId == memberId, ct);
+            .CurrentOfAsync(memberId, ct); // nodo vigente (Plan M, M2)
         if (myNode?.Node is null) return new PagedResult<EnrollmentMyTeamMemberView>();
 
         SanitizeGridRequest(request);
@@ -146,7 +146,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         HierarchyId root, int rootLevel, string memberId)
     {
         return
-            from g in _db.GenealogyTree.AsNoTracking().Under(root)
+            from g in _db.GenealogyTree.AsNoTracking().CurrentUnder(root)
             where g.MemberId != memberId
             join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
             select new EnrollmentMyTeamMemberView
@@ -395,7 +395,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         string branchMemberId, CancellationToken ct = default)
     {
         var branchNode = await _db.GenealogyTree.AsNoTracking()
-            .FirstOrDefaultAsync(g => g.MemberId == branchMemberId, ct);
+            .CurrentOfAsync(branchMemberId, ct); // nodo vigente (Plan M, M2)
         if (branchNode?.Node is null) return null;
 
         var branchProfile = await _db.MemberProfiles.AsNoTracking()
@@ -412,7 +412,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         var branchLevel = branchNode.Level;
 
         var downlineNodes = await _db.GenealogyTree.AsNoTracking()
-            .Under(branchRoot)
+            .CurrentUnder(branchRoot)
             .Where(g => g.MemberId != branchMemberId)
             .Select(g => new { g.MemberId, g.Level })
             .ToListAsync(ct);
@@ -565,10 +565,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
 
     /// <summary>The viewer's most recent genealogy node: a member can have two (see e4af288, R8).</summary>
     private Task<GenealogyEntity?> MyGenealogyNodeAsync(string memberId, CancellationToken ct) =>
-        _db.GenealogyTree.AsNoTracking()
-            .Where(g => g.MemberId == memberId)
-            .OrderByDescending(g => g.CreationDate)
-            .FirstOrDefaultAsync(ct);
+        _db.GenealogyTree.AsNoTracking().CurrentOfAsync(memberId, ct);
 
     /// <summary>
     /// Light DB projection of the viewer's external-member customers. Email and phone are nulled
@@ -676,7 +673,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         // Single grouped JOIN — count by status in SQL instead of pulling all 120k+ downline
         // ids into memory and re-querying with Contains(allIds).
         var statusCounts = await (
-            from g in _db.GenealogyTree.AsNoTracking().Under(me)
+            from g in _db.GenealogyTree.AsNoTracking().CurrentUnder(me)
             join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
             group m by m.Status into grp
             select new { Status = grp.Key, Count = grp.Count() }

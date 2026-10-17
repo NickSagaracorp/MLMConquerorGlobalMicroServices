@@ -159,7 +159,7 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
         {
             sponsorNode = await _db.GenealogyTree
                 .AsNoTracking()
-                .FirstOrDefaultAsync(g => g.MemberId == sponsorMemberId, ct);
+                .CurrentOfAsync(sponsorMemberId, ct); // nodo vigente (Plan M, M2)
         }
 
         // Plan M: el Node cuelga del nodo del patrocinador (o es una raíz nueva si no tiene nodo).

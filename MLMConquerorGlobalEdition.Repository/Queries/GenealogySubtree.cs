@@ -16,11 +16,24 @@ public static class GenealogySubtree
     /// </summary>
     public const string RecompileTag = "GenealogySubtree.Under: recompilar por tamano de equipo";
 
-    /// <summary>El Node vigente del miembro: el de su nodo más reciente (R8 del Plan J). Null si no tiene.</summary>
+    /// <summary>
+    /// El nodo vigente del miembro: el más reciente (R8 del Plan J), con desempate por Id (revisión M3).
+    /// Null si no está en el árbol. Es el único sitio que elige el nodo de un miembro (revisión M2): un
+    /// FirstOrDefault sin orden podía devolver el obsoleto.
+    /// </summary>
+    public static Task<GenealogyEntity?> CurrentOfAsync(
+        this IQueryable<GenealogyEntity> tree, string memberId, CancellationToken ct = default) =>
+        tree.Where(g => g.MemberId == memberId)
+            .OrderByDescending(g => g.CreationDate)
+            .ThenByDescending(g => g.Id)
+            .FirstOrDefaultAsync(ct);
+
+    /// <summary>El Node del nodo vigente del miembro (<see cref="CurrentOfAsync"/>). Null si no tiene.</summary>
     public static Task<HierarchyId?> NodeOfAsync(
         this IQueryable<GenealogyEntity> tree, string memberId, CancellationToken ct = default) =>
         tree.Where(g => g.MemberId == memberId)
             .OrderByDescending(g => g.CreationDate)
+            .ThenByDescending(g => g.Id)
             .Select(g => g.Node)
             .FirstOrDefaultAsync(ct);
 
@@ -58,9 +71,13 @@ public static class GenealogySubtree
     /// <summary>
     /// Los nodos VIGENTES (el más reciente de cada miembro) que cuelgan de <paramref name="root"/>, él
     /// incluido. Parte del rango de IX_GenealogyTree_Node (seek, <see cref="Under"/>) y descarta los
-    /// obsoletos con el índice (MemberId, CreationDate). Es la forma B: para el equipo entero.
+    /// obsoletos con el índice (MemberId, CreationDate). Es la forma B: para el equipo entero. Ninguno si
+    /// root es null. Es lo que usan Mi equipo, clientes, eventos, puntos y comisiones (revisión I5): con
+    /// Under, un miembro con dos nodos bajo el mismo equipo saldría dos veces.
     /// </summary>
-    public static IQueryable<GenealogyEntity> CurrentUnder(this IQueryable<GenealogyEntity> tree, HierarchyId root) =>
+    public static IQueryable<GenealogyEntity> CurrentUnder(this IQueryable<GenealogyEntity> tree, HierarchyId? root) =>
         tree.Under(root)
-            .Where(g => !tree.Any(o => o.MemberId == g.MemberId && o.CreationDate > g.CreationDate));
+            .Where(g => !tree.Any(o => o.MemberId == g.MemberId
+                                    && (o.CreationDate > g.CreationDate
+                                        || (o.CreationDate == g.CreationDate && string.Compare(o.Id, g.Id) > 0))));
 }

@@ -85,6 +85,22 @@ public class SqlServerMedicionPlanMTests
         await tx.RollbackAsync();
     });
 
+    /// <summary>Revisión I5: Mi equipo, ya por CurrentUnder (solo nodos vigentes), con el equipo grande.</summary>
+    [SqlServerFact]
+    public Task Mi_equipo_de_la_raiz() => SqlServerReportes.ConReintentoAsync(async () =>
+    {
+        await using var db = SqlServerReportes.Db();
+        await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.ReadUncommitted);
+        var raiz = await RaizAsync(db);
+        var servicio = ClientesDelEquipoTests.Servicio(db);
+
+        var t = await MedianaAsync($"Mi equipo {raiz}", () =>
+            servicio.GetMyTeamGridAsync(raiz, new GridDataRequest { PageSize = 20 }));
+
+        t.Should().BeLessThan(ObjetivoReporte);
+        await tx.RollbackAsync();
+    });
+
     [SqlServerFact]
     public Task Clientes_de_todo_el_equipo_de_la_raiz() => SqlServerReportes.ConReintentoAsync(async () =>
     {
