@@ -194,36 +194,4 @@ public class PlanAnualSinEstadosPorSuscripcionTests
 
         (await db.RecurringBillingPlans.SingleAsync(p => p.Name == "Lifestyle Ambassador (Annual)")).IsAnnualFeePlan.Should().BeTrue();
     }
-
-    [Fact]
-    public async Task El_procesador_salta_un_estado_de_cuota_anual_sin_tocar_nada()
-    {
-        // Hasta que el Bloque 3 delegue en el cobro de la cuota, el motor no hace nada con estos estados:
-        // ni pedido ni intento ni cambios en el estado.
-        await using var db = await ConPlanesAsync();
-        db.SubscriptionBillingStates.Add(new SubscriptionBillingState
-        {
-            Id = "anual-1", Purpose = BillingStatePurpose.AnnualFee, MembershipSubscriptionId = null, MemberId = "AMB-1",
-            RecurringBillingPlanId = 2, BillingAnchorDate = Ahora.AddYears(-1), NextBillingDate = Ahora.Date,
-            NextAttemptDate = Ahora.Date, Status = RecurringBillingStatus.Active, CreatedBy = "prueba", CreationDate = Ahora
-        });
-        await db.SaveChangesAsync();
-
-        var procesador = new RecurringBillingProcessor(
-            db, new Mock<ICommissionBalanceService>().Object, new RecurringBillingScheduler(),
-            new Mock<MLMConquerorGlobalEdition.Billing.Services.Routing.IGatewayRouter>().Object,
-            new Mock<MLMConquerorGlobalEdition.Billing.Services.Routing.IGatewayChargeOrchestrator>().Object,
-            new Mock<MLMConquerorGlobalEdition.Billing.Services.Routing.ICardBrandDetector>().Object,
-            new TransactionOnlyGate(db), Reloj(), NullLogger<RecurringBillingProcessor>.Instance);
-
-        var r = await procesador.ProcessAsync("anual-1", forceBillNow: true);
-
-        r.IsSuccess.Should().BeTrue();
-        r.Value!.Outcome.Should().Be("Skipped");
-        (await db.Orders.CountAsync()).Should().Be(0);
-        (await db.RecurringBillingAttempts.CountAsync()).Should().Be(0);
-        var estado = await db.SubscriptionBillingStates.AsNoTracking().SingleAsync();
-        estado.NextAttemptDate.Should().Be(Ahora.Date);
-        estado.Status.Should().Be(RecurringBillingStatus.Active);
-    }
 }

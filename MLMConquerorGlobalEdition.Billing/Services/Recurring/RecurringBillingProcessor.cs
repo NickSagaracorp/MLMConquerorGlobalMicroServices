@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using MLMConquerorGlobalEdition.Billing.Services.AnnualFee;
 using MLMConquerorGlobalEdition.Billing.Services.CardGateway;
 using MLMConquerorGlobalEdition.Billing.Services.Routing;
 using MLMConquerorGlobalEdition.Billing.Services.Tokens;
@@ -30,6 +31,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
     private readonly IGatewayChargeOrchestrator _orchestrator;
     private readonly ICardBrandDetector _brandDetector;
     private readonly IMemberFundsGate _gate;
+    private readonly IAnnualFeeChargeService _annualFee;
     private readonly IDateTimeProvider _dateTime;
     private readonly ILogger<RecurringBillingProcessor> _logger;
     private readonly IConfiguration? _configuration;
@@ -41,6 +43,12 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
     /// no se movió nada, el pedido se canceló y el estado sigue igual para la siguiente pasada.
     /// </summary>
     public const string MemberFundsBusyCode = "MEMBER_FUNDS_BUSY";
+
+    /// <summary>
+    /// El estado y su plan no coinciden: un estado de membresía en el plan de la cuota, o uno de cuota en
+    /// otro plan. No se cobra nada; hay que mirarlo a mano (Plan K, K2).
+    /// </summary>
+    public const string AnnualFeeStateMismatchCode = "ANNUAL_FEE_STATE_MISMATCH";
 
     /// <summary>La membresía está cancelada o con la cancelación cumplida: el estado se para sin cobrar.</summary>
     public const string ReasonMembershipCancelled = MembershipBillingStops.ReasonMembershipCancelled;
@@ -56,6 +64,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
         IGatewayChargeOrchestrator orchestrator,
         ICardBrandDetector brandDetector,
         IMemberFundsGate gate,
+        IAnnualFeeChargeService annualFee,
         IDateTimeProvider dateTime,
         ILogger<RecurringBillingProcessor> logger,
         IConfiguration? configuration = null)
@@ -67,6 +76,7 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
         _orchestrator     = orchestrator;
         _brandDetector    = brandDetector;
         _gate             = gate;
+        _annualFee        = annualFee;
         _dateTime         = dateTime;
         _logger           = logger;
         _configuration    = configuration;
@@ -92,17 +102,11 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
 
         var plan = state.Plan!;
 
-        // Plan K: un estado de cuota anual no tiene suscripción que renovar. Hasta que el cobro de la
-        // cuota esté conectado (Bloque 3), el motor lo salta sin escribir nada, también forzado.
-        if (state.Purpose == BillingStatePurpose.AnnualFee)
-        {
-            return Result<RecurringBillingProcessorResult>.Success(new RecurringBillingProcessorResult
-            {
-                BillingStateId = billingStateId,
-                Outcome        = "Skipped",
-                FailureReason  = "Annual-fee billing state: not charged by the membership engine yet."
-            });
-        }
+        // Plan K (K1, K2): un estado de cuota anual lo cobra AnnualFeeChargeService. Mismo motor
+        // (planificador, trabajadores, barrido) y otro cobro: no hay suscripción que renovar. Va antes de
+        // la comprobación de Stopped porque el servicio de la cuota la hace a su manera (y revive si se fuerza).
+        if (state.Purpose == BillingStatePurpose.AnnualFee || plan.IsAnnualFeePlan)
+            return await DelegateAnnualFeeAsync(state, plan, forceBillNow, ct);
 
         // 2. If Stopped and not force-billing → skip
         if (state.Status == RecurringBillingStatus.Stopped && !forceBillNow)
@@ -339,6 +343,34 @@ public class RecurringBillingProcessor : IRecurringBillingProcessor
         order.LastUpdateDate = now;
         order.LastUpdateBy   = Actor;
         await _db.SaveChangesAsync(CancellationToken.None);
+    }
+
+    private async Task<Result<RecurringBillingProcessorResult>> DelegateAnnualFeeAsync(
+        SubscriptionBillingState state, RecurringBillingPlan plan, bool forceBillNow, CancellationToken ct)
+    {
+        if (state.Purpose != BillingStatePurpose.AnnualFee || !plan.IsAnnualFeePlan)
+        {
+            _logger.LogError(
+                "Estado {StateId} de {MemberId}: propósito {Purpose} en el plan {PlanId} (IsAnnualFeePlan={IsAnnual}). No se cobra.",
+                state.Id, state.MemberId, state.Purpose, plan.Id, plan.IsAnnualFeePlan);
+            return Result<RecurringBillingProcessorResult>.Failure(AnnualFeeStateMismatchCode,
+                "The billing state purpose does not match its plan.");
+        }
+
+        var charged = await _annualFee.ChargeDueAsync(state.Id, forceBillNow, ct);
+        if (!charged.IsSuccess)
+            return Result<RecurringBillingProcessorResult>.Failure(charged.ErrorCode!, charged.Error!);
+
+        var o = charged.Value!;
+        return Result<RecurringBillingProcessorResult>.Success(new RecurringBillingProcessorResult
+        {
+            BillingStateId   = state.Id,
+            Outcome          = o.Outcome,
+            FundingSource    = o.FundingSource,
+            PaymentHistoryId = o.PaymentHistoryId,
+            OrderId          = o.OrderId,
+            FailureReason    = o.FailureReason
+        });
     }
 
     // ── Commission-balance path ───────────────────────────────────────────────

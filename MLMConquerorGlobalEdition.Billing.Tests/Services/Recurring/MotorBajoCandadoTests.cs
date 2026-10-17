@@ -75,7 +75,7 @@ public class MotorBajoCandadoTests
         return new RecurringBillingProcessor(
             db, new CommissionBalanceService(db, reloj.Object), new RecurringBillingScheduler(),
             ruta.Object, new Mock<IGatewayChargeOrchestrator>().Object, new Mock<ICardBrandDetector>().Object,
-            candado, reloj.Object, NullLogger<RecurringBillingProcessor>.Instance);
+            candado, new Mock<MLMConquerorGlobalEdition.Billing.Services.AnnualFee.IAnnualFeeChargeService>().Object, reloj.Object, NullLogger<RecurringBillingProcessor>.Instance);
     }
 
     [Fact]

@@ -37,6 +37,7 @@ public class RecurringBillingPlanner : IRecurringBillingPlanner
     private readonly IGatewayRouter            _router;
     private readonly IDateTimeProvider         _dateTime;
     private readonly ILogger<RecurringBillingPlanner> _logger;
+    private readonly Microsoft.Extensions.Configuration.IConfiguration? _configuration;
 
     // Default parameter values (overridden by GlobalParameter rows when seeded)
     private const int DefaultTargetWindowHours  = 3;
@@ -49,8 +50,10 @@ public class RecurringBillingPlanner : IRecurringBillingPlanner
         AppDbContext db,
         IGatewayRouter router,
         IDateTimeProvider dateTime,
-        ILogger<RecurringBillingPlanner> logger)
+        ILogger<RecurringBillingPlanner> logger,
+        Microsoft.Extensions.Configuration.IConfiguration? configuration = null)
     {
+        _configuration = configuration;
         _db       = db;
         _router   = router;
         _dateTime = dateTime;
@@ -104,14 +107,17 @@ public class RecurringBillingPlanner : IRecurringBillingPlanner
             scheduledStart = today.AddHours(5);
 
         // ── Find due states ────────────────────────────────────────────────────
+        var includeAnnualFee = _configuration?.GetValue<bool>(
+            MLMConquerorGlobalEdition.SharedKernel.Billing.AnnualFeeRules.AutoChargeEnabledConfigKey) == true;
         var dueStates = await _db.SubscriptionBillingStates
             .AsNoTracking()
             .Where(s => (s.Status == RecurringBillingStatus.Active
                       || s.Status == RecurringBillingStatus.Retrying
                       || s.Status == RecurringBillingStatus.AwaitingAnniversaryRetry)
                      && s.NextAttemptDate.Date <= today
-                     // Plan K (M2): solo membresías hasta que el Bloque 3 conecte el cobro de la cuota.
-                     && s.Purpose == BillingStatePurpose.Membership)
+                     // Plan K: los estados de cuota anual solo entran con su cobro automático
+                     // encendido; apagado, su servicio no escribe nada y se repetirían cada día.
+                     && (s.Purpose == BillingStatePurpose.Membership || includeAnnualFee))
             .OrderBy(s => s.ShardKey)
             .Select(s => new { s.ShardKey, s.MemberId, s.RecurringBillingPlanId })
             .ToListAsync(ct);
@@ -265,14 +271,17 @@ public class RecurringBillingPlanner : IRecurringBillingPlanner
         var windowMs            = (double)targetWindowHours * 3_600_000;
 
         // ── Find due states (count + routing, same as PlanAsync) ───────────────
+        var includeAnnualFee = _configuration?.GetValue<bool>(
+            MLMConquerorGlobalEdition.SharedKernel.Billing.AnnualFeeRules.AutoChargeEnabledConfigKey) == true;
         var dueStates = await _db.SubscriptionBillingStates
             .AsNoTracking()
             .Where(s => (s.Status == RecurringBillingStatus.Active
                       || s.Status == RecurringBillingStatus.Retrying
                       || s.Status == RecurringBillingStatus.AwaitingAnniversaryRetry)
                      && s.NextAttemptDate.Date <= today
-                     // Plan K (M2): solo membresías hasta que el Bloque 3 conecte el cobro de la cuota.
-                     && s.Purpose == BillingStatePurpose.Membership)
+                     // Plan K: los estados de cuota anual solo entran con su cobro automático
+                     // encendido; apagado, su servicio no escribe nada y se repetirían cada día.
+                     && (s.Purpose == BillingStatePurpose.Membership || includeAnnualFee))
             .OrderBy(s => s.ShardKey)
             .Select(s => new { s.ShardKey, s.MemberId })
             .ToListAsync(ct);

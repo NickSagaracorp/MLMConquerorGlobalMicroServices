@@ -29,14 +29,17 @@ public class RecurringBillingSweepJob
     private readonly IRecurringBillingEnrollmentService _enrollment;
     private readonly IDateTimeProvider _dateTime;
     private readonly ILogger<RecurringBillingSweepJob> _logger;
+    private readonly Microsoft.Extensions.Configuration.IConfiguration? _configuration;
 
     public RecurringBillingSweepJob(
         AppDbContext db,
         IRecurringBillingProcessor processor,
         IRecurringBillingEnrollmentService enrollment,
         IDateTimeProvider dateTime,
-        ILogger<RecurringBillingSweepJob> logger)
+        ILogger<RecurringBillingSweepJob> logger,
+        Microsoft.Extensions.Configuration.IConfiguration? configuration = null)
     {
+        _configuration = configuration;
         _db         = db;
         _processor  = processor;
         _enrollment = enrollment;
@@ -63,14 +66,17 @@ public class RecurringBillingSweepJob
             .Select(s => new { s.IdRangeStart, s.IdRangeEnd })
             .ToListAsync(ct);
 
+        var includeAnnualFee = _configuration?.GetValue<bool>(
+            MLMConquerorGlobalEdition.SharedKernel.Billing.AnnualFeeRules.AutoChargeEnabledConfigKey) == true;
         var dueStateIds = await _db.SubscriptionBillingStates
             .AsNoTracking()
             .Where(s => (s.Status == RecurringBillingStatus.Active
                       || s.Status == RecurringBillingStatus.Retrying
                       || s.Status == RecurringBillingStatus.AwaitingAnniversaryRetry)
                      && s.NextAttemptDate.Date <= today
-                     // Plan K (M2): solo membresías hasta que el Bloque 3 conecte el cobro de la cuota.
-                     && s.Purpose == BillingStatePurpose.Membership)
+                     // Plan K: los estados de cuota anual solo entran con su cobro automático
+                     // encendido; apagado, su servicio no escribe nada y se repetirían cada día.
+                     && (s.Purpose == BillingStatePurpose.Membership || includeAnnualFee))
             .Select(s => new { s.Id, s.ShardKey })
             .ToListAsync(ct);
 

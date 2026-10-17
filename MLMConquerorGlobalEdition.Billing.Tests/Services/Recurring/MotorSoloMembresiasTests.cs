@@ -11,14 +11,16 @@ using MLMConquerorGlobalEdition.Billing.Tests.Helpers;
 using MLMConquerorGlobalEdition.Domain.Entities.Billing;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using Microsoft.Extensions.Configuration;
 using MLMConquerorGlobalEdition.SharedKernel;
+using MLMConquerorGlobalEdition.SharedKernel.Billing;
 
 namespace MLMConquerorGlobalEdition.Billing.Tests.Services.Recurring;
 
 /// <summary>
-/// Plan K (revisión M2): hasta que el Bloque 3 conecte el cobro de la cuota, el planificador, los
-/// trabajadores y el barrido solo recogen estados de membresía. Un estado de cuota anual vencido no
-/// entra en ningún lote ni llega al procesador.
+/// Plan K (revisión M2 y Tarea 16): el planificador, los trabajadores y el barrido recogen estados de
+/// cuota anual solo con Billing:AnnualFee:AutoChargeEnabled encendido. Apagado, el servicio de la cuota
+/// no escribe nada y esos estados quedarían vencidos para siempre: se volverían a procesar cada día.
 /// </summary>
 public class MotorSoloMembresiasTests
 {
@@ -111,5 +113,54 @@ public class MotorSoloMembresiasTests
 
         p.Verify(x => x.ProcessAsync("membresia", It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Once);
         p.Verify(x => x.ProcessAsync("cuota", It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    private static IConfiguration CuotaEncendida() =>
+        new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [AnnualFeeRules.AutoChargeEnabledConfigKey] = "true"
+        }).Build();
+
+    [Fact]
+    public async Task Con_el_cobro_de_la_cuota_encendido_el_planificador_cuenta_los_estados_de_cuota()
+    {
+        await using var db = await SembrarAsync();
+        var ruta = new Mock<IGatewayRouter>();
+        ruta.Setup(r => r.ResolveAsync(It.IsAny<GatewayRoutingContext>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<GatewayRoutingPlan>.Success(new GatewayRoutingPlan
+            {
+                RouteBucketKey = "b", Steps = new List<GatewayAttemptPlan> { new() { CardProcessor = CardProcessor.NmiSpreedly } }
+            }));
+
+        var r = await new RecurringBillingPlanner(db, ruta.Object, Reloj(), Mock.Of<ILogger<RecurringBillingPlanner>>(), CuotaEncendida())
+            .PlanAsync(Hoy.Date);
+
+        r.Value!.TotalCases.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Con_el_cobro_de_la_cuota_encendido_el_barrido_y_el_trabajador_los_pasan_al_procesador()
+    {
+        await using var db = await SembrarAsync();
+        var p = Procesador();
+        await new RecurringBillingSweepJob(db, p.Object, new RecurringBillingEnrollmentService(db, Reloj()), Reloj(),
+            NullLogger<RecurringBillingSweepJob>.Instance, CuotaEncendida()).ExecuteAsync();
+        p.Verify(x => x.ProcessAsync("cuota", It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Once);
+
+        db.RecurringBillingBatches.Add(new RecurringBillingBatch
+        {
+            Id = "lote", RunDate = Hoy.Date, Gateway = CardProcessor.NmiSpreedly, WorkerCount = 1,
+            ScheduledStartTime = Hoy, CaseCount = 2, Status = RecurringBillingBatchStatus.Planned, CreatedBy = "prueba"
+        });
+        db.RecurringBillingBatchShards.Add(new RecurringBillingBatchShard
+        {
+            Id = "trozo", BatchId = "lote", ShardIndex = 0, IdRangeStart = 1, IdRangeEnd = 10,
+            Status = RecurringBillingBatchStatus.Planned, CreatedBy = "prueba"
+        });
+        await db.SaveChangesAsync();
+        var w = Procesador();
+        await new RecurringChargeWorker(db, w.Object, Reloj(), Mock.Of<ILogger<RecurringChargeWorker>>(), CuotaEncendida())
+            .ProcessShardAsync("trozo");
+        w.Verify(x => x.ProcessAsync("cuota", It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 }

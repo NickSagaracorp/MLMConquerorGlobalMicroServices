@@ -98,7 +98,7 @@ public class RenovacionSimuladaTests
         var p = new RecurringBillingProcessor(
             db, new CommissionBalanceService(db, reloj.Object), new RecurringBillingScheduler(),
             ruta.Object, orquestador.Object, new Mock<ICardBrandDetector>().Object,
-            new TransactionOnlyGate(db), reloj.Object, NullLogger<RecurringBillingProcessor>.Instance, configuracion);
+            new TransactionOnlyGate(db), new Mock<MLMConquerorGlobalEdition.Billing.Services.AnnualFee.IAnnualFeeChargeService>().Object, reloj.Object, NullLogger<RecurringBillingProcessor>.Instance, configuracion);
         return (p, orquestador);
     }
 

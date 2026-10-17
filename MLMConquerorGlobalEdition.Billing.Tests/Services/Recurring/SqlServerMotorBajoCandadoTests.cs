@@ -132,7 +132,7 @@ public class SqlServerMotorBajoCandadoTests : IAsyncLifetime
         return new RecurringBillingProcessor(
             db, new CommissionBalanceService(db, reloj.Object), new RecurringBillingScheduler(),
             ruta.Object, new Mock<IGatewayChargeOrchestrator>().Object, new Mock<ICardBrandDetector>().Object,
-            new SqlServerMemberFundsGate(db, lockTimeoutMs), reloj.Object, NullLogger<RecurringBillingProcessor>.Instance);
+            new SqlServerMemberFundsGate(db, lockTimeoutMs), new Mock<MLMConquerorGlobalEdition.Billing.Services.AnnualFee.IAnnualFeeChargeService>().Object, reloj.Object, NullLogger<RecurringBillingProcessor>.Instance);
     }
 
     /// <summary>

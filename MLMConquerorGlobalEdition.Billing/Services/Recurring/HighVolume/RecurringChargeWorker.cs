@@ -19,6 +19,7 @@ public class RecurringChargeWorker : IRecurringChargeWorker
     private readonly IRecurringBillingProcessor      _processor;
     private readonly IDateTimeProvider               _dateTime;
     private readonly ILogger<RecurringChargeWorker>  _logger;
+    private readonly Microsoft.Extensions.Configuration.IConfiguration? _configuration;
 
     private const string Actor = "recurring-charge-worker";
 
@@ -29,8 +30,10 @@ public class RecurringChargeWorker : IRecurringChargeWorker
         AppDbContext db,
         IRecurringBillingProcessor processor,
         IDateTimeProvider dateTime,
-        ILogger<RecurringChargeWorker> logger)
+        ILogger<RecurringChargeWorker> logger,
+        Microsoft.Extensions.Configuration.IConfiguration? configuration = null)
     {
+        _configuration = configuration;
         _db        = db;
         _processor = processor;
         _dateTime  = dateTime;
@@ -109,6 +112,8 @@ public class RecurringChargeWorker : IRecurringChargeWorker
         var processedSet = processedToday.ToHashSet();
 
         // ── Load due states in this shard range ───────────────────────────────
+        var includeAnnualFee = _configuration?.GetValue<bool>(
+            MLMConquerorGlobalEdition.SharedKernel.Billing.AnnualFeeRules.AutoChargeEnabledConfigKey) == true;
         var dueStateIds = await _db.SubscriptionBillingStates
             .AsNoTracking()
             .Where(s => s.ShardKey >= shard.IdRangeStart
@@ -117,8 +122,9 @@ public class RecurringChargeWorker : IRecurringChargeWorker
                       || s.Status == RecurringBillingStatus.Retrying
                       || s.Status == RecurringBillingStatus.AwaitingAnniversaryRetry)
                      && s.NextAttemptDate.Date <= today
-                     // Plan K (M2): solo membresías hasta que el Bloque 3 conecte el cobro de la cuota.
-                     && s.Purpose == BillingStatePurpose.Membership)
+                     // Plan K: los estados de cuota anual solo entran con su cobro automático
+                     // encendido; apagado, su servicio no escribe nada y se repetirían cada día.
+                     && (s.Purpose == BillingStatePurpose.Membership || includeAnnualFee))
             .OrderBy(s => s.ShardKey)
             .Select(s => new { s.Id, s.MemberId, s.MembershipSubscriptionId })
             .ToListAsync(ct);
