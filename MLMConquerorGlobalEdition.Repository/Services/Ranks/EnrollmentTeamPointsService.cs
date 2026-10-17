@@ -64,15 +64,15 @@ public sealed class EnrollmentTeamPointsService : IEnrollmentTeamPointsService
     {
         var node = await _db.GenealogyTree.AsNoTracking()
             .FirstOrDefaultAsync(g => g.MemberId == memberId, ct);
-        if (node is null)
+        if (node?.Node is null)
             return 0;
-        var subtreePrefix = TreePrefix.Of(node.HierarchyPath);
+        var root = node.Node;
 
         // EnrollmentPoints = the member's OWN points + every downline member's points.
         // So the recompute sums completed-order points over the whole subtree
         // INCLUDING the member themselves.
         var subtreeIds = await _db.GenealogyTree.AsNoTracking()
-            .Where(g => g.HierarchyPath.StartsWith(subtreePrefix))
+            .Where(g => g.Node!.IsDescendantOf(root))
             .Select(g => g.MemberId)
             .ToListAsync(ct);
 

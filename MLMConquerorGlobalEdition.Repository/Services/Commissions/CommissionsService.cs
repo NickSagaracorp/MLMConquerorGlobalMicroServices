@@ -3,6 +3,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
@@ -530,10 +531,14 @@ public class CommissionsService : ICommissionsService
     public async Task<BoostBonusMemberSummaryView> GetBoostBonusMemberSummaryAsync(
         string memberId, CancellationToken ct = default)
     {
-        // Downline member IDs from enrollment tree (direct and indirect)
+        // Downline member IDs from enrollment tree (direct and indirect), by the member's current Node (Plan M)
+        var me = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct);
+        if (me is null)
+            return new BoostBonusMemberSummaryView();
+
         var downlineMemberIds = await _db.GenealogyTree
             .AsNoTracking()
-            .Where(g => g.HierarchyPath.Contains($"/{memberId}/") && g.MemberId != memberId)
+            .Where(g => g.Node!.IsDescendantOf(me) && g.MemberId != memberId)
             .Select(g => g.MemberId)
             .ToListAsync(ct);
 
@@ -587,6 +592,7 @@ public class CommissionsService : ICommissionsService
         // New Elite/Turbo Active enrollments in downline this week
         int[] eligibleLevelIds = [3, 4];
         var hierarchyFilter    = $"/{memberId}/";
+        var me                 = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct); // Plan M
 
         var downlineEnrollments = await (
             from mp  in _db.MemberProfiles.AsNoTracking()
@@ -596,7 +602,7 @@ public class CommissionsService : ICommissionsService
                && mp.EnrollDate <  weekEnd
                && sub.SubscriptionStatus == MembershipStatus.Active
                && eligibleLevelIds.Contains(sub.MembershipLevelId)
-               && g.HierarchyPath.Contains(hierarchyFilter)
+               && me != null && g.Node!.IsDescendantOf(me)
             select new { mp.MemberId, g.HierarchyPath }
         ).Distinct().ToListAsync(ct);
 
@@ -729,11 +735,11 @@ public class CommissionsService : ICommissionsService
         // Active downline subscriptions, fetched by JOINING the genealogy subtree to
         // subscriptions in ONE query — not by loading all ~120k downline ids and re-querying
         // with Contains(allIds) (which built a huge IN list and scanned twice).
-        var hierarchyFilter = $"/{memberId}/";
+        var me = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct); // Plan M: equipo por Node
 
         var activeSubs = await (
             from g in _db.GenealogyTree.AsNoTracking()
-            where g.HierarchyPath.Contains(hierarchyFilter) && g.MemberId != memberId
+            where me != null && g.Node!.IsDescendantOf(me) && g.MemberId != memberId
             join s in _db.MembershipSubscriptions.AsNoTracking() on g.MemberId equals s.MemberId
             where s.SubscriptionStatus == MembershipStatus.Active && !s.IsDeleted
             select new { s.MemberId, s.MembershipLevelId, s.CreationDate }
@@ -770,7 +776,7 @@ public class CommissionsService : ICommissionsService
     {
         _ = from; _ = to; // BizCenter handler does not filter by date — params kept for API parity
 
-        var hierarchyFilter = $"/{memberId}/";
+        var me = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct); // Plan M: equipo por Node
 
         // Car-bonus contribution comes only from downline members with an ACTIVE qualifying
         // subscription — JOIN the genealogy subtree straight to those subscriptions (+ profile)
@@ -778,7 +784,7 @@ public class CommissionsService : ICommissionsService
         // Members with no active sub contribute 0, so they are not part of this breakdown.
         var rows = await (
             from g in _db.GenealogyTree.AsNoTracking()
-            where g.HierarchyPath.Contains(hierarchyFilter) && g.MemberId != memberId
+            where me != null && g.Node!.IsDescendantOf(me) && g.MemberId != memberId
             join s in _db.MembershipSubscriptions.AsNoTracking() on g.MemberId equals s.MemberId
             where s.SubscriptionStatus == MembershipStatus.Active && !s.IsDeleted
             join mp in _db.MemberProfiles.AsNoTracking() on g.MemberId equals mp.MemberId
@@ -812,14 +818,14 @@ public class CommissionsService : ICommissionsService
     public async Task<CarBonusBranchView> GetCarBonusBranchAsync(
         string branchMemberId, CancellationToken ct = default)
     {
-        var hierarchyFilter = $"/{branchMemberId}/";
+        var me = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(branchMemberId, ct); // Plan M: la rama por Node
 
         // Contributing members in the branch (the ambassador + downline WITH an active
         // subscription) via a single JOIN — not "load all subtree ids then Contains(allIds) ×3".
         // Members without an active sub contribute 0 points and aren't part of the breakdown.
         var rows = await (
             from g in _db.GenealogyTree.AsNoTracking()
-            where g.MemberId == branchMemberId || g.HierarchyPath.Contains(hierarchyFilter)
+            where g.MemberId == branchMemberId || (me != null && g.Node!.IsDescendantOf(me))
             join s in _db.MembershipSubscriptions.AsNoTracking() on g.MemberId equals s.MemberId
             where s.SubscriptionStatus == MembershipStatus.Active && !s.IsDeleted
             join mp in _db.MemberProfiles.AsNoTracking() on g.MemberId equals mp.MemberId

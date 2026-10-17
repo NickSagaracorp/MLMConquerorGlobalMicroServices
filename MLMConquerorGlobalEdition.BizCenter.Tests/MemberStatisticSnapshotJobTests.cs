@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using MLMConquerorGlobalEdition.BizCenter.Jobs;
 using MLMConquerorGlobalEdition.BizCenter.Services;
+using MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
@@ -106,6 +107,7 @@ public class MemberStatisticSnapshotJobTests : IDisposable
 
         // Stale stat row — EnrollmentPoints is wrong (999 instead of 90)
         await _db.MemberStatistics.AddAsync(Stat("M", enrollmentPoints: 999));
+        ReportesDb.RellenarNodos(_db); // Plan M: los puntos de equipo se suman por Node
         await _db.SaveChangesAsync();
 
         await CreateJob().ExecuteAsync();
