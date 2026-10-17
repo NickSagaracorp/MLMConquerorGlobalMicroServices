@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
@@ -70,10 +71,78 @@ public static class ReportesDb
             ParentMemberId = padre,
             HierarchyPath  = ruta,
             Level          = nivel,
+            Node           = NodoDesdeRuta(db, ruta),
             CreatedBy      = "prueba"
         };
         db.GenealogyTree.Add(nodo);
         return nodo;
+    }
+
+    /// <summary>
+    /// Plan M: rellena Node en los nodos seguidos que no lo tengan, a partir de su ruta, como hace el
+    /// relleno (02-relleno-nodo-genealogia.sql). Para las pruebas que crean GenealogyEntity a mano.
+    /// </summary>
+    public static void RellenarNodos(AppDbContext db)
+    {
+        foreach (var g in db.GenealogyTree.Local.Where(g => g.Node is null).OrderBy(g => g.HierarchyPath.Length).ToList())
+            g.Node = NodoDesdeRuta(db, g.HierarchyPath);
+    }
+
+    /// <summary>
+    /// Nodos reservados para rutas cuyo nodo aún no existe: hay pruebas que crean un hijo antes que su
+    /// padre, o cuelgan nodos de un patrocinador que no está en el árbol. El padre recibe aquí su Node
+    /// y, si después se crea, usa ese mismo; así el hijo queda en su equipo.
+    /// </summary>
+    private static readonly ConditionalWeakTable<AppDbContext, Dictionary<string, HierarchyId>> Reservados = new();
+
+    /// <summary>
+    /// El Node que corresponde a una ruta. Las raíces reciben un ordinal alto al azar, para no chocar con
+    /// las de la base local en las pruebas [SqlServerFact]; los hijos, el siguiente detrás del último
+    /// hermano (seguido, guardado o reservado), como GenealogyNodes.NextChildAsync.
+    /// </summary>
+    private static HierarchyId NodoDesdeRuta(AppDbContext db, string ruta)
+    {
+        var reservados = Reservados.GetOrCreateValue(db);
+        if (reservados.Remove(ruta, out var reservado))
+            return reservado;
+        return NuevoNodo(db, ruta, reservados);
+    }
+
+    private static HierarchyId NuevoNodo(AppDbContext db, string ruta, Dictionary<string, HierarchyId> reservados)
+    {
+        var segmentos = ruta.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segmentos.Length <= 1)
+            return HierarchyId.Parse($"/{Random.Shared.Next(1_000_000, int.MaxValue)}/");
+
+        var rutaPadre = "/" + string.Join('/', segmentos[..^1]) + "/";
+        var padre = db.GenealogyTree.Local
+                        .Where(g => g.HierarchyPath == rutaPadre && g.Node is not null)
+                        .OrderByDescending(g => g.CreationDate).Select(g => g.Node).FirstOrDefault()
+                    ?? db.GenealogyTree.AsNoTracking()
+                        .Where(g => g.HierarchyPath == rutaPadre && g.Node != null)
+                        .OrderByDescending(g => g.CreationDate).Select(g => g.Node).FirstOrDefault();
+        if (padre is null)
+        {
+            // El padre todavía no existe: se le reserva su Node para cuando se cree.
+            if (!reservados.TryGetValue(rutaPadre, out padre))
+            {
+                padre = NuevoNodo(db, rutaPadre, reservados);
+                reservados[rutaPadre] = padre;
+            }
+        }
+
+        // El último hermano por Node, no un recuento: así no choca aunque falte algún ordinal.
+        var nivelHijo = padre.GetLevel() + 1;
+        var candidatos = db.GenealogyTree.Local
+            .Where(g => g.Node is not null && g.Node.GetAncestor(1) == padre)
+            .Select(g => g.Node!)
+            .Concat(reservados.Values.Where(r => r.GetAncestor(1) == padre))
+            .ToList();
+        var guardado = db.GenealogyTree.AsNoTracking().IgnoreQueryFilters()
+            .Where(g => g.Node != null && g.Node.IsDescendantOf(padre) && g.Node.GetLevel() == nivelHijo)
+            .OrderByDescending(g => g.Node).Select(g => g.Node).FirstOrDefault();
+        if (guardado is not null) candidatos.Add(guardado);
+        return padre.GetDescendant(candidatos.Count == 0 ? null : candidatos.Max(), null);
     }
 
     /// <summary>
