@@ -283,18 +283,44 @@ public class CommissionBalanceService : ICommissionBalanceService
     public async Task<Result<string>> FundTokenPurchaseAsync(
         string memberId, decimal amount, string orderId, string actor, CancellationToken ct = default)
     {
+        var debit = await FundOrderFromCommissionsAsync(memberId, amount, orderId, actor,
+            consolidationComment: $"Consolidated to fund token purchase order #{orderId}",
+            debitNote: $"Token purchase debit — {amount:F2} — Order {orderId}",
+            ct);
+
+        return debit.IsSuccess
+            ? Result<string>.Success(debit.Value!.PaymentHistoryId)
+            : Result<string>.Failure(debit.ErrorCode!, debit.Error!);
+    }
+
+    // ── Cuota anual (Plan K) ──────────────────────────────────────────────────
+
+    public Task<Result<CommissionDebit>> FundAnnualFeeAsync(
+        string memberId, decimal amount, string orderId, string actor, CancellationToken ct = default) =>
+        FundOrderFromCommissionsAsync(memberId, amount, orderId, actor,
+            consolidationComment: $"Consolidated to fund annual fee order #{orderId}",
+            debitNote: $"Annual fee debit — {amount:F2} — Order {orderId}",
+            ct);
+
+    /// <summary>
+    /// Débito de comisiones para un pedido: comprueba el saldo gastable, consolida el residual si toca y
+    /// escribe el débito negativo y el PaymentHistory juntos. Lo comparten la compra de tokens y la cuota.
+    /// </summary>
+    private async Task<Result<CommissionDebit>> FundOrderFromCommissionsAsync(
+        string memberId, decimal amount, string orderId, string actor,
+        string consolidationComment, string debitNote, CancellationToken ct)
+    {
         if (amount <= 0)
-            return Result<string>.Failure("INVALID_AMOUNT", "Amount must be positive.");
+            return Result<CommissionDebit>.Failure("INVALID_AMOUNT", "Amount must be positive.");
 
         var spendable = await GetSpendableAsync(memberId, ct);
         if (spendable < amount)
-            return Result<string>.Failure(TokenPurchaseErrors.InsufficientCommissionBalance,
+            return Result<CommissionDebit>.Failure(TokenPurchaseErrors.InsufficientCommissionBalance,
                 $"Commission balance {spendable:F2} is below {amount:F2}.");
 
         var now = _dateTime.Now;
 
-        await ConsolidateCoreAsync(memberId, actor,
-            paymentComment: $"Consolidated to fund token purchase order #{orderId}", ct);
+        await ConsolidateCoreAsync(memberId, actor, paymentComment: consolidationComment, ct);
 
         var debit = new CommissionEarning
         {
@@ -305,7 +331,7 @@ public class CommissionBalanceService : ICommissionBalanceService
             EarnedDate          = now,
             PaymentDate         = now,
             SourceOrderId       = orderId,
-            Notes               = $"Token purchase debit — {amount:F2} — Order {orderId}",
+            Notes               = debitNote,
             IsManualEntry       = false,
             CreatedBy           = actor,
             CreationDate        = now,
@@ -332,7 +358,7 @@ public class CommissionBalanceService : ICommissionBalanceService
         _db.PaymentHistories.Add(payment);
 
         await _db.SaveChangesAsync(ct);
-        return Result<string>.Success(payment.Id);
+        return Result<CommissionDebit>.Success(new CommissionDebit(payment.Id, debit.Id));
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
