@@ -133,4 +133,84 @@ public class ConciliacionDeCuotaAnualTests
         (await db.AnnualFeePayments.AsNoTracking().SingleAsync(p => p.MemberId == "AMB-2")).Status
             .Should().Be(AnnualFeePaymentStatus.Pending);
     }
+
+    // ── Revisión del Bloque 3 (M-3, M-4, M-7) ─────────────────────────────────
+
+    [Fact]
+    public async Task Queda_auditado_quien_cuando_referencia_y_resultado()
+    {
+        var (db, pago) = await ConPagoAsync();
+        await using var _ = db;
+
+        await CobroAutomaticoDeCuotaAnualTests.Servicio(db).ReconcileAsync(pago.Id,
+            new ReconcileAnnualFeePaymentRequest { Charged = true, GatewayReference = "IPY-777", Notes = "visto" },
+            "tesoreria@empresa.com");
+
+        var guardado = await db.AnnualFeePayments.AsNoTracking().SingleAsync();
+        guardado.Notes.Should().Contain("tesoreria@empresa.com").And.Contain("IPY-777").And.Contain("charged")
+            .And.Contain(CuotaAnualDb.Ahora.ToString("yyyy-MM-dd HH:mm")).And.Contain("visto");
+        guardado.LastUpdateBy.Should().Be("tesoreria@empresa.com");
+    }
+
+    [Fact]
+    public async Task No_cobrado_tambien_queda_auditado()
+    {
+        var (db, pago) = await ConPagoAsync();
+        await using var _ = db;
+
+        await CobroAutomaticoDeCuotaAnualTests.Servicio(db).ReconcileAsync(pago.Id,
+            new ReconcileAnnualFeePaymentRequest { Charged = false }, "tesoreria@empresa.com");
+
+        (await db.AnnualFeePayments.AsNoTracking().SingleAsync()).Notes
+            .Should().Contain("not charged").And.Contain("tesoreria@empresa.com");
+    }
+
+    [Fact]
+    public async Task Una_referencia_demasiado_larga_se_rechaza_sin_tocar_nada()
+    {
+        var (db, pago) = await ConPagoAsync();
+        await using var _ = db;
+
+        var r = await CobroAutomaticoDeCuotaAnualTests.Servicio(db).ReconcileAsync(pago.Id,
+            new ReconcileAnnualFeePaymentRequest { Charged = true, GatewayReference = new string('R', AnnualFeeRules.GatewayReferenceMaxLength + 1) },
+            "tesoreria");
+
+        r.ErrorCode.Should().Be(AnnualFeeErrors.GatewayReferenceTooLong);
+        (await db.AnnualFeePayments.AsNoTracking().SingleAsync()).Status.Should().Be(AnnualFeePaymentStatus.NeedsReconciliation);
+        (await db.PaymentHistories.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Unas_notas_demasiado_largas_se_rechazan()
+    {
+        var (db, pago) = await ConPagoAsync();
+        await using var _ = db;
+
+        var r = await CobroAutomaticoDeCuotaAnualTests.Servicio(db).ReconcileAsync(pago.Id,
+            new ReconcileAnnualFeePaymentRequest { Charged = false, Notes = new string('n', AnnualFeeRules.ReconcileNotesMaxLength + 1) },
+            "tesoreria");
+
+        r.ErrorCode.Should().Be(AnnualFeeErrors.ReconcileNotesTooLong);
+    }
+
+    [Fact]
+    public async Task Cobrado_con_el_estado_ya_movido_se_completa_y_avisa_con_su_codigo()
+    {
+        // El ciclo lo pagó otra vía mientras este débito estaba en revisión: posible doble cobro.
+        var (db, pago) = await ConPagoAsync();
+        await using var _ = db;
+        var estado = await db.SubscriptionBillingStates.SingleAsync();
+        estado.NextBillingDate = new DateTime(2028, 6, 5);
+        await db.SaveChangesAsync();
+
+        var r = await CobroAutomaticoDeCuotaAnualTests.Servicio(db).ReconcileAsync(pago.Id,
+            new ReconcileAnnualFeePaymentRequest { Charged = true, GatewayReference = "IPY-9" }, "tesoreria");
+
+        r.IsSuccess.Should().BeTrue();
+        r.Value!.Warning.Should().Be(AnnualFeeErrors.ReconciledCycleAlreadyAdvanced);
+        var guardado = await db.AnnualFeePayments.AsNoTracking().SingleAsync();
+        guardado.Status.Should().Be(AnnualFeePaymentStatus.Completed);
+        guardado.Notes.Should().Contain(AnnualFeeErrors.ReconciledCycleAlreadyAdvanced);
+        (await db.SubscriptionBillingStates.AsNoTracking().SingleAsync()).NextBillingDate.Should().Be(new DateTime(2028, 6, 5));
+    }
 }

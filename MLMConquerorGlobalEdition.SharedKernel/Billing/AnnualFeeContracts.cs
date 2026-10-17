@@ -33,6 +33,16 @@ public static class AnnualFeeRules
     public const int DefaultStalePendingMinutes = 30;
 
     /// <summary>
+    /// Referencia de i-Payout que tesorería puede anotar al conciliar. La columna
+    /// (PaymentHistories.GatewayTransactionId) es nvarchar(max); el tope es nuestro, para que la
+    /// referencia y la auditoría quepan en las notas del pago (500).
+    /// </summary>
+    public const int GatewayReferenceMaxLength = 100;
+
+    /// <summary>Notas de tesorería al conciliar. Con la línea de auditoría caben en las notas del pago (500).</summary>
+    public const int ReconcileNotesMaxLength = 250;
+
+    /// <summary>
     /// ¿Programa Billing el alta diaria de estados de cuota? Apagado por defecto: el trabajo se registra
     /// con Cron.Never() y solo corre si alguien lo lanza a mano desde Hangfire (Plan K, Tarea 8).
     /// </summary>
@@ -110,6 +120,14 @@ public static class AnnualFeeErrors
     public const string PaymentNotFound               = "ANNUAL_FEE_PAYMENT_NOT_FOUND";
     public const string NotUnderReview                = "ANNUAL_FEE_PAYMENT_NOT_UNDER_REVIEW";
     public const string NotCharged                    = "ANNUAL_FEE_NOT_CHARGED";
+    public const string GatewayReferenceTooLong       = "ANNUAL_FEE_GATEWAY_REFERENCE_TOO_LONG";
+    public const string ReconcileNotesTooLong         = "ANNUAL_FEE_RECONCILE_NOTES_TOO_LONG";
+
+    /// <summary>
+    /// Conciliado como cobrado cuando el ciclo ya lo había pagado otra vía: el pago queda completado (el
+    /// dinero salió) pero el estado no se mueve. Posible doble cobro: hay que mirarlo (revisión M-3).
+    /// </summary>
+    public const string ReconciledCycleAlreadyAdvanced = "ANNUAL_FEE_RECONCILED_CYCLE_ALREADY_ADVANCED";
     public const string InsufficientCommissionBalance = TokenPurchaseErrors.InsufficientCommissionBalance;
     public const string InsufficientEWalletBalance    = TokenPurchaseErrors.InsufficientEWalletBalance;
     public const string EWalletNotFound               = TokenPurchaseErrors.EWalletNotFound;
@@ -137,6 +155,9 @@ public sealed class AnnualFeePaymentResultDto
     public DateTime CycleDueDate { get; set; }
     public DateTime NextDueDate  { get; set; }
     public string?  TokenCode    { get; set; }
+
+    /// <summary>Aviso sin error (p. ej. ANNUAL_FEE_RECONCILED_CYCLE_ALREADY_ADVANCED). Null casi siempre.</summary>
+    public string?  Warning      { get; set; }
 }
 
 /// <summary>Lo que enseña la tarjeta de la cuota (BizCenter y Admin).</summary>

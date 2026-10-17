@@ -19,6 +19,16 @@ public sealed partial class AnnualFeeChargeService
         if (memberId is null)
             return PayFail(AnnualFeeErrors.PaymentNotFound, "Annual-fee payment not found.");
 
+        // Revisión M-4: topes antes de tocar nada.
+        var reference = string.IsNullOrWhiteSpace(request.GatewayReference) ? null : request.GatewayReference.Trim();
+        if (reference is { Length: > AnnualFeeRules.GatewayReferenceMaxLength })
+            return PayFail(AnnualFeeErrors.GatewayReferenceTooLong,
+                $"The gateway reference can have at most {AnnualFeeRules.GatewayReferenceMaxLength} characters.");
+        var userNotes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim();
+        if (userNotes is { Length: > AnnualFeeRules.ReconcileNotesMaxLength })
+            return PayFail(AnnualFeeErrors.ReconcileNotesTooLong,
+                $"The notes can have at most {AnnualFeeRules.ReconcileNotesMaxLength} characters.");
+
         try
         {
             var before = Tracked();
@@ -38,11 +48,11 @@ public sealed partial class AnnualFeeChargeService
                     .Include(s => s.Plan).ThenInclude(p => p!.PlanProducts)
                     .FirstAsync(s => s.Id == payment.SubscriptionBillingStateId, ct);
                 var now = _clock.Now;
+                string? warning = null;
 
                 if (request.Charged)
                 {
-                    var history = AddEWalletPaymentHistory(order, payment.Amount,
-                        string.IsNullOrWhiteSpace(request.GatewayReference) ? payment.Id : request.GatewayReference.Trim(), actor, now);
+                    var history = AddEWalletPaymentHistory(order, payment.Amount, reference ?? payment.Id, actor, now);
                     payment.Complete(history.Id, now, actor);
                     MarkPaid(order, actor, now);
 
@@ -57,8 +67,13 @@ public sealed partial class AnnualFeeChargeService
                     }
                     else
                     {
-                        _logger.LogWarning("Cuota anual {PaymentId}: conciliada como cobrada, pero el estado ya vence el {Due} y no el {Cycle}; no se mueve.",
-                            payment.Id, state.NextBillingDate, payment.CycleDueDate);
+                        // Revisión M-3: el ciclo ya lo pagó otra vía mientras este débito estaba en revisión.
+                        // El dinero salió (se completa), el estado no se mueve, y es un posible doble cobro.
+                        warning = AnnualFeeErrors.ReconciledCycleAlreadyAdvanced;
+                        _logger.LogCritical(
+                            "Cuota anual {PaymentId} de {MemberId}: conciliada como cobrada ({Reference}) pero el estado ya vence el {Due} y no el {Cycle}. " +
+                            "Posible doble cobro: revisar y devolver si procede.",
+                            payment.Id, memberId, reference, state.NextBillingDate, payment.CycleDueDate);
                     }
                 }
                 else
@@ -67,13 +82,21 @@ public sealed partial class AnnualFeeChargeService
                     Cancel(order, actor, now);
                 }
 
-                payment.Notes = string.IsNullOrWhiteSpace(request.Notes)
-                    ? payment.Notes
-                    : string.IsNullOrWhiteSpace(payment.Notes) ? request.Notes.Trim() : $"{payment.Notes} | {request.Notes.Trim()}";
+                // Revisión M-7: auditoría explícita de la conciliación. Va delante en las notas para que, si
+                // hay que recortar (500), se pierda lo más antiguo y no quién, cuándo, con qué referencia y qué
+                // resultado. Quién y cuándo quedan también en LastUpdateBy y LastUpdateDate del pago.
+                var audit = $"[reconciled {now:yyyy-MM-dd HH:mm} by {actor}: {(request.Charged ? "charged" : "not charged")}" +
+                            $", ref {reference ?? "-"}{(warning is null ? "" : ", " + warning)}]";
+                payment.Notes = string.Join(" | ", new[] { audit, userNotes, payment.Notes }.Where(x => !string.IsNullOrWhiteSpace(x)));
+                _logger.LogWarning(
+                    "Cuota anual {PaymentId} de {MemberId} conciliada por {Actor}: cobrado={Charged}, referencia={Reference}, aviso={Warning}.",
+                    payment.Id, memberId, actor, request.Charged, reference, warning);
 
                 await _db.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);
-                return Result<AnnualFeePaymentResultDto>.Success(ToResult(payment, order, state.NextBillingDate));
+                var dto = ToResult(payment, order, state.NextBillingDate);
+                dto.Warning = warning;
+                return Result<AnnualFeePaymentResultDto>.Success(dto);
             }
             catch (Exception)
             {
