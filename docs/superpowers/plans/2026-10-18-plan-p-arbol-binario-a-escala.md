@@ -7,6 +7,26 @@
 - **Base local.** **Se repara**; no se regenera (responde a P8).
 - **`DevSeedController`.** Exige SuperAdmin **también en Development**, salvo el arranque inicial del superadmin si no existe ninguno. Ese caso queda cerrado en cuanto exista uno (responde a P6).
 
+**Segunda ronda (2026-10-18), tras el `SoloInforme` local (8.223 niveles y 2,3 GB de rutas):**
+
+- **La reparación mantiene el derrame** (responde a P1 y P4), aunque se ofreció el hueco libre más cercano.
+  - **Consecuencia:** antes de reparar, nada puede leer ni filtrar el binario por `HierarchyPath`. Un `LIKE`/`StartsWith` con un patrón de más de 4.000 caracteres da el error 8152. Hoy ya hay 12.668 nodos así, y tras la reparación serían casi todos. Por eso los bloques B (clave compacta) y C (lectores) van **antes** de la reparación.
+  - **Orden del despliegue en local** (lo ejecuta Nick): servicios parados → `01` reparar → `02` piernas → migraciones (índice único y clave compacta) → `03` relleno de la clave → `04` contadores y colas → arranque. Sin paso de reenganche de raíces (ver abajo).
+  - **La clave cabe:** con 8.223 niveles ocupa 4 + ⌊8.223/8⌋ + 1 = 1.032 B, por debajo de los 1.700 B de la clave de índice.
+- **`seed-superadmin` anónimo solo crea un usuario nuevo.**
+  - Nunca toca cuentas existentes ni actúa si ya existe algún SuperAdmin.
+  - El TOCTOU queda cerrado con un applock y la comprobación dentro de una transacción.
+  - Además, solo se admite desde loopback.
+- **Raíces provisionales** (regla de Nick, que sustituye a una primera versión con «reenganche al colocar al patrocinador»). Ejemplo: A patrocina a B y B patrocina a C.
+  - B aún no está colocado en el binario de A, pero ya puede colocar a C debajo de él: B existe como **raíz provisional** (nodo sin padre) con su subárbol. Los puntos de C cuentan para B; los de B todavía no suben a A.
+  - Un miembro cuyo patrocinador no está en el binario se crea como raíz provisional, y su patrocinado cuelga de ella (se mantiene).
+  - **El disparo es colocar a B** (lo hace A desde el BizCenter, un admin o la colocación automática al vencer el plazo): B se mueve con todo su subárbol, sin cambiar su forma interna, al destino de las reglas a, b y c bajo A. No hay reenganche automático al colocar a A ni paso de reparación para las raíces actuales: son colocaciones pendientes.
+  - Colocar a una raíz provisional está permitido en todos los caminos (`PlaceAsync`, `PlaceBulkAsync`/`AutoPlacementJob`, `RunAutoPlacement`, `PlaceMember` del BizCenter, del admin y de SignupAPI, y DevSeed). Un nodo **con** padre sigue siendo `AlreadyPlaced`, y moverlo se rige por las reglas de movimiento de siempre. Las raíces del sistema (sin patrocinador) no se colocan nunca.
+  - **Puntos acumulados:** al colocar a B sube a la línea de A **todo el volumen acumulado** de su árbol (sus puntos propios más sus dos piernas, la misma semántica que `LegPointMaintenance` y `02`), y después lo que llegue. No se resta nada: la raíz no tenía línea ascendente. Se recalculan la clave y la ruta del subárbol, la cola de derrame afectada y una evaluación de rango del padre nuevo.
+  - **Colocación automática con el mismo plazo:** `AutoPlacementJob` trata una raíz provisional con equipo exactamente igual que a un miembro pendiente sin nodo (mismo plazo, mismas reglas), siempre que su patrocinador sí esté en el binario.
+  - `AutoPlacementJob`/`PlaceBulkAsync` y DevSeed `place-bulk` procesan por fecha de alta y colocan antes al patrocinador pendiente de la tanda (I2 de la revisión): solo se crea una raíz provisional cuando el patrocinador de verdad no está en el binario ni pendiente en esa tanda.
+  - Mover el subárbol exige `dual-tree` en exclusivo, tomado desde el principio de la transacción (nunca se pasa de compartido a exclusivo).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Que el binario (`DualTeamTree`) aguante equipos de 400.000 nodos o más debajo de un miembro, con la vista puesta en millones. Eso exige tres cosas:
@@ -912,6 +932,30 @@ Se pone `[DevelopmentOnly]` en `DevSeedController` y se quitan los `if (!_env.Is
     - Las pruebas `Binario` de BizCenter (24, ninguna saltada), las de SQL de AdminAPI y las de colocación de Signups pasan en verde contra el ensayo.
 - **Tarea 21 (R7) no se hace en esta tanda.** En local, `PaymentHistories` tiene 22.769 filas y 0 repetidas por `(GatewayName, GatewayTransactionId)`.
 
+### Bloques B y C y arreglos de la revisión: desviaciones y notas (2026-10-18, segunda tanda)
+
+**Estado.** Hechos en la rama los bloques B (Tareas 9 a 14) y C (Tareas 15 a 17), los arreglos de la revisión (C1, C2, I1 a I8 y los menores) y las reglas de raíces provisionales. No están aplicados en la base local: la reparación, las migraciones y los scripts los lanza Nick con los servicios parados, en el orden de «Despliegue».
+
+- **Orden.** Los bloques B y C van antes de la reparación (decisión de Nick: tras reparar, casi todas las rutas pasan de 4.000 caracteres y cualquier `LIKE` sobre ellas da 8152).
+- **Sin `PlacementLogs.FloatingRootOrdinal`** (Tarea 11). El ordinal de la raíz virtual de los hijos flotantes de una retirada del admin se recupera de la clave de cualquiera de ellos (`DualBinaryPath.Root(RootOrdinal(clave))`), así que no hace falta guardarlo.
+- **Mover un subárbol** (`DualTeamNodes.MoveSubtreeAsync`). Las claves nuevas se calculan en C# con `DualBinaryPath.Rebase` (copia de bits, O(profundidad)) y se escriben de una vez con `SqlBulkCopy` a una tabla temporal y un `UPDATE`. No se anulan para rellenarlas nivel a nivel (`RekeySubtreeAsync` del plan): a 8.000 niveles serían 8.000 sentencias. La ruta de texto se reescribe en el mismo `UPDATE` con `SUBSTRING`.
+- **Relleno (`03`).** Va por niveles en una tabla temporal indexada por nivel (O(N)), no con un `UPDATE` sobre `DualTeamTree` por nivel. Los huérfanos por adyacencia comparten un ordinal virtual por padre ausente. Numeración: `03-relleno-clave-binario.sql` y `04-contadores-y-colas.sql`.
+- **Colas (`04`).** Se reconstruyen para todo nodo con los dos hijos, en una pasada de abajo arriba (la hoja más profunda de cada subárbol sale de las de sus hijos), no con una consulta por rango por patrocinador. En local salen 2.053.
+- **Validación de las colas.** El motor valida la cola al leerla: existe, sigue en la pierna (por la clave) y tiene hueco. Al mover o retirar solo se vacían las colas que apuntaban al punto de enganche o al nodo retirado. Recorrer los 8.000 ascendientes para vaciar las suyas costaba casi un segundo por operación. Igual que antes, una cola puede no ser la hoja más profunda si otro patrocinador derramó por debajo; nunca da un hueco fuera de la pierna.
+- **`DualSubtree` en InMemory.** El mismo conjunto sale bajando por adyacencia (en InMemory no hay `FromSqlRaw`).
+- **Pruebas contra SQL Server.** Los `[SqlServerFact]` de BizCenter, AdminAPI y Signups se saltan, con su motivo, en una base sin la migración `ClaveCompactaDelBinario`, como la local hasta el despliegue: sin las columnas, cualquier consulta de EF sobre `DualTeamTree` falla. Se ejecutaron con `MLM_TEST_SQLSERVER` apuntando a la base de ensayo reparada y migrada.
+- **C2.** Se retira `DualTeamPointsRecalculator` (Tarea 16). La prueba de orden determinista de la primera tanda se retira con él: el recálculo completo es `02`, que ya es determinista.
+- **Unidades de profundidad.** `PlacementOutcome.Depth` y `DualTeamLegFrontier.DeepestDepth` pasan a contar niveles de la clave (`Depth`), no barras de la ruta.
+- **`LegPointMaintenance`** cuenta un nodo sin `MemberStatistics` como 0 puntos y 1 nodo; antes la `JOIN` lo omitía.
+- **SignupAPI.**
+  - Un `PlaceUnderMemberId` sin nodo se crea como raíz provisional; antes insertaba un hijo bajo un padre inexistente, es decir, un huérfano.
+  - La baja (Unplace) ahora resta las piernas, cosa que antes no hacía.
+  - I8: el destino tiene que ser el patrocinador del miembro o alguien de su red de patrocinio. El personal queda exento (`PlaceMemberCommand.ByStaff`).
+- **I4.** SignupAPI encola una evaluación de rango para el padre directo y avisa al miembro y a ese padre, no a cada ascendiente. BizCenter y el admin no encolaban nada; el motor encola una para el padre nuevo al mover una raíz provisional.
+- **`seed-superadmin`.** La comprobación de loopback mira `RemoteIpAddress`. Detrás de un proxy inverso en la misma máquina (Caddy) todo llegaría como loopback, salvo que se configuren las cabeceras reenviadas (pregunta abierta).
+- **TDD.** En esta tanda, parte de las pruebas se escribió junto con el código del refactor (escritores y lectores dependían unos de otros). Las que demuestran el fallo anterior lo comprueban directamente: la de C1 exige el 8152 del prefijo y la de RCSI se vio en rojo sin el candado. Las de raíces provisionales, I1, I2 e I7 se escribieron después de su código.
+- **Fuera de esta tanda:** el Bloque D (escala sintética), el Bloque E (bono de coche) y R7 (`PaymentHistories`).
+
 ## Bloque B: clave de ruta compacta
 
 ### Tarea 9: `DualBinaryPath` (codificación) y su demostración
@@ -1672,26 +1716,53 @@ IF EXISTS (SELECT 1 FROM [PaymentHistories]
 
 ## Despliegue: ventana única, servicios parados
 
-El orden importa: el índice único no se crea si quedan huecos, el relleno exige que no los haya, y el código nuevo exige que el relleno haya terminado.
+El orden importa: el índice único no se crea si quedan huecos, el relleno exige la migración y que no haya huecos, y el código nuevo exige que el relleno haya terminado (sin clave, falla cerrado). Los tiempos son los del ensayo del 2026-10-18 sobre una copia de la base local (119.433 nodos, 939 huecos), con los 11 servicios corriendo contra la base original.
 
-1. **Parar los ocho servicios**, incluido Hangfire (`AutoPlacementJob`). Así nadie escribe en el binario y ningún `MigrateAsync` se adelanta.
-2. **Copia de seguridad** de la base.
-3. **Detección (solo lectura):** consulta de §3 del diagnóstico. En producción, **parar aquí** y llevar el resultado a Nick (P2 y P3).
-4. `sqlcmd -b -I … 01-reparar-huecos-binario.sql -v SoloInforme=1`, revisar la profundidad resultante y después `SoloInforme=0`. En producción, solo con la decisión de Nick y unos cerrojos de base adaptados que Nick apruebe; los scripts de este plan rechazan cualquier base que no sea la local.
-5. `02-recalcular-piernas.sql`.
-6. Migraciones `HuecoUnicoDelBinario`, `ClaveCompactaDelBinario` y `PagoUnicoPorPasarela`, con `dotnet ef database update --connection …` o un script idempotente generado con `dotnet ef migrations script --idempotent` y ejecutado con `sqlcmd -b -I`. Las guardas 51048, 51070 y 51071 detienen el paso sin tocar nada.
-7. `03-relleno-clave-binario.sql` y `04-colas-y-contadores.sql`.
-8. **Verificación** (Tarea 22, Paso 1).
-9. **Arrancar los servicios.**
-10. **Con esto, R6 y R7 del Plan M quedan cerrados:** RCSI (`Scripts/sql/plan-m/03-activar-rcsi.sql`) se puede activar en producción en esta misma ventana o en otra, según decida Nick.
+| Paso | Qué | Tiempo en el ensayo |
+|---|---|---|
+| 1 | **Parar los servicios**, incluido Hangfire (`AutoPlacementJob`). Así nadie escribe en el binario y ningún `MigrateAsync` se adelanta (con huecos, la guarda 51048 haría fallar el arranque). | — |
+| 2 | **Copia de seguridad** de la base. | 92 s (`COPY_ONLY` comprimida) |
+| 3 | **Detección (solo lectura):** consulta de §3 del diagnóstico. En producción, **parar aquí** y llevar el resultado a Nick (P2 y P3). Opcional en local: `01` con `SoloInforme=1`, que no escribe nada. | 14 min 40 s (`SoloInforme`) |
+| 4 | `01-reparar-huecos-binario.sql` con `SoloInforme=0`. | 781 s (13 min) |
+| 5 | `02-recalcular-piernas.sql`. | 75 s |
+| 6 | Migraciones `HuecoUnicoDelBinario` y `ClaveCompactaDelBinario` (`dotnet ef database update --connection …`, o un script idempotente regenerado con `dotnet ef migrations script --idempotent`). La guarda 51048 detiene el paso sin tocar nada si quedan huecos. | 10 s |
+| 7 | `03-relleno-clave-binario.sql`. | 24 s |
+| 8 | `04-contadores-y-colas.sql`. | 15 s |
+| 9 | **Verificación:** 0 huecos, 0 huérfanos, 0 ciclos, rutas y claves coherentes, piernas y contadores coherentes. | 28 s |
+| 10 | **Arrancar los servicios.** | — |
 
----
+**Ventana total** (pasos 2 y 4 a 9): unos **17 minutos**, más 15 si se repite antes el `SoloInforme`. Las segundas pasadas de `01`, `03` y `04` (idempotencia) tardan 208 s, 1 s y 10 s y no cambian nada.
+
+**Resultado del ensayo:**
+- La migración antes de reparar se detiene con 51048.
+- `01` deja 939 lotes, 44.243 intrusos movidos y 115.955 filas escritas, con profundidad 8.223.
+- `02` cambia 101.758 piernas y 100.911 `DualTeamPoints`.
+- `03` da 119.433 claves, profundidad 8.222 (en aristas) y 1.032 bytes como máximo.
+- `04` actualiza 117.377 contadores y crea 2.053 colas.
+- La verificación sale entera a 0: duplicados, huérfanos, rutas, claves, piernas y ciclos (las 119.433 filas se alcanzan una sola vez desde las raíces). El equipo de la raíz mayor por la clave coincide con sus contadores (119.403).
+- Las 7 suites pasan en verde contra la base de ensayo sin ninguna prueba saltada.
+
+**Mediciones en el ensayo** (objetivo menos de 2 s; `SqlServerMedicionPlanPTests` y `SqlServerVisualizadorBinarioTests`):
+
+| Operación | Tiempo |
+|---|---|
+| Colocar una hoja a 8.223 niveles (sube piernas por 8.222 ascendientes) | 1,6 s |
+| Colocar una raíz provisional con 50 en su equipo a más de 8.000 niveles | 1,8 s |
+| Retirar un nodo con equipo a más de 8.000 niveles | 0,9 s |
+| Mi equipo de AMB-700829 (119.403 nodos), primera página | 0,37 s |
+| Mi equipo de AMB-700829, página 1.000 | 0,77 s |
+| Progreso de rango de AMB-700829 (parte binaria) | 0,14 s |
+| Visualizador del admin, 6 niveles | 0,43 s |
+
+Las escrituras a más de 8.000 niveles cumplen, pero con poco margen. Su coste crece con la profundidad, porque cada colocación actualiza las piernas de todos sus ascendientes. A unos 11.000 niveles pasarían de 2 s (riesgo P-R1).
+
+**R7 (`PaymentHistories`) no entra en esta ventana:** en local hay 0 repetidos; queda para otra tanda.
 
 ## Riesgos
 
 | Id | Riesgo | Mitigación |
 |---|---|---|
-| P-R1 | **Profundidad.** La regla de la cadena más profunda hace crecer la profundidad con cada derrame (hoy 934 con 119.000 nodos). La clave admite 13.567 niveles. Con millones de miembros en una sola pierna puede agotarse. | `DualTreeTooDeepException` hace fallar la colocación de forma cerrada. Se registra un aviso a partir de 12.000 (`DualBinaryPath.WarnDepth`). El Bloque D mide los bytes de la clave a 5.000 niveles. A largo plazo, la decisión es de Nick (P4). |
+| P-R1 | **Profundidad** (medido: una colocación a 8.223 niveles tarda 1,6 s y crece con la profundidad, porque sube las piernas por todos los ascendientes). La regla de la cadena más profunda hace crecer la profundidad con cada derrame (hoy 934 con 119.000 nodos). La clave admite 13.567 niveles. Con millones de miembros en una sola pierna puede agotarse. | `DualTreeTooDeepException` hace fallar la colocación de forma cerrada. Se registra un aviso a partir de 12.000 (`DualBinaryPath.WarnDepth`). El Bloque D mide los bytes de la clave a 5.000 niveles. A largo plazo, la decisión es de Nick (P4). |
 | P-R2 | La reparación con la regla del motor puede dejar el árbol más profundo de lo previsto (la cota inferior es ≈ 1.481 niveles). **Medido en local: 8.223 niveles y 2.290 MB de rutas** (antes 934 y 308 MB). | El modo `SoloInforme` y la guarda 51044 (> 12.000). Alternativa en P1. |
 | P-R3 | `PlaceBulkAsync` de uno en uno es más lento que en bloques de 1.000. | Se mide en el Bloque D. Cada colocación es O(1) con la caché más una subida de O(profundidad). Si no basta, se paraleliza por patrocinador, porque el candado por hueco lo permite. |
 | P-R4 | La clave de `UX_DualTeamTree_ParentMemberId_Side` se declara de 1.804 bytes (`nvarchar(900)`). | Los ids reales tienen menos de 20 caracteres. Se acepta el aviso de SQL Server. Acotar `MemberId`/`ParentMemberId` a `nvarchar(100)` queda para otro plan. |
