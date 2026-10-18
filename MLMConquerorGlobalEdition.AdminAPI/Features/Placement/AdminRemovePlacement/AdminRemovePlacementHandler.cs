@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.Repository.Services.Trees;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
@@ -44,6 +45,11 @@ public class AdminRemovePlacementHandler : IRequestHandler<AdminRemovePlacementC
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
         try
         {
+            // Plan P: una retirada reescribe el arbol; toma el arbol en exclusivo (espera a las colocaciones en
+            // curso y las detiene) y vuelve a leer el nodo, que pudo moverse mientras tanto.
+            await DualTeamGate.EnterTreeExclusiveAsync(_db, ct);
+            await _db.Entry(node).ReloadAsync(ct);
+
             // Keep all descendants linked to the removed member so that when the member
             // is re-placed, their subtree moves with them.
             // Replace the old path prefix with /{memberId}/ (member becomes a floating root).
@@ -95,6 +101,12 @@ public class AdminRemovePlacementHandler : IRequestHandler<AdminRemovePlacementC
             await tx.CommitAsync(ct);
 
             return Result<string>.Success("Placement eliminado exitosamente por el administrador.");
+        }
+        catch (DualTeamBusyException)
+        {
+            await tx.RollbackAsync(ct);
+            return Result<string>.Failure("PLACEMENT_BUSY",
+                "Hay otra colocacion en curso en el arbol. Intentalo de nuevo en unos segundos.");
         }
         catch
         {

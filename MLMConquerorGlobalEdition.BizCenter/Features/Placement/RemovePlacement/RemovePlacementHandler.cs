@@ -4,6 +4,7 @@ using MLMConquerorGlobalEdition.BizCenter.Services;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Exceptions;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.SharedKernel;
 using IDateTimeProvider = MLMConquerorGlobalEdition.BizCenter.Services.IDateTimeProvider;
 
@@ -71,6 +72,11 @@ public class RemovePlacementHandler : IRequestHandler<RemovePlacementCommand, Re
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
         try
         {
+            // Plan P: una retirada reescribe el arbol; toma el arbol en exclusivo (espera a las colocaciones en
+            // curso y las detiene) y vuelve a leer el nodo, que pudo moverse mientras tanto.
+            await DualTeamGate.EnterTreeExclusiveAsync(_db, ct);
+            await _db.Entry(node).ReloadAsync(ct);
+
             _db.DualTeamTree.Remove(node);
 
             var directChildren = await _db.DualTeamTree
@@ -112,6 +118,12 @@ public class RemovePlacementHandler : IRequestHandler<RemovePlacementCommand, Re
                 $"{member.FirstName} {member.LastName}",
                 remaining
             ));
+        }
+        catch (DualTeamBusyException)
+        {
+            await tx.RollbackAsync(ct);
+            return Result<RemovePlacementResult>.Failure("PLACEMENT_BUSY",
+                "Hay otra colocacion en curso en el arbol. Intentalo de nuevo en unos segundos.");
         }
         catch (Exception)
         {

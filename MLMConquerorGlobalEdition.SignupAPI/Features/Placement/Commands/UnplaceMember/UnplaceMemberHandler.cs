@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Exceptions;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SignupAPI.Services;
 
@@ -44,6 +45,25 @@ public class UnplaceMemberHandler : IRequestHandler<UnplaceMemberCommand, Result
                 throw new UnplacementWindowExpiredException();
         }
 
+        // Plan P: el borrado va en una transaccion con el arbol en exclusivo: espera a las colocaciones en curso
+        // (una colocacion bajo este nodo dejaria un hijo colgando de un nodo borrado) y vuelve a leer el nodo.
+        await using var tx = await _db.Database.BeginTransactionAsync(ct);
+        try
+        {
+            await DualTeamGate.EnterTreeExclusiveAsync(_db, ct);
+        }
+        catch (DualTeamBusyException ex)
+        {
+            await tx.RollbackAsync(ct);
+            return Result<bool>.Failure("PLACEMENT_BUSY", ex.Message);
+        }
+        await _db.Entry(node).ReloadAsync(ct);
+        if (_db.Entry(node).State == EntityState.Detached)
+        {
+            await tx.RollbackAsync(ct);
+            return Result<bool>.Failure("PLACEMENT_NOT_FOUND", $"Member '{command.MemberId}' has no active placement.");
+        }
+
         _db.DualTeamTree.Remove(node);
 
         var unplacementLog = new PlacementLog
@@ -60,6 +80,7 @@ public class UnplaceMemberHandler : IRequestHandler<UnplaceMemberCommand, Result
 
         await _db.PlacementLogs.AddAsync(unplacementLog, ct);
         await _db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
 
         return Result<bool>.Success(true);
     }
