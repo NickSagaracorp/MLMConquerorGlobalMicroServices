@@ -1,0 +1,89 @@
+/*
+Plan P, Tarea 3. Recalcula desde cero los puntos de pierna del binario despues de reparar los huecos
+(01-reparar-huecos-binario.sql): suma de abajo arriba, nivel a nivel, de MemberStatistics.PersonalPoints,
+la misma semantica que LegPointMaintenance (la pierna de un nodo es la suma de los PersonalPoints de todo
+el subarbol de su hijo de ese lado, el hijo incluido). Tambien MemberStatistics.DualTeamPoints = Izq + Der.
+No basta la version incremental: los valores guardados salen de algoritmos mezclados.
+
+Vacia DualTeamLegFrontiers (la cola cacheada por patrocinador): la reparacion cambia cual es la hoja mas
+profunda de cada pierna. El motor la reconstruye solo, con una consulta, en el primer derrame de cada
+patrocinador; la Tarea 14 la reconstruye de una vez.
+
+Escribe por tandas de 20.000 filas, una transaccion por tanda. Idempotente: una segunda ejecucion no cambia
+ninguna fila. Se niega a ejecutarse si quedan huecos repetidos (las piernas no estarian bien definidas).
+
+SOLO base local o la base de ensayo del Plan P, con los servicios parados.
+Cerrojos: DB_NAME() en lista blanca, -v Confirmo=LOCAL, SERVERPROPERTY('MachineName') = HOST_NAME().
+
+  sqlcmd -S . -d MLMConquerorGlobalEditionDb -E -C -b -I -v Confirmo=LOCAL -i Scripts/sql/plan-p/02-recalcular-piernas.sql
+*/
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+IF DB_NAME() NOT IN (N'MLMConquerorGlobalEditionDb', N'MLMConquerorGlobalEditionDb_PlanPEnsayo')
+    THROW 51045, N'Este script es solo para MLMConquerorGlobalEditionDb (o su ensayo del Plan P).', 1;
+IF N'$(Confirmo)' <> N'LOCAL'
+    THROW 51046, N'Falta la confirmacion explicita: ejecutar con -v Confirmo=LOCAL.', 1;
+IF CAST(SERVERPROPERTY('MachineName') AS nvarchar(128)) <> HOST_NAME()
+    THROW 51047, N'El servidor no es la maquina local.', 1;
+IF EXISTS (SELECT 1 FROM DualTeamTree WHERE IsDeleted = 0 AND ParentMemberId IS NOT NULL
+           GROUP BY ParentMemberId, Side HAVING COUNT(*) > 1)
+    THROW 51052, N'Quedan huecos repetidos: ejecutar antes 01-reparar-huecos-binario.sql.', 1;
+GO
+SET NOCOUNT ON;
+SET XACT_ABORT ON;
+DECLARE @inicio datetime2 = SYSDATETIME();
+
+IF OBJECT_ID('tempdb..#n') IS NOT NULL DROP TABLE #n;
+SELECT CAST(d.MemberId AS nvarchar(100)) COLLATE DATABASE_DEFAULT AS MemberId,
+       CAST(d.ParentMemberId AS nvarchar(100)) COLLATE DATABASE_DEFAULT AS ParentMemberId,
+       d.Side,
+       LEN(d.HierarchyPath) - LEN(REPLACE(d.HierarchyPath, N'/', N'')) - 1 AS Nivel,
+       CAST(ISNULL(s.PersonalPoints, 0) AS decimal(18,4)) AS Propios,
+       CAST(0 AS decimal(18,4)) AS Izq, CAST(0 AS decimal(18,4)) AS Der
+INTO #n
+FROM DualTeamTree d
+OUTER APPLY (SELECT TOP 1 ms.PersonalPoints FROM MemberStatistics ms WHERE ms.MemberId = d.MemberId ORDER BY ms.Id) s
+WHERE d.IsDeleted = 0;
+CREATE UNIQUE CLUSTERED INDEX cx ON #n (Nivel, MemberId);
+CREATE INDEX ix_p ON #n (ParentMemberId, Side) INCLUDE (Propios, Izq, Der);
+
+-- De la hoja a la raiz: cada nivel suma los totales ya calculados del nivel de debajo.
+DECLARE @nivel int = (SELECT MAX(Nivel) FROM #n);
+WHILE @nivel >= 0
+BEGIN
+    UPDATE p SET Izq = ISNULL(l.Total, 0), Der = ISNULL(r.Total, 0)
+    FROM #n p
+    OUTER APPLY (SELECT SUM(c.Propios + c.Izq + c.Der) AS Total FROM #n c WHERE c.ParentMemberId = p.MemberId AND c.Side = 0) l
+    OUTER APPLY (SELECT SUM(c.Propios + c.Izq + c.Der) AS Total FROM #n c WHERE c.ParentMemberId = p.MemberId AND c.Side = 1) r
+    WHERE p.Nivel = @nivel;
+    SET @nivel -= 1;
+END
+
+DECLARE @hecho int = 1, @piernas int = 0;
+WHILE @hecho > 0
+BEGIN
+    BEGIN TRAN;
+    UPDATE TOP (20000) d SET LeftLegPoints = n.Izq, RightLegPoints = n.Der, LastUpdateDate = GETDATE(), LastUpdateBy = N'plan-p-piernas'
+    FROM DualTeamTree d JOIN #n n ON n.MemberId = d.MemberId
+    WHERE d.IsDeleted = 0 AND (d.LeftLegPoints <> n.Izq OR d.RightLegPoints <> n.Der);
+    SET @hecho = @@ROWCOUNT;
+    SET @piernas += @hecho;
+    COMMIT;
+END
+
+BEGIN TRAN;
+UPDATE s SET DualTeamPoints = CAST(n.Izq + n.Der AS int)
+FROM MemberStatistics s JOIN #n n ON n.MemberId = s.MemberId
+WHERE s.DualTeamPoints <> CAST(n.Izq + n.Der AS int);
+DECLARE @estadisticas int = @@ROWCOUNT;
+
+DELETE FROM DualTeamLegFrontiers;
+DECLARE @colas int = @@ROWCOUNT;
+COMMIT;
+
+SELECT (SELECT COUNT(*) FROM #n) AS NodosRecalculados,
+       @piernas AS PiernasCambiadas,
+       @estadisticas AS DualTeamPointsCambiados,
+       @colas AS ColasVaciadas,
+       DATEDIFF(second, @inicio, SYSDATETIME()) AS Segundos;
