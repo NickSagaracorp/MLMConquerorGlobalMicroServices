@@ -43,7 +43,21 @@ public static class BinarioDb
             .Select(g => g.Key)
             .ToListAsync()).Count;
 
-    /// <summary>Borra los nodos, logs y colas del prefijo (pruebas de concurrencia, sin transaccion envolvente).</summary>
+    /// <summary>Perfiles minimos para los manejadores que comprueban que el miembro existe.</summary>
+    public static async Task SembrarPerfilesAsync(AppDbContext db, params string[] ids)
+    {
+        foreach (var id in ids)
+            db.MemberProfiles.Add(new Domain.Entities.Member.MemberProfile
+            {
+                UserId = Guid.NewGuid(), MemberId = id, Email = $"{id.ToLowerInvariant()}@prueba.test",
+                FirstName = "Plan", LastName = "P", Country = "US", MemberType = MemberType.Ambassador,
+                Status = Domain.Entities.Member.MemberAccountStatus.Active, EnrollDate = DateTime.Now, CreationDate = DateTime.Now,
+                LastUpdateDate = DateTime.Now, CreatedBy = "plan-p-prueba"
+            });
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>Borra los nodos, logs, colas y perfiles del prefijo (pruebas de concurrencia, sin transaccion envolvente).</summary>
     public static async Task LimpiarAsync(string prefijo)
     {
         await using var db = Reportes.SqlServerReportes.Db();
@@ -51,5 +65,6 @@ public static class BinarioDb
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM DualTeamLegFrontiers WHERE SponsorMemberId LIKE {patron} OR DeepestMemberId LIKE {patron}");
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM PlacementLogs WHERE MemberId LIKE {patron}");
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM DualTeamTree WHERE MemberId LIKE {patron}");
+        await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM MemberProfiles WHERE MemberId LIKE {patron} AND CreatedBy = 'plan-p-prueba'");
     }
 }

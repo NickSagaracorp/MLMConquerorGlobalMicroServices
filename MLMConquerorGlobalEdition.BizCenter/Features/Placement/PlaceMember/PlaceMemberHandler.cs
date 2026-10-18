@@ -6,6 +6,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Domain.Exceptions;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.Repository.Services.Trees;
 using MLMConquerorGlobalEdition.SharedKernel;
 using IDateTimeProvider = MLMConquerorGlobalEdition.BizCenter.Services.IDateTimeProvider;
@@ -114,6 +115,24 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
         try
         {
+            // Plan P: la comprobacion del hueco va DENTRO de la transaccion y detras del candado. Un movimiento
+            // reescribe rutas y toma el arbol en exclusivo; un alta toma solo su hueco. Con el candado se
+            // vuelven a leer el destino y el nodo (otro movimiento pudo cambiar sus rutas) y el hueco.
+            if (existingNode != null)
+                await DualTeamGate.EnterTreeExclusiveAsync(_db, ct);
+            else
+                await DualTeamGate.EnterSlotAsync(_db, command.TargetParentMemberId, side, ct);
+
+            var lockedCheck = await RecheckInsideLockAsync(command, side, existingNode is not null, ct);
+            if (lockedCheck is not null)
+            {
+                await tx.RollbackAsync(ct);
+                return lockedCheck;
+            }
+            // Las entidades ya rastreadas no se refrescan con otra consulta: se recargan.
+            await _db.Entry(targetParent).ReloadAsync(ct);
+            if (existingNode != null) await _db.Entry(existingNode).ReloadAsync(ct);
+
             if (existingNode != null)
             {
                 _db.DualTeamTree.Remove(existingNode);
@@ -185,11 +204,54 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
                 Math.Max(0, MaxPlacementOpportunities - newOpportunities)
             ));
         }
+        catch (DbUpdateException ex) when (DualTeamSlotTaken.Is(ex))
+        {
+            // La red del indice unico de hueco: otro escritor lo ocupo a la vez.
+            await tx.RollbackAsync(ct);
+            return SlotOccupied(command);
+        }
+        catch (DualTeamBusyException)
+        {
+            await tx.RollbackAsync(ct);
+            return Result<PlaceMemberResult>.Failure("PLACEMENT_BUSY",
+                "Hay otra colocacion en curso en esta parte del arbol. Intentalo de nuevo en unos segundos.");
+        }
         catch (Exception)
         {
             await tx.RollbackAsync(ct);
             throw;
         }
+    }
+
+    private static Result<PlaceMemberResult> SlotOccupied(PlaceMemberCommand command) =>
+        Result<PlaceMemberResult>.Failure("SLOT_OCCUPIED",
+            $"El nodo {command.TargetParentMemberId} ya tiene ocupada la pierna {command.Side}. " +
+            "La estructura es estrictamente binaria.");
+
+    /// <summary>
+    /// Plan P: las comprobaciones que dependen del estado del arbol, repetidas con el candado tomado. Null si
+    /// todo sigue en orden. La lectura sin rastreo no toca las entidades que el manejador ya tiene cargadas.
+    /// </summary>
+    private async Task<Result<PlaceMemberResult>?> RecheckInsideLockAsync(
+        PlaceMemberCommand command, TreeSide side, bool isMove, CancellationToken ct)
+    {
+        var target = await _db.DualTeamTree.AsNoTracking()
+            .FirstOrDefaultAsync(d => d.MemberId == command.TargetParentMemberId, ct);
+        if (target is null)
+            return Result<PlaceMemberResult>.Failure("TARGET_NOT_FOUND", "El nodo destino no existe en el Dual Team.");
+
+        if (await _db.DualTeamTree.AnyAsync(d => d.ParentMemberId == command.TargetParentMemberId && d.Side == side, ct))
+            return SlotOccupied(command);
+
+        var node = await _db.DualTeamTree.AsNoTracking()
+            .FirstOrDefaultAsync(d => d.MemberId == command.MemberToPlaceId, ct);
+        if ((node is not null) != isMove)
+            return Result<PlaceMemberResult>.Failure("PLACEMENT_CONFLICT",
+                "La posicion del miembro cambio mientras se colocaba. Vuelve a intentarlo.");
+        if (node is not null && target.HierarchyPath.StartsWith(node.HierarchyPath))
+            return Result<PlaceMemberResult>.Failure("CIRCULAR_REFERENCE",
+                "No se puede realizar este placement: generaría una referencia circular en el árbol.");
+        return null;
     }
 
     /// <summary>
