@@ -55,7 +55,8 @@ public class RunAutoPlacementHandlerTests
 
     private static RunAutoPlacementHandler CreateHandler(
         Repository.Context.AppDbContext db) =>
-        new(db, CurrentUser().Object, Clock().Object);
+        new(db, CurrentUser().Object, Clock().Object,
+            new Repository.Services.Teams.PlacementService(db, Clock().Object)); // el motor real, sobre InMemory
 
     [Fact]
     public async Task Handle_WhenNoExpiredUnplacedMembers_ReturnsZeroPlaced()
