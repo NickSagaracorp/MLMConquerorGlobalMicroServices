@@ -134,18 +134,23 @@ public class PlacementService : IPlacementService
     private async Task<Result<PlacementOutcome>?> PlaceLeafAsync(
         string memberId, string sponsorMemberId, PlacementAudit audit, CancellationToken ct)
     {
+        // Revision I1: si el admin lo retiro, su equipo le espera flotando y vuelve con el; recolgarlo mueve subarboles,
+        // asi que entonces el arbol se toma en exclusivo desde el principio (nunca se sube de compartido a exclusivo).
+        var flotantes = await DualTeamNodes.FloatingChildrenAsync(_db, memberId, ct);
         await using var scope = await PlacementScope.BeginAsync(_db, _log, ct);
         try
         {
             // Revision I1: el arbol en compartido ANTES de resolver: ningun movimiento puede cambiarlo entre la
             // resolucion y el candado del hueco.
-            await DualTeamGate.EnterTreeSharedAsync(_db, ct);
+            if (flotantes.Count > 0) await DualTeamGate.EnterTreeExclusiveAsync(_db, ct);
+            else await DualTeamGate.EnterTreeSharedAsync(_db, ct);
             var target = await ResolveTargetAsync(sponsorMemberId, audit, scope, ct);
 
             // Plan P: el candado es del HUECO destino. Dentro se vuelve a comprobar todo.
-            await DualTeamGate.EnterSlotAsync(_db, target.Parent.MemberId, target.Side, ct);
+            if (flotantes.Count == 0) await DualTeamGate.EnterSlotAsync(_db, target.Parent.MemberId, target.Side, ct);
             if (await _db.DualTeamTree.AnyAsync(d => d.MemberId == memberId, ct)
-                || await _db.DualTeamTree.AnyAsync(d => d.ParentMemberId == target.Parent.MemberId && d.Side == target.Side, ct))
+                || await _db.DualTeamTree.AnyAsync(d => d.ParentMemberId == target.Parent.MemberId && d.Side == target.Side, ct)
+                || (await DualTeamNodes.FloatingChildrenAsync(_db, memberId, ct)).Count != flotantes.Count)
                 return await RetryAsync(scope, ct);
 
             var node = await DualTeamNodes.ChildAsync(_db, target.Parent, memberId, target.Side, _clock.Now, audit.CreatedBy, ct);
@@ -156,6 +161,7 @@ public class PlacementService : IPlacementService
 
             // Subida incremental de puntos y contadores de pierna para la hoja nueva, en la misma transaccion.
             await LegPointMaintenance.ApplyIncrementalAsync(_db, new[] { memberId }, ct);
+            await DualTeamNodes.ReattachFloatingChildrenAsync(_db, memberId, flotantes, _clock.Now, audit.CreatedBy, ct);
 
             await scope.CompleteAsync(ct);
             return Result<PlacementOutcome>.Success(new PlacementOutcome(

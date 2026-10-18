@@ -113,12 +113,17 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
                 "No se puede mover a este ambassador porque ya tiene downline propio " +
                 "en la estructura Dual Team.");
 
+        // Revision I1: un miembro retirado por el admin tiene a su equipo esperando (flotantes) y vuelve con el.
+        var flotantes = tipo == Tipo.Hoja
+            ? await DualTeamNodes.FloatingChildrenAsync(_db, command.MemberToPlaceId, ct)
+            : new List<DualTeamEntity>();
+
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
         try
         {
             // Plan P: el candado antes de comprobar nada (I1). Una hoja: arbol en compartido y su hueco. Un
-            // movimiento: arbol en exclusivo desde el principio (nunca se sube de compartido a exclusivo).
-            if (tipo == Tipo.Hoja)
+            // movimiento (o una hoja con flotantes que recolgar): arbol en exclusivo desde el principio.
+            if (tipo == Tipo.Hoja && flotantes.Count == 0)
             {
                 await DualTeamGate.EnterTreeSharedAsync(_db, ct);
                 await DualTeamGate.EnterSlotAsync(_db, command.TargetParentMemberId, side, ct);
@@ -170,6 +175,8 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<Pla
                 _db.DualTeamTree.Add(nuevo);
                 await _db.SaveChangesAsync(ct);
                 await LegPointMaintenance.ApplyIncrementalAsync(_db, new[] { command.MemberToPlaceId }, ct);
+                _db.Entry(nuevo).State = EntityState.Detached;
+                await DualTeamNodes.ReattachFloatingChildrenAsync(_db, command.MemberToPlaceId, flotantes, now, _currentUser.UserId, ct);
             }
             else
             {

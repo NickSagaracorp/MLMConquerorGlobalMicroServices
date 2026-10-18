@@ -81,6 +81,11 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<boo
 
         var side = Enum.Parse<TreeSide>(command.Side);
 
+        // Revision I1: un miembro retirado por el admin tiene a su equipo esperando (flotantes) y vuelve con el; recolgarlo
+        // mueve subarboles, asi que entonces el arbol se toma en exclusivo desde el principio.
+        var flotantes = esRaizProvisional ? new List<DualTeamEntity>() : await DualTeamNodes.FloatingChildrenAsync(_db, command.MemberId, ct);
+        var exclusivo = esRaizProvisional || flotantes.Count > 0;
+
         string? parentMemberId = null;
         for (var intento = 1; intento <= MaxIntentos && parentMemberId is null; intento++)
         {
@@ -88,7 +93,7 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<boo
             await using var tx = await _db.Database.BeginTransactionAsync(ct);
             try
             {
-                if (esRaizProvisional) await DualTeamGate.EnterTreeExclusiveAsync(_db, ct);
+                if (exclusivo) await DualTeamGate.EnterTreeExclusiveAsync(_db, ct);
                 else await DualTeamGate.EnterTreeSharedAsync(_db, ct);
 
                 // El estado del miembro, con el candado.
@@ -116,7 +121,7 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<boo
                         $"No available {command.Side} slot found under '{command.PlaceUnderMemberId}'.");
                 }
 
-                if (!esRaizProvisional) await DualTeamGate.EnterSlotAsync(_db, slot.MemberId, side, ct);
+                if (!exclusivo) await DualTeamGate.EnterSlotAsync(_db, slot.MemberId, side, ct);
                 if (await _db.DualTeamTree.AnyAsync(d => d.ParentMemberId == slot.MemberId && d.Side == side, ct))
                 {
                     await tx.RollbackAsync(ct);
@@ -140,6 +145,7 @@ public class PlaceMemberHandler : IRequestHandler<PlaceMemberCommand, Result<boo
                     nuevos.Add(_db.DualTeamTree.Add(node).Entity);
                     await _db.SaveChangesAsync(ct);
                     await LegPointMaintenance.ApplyIncrementalAsync(_db, new[] { command.MemberId }, ct);
+                    await DualTeamNodes.ReattachFloatingChildrenAsync(_db, command.MemberId, flotantes, now, command.MemberId, ct);
                 }
 
                 nuevos.Add(_db.PlacementLogs.Add(new PlacementLog
