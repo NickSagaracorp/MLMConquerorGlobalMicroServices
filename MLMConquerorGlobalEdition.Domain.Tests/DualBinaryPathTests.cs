@@ -135,21 +135,22 @@ public class DualBinaryPathTests
             foreach (var x in nodos.Where(n => n.Id >= 0))
             {
                 var (lo, hi) = DualBinaryPath.SubtreeBounds(x.Clave);
-                EnRango(lo, hi).Should().BeEquivalentTo(Subarbol(x.Id), $"subarbol del nodo {x.Id} del arbol {arbol}");
+                EnRango(lo, hi).SetEquals(Subarbol(x.Id)).Should().BeTrue($"subarbol del nodo {x.Id} del arbol {arbol}");
 
                 foreach (var lado in new[] { L, R })
                 {
                     var hijo = hijos[x.Id].SingleOrDefault(h => h.Lado == lado);
                     var esperado = hijo.Clave is null ? new HashSet<int>() : Subarbol(hijo.Id);
                     var (llo, lhi) = DualBinaryPath.LegBounds(x.Clave, lado);
-                    EnRango(llo, lhi).Should().BeEquivalentTo(esperado, $"pierna {lado} del nodo {x.Id}");
+                    EnRango(llo, lhi).SetEquals(esperado).Should().BeTrue($"pierna {lado} del nodo {x.Id}");
                 }
             }
 
             var ordenadas = nodos.Select(n => n.Clave).ToList();
             ordenadas.Sort(DualBinaryPath.SqlCompare);
             for (var i = 1; i < ordenadas.Count; i++)
-                DualBinaryPath.SqlCompare(ordenadas[i - 1], ordenadas[i]).Should().BeLessThan(0, "no hay dos claves iguales para SQL Server");
+                if (DualBinaryPath.SqlCompare(ordenadas[i - 1], ordenadas[i]) >= 0)
+                    throw new Xunit.Sdk.XunitException("Hay dos claves iguales para SQL Server.");
         }
     }
 

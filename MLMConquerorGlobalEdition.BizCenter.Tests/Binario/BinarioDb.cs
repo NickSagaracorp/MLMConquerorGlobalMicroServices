@@ -1,3 +1,4 @@
+using MLMConquerorGlobalEdition.Repository.Queries;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
@@ -15,20 +16,22 @@ public static class BinarioDb
     public static string Prefijo(string etiqueta) => $"{etiqueta}{Guid.NewGuid():N}"[..12].ToUpperInvariant();
 
     /// <summary>Arbol pequeno por (id, padre, lado), en orden de padres a hijos. La raiz va con padre null.</summary>
+    /// <summary>Plan P: los nodos los construye DualTeamNodes (ruta, clave compacta y profundidad).</summary>
     public static async Task SembrarAsync(AppDbContext db, params (string Id, string? Padre, TreeSide Lado)[] nodos)
     {
-        var rutas = new Dictionary<string, string>();
+        var hechos = new Dictionary<string, DualTeamEntity>();
         foreach (var (id, padre, lado) in nodos)
         {
-            var ruta = padre is null ? $"/{id}/" : $"{rutas[padre]}{id}/";
-            rutas[id] = ruta;
-            db.DualTeamTree.Add(new DualTeamEntity
-            {
-                MemberId = id, ParentMemberId = padre, Side = lado, HierarchyPath = ruta,
-                CreationDate = DateTime.Now, CreatedBy = "plan-p-prueba", LastUpdateDate = DateTime.Now
-            });
+            var nodo = padre is null
+                ? await DualTeamNodes.RootAsync(db, id, DateTime.Now, "plan-p-prueba")
+                : await DualTeamNodes.ChildAsync(db, hechos[padre], id, lado, DateTime.Now, "plan-p-prueba");
+            hechos[id] = nodo;
+            db.DualTeamTree.Add(nodo);
         }
         await db.SaveChangesAsync();
+        // Las piernas (puntos y contadores) coherentes con lo sembrado, como al colocar.
+        await Repository.Services.Teams.LegPointMaintenance.ApplyIncrementalAsync(
+            db, nodos.Where(n => n.Padre is not null).Select(n => n.Id).ToList());
     }
 
     public static Task<int> HijosAsync(AppDbContext db, string padre, TreeSide lado) =>
@@ -57,6 +60,27 @@ public static class BinarioDb
         await db.SaveChangesAsync();
     }
 
+    /// <summary>Un perfil con su patrocinador (una raiz provisional es un nodo sin padre cuyo miembro tiene patrocinador).</summary>
+    public static async Task SembrarPerfilAsync(AppDbContext db, string id, string? patrocinador)
+    {
+        db.MemberProfiles.Add(new Domain.Entities.Member.MemberProfile
+        {
+            UserId = Guid.NewGuid(), MemberId = id, Email = $"{id.ToLowerInvariant()}@prueba.test", SponsorMemberId = patrocinador,
+            FirstName = "Plan", LastName = "P", Country = "US", MemberType = MemberType.Ambassador,
+            Status = Domain.Entities.Member.MemberAccountStatus.Active, EnrollDate = DateTime.Now, CreationDate = DateTime.Now,
+            LastUpdateDate = DateTime.Now, CreatedBy = "plan-p-prueba"
+        });
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>Puntos propios de un miembro (MemberStatistics.PersonalPoints), lo que suben las piernas.</summary>
+    public static async Task PuntosAsync(AppDbContext db, string id, int puntos)
+    {
+        db.MemberStatistics.Add(new Domain.Entities.Member.MemberStatisticEntity
+            { MemberId = id, PersonalPoints = puntos, CreatedBy = "plan-p-prueba", CreationDate = DateTime.Now });
+        await db.SaveChangesAsync();
+    }
+
     /// <summary>Borra los nodos, logs, colas y perfiles del prefijo (pruebas de concurrencia, sin transaccion envolvente).</summary>
     public static async Task LimpiarAsync(string prefijo)
     {
@@ -66,5 +90,7 @@ public static class BinarioDb
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM PlacementLogs WHERE MemberId LIKE {patron}");
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM DualTeamTree WHERE MemberId LIKE {patron}");
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM MemberProfiles WHERE MemberId LIKE {patron} AND CreatedBy = 'plan-p-prueba'");
+        await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM MemberStatistics WHERE MemberId LIKE {patron} AND CreatedBy = 'plan-p-prueba'");
+        await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM RankEvaluationQueue WHERE TriggerMemberId LIKE {patron}");
     }
 }

@@ -1,6 +1,9 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using MLMConquerorGlobalEdition.Domain.Entities.Rank;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Domain.Services;
@@ -21,8 +24,7 @@ public sealed record PlacementAudit(string CreatedBy, string Action, string Reas
 }
 
 /// <summary>
-/// The single authority for inserting members into the dual-team binary tree. Replaces the
-/// per-write-site bespoke logic (which raced and produced duplicate / collided rows).
+/// The single authority for placing members into the dual-team binary tree.
 ///
 /// Placement rules (deepest-chain spillover):
 ///   a) sponsor has no left child   → place LEFT under sponsor
@@ -30,12 +32,17 @@ public sealed record PlacementAudit(string CreatedBy, string Action, string Reas
 ///   c) sponsor has both children   → spill to the DEEPEST open node on the sponsor's
 ///      preferred side (the sponsor's own Side; Left for a root) and place there.
 ///
-/// Scalability: the deepest node is cached per sponsor in <see cref="DualTeamLegFrontier"/>
-/// so step (c) is O(1). The cache self-heals if stale (one recursive query over the leg).
-/// Concurrency (Plan P): every placement runs in a transaction, takes <see cref="DualTeamGate"/>
-/// on the TARGET slot, re-checks the slot inside the lock and retries if another writer got
-/// there first. UX_DualTeamTree_ParentMemberId_Side and IX_DualTeamTree_MemberId are the hard
-/// backstops (a unique violation also retries). Leg points are maintained incrementally.
+/// Provisional roots (decision de Nick, 2026-10-18): a member whose sponsor is not in the tree yet can
+/// already build a team; the engine creates the sponsor as a ROOT (provisional) and places under it. When
+/// that provisional root is itself placed, its whole subtree MOVES, unchanged inside, to the slot the rules
+/// give under its sponsor, and its accumulated volume rises to the new upline. A root with no sponsor (a
+/// system root) is never placed. A node that already has a parent is AlreadyPlaced.
+///
+/// Concurrency (Plan P): every placement runs in a transaction. A leaf takes <c>dual-tree</c> shared
+/// BEFORE resolving the slot (review I1), then the slot, re-checks inside and retries if another writer got
+/// there first; a provisional-root move takes <c>dual-tree</c> exclusive from the start (never an upgrade).
+/// UX_DualTeamTree_ParentMemberId_Side, IX_DualTeamTree_MemberId and UX_DualTeamTree_BinaryPath are the hard
+/// backstops (their violation also retries). Leg points and counts are maintained incrementally.
 /// </summary>
 public interface IPlacementService
 {
@@ -46,8 +53,9 @@ public interface IPlacementService
     Task<Result<PlacementOutcome>> PlaceAsync(string memberId, string sponsorMemberId, PlacementAudit audit, CancellationToken ct = default);
 
     /// <summary>
-    /// Plan P: places one by one through <see cref="PlaceAsync(string,string,CancellationToken)"/>; safe under
-    /// concurrency. Each member commits on its own, so a failure does not undo the members already placed.
+    /// Plan P: places one by one through <see cref="PlaceAsync(string,string,CancellationToken)"/>, by enroll date
+    /// and with a pending sponsor before the members it sponsors (review I2), so a root is only created when the
+    /// sponsor is really not in the tree nor pending in the batch. Each member commits on its own.
     /// </summary>
     Task<Result<BulkPlacementOutcome>> PlaceBulkAsync(
         IReadOnlyList<(string MemberId, string SponsorMemberId)> pairs, CancellationToken ct = default);
@@ -58,23 +66,32 @@ public class PlacementService : IPlacementService
     /// <summary>
     /// Intentos cuando otro escritor ocupa el hueco calculado (o gana la carrera del indice). Los derrames de
     /// muchos patrocinadores caen en la misma cola de cadena: con N escritores simultaneos sobre ella, en cada
-    /// ronda gana uno, asi que un perdedor puede necesitar hasta N-1 rondas. 50 cubre de sobra la concurrencia
-    /// real (AutoPlacementJob es secuencial) y la prueba de 40 escritores.
+    /// ronda gana uno, asi que un perdedor puede necesitar hasta N-1 rondas.
     /// </summary>
     private const int MaxIntentos = 50;
 
+    /// <summary>Los indices unicos cuya violacion significa «otro escritor llego antes»: se reintenta.</summary>
+    private static readonly string[] IndicesEsperados =
+    {
+        DualTeamSlotTaken.IndexName,                       // el hueco
+        "IX_DualTeamTree_MemberId",                        // el miembro (o la raiz del patrocinador)
+        "UX_DualTeamTree_BinaryPath",                      // la clave
+        "IX_DualTeamLegFrontiers_SponsorMemberId",         // la fila de cola
+    };
+
     private readonly AppDbContext _db;
     private readonly IDateTimeProvider _clock;
+    private readonly ILogger<PlacementService> _log;
 
     public PlacementService(AppDbContext db, IDateTimeProvider clock)
+        : this(db, clock, NullLogger<PlacementService>.Instance) { }
+
+    public PlacementService(AppDbContext db, IDateTimeProvider clock, ILogger<PlacementService> log)
     {
         _db = db;
         _clock = clock;
+        _log = log;
     }
-
-    private static int Depth(string path) => DualTeamPlacementRules.Depth(path);
-    private static string ChildPath(string parentPath, string memberId)
-        => DualTeamPlacementRules.ChildPath(parentPath, memberId);
 
     public Task<Result<PlacementOutcome>> PlaceAsync(
         string memberId, string sponsorMemberId, CancellationToken ct = default)
@@ -87,77 +104,171 @@ public class PlacementService : IPlacementService
             return Result<PlacementOutcome>.Failure("INVALID_MEMBER", "memberId is required.");
         if (string.IsNullOrWhiteSpace(sponsorMemberId))
             return Result<PlacementOutcome>.Failure("INVALID_SPONSOR", "sponsorMemberId is required.");
+        if (memberId == sponsorMemberId)
+            return Result<PlacementOutcome>.Failure("INVALID_SPONSOR", "A member cannot sponsor itself.");
 
         for (var intento = 1; intento <= MaxIntentos; intento++)
         {
             var existing = await _db.DualTeamTree.AsNoTracking().FirstOrDefaultAsync(d => d.MemberId == memberId, ct);
+            if (existing is not null && existing.ParentMemberId is not null)
+                return Result<PlacementOutcome>.Success(new PlacementOutcome(
+                    memberId, existing.ParentMemberId, existing.Side, existing.Depth ?? 0, true));
+
             if (existing is not null)
-                return Result<PlacementOutcome>.Success(new PlacementOutcome(
-                    memberId, existing.ParentMemberId ?? "", existing.Side, Depth(existing.HierarchyPath), true));
-
-            await using var scope = await PlacementScope.BeginAsync(_db, ct);
-            try
             {
-                var target = await ResolveTargetAsync(sponsorMemberId, audit, scope, ct);
+                if (!await IsProvisionalRootAsync(memberId, ct))
+                    return Result<PlacementOutcome>.Failure("ROOT_CANNOT_BE_PLACED",
+                        $"{memberId} is a system root (no sponsor): it is never placed.");
+                var movido = await MoveProvisionalRootAsync(memberId, sponsorMemberId, audit, ct);
+                if (movido is not null) return movido;
+                continue;   // cambio el estado mientras tanto: se vuelve a mirar
+            }
 
-                // Plan P: el candado es del HUECO destino (antes, del patrocinador: dos patrocinadores que
-                // derramaban al mismo nodo no se esperaban). Dentro se vuelve a comprobar todo.
-                await DualTeamGate.EnterSlotAsync(_db, target.ParentId, target.Side, ct);
-                if (await _db.DualTeamTree.AnyAsync(d => d.MemberId == memberId, ct)
-                    || await _db.DualTeamTree.AnyAsync(d => d.ParentMemberId == target.ParentId && d.Side == target.Side, ct))
-                {
-                    await scope.UndoAsync(ct);
-                    await EsperaAntesDeReintentarAsync(scope, ct);
-                    continue;   // otro escritor llego antes: se recalcula el hueco
-                }
-
-                var node = NewNode(memberId, target.ParentId, target.Side, target.ParentPath, audit.CreatedBy);
-                scope.Track(_db.DualTeamTree.Add(node).Entity);
-                scope.Track(_db.PlacementLogs.Add(NewLog(memberId, target.ParentId, target.Side, audit)).Entity);
-                await UpsertFrontierAsync(sponsorMemberId, target, memberId, scope, ct);
-                await _db.SaveChangesAsync(ct);
-
-                // Subida incremental de puntos de pierna para la hoja nueva, dentro de la misma transaccion.
-                // Es SQL de SQL Server: en InMemory (pruebas de logica) no hay piernas que mantener.
-                if (_db.Database.IsRelational())
-                    await LegPointMaintenance.ApplyIncrementalAsync(_db, new[] { memberId }, ct);
-
-                await scope.CompleteAsync(ct);
-                return Result<PlacementOutcome>.Success(new PlacementOutcome(
-                    memberId, target.ParentId, target.Side, Depth(node.HierarchyPath), false));
-            }
-            catch (DbUpdateException ex) when (IsUniqueViolation(ex))
-            {
-                await scope.UndoAsync(ct);   // la red del indice (hueco, miembro o cola): se recalcula
-                await EsperaAntesDeReintentarAsync(scope, ct);
-            }
-            catch (SqlException ex) when (ex.Number == 1205 && scope.OwnsTransaction)
-            {
-                await scope.UndoAsync(ct);   // victima de un interbloqueo: se repite entera
-                await EsperaAntesDeReintentarAsync(scope, ct);
-            }
-            catch (DualTeamBusyException ex)
-            {
-                await scope.UndoAsync(ct);
-                return Result<PlacementOutcome>.Failure("PLACEMENT_BUSY", ex.Message);
-            }
-            catch (Exception ex)
-            {
-                await scope.UndoAsync(ct);
-                return Result<PlacementOutcome>.Failure("PLACEMENT_FAILED", ex.Message);
-            }
+            var colocado = await PlaceLeafAsync(memberId, sponsorMemberId, audit, ct);
+            if (colocado is not null) return colocado;
         }
         return Result<PlacementOutcome>.Failure("PLACEMENT_CONFLICT", "The slot kept changing; retry later.");
     }
 
-    /// <summary>Unos milisegundos al azar para que los perdedores no vuelvan todos a la vez al mismo hueco.</summary>
-    private static Task EsperaAntesDeReintentarAsync(PlacementScope scope, CancellationToken ct) =>
-        scope.OwnsTransaction ? Task.Delay(Random.Shared.Next(2, 20), ct) : Task.CompletedTask;
+    /// <summary>Un intento de colocar una hoja nueva. Null = otro escritor llego antes, reintentar.</summary>
+    private async Task<Result<PlacementOutcome>?> PlaceLeafAsync(
+        string memberId, string sponsorMemberId, PlacementAudit audit, CancellationToken ct)
+    {
+        await using var scope = await PlacementScope.BeginAsync(_db, _log, ct);
+        try
+        {
+            // Revision I1: el arbol en compartido ANTES de resolver: ningun movimiento puede cambiarlo entre la
+            // resolucion y el candado del hueco.
+            await DualTeamGate.EnterTreeSharedAsync(_db, ct);
+            var target = await ResolveTargetAsync(sponsorMemberId, audit, scope, ct);
 
-    private static bool IsUniqueViolation(DbUpdateException ex) =>
-        ex.InnerException is SqlException s && s.Number is 2601 or 2627;
+            // Plan P: el candado es del HUECO destino. Dentro se vuelve a comprobar todo.
+            await DualTeamGate.EnterSlotAsync(_db, target.Parent.MemberId, target.Side, ct);
+            if (await _db.DualTeamTree.AnyAsync(d => d.MemberId == memberId, ct)
+                || await _db.DualTeamTree.AnyAsync(d => d.ParentMemberId == target.Parent.MemberId && d.Side == target.Side, ct))
+                return await RetryAsync(scope, ct);
 
-    private sealed record Target(string ParentId, TreeSide Side, string ParentPath, bool IsSpill, TreeSide PreferredSide);
+            var node = await DualTeamNodes.ChildAsync(_db, target.Parent, memberId, target.Side, _clock.Now, audit.CreatedBy, ct);
+            scope.Track(_db.DualTeamTree.Add(node).Entity);
+            scope.Track(_db.PlacementLogs.Add(NewLog(memberId, target.Parent.MemberId, target.Side, audit, audit.Reason)).Entity);
+            await UpsertFrontierAsync(sponsorMemberId, target, memberId, node.Depth ?? 0, scope, ct);
+            await _db.SaveChangesAsync(ct);
+
+            // Subida incremental de puntos y contadores de pierna para la hoja nueva, en la misma transaccion.
+            await LegPointMaintenance.ApplyIncrementalAsync(_db, new[] { memberId }, ct);
+
+            await scope.CompleteAsync(ct);
+            return Result<PlacementOutcome>.Success(new PlacementOutcome(
+                memberId, target.Parent.MemberId, target.Side, node.Depth ?? 0, false));
+        }
+        catch (Exception ex) when (EsReintentable(ex))
+        {
+            _log.LogWarning(ex, "Placement of {MemberId} lost a race ({Reason}); retrying.", memberId, ex.GetBaseException().Message);
+            return await RetryAsync(scope, ct);
+        }
+        catch (DualTeamBusyException ex)
+        {
+            return await FailAsync(scope, "PLACEMENT_BUSY", ex.Message, ct);
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "Placement of {MemberId} under sponsor {SponsorId} failed.", memberId, sponsorMemberId);
+            return await FailAsync(scope, "PLACEMENT_FAILED", ex.Message, ct);
+        }
+    }
+
+    /// <summary>
+    /// Coloca una raiz provisional con todo su subarbol (decision de Nick): la forma interna no cambia, el destino
+    /// lo dan las reglas a/b/c bajo su patrocinador y todo su volumen acumulado sube a la linea nueva. Toma el
+    /// arbol en exclusivo desde el principio. Null = el estado cambio, reintentar.
+    /// </summary>
+    private async Task<Result<PlacementOutcome>?> MoveProvisionalRootAsync(
+        string memberId, string sponsorMemberId, PlacementAudit audit, CancellationToken ct)
+    {
+        await using var scope = await PlacementScope.BeginAsync(_db, _log, ct);
+        try
+        {
+            await DualTeamGate.EnterTreeExclusiveAsync(_db, ct);
+            var root = await _db.DualTeamTree.AsNoTracking().FirstOrDefaultAsync(d => d.MemberId == memberId, ct);
+            if (root is null || root.ParentMemberId is not null) return await RetryAsync(scope, ct);
+
+            var sponsor = await _db.DualTeamTree.AsNoTracking().FirstOrDefaultAsync(d => d.MemberId == sponsorMemberId, ct);
+            if (sponsor is null)
+                return await FailAsync(scope, "SPONSOR_NOT_PLACED",
+                    $"{memberId} is a provisional root; it is placed once its sponsor {sponsorMemberId} is in the tree.", ct);
+            if (root.BinaryPath is not null && sponsor.BinaryPath is not null && DualBinaryPath.Contains(root.BinaryPath, sponsor.BinaryPath))
+                return await FailAsync(scope, "CIRCULAR_REFERENCE",
+                    $"The sponsor {sponsorMemberId} is inside the team of {memberId}.", ct);
+
+            var target = await ResolveTargetAsync(sponsorMemberId, audit, scope, ct);
+            await DualTeamNodes.MoveSubtreeAsync(_db, memberId,
+                new DualTeamDestination.UnderParent(target.Parent, target.Side), adjustLegs: true, _clock.Now, audit.CreatedBy, ct);
+
+            var now = _clock.Now;
+            scope.Track(_db.PlacementLogs.Add(NewLog(memberId, target.Parent.MemberId, target.Side, audit,
+                audit.Reason + " (provisional root moved with its team)")).Entity);
+            // Su equipo suma de golpe en la linea nueva: se evalua el rango del padre nuevo (una fila, no una por
+            // ascendiente: revision I4).
+            scope.Track(_db.RankEvaluationQueue.Add(new RankEvaluationQueue
+            {
+                TriggerMemberId = memberId, EvaluateMemberId = target.Parent.MemberId,
+                TriggerEvent = RankEvaluationTrigger.Placement, TriggerDate = now,
+                CreatedBy = audit.CreatedBy, CreationDate = now
+            }).Entity);
+            await _db.SaveChangesAsync(ct);
+
+            var moved = await _db.DualTeamTree.AsNoTracking().FirstAsync(d => d.MemberId == memberId, ct);
+            await scope.CompleteAsync(ct);
+            return Result<PlacementOutcome>.Success(new PlacementOutcome(
+                memberId, target.Parent.MemberId, target.Side, moved.Depth ?? 0, false));
+        }
+        catch (Exception ex) when (EsReintentable(ex))
+        {
+            _log.LogWarning(ex, "Moving provisional root {MemberId} lost a race; retrying.", memberId);
+            return await RetryAsync(scope, ct);
+        }
+        catch (DualTeamBusyException ex)
+        {
+            return await FailAsync(scope, "PLACEMENT_BUSY", ex.Message, ct);
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "Moving provisional root {MemberId} under {SponsorId} failed.", memberId, sponsorMemberId);
+            return await FailAsync(scope, "PLACEMENT_FAILED", ex.Message, ct);
+        }
+    }
+
+    /// <summary>Un nodo sin padre es raiz provisional si su miembro tiene patrocinador; si no, es raiz del sistema.</summary>
+    private Task<bool> IsProvisionalRootAsync(string memberId, CancellationToken ct) =>
+        _db.MemberProfiles.AsNoTracking().AnyAsync(m => m.MemberId == memberId && m.SponsorMemberId != null, ct);
+
+    private bool EsReintentable(Exception ex) => ex switch
+    {
+        DbUpdateException { InnerException: SqlException s } => EsViolacionEsperada(s),
+        SqlException s when s.Number == 1205 => true,   // victima de un interbloqueo
+        SqlException s => EsViolacionEsperada(s),
+        _ => false,
+    };
+
+    private static bool EsViolacionEsperada(SqlException s) =>
+        s.Number is 2601 or 2627 && IndicesEsperados.Any(i => s.Message.Contains(i, StringComparison.Ordinal));
+
+    private static async Task<Result<PlacementOutcome>?> RetryAsync(PlacementScope scope, CancellationToken ct)
+    {
+        if (!await scope.UndoAsync(ct))
+            return Result<PlacementOutcome>.Failure("PLACEMENT_FAILED",
+                "Could not roll back to the savepoint of the caller's transaction; the transaction must be abandoned.");
+        await Task.Delay(Random.Shared.Next(2, 20), ct);   // que los perdedores no vuelvan todos a la vez
+        return null;
+    }
+
+    private static async Task<Result<PlacementOutcome>> FailAsync(PlacementScope scope, string code, string message, CancellationToken ct)
+    {
+        await scope.UndoAsync(ct);
+        return Result<PlacementOutcome>.Failure(code, message);
+    }
+
+    private sealed record Target(DualTeamEntity Parent, TreeSide Side, bool IsSpill, TreeSide PreferredSide);
 
     /// <summary>Resolve the placement slot for a sponsor by rules a/b/c (queries the live tree).</summary>
     private async Task<Target> ResolveTargetAsync(
@@ -168,12 +279,12 @@ public class PlacementService : IPlacementService
 
         if (sponsorNode is null)
         {
-            // Sponsor isn't in the tree yet → create it as a root, then place under it (Left).
+            // El patrocinador aun no esta en el binario: se crea como raiz provisional y se coloca debajo (Left).
             // Dos colocaciones que crean la misma raiz chocan en IX_DualTeamTree_MemberId y la perdedora reintenta.
-            var root = NewNode(sponsorMemberId, null, TreeSide.Left, null, audit.CreatedBy);
+            var root = await DualTeamNodes.RootAsync(_db, sponsorMemberId, _clock.Now, audit.CreatedBy, ct);
             scope.Track(_db.DualTeamTree.Add(root).Entity);
             await _db.SaveChangesAsync(ct);
-            return new Target(sponsorMemberId, TreeSide.Left, root.HierarchyPath, false, TreeSide.Left);
+            return new Target(root, TreeSide.Left, false, TreeSide.Left);
         }
 
         var preferred = DualTeamPlacementRules.PreferredSide(sponsorNode.ParentMemberId is null, sponsorNode.Side);
@@ -185,109 +296,68 @@ public class PlacementService : IPlacementService
         var hasLeft = children.Contains(TreeSide.Left);
         var hasRight = children.Contains(TreeSide.Right);
 
-        string? deepId = null;
-        string deepPath = sponsorNode.HierarchyPath;
+        DualTeamEntity? deep = null;
         bool deepHasLeft = false;
         if (hasLeft && hasRight)
         {
             // Rule c — spill to the deepest open node on the preferred side. Plan P: siempre se resuelve
-            // la cola y su lado libre sale de la BD (la ruta masiva anterior lo fijaba en false).
-            (deepId, deepPath) = await ResolveDeepestAsync(sponsorMemberId, preferred, ct);
+            // la cola y su lado libre sale de la BD.
+            deep = await ResolveDeepestAsync(sponsorNode, preferred, ct);
+            var deepId = deep.MemberId;
             deepHasLeft = await _db.DualTeamTree.AsNoTracking()
                 .AnyAsync(d => d.ParentMemberId == deepId && d.Side == TreeSide.Left, ct);
         }
 
-        var decision = DualTeamPlacementRules.Decide(sponsorMemberId, hasLeft, hasRight, deepId, deepHasLeft);
-        var parentPath = decision.IsSpill ? deepPath : sponsorNode.HierarchyPath;
-        return new Target(decision.ParentMemberId, decision.Side, parentPath, decision.IsSpill, preferred);
+        var decision = DualTeamPlacementRules.Decide(sponsorMemberId, hasLeft, hasRight, deep?.MemberId, deepHasLeft);
+        return new Target(decision.IsSpill ? deep! : sponsorNode, decision.Side, decision.IsSpill, preferred);
     }
 
     /// <summary>
-    /// Deepest open node on the sponsor's preferred side. Reads the cached frontier first (O(1));
-    /// if there is no cache or it is stale, one recursive query over the leg (Plan P: before, a BFS
-    /// with one query per node). Ties by (CreationDate, Id), deterministic.
+    /// Deepest open node on the sponsor's preferred side. Reads the cached frontier first (O(1)) and accepts it
+    /// only if it is still in that leg (by its key) with an open slot; otherwise one query over the leg's key
+    /// range (Plan P). The deepest node of a subtree is a leaf; ties by (CreationDate, Id), deterministic.
     /// </summary>
-    private async Task<(string Id, string Path)> ResolveDeepestAsync(
-        string sponsorMemberId, TreeSide preferred, CancellationToken ct)
+    private async Task<DualTeamEntity> ResolveDeepestAsync(DualTeamEntity sponsor, TreeSide preferred, CancellationToken ct)
     {
         var frontier = await _db.DualTeamLegFrontiers.AsNoTracking()
-            .FirstOrDefaultAsync(f => f.SponsorMemberId == sponsorMemberId, ct);
+            .FirstOrDefaultAsync(f => f.SponsorMemberId == sponsor.MemberId, ct);
         if (frontier?.DeepestMemberId is not null)
         {
             var cached = await _db.DualTeamTree.AsNoTracking()
                 .FirstOrDefaultAsync(d => d.MemberId == frontier.DeepestMemberId, ct);
-            // La cola cacheada vale si sigue en el arbol y tiene un hueco libre. Su lado libre lo decide
-            // quien llama leyendo la BD, asi que una cola con hijo izquierdo recibe el derecho.
             if (cached is not null
+                && EnLaPierna(sponsor, preferred, cached)
                 && await _db.DualTeamTree.CountAsync(d => d.ParentMemberId == cached.MemberId, ct) < 2)
-                return (cached.MemberId, cached.HierarchyPath);
+                return cached;
         }
 
-        string? id;
-        if (_db.Database.IsSqlServer())
-        {
-            var lado = (int)preferred;
-            var filas = await _db.Database.SqlQuery<string>($"""
-                WITH s AS (
-                    SELECT d.MemberId, 1 AS D, d.CreationDate, d.Id FROM DualTeamTree d
-                    WHERE d.ParentMemberId = {sponsorMemberId} AND d.Side = {lado} AND d.IsDeleted = 0
-                    UNION ALL
-                    SELECT c.MemberId, s.D + 1, c.CreationDate, c.Id FROM s
-                    JOIN DualTeamTree c ON c.ParentMemberId = s.MemberId AND c.IsDeleted = 0)
-                SELECT TOP 1 s.MemberId AS [Value] FROM s
-                WHERE (SELECT COUNT(*) FROM DualTeamTree k WHERE k.ParentMemberId = s.MemberId AND k.IsDeleted = 0) < 2
-                ORDER BY s.D DESC, s.CreationDate, s.Id
-                OPTION (MAXRECURSION 32767)
-                """).ToListAsync(ct);
-            id = filas.Count == 1 ? filas[0] : null;
-        }
-        else
-        {
-            id = await DeepestOpenNodeInMemoryAsync(sponsorMemberId, preferred, ct);
-        }
-
-        // Una pierna con hijo siempre tiene una hoja: si no aparece nada, el arbol esta corrupto (por
-        // ejemplo, un ciclo) y se falla en vez de inventar un destino.
-        if (id is null)
-            throw new InvalidOperationException($"No open node found on the {preferred} leg of {sponsorMemberId}.");
-        var n = await _db.DualTeamTree.AsNoTracking().FirstAsync(d => d.MemberId == id, ct);
-        return (n.MemberId, n.HierarchyPath);
+        var deepest = await DualSubtree.Leg(_db, sponsor, preferred).AsNoTracking()
+            .Where(d => _db.DualTeamTree.Count(k => k.ParentMemberId == d.MemberId) < 2)
+            .OrderByDescending(d => d.Depth).ThenBy(d => d.CreationDate).ThenBy(d => d.Id)
+            .FirstOrDefaultAsync(ct);
+        // Una pierna con hijo siempre tiene una hoja: si no aparece nada, el arbol esta corrupto (por ejemplo,
+        // un ciclo) y se falla en vez de inventar un destino.
+        return deepest ?? throw new InvalidOperationException(
+            $"No open node found on the {preferred} leg of {sponsor.MemberId}.");
     }
 
-    /// <summary>
-    /// La misma busqueda en memoria, solo para el proveedor InMemory de las pruebas de logica (no tiene
-    /// SQL): recorrido por niveles con el mismo criterio (mas profundo y luego (CreationDate, Id)).
-    /// </summary>
-    private async Task<string?> DeepestOpenNodeInMemoryAsync(string sponsorMemberId, TreeSide preferred, CancellationToken ct)
+    private static bool EnLaPierna(DualTeamEntity sponsor, TreeSide side, DualTeamEntity candidate)
     {
-        var nivel = await _db.DualTeamTree.AsNoTracking()
-            .Where(d => d.ParentMemberId == sponsorMemberId && d.Side == preferred)
-            .Select(d => new { d.MemberId, d.CreationDate, d.Id }).ToListAsync(ct);
-        string? best = null;
-        while (nivel.Count > 0)
-        {
-            var ids = nivel.Select(n => n.MemberId).ToList();
-            var hijos = await _db.DualTeamTree.AsNoTracking()
-                .Where(d => d.ParentMemberId != null && ids.Contains(d.ParentMemberId))
-                .Select(d => new { d.MemberId, d.ParentMemberId, d.CreationDate, d.Id }).ToListAsync(ct);
-            var abiertos = nivel.Where(n => hijos.Count(h => h.ParentMemberId == n.MemberId) < 2)
-                .OrderBy(n => n.CreationDate).ThenBy(n => n.Id, StringComparer.Ordinal).ToList();
-            if (abiertos.Count > 0) best = abiertos[0].MemberId;
-            nivel = hijos.Select(h => new { h.MemberId, h.CreationDate, h.Id }).ToList();
-        }
-        return best;
+        if (sponsor.BinaryPath is null || candidate.BinaryPath is null) return false;
+        var (lo, hi) = DualBinaryPath.LegBounds(sponsor.BinaryPath, side);
+        return DualBinaryPath.SqlCompare(candidate.BinaryPath, lo) > 0 && DualBinaryPath.SqlCompare(candidate.BinaryPath, hi) < 0;
     }
 
-    private async Task UpsertFrontierAsync(
-        string sponsorMemberId, Target target, string newMemberId, PlacementScope scope, CancellationToken ct)
+    private async Task UpsertFrontierAsync(string sponsorMemberId, Target target, string newMemberId, int newDepth,
+        PlacementScope scope, CancellationToken ct)
     {
-        // The frontier tracks the deepest node on the preferred side. It advances when this
-        // placement extends the preferred-side chain: a spill, or the sponsor's preferred-side
-        // direct child (rule a/b landing on the preferred side).
-        var decision = new DualTeamPlacementRules.SlotDecision(target.ParentId, target.Side, target.IsSpill);
+        // The frontier tracks the deepest node on the preferred side. It advances when this placement extends
+        // the preferred-side chain: a spill, or the sponsor's preferred-side direct child (rule a/b). Revision:
+        // la fila de un patrocinador la escriben colocaciones a huecos distintos; su candado la serializa.
+        var decision = new DualTeamPlacementRules.SlotDecision(target.Parent.MemberId, target.Side, target.IsSpill);
         if (!DualTeamPlacementRules.ExtendsPreferredSide(decision, sponsorMemberId, target.PreferredSide)) return;
 
-        var newDepth = Depth(ChildPath(target.ParentPath, newMemberId));
+        await DualTeamGate.EnterFrontierAsync(_db, sponsorMemberId, ct);
         var frontier = await _db.DualTeamLegFrontiers
             .FirstOrDefaultAsync(f => f.SponsorMemberId == sponsorMemberId, ct);
         if (frontier is null)
@@ -312,25 +382,7 @@ public class PlacementService : IPlacementService
         }
     }
 
-    private DualTeamEntity NewNode(string memberId, string? parentId, TreeSide side, string? parentPath, string createdBy)
-    {
-        var now = _clock.Now;
-        return new DualTeamEntity
-        {
-            MemberId = memberId,
-            ParentMemberId = parentId,
-            Side = side,
-            HierarchyPath = parentPath is null ? $"/{memberId}/" : ChildPath(parentPath, memberId),
-            LeftLegPoints = 0,
-            RightLegPoints = 0,
-            CreationDate = now,
-            CreatedBy = createdBy,
-            LastUpdateDate = now,
-            LastUpdateBy = createdBy
-        };
-    }
-
-    private PlacementLog NewLog(string memberId, string parentId, TreeSide side, PlacementAudit audit)
+    private PlacementLog NewLog(string memberId, string parentId, TreeSide side, PlacementAudit audit, string reason)
     {
         var now = _clock.Now;
         return new PlacementLog
@@ -339,7 +391,7 @@ public class PlacementService : IPlacementService
             PlacedUnderMemberId = parentId,
             Side = side,
             Action = audit.Action,
-            Reason = audit.Reason,
+            Reason = reason,
             UnplacementCount = 0,
             FirstPlacementDate = now,
             CreationDate = now,
@@ -352,9 +404,9 @@ public class PlacementService : IPlacementService
     // ──────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Plan P: cada miembro pasa por el mismo nucleo que PlaceAsync (transaccion, candado del hueco,
-    /// comprobacion dentro y reintento). La version anterior guardaba un estado en memoria por patrocinador
-    /// que no veia lo anadido en la tanda y repetia huecos (diagnostico-huecos-binario.md §1.2).
+    /// Plan P: cada miembro pasa por el mismo nucleo que PlaceAsync. Orden (revision I2): por fecha de alta y,
+    /// si el patrocinador de un miembro tambien esta en la tanda, primero el patrocinador. Asi solo se crea una
+    /// raiz provisional cuando el patrocinador de verdad no esta en el binario ni pendiente en la tanda.
     /// </summary>
     public async Task<Result<BulkPlacementOutcome>> PlaceBulkAsync(
         IReadOnlyList<(string MemberId, string SponsorMemberId)> pairs, CancellationToken ct = default)
@@ -362,13 +414,43 @@ public class PlacementService : IPlacementService
         if (pairs is null || pairs.Count == 0)
             return Result<BulkPlacementOutcome>.Success(new BulkPlacementOutcome(0, 0, 0));
 
+        var unicos = pairs.DistinctBy(p => p.MemberId).ToList();
+        var ids = unicos.Select(p => p.MemberId).ToList();
+        var altas = new Dictionary<string, DateTime>();
+        foreach (var trozo in ids.Chunk(1000))
+            foreach (var m in await _db.MemberProfiles.AsNoTracking().Where(m => trozo.Contains(m.MemberId))
+                         .Select(m => new { m.MemberId, m.EnrollDate }).ToListAsync(ct))
+                altas[m.MemberId] = m.EnrollDate;
+
+        var porMiembro = unicos.ToDictionary(p => p.MemberId);
+        var ordenados = unicos
+            .OrderBy(p => altas.TryGetValue(p.MemberId, out var a) ? a : DateTime.MaxValue)
+            .ThenBy(p => p.MemberId, StringComparer.Ordinal).ToList();
+
         int placed = 0, skipped = 0, failed = 0;
-        foreach (var (memberId, sponsorId) in pairs.DistinctBy(p => p.MemberId))
+        var hechos = new HashSet<string>();
+        foreach (var inicial in ordenados)
         {
-            var r = await PlaceAsync(memberId, sponsorId, ct);
-            if (!r.IsSuccess) failed++;
-            else if (r.Value!.AlreadyPlaced) skipped++;
-            else placed++;
+            // Pila: el patrocinador pendiente de la tanda va antes (sin recursion: las cadenas pueden ser largas).
+            var pila = new Stack<(string MemberId, string SponsorMemberId)>();
+            pila.Push(inicial);
+            while (pila.Count > 0)
+            {
+                var actual = pila.Peek();
+                if (hechos.Contains(actual.MemberId)) { pila.Pop(); continue; }
+                if (porMiembro.TryGetValue(actual.SponsorMemberId, out var patrocinador)
+                    && !hechos.Contains(patrocinador.MemberId) && !pila.Contains(patrocinador))
+                {
+                    pila.Push(patrocinador);
+                    continue;
+                }
+                pila.Pop();
+                hechos.Add(actual.MemberId);
+                var r = await PlaceAsync(actual.MemberId, actual.SponsorMemberId, ct);
+                if (!r.IsSuccess) failed++;
+                else if (r.Value!.AlreadyPlaced) skipped++;
+                else placed++;
+            }
         }
         return Result<BulkPlacementOutcome>.Success(new BulkPlacementOutcome(placed, skipped, failed));
     }
@@ -384,26 +466,37 @@ public class PlacementService : IPlacementService
     {
         private const string Savepoint = "dual_team_place";
         private readonly AppDbContext _db;
+        private readonly ILogger _log;
         private readonly IDbContextTransaction? _own;
         private readonly bool _savepoint;
         private readonly List<object> _tracked = new();
         private bool _done;
 
-        private PlacementScope(AppDbContext db, IDbContextTransaction? own, bool savepoint)
+        private PlacementScope(AppDbContext db, ILogger log, IDbContextTransaction? own, bool savepoint)
         {
-            _db = db; _own = own; _savepoint = savepoint;
+            _db = db; _log = log; _own = own; _savepoint = savepoint;
         }
 
         public bool OwnsTransaction => _own is not null;
 
-        public static async Task<PlacementScope> BeginAsync(AppDbContext db, CancellationToken ct)
+        public static async Task<PlacementScope> BeginAsync(AppDbContext db, ILogger log, CancellationToken ct)
         {
+            if (db.Database.IsRelational() && db.Database.CreateExecutionStrategy().RetriesOnFailure)
+                throw new InvalidOperationException(
+                    "PlacementService needs the placement to run inside the execution strategy (EnableRetryOnFailure is on).");
+
             var ambient = db.Database.CurrentTransaction;
             if (ambient is null)
-                return new PlacementScope(db, await db.Database.BeginTransactionAsync(ct), false);
+                return new PlacementScope(db, log, await db.Database.BeginTransactionAsync(ct), false);
+
+            // Dentro de la transaccion de quien llama: sus cambios pendientes se guardarian con los nuestros y un
+            // reintento los perderia o duplicaria. Se exige el contexto limpio.
+            if (db.ChangeTracker.HasChanges())
+                throw new InvalidOperationException(
+                    "PlacementService inside the caller's transaction needs no pending changes in the context.");
             var savepoint = db.Database.IsRelational() && ambient.SupportsSavepoints;
             if (savepoint) await ambient.CreateSavepointAsync(Savepoint, ct);
-            return new PlacementScope(db, null, savepoint);
+            return new PlacementScope(db, log, null, savepoint);
         }
 
         public void Track(object entity) => _tracked.Add(entity);
@@ -415,20 +508,29 @@ public class PlacementService : IPlacementService
             Detach();
         }
 
-        public async Task UndoAsync(CancellationToken ct)
+        /// <summary>Deshace. False si no se pudo volver al punto de guardado de quien llama.</summary>
+        public async Task<bool> UndoAsync(CancellationToken ct)
         {
-            if (_done) return;
+            if (_done) return true;
             _done = true;
+            var ok = true;
             try
             {
                 if (_own is not null) await _own.RollbackAsync(CancellationToken.None);
                 else if (_savepoint) await _db.Database.CurrentTransaction!.RollbackToSavepointAsync(Savepoint, CancellationToken.None);
             }
-            catch (Exception) when (_own is not null)
+            catch (Exception ex) when (_own is not null)
             {
                 // Victima de un interbloqueo o conexion caida: SQL Server ya descarto la transaccion.
+                _log.LogDebug(ex, "Rollback of a placement transaction already discarded by SQL Server.");
+            }
+            catch (Exception ex)
+            {
+                _log.LogError(ex, "Could not roll back to the placement savepoint inside the caller's transaction.");
+                ok = false;
             }
             Detach();
+            return ok;
         }
 
         private void Detach()

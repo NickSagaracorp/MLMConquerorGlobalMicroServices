@@ -5,7 +5,6 @@ using MLMConquerorGlobalEdition.AdminAPI.Tests.Helpers;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
-using MLMConquerorGlobalEdition.Repository.Services.Trees;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Tests.Features.Placement;
@@ -25,14 +24,6 @@ public class AdminPlaceMemberHandlerTests
     {
         var m = new Mock<IDateTimeProvider>();
         m.Setup(x => x.Now).Returns(FixedNow);
-        return m;
-    }
-
-    private static Mock<IDualTeamPointsRecalculator> NullLegPoints()
-    {
-        var m = new Mock<IDualTeamPointsRecalculator>();
-        m.Setup(r => r.RecalculateForUplinesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-         .Returns(Task.CompletedTask);
         return m;
     }
 
@@ -63,9 +54,8 @@ public class AdminPlaceMemberHandlerTests
     };
 
     private static AdminPlaceMemberHandler CreateHandler(
-        Repository.Context.AppDbContext db,
-        Mock<IDualTeamPointsRecalculator>? legPoints = null) =>
-        new(db, CurrentUser().Object, Clock().Object, (legPoints ?? NullLegPoints()).Object);
+        Repository.Context.AppDbContext db) =>
+        new(db, CurrentUser().Object, Clock().Object);
 
     [Fact]
     public async Task Handle_WhenMemberToPlaceDoesNotExist_ReturnsMemberNotFound()
@@ -177,26 +167,75 @@ public class AdminPlaceMemberHandlerTests
     }
 
     /// <summary>
-    /// Sprint-15 follow-up — every successful admin placement must invoke the
-    /// shared <see cref="IDualTeamPointsRecalculator"/> with the target parent
-    /// id. The previous local implementation counted nodes instead of summing
-    /// PersonalPoints, so leg-point values drifted on every admin placement.
+    /// Plan P (revision C2): las piernas se mantienen de forma incremental. Colocar un miembro con 30 puntos
+    /// propios bajo parent-001 por la derecha suma 30 puntos y 1 nodo a la pierna derecha de parent-001.
     /// </summary>
     [Fact]
-    public async Task Handle_WhenSuccessful_InvokesLegPointsRecalculatorWithTargetParent()
+    public async Task Handle_WhenSuccessful_AddsThePlacedPointsToTheParentLeg()
     {
         await using var db = InMemoryDbHelper.Create();
         db.MemberProfiles.Add(BuildProfile("amb-001"));
+        db.MemberStatistics.Add(new MLMConquerorGlobalEdition.Domain.Entities.Member.MemberStatisticEntity
+            { MemberId = "amb-001", PersonalPoints = 30, CreatedBy = "seed", CreationDate = FixedNow });
         db.DualTeamTree.Add(BuildNode("parent-001", null, TreeSide.Left, "/parent-001/"));
         await db.SaveChangesAsync();
 
-        var legPoints = NullLegPoints();
-        var result = await CreateHandler(db, legPoints).Handle(
+        var result = await CreateHandler(db).Handle(
             new AdminPlaceMemberCommand("amb-001", "parent-001", "Right"),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        legPoints.Verify(r => r.RecalculateForUplinesAsync(
-            "parent-001", It.IsAny<CancellationToken>()), Times.Once);
+        var padre = db.DualTeamTree.First(d => d.MemberId == "parent-001");
+        padre.RightLegPoints.Should().Be(30);
+        padre.RightLegCount.Should().Be(1);
+        padre.LeftLegPoints.Should().Be(0);
+    }
+
+    /// <summary>
+    /// Decision de Nick (2026-10-18): una raiz provisional (tiene nodo y no tiene padre) se coloca con todo su
+    /// equipo: la forma interna no cambia y su volumen acumulado sube a la linea nueva.
+    /// </summary>
+    [Fact]
+    public async Task Handle_ProvisionalRootWithTeam_MovesTheWholeTeamAndItsVolume()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        var b = BuildProfile("amb-b"); b.SponsorMemberId = "parent-001";
+        db.MemberProfiles.Add(b);
+        db.DualTeamTree.AddRange(
+            BuildNode("parent-001", null, TreeSide.Left, "/parent-001/"),
+            BuildNode("amb-b", null, TreeSide.Left, "/amb-b/"),
+            BuildNode("amb-c", "amb-b", TreeSide.Left, "/amb-b/amb-c/"),
+            BuildNode("amb-d", "amb-c", TreeSide.Right, "/amb-b/amb-c/amb-d/"));
+        await db.SaveChangesAsync();
+        var nodoB = db.DualTeamTree.First(d => d.MemberId == "amb-b");
+        nodoB.LeftLegPoints = 70; nodoB.LeftLegCount = 2;   // el volumen acumulado de su equipo
+        await db.SaveChangesAsync();
+
+        var result = await CreateHandler(db).Handle(
+            new AdminPlaceMemberCommand("amb-b", "parent-001", "Left"), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue(result.Error);
+        db.DualTeamTree.First(d => d.MemberId == "amb-b").ParentMemberId.Should().Be("parent-001");
+        db.DualTeamTree.First(d => d.MemberId == "amb-c").ParentMemberId.Should().Be("amb-b");
+        db.DualTeamTree.First(d => d.MemberId == "amb-d").HierarchyPath.Should().Be("/parent-001/amb-b/amb-c/amb-d/");
+        var padre = db.DualTeamTree.First(d => d.MemberId == "parent-001");
+        padre.LeftLegPoints.Should().Be(70);
+        padre.LeftLegCount.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task Handle_SystemRoot_IsNeverPlaced()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        db.MemberProfiles.Add(BuildProfile("root-001"));   // sin patrocinador
+        db.DualTeamTree.AddRange(
+            BuildNode("parent-001", null, TreeSide.Left, "/parent-001/"),
+            BuildNode("root-001", null, TreeSide.Left, "/root-001/"));
+        await db.SaveChangesAsync();
+
+        var result = await CreateHandler(db).Handle(
+            new AdminPlaceMemberCommand("root-001", "parent-001", "Left"), CancellationToken.None);
+
+        result.ErrorCode.Should().Be("ROOT_CANNOT_BE_PLACED");
     }
 }

@@ -24,7 +24,7 @@ public class UnplaceMemberHandler : IRequestHandler<UnplaceMemberCommand, Result
     {
         var now = _dateTime.Now;
 
-        var node = await _db.DualTeamTree.FirstOrDefaultAsync(x => x.MemberId == command.MemberId, ct);
+        var node = await _db.DualTeamTree.AsNoTracking().FirstOrDefaultAsync(x => x.MemberId == command.MemberId, ct);
         if (node is null)
             return Result<bool>.Failure("PLACEMENT_NOT_FOUND", $"Member '{command.MemberId}' has no active placement.");
 
@@ -57,14 +57,21 @@ public class UnplaceMemberHandler : IRequestHandler<UnplaceMemberCommand, Result
             await tx.RollbackAsync(ct);
             return Result<bool>.Failure("PLACEMENT_BUSY", ex.Message);
         }
-        await _db.Entry(node).ReloadAsync(ct);
-        if (_db.Entry(node).State == EntityState.Detached)
+        if (!await _db.DualTeamTree.AnyAsync(x => x.MemberId == command.MemberId, ct))
         {
             await tx.RollbackAsync(ct);
             return Result<bool>.Failure("PLACEMENT_NOT_FOUND", $"Member '{command.MemberId}' has no active placement.");
         }
 
-        _db.DualTeamTree.Remove(node);
+        // Revision I7: la baja del propio miembro no deja huerfanos. Con equipo debajo se rechaza (la retirada con
+        // equipo es del BizCenter o del admin, que saben que hacer con los hijos). DualTeamNodes resta el nodo de
+        // las piernas de su linea ascendente (antes no se restaba) y lo borra.
+        if (!await DualTeamNodes.RemoveAsync(_db, command.MemberId, DualTeamChildrenOnRemoval.Reject, now, command.RequestedByMemberId, ct))
+        {
+            await tx.RollbackAsync(ct);
+            return Result<bool>.Failure("HAS_DOWNLINE",
+                $"Member '{command.MemberId}' has members placed below; ask your sponsor or an admin to move them first.");
+        }
 
         var unplacementLog = new PlacementLog
         {

@@ -4,7 +4,6 @@ using MLMConquerorGlobalEdition.AdminAPI.Tests.Helpers;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Queries;
-using MLMConquerorGlobalEdition.Repository.Services.Trees;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Tests.Features.Placement;
@@ -20,11 +19,12 @@ public class SqlServerAdminRemovePlacementEsperaTests
         {
             await using (var db = SqlServerTestDb.Db())
             {
+                var claveP = ClaveDePrueba.Raiz(db);
                 db.DualTeamTree.AddRange(
-                    new DualTeamEntity { MemberId = $"{x}P", Side = TreeSide.Left, HierarchyPath = $"/{x}P/",
+                    new DualTeamEntity { MemberId = $"{x}P", Side = TreeSide.Left, HierarchyPath = $"/{x}P/", BinaryPath = claveP, Depth = 0,
                         CreationDate = DateTime.Now, LastUpdateDate = DateTime.Now, CreatedBy = "plan-p-prueba" },
                     new DualTeamEntity { MemberId = $"{x}M", ParentMemberId = $"{x}P", Side = TreeSide.Left, HierarchyPath = $"/{x}P/{x}M/",
-                        CreationDate = DateTime.Now, LastUpdateDate = DateTime.Now, CreatedBy = "plan-p-prueba" });
+                        BinaryPath = ClaveDePrueba.Hijo(claveP, TreeSide.Left), Depth = 1, CreationDate = DateTime.Now, LastUpdateDate = DateTime.Now, CreatedBy = "plan-p-prueba" });
                 await db.SaveChangesAsync();
             }
 
@@ -39,9 +39,7 @@ public class SqlServerAdminRemovePlacementEsperaTests
                 usuario.Setup(u => u.UserId).Returns("plan-p-prueba");
                 var reloj = new Mock<IDateTimeProvider>();
                 reloj.Setup(r => r.Now).Returns(DateTime.Now);
-                var piernas = new Mock<IDualTeamPointsRecalculator>();
-                piernas.Setup(p => p.RecalculateForUplinesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-                return await new AdminRemovePlacementHandler(db, usuario.Object, reloj.Object, piernas.Object)
+                return await new AdminRemovePlacementHandler(db, usuario.Object, reloj.Object)
                     .Handle(new AdminRemovePlacementCommand($"{x}M"), CancellationToken.None);
             });
 

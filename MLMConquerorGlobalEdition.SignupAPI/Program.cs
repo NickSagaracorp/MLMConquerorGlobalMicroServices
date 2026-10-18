@@ -1,4 +1,4 @@
-﻿using MLMConquerorGlobalEdition.SharedKernel.Server.Middleware;
+using MLMConquerorGlobalEdition.SharedKernel.Server.Middleware;
 using System.Security.Cryptography;
 using System.Text.Json.Serialization;
 using Amazon.S3;
@@ -98,13 +98,8 @@ builder.Services.AddSingleton<IAmazonS3>(_ =>
 });
 builder.Services.AddScoped<IS3FileService, S3FileService>();
 
-// Sprint-15 Bug C: shared dual-team leg-points recalculator. Both SignupAPI and
-// BizCenter placement handlers depend on this so a placement created by either
-// side leaves LeftLegPoints / RightLegPoints + MemberStatistics.DualTeamPoints
-// consistent up the binary tree.
-builder.Services.AddScoped<
-    MLMConquerorGlobalEdition.Repository.Services.Trees.IDualTeamPointsRecalculator,
-    MLMConquerorGlobalEdition.Repository.Services.Trees.DualTeamPointsRecalculator>();
+// Plan P: el recalculador de piernas por ruta (DualTeamPointsRecalculator) se retiro; las piernas se
+// mantienen de forma incremental en DualTeamNodes y LegPointMaintenance (revision C2).
 
 builder.Services.AddScoped<ISponsorBonusService, SponsorBonusService>();
 builder.Services.AddScoped<IFastStartBonusService, FastStartBonusService>();

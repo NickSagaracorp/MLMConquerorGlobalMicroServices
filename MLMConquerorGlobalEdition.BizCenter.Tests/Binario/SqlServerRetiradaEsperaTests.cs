@@ -18,6 +18,7 @@ public class SqlServerRetiradaEsperaTests
     public async Task La_retirada_del_BizCenter_espera_a_una_colocacion_en_curso()
     {
         var x = BinarioDb.Prefijo("PPX");
+        await BinarioDb.LimpiarAsync(x);   // restos de una ejecucion que no llego a su finally
         try
         {
             await using (var db = SqlServerReportes.Db())

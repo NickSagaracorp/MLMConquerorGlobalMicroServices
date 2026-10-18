@@ -77,18 +77,8 @@ public static class RootAmbassadorSeeder
             LastUpdateDate = now
         };
 
-        var dualTeam = new DualTeamEntity
-        {
-            MemberId       = RootMemberCode,
-            ParentMemberId = null,
-            HierarchyPath  = $"/{RootMemberCode}/",
-            Side           = TreeSide.Left,
-            LeftLegPoints  = 0,
-            RightLegPoints = 0,
-            CreatedBy      = "SYSTEM",
-            CreationDate   = now,
-            LastUpdateDate = now
-        };
+        // Plan P: la raiz la construye DualTeamNodes (clave compacta con ordinal propio).
+        var dualTeam = await DualTeamNodes.RootAsync(db, RootMemberCode, now, "SYSTEM");
 
         var topLevel = await db.MembershipLevels
             .Where(l => l.IsActive)

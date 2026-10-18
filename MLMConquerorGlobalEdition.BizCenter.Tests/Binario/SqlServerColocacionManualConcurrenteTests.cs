@@ -3,7 +3,6 @@ using MLMConquerorGlobalEdition.BizCenter.Features.Placement.PlaceMember;
 using MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
-using MLMConquerorGlobalEdition.Repository.Services.Trees;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Tests.Binario;
 
@@ -22,15 +21,14 @@ public class SqlServerColocacionManualConcurrenteTests
         var reloj = new Mock<BizCenter.Services.IDateTimeProvider>();
         reloj.Setup(r => r.Now).Returns(DateTime.Now);
         reloj.Setup(r => r.UtcNow).Returns(DateTime.UtcNow);
-        var piernas = new Mock<IDualTeamPointsRecalculator>();
-        piernas.Setup(p => p.RecalculateForUplinesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        return new PlaceMemberHandler(db, usuario.Object, reloj.Object, piernas.Object);
+        return new PlaceMemberHandler(db, usuario.Object, reloj.Object);
     }
 
     [SqlServerFact]
     public async Task Dos_colocaciones_manuales_al_mismo_hueco_dejan_un_hijo()
     {
         var x = BinarioDb.Prefijo("PPB");
+        await BinarioDb.LimpiarAsync(x);   // restos de una ejecucion que no llego a su finally
         var encuentro = new Encuentro();
         try
         {

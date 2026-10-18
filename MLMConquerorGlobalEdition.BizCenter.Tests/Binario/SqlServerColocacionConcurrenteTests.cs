@@ -39,8 +39,10 @@ public class SqlServerColocacionConcurrenteTests
 
         var x = BinarioDb.Prefijo("PPR");
         var encuentro = new Encuentro();
+        var violaciones = new ViolacionesDelHueco();
         try
         {
+            await BinarioDb.LimpiarAsync(x);
             await using (var db = SqlServerReportes.Db())
                 await BinarioDb.SembrarAsync(db, ($"{x}P", null, TreeSide.Left), ($"{x}L", $"{x}P", TreeSide.Left));
 
@@ -48,7 +50,7 @@ public class SqlServerColocacionConcurrenteTests
             {
                 await using var db = new Repository.Context.AppDbContext(
                     new DbContextOptionsBuilder<Repository.Context.AppDbContext>()
-                        .UseSqlServer(SqlServerReportes.ConnectionString).AddInterceptors(encuentro).Options);
+                        .UseSqlServer(SqlServerReportes.ConnectionString).AddInterceptors(encuentro, violaciones).Options);
                 return await new PlacementService(db, new Reloj()).PlaceAsync(m, $"{x}P");
             }));
 
@@ -57,10 +59,25 @@ public class SqlServerColocacionConcurrenteTests
             (await BinarioDb.HijosAsync(lectura, $"{x}P", TreeSide.Right)).Should().Be(1);
             (await BinarioDb.HijosAsync(lectura, $"{x}L", TreeSide.Left)).Should().Be(1);
             (await BinarioDb.HuecosRepetidosAsync(lectura, x)).Should().Be(0);
+            // La exclusion la dio el candado: el indice unico (la red) no tuvo que rechazar nada.
+            violaciones.Cuantas.Should().Be(0);
         }
         finally
         {
             await BinarioDb.LimpiarAsync(x);
+        }
+    }
+
+    /// <summary>Cuenta los guardados que rechaza UX_DualTeamTree_ParentMemberId_Side.</summary>
+    private sealed class ViolacionesDelHueco : Microsoft.EntityFrameworkCore.Diagnostics.SaveChangesInterceptor
+    {
+        public int Cuantas;
+
+        public override Task SaveChangesFailedAsync(Microsoft.EntityFrameworkCore.Diagnostics.DbContextErrorEventData e, CancellationToken ct = default)
+        {
+            if (e.Exception is DbUpdateException ex && Repository.Queries.DualTeamSlotTaken.Is(ex))
+                Interlocked.Increment(ref Cuantas);
+            return Task.CompletedTask;
         }
     }
 
@@ -70,6 +87,7 @@ public class SqlServerColocacionConcurrenteTests
         var x = BinarioDb.Prefijo("PPC");
         try
         {
+            await BinarioDb.LimpiarAsync(x);
             await using (var db = SqlServerReportes.Db())
                 await BinarioDb.SembrarAsync(db, ($"{x}P", null, TreeSide.Left), ($"{x}L", $"{x}P", TreeSide.Left));
 

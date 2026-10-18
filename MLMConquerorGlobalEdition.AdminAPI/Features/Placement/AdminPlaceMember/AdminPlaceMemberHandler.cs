@@ -2,9 +2,10 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
+using MLMConquerorGlobalEdition.Domain.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Queries;
-using MLMConquerorGlobalEdition.Repository.Services.Trees;
+using MLMConquerorGlobalEdition.Repository.Services.Teams;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
@@ -13,24 +14,30 @@ namespace MLMConquerorGlobalEdition.AdminAPI.Features.Placement.AdminPlaceMember
 /// <summary>
 /// Admin placement bypasses time and opportunity restrictions but still enforces
 /// structural rules: no circular reference, no third leg, no auto-superiority.
+/// Plan P:
+/// <list type="bullet">
+/// <item>Un miembro sin nodo entra como hoja (arbol en compartido y su hueco). Si tiene hijos esperando de una
+/// retirada del admin (flotantes), vuelven con el: entonces es un movimiento.</item>
+/// <item>Una raiz provisional se coloca con todo su equipo; una raiz del sistema no se coloca.</item>
+/// <item>Un nodo colocado se mueve con su subarbol.</item>
+/// <item>Los movimientos toman el arbol en exclusivo desde el principio y van por DualTeamNodes (clave, ruta,
+/// piernas incrementales y colas). Ningun filtro por HierarchyPath (C1).</item>
+/// </list>
 /// </summary>
 public class AdminPlaceMemberHandler : IRequestHandler<AdminPlaceMemberCommand, Result<string>>
 {
-    private readonly AppDbContext               _db;
-    private readonly ICurrentUserService        _currentUser;
-    private readonly IDateTimeProvider          _clock;
-    private readonly IDualTeamPointsRecalculator _legPoints;
+    private readonly AppDbContext        _db;
+    private readonly ICurrentUserService _currentUser;
+    private readonly IDateTimeProvider   _clock;
 
     public AdminPlaceMemberHandler(
-        AppDbContext               db,
-        ICurrentUserService        currentUser,
-        IDateTimeProvider          clock,
-        IDualTeamPointsRecalculator legPoints)
+        AppDbContext        db,
+        ICurrentUserService currentUser,
+        IDateTimeProvider   clock)
     {
         _db          = db;
         _currentUser = currentUser;
         _clock       = clock;
-        _legPoints   = legPoints;
     }
 
     public async Task<Result<string>> Handle(AdminPlaceMemberCommand command, CancellationToken ct)
@@ -38,136 +45,102 @@ public class AdminPlaceMemberHandler : IRequestHandler<AdminPlaceMemberCommand, 
         var now  = _clock.Now;
         var side = Enum.Parse<TreeSide>(command.Side);
 
-        var member = await _db.MemberProfiles
+        var member = await _db.MemberProfiles.AsNoTracking()
             .FirstOrDefaultAsync(m => m.MemberId == command.MemberToPlaceId && !m.IsDeleted, ct);
 
         if (member is null)
             return Result<string>.Failure("MEMBER_NOT_FOUND", "El miembro que intenta colocar no existe.");
 
-        var targetParent = await _db.DualTeamTree
-            .FirstOrDefaultAsync(d => d.MemberId == command.TargetParentMemberId, ct);
-
-        var slotOccupied = targetParent is not null && await _db.DualTeamTree
-            .AnyAsync(d => d.ParentMemberId == command.TargetParentMemberId && d.Side == side, ct);
-
-        if (slotOccupied)
-            return Result<string>.Failure("SLOT_OCCUPIED",
-                $"El nodo {command.TargetParentMemberId} ya tiene ocupada la pierna {command.Side}.");
-
         if (command.TargetParentMemberId == command.MemberToPlaceId)
             return Result<string>.Failure("AUTO_SUPERIORITY",
                 "Un ambassador no puede ser su propio superior directo.");
 
-        var existingNode = await _db.DualTeamTree
+        var targetParent = await _db.DualTeamTree.AsNoTracking()
+            .FirstOrDefaultAsync(d => d.MemberId == command.TargetParentMemberId, ct);
+
+        if (targetParent is not null
+            && await _db.DualTeamTree.AnyAsync(d => d.ParentMemberId == command.TargetParentMemberId && d.Side == side, ct))
+            return SlotOccupied(command);
+
+        var existingNode = await _db.DualTeamTree.AsNoTracking()
             .FirstOrDefaultAsync(d => d.MemberId == command.MemberToPlaceId, ct);
+        if (existingNode is not null && existingNode.ParentMemberId is null && member.SponsorMemberId is null)
+            return Result<string>.Failure("ROOT_CANNOT_BE_PLACED", "Una raiz del sistema (sin patrocinador) no se coloca.");
+        if (existingNode is not null && targetParent is not null && IsInside(existingNode, targetParent))
+            return Circular();
 
-        // Circular reference: the target must not be under the member being placed,
-        // whether the member is currently in the tree or is a floating root (was unplaced).
-        var memberEffectivePath = existingNode?.HierarchyPath ?? $"/{command.MemberToPlaceId}/";
-        if (targetParent is not null &&
-            targetParent.HierarchyPath.StartsWith(memberEffectivePath))
-            return Result<string>.Failure("CIRCULAR_REFERENCE",
-                "No se puede realizar este placement: generaría una referencia circular en el árbol.");
-
-        // Plan P: si se mueve un subarbol (el miembro esta en el arbol o tiene descendientes flotando bajo
-        // /{miembro}/) se reescriben rutas y se toma el arbol en exclusivo; un alta simple toma solo su hueco.
-        var floatPrefixCheck = $"/{command.MemberToPlaceId}/";
-        var rewritesPaths = existingNode is not null
-            || await _db.DualTeamTree.AnyAsync(d => d.HierarchyPath.StartsWith(floatPrefixCheck), ct);
+        // Un movimiento: el miembro tiene nodo, o no lo tiene pero le esperan hijos de una retirada del admin.
+        var floating = existingNode is null
+            ? await DualTeamNodes.FloatingChildrenAsync(_db, command.MemberToPlaceId, ct)
+            : new List<DualTeamEntity>();
+        var esMovimiento = existingNode is not null || floating.Count > 0;
 
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
         try
         {
-            if (rewritesPaths)
+            // Plan P (I1): el candado antes de comprobar nada; un movimiento, el arbol en exclusivo desde el
+            // principio (sin pasar de compartido a exclusivo).
+            if (esMovimiento)
                 await DualTeamGate.EnterTreeExclusiveAsync(_db, ct);
             else
+            {
+                await DualTeamGate.EnterTreeSharedAsync(_db, ct);
                 await DualTeamGate.EnterSlotAsync(_db, command.TargetParentMemberId, side, ct);
+            }
 
-            // Con el candado: el hueco y las rutas se vuelven a leer (la comprobacion de arriba es solo un
-            // atajo; otro escritor pudo ocuparlo o mover el destino mientras tanto).
+            // Con el candado: el hueco, el destino y el estado del miembro se vuelven a leer.
             if (await _db.DualTeamTree.AnyAsync(d => d.ParentMemberId == command.TargetParentMemberId && d.Side == side, ct))
             {
                 await tx.RollbackAsync(ct);
                 return SlotOccupied(command);
             }
-            if (targetParent is not null) await _db.Entry(targetParent).ReloadAsync(ct);
-            if (existingNode is not null) await _db.Entry(existingNode).ReloadAsync(ct);
-            if (targetParent is not null && targetParent.HierarchyPath.StartsWith(existingNode?.HierarchyPath ?? floatPrefixCheck))
+            var ahora = await _db.DualTeamTree.AsNoTracking().FirstOrDefaultAsync(d => d.MemberId == command.MemberToPlaceId, ct);
+            if ((ahora is null) != (existingNode is null)
+                || (ahora is not null && existingNode is not null && ahora.ParentMemberId != existingNode.ParentMemberId))
             {
                 await tx.RollbackAsync(ct);
-                return Result<string>.Failure("CIRCULAR_REFERENCE",
-                    "No se puede realizar este placement: generaría una referencia circular en el árbol.");
+                return Result<string>.Failure("PLACEMENT_CONFLICT", "La posicion del miembro cambio mientras se colocaba. Vuelve a intentarlo.");
             }
 
+            targetParent = await _db.DualTeamTree.AsNoTracking()
+                .FirstOrDefaultAsync(d => d.MemberId == command.TargetParentMemberId, ct);
             // Auto-create the parent as a root node if it doesn't exist in the dual tree yet.
             // This happens on first placement under an ambassador who was never placed themselves.
             if (targetParent is null)
             {
-                targetParent = new DualTeamEntity
-                {
-                    MemberId       = command.TargetParentMemberId,
-                    ParentMemberId = null,
-                    Side           = TreeSide.Left,
-                    HierarchyPath  = $"/{command.TargetParentMemberId}/",
-                    CreationDate   = now,
-                    CreatedBy      = _currentUser.UserId,
-                    LastUpdateDate = now,
-                    LastUpdateBy   = _currentUser.UserId
-                };
+                targetParent = await DualTeamNodes.RootAsync(_db, command.TargetParentMemberId, now, _currentUser.UserId, ct);
                 _db.DualTeamTree.Add(targetParent);
                 await _db.SaveChangesAsync(ct);
+                _db.Entry(targetParent).State = EntityState.Detached;
+            }
+            if (ahora is not null && IsInside(ahora, targetParent))
+            {
+                await tx.RollbackAsync(ct);
+                return Circular();
             }
 
-            var newPath = $"{targetParent.HierarchyPath}{command.MemberToPlaceId}/";
-
-            if (existingNode != null)
+            if (ahora is not null)
             {
-                // Member is currently in the tree — move their whole subtree to the new position.
-                _db.DualTeamTree.Remove(existingNode);
-
-                var descendants = await _db.DualTeamTree
-                    .Where(d => d.HierarchyPath.StartsWith(existingNode.HierarchyPath)
-                             && d.MemberId != command.MemberToPlaceId)
-                    .ToListAsync(ct);
-
-                foreach (var desc in descendants)
-                {
-                    var relative   = desc.HierarchyPath.Substring(existingNode.HierarchyPath.Length);
-                    desc.HierarchyPath  = newPath + relative;
-                    desc.LastUpdateDate = now;
-                    desc.LastUpdateBy   = _currentUser.UserId;
-                }
+                // Nodo colocado o raiz provisional: el subarbol se mueve entero.
+                await DualTeamNodes.MoveSubtreeAsync(_db, command.MemberToPlaceId,
+                    new DualTeamDestination.UnderParent(targetParent, side), adjustLegs: true, now, _currentUser.UserId, ct);
             }
             else
             {
-                // Member was previously unplaced — their descendants are floating under /{memberId}/.
-                // Re-attach them to the new position.
-                var floatPrefix = $"/{command.MemberToPlaceId}/";
-                var floatingDescendants = await _db.DualTeamTree
-                    .Where(d => d.HierarchyPath.StartsWith(floatPrefix))
-                    .ToListAsync(ct);
+                var nuevo = await DualTeamNodes.ChildAsync(_db, targetParent, command.MemberToPlaceId, side, now, _currentUser.UserId, ct);
+                _db.DualTeamTree.Add(nuevo);
+                await _db.SaveChangesAsync(ct);
+                await LegPointMaintenance.ApplyIncrementalAsync(_db, new[] { command.MemberToPlaceId }, ct);
+                _db.Entry(nuevo).State = EntityState.Detached;
 
-                foreach (var desc in floatingDescendants)
-                {
-                    var relative   = desc.HierarchyPath.Substring(floatPrefix.Length);
-                    desc.HierarchyPath  = newPath + relative;
-                    desc.LastUpdateDate = now;
-                    desc.LastUpdateBy   = _currentUser.UserId;
-                }
+                // Member was previously unplaced — their descendants are floating. Re-attach them to the new position.
+                var colocado = await _db.DualTeamTree.AsNoTracking().FirstAsync(d => d.MemberId == command.MemberToPlaceId, ct);
+                foreach (var hijo in await DualTeamNodes.FloatingChildrenAsync(_db, command.MemberToPlaceId, ct))
+                    await DualTeamNodes.MoveSubtreeAsync(_db, hijo.MemberId,
+                        new DualTeamDestination.UnderParent(colocado, hijo.Side), adjustLegs: true, now, _currentUser.UserId, ct);
             }
-            _db.DualTeamTree.Add(new DualTeamEntity
-            {
-                MemberId       = command.MemberToPlaceId,
-                ParentMemberId = command.TargetParentMemberId,
-                Side           = side,
-                HierarchyPath  = newPath,
-                CreationDate   = now,
-                CreatedBy      = _currentUser.UserId,
-                LastUpdateDate = now,
-                LastUpdateBy   = _currentUser.UserId
-            });
 
-            var prevLog = await _db.PlacementLogs
+            var prevLog = await _db.PlacementLogs.AsNoTracking()
                 .Where(p => p.MemberId == command.MemberToPlaceId)
                 .OrderByDescending(p => p.CreationDate)
                 .FirstOrDefaultAsync(ct);
@@ -186,13 +159,6 @@ public class AdminPlaceMemberHandler : IRequestHandler<AdminPlaceMemberCommand, 
             });
 
             await _db.SaveChangesAsync(ct);
-
-            // Sprint-15 follow-up — was a local SumSubtreePointsAsync that
-            // CountAsync'd nodes instead of summing PersonalPoints (wrong
-            // values). Delegate to the shared recalculator (single source of
-            // truth used by SignupAPI + BizCenter).
-            await _legPoints.RecalculateForUplinesAsync(command.TargetParentMemberId, ct);
-
             await tx.CommitAsync(ct);
 
             return Result<string>.Success(
@@ -220,4 +186,24 @@ public class AdminPlaceMemberHandler : IRequestHandler<AdminPlaceMemberCommand, 
     private static Result<string> SlotOccupied(AdminPlaceMemberCommand command) =>
         Result<string>.Failure("SLOT_OCCUPIED",
             $"El nodo {command.TargetParentMemberId} ya tiene ocupada la pierna {command.Side}.");
+
+    private static Result<string> Circular() =>
+        Result<string>.Failure("CIRCULAR_REFERENCE",
+            "No se puede realizar este placement: generaría una referencia circular en el árbol.");
+
+    /// <summary>¿Esta <paramref name="target"/> dentro del subarbol de <paramref name="node"/> (el incluido)? Por la clave.</summary>
+    private bool IsInside(DualTeamEntity node, DualTeamEntity target)
+    {
+        if (node.MemberId == target.MemberId) return true;
+        if (node.BinaryPath is not null && target.BinaryPath is not null)
+            return DualBinaryPath.Contains(node.BinaryPath, target.BinaryPath);
+        var vistos = new HashSet<string>();
+        for (var actual = target; actual is not null && vistos.Add(actual.MemberId);)
+        {
+            if (actual.MemberId == node.MemberId) return true;
+            var padre = actual.ParentMemberId;
+            actual = padre is null ? null : _db.DualTeamTree.AsNoTracking().FirstOrDefault(d => d.MemberId == padre);
+        }
+        return false;
+    }
 }

@@ -62,19 +62,16 @@ public class DevSeedController : ControllerBase
     public async Task<ActionResult<ApiResponse<BulkPlacementOutcome>>> PlaceBulk(
         [FromBody] PlaceBulkRequest? request, CancellationToken ct)
     {
-        var query = _db.MemberProfiles.AsNoTracking()
-            .Where(m => !m.IsDeleted && m.SponsorMemberId != null)
-            .Where(m => !_db.DualTeamTree.Any(d => d.MemberId == m.MemberId));
+        // Plan P: los mismos pendientes que AutoPlacementJob (PendingPlacements), sin plazo y por fecha de alta.
+        var query = PendingPlacements.Query(_db);
 
         if (request?.SponsorIds is { Count: > 0 } sponsors)
-            query = query.Where(m => sponsors.Contains(m.SponsorMemberId!));
+            query = query.Where(m => sponsors.Contains(m.SponsorMemberId));
 
-        var pairs = await query
-            .Select(m => new { m.MemberId, m.SponsorMemberId })
-            .ToListAsync(ct);
+        var pairs = await query.ToListAsync(ct);
 
         var result = await _placement.PlaceBulkAsync(
-            pairs.Select(p => (p.MemberId, p.SponsorMemberId!)).ToList(), ct);
+            pairs.Select(p => (p.MemberId, p.SponsorMemberId)).ToList(), ct);
 
         return result.IsSuccess
             ? Ok(ApiResponse<BulkPlacementOutcome>.Ok(result.Value!))
@@ -97,7 +94,7 @@ public class DevSeedController : ControllerBase
         // pass propagates each node's deepest descendant up to all its ancestors in O(N).
         var nodes = await _db.DualTeamTree.AsNoTracking()
             .Where(d => !d.IsDeleted)
-            .Select(d => new { d.MemberId, d.ParentMemberId, d.Side, d.HierarchyPath })
+            .Select(d => new { d.MemberId, d.ParentMemberId, d.Side, d.Depth })
             .ToListAsync(ct);
 
         // depth = slash count, matching DualTeamPlacementRules.Depth so DeepestDepth lines up
@@ -114,7 +111,7 @@ public class DevSeedController : ControllerBase
         {
             parentOf[n.MemberId] = n.ParentMemberId;
             sideOf[n.MemberId] = n.Side;
-            deepest[n.MemberId] = (n.MemberId, Depth(n.HierarchyPath));
+            deepest[n.MemberId] = (n.MemberId, (n.Depth ?? 0));
             if (n.ParentMemberId is not null)
             {
                 var slot = childSides.GetValueOrDefault(n.ParentMemberId);
@@ -126,7 +123,7 @@ public class DevSeedController : ControllerBase
 
         // Propagate deepest-descendant up the tree. Processing in descending depth guarantees
         // every node is finalized before its (shallower) parent, so one pass suffices.
-        foreach (var n in nodes.OrderByDescending(x => Depth(x.HierarchyPath)))
+        foreach (var n in nodes.OrderByDescending(x => (x.Depth ?? 0)))
         {
             if (n.ParentMemberId is null) continue;
             var cur = deepest[n.MemberId];
@@ -403,17 +400,14 @@ public class DevSeedController : ControllerBase
         // AutoPlacementJob and produced the duplicate / side-collided rows the
         // placement-engine redesign fixed). Kept as an alias so existing dev scripts
         // that POST force-place-all still work, but they get the correct engine.
-        var pairs = await _db.MemberProfiles.AsNoTracking()
-            .Where(m => !m.IsDeleted && m.SponsorMemberId != null && m.Status == MemberAccountStatus.Active)
-            .Where(m => !_db.DualTeamTree.Any(d => d.MemberId == m.MemberId))
-            .Select(m => new { m.MemberId, m.SponsorMemberId })
-            .ToListAsync(ct);
+        var activos = _db.MemberProfiles.AsNoTracking().Where(m => m.Status == MemberAccountStatus.Active).Select(m => m.MemberId);
+        var pairs = await PendingPlacements.Query(_db).Where(p => activos.Contains(p.MemberId)).ToListAsync(ct);
 
         if (pairs.Count == 0)
             return Ok(ApiResponse<ForcePlaceResultDto>.Ok(new ForcePlaceResultDto(0, "All members are already placed.")));
 
         var result = await _placement.PlaceBulkAsync(
-            pairs.Select(p => (p.MemberId, p.SponsorMemberId!)).ToList(), ct);
+            pairs.Select(p => (p.MemberId, p.SponsorMemberId)).ToList(), ct);
 
         if (!result.IsSuccess)
             return BadRequest(ApiResponse<ForcePlaceResultDto>.Fail(result.ErrorCode!, result.Error!));

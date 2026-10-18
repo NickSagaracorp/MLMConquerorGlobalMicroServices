@@ -5,7 +5,6 @@ using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
-using MLMConquerorGlobalEdition.Repository.Services.Trees;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 
 namespace MLMConquerorGlobalEdition.AdminAPI.Tests.Features.Placement;
@@ -22,9 +21,7 @@ public class SqlServerAdminPlaceMemberConcurrenteTests
         usuario.Setup(u => u.UserId).Returns("plan-p-prueba");
         var reloj = new Mock<IDateTimeProvider>();
         reloj.Setup(r => r.Now).Returns(DateTime.Now);
-        var piernas = new Mock<IDualTeamPointsRecalculator>();
-        piernas.Setup(p => p.RecalculateForUplinesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        return new AdminPlaceMemberHandler(db, usuario.Object, reloj.Object, piernas.Object);
+        return new AdminPlaceMemberHandler(db, usuario.Object, reloj.Object);
     }
 
     [SqlServerFact]
@@ -38,7 +35,7 @@ public class SqlServerAdminPlaceMemberConcurrenteTests
             {
                 db.DualTeamTree.Add(new DualTeamEntity
                 {
-                    MemberId = $"{x}P", Side = TreeSide.Left, HierarchyPath = $"/{x}P/",
+                    MemberId = $"{x}P", Side = TreeSide.Left, HierarchyPath = $"/{x}P/", BinaryPath = ClaveDePrueba.Raiz(db), Depth = 0,
                     CreationDate = DateTime.Now, LastUpdateDate = DateTime.Now, CreatedBy = "plan-p-prueba"
                 });
                 foreach (var m in new[] { $"{x}M1", $"{x}M2" })

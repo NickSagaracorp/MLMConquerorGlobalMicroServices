@@ -40,15 +40,10 @@ public class RunAutoPlacementHandler : IRequestHandler<RunAutoPlacementCommand, 
     {
         var windowCutoff = _clock.Now.AddDays(-PlacementWindowDays);
 
-        // Members whose window has expired and are NOT in the dual tree. Por fecha de alta: un patrocinador
-        // que tambien esta pendiente se coloca antes que sus patrocinados.
-        var toPlace = await _db.MemberProfiles
-            .AsNoTracking()
-            .Where(m => !m.IsDeleted && m.EnrollDate < windowCutoff && m.SponsorMemberId != null)
-            .Where(m => !_db.DualTeamTree.Any(d => d.MemberId == m.MemberId))
-            .OrderBy(m => m.EnrollDate).ThenBy(m => m.MemberId)
-            .Select(m => new { m.MemberId, m.SponsorMemberId })
-            .ToListAsync(ct);
+        // Los pendientes con el plazo vencido (PendingPlacements, el mismo criterio que AutoPlacementJob): sin
+        // nodo, o raiz provisional con equipo cuyo patrocinador ya esta en el binario. Por fecha de alta: un
+        // patrocinador que tambien esta pendiente se coloca antes que sus patrocinados.
+        var toPlace = await PendingPlacements.Query(_db, windowCutoff).ToListAsync(ct);
 
         var audit = new PlacementAudit(_currentUser.UserId, "AutoPlaced", "Admin-triggered auto-placement");
         var placedIds = new List<string>();
@@ -59,7 +54,7 @@ public class RunAutoPlacementHandler : IRequestHandler<RunAutoPlacementCommand, 
             if (!await _db.DualTeamTree.AsNoTracking().AnyAsync(d => d.MemberId == member.SponsorMemberId, ct))
                 continue;
 
-            var r = await _placement.PlaceAsync(member.MemberId, member.SponsorMemberId!, audit, ct);
+            var r = await _placement.PlaceAsync(member.MemberId, member.SponsorMemberId, audit, ct);
             if (r.IsSuccess && !r.Value!.AlreadyPlaced)
                 placedIds.Add(member.MemberId);
         }

@@ -68,3 +68,17 @@ public static class SqlServerTestDb
     public static AppDbContext Db(params Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor[] interceptores) =>
         new(new DbContextOptionsBuilder<AppDbContext>().UseSqlServer(ConnectionString).AddInterceptors(interceptores).Options);
 }
+
+/// <summary>
+/// Plan P: claves compactas para los nodos que siembran las pruebas contra SQL Server. Las raices toman un ordinal
+/// de la secuencia DualTeamRootOrdinal, asi que no chocan con ninguna real.
+/// </summary>
+public static class ClaveDePrueba
+{
+    public static byte[] Raiz(MLMConquerorGlobalEdition.Repository.Context.AppDbContext db) =>
+        MLMConquerorGlobalEdition.Domain.Services.DualBinaryPath.Root(
+            db.Database.SqlQuery<int>($"SELECT NEXT VALUE FOR dbo.DualTeamRootOrdinal AS [Value]").ToList()[0]);
+
+    public static byte[] Hijo(byte[] padre, MLMConquerorGlobalEdition.Domain.Enums.TreeSide lado) =>
+        MLMConquerorGlobalEdition.Domain.Services.DualBinaryPath.Child(padre, lado);
+}

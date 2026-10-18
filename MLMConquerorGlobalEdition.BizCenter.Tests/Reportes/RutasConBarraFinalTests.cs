@@ -19,19 +19,12 @@ public class RutasConBarraFinalTests
     /// <summary>Archivo (relativo, con "/") → cuántas escrituras de HierarchyPath tiene.</summary>
     private static readonly Dictionary<string, int> Revisados = new()
     {
-        ["MLMConquerorGlobalEdition.AdminAPI/Features/Placement/AdminPlaceMember/AdminPlaceMemberHandler.cs"]         = 4,
-        ["MLMConquerorGlobalEdition.AdminAPI/Features/Placement/AdminRemovePlacement/AdminRemovePlacementHandler.cs"] = 1,
-        ["MLMConquerorGlobalEdition.BizCenter/Features/Placement/PlaceMember/PlaceMemberHandler.cs"]                  = 2,
-        ["MLMConquerorGlobalEdition.BizCenter/Features/Placement/RemovePlacement/RemovePlacementHandler.cs"]          = 1,
-        ["MLMConquerorGlobalEdition.Repository/Seeders/RootAmbassadorSeeder.cs"]                                     = 2,
-        ["MLMConquerorGlobalEdition.Repository/Services/Teams/DualTeamService.cs"]                                   = 1,
-        ["MLMConquerorGlobalEdition.Repository/Services/Teams/PlacementService.cs"]                                  = 1,
-        ["MLMConquerorGlobalEdition.SignupAPI/Features/Placement/Commands/PlaceMember/PlaceMemberHandler.cs"]         = 1,
-        ["MLMConquerorGlobalEdition.SignupAPI/Features/Signups/Commands/SignupAmbassador/SignupAmbassadorHandler.cs"] = 2,
+        // Plan P: el binario solo lo escribe DualTeamNodes (altas, raices, movimientos y retiradas).
+        ["MLMConquerorGlobalEdition.Repository/Queries/DualTeamNodes.cs"]                                            = 4,
+        // Arbol de inscripcion (GenealogyTree).
+        ["MLMConquerorGlobalEdition.Repository/Seeders/RootAmbassadorSeeder.cs"]                                     = 1,
+        ["MLMConquerorGlobalEdition.SignupAPI/Features/Signups/Commands/SignupAmbassador/SignupAmbassadorHandler.cs"] = 1,
         ["MLMConquerorGlobalEdition.SignupAPI/Features/Signups/Commands/SignupMember/SignupMemberHandler.cs"]         = 1,
-        // UPDATE en SQL con un parámetro; revisado a mano: la ruta se construye con "/" al principio
-        // y al final (BuildPath, StringBuilder("/") ... Append('/')).
-        ["Scripts/FixDualTeamPaths/Program.cs"]                                                                       = 1,
     };
 
     private static IEnumerable<(string Archivo, string Valor)> Escrituras()

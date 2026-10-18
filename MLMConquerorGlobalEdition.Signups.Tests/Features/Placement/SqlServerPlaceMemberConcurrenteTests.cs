@@ -3,7 +3,6 @@ using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
-using MLMConquerorGlobalEdition.Repository.Services.Trees;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.Features.Placement.Commands.PlaceMember;
 using MLMConquerorGlobalEdition.SignupAPI.Tests.Helpers;
@@ -25,9 +24,7 @@ public class SqlServerPlaceMemberConcurrenteTests
         var avisos = new Mock<IPushNotificationService>();
         avisos.Setup(p => p.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .Returns(Task.CompletedTask);
-        var piernas = new Mock<IDualTeamPointsRecalculator>();
-        piernas.Setup(p => p.RecalculateForUplinesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        return new PlaceMemberHandler(db, reloj.Object, avisos.Object, piernas.Object);
+        return new PlaceMemberHandler(db, reloj.Object, avisos.Object);
     }
 
     [SqlServerFact]
@@ -41,7 +38,7 @@ public class SqlServerPlaceMemberConcurrenteTests
             {
                 db.DualTeamTree.Add(new DualTeamEntity
                 {
-                    MemberId = $"{x}P", Side = TreeSide.Left, HierarchyPath = $"/{x}P/",
+                    MemberId = $"{x}P", Side = TreeSide.Left, HierarchyPath = $"/{x}P/", BinaryPath = ClaveDePrueba.Raiz(db), Depth = 0,
                     CreationDate = DateTime.Now, LastUpdateDate = DateTime.Now, CreatedBy = "plan-p-prueba"
                 });
                 foreach (var m in new[] { $"{x}P", $"{x}M1", $"{x}M2" })
@@ -50,6 +47,7 @@ public class SqlServerPlaceMemberConcurrenteTests
                         UserId = Guid.NewGuid(), MemberId = m, Email = $"{m.ToLowerInvariant()}@prueba.test",
                         FirstName = "Plan", LastName = "P", Country = "US", MemberType = MemberType.Ambassador,
                         Status = MemberAccountStatus.Active, EnrollDate = DateTime.Now, CreationDate = DateTime.Now,
+                        SponsorMemberId = m == $"{x}P" ? null : $"{x}P",   // revision I8: se cuelgan bajo su patrocinador
                         LastUpdateDate = DateTime.Now, CreatedBy = "plan-p-prueba"
                     });
                 await db.SaveChangesAsync();
