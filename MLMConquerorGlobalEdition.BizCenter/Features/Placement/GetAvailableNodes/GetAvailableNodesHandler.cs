@@ -142,16 +142,16 @@ public class GetAvailableNodesHandler
     {
         var sponsorGenNode = await _db.GenealogyTree
             .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.MemberId == sponsorMemberId, ct);
+            .CurrentOfAsync(sponsorMemberId, ct); // nodo vigente (Plan M, M2)
 
-        if (sponsorGenNode is null)
+        if (sponsorGenNode?.Node is null)
             return new List<string> { sponsorMemberId };
-        var sponsorPrefix = TreePrefix.Of(sponsorGenNode.HierarchyPath);
+        var sponsorRoot = sponsorGenNode.Node;
 
-        // All descendants in enrollment tree using HierarchyPath
+        // All descendants in enrollment tree by Node (Plan M)
         var descendants = await _db.GenealogyTree
             .AsNoTracking()
-            .Where(g => g.HierarchyPath.StartsWith(sponsorPrefix))
+            .CurrentUnder(sponsorRoot)
             .Select(g => g.MemberId)
             .ToListAsync(ct);
 

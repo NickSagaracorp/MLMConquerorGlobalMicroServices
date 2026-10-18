@@ -17,8 +17,8 @@ internal static class TokenCustody
 {
     /// <summary>
     /// ¿Cuelga <paramref name="recipientId"/> del que envía en el árbol de inscripción (patrocinio)?
-    /// Se mira por <c>HierarchyPath</c>, que termina en barra (se normaliza si no): <c>/S/</c> no es
-    /// prefijo de <c>/S2/</c>. Si el que envía tuviera más de un nodo, manda el más reciente.
+    /// Se mira por <c>Node</c> (Plan M): el destinatario cuelga del Node del que envía, sin las falsas
+    /// coincidencias de un prefijo de texto. Si el que envía tuviera más de un nodo, manda el más reciente.
     /// Devuelve el MemberId del que envía TAL COMO ESTÁ GUARDADO (el que viene del token puede diferir
     /// en mayúsculas): es el que nombra su candado y el que deben usar las consultas y los asientos.
     /// <c>SenderId</c> null si el que envía no tiene nodo (falla cerrado: quien llama lo rechaza).
@@ -29,18 +29,19 @@ internal static class TokenCustody
         var sender = await db.GenealogyTree.AsNoTracking()
             .Where(g => g.MemberId == senderId)
             .OrderByDescending(g => g.CreationDate)
-            .Select(g => new { g.MemberId, g.HierarchyPath })
+            .ThenByDescending(g => g.Id)      // nodo vigente con desempate por Id (revisión M-e)
+            .Select(g => new { g.MemberId, g.Node })
             .FirstOrDefaultAsync(ct);
-        if (sender is null || string.IsNullOrEmpty(sender.HierarchyPath))
+        if (sender is null || sender.Node is null)
             return new TeamCheck(null, false);
 
-        var senderPath = TreePrefix.Of(sender.HierarchyPath);
+        var senderRoot = sender.Node;
         var storedSender = sender.MemberId;
 
         var inTeam = await db.GenealogyTree.AsNoTracking()
+            .CurrentUnder(senderRoot)
             .AnyAsync(g => g.MemberId == recipientId
-                        && g.MemberId != storedSender
-                        && g.HierarchyPath.StartsWith(senderPath), ct);
+                        && g.MemberId != storedSender, ct);
         return new TeamCheck(storedSender, inTeam);
     }
 

@@ -14,5 +14,4 @@ public class Orders : AuditChangesStringKey
     public string? CheckoutScreenshotUrl { get; set; }       // S3 URL — chargeback evidence
 
     public ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
-    public ICollection<PaymentHistory> Payments { get; set; } = new List<PaymentHistory>();
 }

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using MLMConquerorGlobalEdition.BizCenter.Jobs;
 using MLMConquerorGlobalEdition.BizCenter.Services;
+using MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
@@ -106,6 +107,7 @@ public class MemberStatisticSnapshotJobTests : IDisposable
 
         // Stale stat row — EnrollmentPoints is wrong (999 instead of 90)
         await _db.MemberStatistics.AddAsync(Stat("M", enrollmentPoints: 999));
+        ReportesDb.RellenarNodos(_db); // Plan M: los puntos de equipo se suman por Node
         await _db.SaveChangesAsync();
 
         await CreateJob().ExecuteAsync();
@@ -135,5 +137,56 @@ public class MemberStatisticSnapshotJobTests : IDisposable
 
         var stat = await _db.MemberStatistics.SingleAsync(s => s.MemberId == "S");
         stat.QualifiedSponsoredMembers.Should().Be(2);
+    }
+
+    /// <summary>
+    /// Plan M, revisión C1: sin Node no hay equipo que sumar. El job NO escribe 0 (borraría los puntos
+    /// de equipo de un miembro cuyo nodo aún no se ha rellenado): deja el valor y lo registra como error.
+    /// </summary>
+    [Fact]
+    public async Task ExecuteAsync_SinNode_NoEscribeCeroYRegistraUnError()
+    {
+        var sinNode = Geno("M", null, "/M/");
+        sinNode.Node = null;
+        await _db.GenealogyTree.AddAsync(sinNode);
+        await _db.MemberStatistics.AddAsync(Stat("M", enrollmentPoints: 999));
+        await _db.SaveChangesAsync();
+        var logger = new Mock<Microsoft.Extensions.Logging.ILogger<MemberStatisticSnapshotJob>>();
+
+        await new MemberStatisticSnapshotJob(_db, _dateTime.Object, logger.Object, new EnrollmentTeamPointsService(_db))
+            .ExecuteAsync(default);
+
+        (await _db.MemberStatistics.AsNoTracking().SingleAsync(s => s.MemberId == "M")).EnrollmentPoints.Should().Be(999);
+        logger.Verify(l => l.Log(
+            Microsoft.Extensions.Logging.LogLevel.Error,
+            It.IsAny<Microsoft.Extensions.Logging.EventId>(),
+            It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("M")),
+            It.IsAny<Exception?>(),
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
+    }
+
+    /// <summary>Revisión M-i: muchos miembros sin Node dan UN error con el recuento y unos ejemplos, no uno por miembro.</summary>
+    [Fact]
+    public async Task ExecuteAsync_VariosSinNode_UnSoloErrorConElRecuento()
+    {
+        for (var i = 1; i <= 7; i++)
+        {
+            var g = Geno($"S{i}", null, $"/S{i}/");
+            g.Node = null;
+            await _db.GenealogyTree.AddAsync(g);
+            await _db.MemberStatistics.AddAsync(Stat($"S{i}", enrollmentPoints: 5));
+        }
+        await _db.SaveChangesAsync();
+        var logger = new Mock<Microsoft.Extensions.Logging.ILogger<MemberStatisticSnapshotJob>>();
+
+        await new MemberStatisticSnapshotJob(_db, _dateTime.Object, logger.Object, new EnrollmentTeamPointsService(_db))
+            .ExecuteAsync(default);
+
+        logger.Verify(l => l.Log(
+            Microsoft.Extensions.Logging.LogLevel.Error,
+            It.IsAny<Microsoft.Extensions.Logging.EventId>(),
+            It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("7") && v.ToString()!.Contains("S1")),
+            It.IsAny<Exception?>(),
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
     }
 }

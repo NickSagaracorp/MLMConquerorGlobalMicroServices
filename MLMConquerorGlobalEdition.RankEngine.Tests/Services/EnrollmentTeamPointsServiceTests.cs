@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Orders;
 using MLMConquerorGlobalEdition.Domain.Entities.Rank;
@@ -11,10 +12,14 @@ public class EnrollmentTeamPointsServiceTests
 {
     private static readonly DateTime Now = new(2026, 5, 21, 0, 0, 0, DateTimeKind.Utc);
 
+    // Plan M: el equipo se suma por Node; el de cada nodo sigue su ruta (M = /1/, A = /1/1/, B = /1/2/).
+    private static readonly Dictionary<string, string> Nodos = new() { ["M"] = "/1/", ["A"] = "/1/1/", ["B"] = "/1/2/" };
+
     private static GenealogyEntity Geno(string memberId, string? parentId, string path) => new()
     {
         MemberId = memberId, ParentMemberId = parentId, HierarchyPath = path,
         Level = path.Trim('/').Split('/').Length,
+        Node = HierarchyId.Parse(Nodos[memberId]),
         CreatedBy = "seed", CreationDate = Now, LastUpdateDate = Now
     };
 
@@ -145,14 +150,15 @@ public class EnrollmentTeamPointsServiceTests
     }
 
     [Fact]
-    public async Task RecomputeEnrollmentPoints_WhenMemberHasNoGenealogyNode_ReturnsZero()
+    public async Task RecomputeEnrollmentPoints_WhenMemberHasNoGenealogyNode_ReturnsNoData()
     {
         await using var db = InMemoryDbHelper.Create();
         // Completely empty DB — no genealogy node for "GHOST".
         var svc = new EnrollmentTeamPointsService(db);
         var result = await svc.RecomputeEnrollmentPointsAsync("GHOST");
 
-        result.Should().Be(0);
+        // Plan M (revisión C1): sin nodo no hay dato; un 0 se persistiría como si el equipo no tuviera puntos.
+        result.Should().BeNull();
     }
 
     [Fact]

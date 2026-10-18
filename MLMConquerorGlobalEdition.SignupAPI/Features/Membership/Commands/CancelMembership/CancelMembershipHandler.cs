@@ -4,6 +4,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.Repository.Services.Billing;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SignupAPI.Services;
@@ -123,7 +124,7 @@ public class CancelMembershipHandler : IRequestHandler<CancelMembershipCommand, 
         // Member's genealogy node — provides the full ancestor chain via HierarchyPath
         var memberNode = await _db.GenealogyTree
             .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.MemberId == memberId, ct);
+            .CurrentOfAsync(memberId, ct); // nodo vigente (Plan M, M2)
 
         if (memberNode is null) return;
 

@@ -395,6 +395,7 @@ public class SignupAmbassadorHandlerTests
         {
             MemberId      = "AMB-000001",
             HierarchyPath = "/AMB-000001/",
+            Node          = HierarchyId.Parse("/1/"), // Plan M: sin Node el alta falla cerrado (I4)
             Level         = 1,
             CreatedBy     = "seed",
             CreationDate  = FixedNow,
@@ -428,6 +429,7 @@ public class SignupAmbassadorHandlerTests
         {
             MemberId      = "AMB-000001",
             HierarchyPath = "/AMB-000001/",
+            Node          = HierarchyId.Parse("/1/"), // Plan M: sin Node el alta falla cerrado (I4)
             Level         = 1,
             CreatedBy     = "seed",
             CreationDate  = FixedNow,
@@ -551,6 +553,7 @@ public class SignupAmbassadorHandlerTests
         {
             MemberId      = "AMB-000001",
             HierarchyPath = "/AMB-000001/",
+            Node          = HierarchyId.Parse("/1/"), // Plan M: sin Node el alta falla cerrado (I4)
             Level         = 1,
             CreatedBy     = "seed",
             CreationDate  = FixedNow,
@@ -758,7 +761,7 @@ public class SignupAmbassadorHandlerTests
         await db.GenealogyTree.AddAsync(new GenealogyEntity
         {
             MemberId       = "AMB-000099",
-            HierarchyPath  = "/AMB-000099/",
+            HierarchyPath  = "/AMB-000099/", Node = HierarchyId.Parse("/1/"), // Plan M: sin Node el alta falla cerrado (I4)
             Level          = 1,
             CreatedBy      = "seed",
             CreationDate   = FixedNow,
@@ -824,7 +827,7 @@ public class SignupAmbassadorHandlerTests
         await db.MemberProfiles.AddAsync(sponsor);
         await db.MembershipLevels.AddAsync(BuildLevel());
         await db.GenealogyTree.AddAsync(new GenealogyEntity {
-            MemberId = "AMB-000077", HierarchyPath = "/AMB-000077/", Level = 1,
+            MemberId = "AMB-000077", HierarchyPath = "/AMB-000077/", Node = HierarchyId.Parse("/1/"), Level = 1, // Plan M: sin Node el alta falla cerrado (I4)
             CreatedBy = "seed", CreationDate = FixedNow, LastUpdateDate = FixedNow });
         await db.SaveChangesAsync();
 
@@ -841,5 +844,27 @@ public class SignupAmbassadorHandlerTests
         dualNode.Should().BeNull(
             "a sponsored signup must NOT auto-populate the binary tree — " +
             "PlaceMember is a separate explicit step.");
+    }
+
+    [Fact]
+    public async Task Handle_ElNodoDelInscritoCuelgaDelNodoDelPatrocinador()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await db.MembershipLevels.AddAsync(BuildLevel());
+        await db.MemberProfiles.AddAsync(BuildSponsor("AMB-000001", "maria-site"));
+        await db.GenealogyTree.AddAsync(new GenealogyEntity
+        {
+            MemberId = "AMB-000001", HierarchyPath = "/AMB-000001/", Level = 1,
+            Node = HierarchyId.Parse("/1/"),
+            CreatedBy = "seed", CreationDate = FixedNow, LastUpdateDate = FixedNow
+        });
+        await db.SaveChangesAsync();
+
+        var result = await BuildHandler(db).Handle(
+            new SignupAmbassadorCommand(BuildRequest(sponsorSlug: "maria-site", slug: "nodo-site")), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        (await db.GenealogyTree.SingleAsync(g => g.MemberId != "AMB-000001")).Node
+            .Should().Be(HierarchyId.Parse("/1/1/"));
     }
 }

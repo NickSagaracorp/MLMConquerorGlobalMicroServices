@@ -32,7 +32,9 @@ public class DualTeamConfiguration : IEntityTypeConfiguration<DualTeamEntity>
         // pn.MemberId = w.ParentMemberId`. Without this, those joins fall back to clustered
         // scans (O(N) per hop). This index keeps every MemberId lookup a seek.
         builder.HasIndex(x => x.MemberId, "IX_DualTeamTree_MemberId_Lookup");
-        builder.HasIndex(x => x.ParentMemberId);
+        // Plan M (M10): la CTE de DualSubtree y LegPointMaintenance buscan por ParentMemberId y leen
+        // MemberId, Side e IsDeleted; incluidas, cada paso es un seek sin ir a la tabla.
+        builder.HasIndex(x => x.ParentMemberId).IncludeProperties(x => new { x.MemberId, x.Side, x.IsDeleted });
         builder.HasQueryFilter(x => !x.IsDeleted);
     }
 }

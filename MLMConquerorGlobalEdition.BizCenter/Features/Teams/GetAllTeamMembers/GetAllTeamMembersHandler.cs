@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using MLMConquerorGlobalEdition.BizCenter.DTOs.Teams;
 using MLMConquerorGlobalEdition.BizCenter.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.SharedKernel;
 
 namespace MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetAllTeamMembers;
@@ -21,14 +22,15 @@ public class GetAllTeamMembersHandler : IRequestHandler<GetAllTeamMembersQuery, 
     public async Task<Result<PagedResult<TeamMemberDto>>> Handle(GetAllTeamMembersQuery request, CancellationToken ct)
     {
         var memberId = _currentUser.MemberId;
-        var hierarchySearchPattern = "/" + memberId + "/";
+        // Plan M: el equipo por el Node vigente del miembro; sin nodo, el equipo sale vacío.
+        var me = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct);
 
         // JOIN the genealogy subtree to profiles and page at the DB — instead of loading ALL
         // ~120k descendant ids into memory and re-querying with Contains(allIds). Only the
         // requested page ever materializes.
         var query =
-            from g in _db.GenealogyTree.AsNoTracking()
-            where g.HierarchyPath.Contains(hierarchySearchPattern)
+            from g in _db.GenealogyTree.AsNoTracking().CurrentUnder(me)
+            where g.MemberId != memberId // descendientes: él no
             join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
             orderby m.EnrollDate descending
             select m;

@@ -5,6 +5,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 using MLMConquerorGlobalEdition.Domain.Entities.Membership;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.Repository.Services.Commissions;
 using MLMConquerorGlobalEdition.SharedKernel;
 
@@ -203,16 +204,16 @@ public class AdminMemberCommissionsController : ControllerBase
 
         int[] eligibleLevelIds = [3, 4];
         var hierarchyFilter    = $"/{memberId}/";
+        var me                 = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct); // Plan M: equipo por Node
 
         var rawEnrollments = await (
             from mp  in _db.MemberProfiles.AsNoTracking()
-            join g   in _db.GenealogyTree.AsNoTracking()            on mp.MemberId           equals g.MemberId
+            join g   in _db.GenealogyTree.AsNoTracking().CurrentUnder(me)  on mp.MemberId           equals g.MemberId
             join sub in _db.MembershipSubscriptions.AsNoTracking()  on mp.MemberId           equals sub.MemberId
             join ml  in _db.MembershipLevels.AsNoTracking()         on sub.MembershipLevelId equals ml.Id
             where mp.EnrollDate >= weekStart
                && mp.EnrollDate <  weekEnd
                && eligibleLevelIds.Contains(sub.MembershipLevelId)
-               && g.HierarchyPath.Contains(hierarchyFilter)
             select new
             {
                 mp.MemberId,

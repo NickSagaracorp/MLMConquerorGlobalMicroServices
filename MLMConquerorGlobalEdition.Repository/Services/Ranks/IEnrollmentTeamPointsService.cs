@@ -33,5 +33,7 @@ public interface IEnrollmentTeamPointsService
     /// Returns the correct value for <see cref="MLMConquerorGlobalEdition.Domain.Entities.Member.MemberStatisticEntity.EnrollmentPoints"/>
     /// which is defined as own points + every downline member's points.
     /// </summary>
-    Task<int> RecomputeEnrollmentPointsAsync(string memberId, CancellationToken ct = default);
+    /// <remarks>Plan M (revisión C1): null si el miembro no tiene nodo vigente con Node. Sin Node no hay
+    /// equipo que sumar; devolver 0 haría que quien lo persiste borrara los puntos de equipo.</remarks>
+    Task<int?> RecomputeEnrollmentPointsAsync(string memberId, CancellationToken ct = default);
 }

@@ -10,7 +10,7 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Events;
 /// <inheritdoc />
 /// <remarks>
 /// El equipo es el subárbol de genealogía del que mira, ÉL INCLUIDO (J20): un miembro pertenece si
-/// su nodo MÁS RECIENTE cuelga del prefijo (R8, con TreePrefix). Las entradas y la primera fecha son
+/// su nodo MÁS RECIENTE cuelga del Node del que mira (R8, Plan M). Las entradas y la primera fecha son
 /// subconsultas correlacionadas sobre (EventId, MemberId), que el índice de esa pareja resuelve con
 /// un seek por fila de la página. Todavía no hay importación (N5): hasta entonces sale vacío.
 /// </remarks>
@@ -59,8 +59,8 @@ public sealed class TeamEventRegistrationsService : ITeamEventRegistrationsServi
         if (!await IsVisibleAsync(eventId, ct))
             return Result<PagedResult<TeamEventRegistrationView>>.Failure(TeamEventErrors.EventNotFound, "Event not found.");
 
-        var prefix = await PrefixAsync(memberId, ct);
-        if (prefix is null)
+        var root = await RootAsync(memberId, ct);
+        if (root is null)
             return Result<PagedResult<TeamEventRegistrationView>>.Success(new PagedResult<TeamEventRegistrationView>
             {
                 Page = Math.Max(1, request.Page), PageSize = request.PageSize <= 0 ? 20 : request.PageSize
@@ -80,9 +80,10 @@ public sealed class TeamEventRegistrationsService : ITeamEventRegistrationsServi
               let node = _db.GenealogyTree
                   .Where(n => n.MemberId == m.MemberId)
                   .OrderByDescending(n => n.CreationDate)
-                  .Select(n => n.HierarchyPath)
+                  .ThenByDescending(n => n.Id)      // nodo vigente con desempate por Id (revisión M-e)
+                  .Select(n => n.Node)
                   .FirstOrDefault()
-              where node != null && node.StartsWith(prefix)
+              where node != null && node.IsDescendantOf(root)
               select new TeamEventRegistrationView
               {
                   MemberId     = m.MemberId,
@@ -93,7 +94,7 @@ public sealed class TeamEventRegistrationsService : ITeamEventRegistrationsServi
                   RegisteredAt = g.First,
                   Tickets      = g.Tickets
               }
-            : from m in Team(prefix)
+            : from m in Team(root)
               select new TeamEventRegistrationView
               {
                   MemberId     = m.MemberId,
@@ -117,8 +118,8 @@ public sealed class TeamEventRegistrationsService : ITeamEventRegistrationsServi
         if (!await IsVisibleAsync(eventId, ct))
             return Result<TeamEventTotalsView>.Failure(TeamEventErrors.EventNotFound, "Event not found.");
 
-        var prefix = await PrefixAsync(memberId, ct);
-        if (prefix is null) return Result<TeamEventTotalsView>.Success(new TeamEventTotalsView());
+        var root = await RootAsync(memberId, ct);
+        if (root is null) return Result<TeamEventTotalsView>.Success(new TeamEventTotalsView());
 
         // Primero las inscripciones del evento y después, solo para ellas, la pertenencia al equipo.
         var inTeam =
@@ -127,9 +128,10 @@ public sealed class TeamEventRegistrationsService : ITeamEventRegistrationsServi
             let node = _db.GenealogyTree
                 .Where(n => n.MemberId == r.MemberId)
                 .OrderByDescending(n => n.CreationDate)
-                .Select(n => n.HierarchyPath)
+                .ThenByDescending(n => n.Id)      // nodo vigente con desempate por Id (revisión M-e)
+                .Select(n => n.Node)
                 .FirstOrDefault()
-            where node != null && node.StartsWith(prefix)
+            where node != null && node.IsDescendantOf(root)
             select r;
 
         return Result<TeamEventTotalsView>.Success(new TeamEventTotalsView
@@ -142,26 +144,14 @@ public sealed class TeamEventRegistrationsService : ITeamEventRegistrationsServi
     private Task<bool> IsVisibleAsync(string eventId, CancellationToken ct) =>
         _db.CorporateEvents.AsNoTracking().AnyAsync(e => e.Id == eventId && e.IsActive && !e.IsDeleted, ct);
 
-    /// <summary>Prefijo del nodo más reciente del que mira (R8), con barra final; null si no tiene nodo.</summary>
-    private async Task<string?> PrefixAsync(string memberId, CancellationToken ct)
-    {
-        var path = await _db.GenealogyTree.AsNoTracking()
-            .Where(g => g.MemberId == memberId)
-            .OrderByDescending(g => g.CreationDate)
-            .Select(g => g.HierarchyPath)
-            .FirstOrDefaultAsync(ct);
-        return string.IsNullOrEmpty(path) ? null : TreePrefix.Of(path);
-    }
+    /// <summary>Node vigente del que mira (R8); null si no tiene nodo.</summary>
+    private Task<HierarchyId?> RootAsync(string memberId, CancellationToken ct) =>
+        _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct);
 
-    /// <summary>Los perfiles del equipo, él incluido: su nodo más reciente cuelga del prefijo (R8).</summary>
-    private IQueryable<Domain.Entities.Member.MemberProfile> Team(string prefix) =>
-        from m in _db.MemberProfiles.AsNoTracking()
-        let node = _db.GenealogyTree
-            .Where(g => g.MemberId == m.MemberId)
-            .OrderByDescending(g => g.CreationDate)
-            .Select(g => g.HierarchyPath)
-            .FirstOrDefault()
-        where node != null && node.StartsWith(prefix)
+    /// <summary>Los perfiles del equipo, él incluido: nodo vigente bajo el del que mira (Plan M, forma B).</summary>
+    private IQueryable<Domain.Entities.Member.MemberProfile> Team(HierarchyId root) =>
+        from g in _db.GenealogyTree.AsNoTracking().CurrentUnder(root)
+        join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
         select m;
 
     private async Task EnrichAsync(List<TeamEventRegistrationView> rows, CancellationToken ct)

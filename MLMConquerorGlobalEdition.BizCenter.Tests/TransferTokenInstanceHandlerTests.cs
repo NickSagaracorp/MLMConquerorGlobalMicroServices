@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using MLMConquerorGlobalEdition.BizCenter.Features.Tokens.TransferTokenInstance;
 using MLMConquerorGlobalEdition.BizCenter.Services;
+using MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Tokens;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
@@ -160,6 +161,7 @@ public class TransferTokenInstanceHandlerTests : IDisposable
             });
         }
 
+        ReportesDb.RellenarNodos(_db); // Plan M: el equipo se mira por Node
         await _db.SaveChangesAsync();
     }
 

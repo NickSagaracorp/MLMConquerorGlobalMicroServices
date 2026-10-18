@@ -309,6 +309,7 @@ public class SignupMemberHandlerTests
         {
             MemberId       = "AMB-000001",
             HierarchyPath  = "/AMB-000001/",
+            Node           = HierarchyId.Parse("/1/"), // Plan M: sin Node el alta falla cerrado (I4)
             Level          = 1,
             CreatedBy      = "seed",
             CreationDate   = FixedNow,
@@ -341,7 +342,7 @@ public class SignupMemberHandlerTests
         await db.GenealogyTree.AddAsync(new GenealogyEntity
         {
             MemberId       = "AMB-000001",
-            HierarchyPath  = "/AMB-000001/",
+            HierarchyPath  = "/AMB-000001/", Node = HierarchyId.Parse("/1/"), // Plan M: sin Node el alta falla cerrado (I4)
             Level          = 1,
             CreatedBy      = "seed",
             CreationDate   = FixedNow,
@@ -467,7 +468,7 @@ public class SignupMemberHandlerTests
         await db.GenealogyTree.AddAsync(new GenealogyEntity
         {
             MemberId       = "AMB-000001",
-            HierarchyPath  = "/AMB-000001/",
+            HierarchyPath  = "/AMB-000001/", Node = HierarchyId.Parse("/1/"), // Plan M: sin Node el alta falla cerrado (I4)
             Level          = 1,
             CreatedBy      = "seed",
             CreationDate   = FixedNow,
@@ -593,5 +594,27 @@ public class SignupMemberHandlerTests
         var member = await db.MemberProfiles.FirstAsync(m => m.MemberId == result.Value!.MemberId);
         member.SsnEncrypted.Should().BeNull();
         enc.Verify(e => e.Encrypt(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_ElNodoDelInscritoCuelgaDelNodoDelPatrocinador()
+    {
+        await using var db = InMemoryDbHelper.Create();
+        await db.MembershipLevels.AddAsync(BuildLevel());
+        await db.MemberProfiles.AddAsync(BuildSponsor("AMB-000001", "pedro-site"));
+        await db.GenealogyTree.AddAsync(new GenealogyEntity
+        {
+            MemberId = "AMB-000001", HierarchyPath = "/AMB-000001/", Level = 1,
+            Node = HierarchyId.Parse("/1/"),
+            CreatedBy = "seed", CreationDate = FixedNow, LastUpdateDate = FixedNow
+        });
+        await db.SaveChangesAsync();
+
+        var result = await BuildHandler(db).Handle(
+            new SignupMemberCommand(BuildRequest(sponsorSlug: "pedro-site")), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        (await db.GenealogyTree.SingleAsync(g => g.MemberId != "AMB-000001")).Node
+            .Should().Be(HierarchyId.Parse("/1/1/"));
     }
 }

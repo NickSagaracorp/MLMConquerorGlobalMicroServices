@@ -88,13 +88,8 @@ public sealed class TeamStatusChangesService : ITeamStatusChangesService
     private async Task<IQueryable<TeamStatusChangeView>?> EnrollmentQueryAsync(
         string memberId, IQueryable<string> changedIds, bool customersOnly, CancellationToken ct)
     {
-        var path = await _db.GenealogyTree.AsNoTracking()
-            .Where(g => g.MemberId == memberId)
-            .OrderByDescending(g => g.CreationDate)
-            .Select(g => g.HierarchyPath)
-            .FirstOrDefaultAsync(ct);
-        if (string.IsNullOrEmpty(path)) return null;
-        var prefix = TreePrefix.Of(path);
+        var root = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct);
+        if (root is null) return null;
 
         return
             from id in changedIds
@@ -103,9 +98,10 @@ public sealed class TeamStatusChangesService : ITeamStatusChangesService
             let node = _db.GenealogyTree
                 .Where(g => g.MemberId == m.MemberId)
                 .OrderByDescending(g => g.CreationDate)
-                .Select(g => g.HierarchyPath)
+                .ThenByDescending(g => g.Id)      // nodo vigente con desempate por Id (revisión M-e)
+                .Select(g => g.Node)
                 .FirstOrDefault()
-            where node != null && node.StartsWith(prefix)
+            where node != null && node.IsDescendantOf(root)
             select new TeamStatusChangeView
             {
                 MemberId        = m.MemberId,

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Plan M: solo las pruebas de tiempo (Trait Categoria=Medicion), contra la base local.
+  Uso: dotnet test MLMConquerorGlobalEdition.BizCenter.Tests con la opcion settings apuntando a este fichero
+  (la orden completa esta en el resumen de SqlServerMedicionPlanMTests).
+-->
+<RunSettings>
+  <RunConfiguration>
+    <TestCaseFilter>Categoria=Medicion</TestCaseFilter>
+  </RunConfiguration>
+</RunSettings>

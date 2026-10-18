@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Configuración por defecto de BizCenter.Tests (la carga RunSettingsFilePath del .csproj).
+  Plan M: las pruebas de tiempo (Trait Categoria=Medicion) no corren con la suite; dependen de la
+  máquina y de la carga. Para medir, usar Medicion.runsettings (ver SqlServerMedicionPlanMTests).
+-->
+<RunSettings>
+  <RunConfiguration>
+    <TestCaseFilter>Categoria!=Medicion</TestCaseFilter>
+  </RunConfiguration>
+</RunSettings>

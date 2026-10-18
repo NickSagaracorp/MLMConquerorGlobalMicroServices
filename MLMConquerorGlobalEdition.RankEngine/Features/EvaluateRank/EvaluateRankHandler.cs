@@ -7,6 +7,7 @@ using MLMConquerorGlobalEdition.RankEngine.Jobs;
 using MLMConquerorGlobalEdition.RankEngine.Mappings;
 using MLMConquerorGlobalEdition.RankEngine.Services;
 using MLMConquerorGlobalEdition.Repository.Context;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.Repository.Services.Ranks;
 using MLMConquerorGlobalEdition.SharedKernel;
 using ICacheService = MLMConquerorGlobalEdition.SharedKernel.Interfaces.ICacheService;
@@ -230,7 +231,7 @@ public class EvaluateRankHandler : IRequestHandler<EvaluateRankCommand, Result<R
     {
         var genealogyNode = await _db.GenealogyTree
             .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.MemberId == memberId && !g.IsDeleted, ct);
+            .CurrentOfAsync(memberId, ct); // nodo vigente (Plan M, M2)
 
         var dualTeamNode = await _db.DualTeamTree
             .AsNoTracking()

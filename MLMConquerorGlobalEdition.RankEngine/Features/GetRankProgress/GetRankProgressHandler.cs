@@ -110,7 +110,7 @@ public class GetRankProgressHandler : IRequestHandler<GetRankProgressQuery, Resu
         // Enrollment tree node (still needed for qualified-member counts)
         var memberGenealogyNode = await _db.GenealogyTree
             .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.MemberId == memberId, ct);
+            .CurrentOfAsync(memberId, ct); // nodo vigente (Plan M, M2)
 
         var placementQualifiedCount = 0;
         var enrollmentQualifiedCount = 0;
@@ -121,12 +121,13 @@ public class GetRankProgressHandler : IRequestHandler<GetRankProgressQuery, Resu
 
         if (memberGenealogyNode is not null)
         {
-            var subtreePath = TreePrefix.Of(memberGenealogyNode.HierarchyPath);
+            var subtreeRoot = memberGenealogyNode.Node; // Plan M: el equipo por Node
 
             // Qualified = members with at least one active subscription in subtree
             var subtreeMembers = await _db.GenealogyTree
                 .AsNoTracking()
-                .Where(g => g.HierarchyPath.StartsWith(subtreePath) && g.MemberId != memberId)
+                .CurrentUnder(subtreeRoot)
+                .Where(g => g.MemberId != memberId)
                 .Select(g => g.MemberId)
                 .ToListAsync(ct);
 

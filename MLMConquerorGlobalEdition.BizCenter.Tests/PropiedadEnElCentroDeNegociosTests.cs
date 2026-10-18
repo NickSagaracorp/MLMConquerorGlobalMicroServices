@@ -78,6 +78,7 @@ public class PropiedadEnElCentroDeNegociosTests : IDisposable
             Perfil(Descendiente, patrocinador: Propio),
             Perfil(Ajeno));
 
+        MLMConquerorGlobalEdition.BizCenter.Tests.Reportes.ReportesDb.RellenarNodos(_db); // Plan M: la red de patrocinio se mira por Node
         _db.SaveChanges();
     }
 

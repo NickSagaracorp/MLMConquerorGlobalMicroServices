@@ -9,6 +9,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Identity;
+using MLMConquerorGlobalEdition.Repository.Queries;
 using MLMConquerorGlobalEdition.SharedKernel;
 using MLMConquerorGlobalEdition.SharedKernel.Interfaces;
 using MLMConquerorGlobalEdition.SignupAPI.DTOs;
@@ -83,6 +84,10 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
         string memberId;
         string orderId;
         GenealogyEntity? sponsorNode = null;
+        // Plan M (revisión M-d): el candado del patrocinador ocupado y el patrocinador sin Node se devuelven
+        // como un Result con código (409 / 503 en el controlador), no como un INTERNAL_ERROR.
+        try
+        {
         for (var idAttempt = 0; ; idAttempt++)
         {
         var candidateId = await GenerateUniqueMemberIdAsync(ct);
@@ -158,13 +163,21 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
         {
             sponsorNode = await _db.GenealogyTree
                 .AsNoTracking()
-                .FirstOrDefaultAsync(g => g.MemberId == sponsorMemberId, ct);
+                .CurrentOfAsync(sponsorMemberId, ct); // nodo vigente (Plan M, M2)
         }
+
+        // Plan M: el Node cuelga del nodo del patrocinador (o es una raíz nueva si no tiene nodo).
+        // Si el nodo vigente del patrocinador no tiene Node, NextChildAsync lanza: el alta no crea un nodo
+        // invisible (revisión I4). El candado del patrocinador (revisión I3) abarca el cálculo y el
+        // SaveChanges: dos altas a la vez bajo el mismo patrocinador no calculan el mismo Node.
+        await using var childrenTx = await GenealogyChildrenGate.EnterAsync(_db, sponsorNode?.MemberId, ct);
+        var genealogyNodeId = await GenealogyNodes.NextChildAsync(_db, sponsorNode?.MemberId, ct);
 
         var genealogyNode = new GenealogyEntity
         {
             MemberId       = memberId,
             ParentMemberId = sponsorMemberId,
+            Node           = genealogyNodeId,
             HierarchyPath  = sponsorNode is not null
                 ? $"{sponsorNode.HierarchyPath}{memberId}/"
                 : $"/{memberId}/",
@@ -200,13 +213,23 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
         }
 
             await _db.SaveChangesAsync(ct);
+            if (childrenTx is not null)
+                await childrenTx.CommitAsync(ct);
             break; // saved cleanly
         }
-        catch (DbUpdateException ex) when (IsDuplicateMemberIdViolation(ex) && idAttempt < 5)
+        // Plan M (R5): dos altas simultáneas bajo el mismo patrocinador pueden calcular el mismo Node;
+        // el índice único rechaza a la segunda, que reintenta con el siguiente ordinal.
+        catch (DbUpdateException ex) when ((IsDuplicateMemberIdViolation(ex) || GenealogyNodes.IsDuplicateNode(ex)) && idAttempt < 5)
         {
             // Concurrent MemberId collision — drop the rejected batch and rebuild with a fresh id.
             _db.ChangeTracker.Clear();
         }
+        }
+        }
+        catch (Exception ex) when (SignupGenealogyErrors.From(ex) is { } genealogyError)
+        {
+            _db.ChangeTracker.Clear();
+            return Result<SignupResponse>.Failure(genealogyError.Code, genealogyError.Message);
         }
 
         // Notify all uplines in the enrollment tree (genealogy)

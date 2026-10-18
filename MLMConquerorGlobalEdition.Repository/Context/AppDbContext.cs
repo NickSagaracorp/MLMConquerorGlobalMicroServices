@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.SqlServer.Infrastructure.Internal;
 using MLMConquerorGlobalEdition.Domain.Entities.Billing;
 using MLMConquerorGlobalEdition.Domain.Entities.Commission;
 using MLMConquerorGlobalEdition.Domain.Entities.Email;
@@ -187,6 +189,12 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        // Plan M (R11): fuera de SQL Server (InMemory en las pruebas) no hay hierarchyid; Node se guarda
+        // como su texto ("/1/2/") y IsDescendantOf/GetAncestor se evalúan en memoria con la misma semántica.
+        if (!Database.IsSqlServer())
+            modelBuilder.Entity<GenealogyEntity>().Property(g => g.Node)
+                .HasConversion(h => h!.ToString(), s => HierarchyId.Parse(s));
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -196,6 +204,17 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
         // StatusHistoryInterceptor (Plan J), por lo mismo: un anfitrión sin él cambiaría estados
         // sin dejar historial.
         optionsBuilder.AddInterceptors(
-            new AuditInterceptor(), new SecurityFactorsInterceptor(), new StatusHistoryInterceptor());
+            new AuditInterceptor(), new SecurityFactorsInterceptor(), new StatusHistoryInterceptor(),
+            // Plan M: OPTION (RECOMPILE) en las consultas del equipo (GenealogySubtree.Under).
+            new RecompileTaggedQueriesInterceptor());
+
+        // Plan M (M21): GenealogyTree.Node es hierarchyid. Se activa aquí por la misma razón: un
+        // anfitrión (o la fábrica de diseño, o un ayudante de pruebas) que lo olvidara fallaría al
+        // construir el modelo. SqlServerOptionsExtension es API interna; lo vigila
+        // NodoDeGenealogiaModeloTests.
+#pragma warning disable EF1001
+        if (optionsBuilder.Options.FindExtension<SqlServerOptionsExtension>() is not null)
+            new SqlServerDbContextOptionsBuilder(optionsBuilder).UseHierarchyId();
+#pragma warning restore EF1001
     }
 }

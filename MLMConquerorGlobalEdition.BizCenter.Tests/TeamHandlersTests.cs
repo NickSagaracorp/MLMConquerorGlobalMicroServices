@@ -4,6 +4,7 @@ using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetDualTree;
 using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetEnrollmentTeam;
 using MLMConquerorGlobalEdition.BizCenter.Features.Teams.GetTeamMembers;
 using MLMConquerorGlobalEdition.BizCenter.Services;
+using MLMConquerorGlobalEdition.BizCenter.Tests.Reportes;
 using MLMConquerorGlobalEdition.Domain.Entities.Member;
 using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
@@ -159,6 +160,7 @@ public class TeamHandlersTests : IDisposable
         // Subtree: member → child-1 → grandchild; member → child-2
         var pattern = $"/{MemberId}/";
         _db.GenealogyTree.AddRange(
+            new GenealogyEntity { MemberId = MemberId,    ParentMemberId = null,       HierarchyPath = $"/{MemberId}/" }, // Plan M: el equipo cuelga del Node del que mira
             new GenealogyEntity { MemberId = "child-1",   ParentMemberId = MemberId,   HierarchyPath = $"/{MemberId}/child-1/" },
             new GenealogyEntity { MemberId = "child-2",   ParentMemberId = MemberId,   HierarchyPath = $"/{MemberId}/child-2/" },
             new GenealogyEntity { MemberId = "grandchild", ParentMemberId = "child-1", HierarchyPath = $"/{MemberId}/child-1/grandchild/" },
@@ -170,6 +172,7 @@ public class TeamHandlersTests : IDisposable
             BuildProfile("grandchild"),
             BuildProfile("outsider")
         );
+        ReportesDb.RellenarNodos(_db);
         await _db.SaveChangesAsync();
 
         var handler = new GetAllTeamMembersHandler(_db, _currentUser.Object);
@@ -202,6 +205,8 @@ public class TeamHandlersTests : IDisposable
                 HierarchyPath  = $"/{MemberId}/m-{i}/"
             }));
         _db.MemberProfiles.AddRange(Enumerable.Range(1, 5).Select(i => BuildProfile($"m-{i}")));
+        _db.GenealogyTree.Add(new GenealogyEntity { MemberId = MemberId, HierarchyPath = $"/{MemberId}/" }); // Plan M: el Node del que mira
+        ReportesDb.RellenarNodos(_db);
         await _db.SaveChangesAsync();
 
         var handler = new GetAllTeamMembersHandler(_db, _currentUser.Object);

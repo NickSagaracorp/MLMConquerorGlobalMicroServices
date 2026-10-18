@@ -65,6 +65,7 @@ public class MemberStatisticSnapshotJob
         var stats = await _db.MemberStatistics.ToListAsync(ct);
         var updated = 0;
         var etUpdated = 0;
+        var sinNode = new List<string>();
 
         foreach (var stat in stats)
         {
@@ -85,15 +86,26 @@ public class MemberStatisticSnapshotJob
             // member; acceptable for a nightly batch. If the member base grows into
             // the tens of thousands, rewrite as a single set-based aggregate query.
             var recomputedEt = await _enrollmentPoints.RecomputeEnrollmentPointsAsync(stat.MemberId, ct);
-            if (stat.EnrollmentPoints != recomputedEt)
+            if (recomputedEt is null)
             {
-                stat.EnrollmentPoints = recomputedEt;
+                // Plan M (revisión C1): sin Node no hay equipo que sumar. No se escribe 0: se deja el valor
+                // y se avisa al final, una sola vez (revisión M-i).
+                sinNode.Add(stat.MemberId);
+            }
+            else if (stat.EnrollmentPoints != recomputedEt.Value)
+            {
+                stat.EnrollmentPoints = recomputedEt.Value;
                 etUpdated++;
             }
         }
 
         if (updated > 0 || etUpdated > 0)
             await _db.SaveChangesAsync(ct);
+
+        if (sinNode.Count > 0)
+            _logger.LogError(
+                "MemberStatisticSnapshotJob: {Count} miembros sin nodo de inscripción con Node; su EnrollmentPoints no se recalcula (relleno de GenealogyTree.Node pendiente). Ejemplos: {Examples}.",
+                sinNode.Count, string.Join(", ", sinNode.Take(5)));
 
         // ── 2. Upsert monthly history snapshot ──────────────────────────────
         var year  = now.Year;

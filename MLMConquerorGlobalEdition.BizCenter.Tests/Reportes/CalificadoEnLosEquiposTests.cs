@@ -26,7 +26,7 @@ public class CalificadoEnLosEquiposTests
         return new(db, reloj, new BillingStateAnnualFeeStatus(db, reloj));
     }
 
-    private static RankComputationService Rangos(AppDbContext db) =>
+    internal static RankComputationService Rangos(AppDbContext db) =>
         new(db, new RankQualificationService(db, new EnrollmentTeamPointsService(db), new PersonalCustomerPointsService(db)));
 
     private static async Task<AppDbContext> EquipoAsync()

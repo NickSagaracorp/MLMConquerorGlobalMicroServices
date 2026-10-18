@@ -10,7 +10,7 @@ namespace MLMConquerorGlobalEdition.Repository.Services.Teams;
 
 /// <inheritdoc />
 /// <remarks>
-/// En SQL, cuatro consultas: las altas del rango cuyo patrocinador está en el equipo (prefijo de
+/// En SQL, cuatro consultas: las altas del rango cuyo patrocinador está en el equipo (Node de
 /// genealogía del que mira, él incluido, por el nodo más reciente de cada patrocinador, R8), las
 /// órdenes de membresía de esos inscritos con el nivel más alto de cada una (la regla de
 /// <see cref="OrderMembershipLevelQueries"/>), y los nombres y puntos de los patrocinadores. En
@@ -58,17 +58,18 @@ public sealed class EnrollmentActivityService : IEnrollmentActivityService
         var me = await _db.GenealogyTree.AsNoTracking()
             .Where(g => g.MemberId == memberId)
             .OrderByDescending(g => g.CreationDate)
-            .Select(g => new { g.HierarchyPath, g.Level })
+            .ThenByDescending(g => g.Id)      // nodo vigente con desempate por Id (revisión M-e)
+            .Select(g => new { g.Node, g.Level })
             .FirstOrDefaultAsync(ct);
-        if (me is null) return Result<PagedResult<EnrollmentActivityRowView>>.Success(Empty(request));
+        if (me?.Node is null) return Result<PagedResult<EnrollmentActivityRowView>>.Success(Empty(request));
 
         var start  = range.Start;
         var end    = range.End;
-        var prefix = TreePrefix.Of(me.HierarchyPath);
+        var root   = me.Node;
 
         // Las altas del rango cuyo patrocinador está en el equipo. La pertenencia del patrocinador
         // la decide su nodo MÁS RECIENTE (R8): un JOIN directo a GenealogyTree contaría dos veces a
-        // quien tiene dos nodos y metería a quien se fue con un nodo obsoleto bajo el prefijo.
+        // quien tiene dos nodos y metería a quien se fue con un nodo obsoleto bajo el Node del que mira.
         // Se materializa UNA vez (R16): todo lo demás sale de estas filas, sin repetir la consulta.
         var rows = await (
                 from m in _db.MemberProfiles.AsNoTracking()
@@ -76,9 +77,10 @@ public sealed class EnrollmentActivityService : IEnrollmentActivityService
                 let sponsorNode = _db.GenealogyTree
                     .Where(g => g.MemberId == m.SponsorMemberId)
                     .OrderByDescending(g => g.CreationDate)
-                    .Select(g => new { g.HierarchyPath, g.Level })
+                    .ThenByDescending(g => g.Id)      // nodo vigente con desempate por Id (revisión M-e)
+                    .Select(g => new { g.Node, g.Level })
                     .FirstOrDefault()
-                where sponsorNode != null && sponsorNode.HierarchyPath.StartsWith(prefix)
+                where sponsorNode != null && sponsorNode.Node!.IsDescendantOf(root)
                 select new
                 {
                     m.MemberId,

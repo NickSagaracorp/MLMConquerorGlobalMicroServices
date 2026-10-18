@@ -78,10 +78,10 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         DateTime? from, DateTime? to, CancellationToken ct = default)
     {
         var myNode = await _db.GenealogyTree.AsNoTracking()
-            .FirstOrDefaultAsync(g => g.MemberId == memberId, ct);
-        if (myNode is null) return new PagedResult<EnrollmentMyTeamMemberView>();
+            .CurrentOfAsync(memberId, ct); // nodo vigente (Plan M, M2)
+        if (myNode?.Node is null) return new PagedResult<EnrollmentMyTeamMemberView>();
 
-        var query = BuildMyTeamQueryable(myNode.HierarchyPath, myNode.Level, memberId);
+        var query = BuildMyTeamQueryable(myNode.Node, myNode.Level, memberId);
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -118,14 +118,14 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         string memberId, GridDataRequest request, CancellationToken ct = default)
     {
         var myNode = await _db.GenealogyTree.AsNoTracking()
-            .FirstOrDefaultAsync(g => g.MemberId == memberId, ct);
-        if (myNode is null) return new PagedResult<EnrollmentMyTeamMemberView>();
+            .CurrentOfAsync(memberId, ct); // nodo vigente (Plan M, M2)
+        if (myNode?.Node is null) return new PagedResult<EnrollmentMyTeamMemberView>();
 
         SanitizeGridRequest(request);
 
         // DB-side search/filter/sort/page over the projected downline query — only the
         // requested page (≤ pageSize rows) is materialized, instead of the whole subtree.
-        var query  = BuildMyTeamQueryable(myNode.HierarchyPath, myNode.Level, memberId);
+        var query  = BuildMyTeamQueryable(myNode.Node, myNode.Level, memberId);
         var result = await query.ToGridResultAsync(request, MyTeamSearchableFields, ct: ct);
         await EnrichPageAsync(result.Items, ct);
         return result;
@@ -143,12 +143,11 @@ public class EnrollmentTeamService : IEnrollmentTeamService
     /// default EnrollDate sort, and enriched-column search at 120k scale needs denormalization.
     /// </summary>
     private IQueryable<EnrollmentMyTeamMemberView> BuildMyTeamQueryable(
-        string pathPrefix, int rootLevel, string memberId)
+        HierarchyId root, int rootLevel, string memberId)
     {
-        var prefix = TreePrefix.Of(pathPrefix);
         return
-            from g in _db.GenealogyTree.AsNoTracking()
-            where g.HierarchyPath.StartsWith(prefix) && g.MemberId != memberId
+            from g in _db.GenealogyTree.AsNoTracking().CurrentUnder(root)
+            where g.MemberId != memberId
             join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
             select new EnrollmentMyTeamMemberView
             {
@@ -396,8 +395,8 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         string branchMemberId, CancellationToken ct = default)
     {
         var branchNode = await _db.GenealogyTree.AsNoTracking()
-            .FirstOrDefaultAsync(g => g.MemberId == branchMemberId, ct);
-        if (branchNode is null) return null;
+            .CurrentOfAsync(branchMemberId, ct); // nodo vigente (Plan M, M2)
+        if (branchNode?.Node is null) return null;
 
         var branchProfile = await _db.MemberProfiles.AsNoTracking()
             .Where(m => m.MemberId == branchMemberId)
@@ -409,11 +408,12 @@ public class EnrollmentTeamService : IEnrollmentTeamService
             .Select(s => s.EnrollmentPoints)
             .FirstOrDefaultAsync(ct);
 
-        var pathPrefix  = TreePrefix.Of(branchNode.HierarchyPath);
+        var branchRoot  = branchNode.Node;
         var branchLevel = branchNode.Level;
 
         var downlineNodes = await _db.GenealogyTree.AsNoTracking()
-            .Where(g => g.HierarchyPath.StartsWith(pathPrefix) && g.MemberId != branchMemberId)
+            .CurrentUnder(branchRoot)
+            .Where(g => g.MemberId != branchMemberId)
             .Select(g => new { g.MemberId, g.Level })
             .ToListAsync(ct);
 
@@ -521,9 +521,9 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         CancellationToken ct = default)
     {
         var myNode = await MyGenealogyNodeAsync(memberId, ct);
-        if (myNode is null) return new PagedResult<EnrollmentCustomerView>();
+        if (myNode?.Node is null) return new PagedResult<EnrollmentCustomerView>();
 
-        var q = BuildCustomerQueryable(memberId, myNode.HierarchyPath, myNode.Level, CustomerScope.Team);
+        var q = BuildCustomerQueryable(memberId, myNode.Node, myNode.Level, CustomerScope.Team);
         if (!string.IsNullOrWhiteSpace(search))
         {
             var s = search.ToLower();
@@ -550,13 +550,14 @@ public class EnrollmentTeamService : IEnrollmentTeamService
         string memberId, GridDataRequest request, CustomerScope scope, CancellationToken ct = default)
     {
         var myNode = await MyGenealogyNodeAsync(memberId, ct);
-        if (myNode is null) return new PagedResult<EnrollmentCustomerView>();
+        // Plan M: el alcance Equipo necesita el Node del que mira; Personales no.
+        if (myNode is null || (scope == CustomerScope.Team && myNode.Node is null)) return new PagedResult<EnrollmentCustomerView>();
 
         if (!request.Sorts.Any(s => CustomerSearchableFields.Contains(s.Field, StringComparer.OrdinalIgnoreCase)
                                  || string.Equals(s.Field, nameof(EnrollmentCustomerView.EnrollDate), StringComparison.OrdinalIgnoreCase)))
             request.Sorts.Add(new GridSort { Field = nameof(EnrollmentCustomerView.EnrollDate), Direction = "desc" });
 
-        var q      = BuildCustomerQueryable(memberId, myNode.HierarchyPath, myNode.Level, scope);
+        var q      = BuildCustomerQueryable(memberId, myNode.Node, myNode.Level, scope);
         var result = await q.ToGridResultAsync(request, CustomerSearchableFields, ct: ct);
         await EnrichCustomerPageAsync(result.Items, ct);
         return result;
@@ -564,10 +565,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
 
     /// <summary>The viewer's most recent genealogy node: a member can have two (see e4af288, R8).</summary>
     private Task<GenealogyEntity?> MyGenealogyNodeAsync(string memberId, CancellationToken ct) =>
-        _db.GenealogyTree.AsNoTracking()
-            .Where(g => g.MemberId == memberId)
-            .OrderByDescending(g => g.CreationDate)
-            .FirstOrDefaultAsync(ct);
+        _db.GenealogyTree.AsNoTracking().CurrentOfAsync(memberId, ct);
 
     /// <summary>
     /// Light DB projection of the viewer's external-member customers. Email and phone are nulled
@@ -577,7 +575,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
     /// <see cref="EnrichCustomerPageAsync"/>.
     /// </summary>
     private IQueryable<EnrollmentCustomerView> BuildCustomerQueryable(
-        string memberId, string pathPrefix, int rootLevel, CustomerScope scope)
+        string memberId, HierarchyId? root, int rootLevel, CustomerScope scope)
     {
         if (scope == CustomerScope.Personal)
         {
@@ -599,19 +597,13 @@ public class EnrollmentTeamService : IEnrollmentTeamService
                 };
         }
 
-        // Se parte del perfil y la pertenencia la decide el nodo MÁS RECIENTE del cliente (R8): un
-        // JOIN directo a GenealogyTree duplicaría a quien tiene dos nodos y metería a quien se fue
-        // con un nodo obsoleto bajo el prefijo. El prefijo acaba siempre en "/" (TreePrefix).
-        var prefix = TreePrefix.Of(pathPrefix);
+        // Plan M (M16, forma B): se parte del rango de Node del que mira y se queda con el nodo VIGENTE de
+        // cada miembro (R8): ni duplica a quien tiene dos nodos ni mete a quien se fue con uno obsoleto.
+        // Los llamadores no llegan aquí sin Node en el alcance Equipo.
         return
-            from m in _db.MemberProfiles.AsNoTracking()
+            from g in _db.GenealogyTree.AsNoTracking().CurrentUnder(root!)
+            join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
             where m.MemberType == MemberType.ExternalMember && m.MemberId != memberId
-            let node = _db.GenealogyTree
-                .Where(g => g.MemberId == m.MemberId)
-                .OrderByDescending(g => g.CreationDate)
-                .Select(g => new { g.HierarchyPath, g.Level })
-                .FirstOrDefault()
-            where node != null && node.HierarchyPath.StartsWith(prefix)
             select new EnrollmentCustomerView
             {
                 MemberId        = m.MemberId,
@@ -619,7 +611,7 @@ public class EnrollmentTeamService : IEnrollmentTeamService
                 Email           = m.SponsorMemberId == memberId ? m.Email : null,
                 Phone           = m.SponsorMemberId == memberId ? m.Phone : null,
                 Country         = m.Country,
-                Level           = node!.Level - rootLevel,
+                Level           = g.Level - rootLevel,
                 IsPersonal      = m.SponsorMemberId == memberId,
                 EnrollDate      = m.EnrollDate,
                 SponsorMemberId = m.SponsorMemberId,
@@ -674,13 +666,14 @@ public class EnrollmentTeamService : IEnrollmentTeamService
     public async Task<EnrollmentVisualizerStatsView> GetVisualizerStatsAsync(
         string memberId, CancellationToken ct = default)
     {
-        var pattern = "/" + memberId + "/";
+        // Plan M: el equipo por el Node vigente del miembro (seek en IX_GenealogyTree_Node).
+        var me = await _db.GenealogyTree.AsNoTracking().NodeOfAsync(memberId, ct);
+        if (me is null) return new EnrollmentVisualizerStatsView();
 
         // Single grouped JOIN — count by status in SQL instead of pulling all 120k+ downline
         // ids into memory and re-querying with Contains(allIds).
         var statusCounts = await (
-            from g in _db.GenealogyTree.AsNoTracking()
-            where g.HierarchyPath.Contains(pattern)
+            from g in _db.GenealogyTree.AsNoTracking().CurrentUnder(me)
             join m in _db.MemberProfiles.AsNoTracking() on g.MemberId equals m.MemberId
             group m by m.Status into grp
             select new { Status = grp.Key, Count = grp.Count() }

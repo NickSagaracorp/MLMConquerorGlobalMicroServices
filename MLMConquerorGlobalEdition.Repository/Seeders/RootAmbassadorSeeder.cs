@@ -8,6 +8,7 @@ using MLMConquerorGlobalEdition.Domain.Entities.Tree;
 using MLMConquerorGlobalEdition.Domain.Enums;
 using MLMConquerorGlobalEdition.Repository.Context;
 using MLMConquerorGlobalEdition.Repository.Identity;
+using MLMConquerorGlobalEdition.Repository.Queries;
 
 namespace MLMConquerorGlobalEdition.Repository.Seeders;
 
@@ -68,6 +69,7 @@ public static class RootAmbassadorSeeder
         {
             MemberId       = RootMemberCode,
             ParentMemberId = null,
+            Node           = await GenealogyNodes.NextChildAsync(db, null),
             HierarchyPath  = $"/{RootMemberCode}/",
             Level          = 0,
             CreatedBy      = "SYSTEM",
