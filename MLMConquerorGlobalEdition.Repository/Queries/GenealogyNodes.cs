@@ -43,9 +43,7 @@ public static class GenealogyNodes
             if (nodosDelPadre is not null)
             {
                 var padre = nodosDelPadre.Node
-                    ?? throw new InvalidOperationException(
-                        $"El patrocinador {parentMemberId} está en el árbol de inscripción pero su nodo vigente no tiene Node " +
-                        "(relleno pendiente: Scripts/sql/plan-m/02-relleno-nodo-genealogia.sql). No se crea un nodo invisible.");
+                    ?? throw new GenealogyNodeMissingException(parentMemberId);
 
                 // Los hermanos por ParentMemberId (índice); GetAncestor descarta los que cuelgan de un
                 // nodo antiguo del mismo padre.
@@ -71,4 +69,17 @@ public static class GenealogyNodes
     public static bool IsDuplicateNode(DbUpdateException ex)
         => ex.InnerException?.Message is { } m
            && m.Contains(GenealogyConfiguration.NodeIndexName, StringComparison.OrdinalIgnoreCase);
+}
+
+/// <summary>
+/// Plan M (revisión I4): el nodo vigente del patrocinador no tiene Node (relleno pendiente). El alta no
+/// cuelga a nadie de él: un nodo sin Node no aparecería en ningún equipo. El alta lo traduce a una
+/// respuesta clara (SignupGenealogyErrors.SponsorNotReady), no a un error interno.
+/// </summary>
+public sealed class GenealogyNodeMissingException(string sponsorMemberId)
+    : InvalidOperationException(
+        $"El patrocinador {sponsorMemberId} está en el árbol de inscripción pero su nodo vigente no tiene Node " +
+        "(relleno pendiente: Scripts/sql/plan-m/02-relleno-nodo-genealogia.sql). No se crea un nodo invisible.")
+{
+    public string SponsorMemberId { get; } = sponsorMemberId;
 }

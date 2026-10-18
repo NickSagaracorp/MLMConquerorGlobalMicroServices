@@ -84,6 +84,10 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
         string memberId;
         string orderId;
         GenealogyEntity? sponsorNode = null;
+        // Plan M (revisión M-d): el candado del patrocinador ocupado y el patrocinador sin Node se devuelven
+        // como un Result con código (409 / 503 en el controlador), no como un INTERNAL_ERROR.
+        try
+        {
         for (var idAttempt = 0; ; idAttempt++)
         {
         var candidateId = await GenerateUniqueMemberIdAsync(ct);
@@ -220,6 +224,12 @@ public class SignupMemberHandler : IRequestHandler<SignupMemberCommand, Result<S
             // Concurrent MemberId collision — drop the rejected batch and rebuild with a fresh id.
             _db.ChangeTracker.Clear();
         }
+        }
+        }
+        catch (Exception ex) when (SignupGenealogyErrors.From(ex) is { } genealogyError)
+        {
+            _db.ChangeTracker.Clear();
+            return Result<SignupResponse>.Failure(genealogyError.Code, genealogyError.Message);
         }
 
         // Notify all uplines in the enrollment tree (genealogy)

@@ -58,9 +58,11 @@ public class SqlServerAltasConcurrentesTests
         var slug       = "pm-conc-" + marca;
         HierarchyId nodoDelPatrocinador;
 
+        await LimpiarAsync(); // restos de una ejecución que no llegó a su finally
+
         await using (var db = SqlServerTestDb.Db())
         {
-            nodoDelPatrocinador = HierarchyId.Parse($"/{Random.Shared.Next(1_000_000, int.MaxValue)}/");
+            nodoDelPatrocinador = RaizReservada;
             db.MemberProfiles.Add(new MemberProfile
             {
                 UserId = Guid.NewGuid(), MemberId = patrocinio, Email = $"{slug}@prueba.test", FirstName = "Plan",
@@ -105,13 +107,33 @@ public class SqlServerAltasConcurrentesTests
         }
         finally
         {
-            await using var limpieza = SqlServerTestDb.Db();
-            var ids = creados.Append(patrocinio).ToList();
-            await limpieza.RankEvaluationQueue.Where(r => ids.Contains(r.TriggerMemberId)).ExecuteDeleteAsync();
-            await limpieza.GenealogyTree.IgnoreQueryFilters().Where(g => ids.Contains(g.MemberId)).ExecuteDeleteAsync();
-            await limpieza.MembershipSubscriptions.IgnoreQueryFilters().Where(s => ids.Contains(s.MemberId)).ExecuteDeleteAsync();
-            await limpieza.Orders.IgnoreQueryFilters().Where(o => ids.Contains(o.MemberId)).ExecuteDeleteAsync();
-            await limpieza.MemberProfiles.IgnoreQueryFilters().Where(m => ids.Contains(m.MemberId)).ExecuteDeleteAsync();
+            await LimpiarAsync();
         }
+    }
+
+    /// <summary>
+    /// Revisión M-k: una raíz reservada para esta prueba (el ordinal más alto que nadie usa) y una limpieza que
+    /// borra todo lo que cuelga de ella y todo lo marcado como de la prueba, al empezar y al terminar.
+    /// </summary>
+    private static readonly HierarchyId RaizReservada = HierarchyId.Parse("/2147483000/");
+
+    private static async Task LimpiarAsync()
+    {
+        await using var db = SqlServerTestDb.Db();
+        var siguiente = HierarchyId.Parse("/2147483001/");
+        var ids = await db.GenealogyTree.IgnoreQueryFilters()
+            .Where(g => (g.Node >= RaizReservada && g.Node < siguiente) || g.CreatedBy == "plan-m-prueba")
+            .Select(g => g.MemberId)
+            .Union(db.MemberProfiles.IgnoreQueryFilters()
+                .Where(m => m.Email.StartsWith("pm-conc-") || m.CreatedBy == "plan-m-prueba")
+                .Select(m => m.MemberId))
+            .ToListAsync();
+        if (ids.Count == 0) return;
+
+        await db.RankEvaluationQueue.Where(r => ids.Contains(r.TriggerMemberId)).ExecuteDeleteAsync();
+        await db.GenealogyTree.IgnoreQueryFilters().Where(g => ids.Contains(g.MemberId)).ExecuteDeleteAsync();
+        await db.MembershipSubscriptions.IgnoreQueryFilters().Where(s => ids.Contains(s.MemberId)).ExecuteDeleteAsync();
+        await db.Orders.IgnoreQueryFilters().Where(o => ids.Contains(o.MemberId)).ExecuteDeleteAsync();
+        await db.MemberProfiles.IgnoreQueryFilters().Where(m => ids.Contains(m.MemberId)).ExecuteDeleteAsync();
     }
 }

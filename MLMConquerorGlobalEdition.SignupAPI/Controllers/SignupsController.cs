@@ -53,7 +53,7 @@ public class SignupsController : ControllerBase
 
         var result = await _mediator.Send(new SignupAmbassadorCommand(request), ct);
         if (!result.IsSuccess)
-            return BadRequest(ApiResponse<SignupResponse>.Fail(result.ErrorCode!, result.Error!));
+            return SignupFailure(result);
         return Ok(ApiResponse<SignupResponse>.Ok(result.Value!));
     }
 
@@ -72,8 +72,23 @@ public class SignupsController : ControllerBase
 
         var result = await _mediator.Send(new SignupMemberCommand(request), ct);
         if (!result.IsSuccess)
-            return BadRequest(ApiResponse<SignupResponse>.Fail(result.ErrorCode!, result.Error!));
+            return SignupFailure(result);
         return Ok(ApiResponse<SignupResponse>.Ok(result.Value!));
+    }
+
+    /// <summary>
+    /// Respuesta de un alta fallida. Plan M (revisión M-d): candado del patrocinador ocupado, 409 (reintentar);
+    /// patrocinador sin Node, 503 (el alta no se pudo completar); el resto, 400 como siempre.
+    /// </summary>
+    private IActionResult SignupFailure(Result<SignupResponse> result)
+    {
+        var body = ApiResponse<SignupResponse>.Fail(result.ErrorCode!, result.Error!);
+        return result.ErrorCode switch
+        {
+            SignupGenealogyErrors.SponsorBusy     => Conflict(body),
+            SignupGenealogyErrors.SponsorNotReady => StatusCode(StatusCodes.Status503ServiceUnavailable, body),
+            _                                     => BadRequest(body)
+        };
     }
 
     /// <summary>Returns the public client IP, preferring the standard forward header when behind a proxy.</summary>
