@@ -12,7 +12,9 @@ namespace MLMConquerorGlobalEdition.BizCenter.Tests.Rendimiento;
 public class SinPrefijoEnInscripcionTests
 {
     private static readonly Regex Prefijo =
-        new(@"\b(HierarchyPath|node|path|ruta)\s*\.\s*(StartsWith|Contains)\s*\(", RegexOptions.Compiled);
+        // Revisión M-l: sin distinguir mayúsculas, y también IndexOf y EF.Functions.Like sobre la ruta.
+        new(@"\b(HierarchyPath|node|path|ruta)\s*\.\s*(StartsWith|Contains)\s*\(|\bHierarchyPath\s*\.\s*IndexOf\s*\(|EF\s*\.\s*Functions\s*\.\s*Like\s*\(\s*\w+\s*\.\s*HierarchyPath",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex Comentario = new(@"//.*$", RegexOptions.Multiline | RegexOptions.Compiled);
 
     [Fact]
@@ -74,8 +76,8 @@ public class SinPrefijoEnInscripcionTests
     }
 
     private static readonly Regex RutaEnMemoria = new(
-        @"\b(?<fila>\w+)\s*\.\s*HierarchyPath\s*\.\s*(Contains|StartsWith)\s*\(|\b(path|ruta|node|hierarchyPath)\s*\.\s*(Contains|StartsWith)\s*\(",
-        RegexOptions.Compiled);
+        @"\b(?<fila>\w+)\s*\.\s*HierarchyPath\s*\.\s*(Contains|StartsWith|IndexOf)\s*\(|\b(path|ruta|node|hierarchyPath)\s*\.\s*(Contains|StartsWith)\s*\(|EF\s*\.\s*Functions\s*\.\s*Like\s*\(\s*(?<fila>\w+)\s*\.\s*HierarchyPath",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase); // revisión M-l
 
     /// <summary>
     /// Revisión M6: también en memoria. En un archivo que lee el árbol de inscripción, ninguna línea
@@ -115,5 +117,40 @@ public class SinPrefijoEnInscripcionTests
         }
 
         hallazgos.Should().BeEmpty("las filas del árbol de inscripción se acotan por Node (GenealogySubtree), también en memoria");
+    }
+
+    private static readonly Regex MasReciente =
+        new(@"OrderByDescending\s*\(\s*(\w+)\s*=>\s*\1\s*\.\s*CreationDate\s*\)", RegexOptions.Compiled);
+    private static readonly Regex DesempatePorId =
+        new(@"ThenByDescending\s*\(\s*(\w+)\s*=>\s*\1\s*\.\s*Id\s*\)", RegexOptions.Compiled);
+
+    /// <summary>
+    /// Revisión M-e: quien elige el nodo vigente de un miembro (el más reciente) desempata por Id, como
+    /// GenealogySubtree.CurrentOfAsync/NodeOfAsync: con dos nodos de la misma fecha, sin desempate cada
+    /// consulta podía quedarse con uno distinto. Se mira por sentencia que nombre GenealogyTree.
+    /// </summary>
+    [Fact]
+    public void Quien_elige_el_nodo_mas_reciente_desempata_por_Id()
+    {
+        var raiz = ReportesDb.RaizDelRepositorio();
+        var sep  = Path.DirectorySeparatorChar;
+        var hallazgos = new List<string>();
+
+        foreach (var proyecto in Directory.GetDirectories(raiz, "MLMConquerorGlobalEdition.*")
+                     .Where(d => !d.EndsWith(".Tests", StringComparison.Ordinal)))
+        foreach (var archivo in Directory.EnumerateFiles(proyecto, "*.cs", SearchOption.AllDirectories))
+        {
+            if (archivo.Contains($"{sep}obj{sep}") || archivo.Contains($"{sep}bin{sep}")
+                || archivo.Contains($"{sep}Migrations{sep}"))
+                continue;
+
+            var relativo = Path.GetRelativePath(raiz, archivo).Replace('\\', '/');
+            foreach (var sentencia in Comentario.Replace(File.ReadAllText(archivo), string.Empty).Split(';'))
+                if (sentencia.Contains("GenealogyTree", StringComparison.Ordinal)
+                    && MasReciente.Matches(sentencia).Count > DesempatePorId.Matches(sentencia).Count)
+                    hallazgos.Add($"{relativo}: {MasReciente.Match(sentencia).Value}");
+        }
+
+        hallazgos.Should().BeEmpty("el nodo vigente se elige con desempate por Id (GenealogySubtree.CurrentOfAsync)");
     }
 }

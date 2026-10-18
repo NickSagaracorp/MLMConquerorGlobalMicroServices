@@ -58,6 +58,7 @@ public sealed class EnrollmentActivityService : IEnrollmentActivityService
         var me = await _db.GenealogyTree.AsNoTracking()
             .Where(g => g.MemberId == memberId)
             .OrderByDescending(g => g.CreationDate)
+            .ThenByDescending(g => g.Id)      // nodo vigente con desempate por Id (revisión M-e)
             .Select(g => new { g.Node, g.Level })
             .FirstOrDefaultAsync(ct);
         if (me?.Node is null) return Result<PagedResult<EnrollmentActivityRowView>>.Success(Empty(request));
@@ -76,6 +77,7 @@ public sealed class EnrollmentActivityService : IEnrollmentActivityService
                 let sponsorNode = _db.GenealogyTree
                     .Where(g => g.MemberId == m.SponsorMemberId)
                     .OrderByDescending(g => g.CreationDate)
+                    .ThenByDescending(g => g.Id)      // nodo vigente con desempate por Id (revisión M-e)
                     .Select(g => new { g.Node, g.Level })
                     .FirstOrDefault()
                 where sponsorNode != null && sponsorNode.Node!.IsDescendantOf(root)

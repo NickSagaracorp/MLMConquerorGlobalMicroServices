@@ -98,6 +98,7 @@ public sealed class TeamStatusChangesService : ITeamStatusChangesService
             let node = _db.GenealogyTree
                 .Where(g => g.MemberId == m.MemberId)
                 .OrderByDescending(g => g.CreationDate)
+                .ThenByDescending(g => g.Id)      // nodo vigente con desempate por Id (revisión M-e)
                 .Select(g => g.Node)
                 .FirstOrDefault()
             where node != null && node.IsDescendantOf(root)

@@ -29,6 +29,7 @@ internal static class TokenCustody
         var sender = await db.GenealogyTree.AsNoTracking()
             .Where(g => g.MemberId == senderId)
             .OrderByDescending(g => g.CreationDate)
+            .ThenByDescending(g => g.Id)      // nodo vigente con desempate por Id (revisión M-e)
             .Select(g => new { g.MemberId, g.Node })
             .FirstOrDefaultAsync(ct);
         if (sender is null || sender.Node is null)

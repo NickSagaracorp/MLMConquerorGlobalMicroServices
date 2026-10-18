@@ -80,6 +80,7 @@ public sealed class TeamEventRegistrationsService : ITeamEventRegistrationsServi
               let node = _db.GenealogyTree
                   .Where(n => n.MemberId == m.MemberId)
                   .OrderByDescending(n => n.CreationDate)
+                  .ThenByDescending(n => n.Id)      // nodo vigente con desempate por Id (revisión M-e)
                   .Select(n => n.Node)
                   .FirstOrDefault()
               where node != null && node.IsDescendantOf(root)
@@ -127,6 +128,7 @@ public sealed class TeamEventRegistrationsService : ITeamEventRegistrationsServi
             let node = _db.GenealogyTree
                 .Where(n => n.MemberId == r.MemberId)
                 .OrderByDescending(n => n.CreationDate)
+                .ThenByDescending(n => n.Id)      // nodo vigente con desempate por Id (revisión M-e)
                 .Select(n => n.Node)
                 .FirstOrDefault()
             where node != null && node.IsDescendantOf(root)
