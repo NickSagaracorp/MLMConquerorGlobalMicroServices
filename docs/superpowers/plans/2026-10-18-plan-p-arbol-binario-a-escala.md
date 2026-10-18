@@ -956,6 +956,27 @@ Se pone `[DevelopmentOnly]` en `DevSeedController` y se quitan los `if (!_env.Is
 - **TDD.** En esta tanda, parte de las pruebas se escribió junto con el código del refactor (escritores y lectores dependían unos de otros). Las que demuestran el fallo anterior lo comprueban directamente: la de C1 exige el 8152 del prefijo y la de RCSI se vio en rojo sin el candado. Las de raíces provisionales, I1, I2 e I7 se escribieron después de su código.
 - **Fuera de esta tanda:** el Bloque D (escala sintética), el Bloque E (bono de coche) y R7 (`PaymentHistories`).
 
+### Arreglos de la revisión de 711e86f..5ce9184: desviaciones y notas (2026-10-18, tercera tanda)
+
+- **C1.** Al recolocar a un retirado por el admin, su equipo flotante vuelve con él y su volumen se suma a la línea nueva. `MoveSubtreeAsync` solo resta de la línea vieja si el subárbol cuelga de su padre por la clave (`HangsFromParentByKeyAsync`): los flotantes no cuelgan de nadie y sus puntos ya se restaron al retirarlo.
+- **I1.** `DualTeamNodes.ReattachFloatingChildrenAsync` recuelga a los flotantes bajo la hoja nueva y exige el árbol en exclusivo. Lo llaman los cuatro caminos que crean la hoja: el admin, BizCenter, SignupAPI y el motor (y con él el job). Los flotantes se leen antes de la transacción. Si hay alguno, el árbol se toma en exclusivo desde el principio, y si su número cambia con el candado, se reintenta. Hay una prueba contra SQL Server por camino.
+- **I2.**
+  - Las expresiones de comentarios de las reglas ya no usan `Singleline`. Una prueba coloca un escritor detrás de un comentario.
+  - `AppDbContext` queda como excepción con su motivo: declara el `DbSet`.
+  - Se borra `Scripts/sql/fix-malformed-dualteam-paths.sql`: escribía `HierarchyPath` por su cuenta y lo sustituyen 01 a 03.
+- **I3. Decisión.** `NotifyUplineRankAchievedAsync` avisa a la línea de patrocinio hasta 10 niveles (`EvaluateRankHandler.UplineNotificationLevels`) y al padre binario directo, sin repetir a nadie. Antes avisaba a toda la línea binaria, que a 8.000 niveles eran 8.000 notificaciones por rango. La prueba usa 550 ascendientes y comprueba 11 avisos.
+- **Menores.**
+  - Aviso en el log por encima de `WarnDepth`, al crear y al mover.
+  - El `finally` de `MoveSubtreeAsync` usa `DROP ... IF EXISTS` y se traga su error, para no tapar un 1205.
+  - 01 y 03 aceptan los hijos de un padre que consta retirado (`Removed` o `Unplaced`). 03 falla (51067) si queda un nodo sin clave.
+  - BizCenter repite `HasOwnEnrolledDownline` con el candado.
+  - `seed-superadmin` deshace el usuario si falla `AddToRoleAsync`.
+  - `_dualViewer` pasa como parámetro.
+  - El comentario de `DownlineGuard` está al día.
+- **Concurrencia a gran profundidad (hallazgo del ensayo).**
+  - Con 10 colocaciones a la vez a más de 8.000 niveles, las 10 se agotaban a los 30 s. Las sesiones esperaban en `CXSYNC_PORT` (plan paralelo de la subida de piernas, sin bloqueador).
+  - Se fuerza `MAXDOP 1` en la CTE y en los dos `UPDATE` de `LegPointMaintenance`. Con eso terminan todas: p50 6,3 a 7,3 s y p95 10,8 a 12,2 s. Siguen en serie porque comparten casi toda la línea de ascendientes (ver P-R9).
+
 ## Bloque B: clave de ruta compacta
 
 ### Tarea 9: `DualBinaryPath` (codificación) y su demostración
@@ -1770,6 +1791,8 @@ Las escrituras a más de 8.000 niveles cumplen, pero con poco margen. Su coste c
 | P-R6 | Un movimiento de subárbol toma el candado exclusivo del árbol y detiene todas las colocaciones mientras dura. | Los movimientos son raros y manuales. Se mide el de un subárbol de 50.000 nodos en el Bloque D y se anota. |
 | P-R7 | La paginación de Mi equipo pasa a ordenarse por `BinaryPath` (inorden). Otros órdenes, como la fecha de alta, con 400.000 nodos obligan a ordenar el rango entero. | El orden por defecto pasa a ser la clave. Los demás quedan disponibles con un aviso de lentitud, o se limitan a equipos de menos de 20.000 (P7). |
 | P-R8 | Huérfanos por adyacencia tras una retirada (hoy 0). | El relleno los trata como raíces flotantes con ordinal propio. Las retiradas los reescriben (Tarea 11). |
+| P-R9 | **Escrituras profundas concurrentes (abierto, pendiente de Nick).** Cada colocación actualiza las piernas de todos sus ascendientes en su transacción. Las que comparten línea se ponen en fila sobre las mismas filas: 10 a la vez a más de 8.000 niveles dan un p95 de unos 11 s. Con más carga, la espera llegaría al tiempo de espera del comando. | Hoy: `MAXDOP 1` y los reintentos de `PlacementService`. Recomendación del revisor, sin implementar: una cola de deltas de pierna que aplique un trabajador, con lo que la colocación solo inserta la hoja y su delta. También P4: derrame por anchura a partir de cierta profundidad, que acorta la línea. |
+| P-R10 | **Arranque anónimo detrás de un proxy (abierto, pendiente de Nick).** `seed-superadmin` comprueba el loopback por `RemoteIpAddress`. Detrás de Caddy en la misma máquina, todo llega como loopback. | Sin implementar. Opciones: cabeceras reenviadas con proxies conocidos, o desactivar el endpoint fuera de Development. |
 
 ## Preguntas para Nick
 
