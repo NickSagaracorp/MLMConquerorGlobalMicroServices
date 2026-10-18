@@ -81,7 +81,7 @@
 
 | # | Riesgo | Mitigación en este plan |
 |---|---|---|
-| R1 | **Rellenar `Node` en millones de filas.** Dentro de una migración sería una sola transacción: el registro de transacciones crecería, la tabla quedaría bloqueada y se superaría el *timeout* de 30 s de los comandos de EF (R8) en los ocho servicios a la vez. | El relleno es un **script idempotente por lotes** de 50.000 filas, con una transacción por lote (`Scripts/sql/plan-m/02-relleno-nodo-genealogia.sql`, Tarea 10). Se puede cortar y relanzar. La migración solo añade la columna, que admite nulos, y los índices: es una operación de metadatos. Si un lote choca con un alta concurrente (índice único), falla entero y se relanza. Lo mejor es lanzarlo con poco tráfico. |
+| R1 | **Rellenar `Node` en millones de filas.** Dentro de una migración sería una sola transacción: el registro de transacciones crecería, la tabla quedaría bloqueada y se superaría el *timeout* de 30 s de los comandos de EF (R8) en los ocho servicios a la vez. | El relleno es un **script idempotente aparte** (`Scripts/sql/plan-m/02-relleno-nodo-genealogia.sql`, Tarea 10, rehecho en las revisiones I1 e I-1). Se ejecuta **con las altas paradas**, dentro de la ventana de despliegue. Primero suelta lo incoherente que dejara una ejecución cortada. Después calcula nivel a nivel en una tabla temporal y aplica **nivel a nivel y por lotes de 4.000 filas en orden de `Id`** dentro de cada nivel, cada lote en su transacción: un padre se confirma siempre antes que sus hijos, así que un corte deja lo aplicado coherente y relanzarlo termina bien (probado). Acaba con `REBUILD`, estadísticas `FULLSCAN` y `THROW` si quedan `SinNode` o `Incoherentes`. Con recuperación `FULL` hacen falta copias del log durante la ventana. La migración solo añade la columna, que admite nulos, las columnas calculadas persistidas (reescriben las filas: segundos en local) y los índices. |
 | R2 | **Nodos incoherentes:** un escritor nuevo crea un nodo de inscripción sin `Node`, o reescribe rutas sin tocar `Node`. Ese miembro desaparecería de todos los equipos. | `NodosDeGenealogiaTests` (Tarea 8) cumple el papel de `RutasConBarraFinalTests` para `Node`: todo `new GenealogyEntity { … }` asigna `Node`, la lista de sitios que crean nodos es la revisada, y nadie hace `ExecuteUpdate` ni `UPDATE GenealogyTree`. El índice único rechaza dos nodos iguales. La consulta de coherencia de la Tarea 10 es condición de despliegue y se vigila después. |
 | R3 | **Mover subárboles.** Hoy **nadie** mueve nodos de inscripción. Las colocaciones (`PlacementService`, `PlaceMemberHandler` ×2, `AdminPlaceMember`, `RunAutoPlacement`, `RemovePlacement` ×2) solo escriben en `DualTeamTree`, y no hay cambio de patrocinador. | Si llega un cambio de patrocinador, `NodosDeGenealogiaTests` obliga a revisarlo. Debe ser **un único** `UPDATE` sobre todo el subárbol con `Node.GetReparentedValue(@viejo, @nuevo)`, dentro de una transacción con `sp_getapplock` sobre los dos patrocinadores, y antes hay que reservar el ordinal nuevo con `GenealogyNodes.NextChildAsync`. Queda anotado en la clase. |
 | R4 | **Profundidad del `hierarchyid`.** Inscripción: unos 396 niveles con el reparto real. Binario: **1.427 niveles como máximo**. En local ya hay 934 (584 B, el 65 %), con 119.000 miembros y el derrame por el lado más profundo. Con millones de miembros la pierna exterior crece casi en proporción, así que no cabría. | Inscripción en `hierarchyid` (D3). Binario con CTE (D4, M17). Si un alta superara los 892 B, SQL Server lanzaría 6522/24001 al guardar y el alta fallaría sin escribir nada. Con la profundidad real no se espera que pase. |
@@ -3033,7 +3033,8 @@ Lo que no encajaba con el plan escrito y cómo se adaptó, respetando su intenci
     - `DownlineGuard.PuedeVerRamaDePatrocinioAsync` autoriza por `Node`.
     - La regla `Nadie_filtra_en_memoria_filas_de_genealogia_por_la_ruta` detecta `x.HierarchyPath.Contains/StartsWith` en archivos que leen `GenealogyTree`, fuera del binario. Se comprobó que habría detectado el código antiguo del bono.
   - **M7:** el webhook rechaza también un `provider` de más de 100 caracteres (`PaymentHistory.GatewayNameMaxLength`; la columna sigue en `nvarchar(max)`). Comentario corregido: no todas las pasarelas dejan de reintentar un 4xx.
-  - **M9 y M10:** la revisión pide solo una nota en el plan, y el mensaje no dice su contenido. Quedan pendientes de que el coordinador las precise.
+  - **M9 (aclarado en la revisión siguiente):** la recompilación (`OPTION (RECOMPILE)` de `RecompileTaggedQueriesInterceptor`) se ejecuta en **cada** recuento, página y clic del visualizador que pase por `Under`/`CurrentUnder`. Es el precio de tener un plan por tamaño de equipo. Hay que vigilar en producción la CPU de compilación y, si se activa, Query Store (las consultas con `RECOMPILE` no dejan plan en la caché, así que el análisis va por Query Store o eventos extendidos). Si la CPU de compilación pesa, la alternativa es separar dos consultas (equipo pequeño y grande) con planes fijos.
+  - **M10 (aclarado):** la guarda `SERVERPROPERTY('MachineName') = HOST_NAME()` de `01-orderno-duplicados.sql` (y la de `03-activar-rcsi.sql` con `Confirmo=LOCAL`) es un **cerrojo de comodidad, no de seguridad**. `HOST_NAME()` lo declara el cliente y, con SQL Server en Docker, la máquina es el contenedor. Evita un error de dedo; no protege de quien quiera saltárselo.
   - **Guarda del relleno:** comprueba que la base se llama `MLMConquerorGlobalEditionDb`. Si en producción tiene otro nombre, hay que ajustarla antes de la ventana.
 
 - **Bloque 4 (Tareas 14–15).**
@@ -3053,6 +3054,44 @@ Lo que no encajaba con el plan escrito y cómo se adaptó, respetando su intenci
   - Comprobación de `OrderNo`: 1 ms.
   - *Mi equipo* del Dual Team: 1.505 ms con 19.335 nodos.
 - **Prueba intermitente (otra vez):** `EntraxQrPaymentTests.Caducado_o_fallido…(Expired)` es una prueba de bUnit que depende del tiempo de pintado. Falló una vez en la suite completa y pasó al relanzarla. No toca nada de este plan.
+
+- **Revisión de 2ef37f7..da4f79d (antes del merge).**
+  - **I-1, relleno que aguanta un corte:**
+    - Paso 0: pone `Node = NULL` en las filas incoherentes, en bucle hasta que no quede ninguna (al soltar un padre, sus hijos pasan a serlo).
+    - Aplica por `(Nivel, Id)`: nivel a nivel y por rangos de `Id` dentro de cada nivel.
+    - Termina con `THROW 51035` si quedan `SinNode` o `Incoherentes`.
+    - La cabecera avisa de las copias del log con recuperación `FULL`. R1 está corregido.
+    - **Corte simulado** dentro de una transacción deshecha: a un padre de nivel 3 con 178 hijos se le quitó el `Node` (como si sus hijos se hubieran aplicado antes que él) y a otro nodo se le puso un `Node` que no cuelga de su padre. El relanzado soltó 190 nodos, recalculó 191 y terminó con `SinNode 0` e `Incoherentes 0`; los 178 hijos cuelgan del nuevo `Node` del padre.
+    - Relleno completo en local: 35 s.
+  - **I-2:** `03-activar-rcsi.sql` exige `-v Confirmo=LOCAL` (con `MachineName = HOST_NAME()`) o `-v Confirmo=PRODUCCION_R6_R7_RESUELTOS`, y lanza `THROW 51044` si tras el `ALTER` RCSI no quedó activado. Probado sin la variable y con `Confirmo=OTRO`: se detiene antes del `ALTER`. **No se ejecutó con `LOCAL`.**
+  - **I-3, Mi equipo del Dual Team:**
+    - El camino se decide antes de materializar, con `DualSubtree.CountUpToAsync`: un recuento con `TOP (20.001)`, sin escribir nada.
+    - `MemberStatistics.DualTeamSize` no sirve para decidirlo: está a 0 en toda la base local, porque no se mantiene.
+    - **Medición, mediana de 3:**
+      - Subárbol AMB-962514 (19.335 nodos), por la CTE: **1.431 ms**.
+      - Raíz AMB-700829 (119.433 nodos), por la ruta: **941 ms**.
+      - En local la ruta es más barata porque la tabla es pequeña; la CTE crece con el subárbol y la ruta con la tabla.
+    - **Pendiente de escala:** los equipos grandes del binario (más de 20.000 nodos) siguen por la ruta, que no tiene índice y no escala. Hace falta un plan aparte (*closure table* u otra estructura).
+  - **M-a:** un ciclo en el binario hace que el recuento llegue al tope (o a `MAXRECURSION`, error 530) y se usa la ruta: nunca un 500. La tabla temporal tiene `IGNORE_DUP_KEY`. Hay prueba con un ciclo a↔b.
+  - **M-b:** `MaterializeAsync` devuelve un `MaterializedSubtree`: la tabla temporal solo se lee a través de él (`Nodes`) y se borra al liberarlo, momento en que también se devuelve la conexión. Después de liberarlo, `Nodes` lanza `ObjectDisposedException`. Hay prueba.
+  - **M-c, CTE frente a prefijo con nodos intermedios borrados:**
+    - La CTE baja por `ParentMemberId` sin pasar por los nodos borrados: un nodo borrado corta su rama.
+    - El prefijo de la ruta solo quita el nodo borrado y sigue contando a sus descendientes.
+    - **Lo correcto es la CTE:** un nodo borrado no está en el árbol, y lo que colgaba de él queda flotante.
+    - La consulta de control es `Scripts/sql/plan-m/04-control-binario.sql` (vivos que cuelgan de un padre borrado o inexistente). En local da 0.
+  - **M-d:**
+    - `GenealogyChildrenGate` usa `IsSqlServer()`. Con una transacción ya abierta, toma el candado dentro de ella y no abre ni confirma otra.
+    - Las altas traducen `GenealogyChildrenBusyException` a `SIGNUP_SPONSOR_BUSY` (409, reintentar) y la nueva `GenealogyNodeMissingException` a `SIGNUP_SPONSOR_NOT_READY` (503, el alta no se pudo completar), en vez del `INTERNAL_ERROR` de `ErrorHandlingBehavior`.
+    - Pruebas del controlador para los dos códigos y para la traducción, y una del alta con un patrocinador sin `Node`.
+  - **M-e:** los seis sitios desempatan por `Id` (`TokenCustody`, Actividad ×2, Cambios de estado, Eventos ×2). La regla `Quien_elige_el_nodo_mas_reciente_desempata_por_Id` lo vigila.
+  - **M-h:** `DROP INDEX IF EXISTS` para `IX_GenealogyTree_ParentMemberId`. La migración se regeneró (`20261017233430_NodoDeGenealogia`) y se volvió a aplicar en local (17 s con la compilación). `00-migraciones-plan-m.sql` también se regeneró.
+  - **M-i:** el job registra un solo error con el recuento y hasta 5 ejemplos. Hay prueba con 7 miembros.
+  - **M-k:** la prueba de altas concurrentes usa la raíz reservada `/2147483000/` y una limpieza al empezar y al terminar (todo lo que cuelga de esa raíz o lleva la marca de la prueba).
+  - **M-l:** las reglas de filtros por ruta no distinguen mayúsculas y detectan también `HierarchyPath.IndexOf` y `EF.Functions.Like(x.HierarchyPath, …)`.
+  - **Pendientes de escala (solo nota, M-j y binario):**
+    - El bono de coche calcula en memoria: carga los nodos vigentes con suscripción activa de todo el árbol y suma por tramos.
+    - Siguen recorriendo la ruta del binario sin índice: `AdminMemberDualTeamController:99`, `NetworkController:44-80`, las colocaciones (`PlaceMemberHandler` ×2, `AdminPlaceMember`, `RemovePlacement` ×2, `DualTeamPointsRecalculator`) y `GetRankProgressHandler:146`.
+    - Todo esto va a un plan aparte, junto con los equipos grandes de I-3.
 
 ---
 
