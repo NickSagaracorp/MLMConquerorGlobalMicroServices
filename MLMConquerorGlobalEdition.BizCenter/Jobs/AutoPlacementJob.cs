@@ -76,8 +76,9 @@ public class AutoPlacementJob
             return 0;
         }
 
-        // Single placement authority: deepest-chain spillover, idempotent + concurrency-safe,
-        // O(1) slot finding via the frontier cache, and one deferred incremental leg-point pass.
+        // Single placement authority: deepest-chain spillover, idempotent + concurrency-safe.
+        // Plan P: PlaceBulkAsync coloca de uno en uno bajo el candado del hueco (DualTeamGate), con su
+        // transaccion y su subida de puntos por miembro; ya no guarda estado en memoria entre miembros.
         var pairs = unplaced.Select(m => (m.MemberId, m.SponsorMemberId!)).ToList();
         var result = await placement.PlaceBulkAsync(pairs);
 
